@@ -13,7 +13,6 @@ import {
   addWeeks,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { motion } from "framer-motion";
 import { cn, formatTime } from "@/lib/utils";
 import type { ClassWithDetails } from "@/types";
 
@@ -29,12 +28,9 @@ export function ScheduleClient() {
       setLoading(true);
       try {
         const res = await fetch("/api/classes");
-        if (res.ok) {
-          const data = await res.json();
-          setClasses(data);
-        }
+        if (res.ok) setClasses(await res.json());
       } catch {
-        // API may not be connected
+        /* no db */
       } finally {
         setLoading(false);
       }
@@ -62,255 +58,238 @@ export function ScheduleClient() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted" />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* Header: studio info + filters (desktop sidebar style) */}
-      <div className="flex flex-col gap-8 lg:flex-row">
-        {/* Sidebar — desktop only */}
-        <aside className="hidden shrink-0 lg:block lg:w-56">
-          <div className="sticky top-24 space-y-6">
+    <div className="mx-auto max-w-[1200px] px-4 pb-24 pt-6 lg:pb-8">
+      <div className="flex gap-10 lg:flex-row">
+        {/* ── Sidebar (desktop) ── */}
+        <aside className="hidden shrink-0 lg:block lg:w-52">
+          <div className="sticky top-20 space-y-8">
             <div>
-              <h1 className="font-display text-3xl font-bold text-foreground">
+              <h1 className="font-display text-[2rem] font-bold leading-tight text-foreground">
                 Flō Studio
               </h1>
-              <p className="mt-1 text-sm text-muted">Pilates & Wellness</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-muted">
+                Pilates & Wellness
+              </p>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
-                  Por disciplina
-                </label>
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm text-foreground focus:border-foreground focus:outline-none"
-                >
-                  <option value="all">Todas</option>
-                  {classTypes.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
-                  Por instructor
-                </label>
-                <select
-                  value={filterCoach}
-                  onChange={(e) => setFilterCoach(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm text-foreground focus:border-foreground focus:outline-none"
-                >
-                  <option value="all">Todos</option>
-                  {coaches.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.user.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="space-y-4">
+              <FilterSelect
+                label="Por disciplina"
+                value={filterType}
+                onChange={setFilterType}
+                options={[
+                  { value: "all", label: "Todas" },
+                  ...classTypes.map((t) => ({ value: t.id, label: t.name })),
+                ]}
+              />
+              <FilterSelect
+                label="Por instructor"
+                value={filterCoach}
+                onChange={setFilterCoach}
+                options={[
+                  { value: "all", label: "Todos" },
+                  ...coaches.map((c) => ({
+                    value: c.id,
+                    label: c.user.name || "Coach",
+                  })),
+                ]}
+              />
             </div>
           </div>
         </aside>
 
-        {/* Main content */}
+        {/* ── Calendar grid ── */}
         <div className="min-w-0 flex-1">
-          {/* Week navigation */}
-          <div className="mb-6 flex items-center justify-between">
+          {/* Week nav */}
+          <div className="mb-5 flex items-center">
             <button
               onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
-              className="rounded-full p-2 text-muted transition-colors hover:bg-surface hover:text-foreground"
+              className="mr-auto rounded-full p-1.5 text-muted hover:text-foreground"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-4 w-4" />
             </button>
-            <h2 className="text-sm font-medium text-muted">
+            <span className="text-xs font-medium uppercase tracking-widest text-muted">
               {format(weekStart, "MMMM yyyy", { locale: es })}
-            </h2>
+            </span>
             <button
               onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
-              className="rounded-full p-2 text-muted transition-colors hover:bg-surface hover:text-foreground"
+              className="ml-auto rounded-full p-1.5 text-muted hover:text-foreground"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Week grid — desktop: 7 columns */}
-          <div className="hidden lg:grid lg:grid-cols-7 lg:gap-px lg:rounded-2xl lg:bg-border/50 lg:overflow-hidden">
-            {weekDays.map((day) => {
-              const dayClasses = getClassesForDay(day);
-              const today = isToday(day);
-              return (
-                <div key={day.toISOString()} className="bg-white">
-                  {/* Day header */}
-                  <div
-                    className={cn(
-                      "border-b border-border/50 px-2 py-3 text-center",
-                      today && "bg-foreground"
-                    )}
-                  >
-                    <p
+          {/* ── Desktop: 7-col week ── */}
+          <div className="hidden lg:block">
+            {/* Day headers */}
+            <div className="mb-3 grid grid-cols-7 gap-3">
+              {weekDays.map((day) => {
+                const today = isToday(day);
+                return (
+                  <div key={day.toISOString()} className="text-center">
+                    <span
                       className={cn(
-                        "text-[10px] font-medium uppercase tracking-wider",
-                        today ? "text-white/70" : "text-muted"
+                        "text-[11px] font-semibold uppercase tracking-wider",
+                        today ? "text-foreground" : "text-muted"
                       )}
                     >
                       {today && "● "}
                       {format(day, "EEE", { locale: es })}
-                    </p>
-                    <p
-                      className={cn(
-                        "text-sm font-semibold",
-                        today ? "text-white" : "text-foreground"
-                      )}
-                    >
-                      {format(day, "d", { locale: es })}
-                    </p>
+                      {" "}
+                      {format(day, "d")}
+                    </span>
                   </div>
+                );
+              })}
+            </div>
 
-                  {/* Classes */}
-                  <div className="min-h-[200px] space-y-px">
-                    {dayClasses.map((cls, i) => (
-                      <motion.div
-                        key={cls.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.03, duration: 0.2 }}
-                      >
-                        <Link href={`/class/${cls.id}`}>
-                          <div className="group cursor-pointer border-b border-border/30 px-3 py-3 transition-colors hover:bg-surface/60">
-                            <p className="text-xs text-muted">
-                              <span className="font-medium text-foreground">
-                                {formatTime(cls.startsAt)}
-                              </span>
-                              {" – "}
-                              {cls.classType.duration} min
-                            </p>
-                            <p className="mt-1 text-[13px] font-semibold leading-tight text-foreground">
-                              {cls.classType.name.split(" ")[0]} con{" "}
-                              {cls.coach.user.name?.split(" ")[0]}
-                            </p>
-                            <div className="mt-1.5">
-                              <Users className="h-3.5 w-3.5 text-muted/40" />
-                            </div>
-                          </div>
-                        </Link>
-                      </motion.div>
-                    ))}
-                    {dayClasses.length === 0 && (
-                      <div className="flex h-[200px] items-center justify-center">
-                        <p className="text-xs text-muted/30">—</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Mobile: 2-column grid with scroll */}
-          <div className="lg:hidden">
-            <div className="grid grid-cols-2 gap-3">
-              {weekDays.slice(0, 6).map((day) => {
+            {/* Class columns */}
+            <div className="grid grid-cols-7 items-start gap-3">
+              {weekDays.map((day) => {
                 const dayClasses = getClassesForDay(day);
-                const today = isToday(day);
                 return (
-                  <div key={day.toISOString()}>
-                    {/* Day header */}
-                    <div className="mb-2 text-center">
-                      <p
-                        className={cn(
-                          "text-xs font-semibold uppercase tracking-wider",
-                          today ? "text-foreground" : "text-muted"
-                        )}
-                      >
-                        {today && "● "}
-                        {format(day, "EEE d", { locale: es })}
-                      </p>
-                    </div>
-
-                    {/* Class cards */}
-                    <div className="space-y-2">
-                      {dayClasses.map((cls, i) => (
-                        <motion.div
-                          key={cls.id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{
-                            delay: i * 0.04,
-                            duration: 0.25,
-                            ease: "easeOut" as const,
-                          }}
-                        >
-                          <Link href={`/class/${cls.id}`}>
-                            <div className="rounded-xl border border-border/60 bg-white px-3 py-3 transition-colors active:bg-surface">
-                              <p className="text-xs text-muted">
-                                <span className="font-medium text-foreground">
-                                  {formatTime(cls.startsAt)}
-                                </span>
-                                {" – "}
-                                {cls.classType.duration} min
-                              </p>
-                              <p className="mt-1 text-sm font-semibold leading-tight text-foreground">
-                                {cls.classType.name.split(" ")[0]} con{" "}
-                                {cls.coach.user.name?.split(" ")[0]}
-                              </p>
-                              <div className="mt-1.5">
-                                <Users className="h-3.5 w-3.5 text-muted/40" />
-                              </div>
-                            </div>
-                          </Link>
-                        </motion.div>
-                      ))}
-                      {dayClasses.length === 0 && (
-                        <p className="py-8 text-center text-xs text-muted/30">
-                          —
-                        </p>
-                      )}
-                    </div>
+                  <div key={day.toISOString()} className="space-y-2">
+                    {dayClasses.map((cls) => (
+                      <ClassCard key={cls.id} cls={cls} />
+                    ))}
                   </div>
                 );
               })}
             </div>
           </div>
+
+          {/* ── Mobile: 2-col grid ── */}
+          <div className="lg:hidden">
+            {/* Day headers */}
+            <div className="mb-3 grid grid-cols-2 gap-3">
+              {weekDays.slice(0, 2).map((day) => {
+                const today = isToday(day);
+                return (
+                  <div key={day.toISOString()} className="text-center">
+                    <span
+                      className={cn(
+                        "text-[11px] font-semibold uppercase tracking-wider",
+                        today ? "text-foreground" : "text-muted"
+                      )}
+                    >
+                      {today && "● "}
+                      {format(day, "EEE d", { locale: es })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 items-start gap-3">
+              {weekDays.slice(0, 2).map((day) => {
+                const dayClasses = getClassesForDay(day);
+                return (
+                  <div key={day.toISOString()} className="space-y-2">
+                    {dayClasses.map((cls) => (
+                      <ClassCard key={cls.id} cls={cls} />
+                    ))}
+                    {dayClasses.length === 0 && (
+                      <p className="py-10 text-center text-[11px] text-muted/30">
+                        Sin clases
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Swipe hint */}
+            <p className="mt-6 text-center text-[11px] text-muted/50">
+              Desliza para ver más días →
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Mobile bottom filters */}
+      {/* ── Mobile bottom filter bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-white px-4 py-3 safe-bottom lg:hidden">
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="flex-1 rounded-xl border border-border bg-white px-3 py-2.5 text-sm font-medium text-foreground focus:border-foreground focus:outline-none"
+            className="flex-1 rounded-xl border border-border bg-white px-3 py-2.5 text-[13px] font-medium text-foreground"
           >
             <option value="all">Por disciplina</option>
             {classTypes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
+              <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
           <select
             value={filterCoach}
             onChange={(e) => setFilterCoach(e.target.value)}
-            className="flex-1 rounded-xl border border-border bg-white px-3 py-2.5 text-sm font-medium text-foreground focus:border-foreground focus:outline-none"
+            className="flex-1 rounded-xl border border-border bg-white px-3 py-2.5 text-[13px] font-medium text-foreground"
           >
             <option value="all">Por instructor</option>
             {coaches.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.user.name}
-              </option>
+              <option key={c.id} value={c.id}>{c.user.name}</option>
             ))}
           </select>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Class card — matches Siclo's compact rounded card ── */
+function ClassCard({ cls }: { cls: ClassWithDetails }) {
+  return (
+    <Link href={`/class/${cls.id}`}>
+      <div className="rounded-2xl border border-border/70 bg-white px-4 py-3.5 transition-shadow hover:shadow-md">
+        <p className="text-[13px] text-muted">
+          <span className="font-medium text-foreground">
+            {formatTime(cls.startsAt)}
+          </span>
+          {" – "}
+          {cls.classType.duration} min
+        </p>
+        <p className="mt-1.5 text-[14px] font-bold leading-snug text-foreground">
+          {cls.classType.name.split(" ")[0]} con{" "}
+          {cls.coach.user.name?.split(" ")[0]}
+        </p>
+        <div className="mt-2">
+          <Users className="h-4 w-4 text-muted/30" />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ── Sidebar filter dropdown ── */
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-xl border border-border bg-white px-3 py-3 text-[14px] font-medium text-foreground focus:border-foreground focus:outline-none"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
