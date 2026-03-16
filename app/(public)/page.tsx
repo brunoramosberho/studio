@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
 import { useRef } from "react";
 import {
   ArrowRight,
@@ -13,36 +13,11 @@ import {
   CheckCircle2,
   CalendarCheck,
   Heart,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-
-function AnimatedSection({
-  children,
-  className,
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
-
-  return (
-    <motion.section
-      ref={ref}
-      initial={{ opacity: 0, y: 32 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 32 }}
-      transition={{ duration: 0.6, ease: "easeOut", delay }}
-      className={className}
-    >
-      {children}
-    </motion.section>
-  );
-}
 
 const classTypes = [
   {
@@ -75,17 +50,20 @@ const steps = [
   {
     number: "01",
     title: "Elige tu clase",
-    description: "Explora nuestro horario y encuentra la clase perfecta para ti.",
+    description:
+      "Explora nuestro horario y encuentra la clase perfecta para ti.",
   },
   {
     number: "02",
     title: "Reserva en segundos",
-    description: "Asegura tu lugar con un tap. Sin complicaciones, sin llamadas.",
+    description:
+      "Asegura tu lugar con un tap. Sin complicaciones, sin llamadas.",
   },
   {
     number: "03",
     title: "Muévete con nosotras",
-    description: "Llega al studio, respira profundo y disfruta cada movimiento.",
+    description:
+      "Llega al studio, respira profundo y disfruta cada movimiento.",
   },
 ];
 
@@ -140,27 +118,6 @@ const packages = [
   },
 ];
 
-const testimonials = [
-  {
-    quote:
-      "Flō cambió mi relación con el ejercicio. Por primera vez disfruto cada sesión y veo resultados reales.",
-    name: "Mariana G.",
-    detail: "Clienta desde 2024",
-  },
-  {
-    quote:
-      "Las coaches son increíbles. Cada clase se siente personalizada aunque estés en grupo. La atención al detalle es impecable.",
-    name: "Sofía L.",
-    detail: "Pack Ilimitado",
-  },
-  {
-    quote:
-      "Después de mi embarazo, Flō me ayudó a recuperar fuerza y confianza. El prenatal con Valentina es una maravilla.",
-    name: "Andrea R.",
-    detail: "Reformer Pre/Postnatal",
-  },
-];
-
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number) => ({
@@ -170,34 +127,38 @@ const fadeUp = {
   }),
 };
 
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.15 } },
+};
+
 export default function LandingPage() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="overflow-x-hidden">
       {/* ── Hero ──────────────────────────────────────────────── */}
-      <section className="relative flex min-h-[85dvh] items-center justify-center overflow-hidden px-4">
-        <div
-          className="absolute inset-0 -z-10 animate-[gradient-shift_8s_ease-in-out_infinite]"
+      <section className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#1C1917] px-4">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(201,169,110,0.12)_0%,_transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_rgba(201,169,110,0.06)_0%,_transparent_50%)]" />
+
+        <motion.div
+          className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2"
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ duration: 1.5, delay: 0.8, ease: "easeOut" as const }}
           style={{
             background:
-              "linear-gradient(135deg, #FAF9F6 0%, #F5F2ED 25%, #E8D9BF 50%, #C9A96E20 75%, #FAF9F6 100%)",
-            backgroundSize: "400% 400%",
+              "linear-gradient(90deg, transparent 0%, #C9A96E 50%, transparent 100%)",
           }}
         />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_rgba(201,169,110,0.08)_0%,_transparent_60%)]" />
 
-        <div className="mx-auto max-w-4xl text-center">
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.15 } },
-            }}
-          >
+        <div className="relative z-10 mx-auto max-w-5xl text-center">
+          <motion.div initial="hidden" animate="visible" variants={stagger}>
             <motion.p
               variants={fadeUp}
               custom={0}
-              className="mb-6 text-sm font-medium uppercase tracking-[0.2em] text-accent"
+              className="mb-8 text-sm font-medium uppercase tracking-[0.3em] text-accent"
             >
               Pilates & Wellness Studio
             </motion.p>
@@ -205,7 +166,7 @@ export default function LandingPage() {
             <motion.h1
               variants={fadeUp}
               custom={1}
-              className="font-display text-5xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-6xl md:text-7xl lg:text-8xl"
+              className="font-display text-6xl font-bold leading-[0.95] tracking-tight text-white sm:text-8xl"
             >
               Muévete.
               <br />
@@ -217,7 +178,7 @@ export default function LandingPage() {
             <motion.p
               variants={fadeUp}
               custom={2}
-              className="mx-auto mt-8 max-w-lg text-lg text-muted sm:text-xl"
+              className="mx-auto mt-8 max-w-lg text-lg leading-relaxed text-white/60 sm:text-xl"
             >
               Clases de Reformer Pilates, Mat Flow y Barre Fusion en un espacio
               diseñado para ti.
@@ -226,12 +187,17 @@ export default function LandingPage() {
             <motion.div
               variants={fadeUp}
               custom={3}
-              className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
+              className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
             >
-              <Button asChild size="lg">
-                <Link href="/schedule">Ver horarios</Link>
+              <Button asChild size="lg" className="px-10 text-base">
+                <Link href="/schedule">Reservar clase</Link>
               </Button>
-              <Button asChild variant="secondary" size="lg">
+              <Button
+                asChild
+                variant="secondary"
+                size="lg"
+                className="border-white/20 text-white hover:border-accent hover:bg-accent hover:text-white"
+              >
                 <Link href="/packages">Primera clase $150</Link>
               </Button>
             </motion.div>
@@ -241,73 +207,98 @@ export default function LandingPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.2, duration: 1 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          transition={{ delay: 1.4, duration: 1 }}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2"
         >
-          <div className="flex flex-col items-center gap-2 text-muted/60">
-            <span className="text-xs tracking-wider">Scroll</span>
-            <div className="h-8 w-px bg-accent/30" />
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs uppercase tracking-[0.2em] text-white/30">
+              Scroll
+            </span>
+            <motion.div
+              className="h-10 w-px bg-accent/40"
+              animate={{ scaleY: [0, 1, 0] }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut" as const,
+              }}
+              style={{ transformOrigin: "top" }}
+            />
           </div>
         </motion.div>
       </section>
 
       {/* ── Class Types ───────────────────────────────────────── */}
-      <AnimatedSection className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-        <div className="mb-16 text-center">
-          <h2 className="font-display text-3xl font-bold text-foreground sm:text-4xl">
-            Encuentra tu práctica
-          </h2>
-          <p className="mt-4 text-muted">
-            Tres disciplinas, un objetivo: que te sientas increíble.
-          </p>
-        </div>
+      <section className="bg-[#1C1917] px-4 pb-24 pt-12">
+        <div className="mx-auto max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: "easeOut" as const }}
+            className="mb-16 text-center"
+          >
+            <h2 className="font-display text-3xl font-bold text-white sm:text-5xl">
+              Encuentra tu práctica
+            </h2>
+            <p className="mt-4 text-white/50">
+              Tres disciplinas, un objetivo: que te sientas increíble.
+            </p>
+          </motion.div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {classTypes.map((cls, i) => (
-            <motion.div
-              key={cls.name}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-60px" }}
-              custom={i}
-              variants={fadeUp}
-            >
-              <Card className="group h-full cursor-pointer transition-all duration-300 hover:shadow-[var(--shadow-warm-md)] hover:-translate-y-1">
-                <CardContent className="flex h-full flex-col p-8">
+          <div className="grid gap-6 md:grid-cols-3">
+            {classTypes.map((cls, i) => (
+              <motion.div
+                key={cls.name}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-60px" }}
+                custom={i}
+                variants={fadeUp}
+              >
+                <div className="group h-full cursor-pointer rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm transition-all duration-300 hover:border-accent/30 hover:bg-white/[0.08]">
                   <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
                     <cls.icon className="h-7 w-7" />
                   </div>
-                  <h3 className="font-display text-xl font-bold text-foreground">
+                  <h3 className="font-display text-xl font-bold text-white">
                     {cls.name}
                   </h3>
-                  <p className="mt-3 flex-1 text-sm leading-relaxed text-muted">
+                  <p className="mt-3 text-sm leading-relaxed text-white/50">
                     {cls.description}
                   </p>
                   <div className="mt-6 flex items-center gap-3">
-                    <Badge variant="level">{cls.level}</Badge>
-                    <span className="flex items-center gap-1.5 text-xs text-muted">
+                    <span className="inline-flex items-center rounded-full bg-accent/10 px-3 py-0.5 text-xs font-medium text-accent">
+                      {cls.level}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-white/40">
                       <Clock className="h-3.5 w-3.5" />
                       {cls.duration}
                     </span>
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </div>
-      </AnimatedSection>
+      </section>
 
       {/* ── How It Works ──────────────────────────────────────── */}
-      <AnimatedSection className="bg-surface/50 px-4 py-24">
+      <section className="bg-surface px-4 py-24">
         <div className="mx-auto max-w-5xl">
-          <div className="mb-16 text-center">
-            <h2 className="font-display text-3xl font-bold text-foreground sm:text-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: "easeOut" as const }}
+            className="mb-16 text-center"
+          >
+            <h2 className="font-display text-3xl font-bold text-foreground sm:text-5xl">
               Así de fácil
             </h2>
             <p className="mt-4 text-muted">
               De tu celular al reformer en tres pasos.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid gap-12 md:grid-cols-3">
             {steps.map((step, i) => (
@@ -320,7 +311,7 @@ export default function LandingPage() {
                 variants={fadeUp}
                 className="text-center"
               >
-                <span className="font-mono text-5xl font-medium text-accent/30">
+                <span className="font-mono text-6xl font-bold text-accent">
                   {step.number}
                 </span>
                 <h3 className="mt-4 font-display text-xl font-bold text-foreground">
@@ -333,72 +324,90 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </AnimatedSection>
+      </section>
 
       {/* ── Coaches ────────────────────────────────────────────── */}
-      <AnimatedSection className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-        <div className="mb-16 text-center">
-          <h2 className="font-display text-3xl font-bold text-foreground sm:text-4xl">
-            Conoce a tu coach
-          </h2>
-          <p className="mt-4 text-muted">
-            Expertas apasionadas que te guiarán en cada movimiento.
-          </p>
-        </div>
+      <section className="bg-[#1C1917] px-4 py-24">
+        <div className="mx-auto max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: "easeOut" as const }}
+            className="mb-16 text-center"
+          >
+            <h2 className="font-display text-3xl font-bold text-white sm:text-5xl">
+              Conoce a tu coach
+            </h2>
+            <p className="mt-4 text-white/50">
+              Expertas apasionadas que te guiarán en cada movimiento.
+            </p>
+          </motion.div>
 
-        <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 md:overflow-visible md:pb-0">
-          {coaches.map((coach, i) => (
-            <motion.div
-              key={coach.name}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-60px" }}
-              custom={i}
-              variants={fadeUp}
-              className="min-w-[280px] flex-shrink-0 md:min-w-0"
-            >
-              <Card className="group h-full overflow-hidden transition-all duration-300 hover:shadow-[var(--shadow-warm-md)]">
-                <div className="aspect-[3/4] bg-gradient-to-br from-accent/10 via-surface to-accent-soft/20">
-                  <div className="flex h-full items-center justify-center">
-                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-accent/10">
-                      <Heart className="h-10 w-10 text-accent/40" />
+          <div
+            ref={scrollRef}
+            className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 md:overflow-visible md:pb-0"
+          >
+            {coaches.map((coach, i) => (
+              <motion.div
+                key={coach.name}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-60px" }}
+                custom={i}
+                variants={fadeUp}
+                className="min-w-[280px] flex-shrink-0 md:min-w-0"
+              >
+                <div className="group relative h-full overflow-hidden rounded-2xl">
+                  <div className="aspect-[3/4] bg-gradient-to-br from-white/10 via-accent/5 to-white/5">
+                    <div className="flex h-full items-center justify-center">
+                      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/10">
+                        <Heart className="h-10 w-10 text-accent/50" />
+                      </div>
                     </div>
                   </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <h3 className="font-display text-xl font-bold text-white">
+                      {coach.name}
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-accent">
+                      {coach.specialty}
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-white/60 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                      {coach.bio}
+                    </p>
+                    <Link
+                      href="/coaches"
+                      className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-white"
+                    >
+                      Ver clases <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
                 </div>
-                <CardContent className="p-6">
-                  <h3 className="font-display text-lg font-bold text-foreground">
-                    {coach.name}
-                  </h3>
-                  <p className="mt-1 text-sm font-medium text-accent">
-                    {coach.specialty}
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-muted">
-                    {coach.bio}
-                  </p>
-                  <Link
-                    href="/coaches"
-                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-accent/80"
-                  >
-                    Ver clases <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))}
+          </div>
         </div>
-      </AnimatedSection>
+      </section>
 
       {/* ── Packages ───────────────────────────────────────────── */}
-      <AnimatedSection className="bg-surface/50 px-4 py-24">
+      <section className="px-4 py-24">
         <div className="mx-auto max-w-5xl">
-          <div className="mb-16 text-center">
-            <h2 className="font-display text-3xl font-bold text-foreground sm:text-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: "easeOut" as const }}
+            className="mb-16 text-center"
+          >
+            <h2 className="font-display text-3xl font-bold text-foreground sm:text-5xl">
               Paquetes
             </h2>
             <p className="mt-4 text-muted">
               Elige el plan que se adapte a tu ritmo.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid gap-6 md:grid-cols-3">
             {packages.map((pkg, i) => (
@@ -410,11 +419,11 @@ export default function LandingPage() {
                 custom={i}
                 variants={fadeUp}
               >
-                <Card
-                  className={`relative h-full transition-all duration-300 hover:shadow-[var(--shadow-warm-md)] hover:-translate-y-1 ${
+                <div
+                  className={`relative h-full rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 ${
                     pkg.highlight
-                      ? "border-2 border-accent shadow-[var(--shadow-warm-lift)]"
-                      : ""
+                      ? "bg-[#1C1917] text-white shadow-[0_8px_32px_rgba(201,169,110,0.15)]"
+                      : "border border-border bg-white shadow-[var(--shadow-warm)]"
                   } ${pkg.promo ? "border-2 border-dashed border-accent/40" : ""}`}
                 >
                   {pkg.highlight && (
@@ -424,133 +433,108 @@ export default function LandingPage() {
                       </Badge>
                     </div>
                   )}
-                  <CardContent className="flex h-full flex-col p-8">
-                    <p className="text-xs font-medium uppercase tracking-wider text-accent">
-                      {pkg.description}
-                    </p>
-                    <h3 className="mt-2 font-display text-2xl font-bold text-foreground">
-                      {pkg.name}
-                    </h3>
-                    <div className="mt-4">
-                      <span className="font-mono text-4xl font-medium text-foreground">
-                        {formatCurrency(pkg.price)}
-                      </span>
+                  <p className="text-xs font-medium uppercase tracking-wider text-accent">
+                    {pkg.description}
+                  </p>
+                  <h3
+                    className={`mt-2 font-display text-2xl font-bold ${
+                      pkg.highlight ? "text-white" : "text-foreground"
+                    }`}
+                  >
+                    {pkg.name}
+                  </h3>
+                  <div className="mt-4">
+                    <span
+                      className={`font-mono text-4xl font-bold ${
+                        pkg.highlight ? "text-accent" : "text-foreground"
+                      }`}
+                    >
+                      {formatCurrency(pkg.price)}
+                    </span>
+                  </div>
+                  <div
+                    className={`mt-4 space-y-2 text-sm ${
+                      pkg.highlight ? "text-white/60" : "text-muted"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-accent" />
+                      {pkg.credits
+                        ? `${pkg.credits} ${pkg.credits === 1 ? "clase" : "clases"}`
+                        : "Clases ilimitadas"}
                     </div>
-                    <div className="mt-4 space-y-2 text-sm text-muted">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-accent" />
-                        {pkg.credits
-                          ? `${pkg.credits} ${pkg.credits === 1 ? "clase" : "clases"}`
-                          : "Clases ilimitadas"}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CalendarCheck className="h-4 w-4 text-accent" />
-                        Vigencia: {pkg.validity}
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <CalendarCheck className="h-4 w-4 text-accent" />
+                      Vigencia: {pkg.validity}
                     </div>
-                    <div className="mt-auto pt-8">
-                      <Button
-                        asChild
-                        className="w-full"
-                        variant={pkg.highlight ? "default" : "secondary"}
-                      >
-                        <Link href="/packages">Comprar</Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="mt-8">
+                    <Button
+                      asChild
+                      className="w-full"
+                      variant={pkg.highlight ? "default" : "secondary"}
+                    >
+                      <Link href="/packages">Comprar</Link>
+                    </Button>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>
 
-          <div className="mt-8 text-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" as const }}
+            className="mt-8 text-center"
+          >
             <Link
               href="/packages"
               className="inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-accent/80"
             >
               Ver todos los paquetes <ArrowRight className="h-3.5 w-3.5" />
             </Link>
-          </div>
+          </motion.div>
         </div>
-      </AnimatedSection>
+      </section>
 
-      {/* ── Testimonials ───────────────────────────────────────── */}
-      <AnimatedSection className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-        <div className="mb-16 text-center">
-          <h2 className="font-display text-3xl font-bold text-foreground sm:text-4xl">
-            Lo que dicen nuestras clientas
-          </h2>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-3">
-          {testimonials.map((t, i) => (
-            <motion.div
-              key={t.name}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-60px" }}
-              custom={i}
-              variants={fadeUp}
-            >
-              <Card className="h-full">
-                <CardContent className="flex h-full flex-col p-8">
-                  <div className="mb-4 flex gap-1">
-                    {[...Array(5)].map((_, j) => (
-                      <Star
-                        key={j}
-                        className="h-4 w-4 fill-accent text-accent"
-                      />
-                    ))}
-                  </div>
-                  <blockquote className="flex-1 text-sm leading-relaxed text-foreground/80">
-                    &ldquo;{t.quote}&rdquo;
-                  </blockquote>
-                  <div className="mt-6 border-t border-border pt-4">
-                    <p className="font-display text-sm font-bold text-foreground">
-                      {t.name}
-                    </p>
-                    <p className="text-xs text-muted">{t.detail}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      </AnimatedSection>
-
-      {/* ── Footer CTA ─────────────────────────────────────────── */}
-      <AnimatedSection className="px-4 py-24">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="font-display text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
+      {/* ── CTA Banner ─────────────────────────────────────────── */}
+      <section className="bg-[#1C1917] px-4 py-24">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, ease: "easeOut" as const }}
+          className="mx-auto max-w-3xl text-center"
+        >
+          <Zap className="mx-auto mb-6 h-8 w-8 text-accent" />
+          <h2 className="font-display text-4xl font-bold text-white sm:text-5xl md:text-6xl">
             ¿Lista para empezar?
           </h2>
-          <p className="mx-auto mt-6 max-w-md text-lg text-muted">
+          <p className="mx-auto mt-6 max-w-md text-lg text-white/50">
             Tu primera clase es a solo $150. Reserva hoy y descubre lo que tu
             cuerpo puede lograr.
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Button asChild size="lg">
-              <Link href="/schedule">Reservar mi clase</Link>
+            <Button asChild size="lg" className="px-10 text-base">
+              <Link href="/schedule">Ver horarios</Link>
             </Button>
-            <Button asChild variant="ghost" size="lg">
+            <Button
+              asChild
+              variant="secondary"
+              size="lg"
+              className="border-white/20 text-white hover:border-accent hover:bg-accent hover:text-white"
+            >
               <Link href="/packages">
                 Ver paquetes <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>
-        </div>
-      </AnimatedSection>
+        </motion.div>
+      </section>
 
       <style jsx global>{`
-        @keyframes gradient-shift {
-          0%,
-          100% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-        }
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }
