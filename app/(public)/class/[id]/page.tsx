@@ -237,7 +237,7 @@ export default function ClassDetailPage() {
               />
             </div>
             <Button asChild size="lg" className={cn("sm:w-full", "flex-shrink-0")}>
-              <Link href="/login">
+              <Link href={`/book/${cls.id}`}>
                 {spotsLeft > 0 ? "Reservar clase" : "Unirme a lista de espera"}
               </Link>
             </Button>
