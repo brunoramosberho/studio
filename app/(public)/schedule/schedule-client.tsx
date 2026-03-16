@@ -164,50 +164,45 @@ export function ScheduleClient() {
             </div>
           </div>
 
-          {/* ── Mobile: 2-col grid ── */}
-          <div className="lg:hidden">
-            {/* Day headers */}
-            <div className="mb-3 grid grid-cols-2 gap-3">
-              {weekDays.slice(0, 2).map((day) => {
+          {/* ── Mobile: horizontal scroll showing all 7 days ── */}
+          <div className="-mx-4 lg:hidden">
+            <div className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory px-4" style={{ WebkitOverflowScrolling: "touch" }}>
+              {weekDays.map((day) => {
+                const dayClasses = getClassesForDay(day);
                 const today = isToday(day);
                 return (
-                  <div key={day.toISOString()} className="text-center">
-                    <span
-                      className={cn(
-                        "text-[11px] font-semibold uppercase tracking-wider",
-                        today ? "text-foreground" : "text-muted"
+                  <div
+                    key={day.toISOString()}
+                    className="w-[calc(50%-6px)] shrink-0 snap-start pr-3"
+                  >
+                    {/* Day header */}
+                    <div className="mb-3 text-center">
+                      <span
+                        className={cn(
+                          "text-[11px] font-semibold uppercase tracking-wider",
+                          today ? "text-foreground" : "text-muted"
+                        )}
+                      >
+                        {today && "● "}
+                        {format(day, "EEE d", { locale: es })}
+                      </span>
+                    </div>
+
+                    {/* Day classes */}
+                    <div className="space-y-2">
+                      {dayClasses.map((cls) => (
+                        <ClassCard key={cls.id} cls={cls} />
+                      ))}
+                      {dayClasses.length === 0 && (
+                        <p className="py-10 text-center text-[11px] text-muted/30">
+                          Sin clases
+                        </p>
                       )}
-                    >
-                      {today && "● "}
-                      {format(day, "EEE d", { locale: es })}
-                    </span>
+                    </div>
                   </div>
                 );
               })}
             </div>
-
-            <div className="grid grid-cols-2 items-start gap-3">
-              {weekDays.slice(0, 2).map((day) => {
-                const dayClasses = getClassesForDay(day);
-                return (
-                  <div key={day.toISOString()} className="space-y-2">
-                    {dayClasses.map((cls) => (
-                      <ClassCard key={cls.id} cls={cls} />
-                    ))}
-                    {dayClasses.length === 0 && (
-                      <p className="py-10 text-center text-[11px] text-muted/30">
-                        Sin clases
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Swipe hint */}
-            <p className="mt-6 text-center text-[11px] text-muted/50">
-              Desliza para ver más días →
-            </p>
           </div>
         </div>
       </div>
