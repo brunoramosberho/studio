@@ -21,7 +21,10 @@ export function Navbar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isPortal = pathname.startsWith("/my") || pathname.startsWith("/coach") || pathname.startsWith("/admin");
+  const isPortal =
+    pathname.startsWith("/my") ||
+    (pathname.startsWith("/coach") && pathname !== "/coaches") ||
+    pathname.startsWith("/admin");
   if (isPortal) return null;
 
   return (
