@@ -248,9 +248,11 @@ function ClassCard({ cls }: { cls: ClassWithDetails }) {
           {" – "}
           {cls.classType.duration} min
         </p>
-        <p className="mt-1.5 text-[14px] font-bold leading-snug text-foreground">
-          {cls.classType.name.split(" ")[0]} con{" "}
-          {cls.coach.user.name?.split(" ")[0]}
+        <p className="mt-1.5 text-[15px] font-bold leading-snug text-foreground">
+          {cls.classType.name}
+        </p>
+        <p className="mt-0.5 text-[13px] text-muted">
+          con {cls.coach.user.name?.split(" ")[0]}
         </p>
         <div className="mt-2">
           <Users className="h-4 w-4 text-muted/30" />
