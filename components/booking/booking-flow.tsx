@@ -1,0 +1,364 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { Loader2, ArrowRight, ShoppingBag, LogIn } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn, formatDate, formatTime } from "@/lib/utils";
+import { useBookingStore } from "@/store/booking-store";
+import { useBooking } from "@/hooks/useBooking";
+import { usePackages } from "@/hooks/usePackages";
+import { PackageSelector } from "./package-selector";
+import { ConfirmationScreen } from "./confirmation-screen";
+import type { ClassWithDetails } from "@/types";
+
+interface BookingFlowProps {
+  classId: string;
+}
+
+export function BookingFlow({ classId }: BookingFlowProps) {
+  const { data: session, status: authStatus } = useSession();
+  const store = useBookingStore();
+  const { bookAsync, isBooking } = useBooking();
+
+  const isAuthenticated = authStatus === "authenticated";
+  const { packages, isLoading: packagesLoading } = usePackages(isAuthenticated);
+
+  const [error, setError] = useState<string | null>(null);
+  const [isClassFull, setIsClassFull] = useState(false);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
+
+  const { data: classData, isLoading: classLoading } = useQuery<ClassWithDetails>({
+    queryKey: ["classes", classId],
+    queryFn: async () => {
+      const res = await fetch(`/api/classes/${classId}`);
+      if (!res.ok) throw new Error("Failed to fetch class");
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    store.setSelectedClass(classId);
+    return () => store.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classId]);
+
+  const validPackages = packages
+    .filter((p) => p.creditsTotal === null || p.creditsUsed < (p.creditsTotal ?? 0))
+    .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
+
+  const firstPackageId = validPackages[0]?.id;
+
+  useEffect(() => {
+    if (firstPackageId && !store.selectedPackageId) {
+      store.setSelectedPackage(firstPackageId);
+    }
+  }, [firstPackageId, store.selectedPackageId, store]);
+
+  async function handleBookAuthenticated() {
+    setError(null);
+    setIsClassFull(false);
+    store.setBookingSuccess(true);
+
+    try {
+      await bookAsync({
+        classId,
+        packageId: store.selectedPackageId ?? firstPackageId,
+      });
+    } catch (err: any) {
+      store.setBookingSuccess(false);
+      if (err.full) setIsClassFull(true);
+      setError(err.error || "No se pudo completar la reserva");
+    }
+  }
+
+  async function handleBookGuest() {
+    if (!store.guestName.trim() || !store.guestEmail.trim()) {
+      setError("Nombre y correo electrónico son requeridos");
+      return;
+    }
+    setError(null);
+    setIsClassFull(false);
+    store.setBookingSuccess(true);
+
+    try {
+      await bookAsync({
+        classId,
+        guestName: store.guestName,
+        guestEmail: store.guestEmail,
+      });
+    } catch (err: any) {
+      store.setBookingSuccess(false);
+      if (err.full) setIsClassFull(true);
+      setError(err.error || "No se pudo completar la reserva");
+    }
+  }
+
+  async function handleJoinWaitlist() {
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId }),
+      });
+      if (res.ok) {
+        setError(null);
+        setIsClassFull(false);
+        setWaitlistJoined(true);
+      } else {
+        const data = await res.json();
+        setError(data.error || "No se pudo unir a la lista de espera");
+      }
+    } catch {
+      setError("No se pudo unir a la lista de espera");
+    }
+  }
+
+  // --- Loading state ---
+  if (classLoading || authStatus === "loading") {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-3/4" />
+        <Skeleton className="h-5 w-1/2" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-12 w-full rounded-full" />
+      </div>
+    );
+  }
+
+  // --- Class not found ---
+  if (!classData) {
+    return (
+      <Card className="rounded-2xl">
+        <CardContent className="p-6 text-center">
+          <p className="text-muted">Clase no encontrada</p>
+          <Button asChild variant="secondary" className="mt-4">
+            <Link href="/schedule">Ver horarios</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // --- Waitlist success ---
+  if (waitlistJoined) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center py-8 text-center"
+      >
+        <div
+          className="flex h-16 w-16 items-center justify-center rounded-full"
+          style={{ backgroundColor: "#C9A96E15" }}
+        >
+          <span className="text-2xl">🔔</span>
+        </div>
+        <h2 className="mt-4 font-display text-xl font-bold text-foreground">
+          Estás en la lista de espera
+        </h2>
+        <p className="mt-2 text-sm text-muted">
+          Te notificaremos si se libera un lugar en esta clase.
+        </p>
+        <Button asChild variant="secondary" className="mt-6">
+          <Link href="/schedule">Ver otros horarios</Link>
+        </Button>
+      </motion.div>
+    );
+  }
+
+  // --- Booking success (optimistic) ---
+  if (store.bookingSuccess) {
+    return (
+      <ConfirmationScreen
+        classTitle={classData.classType.name}
+        classDate={formatDate(classData.startsAt)}
+        classTime={formatTime(classData.startsAt)}
+        coachName={classData.coach.user.name ?? "Coach"}
+        startsAt={classData.startsAt.toString()}
+        endsAt={classData.endsAt.toString()}
+        location={classData.location ?? undefined}
+      />
+    );
+  }
+
+  const coachName = classData.coach.user.name ?? "Coach";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      {/* Class summary */}
+      <Card className="rounded-2xl">
+        <CardContent className="p-6">
+          <h2 className="font-display text-xl font-bold text-foreground">
+            {classData.classType.name}
+          </h2>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+            <span className="font-mono">{formatTime(classData.startsAt)}</span>
+            <span className="text-muted/40">•</span>
+            <span className="capitalize">{formatDate(classData.startsAt)}</span>
+            <span className="text-muted/40">•</span>
+            <span>{coachName}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Error state */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <Card className="rounded-2xl border border-red-200 bg-red-50">
+              <CardContent className="p-4">
+                <p className="text-sm text-red-700">{error}</p>
+                {isClassFull && isAuthenticated && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="mt-3"
+                    onClick={handleJoinWaitlist}
+                  >
+                    Unirme a lista de espera
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- Authenticated flow --- */}
+      {isAuthenticated && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          {packagesLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-12 w-full rounded-full" />
+            </div>
+          ) : validPackages.length === 0 ? (
+            <Card className="rounded-2xl border border-[#C9A96E]/20 bg-[#C9A96E]/5">
+              <CardContent className="p-6 text-center">
+                <ShoppingBag className="mx-auto h-10 w-10 text-[#C9A96E]/50" />
+                <h3 className="mt-3 font-display text-lg font-bold text-foreground">
+                  Necesitas un paquete para reservar
+                </h3>
+                <p className="mt-1 text-sm text-muted">
+                  Adquiere un paquete de clases para reservar tu lugar.
+                </p>
+                <Button asChild className="mt-4 w-full" size="lg">
+                  <Link href="/packages">
+                    Ver paquetes
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : validPackages.length === 1 ? (
+            <Button
+              size="lg"
+              className={cn("w-full min-h-[48px]")}
+              onClick={handleBookAuthenticated}
+              disabled={isBooking}
+            >
+              {isBooking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Reservar con {validPackages[0].package.name}
+            </Button>
+          ) : (
+            <div className="space-y-4">
+              <PackageSelector
+                packages={validPackages}
+                selectedId={store.selectedPackageId}
+                onSelect={store.setSelectedPackage}
+              />
+              <Button
+                size="lg"
+                className={cn("w-full min-h-[48px]")}
+                onClick={handleBookAuthenticated}
+                disabled={isBooking || !store.selectedPackageId}
+              >
+                {isBooking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Reservar clase
+              </Button>
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* --- Guest flow --- */}
+      {!isAuthenticated && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-4"
+        >
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-lg">Reservar como invitado</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
+                  Nombre
+                </label>
+                <Input
+                  placeholder="Tu nombre completo"
+                  value={store.guestName}
+                  onChange={(e) => store.setGuestName(e.target.value)}
+                  className="min-h-[48px]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
+                  Correo electrónico
+                </label>
+                <Input
+                  type="email"
+                  placeholder="tu@correo.com"
+                  value={store.guestEmail}
+                  onChange={(e) => store.setGuestEmail(e.target.value)}
+                  className="min-h-[48px]"
+                />
+              </div>
+              <Button
+                size="lg"
+                className={cn("w-full min-h-[48px]")}
+                onClick={handleBookGuest}
+                disabled={isBooking}
+              >
+                {isBooking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Reservar clase
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="text-center">
+            <Button asChild variant="link" className="text-[#C9A96E]">
+              <Link href="/login">
+                <LogIn className="mr-2 h-4 w-4" />
+                Iniciar sesión para usar tu paquete
+              </Link>
+            </Button>
+          </div>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
