@@ -28,24 +28,33 @@ export function Navbar() {
   if (isPortal) return null;
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#1C1917]/95 backdrop-blur-md safe-top">
-      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="font-display text-[1.5rem] font-bold tracking-tight text-white">
-            Flō
-          </span>
-        </Link>
+    <header className="sticky top-0 z-40 w-full bg-white safe-top">
+      <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Mobile: hamburger + logo */}
+        <div className="flex items-center gap-3">
+          <button
+            className="flex h-10 w-10 items-center justify-center rounded-full text-foreground lg:hidden"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
 
-        <div className="hidden items-center gap-8 md:flex">
+          <Link href="/" className="flex items-center">
+            <span className="font-display text-2xl font-bold tracking-tight text-foreground">
+              Flō
+            </span>
+          </Link>
+        </div>
+
+        {/* Desktop nav links */}
+        <div className="hidden items-center gap-8 lg:flex">
           {publicLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "text-sm font-medium transition-colors",
-                pathname === link.href
-                  ? "text-[#C9A96E]"
-                  : "text-white/80 hover:text-white",
+                "text-[13px] font-medium uppercase tracking-wider transition-colors hover:text-foreground",
+                pathname === link.href ? "text-foreground" : "text-muted",
               )}
             >
               {link.label}
@@ -53,69 +62,59 @@ export function Navbar() {
           ))}
         </div>
 
+        {/* Right side */}
         <div className="flex items-center gap-3">
           {session?.user ? (
             <Link href="/my">
-              <Avatar className="h-9 w-9 ring-2 ring-[#C9A96E]/30 transition-all hover:ring-[#C9A96E]/60">
+              <Avatar className="h-8 w-8">
                 <AvatarImage src={session.user.image || undefined} />
-                <AvatarFallback className="bg-[#C9A96E]/20 text-white">
+                <AvatarFallback className="bg-surface text-xs text-muted">
                   {session.user.name?.[0] || "U"}
                 </AvatarFallback>
               </Avatar>
             </Link>
           ) : (
-            <Button
-              asChild
-              size="sm"
-              className="bg-[#C9A96E] text-[#1C1917] font-semibold hover:bg-[#C9A96E]/90"
-            >
-              <Link href="/schedule">Reservar</Link>
-            </Button>
+            <>
+              <Link
+                href="/login"
+                className="hidden text-[13px] font-medium text-muted transition-colors hover:text-foreground lg:block"
+              >
+                Cuenta
+              </Link>
+            </>
           )}
-
-          <button
-            className="flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 md:hidden"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <Button asChild size="sm" className="h-9 rounded-lg bg-foreground px-4 text-xs font-semibold uppercase tracking-wider text-white hover:bg-foreground/90">
+            <Link href="/schedule">Reservar</Link>
+          </Button>
         </div>
       </nav>
 
+      {/* Mobile menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-white/5 bg-[#1C1917] md:hidden"
+            transition={{ duration: 0.2, ease: "easeOut" as const }}
+            className="overflow-hidden border-t border-border/50 bg-white lg:hidden"
           >
-            <div className="flex flex-col gap-1 px-4 py-4">
+            <div className="flex flex-col gap-1 px-4 py-3">
               {publicLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "rounded-xl px-4 py-3 text-base font-medium transition-colors",
+                    "rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                     pathname === link.href
-                      ? "bg-[#C9A96E]/15 text-[#C9A96E]"
-                      : "text-white/90 hover:bg-white/5 hover:text-white",
+                      ? "text-foreground"
+                      : "text-muted hover:text-foreground",
                   )}
                 >
                   {link.label}
                 </Link>
               ))}
-              {!session?.user && (
-                <Link
-                  href="/schedule"
-                  onClick={() => setMobileOpen(false)}
-                  className="mt-2 rounded-xl bg-[#C9A96E] px-4 py-3 text-center text-base font-semibold text-[#1C1917] transition-colors hover:bg-[#C9A96E]/90"
-                >
-                  Reservar
-                </Link>
-              )}
             </div>
           </motion.div>
         )}

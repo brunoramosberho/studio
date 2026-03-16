@@ -2,15 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Calendar,
-  Clock,
-  Users,
-  Loader2,
-  MapPin,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Users } from "lucide-react";
 import {
   format,
   addDays,
@@ -21,354 +13,304 @@ import {
   addWeeks,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { PageTransition } from "@/components/shared/page-transition";
-import { SpotsBadge } from "@/components/shared/spots-badge";
-import { useScheduleStore } from "@/store/schedule-store";
-import {
-  cn,
-  formatTime,
-  formatTimeRange,
-  formatRelativeDay,
-  getLevelLabel,
-} from "@/lib/utils";
+import { motion } from "framer-motion";
+import { cn, formatTime } from "@/lib/utils";
 import type { ClassWithDetails } from "@/types";
-
-const CLASS_TYPE_FILTERS = [
-  "Todas",
-  "Reformer Pilates",
-  "Mat Flow",
-  "Barre Fusion",
-] as const;
-
-const TIME_SECTIONS = [
-  { key: "morning", label: "Mañana" },
-  { key: "afternoon", label: "Tarde" },
-  { key: "evening", label: "Noche" },
-] as const;
-
-function getTimeOfDay(date: Date | string): "morning" | "afternoon" | "evening" {
-  const hour = new Date(date).getHours();
-  if (hour < 12) return "morning";
-  if (hour < 18) return "afternoon";
-  return "evening";
-}
-
-function groupByTimeOfDay(items: ClassWithDetails[]) {
-  const groups: Record<string, ClassWithDetails[]> = {
-    morning: [],
-    afternoon: [],
-    evening: [],
-  };
-  for (const cls of items) {
-    groups[getTimeOfDay(cls.startsAt)].push(cls);
-  }
-  return groups;
-}
 
 export function ScheduleClient() {
   const [classes, setClasses] = useState<ClassWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<string>("Todas");
-  const { currentDate, setCurrentDate, filters } = useScheduleStore();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterCoach, setFilterCoach] = useState<string>("all");
 
   useEffect(() => {
     async function fetchClasses() {
+      setLoading(true);
       try {
-        setLoading(true);
-        const params = new URLSearchParams();
-        if (filters.classTypeId) params.set("classTypeId", filters.classTypeId);
-        if (filters.coachId) params.set("coachId", filters.coachId);
-        if (filters.level) params.set("level", filters.level);
-        const res = await fetch(`/api/classes?${params.toString()}`);
+        const res = await fetch("/api/classes");
         if (res.ok) {
           const data = await res.json();
           setClasses(data);
         }
       } catch {
-        // API may not be connected yet
+        // API may not be connected
       } finally {
         setLoading(false);
       }
     }
     fetchClasses();
-  }, [filters]);
+  }, []);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const selectedDay = weekDays.find((d) => isSameDay(d, currentDate))
-    ? currentDate
-    : weekStart;
+  const classTypes = Array.from(
+    new Map(classes.map((c) => [c.classType.id, c.classType])).values()
+  );
+  const coaches = Array.from(
+    new Map(classes.map((c) => [c.coach.id, c.coach])).values()
+  );
 
-  function getFilteredClassesForDay(day: Date) {
-    let filtered = classes.filter((c) => isSameDay(new Date(c.startsAt), day));
-    if (activeFilter !== "Todas") {
-      filtered = filtered.filter((c) => c.classType.name === activeFilter);
-    }
-    return filtered.sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+  function getClassesForDay(day: Date) {
+    return classes
+      .filter((c) => isSameDay(new Date(c.startsAt), day))
+      .filter((c) => filterType === "all" || c.classType.id === filterType)
+      .filter((c) => filterCoach === "all" || c.coach.id === filterCoach);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted" />
+      </div>
     );
   }
 
-  const dayClasses = getFilteredClassesForDay(selectedDay);
-  const grouped = groupByTimeOfDay(dayClasses);
-
-  let cardIndex = 0;
-
   return (
-    <PageTransition>
-      {/* ── Dark header ── */}
-      <div className="bg-[#1C1917] pb-5 pt-10">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <h1 className="font-display text-3xl font-bold text-white sm:text-4xl">
-            Horarios
-          </h1>
-          <p className="mt-1 text-sm text-stone-400">
-            Encuentra tu clase y reserva tu lugar
-          </p>
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Header: studio info + filters (desktop sidebar style) */}
+      <div className="flex flex-col gap-8 lg:flex-row">
+        {/* Sidebar — desktop only */}
+        <aside className="hidden shrink-0 lg:block lg:w-56">
+          <div className="sticky top-24 space-y-6">
+            <div>
+              <h1 className="font-display text-3xl font-bold text-foreground">
+                Flō Studio
+              </h1>
+              <p className="mt-1 text-sm text-muted">Pilates & Wellness</p>
+            </div>
 
-          {/* Class type pills */}
-          <div className="-mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-            {CLASS_TYPE_FILTERS.map((type) => (
-              <button
-                key={type}
-                onClick={() => setActiveFilter(type)}
-                className={cn(
-                  "shrink-0 rounded-full px-5 py-2 text-sm font-medium transition-all",
-                  activeFilter === type
-                    ? "bg-[#C9A96E] text-white shadow-lg shadow-[#C9A96E]/20"
-                    : "bg-white/10 text-stone-300 hover:bg-white/[.15]",
-                )}
-              >
-                {type}
-              </button>
-            ))}
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
+                  Por disciplina
+                </label>
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm text-foreground focus:border-foreground focus:outline-none"
+                >
+                  <option value="all">Todas</option>
+                  {classTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
+                  Por instructor
+                </label>
+                <select
+                  value={filterCoach}
+                  onChange={(e) => setFilterCoach(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm text-foreground focus:border-foreground focus:outline-none"
+                >
+                  <option value="all">Todos</option>
+                  {coaches.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
+        </aside>
 
+        {/* Main content */}
+        <div className="min-w-0 flex-1">
           {/* Week navigation */}
-          <div className="mt-6 flex items-center justify-between">
+          <div className="mb-6 flex items-center justify-between">
             <button
               onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
-              className="rounded-full p-2 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
-              aria-label="Semana anterior"
+              className="rounded-full p-2 text-muted transition-colors hover:bg-surface hover:text-foreground"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <span className="text-sm font-medium capitalize text-stone-300">
+            <h2 className="text-sm font-medium text-muted">
               {format(weekStart, "MMMM yyyy", { locale: es })}
-            </span>
+            </h2>
             <button
               onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
-              className="rounded-full p-2 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
-              aria-label="Semana siguiente"
+              className="rounded-full p-2 text-muted transition-colors hover:bg-surface hover:text-foreground"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Day selector pills */}
-          <div className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-2 sm:px-0">
+          {/* Week grid — desktop: 7 columns */}
+          <div className="hidden lg:grid lg:grid-cols-7 lg:gap-px lg:rounded-2xl lg:bg-border/50 lg:overflow-hidden">
             {weekDays.map((day) => {
-              const active = isSameDay(day, selectedDay);
+              const dayClasses = getClassesForDay(day);
               const today = isToday(day);
               return (
-                <button
-                  key={day.toISOString()}
-                  onClick={() => setCurrentDate(day)}
-                  className={cn(
-                    "flex shrink-0 flex-col items-center rounded-xl px-3.5 py-2 transition-all sm:px-5",
-                    active
-                      ? "bg-[#C9A96E] text-white shadow-lg shadow-[#C9A96E]/25"
-                      : today
-                        ? "bg-white/10 text-[#C9A96E]"
-                        : "bg-transparent text-stone-400 hover:bg-white/5",
-                  )}
-                >
-                  <span className="text-[11px] font-medium uppercase tracking-wider">
-                    {format(day, "EEE", { locale: es })}
-                  </span>
-                  <span className="mt-0.5 text-lg font-bold leading-tight">
-                    {format(day, "d")}
-                  </span>
-                </button>
+                <div key={day.toISOString()} className="bg-white">
+                  {/* Day header */}
+                  <div
+                    className={cn(
+                      "border-b border-border/50 px-2 py-3 text-center",
+                      today && "bg-foreground"
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        "text-[10px] font-medium uppercase tracking-wider",
+                        today ? "text-white/70" : "text-muted"
+                      )}
+                    >
+                      {today && "● "}
+                      {format(day, "EEE", { locale: es })}
+                    </p>
+                    <p
+                      className={cn(
+                        "text-sm font-semibold",
+                        today ? "text-white" : "text-foreground"
+                      )}
+                    >
+                      {format(day, "d", { locale: es })}
+                    </p>
+                  </div>
+
+                  {/* Classes */}
+                  <div className="min-h-[200px] space-y-px">
+                    {dayClasses.map((cls, i) => (
+                      <motion.div
+                        key={cls.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: i * 0.03, duration: 0.2 }}
+                      >
+                        <Link href={`/class/${cls.id}`}>
+                          <div className="group cursor-pointer border-b border-border/30 px-3 py-3 transition-colors hover:bg-surface/60">
+                            <p className="text-xs text-muted">
+                              <span className="font-medium text-foreground">
+                                {formatTime(cls.startsAt)}
+                              </span>
+                              {" – "}
+                              {cls.classType.duration} min
+                            </p>
+                            <p className="mt-1 text-[13px] font-semibold leading-tight text-foreground">
+                              {cls.classType.name.split(" ")[0]} con{" "}
+                              {cls.coach.user.name?.split(" ")[0]}
+                            </p>
+                            <div className="mt-1.5">
+                              <Users className="h-3.5 w-3.5 text-muted/40" />
+                            </div>
+                          </div>
+                        </Link>
+                      </motion.div>
+                    ))}
+                    {dayClasses.length === 0 && (
+                      <div className="flex h-[200px] items-center justify-center">
+                        <p className="text-xs text-muted/30">—</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               );
             })}
+          </div>
+
+          {/* Mobile: 2-column grid with scroll */}
+          <div className="lg:hidden">
+            <div className="grid grid-cols-2 gap-3">
+              {weekDays.slice(0, 6).map((day) => {
+                const dayClasses = getClassesForDay(day);
+                const today = isToday(day);
+                return (
+                  <div key={day.toISOString()}>
+                    {/* Day header */}
+                    <div className="mb-2 text-center">
+                      <p
+                        className={cn(
+                          "text-xs font-semibold uppercase tracking-wider",
+                          today ? "text-foreground" : "text-muted"
+                        )}
+                      >
+                        {today && "● "}
+                        {format(day, "EEE d", { locale: es })}
+                      </p>
+                    </div>
+
+                    {/* Class cards */}
+                    <div className="space-y-2">
+                      {dayClasses.map((cls, i) => (
+                        <motion.div
+                          key={cls.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{
+                            delay: i * 0.04,
+                            duration: 0.25,
+                            ease: "easeOut" as const,
+                          }}
+                        >
+                          <Link href={`/class/${cls.id}`}>
+                            <div className="rounded-xl border border-border/60 bg-white px-3 py-3 transition-colors active:bg-surface">
+                              <p className="text-xs text-muted">
+                                <span className="font-medium text-foreground">
+                                  {formatTime(cls.startsAt)}
+                                </span>
+                                {" – "}
+                                {cls.classType.duration} min
+                              </p>
+                              <p className="mt-1 text-sm font-semibold leading-tight text-foreground">
+                                {cls.classType.name.split(" ")[0]} con{" "}
+                                {cls.coach.user.name?.split(" ")[0]}
+                              </p>
+                              <div className="mt-1.5">
+                                <Users className="h-3.5 w-3.5 text-muted/40" />
+                              </div>
+                            </div>
+                          </Link>
+                        </motion.div>
+                      ))}
+                      {dayClasses.length === 0 && (
+                        <p className="py-8 text-center text-xs text-muted/30">
+                          —
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── Class list (light) ── */}
-      <div className="min-h-[50vh] bg-stone-50 pb-16">
-        <div className="mx-auto max-w-5xl px-4 pt-5 sm:px-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 className="h-7 w-7 animate-spin text-[#C9A96E]" />
-            </div>
-          ) : dayClasses.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.4,
-                ease: [0.25, 0.46, 0.45, 0.94] as const,
-              }}
-              className="py-20 text-center"
-            >
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-stone-200">
-                <Calendar className="h-7 w-7 text-stone-400" />
-              </div>
-              <h3 className="mt-5 font-display text-lg font-bold text-stone-800">
-                Sin clases disponibles
-              </h3>
-              <p className="mx-auto mt-2 max-w-xs text-sm text-stone-500">
-                No hay clases programadas para este día. Prueba seleccionando
-                otra fecha o cambia el filtro.
-              </p>
-            </motion.div>
-          ) : (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={selectedDay.toISOString() + activeFilter}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="space-y-6"
-              >
-                {TIME_SECTIONS.map(({ key, label }) => {
-                  const sectionClasses = grouped[key];
-                  if (!sectionClasses || sectionClasses.length === 0) return null;
-                  return (
-                    <div key={key}>
-                      {/* Section header */}
-                      <div className="mb-3 flex items-center gap-2.5">
-                        <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400">
-                          {label}
-                        </h2>
-                        <div className="h-px flex-1 bg-stone-200" />
-                      </div>
-
-                      <div className="space-y-2.5">
-                        {sectionClasses.map((cls) => {
-                          const idx = cardIndex++;
-                          return (
-                            <motion.div
-                              key={cls.id}
-                              initial={{ opacity: 0, y: 12 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{
-                                duration: 0.3,
-                                delay: idx * 0.06,
-                                ease: [0.25, 0.46, 0.45, 0.94] as const,
-                              }}
-                            >
-                              <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-sm transition-shadow hover:shadow-md">
-                                <CardContent className="p-0">
-                                  {/* Desktop row */}
-                                  <div className="hidden items-center gap-5 p-4 sm:flex">
-                                    <div className="w-20 shrink-0 text-center">
-                                      <p className="font-mono text-lg font-bold text-[#C9A96E]">
-                                        {formatTime(cls.startsAt)}
-                                      </p>
-                                      <p className="flex items-center justify-center gap-1 text-[11px] text-stone-400">
-                                        <Clock className="h-3 w-3" />
-                                        {cls.classType.duration} min
-                                      </p>
-                                    </div>
-
-                                    <div className="h-10 w-px bg-stone-100" />
-
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-display text-[15px] font-bold text-stone-900">
-                                        {cls.classType.name}
-                                      </p>
-                                      <p className="mt-0.5 text-sm text-stone-500 truncate">
-                                        {cls.coach.user.name}
-                                      </p>
-                                    </div>
-
-                                    <Badge variant="level" className="shrink-0">
-                                      {getLevelLabel(cls.classType.level)}
-                                    </Badge>
-
-                                    {cls.spotsLeft !== undefined && (
-                                      <div className="flex w-24 shrink-0 items-center justify-center gap-1.5">
-                                        <Users className="h-3.5 w-3.5 text-stone-400" />
-                                        <SpotsBadge
-                                          spotsLeft={cls.spotsLeft}
-                                          maxCapacity={cls.classType.maxCapacity}
-                                        />
-                                      </div>
-                                    )}
-
-                                    <Link href={`/class/${cls.id}`} className="shrink-0">
-                                      <Button
-                                        size="sm"
-                                        className="rounded-full bg-[#C9A96E] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#B8954F]"
-                                      >
-                                        Reservar
-                                      </Button>
-                                    </Link>
-                                  </div>
-
-                                  {/* Mobile stack */}
-                                  <div className="flex flex-col p-4 sm:hidden">
-                                    <div className="flex items-start gap-3.5">
-                                      <div className="shrink-0 text-center">
-                                        <p className="font-mono text-base font-bold text-[#C9A96E]">
-                                          {formatTime(cls.startsAt)}
-                                        </p>
-                                        <p className="text-[10px] text-stone-400">
-                                          {cls.classType.duration} min
-                                        </p>
-                                      </div>
-                                      <div className="min-w-0 flex-1">
-                                        <p className="font-display text-sm font-bold text-stone-900">
-                                          {cls.classType.name}
-                                        </p>
-                                        <p className="mt-0.5 text-xs text-stone-500 truncate">
-                                          {cls.coach.user.name}
-                                        </p>
-                                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                                          <Badge variant="level" className="text-[10px]">
-                                            {getLevelLabel(cls.classType.level)}
-                                          </Badge>
-                                          {cls.spotsLeft !== undefined && (
-                                            <SpotsBadge
-                                              spotsLeft={cls.spotsLeft}
-                                              maxCapacity={cls.classType.maxCapacity}
-                                            />
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <Link href={`/class/${cls.id}`} className="mt-3">
-                                      <Button
-                                        size="sm"
-                                        className="w-full rounded-full bg-[#C9A96E] text-sm font-semibold text-white transition-colors hover:bg-[#B8954F]"
-                                      >
-                                        Reservar
-                                      </Button>
-                                    </Link>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </motion.div>
-            </AnimatePresence>
-          )}
+      {/* Mobile bottom filters */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-white px-4 py-3 safe-bottom lg:hidden">
+        <div className="flex gap-3">
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="flex-1 rounded-xl border border-border bg-white px-3 py-2.5 text-sm font-medium text-foreground focus:border-foreground focus:outline-none"
+          >
+            <option value="all">Por disciplina</option>
+            {classTypes.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterCoach}
+            onChange={(e) => setFilterCoach(e.target.value)}
+            className="flex-1 rounded-xl border border-border bg-white px-3 py-2.5 text-sm font-medium text-foreground focus:border-foreground focus:outline-none"
+          >
+            <option value="all">Por instructor</option>
+            {coaches.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.user.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
-    </PageTransition>
+    </div>
   );
 }
