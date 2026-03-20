@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Loader2, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Loader2, Users } from "lucide-react";
 import {
   format,
   addDays,
@@ -210,26 +210,32 @@ export function ScheduleClient() {
       {/* ── Mobile bottom filter bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-white px-4 py-3 safe-bottom lg:hidden">
         <div className="flex gap-2">
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="flex-1 rounded-xl border border-border bg-white px-3 py-2.5 text-[13px] font-medium text-foreground"
-          >
-            <option value="all">Por disciplina</option>
-            {classTypes.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-          <select
-            value={filterCoach}
-            onChange={(e) => setFilterCoach(e.target.value)}
-            className="flex-1 rounded-xl border border-border bg-white px-3 py-2.5 text-[13px] font-medium text-foreground"
-          >
-            <option value="all">Por instructor</option>
-            {coaches.map((c) => (
-              <option key={c.id} value={c.id}>{c.user.name}</option>
-            ))}
-          </select>
+          <div className="relative flex-1">
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="w-full appearance-none rounded-lg border border-border bg-white py-2.5 pl-3 pr-9 text-[13px] font-medium text-foreground"
+            >
+              <option value="all">Por disciplina</option>
+              {classTypes.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          </div>
+          <div className="relative flex-1">
+            <select
+              value={filterCoach}
+              onChange={(e) => setFilterCoach(e.target.value)}
+              className="w-full appearance-none rounded-lg border border-border bg-white py-2.5 pl-3 pr-9 text-[13px] font-medium text-foreground"
+            >
+              <option value="all">Por instructor</option>
+              {coaches.map((c) => (
+                <option key={c.id} value={c.id}>{c.user.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          </div>
         </div>
       </div>
     </div>
@@ -240,21 +246,23 @@ export function ScheduleClient() {
 function ClassCard({ cls }: { cls: ClassWithDetails }) {
   return (
     <Link href={`/class/${cls.id}`}>
-      <div className="rounded-2xl border border-border/70 bg-white px-4 py-3.5 transition-shadow hover:shadow-md">
-        <p className="text-[13px] text-muted">
-          <span className="font-medium text-foreground">
-            {formatTime(cls.startsAt)}
-          </span>
-          {" – "}
-          {cls.classType.duration} min
-        </p>
-        <p className="mt-1.5 text-[15px] font-bold leading-snug text-foreground">
-          {cls.classType.name}
-        </p>
-        <p className="mt-0.5 text-[13px] text-muted">
-          con {cls.coach.user.name?.split(" ")[0]}
-        </p>
-        <div className="mt-2">
+      <div className="flex h-[130px] flex-col justify-between rounded-2xl border border-border/70 bg-white px-4 py-3.5 transition-shadow hover:shadow-md">
+        <div>
+          <p className="text-[13px] text-muted">
+            <span className="font-medium text-foreground">
+              {formatTime(cls.startsAt)}
+            </span>
+            {" – "}
+            {cls.classType.duration} min
+          </p>
+          <p className="mt-1.5 text-[15px] font-bold leading-snug text-foreground">
+            {cls.classType.name}
+          </p>
+          <p className="mt-0.5 text-[13px] text-muted">
+            con {cls.coach.user.name?.split(" ")[0]}
+          </p>
+        </div>
+        <div>
           <Users className="h-4 w-4 text-muted/30" />
         </div>
       </div>
@@ -275,11 +283,11 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div>
+    <div className="relative">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-border bg-white px-3 py-3 text-[14px] font-medium text-foreground focus:border-foreground focus:outline-none"
+        className="w-full appearance-none rounded-lg border border-border bg-white py-2.5 pl-3 pr-9 text-[14px] font-medium text-foreground focus:border-foreground focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -287,6 +295,7 @@ function FilterSelect({
           </option>
         ))}
       </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
     </div>
   );
 }
