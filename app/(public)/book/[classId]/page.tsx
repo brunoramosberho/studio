@@ -2,11 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { BookingFlow } from "@/components/booking/booking-flow";
 
-export const metadata = {
-  title: "Reservar clase",
-};
-
-export default async function BookPage({
+export default async function BookClassPage({
   params,
 }: {
   params: Promise<{ classId: string }>;
@@ -14,7 +10,7 @@ export default async function BookPage({
   const { classId } = await params;
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-8 pb-28 sm:py-16 sm:pb-16">
+    <div className="mx-auto max-w-lg px-4 py-8 sm:py-16">
       <Link
         href="/schedule"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
@@ -23,7 +19,7 @@ export default async function BookPage({
         Horarios
       </Link>
 
-      <h1 className="mb-8 font-display text-3xl font-bold text-foreground">
+      <h1 className="mb-8 font-display text-2xl font-bold text-foreground">
         Reservar clase
       </h1>
 

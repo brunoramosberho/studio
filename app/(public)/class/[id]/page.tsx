@@ -12,6 +12,7 @@ import {
   Loader2,
   AlertCircle,
   Info,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,7 +54,7 @@ export default function ClassDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60dvh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted" />
       </div>
     );
   }
@@ -77,7 +78,8 @@ export default function ClassDetailPage() {
     );
   }
 
-  const spotsLeft = cls.spotsLeft ?? cls.classType.maxCapacity - (cls._count?.bookings ?? 0);
+  const spotsLeft =
+    cls.spotsLeft ?? cls.classType.maxCapacity - (cls._count?.bookings ?? 0);
 
   return (
     <PageTransition>
@@ -166,7 +168,7 @@ export default function ClassDetailPage() {
 
             <div className="flex items-start gap-4">
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                <User className="h-5 w-5" />
+                <Users className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wider text-muted">
@@ -216,7 +218,7 @@ export default function ClassDetailPage() {
                 Política de cancelación
               </h3>
               <p className="mt-1 text-xs leading-relaxed text-muted">
-                Puedes cancelar tu reserva hasta 4 horas antes del inicio de la
+                Puedes cancelar tu reserva hasta 12 horas antes del inicio de la
                 clase sin perder tu crédito. Cancelaciones tardías o no-shows
                 consumen el crédito completo.
               </p>
@@ -225,7 +227,7 @@ export default function ClassDetailPage() {
         </Card>
 
         {/* Sticky mobile CTA */}
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/50 bg-background/90 p-4 backdrop-blur-xl safe-bottom sm:static sm:mt-8 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/50 bg-white p-4 safe-bottom sm:static sm:mt-8 sm:border-0 sm:bg-transparent sm:p-0">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
             <div className="flex-1 sm:hidden">
               <p className="text-xs text-muted">
@@ -236,7 +238,11 @@ export default function ClassDetailPage() {
                 maxCapacity={cls.classType.maxCapacity}
               />
             </div>
-            <Button asChild size="lg" className={cn("sm:w-full", "flex-shrink-0")}>
+            <Button
+              asChild
+              size="lg"
+              className="flex-shrink-0 sm:w-full"
+            >
               <Link href={`/book/${cls.id}`}>
                 {spotsLeft > 0 ? "Reservar clase" : "Unirme a lista de espera"}
               </Link>
