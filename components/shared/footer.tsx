@@ -72,7 +72,7 @@ export function Footer() {
 
         <div className="mt-12 border-t border-border pt-6">
           <p className="text-center text-xs text-muted">
-            Made with love en México · Flō Studio © {new Date().getFullYear()}
+            Hecho con ❤️ en España · Flō Studio © {new Date().getFullYear()}
           </p>
         </div>
       </div>

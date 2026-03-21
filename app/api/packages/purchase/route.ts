@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { createCheckoutSession } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,22 +30,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const origin = request.nextUrl.origin;
+    if (process.env.STRIPE_SECRET_KEY) {
+      const { createCheckoutSession } = await import("@/lib/stripe");
+      const origin = request.nextUrl.origin;
+      const checkoutSession = await createCheckoutSession({
+        packageId: pkg.id,
+        packageName: pkg.name,
+        price: pkg.price,
+        userId: session.user.id,
+        successUrl: `${origin}/packages/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${origin}/packages`,
+      });
+      return NextResponse.json({ url: checkoutSession.url });
+    }
 
-    const checkoutSession = await createCheckoutSession({
-      packageId: pkg.id,
-      packageName: pkg.name,
-      price: pkg.price,
-      userId: session.user.id,
-      successUrl: `${origin}/packages/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${origin}/packages`,
+    const purchasedAt = new Date();
+    const expiresAt = new Date(purchasedAt);
+    expiresAt.setDate(expiresAt.getDate() + pkg.validDays);
+
+    await prisma.userPackage.create({
+      data: {
+        userId: session.user.id,
+        packageId: pkg.id,
+        creditsTotal: pkg.credits,
+        creditsUsed: 0,
+        expiresAt,
+        stripePaymentId: `sim_${Date.now()}`,
+        purchasedAt,
+      },
     });
 
-    return NextResponse.json({ url: checkoutSession.url });
+    return NextResponse.json({ simulated: true, success: true });
   } catch (error) {
     console.error("POST /api/packages/purchase error:", error);
     return NextResponse.json(
-      { error: "Failed to create checkout session" },
+      { error: "Failed to process purchase" },
       { status: 500 },
     );
   }

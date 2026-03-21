@@ -54,7 +54,7 @@ export default function DevLoginPage() {
           <div className="space-y-4">
             {roles.map((r) => (
               <a key={r.role} href={r.href}>
-                <Card className="cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md">
+                <Card className="cursor-pointer transition-all hover:scale-[1.02] hover:shadow-[var(--shadow-warm-md)]">
                   <CardContent className="flex items-center gap-4 p-6">
                     <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${r.bg}`}>
                       <r.icon className={`h-6 w-6 ${r.color}`} />
@@ -73,7 +73,7 @@ export default function DevLoginPage() {
           </div>
 
           <p className="mt-8 text-center text-xs text-muted/60">
-            Solo disponible en desarrollo.
+            Solo disponible en desarrollo. No se muestra en producción.
           </p>
         </div>
       </div>

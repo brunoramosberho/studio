@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { randomUUID } from "crypto";
 
 export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && !process.env.ALLOW_DEV_LOGIN) {
     return NextResponse.json({ error: "Not available in production" }, { status: 403 });
   }
 

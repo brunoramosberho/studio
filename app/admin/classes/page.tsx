@@ -74,7 +74,7 @@ export default function AdminClassesPage() {
   const { data: classTypes } = useQuery<ClassType[]>({
     queryKey: ["class-types"],
     queryFn: async () => {
-      const res = await fetch("/api/classes?types=true");
+      const res = await fetch("/api/class-types");
       if (!res.ok) return [];
       return res.json();
     },
@@ -91,12 +91,26 @@ export default function AdminClassesPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      const ct = classTypes?.find((t) => t.id === formData.classTypeId);
+      const duration = ct?.duration ?? 50;
+      const startsAt = new Date(`${formData.date}T${formData.time}`);
+      const endsAt = new Date(startsAt.getTime() + duration * 60 * 1000);
+
       const res = await fetch("/api/classes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          classTypeId: formData.classTypeId,
+          coachId: formData.coachProfileId,
+          startsAt: startsAt.toISOString(),
+          endsAt: endsAt.toISOString(),
+          isRecurring: formData.recurring,
+        }),
       });
-      if (!res.ok) throw new Error("Failed to create");
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create");
+      }
       return res.json();
     },
     onSuccess: () => {

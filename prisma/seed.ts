@@ -191,32 +191,40 @@ async function main() {
 
   const [primeraVez, , , pack10, , , ilimitado] = packages;
 
-  // --- Scheduled Classes (2 weeks: 1 past, 1 future) ---
+  // --- Scheduled Classes (5 weeks: 1 past + today + 3 future) ---
   const today = new Date();
-  const lastMonday = startOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
+  const todayStart = setMinutes(setHours(today, 0), 0);
+  const startDate = addDays(todayStart, -7);
 
   const weekdaySlots = [
     { hour: 7, minute: 0 },
-    { hour: 9, minute: 0 },
-    { hour: 11, minute: 0 },
-    { hour: 18, minute: 0 },
-    { hour: 19, minute: 30 },
-  ];
-  const weekendSlots = [
+    { hour: 8, minute: 0 },
     { hour: 9, minute: 0 },
     { hour: 10, minute: 30 },
     { hour: 12, minute: 0 },
+    { hour: 17, minute: 0 },
+    { hour: 18, minute: 30 },
+    { hour: 19, minute: 30 },
+    { hour: 20, minute: 30 },
+  ];
+  const weekendSlots = [
+    { hour: 8, minute: 0 },
+    { hour: 9, minute: 30 },
+    { hour: 10, minute: 30 },
+    { hour: 11, minute: 30 },
+    { hour: 12, minute: 30 },
+    { hour: 17, minute: 0 },
   ];
 
   let classIndex = 0;
   const allClasses: Awaited<ReturnType<typeof prisma.class.create>>[] = [];
 
-  for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
-    const date = addDays(lastMonday, dayOffset);
-    const dayOfWeek = date.getDay(); // 0=Sun, 6=Sat
+  for (let dayOffset = 0; dayOffset < 28; dayOffset++) {
+    const date = addDays(startDate, dayOffset);
+    const dayOfWeek = date.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const slots = isWeekend ? weekendSlots : weekdaySlots;
-    const isPast = date < today;
+    const dateIsPast = date < todayStart;
 
     for (const slot of slots) {
       const classType = classTypes[classIndex % classTypes.length];
@@ -230,7 +238,7 @@ async function main() {
           coachId: coach.id,
           startsAt,
           endsAt,
-          status: isPast ? ClassStatus.COMPLETED : ClassStatus.SCHEDULED,
+          status: dateIsPast ? ClassStatus.COMPLETED : ClassStatus.SCHEDULED,
         },
       });
       allClasses.push(cls);

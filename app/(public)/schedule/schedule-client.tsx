@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, ChevronDown, Loader2, Users } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Users } from "lucide-react";
 import {
   format,
   addDays,
-  startOfWeek,
+  startOfDay,
   isSameDay,
   isToday,
-  subWeeks,
-  addWeeks,
+  isPast,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn, formatTime } from "@/lib/utils";
@@ -38,8 +37,8 @@ export function ScheduleClient() {
     fetchClasses();
   }, []);
 
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const rangeStart = startOfDay(currentDate);
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(rangeStart, i));
 
   const classTypes = Array.from(
     new Map(classes.map((c) => [c.classType.id, c.classType])).values()
@@ -109,16 +108,18 @@ export function ScheduleClient() {
           {/* Week nav */}
           <div className="mb-5 flex items-center">
             <button
-              onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
+              onClick={() => setCurrentDate(addDays(currentDate, -7))}
               className="mr-auto rounded-full p-1.5 text-muted hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="text-xs font-medium uppercase tracking-widest text-muted">
-              {format(weekStart, "MMMM yyyy", { locale: es })}
+              {format(rangeStart, "d MMM", { locale: es })}
+              {" – "}
+              {format(addDays(rangeStart, 6), "d MMM yyyy", { locale: es })}
             </span>
             <button
-              onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
+              onClick={() => setCurrentDate(addDays(currentDate, 7))}
               className="ml-auto rounded-full p-1.5 text-muted hover:text-foreground"
             >
               <ChevronRight className="h-4 w-4" />
@@ -128,7 +129,7 @@ export function ScheduleClient() {
           {/* ── Desktop: 7-col week ── */}
           <div className="hidden lg:block">
             {/* Day headers */}
-            <div className="mb-3 grid grid-cols-7 gap-3">
+            <div className="mb-4 grid grid-cols-7 gap-4">
               {weekDays.map((day) => {
                 const today = isToday(day);
                 return (
@@ -150,11 +151,11 @@ export function ScheduleClient() {
             </div>
 
             {/* Class columns */}
-            <div className="grid grid-cols-7 items-start gap-3">
+            <div className="grid grid-cols-7 items-start gap-4">
               {weekDays.map((day) => {
                 const dayClasses = getClassesForDay(day);
                 return (
-                  <div key={day.toISOString()} className="space-y-2">
+                  <div key={day.toISOString()} className="space-y-4">
                     {dayClasses.map((cls) => (
                       <ClassCard key={cls.id} cls={cls} />
                     ))}
@@ -189,7 +190,7 @@ export function ScheduleClient() {
                     </div>
 
                     {/* Day classes */}
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       {dayClasses.map((cls) => (
                         <ClassCard key={cls.id} cls={cls} />
                       ))}
@@ -210,32 +211,18 @@ export function ScheduleClient() {
       {/* ── Mobile bottom filter bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-white px-4 py-3 safe-bottom lg:hidden">
         <div className="flex gap-2">
-          <div className="relative flex-1">
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-border bg-white py-2.5 pl-3 pr-9 text-[13px] font-medium text-foreground"
-            >
-              <option value="all">Por disciplina</option>
-              {classTypes.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-          </div>
-          <div className="relative flex-1">
-            <select
-              value={filterCoach}
-              onChange={(e) => setFilterCoach(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-border bg-white py-2.5 pl-3 pr-9 text-[13px] font-medium text-foreground"
-            >
-              <option value="all">Por instructor</option>
-              {coaches.map((c) => (
-                <option key={c.id} value={c.id}>{c.user.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-          </div>
+          <MobileFilterSelect
+            value={filterType}
+            onChange={setFilterType}
+            placeholder="Por disciplina"
+            options={classTypes.map((t) => ({ value: t.id, label: t.name }))}
+          />
+          <MobileFilterSelect
+            value={filterCoach}
+            onChange={setFilterCoach}
+            placeholder="Por instructor"
+            options={coaches.map((c) => ({ value: c.id, label: c.user.name || "" }))}
+          />
         </div>
       </div>
     </div>
@@ -244,33 +231,39 @@ export function ScheduleClient() {
 
 /* ── Class card — matches Siclo's compact rounded card ── */
 function ClassCard({ cls }: { cls: ClassWithDetails }) {
+  const past = isPast(new Date(cls.startsAt));
+
   return (
-    <Link href={`/class/${cls.id}`}>
-      <div className="flex h-[130px] flex-col justify-between rounded-2xl border border-border/70 bg-white px-4 py-3.5 transition-shadow hover:shadow-md">
+    <Link href={`/class/${cls.id}`} className={past ? "pointer-events-none" : ""}>
+      <div
+        className={cn(
+          "flex h-[140px] flex-col justify-between rounded-2xl border px-4 py-3.5 transition-shadow",
+          past
+            ? "border-border/30 bg-surface/60"
+            : "border-border/70 bg-white hover:shadow-md"
+        )}
+      >
         <div>
-          <p className="text-[13px] text-muted">
-            <span className="font-medium text-foreground">
-              {formatTime(cls.startsAt)}
-            </span>
-            {" – "}
+          <p className={cn("text-[13px] font-medium", past ? "text-muted/50" : "text-foreground")}>
+            {formatTime(cls.startsAt)}
+          </p>
+          <p className={cn("text-[11px]", past ? "text-muted/40" : "text-muted")}>
             {cls.classType.duration} min
           </p>
-          <p className="mt-1.5 text-[15px] font-bold leading-snug text-foreground">
+          <p className={cn("mt-1.5 truncate text-[14px] font-bold", past ? "text-muted/50" : "text-foreground")}>
             {cls.classType.name}
           </p>
-          <p className="mt-0.5 text-[13px] text-muted">
+          <p className={cn("mt-0.5 truncate text-[12px]", past ? "text-muted/40" : "text-muted")}>
             con {cls.coach.user.name?.split(" ")[0]}
           </p>
         </div>
-        <div>
-          <Users className="h-4 w-4 text-muted/30" />
-        </div>
+        <Users className={cn("h-3.5 w-3.5", past ? "text-muted/20" : "text-muted/30")} />
       </div>
     </Link>
   );
 }
 
-/* ── Sidebar filter dropdown ── */
+/* ── Sidebar filter dropdown (overlay pattern for Safari compat) ── */
 function FilterSelect({
   label,
   value,
@@ -282,12 +275,17 @@ function FilterSelect({
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
 }) {
+  const selectedLabel = options.find((o) => o.value === value)?.label || label;
   return (
     <div className="relative">
+      <div className="pointer-events-none flex items-center justify-between rounded-lg border border-border bg-white px-3 py-2.5">
+        <span className="text-[14px] font-medium text-foreground">{selectedLabel}</span>
+        <ChevronDown className="h-4 w-4 text-muted" />
+      </div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-lg border border-border bg-white py-2.5 pl-3 pr-9 text-[14px] font-medium text-foreground focus:border-foreground focus:outline-none"
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -295,7 +293,41 @@ function FilterSelect({
           </option>
         ))}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+    </div>
+  );
+}
+
+/* ── Mobile filter dropdown (same overlay pattern) ── */
+function MobileFilterSelect({
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: { value: string; label: string }[];
+}) {
+  const allOptions = [{ value: "all", label: placeholder }, ...options];
+  const selectedLabel = allOptions.find((o) => o.value === value)?.label || placeholder;
+  return (
+    <div className="relative flex-1">
+      <div className="pointer-events-none flex items-center justify-between rounded-lg border border-border bg-white px-3 py-2">
+        <span className="truncate text-[13px] font-medium text-foreground">{selectedLabel}</span>
+        <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 text-muted" />
+      </div>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      >
+        {allOptions.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
