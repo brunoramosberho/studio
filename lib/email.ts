@@ -4,7 +4,7 @@ import { formatDate, formatTime } from "./utils";
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
 }
-const FROM = process.env.EMAIL_FROM || "hola@flostudio.mx";
+const FROM = process.env.EMAIL_FROM || "hola@magicpay.mx";
 
 export async function sendBookingConfirmation({
   to,
