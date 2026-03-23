@@ -3,16 +3,17 @@
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { Home, Calendar, Package, History, Clock, User } from "lucide-react";
+import { Home, Calendar, Search, Bell, User, Package, History, Clock, Trophy } from "lucide-react";
 import { MobileNav } from "@/components/shared/mobile-nav";
 import { cn } from "@/lib/utils";
 
 const sidebarLinks = [
-  { href: "/my", icon: Home, label: "Home" },
+  { href: "/my", icon: Home, label: "Feed" },
+  { href: "/schedule", icon: Calendar, label: "Reservar" },
+  { href: "/coaches", icon: Search, label: "Explorar" },
   { href: "/my/bookings", icon: Calendar, label: "Mis Reservas" },
   { href: "/my/packages", icon: Package, label: "Mis Paquetes" },
-  { href: "/my/history", icon: History, label: "Historial" },
-  { href: "/my/waitlist", icon: Clock, label: "Lista de espera" },
+  { href: "/my/notifications", icon: Bell, label: "Notificaciones" },
   { href: "/my/profile", icon: User, label: "Perfil" },
 ];
 

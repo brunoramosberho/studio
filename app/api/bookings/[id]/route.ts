@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { checkAchievements } from "@/lib/achievements";
 
 const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
 
@@ -76,6 +77,12 @@ export async function PUT(
         },
       },
     });
+
+    if (status === "ATTENDED" && booking.userId) {
+      checkAchievements(booking.userId).catch((err) =>
+        console.error("Achievement check failed:", err),
+      );
+    }
 
     return NextResponse.json(updated);
   } catch (error) {
