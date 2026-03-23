@@ -245,129 +245,10 @@ export default function ProfilePage() {
           </Card>
         </motion.div>
 
-        {/* Quick actions */}
-        <motion.div
-          className="space-y-1"
-          custom={2}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-        >
-          {/* Edit profile */}
-          <button
-            onClick={() => setShowEditForm(!showEditForm)}
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors active:bg-surface"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
-              <UserPen className="h-4 w-4 text-foreground" />
-            </div>
-            <span className="flex-1 text-[15px] font-medium text-foreground">
-              Editar perfil
-            </span>
-            <ChevronRight
-              className={cn(
-                "h-4 w-4 text-muted transition-transform",
-                showEditForm && "rotate-90",
-              )}
-            />
-          </button>
-
-          {/* Edit form (collapsible) */}
-          {showEditForm && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <Card className="mx-4 mb-2">
-                <CardContent className="p-4">
-                  <form onSubmit={handleSave} className="space-y-4">
-                    <div>
-                      <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                        Nombre
-                      </label>
-                      <Input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Tu nombre completo"
-                        className="mt-1.5"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                        Teléfono
-                      </label>
-                      <Input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+52 55 1234 5678"
-                        className="mt-1.5"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                        Correo electrónico
-                      </label>
-                      <Input
-                        value={session?.user?.email ?? ""}
-                        disabled
-                        className="mt-1.5 opacity-50"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={saving || !name.trim()}
-                      className="w-full"
-                    >
-                      {saving ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : saved ? (
-                        <Check className="mr-2 h-4 w-4" />
-                      ) : null}
-                      {saved ? "Guardado" : "Guardar cambios"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Buy packages */}
-          <Link
-            href="/packages"
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 transition-colors active:bg-surface"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
-              <Package className="h-4 w-4 text-foreground" />
-            </div>
-            <span className="flex-1 text-[15px] font-medium text-foreground">
-              Comprar paquetes
-            </span>
-            <ChevronRight className="h-4 w-4 text-muted" />
-          </Link>
-
-          {/* My packages */}
-          <Link
-            href="/my/packages"
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 transition-colors active:bg-surface"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
-              <ShieldCheck className="h-4 w-4 text-foreground" />
-            </div>
-            <span className="flex-1 text-[15px] font-medium text-foreground">
-              Mis paquetes
-            </span>
-            <ChevronRight className="h-4 w-4 text-muted" />
-          </Link>
-        </motion.div>
-
         {/* Favorite songs */}
         <motion.div
           className="space-y-3"
-          custom={3}
+          custom={2}
           variants={fadeUp}
           initial="hidden"
           animate="show"
@@ -468,6 +349,122 @@ export default function ProfilePage() {
               ))}
             </div>
           )}
+        </motion.div>
+
+        {/* Quick actions */}
+        <motion.div
+          className="space-y-1"
+          custom={3}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+        >
+          {/* Edit profile */}
+          <button
+            onClick={() => setShowEditForm(!showEditForm)}
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors active:bg-surface"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
+              <UserPen className="h-4 w-4 text-foreground" />
+            </div>
+            <span className="flex-1 text-[15px] font-medium text-foreground">
+              Editar perfil
+            </span>
+            <ChevronRight
+              className={cn(
+                "h-4 w-4 text-muted transition-transform",
+                showEditForm && "rotate-90",
+              )}
+            />
+          </button>
+
+          {showEditForm && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <Card className="mx-4 mb-2">
+                <CardContent className="p-4">
+                  <form onSubmit={handleSave} className="space-y-4">
+                    <div>
+                      <label className="text-xs font-medium uppercase tracking-wider text-muted">
+                        Nombre
+                      </label>
+                      <Input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Tu nombre completo"
+                        className="mt-1.5"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium uppercase tracking-wider text-muted">
+                        Teléfono
+                      </label>
+                      <Input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+52 55 1234 5678"
+                        className="mt-1.5"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium uppercase tracking-wider text-muted">
+                        Correo electrónico
+                      </label>
+                      <Input
+                        value={session?.user?.email ?? ""}
+                        disabled
+                        className="mt-1.5 opacity-50"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={saving || !name.trim()}
+                      className="w-full"
+                    >
+                      {saving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : saved ? (
+                        <Check className="mr-2 h-4 w-4" />
+                      ) : null}
+                      {saved ? "Guardado" : "Guardar cambios"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          <Link
+            href="/packages"
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 transition-colors active:bg-surface"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
+              <Package className="h-4 w-4 text-foreground" />
+            </div>
+            <span className="flex-1 text-[15px] font-medium text-foreground">
+              Comprar paquetes
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted" />
+          </Link>
+
+          <Link
+            href="/my/packages"
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 transition-colors active:bg-surface"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
+              <ShieldCheck className="h-4 w-4 text-foreground" />
+            </div>
+            <span className="flex-1 text-[15px] font-medium text-foreground">
+              Mis paquetes
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted" />
+          </Link>
         </motion.div>
 
         <Separator />

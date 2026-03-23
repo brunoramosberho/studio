@@ -6,13 +6,6 @@ import { es } from "date-fns/locale";
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json(
-        { error: "El asistente no está disponible en este momento." },
-        { status: 503 },
-      );
-    }
-
     const body = await request.json();
     const { messages } = body as { messages: AssistantMessage[] };
 
