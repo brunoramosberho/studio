@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Clock,
@@ -67,26 +67,13 @@ const steps = [
   },
 ];
 
-const coaches = [
-  {
-    name: "Valentina Reyes",
-    specialty: "Reformer & Pre/Postnatal",
-    bio: "Certificada en STOTT Pilates con 8 años transformando cuerpos y mentes.",
-    image: null,
-  },
-  {
-    name: "Carolina Mendoza",
-    specialty: "Mat Flow & Flexibility",
-    bio: "Bailarina profesional convertida en instructora. Su flow es poesía en movimiento.",
-    image: null,
-  },
-  {
-    name: "Isabela Torres",
-    specialty: "Barre Fusion & Strength",
-    bio: "Ex atleta olímpica que encontró su pasión enseñando Barre y fuerza funcional.",
-    image: null,
-  },
-];
+interface CoachData {
+  id: string;
+  bio: string | null;
+  specialties: string[];
+  photoUrl: string | null;
+  user: { name: string | null; image: string | null };
+}
 
 const packages = [
   {
@@ -134,6 +121,14 @@ const stagger = {
 
 export default function LandingPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [coaches, setCoaches] = useState<CoachData[]>([]);
+
+  useEffect(() => {
+    fetch("/api/coaches")
+      .then((r) => r.json())
+      .then((data) => setCoaches(data))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="overflow-x-hidden">
@@ -348,45 +343,61 @@ export default function LandingPage() {
             ref={scrollRef}
             className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 md:overflow-visible md:pb-0"
           >
-            {coaches.map((coach, i) => (
-              <motion.div
-                key={coach.name}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: "-60px" }}
-                custom={i}
-                variants={fadeUp}
-                className="min-w-[280px] flex-shrink-0 md:min-w-0"
-              >
-                <div className="group relative h-full overflow-hidden rounded-2xl">
-                  <div className="aspect-[3/4] bg-gradient-to-br from-white/10 via-accent/5 to-white/5">
-                    <div className="flex h-full items-center justify-center">
-                      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/10">
-                        <Heart className="h-10 w-10 text-accent/50" />
-                      </div>
+            {coaches.map((coach, i) => {
+              const photo = coach.photoUrl ?? coach.user.image;
+              const name = coach.user.name ?? "Coach";
+              const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2);
+
+              return (
+                <motion.div
+                  key={coach.id}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, margin: "-60px" }}
+                  custom={i}
+                  variants={fadeUp}
+                  className="min-w-[280px] flex-shrink-0 md:min-w-0"
+                >
+                  <div className="group relative h-full overflow-hidden rounded-2xl">
+                    <div className="aspect-[3/4] bg-gradient-to-br from-white/10 via-accent/5 to-white/5">
+                      {photo ? (
+                        <img
+                          src={photo}
+                          alt={name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/10 text-3xl font-bold text-white/40">
+                            {initials}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-6">
+                      <h3 className="font-display text-xl font-bold text-white">
+                        {name}
+                      </h3>
+                      <p className="mt-1 text-sm font-medium text-accent">
+                        {coach.specialties.join(" & ")}
+                      </p>
+                      {coach.bio && (
+                        <p className="mt-2 text-sm leading-relaxed text-white/60 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                          {coach.bio}
+                        </p>
+                      )}
+                      <Link
+                        href="/schedule"
+                        className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-white"
+                      >
+                        Ver clases <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-6">
-                    <h3 className="font-display text-xl font-bold text-white">
-                      {coach.name}
-                    </h3>
-                    <p className="mt-1 text-sm font-medium text-accent">
-                      {coach.specialty}
-                    </p>
-                    <p className="mt-2 text-sm leading-relaxed text-white/60 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                      {coach.bio}
-                    </p>
-                    <Link
-                      href="/coaches"
-                      className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-white"
-                    >
-                      Ver clases <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AchievementIllustration } from "./achievement-badge";
 import { LikeButton } from "./like-button";
@@ -227,6 +229,9 @@ function AchievementCard({ event }: FeedEventCardProps) {
 
 function ClassReservedCard({ event }: FeedEventCardProps) {
   const p = event.payload;
+  const classId = p.classId as string | undefined;
+  const classDate = p.date ? new Date(p.date as string) : null;
+  const isFuture = classDate ? classDate.getTime() > Date.now() : false;
 
   return (
     <div className="space-y-2">
@@ -249,8 +254,8 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
           </p>
           <p className="mt-0.5 text-[12px] text-muted">
             {p.coachName ? `con ${p.coachName}` : ""}
-            {p.date
-              ? ` · ${new Date(p.date as string).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })}`
+            {classDate
+              ? ` · ${classDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })}`
               : ""}
           </p>
           <span className="text-[11px] text-muted/70">
@@ -261,6 +266,21 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
           <span className="text-sm">📅</span>
         </div>
       </div>
+
+      {/* CTA to book the same class */}
+      {isFuture && classId && (
+        <div className="px-4 pb-1">
+          <Link
+            href={`/class/${classId}`}
+            className="flex items-center justify-between rounded-xl bg-foreground/[0.03] px-4 py-2.5 transition-colors hover:bg-foreground/[0.06] active:scale-[0.99]"
+          >
+            <span className="text-[13px] font-semibold text-foreground">
+              Reservar tú también
+            </span>
+            <ArrowRight className="h-4 w-4 text-muted" />
+          </Link>
+        </div>
+      )}
 
       <div className="flex items-center gap-1 border-t border-border/30 px-2 pt-1 pb-1">
         <LikeButton

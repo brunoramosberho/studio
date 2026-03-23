@@ -26,7 +26,21 @@ import { es } from "date-fns/locale";
 import { cn, formatTime } from "@/lib/utils";
 import type { ClassWithDetails } from "@/types";
 
-export function ScheduleClient() {
+interface ScheduleClientProps {
+  coachUserId?: string;
+  classLinkPrefix?: string;
+  title?: string;
+  hideCoachFilter?: boolean;
+  hideCredits?: boolean;
+}
+
+export function ScheduleClient({
+  coachUserId,
+  classLinkPrefix = "/class",
+  title = "Horarios",
+  hideCoachFilter = false,
+  hideCredits = false,
+}: ScheduleClientProps = {}) {
   const { data: session } = useSession();
   const [classes, setClasses] = useState<ClassWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +55,10 @@ export function ScheduleClient() {
     async function fetchClasses() {
       setLoading(true);
       try {
-        const res = await fetch("/api/classes");
+        const url = coachUserId
+          ? `/api/classes?coachId=${coachUserId}`
+          : "/api/classes";
+        const res = await fetch(url);
         if (res.ok) setClasses(await res.json());
       } catch {
         /* no db */
@@ -50,7 +67,7 @@ export function ScheduleClient() {
       }
     }
     fetchClasses();
-  }, []);
+  }, [coachUserId]);
 
   useEffect(() => {
     if (!session?.user) return;
@@ -113,9 +130,9 @@ export function ScheduleClient() {
         {/* Credits badge + title */}
         <div className="mb-4 flex items-center justify-between">
           <h1 className="font-display text-xl font-bold text-foreground">
-            Horarios
+            {title}
           </h1>
-          {credits !== null && (
+          {!hideCredits && credits !== null && (
             <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
               <Ticket className="h-3.5 w-3.5 text-accent" />
               <span className="text-[12px] font-semibold text-accent">
@@ -210,18 +227,20 @@ export function ScheduleClient() {
               </option>
             ))}
           </select>
-          <select
-            value={filterCoach}
-            onChange={(e) => setFilterCoach(e.target.value)}
-            className="appearance-none rounded-full border border-border bg-white px-3 py-1.5 text-[12px] font-medium text-foreground focus:outline-none"
-          >
-            <option value="all">Instructor</option>
-            {coaches.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.user.name}
-              </option>
-            ))}
-          </select>
+          {!hideCoachFilter && (
+            <select
+              value={filterCoach}
+              onChange={(e) => setFilterCoach(e.target.value)}
+              className="appearance-none rounded-full border border-border bg-white px-3 py-1.5 text-[12px] font-medium text-foreground focus:outline-none"
+            >
+              <option value="all">Instructor</option>
+              {coaches.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.user.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Class list for selected day */}
@@ -232,7 +251,7 @@ export function ScheduleClient() {
             </p>
           ) : (
             selectedClasses.map((cls) => (
-              <MobileClassCard key={cls.id} cls={cls} />
+              <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
             ))
           )}
         </div>
@@ -279,18 +298,20 @@ export function ScheduleClient() {
                 ...classTypes.map((t) => ({ value: t.id, label: t.name })),
               ]}
             />
-            <FilterSelect
-              label="Instructor"
-              value={filterCoach}
-              onChange={setFilterCoach}
-              options={[
-                { value: "all", label: "Todos" },
-                ...coaches.map((c) => ({
-                  value: c.id,
-                  label: c.user.name || "Coach",
-                })),
-              ]}
-            />
+            {!hideCoachFilter && (
+              <FilterSelect
+                label="Instructor"
+                value={filterCoach}
+                onChange={setFilterCoach}
+                options={[
+                  { value: "all", label: "Todos" },
+                  ...coaches.map((c) => ({
+                    value: c.id,
+                    label: c.user.name || "Coach",
+                  })),
+                ]}
+              />
+            )}
           </div>
         </div>
 
@@ -321,7 +342,7 @@ export function ScheduleClient() {
             return (
               <div key={day.toISOString()} className="space-y-2">
                 {dayClasses.map((cls) => (
-                  <DesktopClassCard key={cls.id} cls={cls} />
+                  <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
                 ))}
               </div>
             );
@@ -333,7 +354,7 @@ export function ScheduleClient() {
 }
 
 /* ── Mobile class card — Siclo-style list item ── */
-function MobileClassCard({ cls }: { cls: ClassWithDetails }) {
+function MobileClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDetails; classLinkPrefix?: string }) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.classType.maxCapacity;
@@ -343,7 +364,7 @@ function MobileClassCard({ cls }: { cls: ClassWithDetails }) {
 
   return (
     <Link
-      href={past ? "#" : `/class/${cls.id}`}
+      href={past ? "#" : `${classLinkPrefix}/${cls.id}`}
       className={cn(past && "pointer-events-none")}
     >
       <div
@@ -453,7 +474,7 @@ function MobileClassCard({ cls }: { cls: ClassWithDetails }) {
 }
 
 /* ── Desktop class card ── */
-function DesktopClassCard({ cls }: { cls: ClassWithDetails }) {
+function DesktopClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDetails; classLinkPrefix?: string }) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.classType.maxCapacity;
@@ -462,7 +483,7 @@ function DesktopClassCard({ cls }: { cls: ClassWithDetails }) {
   const hasWaitlist = (cls._count?.waitlist ?? 0) > 0;
 
   return (
-    <Link href={`/class/${cls.id}`} className={cn(past && "pointer-events-none")}>
+    <Link href={`${classLinkPrefix}/${cls.id}`} className={cn(past && "pointer-events-none")}>
       <div
         className={cn(
           "flex h-[155px] flex-col justify-between rounded-2xl border px-4 py-3.5 transition-shadow",
