@@ -7,6 +7,7 @@ import { Check, Calendar, BookOpen, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { generateCalendarUrl } from "@/lib/utils";
+import { useBranding } from "@/components/branding-provider";
 
 interface ConfirmationScreenProps {
   classTitle?: string;
@@ -45,15 +46,16 @@ export function ConfirmationScreen({
   location,
 }: ConfirmationScreenProps) {
   const particles = useConfettiParticles();
+  const { studioName } = useBranding();
 
   const calendarUrl =
     startsAt && endsAt
       ? generateCalendarUrl(
-          `Flō Studio – ${classTitle ?? "Clase"}`,
+          `${studioName} Studio – ${classTitle ?? "Clase"}`,
           new Date(startsAt),
           new Date(endsAt),
           location,
-          `Clase con ${coachName ?? "tu coach"} en Flō Studio`,
+          `Clase con ${coachName ?? "tu coach"} en ${studioName} Studio`,
         )
       : null;
 

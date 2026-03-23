@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useBranding } from "@/components/branding-provider";
 
 const navItems = [
   { href: "/coach", label: "Dashboard", icon: LayoutDashboard },
@@ -27,6 +28,7 @@ const navItems = [
 export default function CoachLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const { studioName } = useBranding();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const userName = session?.user?.name ?? "Coach";
@@ -50,7 +52,7 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
             <div className="flex items-center gap-2">
-              <span className="font-display text-lg font-bold text-foreground">Flō</span>
+              <span className="font-display text-lg font-bold text-foreground">{studioName}</span>
               <span className="rounded-md bg-coach/10 px-2 py-0.5 text-xs font-semibold text-coach">
                 Coach Portal
               </span>

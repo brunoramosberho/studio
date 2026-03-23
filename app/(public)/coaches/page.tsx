@@ -5,12 +5,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/shared/page-transition";
 import { prisma } from "@/lib/db";
+import { getServerBranding } from "@/lib/branding";
 
-export const metadata: Metadata = {
-  title: "Nuestros Coaches",
-  description:
-    "Conoce a las coaches de Flō Studio. Expertas certificadas en Pilates, Barre y bienestar.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const b = await getServerBranding();
+  return {
+    title: "Nuestros Coaches",
+    description: `Conoce a las coaches de ${b.studioName} Studio.`,
+  };
+}
 
 export default async function CoachesPage() {
   const coaches = await prisma.coachProfile.findMany({

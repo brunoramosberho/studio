@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Sparkles, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBranding } from "@/components/branding-provider";
 import { useAssistant } from "@/hooks/useAssistant";
 import { MessageBubble } from "./message-bubble";
 import { ChatInput } from "./chat-input";
@@ -16,6 +17,7 @@ const QUICK_QUESTIONS = [
 
 export function FloatingChat() {
   const [isOpen, setIsOpen] = useState(false);
+  const { studioName } = useBranding();
   const { messages, sendMessage, isStreaming, remainingMessages, clearChat } =
     useAssistant();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -65,7 +67,7 @@ export function FloatingChat() {
                     <Sparkles className="h-4 w-4 text-accent" />
                   </div>
                   <h3 className="font-display text-base font-semibold">
-                    Asistente Flō
+                    Asistente {studioName}
                   </h3>
                 </div>
                 <div className="flex items-center gap-1">
@@ -195,7 +197,7 @@ function EmptyState({
       </div>
       <p className="mb-1 font-display text-base font-semibold">¡Hola!</p>
       <p className="mb-5 text-sm text-muted">
-        Soy tu asistente de Flō. ¿En qué puedo ayudarte?
+        Soy tu asistente de {studioName}. ¿En qué puedo ayudarte?
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         {QUICK_QUESTIONS.map((q) => (

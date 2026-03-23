@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { getServerBranding } from "./branding";
 
 let _stripe: Stripe | null = null;
 
@@ -31,6 +32,7 @@ export async function createCheckoutSession({
   cancelUrl: string;
 }) {
   const stripe = getStripe();
+  const b = await getServerBranding();
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
     line_items: [
@@ -39,7 +41,7 @@ export async function createCheckoutSession({
           currency: "mxn",
           product_data: {
             name: packageName,
-            description: `Paquete Flō Studio — ${packageName}`,
+            description: `Paquete ${b.studioName} Studio — ${packageName}`,
           },
           unit_amount: Math.round(price * 100),
         },

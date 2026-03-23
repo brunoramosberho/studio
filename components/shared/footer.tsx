@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { useBranding } from "@/components/branding-provider";
 
 const footerLinks = {
   studio: [
@@ -20,6 +21,7 @@ const footerLinks = {
 export function Footer() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const { studioName, slogan, logoUrl } = useBranding();
 
   const hideForLoggedIn =
     pathname === "/schedule" ||
@@ -35,10 +37,14 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
             <Link href="/" className="inline-block">
-              <span className="font-display text-3xl font-bold text-foreground">Flō</span>
+              {logoUrl ? (
+                <img src={logoUrl} alt={studioName} className="h-10 object-contain" />
+              ) : (
+                <span className="font-display text-3xl font-bold text-foreground">{studioName}</span>
+              )}
             </Link>
             <p className="mt-3 max-w-xs text-sm text-muted">
-              Muévete. Respira. Floréce. Tu espacio de Pilates y bienestar.
+              {slogan}
             </p>
             <div className="mt-4 flex gap-4">
               <a
@@ -87,7 +93,7 @@ export function Footer() {
 
         <div className="mt-12 border-t border-border pt-6">
           <p className="text-center text-xs text-muted">
-            Hecho con ❤️ en España · Flō Studio © {new Date().getFullYear()}
+            {studioName} Studio © {new Date().getFullYear()}
           </p>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getServerBranding } from "./branding";
 
 function getAnthropic() {
   return new Anthropic({
@@ -6,11 +7,12 @@ function getAnthropic() {
   });
 }
 
-const SYSTEM_PROMPT = `You are the Flō Studio assistant. You help clients find the right class for their goals, understand packages, check schedules, and prepare for their first Pilates session.
+function buildSystemPrompt(studioName: string) {
+  return `You are the ${studioName} Studio assistant. You help clients find the right class for their goals, understand packages, check schedules, and prepare for their first session.
 
 Be warm, encouraging, and concise. Answer in the same language the user writes in.
 
-About Flō Studio:
+About ${studioName} Studio:
 - We offer Reformer Pilates, Mat Flow, and Barre Fusion classes
 - Classes run weekdays (7am, 9am, 11am, 6pm, 7:30pm) and weekends (9am, 10:30am, 12pm)
 - Packages range from a single class ($150 MXN first-timers) to unlimited monthly ($2,200 MXN)
@@ -25,6 +27,7 @@ Available packages:
 - Pack 25 Clases: 25 clases, $6,500 MXN (180 días)
 - Pack 50 Clases: 50 clases, $12,000 MXN (365 días)
 - Ilimitado Mensual: Clases ilimitadas, $2,200 MXN (30 días)`;
+}
 
 export interface AssistantMessage {
   role: "user" | "assistant";
@@ -35,9 +38,11 @@ export async function streamAssistantResponse(
   messages: AssistantMessage[],
   scheduleContext?: string,
 ) {
+  const b = await getServerBranding();
+  const prompt = buildSystemPrompt(b.studioName);
   const systemContent = scheduleContext
-    ? `${SYSTEM_PROMPT}\n\nCurrent schedule:\n${scheduleContext}`
-    : SYSTEM_PROMPT;
+    ? `${prompt}\n\nCurrent schedule:\n${scheduleContext}`
+    : prompt;
 
   const stream = getAnthropic().messages.stream({
     model: "claude-sonnet-4-20250514",

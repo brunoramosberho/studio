@@ -341,3 +341,25 @@ model Notification {
 
   @@index([userId, readAt])
 }
+
+// ── Studio Branding ──
+
+model StudioSettings {
+  id              String   @id @default("singleton")
+  studioName      String   @default("Flō")
+  tagline         String   @default("Pilates & Wellness")
+  slogan          String   @default("Muévete. Respira. Floréce.")
+  metaDescription String   @default("Tu espacio de Pilates y bienestar.")
+  logoUrl         String?
+  fontPairing     String   @default("playfair-dmsans")
+  colorBg         String   @default("#FAF9F6")
+  colorFg         String   @default("#1C1917")
+  colorSurface    String   @default("#F5F2ED")
+  colorAccent     String   @default("#C9A96E")
+  colorAccentSoft String   @default("#E8D9BF")
+  colorMuted      String   @default("#8C8279")
+  colorBorder     String   @default("#E8E2D9")
+  colorCoach      String   @default("#2D5016")
+  colorAdmin      String   @default("#1A2C4E")
+  updatedAt       DateTime @updatedAt
+}

@@ -7,6 +7,7 @@ import { Mail, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageTransition } from "@/components/shared/page-transition";
+import { useBranding } from "@/components/branding-provider";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -23,6 +24,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { studioName, logoUrl } = useBranding();
 
   async function handleGoogleSignIn() {
     await signIn("google", { callbackUrl: "/my" });
@@ -51,12 +53,16 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           <div className="mb-10 text-center">
             <Link href="/">
-              <span className="font-display text-4xl font-bold text-foreground">
-                Flō
-              </span>
+              {logoUrl ? (
+                <img src={logoUrl} alt={studioName} className="mx-auto h-12 object-contain" />
+              ) : (
+                <span className="font-display text-4xl font-bold text-foreground">
+                  {studioName}
+                </span>
+              )}
             </Link>
             <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
-              Bienvenida a Flō
+              Bienvenida a {studioName}
             </h1>
             <p className="mt-2 text-sm text-muted">
               Inicia sesión para reservar tus clases

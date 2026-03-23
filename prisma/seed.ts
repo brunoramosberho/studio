@@ -8,6 +8,7 @@ async function main() {
   console.log("🌱 Seeding Flō Studio database...\n");
 
   // Clear existing data (respecting foreign key order)
+  await prisma.studioSettings.deleteMany();
   await prisma.favoriteSong.deleteMany();
   await prisma.friendship.deleteMany();
   await prisma.notification.deleteMany();
@@ -835,6 +836,31 @@ async function main() {
   console.log(`   Friendships:    ${friendshipCount}`);
   console.log(`   Notifications:  ${notifCount}`);
   console.log(`   Songs:          ${songCount}`);
+
+  // ── Studio Branding Settings ──
+  await prisma.studioSettings.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: {
+      id: "singleton",
+      studioName: "Flō",
+      tagline: "Pilates & Wellness",
+      slogan: "Muévete. Respira. Floréce.",
+      metaDescription: "Tu espacio de Pilates y bienestar.",
+      fontPairing: "playfair-dmsans",
+      colorBg: "#FAF9F6",
+      colorFg: "#1C1917",
+      colorSurface: "#F5F2ED",
+      colorAccent: "#C9A96E",
+      colorAccentSoft: "#E8D9BF",
+      colorMuted: "#8C8279",
+      colorBorder: "#E8E2D9",
+      colorCoach: "#2D5016",
+      colorAdmin: "#1A2C4E",
+    },
+  });
+  console.log("   Branding:       ✓");
+
   console.log("\n✅ Seed completed successfully!");
 }
 

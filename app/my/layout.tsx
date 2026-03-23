@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Home, Dumbbell, CalendarCheck, User, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBranding } from "@/components/branding-provider";
 
 const sidebarLinks = [
   { href: "/my", icon: Home, label: "Feed" },
@@ -17,6 +18,7 @@ const sidebarLinks = [
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { studioName, logoUrl } = useBranding();
 
   const firstName = session?.user?.name?.split(" ")[0] ?? "";
 
@@ -27,7 +29,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         <div className="flex h-full flex-col">
           <div className="p-6">
             <Link href="/" className="font-display text-2xl font-bold text-foreground">
-              Flō
+              {logoUrl ? (
+                <img src={logoUrl} alt={studioName} className="h-8 object-contain" />
+              ) : (
+                studioName
+              )}
             </Link>
           </div>
 
@@ -66,7 +72,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           </nav>
 
           <div className="border-t border-border/50 p-4">
-            <p className="text-[10px] text-muted/50">Flō Studio · Portal</p>
+            <p className="text-[10px] text-muted/50">{studioName} Studio · Portal</p>
           </div>
         </div>
       </aside>

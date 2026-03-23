@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { useBranding } from "@/components/branding-provider";
 import {
   ArrowRight,
   Clock,
@@ -122,6 +123,7 @@ const stagger = {
 export default function LandingPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [coaches, setCoaches] = useState<CoachData[]>([]);
+  const branding = useBranding();
 
   useEffect(() => {
     fetch("/api/coaches")
@@ -155,7 +157,7 @@ export default function LandingPage() {
               custom={0}
               className="mb-8 text-sm font-medium uppercase tracking-[0.3em] text-accent"
             >
-              Pilates & Wellness Studio
+              {branding.tagline} Studio
             </motion.p>
 
             <motion.h1
@@ -163,11 +165,13 @@ export default function LandingPage() {
               custom={1}
               className="font-display text-6xl font-bold leading-[0.95] tracking-tight text-white sm:text-8xl"
             >
-              Muévete.
-              <br />
-              Respira.
-              <br />
-              <span className="text-accent">Floréce.</span>
+              {branding.slogan.split(".").filter(Boolean).map((part, i, arr) =>
+                i === arr.length - 1 ? (
+                  <span key={i} className="text-accent">{part.trim()}.</span>
+                ) : (
+                  <span key={i}>{part.trim()}.<br /></span>
+                ),
+              )}
             </motion.h1>
 
             <motion.p
@@ -175,8 +179,7 @@ export default function LandingPage() {
               custom={2}
               className="mx-auto mt-8 max-w-lg text-lg leading-relaxed text-white/60 sm:text-xl"
             >
-              Clases de Reformer Pilates, Mat Flow y Barre Fusion en un espacio
-              diseñado para ti.
+              {branding.metaDescription}
             </motion.p>
 
             <motion.div

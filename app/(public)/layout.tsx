@@ -7,6 +7,7 @@ import { Home, Dumbbell, CalendarCheck, User, Package } from "lucide-react";
 import { Navbar } from "@/components/shared/navbar";
 import { Footer } from "@/components/shared/footer";
 import { cn } from "@/lib/utils";
+import { useBranding } from "@/components/branding-provider";
 
 const sidebarLinks = [
   { href: "/my", icon: Home, label: "Feed" },
@@ -21,6 +22,7 @@ const sidebarPaths = ["/schedule", "/coaches", "/class/", "/book/"];
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const { studioName, logoUrl } = useBranding();
 
   const showSidebar =
     !!session?.user && sidebarPaths.some((p) => pathname.startsWith(p));
@@ -32,11 +34,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-border/50 bg-white md:block">
           <div className="flex h-full flex-col">
             <div className="p-6">
-              <Link
-                href="/"
-                className="font-display text-2xl font-bold text-foreground"
-              >
-                Flō
+              <Link href="/" className="font-display text-2xl font-bold text-foreground">
+                {logoUrl ? (
+                  <img src={logoUrl} alt={studioName} className="h-8 object-contain" />
+                ) : (
+                  studioName
+                )}
               </Link>
             </div>
 
@@ -80,7 +83,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </nav>
 
             <div className="border-t border-border/50 p-4">
-              <p className="text-[10px] text-muted/50">Flō Studio · Portal</p>
+              <p className="text-[10px] text-muted/50">{studioName} Studio · Portal</p>
             </div>
           </div>
         </aside>

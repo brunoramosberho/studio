@@ -14,12 +14,14 @@ import {
   Package,
   ListOrdered,
   BarChart3,
+  Palette,
   ArrowLeft,
   Menu,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useBranding } from "@/components/branding-provider";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -30,12 +32,14 @@ const navItems = [
   { href: "/admin/packages", label: "Paquetes", icon: Package },
   { href: "/admin/waitlist", label: "Lista de espera", icon: ListOrdered },
   { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
+  { href: "/admin/branding", label: "Marca", icon: Palette },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { studioName } = useBranding();
 
   const userName = session?.user?.name ?? "Admin";
   const initials = userName
@@ -61,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
             <div className="flex items-center gap-2">
-              <span className="font-display text-lg font-bold text-foreground">Flō</span>
+              <span className="font-display text-lg font-bold text-foreground">{studioName}</span>
               <span className="rounded-md bg-admin/10 px-2 py-0.5 text-xs font-semibold text-admin">
                 Admin Portal
               </span>

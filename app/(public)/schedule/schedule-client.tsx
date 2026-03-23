@@ -24,6 +24,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn, formatTime } from "@/lib/utils";
+import { useBranding } from "@/components/branding-provider";
 import type { ClassWithDetails } from "@/types";
 
 interface ScheduleClientProps {
@@ -50,6 +51,7 @@ export function ScheduleClient({
   const [filterType, setFilterType] = useState<string>("all");
   const [filterCoach, setFilterCoach] = useState<string>("all");
   const dayScrollRef = useRef<HTMLDivElement>(null);
+  const branding = useBranding();
 
   useEffect(() => {
     async function fetchClasses() {
@@ -264,9 +266,9 @@ export function ScheduleClient({
           {!isLoggedIn && (
             <div className="mr-auto">
               <h1 className="font-display text-[1.75rem] font-bold leading-tight text-foreground">
-                Flō Studio
+                {branding.studioName} Studio
               </h1>
-              <p className="text-[13px] text-muted">Pilates & Wellness</p>
+              <p className="text-[13px] text-muted">{branding.tagline}</p>
             </div>
           )}
 

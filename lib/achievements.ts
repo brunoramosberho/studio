@@ -7,7 +7,7 @@ export const ACHIEVEMENT_DEFS: Record<
 > = {
   FIRST_CLASS: {
     label: "Primera Clase",
-    description: "Completaste tu primera clase en Flō",
+    description: "Completaste tu primera clase",
     icon: "🎉",
   },
   FIRST_CLASS_TYPE_REFORMER: {

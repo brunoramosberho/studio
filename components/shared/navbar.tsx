@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useBranding } from "@/components/branding-provider";
 
 const publicLinks = [
   { href: "/schedule", label: "Horarios" },
@@ -20,6 +21,7 @@ export function Navbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { studioName, logoUrl } = useBranding();
 
   const isPortal =
     pathname.startsWith("/my") ||
@@ -47,9 +49,13 @@ export function Navbar() {
           </button>
 
           <Link href="/" className="flex items-center">
-            <span className="font-display text-2xl font-bold tracking-tight text-foreground">
-              Flō
-            </span>
+            {logoUrl ? (
+              <img src={logoUrl} alt={studioName} className="h-8 object-contain" />
+            ) : (
+              <span className="font-display text-2xl font-bold tracking-tight text-foreground">
+                {studioName}
+              </span>
+            )}
           </Link>
         </div>
 

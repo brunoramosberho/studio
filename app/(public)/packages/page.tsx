@@ -15,14 +15,13 @@ import { PageTransition } from "@/components/shared/page-transition";
 
 export const metadata: Metadata = {
   title: "Paquetes",
-  description:
-    "Paquetes de clases de Pilates, Barre y Mat Flow en Flō Studio. Encuentra el plan perfecto para tu ritmo.",
+  description: "Paquetes de clases. Encuentra el plan perfecto para tu ritmo.",
 };
 
 const packages = [
   {
     name: "Primera Vez",
-    description: "Tu primera experiencia en Flō",
+    description: "Tu primera experiencia",
     price: 150,
     credits: 1,
     validDays: 7,

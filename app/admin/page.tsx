@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KpiCard } from "@/components/admin/kpi-card";
+import { useBranding } from "@/components/branding-provider";
 import { RevenueChart } from "@/components/admin/revenue-chart";
 import { cn, formatCurrency, timeAgo } from "@/lib/utils";
 import type { AdminStats } from "@/types";
@@ -38,6 +39,7 @@ const fadeUp = {
 };
 
 export default function AdminDashboard() {
+  const { studioName } = useBranding();
   const { data, isLoading } = useQuery<ReportsData>({
     queryKey: ["admin-reports"],
     queryFn: async () => {
@@ -51,7 +53,7 @@ export default function AdminDashboard() {
     <div className="mx-auto max-w-6xl space-y-8">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="font-display text-2xl font-bold sm:text-3xl">Dashboard</h1>
-        <p className="mt-1 text-muted">Resumen general de Flō Studio</p>
+        <p className="mt-1 text-muted">Resumen general de {studioName} Studio</p>
       </motion.div>
 
       {/* KPI Cards */}
