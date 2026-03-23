@@ -67,6 +67,8 @@ model User {
   achievements         UserAchievement[] @relation("UserAchievements")
   notifications        Notification[]   @relation("UserNotifications")
   notificationsActed   Notification[]   @relation("NotificationActor")
+  friendshipsRequested Friendship[]     @relation("FriendshipRequester")
+  friendshipsReceived  Friendship[]     @relation("FriendshipAddressee")
 }
 
 enum Role {
@@ -196,6 +198,29 @@ model UserPackage {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+// ── Social Graph ──
+
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String
+  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId, status])
+  @@index([addresseeId, status])
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
 
 // ── Social Layer ──

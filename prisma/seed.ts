@@ -8,6 +8,7 @@ async function main() {
   console.log("🌱 Seeding Flō Studio database...\n");
 
   // Clear existing data (respecting foreign key order)
+  await prisma.friendship.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.comment.deleteMany();
   await prisma.like.deleteMany();
@@ -671,6 +672,87 @@ async function main() {
   }
   console.log(`✓ Created ${likeCount} likes and ${commentCount} comments`);
 
+  // --- Friendships ---
+  const friendshipPairs: [typeof clientWithPack10, typeof clientExpired][] = [
+    [clientWithPack10, clientExpired],
+    [clientWithPack10, clientUnlimited],
+    [clientWithPack10, clientPrimeraVez],
+    [clientUnlimited, clientExpired],
+  ];
+
+  let friendshipCount = 0;
+  for (const [a, b] of friendshipPairs) {
+    await prisma.friendship.create({
+      data: {
+        requesterId: a.id,
+        addresseeId: b.id,
+        status: "ACCEPTED",
+      },
+    });
+    friendshipCount++;
+  }
+
+  // One pending request
+  await prisma.friendship.create({
+    data: {
+      requesterId: clientNoPackage.id,
+      addresseeId: clientWithPack10.id,
+      status: "PENDING",
+    },
+  });
+  friendshipCount++;
+  console.log(`✓ Created ${friendshipCount} friendships`);
+
+  // --- CLASS_RESERVED feed events (friends-only) ---
+  let reservedCount = 0;
+  const reservedClasses = futureClasses.slice(0, 4);
+  for (let i = 0; i < reservedClasses.length; i++) {
+    const cls = reservedClasses[i];
+    const ct = classTypes[i % classTypes.length];
+    const coach = coachUsers[i % coachUsers.length];
+    const user = allClientsForInteractions[i % allClientsForInteractions.length];
+
+    await prisma.feedEvent.create({
+      data: {
+        userId: user.id,
+        eventType: "CLASS_RESERVED",
+        visibility: "FRIENDS_ONLY",
+        createdAt: addDays(today, -(i + 1)),
+        payload: {
+          classId: cls.id,
+          className: ct.name,
+          coachName: coach.name,
+          date: cls.startsAt.toISOString(),
+          duration: ct.duration,
+        },
+      },
+    });
+    reservedCount++;
+  }
+  console.log(`✓ Created ${reservedCount} CLASS_RESERVED feed events`);
+
+  // --- Notifications ---
+  let notifCount = 0;
+  const notifData = [
+    { userId: clientWithPack10.id, type: "FRIEND_REQUEST", actorId: clientNoPackage.id },
+    { userId: clientWithPack10.id, type: "LIKE", actorId: clientExpired.id },
+    { userId: clientWithPack10.id, type: "COMMENT", actorId: clientUnlimited.id },
+    { userId: clientWithPack10.id, type: "FRIEND_ACCEPTED", actorId: clientExpired.id },
+    { userId: clientExpired.id, type: "KUDOS", actorId: clientWithPack10.id },
+    { userId: clientUnlimited.id, type: "LIKE", actorId: clientPrimeraVez.id },
+  ];
+
+  for (let i = 0; i < notifData.length; i++) {
+    await prisma.notification.create({
+      data: {
+        ...notifData[i],
+        createdAt: addDays(today, -(i)),
+      },
+    });
+    notifCount++;
+  }
+  console.log(`✓ Created ${notifCount} notifications`);
+
   // --- Summary ---
   console.log("\n📊 Seed Summary:");
   console.log(`   Class Types:    ${classTypes.length}`);
@@ -684,6 +766,8 @@ async function main() {
   console.log(`   Achievements:   ${achCount}`);
   console.log(`   Likes:          ${likeCount}`);
   console.log(`   Comments:       ${commentCount}`);
+  console.log(`   Friendships:    ${friendshipCount}`);
+  console.log(`   Notifications:  ${notifCount}`);
   console.log("\n✅ Seed completed successfully!");
 }
 

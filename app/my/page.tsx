@@ -1,9 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Calendar, ArrowRight, Trophy } from "lucide-react";
+import { Calendar, ArrowRight, Trophy, Users, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
 import { SocialFeed } from "@/components/feed/social-feed";
@@ -21,6 +21,14 @@ interface Achievement {
 export default function DashboardPage() {
   const { data: session } = useSession();
   const firstName = session?.user?.name?.split(" ")[0] ?? "";
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/notifications")
+      .then((r) => r.json())
+      .then((data) => setUnreadCount(data.unreadCount ?? 0))
+      .catch(() => {});
+  }, []);
 
   const { data: achievements } = useQuery<Achievement[]>({
     queryKey: ["achievements", "me"],
@@ -35,15 +43,36 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-xl space-y-6 pb-24">
+      <div className="mx-auto max-w-xl space-y-5 pb-24">
         {/* Header */}
-        <div>
-          <h1 className="font-display text-2xl font-bold text-foreground md:text-3xl">
-            {firstName ? `Hola, ${firstName}` : "Feed del estudio"}
-          </h1>
-          <p className="mt-0.5 text-sm text-muted">
-            Actividad reciente de la comunidad
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-bold text-foreground md:text-3xl">
+              {firstName ? `Hola, ${firstName}` : "Feed"}
+            </h1>
+            <p className="mt-0.5 text-sm text-muted">
+              Actividad de la comunidad
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/my/friends"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors active:bg-surface"
+            >
+              <Users className="h-5 w-5" />
+            </Link>
+            <Link
+              href="/my/notifications"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors active:bg-surface"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute right-0.5 top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+          </div>
         </div>
 
         {/* Quick actions */}
@@ -62,7 +91,7 @@ export default function DashboardPage() {
           </Button>
         </div>
 
-        {/* My achievements banner (if any) */}
+        {/* My achievements banner */}
         {achievements && achievements.length > 0 && (
           <div className="rounded-2xl border bg-white p-4 shadow-warm-sm">
             <div className="mb-2 flex items-center gap-2">
@@ -86,7 +115,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Social feed */}
+        {/* Social feed with filter tabs */}
         <SocialFeed />
       </div>
     </PageTransition>

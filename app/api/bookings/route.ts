@@ -132,6 +132,29 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Generate CLASS_RESERVED feed event (visible to friends only)
+    if (session?.user?.id) {
+      const privacy = body.privacy ?? "public";
+      if (privacy !== "private") {
+        prisma.feedEvent
+          .create({
+            data: {
+              userId: session.user.id,
+              eventType: "CLASS_RESERVED",
+              visibility: "FRIENDS_ONLY",
+              payload: {
+                classId,
+                className: classData.classType.name,
+                coachName: classData.coach.user.name,
+                date: classData.startsAt.toISOString(),
+                duration: classData.classType.duration,
+              },
+            },
+          })
+          .catch(() => {});
+      }
+    }
+
     return NextResponse.json(booking, { status: 201 });
   } catch (error) {
     console.error("POST /api/bookings error:", error);

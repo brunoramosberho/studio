@@ -34,6 +34,7 @@ export interface ClassWithDetails extends Class {
   bookings: Booking[];
   _count?: { bookings: number; waitlist: number };
   spotsLeft?: number;
+  friendsGoing?: { id: string; name: string | null; image: string | null }[];
 }
 
 export interface BookingWithDetails extends Booking {

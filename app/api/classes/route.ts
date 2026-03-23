@@ -24,6 +24,23 @@ export async function GET(request: NextRequest) {
     if (coachId) where.coachId = coachId;
     if (level) where.classType = { level };
 
+    const session = await auth();
+    const currentUserId = session?.user?.id;
+
+    let friendIds: string[] = [];
+    if (currentUserId) {
+      const friendships = await prisma.friendship.findMany({
+        where: {
+          status: "ACCEPTED",
+          OR: [{ requesterId: currentUserId }, { addresseeId: currentUserId }],
+        },
+        select: { requesterId: true, addresseeId: true },
+      });
+      friendIds = friendships.map((f) =>
+        f.requesterId === currentUserId ? f.addresseeId : f.requesterId,
+      );
+    }
+
     const classes = await prisma.class.findMany({
       where,
       include: {
@@ -41,7 +58,35 @@ export async function GET(request: NextRequest) {
       orderBy: { startsAt: "asc" },
     });
 
-    return NextResponse.json(classes);
+    // Fetch friend bookings in a single query
+    let friendBookings: Map<string, { id: string; name: string | null; image: string | null }[]> = new Map();
+    if (friendIds.length > 0) {
+      const classIds = classes.map((c) => c.id);
+      const fBookings = await prisma.booking.findMany({
+        where: {
+          classId: { in: classIds },
+          status: "CONFIRMED",
+          userId: { in: friendIds },
+        },
+        select: {
+          classId: true,
+          user: { select: { id: true, name: true, image: true } },
+        },
+      });
+      for (const b of fBookings) {
+        if (!b.user) continue;
+        const list = friendBookings.get(b.classId) ?? [];
+        list.push(b.user);
+        friendBookings.set(b.classId, list);
+      }
+    }
+
+    const result = classes.map((c) => ({
+      ...c,
+      friendsGoing: friendBookings.get(c.id) ?? [],
+    }));
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("GET /api/classes error:", error);
     return NextResponse.json(

@@ -1,9 +1,10 @@
 "use client";
 
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import { FeedEventCard } from "./feed-event-card";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface FeedItem {
   id: string;
@@ -24,11 +25,14 @@ interface FeedPage {
 
 async function fetchFeed({
   pageParam,
+  filter,
 }: {
   pageParam: string | null;
+  filter: string;
 }): Promise<FeedPage> {
   const url = new URL("/api/feed", window.location.origin);
   url.searchParams.set("limit", "20");
+  if (filter !== "all") url.searchParams.set("filter", filter);
   if (pageParam) url.searchParams.set("cursor", pageParam);
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error("Failed to fetch feed");
@@ -63,28 +67,37 @@ function FeedSkeleton() {
   );
 }
 
-function EmptyFeed() {
+function EmptyFeed({ filter }: { filter: string }) {
   return (
     <div className="flex flex-col items-center py-16 text-center">
-      <span className="text-4xl">🏠</span>
+      <span className="text-4xl">{filter === "friends" ? "👋" : "🏠"}</span>
       <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
-        El feed está vacío
+        {filter === "friends"
+          ? "Sin actividad de amigos"
+          : "El feed está vacío"}
       </h3>
       <p className="mt-1 max-w-xs text-sm text-muted">
-        Aquí aparecerán las actividades del estudio cuando se completen clases y
-        se desbloqueen logros.
+        {filter === "friends"
+          ? "Agrega amigos para ver sus reservas y logros aquí."
+          : "Aquí aparecerán las actividades del estudio cuando se completen clases y se desbloqueen logros."}
       </p>
     </div>
   );
 }
 
+const filterTabs = [
+  { key: "all", label: "Todos" },
+  { key: "friends", label: "Amigos" },
+];
+
 export function SocialFeed() {
+  const [filter, setFilter] = useState("all");
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["feed"],
-      queryFn: fetchFeed,
+      queryKey: ["feed", filter],
+      queryFn: ({ pageParam }) => fetchFeed({ pageParam, filter }),
       initialPageParam: null as string | null,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       staleTime: 30_000,
@@ -109,24 +122,44 @@ export function SocialFeed() {
     return () => observer.disconnect();
   }, [handleIntersect]);
 
-  if (isLoading) return <FeedSkeleton />;
-
   const allEvents = data?.pages.flatMap((p) => p.feed) ?? [];
-
-  if (allEvents.length === 0) return <EmptyFeed />;
 
   return (
     <div className="space-y-4">
-      {allEvents.map((event) => (
-        <FeedEventCard key={event.id} event={event} />
-      ))}
-
-      {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} className="flex justify-center py-4">
-        {isFetchingNextPage && (
-          <Loader2 className="h-5 w-5 animate-spin text-muted" />
-        )}
+      {/* Filter tabs */}
+      <div className="flex gap-1 rounded-xl bg-surface p-1">
+        {filterTabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            className={cn(
+              "flex-1 rounded-lg py-2 text-[13px] font-medium transition-all",
+              filter === tab.key
+                ? "bg-white text-foreground shadow-sm"
+                : "text-muted hover:text-foreground",
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {isLoading ? (
+        <FeedSkeleton />
+      ) : allEvents.length === 0 ? (
+        <EmptyFeed filter={filter} />
+      ) : (
+        <>
+          {allEvents.map((event) => (
+            <FeedEventCard key={event.id} event={event} />
+          ))}
+          <div ref={sentinelRef} className="flex justify-center py-4">
+            {isFetchingNextPage && (
+              <Loader2 className="h-5 w-5 animate-spin text-muted" />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

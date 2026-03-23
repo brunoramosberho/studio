@@ -408,6 +408,25 @@ function MobileClassCard({ cls }: { cls: ClassWithDetails }) {
             <p className="truncate text-[13px] text-muted">
               con {cls.coach.user.name?.split(" ")[0]}
             </p>
+            {!past && cls.friendsGoing && cls.friendsGoing.length > 0 && (
+              <div className="mt-1 flex items-center gap-1">
+                <div className="flex -space-x-1">
+                  {cls.friendsGoing.slice(0, 3).map((f) => (
+                    <img
+                      key={f.id}
+                      src={f.image || ""}
+                      alt={f.name || ""}
+                      className="h-4 w-4 rounded-full border border-white object-cover"
+                    />
+                  ))}
+                </div>
+                <span className="text-[10px] text-accent">
+                  {cls.friendsGoing.length === 1
+                    ? `${cls.friendsGoing[0].name?.split(" ")[0]} va`
+                    : `${cls.friendsGoing.length} amigos van`}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

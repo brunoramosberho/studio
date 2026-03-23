@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
+async function getFriendIds(userId: string): Promise<string[]> {
+  const friendships = await prisma.friendship.findMany({
+    where: {
+      status: "ACCEPTED",
+      OR: [{ requesterId: userId }, { addresseeId: userId }],
+    },
+    select: { requesterId: true, addresseeId: true },
+  });
+  return friendships.map((f) =>
+    f.requesterId === userId ? f.addresseeId : f.requesterId,
+  );
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -10,9 +23,37 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const cursor = searchParams.get("cursor");
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 50);
+    const filter = searchParams.get("filter");
+
+    let whereClause: Record<string, unknown> = { visibility: "STUDIO_WIDE" };
+
+    if (filter === "friends" && currentUserId) {
+      const friendIds = await getFriendIds(currentUserId);
+      whereClause = {
+        OR: [
+          { visibility: "STUDIO_WIDE" },
+          {
+            visibility: "FRIENDS_ONLY",
+            userId: { in: [...friendIds, currentUserId] },
+          },
+        ],
+        userId: { in: [...friendIds, currentUserId] },
+      };
+    } else if (currentUserId) {
+      const friendIds = await getFriendIds(currentUserId);
+      whereClause = {
+        OR: [
+          { visibility: "STUDIO_WIDE" },
+          {
+            visibility: "FRIENDS_ONLY",
+            userId: { in: [...friendIds, currentUserId] },
+          },
+        ],
+      };
+    }
 
     const events = await prisma.feedEvent.findMany({
-      where: { visibility: "STUDIO_WIDE" },
+      where: whereClause,
       take: limit + 1,
       ...(cursor && { cursor: { id: cursor }, skip: 1 }),
       orderBy: { createdAt: "desc" },

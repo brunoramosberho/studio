@@ -225,13 +225,62 @@ function AchievementCard({ event }: FeedEventCardProps) {
   );
 }
 
-export function FeedEventCard({ event }: FeedEventCardProps) {
-  const isAchievement = event.eventType === "ACHIEVEMENT_UNLOCKED";
+function ClassReservedCard({ event }: FeedEventCardProps) {
+  const p = event.payload;
 
   return (
+    <div className="space-y-2">
+      <div className="flex items-start gap-3 px-4 pt-4 pb-3">
+        <Avatar className="h-10 w-10">
+          {event.user.image && <AvatarImage src={event.user.image} />}
+          <AvatarFallback className="text-xs font-medium">
+            {event.user.name?.charAt(0)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] leading-snug">
+            <span className="font-bold text-foreground">
+              {event.user.name?.split(" ")[0]}
+            </span>
+            <span className="text-muted"> reservó </span>
+            <span className="font-semibold text-foreground">
+              {(p.className as string) ?? "una clase"}
+            </span>
+          </p>
+          <p className="mt-0.5 text-[12px] text-muted">
+            {p.coachName ? `con ${p.coachName}` : ""}
+            {p.date
+              ? ` · ${new Date(p.date as string).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })}`
+              : ""}
+          </p>
+          <span className="text-[11px] text-muted/70">
+            {timeAgo(event.createdAt)}
+          </span>
+        </div>
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/10">
+          <span className="text-sm">📅</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1 border-t border-border/30 px-2 pt-1 pb-1">
+        <LikeButton
+          eventId={event.id}
+          initialLiked={event.liked}
+          initialCount={event.likeCount}
+        />
+        <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
+      </div>
+    </div>
+  );
+}
+
+export function FeedEventCard({ event }: FeedEventCardProps) {
+  return (
     <article className="overflow-hidden rounded-2xl border border-border/50 bg-white shadow-warm-sm transition-shadow hover:shadow-warm">
-      {isAchievement ? (
+      {event.eventType === "ACHIEVEMENT_UNLOCKED" ? (
         <AchievementCard event={event} />
+      ) : event.eventType === "CLASS_RESERVED" ? (
+        <ClassReservedCard event={event} />
       ) : (
         <ClassCompletedCard event={event} />
       )}
