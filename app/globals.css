@@ -106,4 +106,12 @@
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
+
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }

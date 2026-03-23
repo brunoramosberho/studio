@@ -83,10 +83,10 @@ export default function ClassDetailPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-3xl px-4 py-8 pb-28 sm:pb-16 sm:py-16">
+      <div className="mx-auto max-w-3xl px-4 pb-36 pt-4 sm:pb-16 sm:pt-16">
         <Link
           href="/schedule"
-          className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground sm:mb-8"
         >
           <ArrowLeft className="h-4 w-4" />
           Horarios
@@ -226,11 +226,11 @@ export default function ClassDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Sticky mobile CTA */}
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/50 bg-white p-4 safe-bottom sm:static sm:mt-8 sm:border-0 sm:bg-transparent sm:p-0">
+        {/* Sticky mobile CTA — sits directly above MobileNav */}
+        <div className="fixed inset-x-0 bottom-[52px] z-30 border-t border-border/30 bg-white/95 px-4 py-3 backdrop-blur-md safe-bottom sm:static sm:mt-8 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none md:bottom-0">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
             <div className="flex-1 sm:hidden">
-              <p className="text-xs text-muted">
+              <p className="text-[12px] font-medium text-muted">
                 {formatTimeRange(cls.startsAt, cls.endsAt)}
               </p>
               <SpotsBadge

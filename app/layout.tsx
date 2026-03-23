@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, DM_Sans, DM_Mono } from "next/font/google";
 import { Providers } from "./providers";
+import { MobileNav } from "@/components/shared/mobile-nav";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -30,6 +31,12 @@ export const metadata: Metadata = {
   description:
     "Muévete. Respira. Floréce. Clases de Reformer Pilates, Mat Flow y Barre Fusion en un espacio diseñado para ti.",
   keywords: ["pilates", "wellness", "reformer", "barre", "mat flow", "studio", "México"],
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Flō Studio",
+  },
   openGraph: {
     title: "Flō Studio — Pilates & Wellness",
     description: "Muévete. Respira. Floréce.",
@@ -56,7 +63,10 @@ export default function RootLayout({
       className={`${playfair.variable} ${dmSans.variable} ${dmMono.variable}`}
     >
       <body className="min-h-dvh bg-background text-foreground antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <MobileNav />
+        </Providers>
       </body>
     </html>
   );

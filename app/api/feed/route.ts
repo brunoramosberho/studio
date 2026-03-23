@@ -18,6 +18,10 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
       include: {
         user: { select: { id: true, name: true, image: true } },
+        photos: {
+          select: { id: true, url: true, thumbnailUrl: true, mimeType: true },
+          orderBy: { createdAt: "asc" as const },
+        },
         _count: { select: { likes: true, comments: true } },
         ...(currentUserId && {
           likes: {
@@ -40,6 +44,7 @@ export async function GET(request: NextRequest) {
       visibility: event.visibility,
       createdAt: event.createdAt,
       user: event.user,
+      photos: event.photos,
       likeCount: event._count.likes,
       commentCount: event._count.comments,
       liked: currentUserId ? event.likes.length > 0 : false,

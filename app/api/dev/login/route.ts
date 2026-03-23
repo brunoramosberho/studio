@@ -11,7 +11,14 @@ export async function GET(request: NextRequest) {
     const role = request.nextUrl.searchParams.get("role") || "ADMIN";
 
     const user = await prisma.user.findFirst({
-      where: { role: role as "ADMIN" | "COACH" | "CLIENT" },
+      where: {
+        role: role as "ADMIN" | "COACH" | "CLIENT",
+        NOT: [
+          { email: { contains: "filler" } },
+          { email: { contains: "waitlist" } },
+        ],
+      },
+      orderBy: { createdAt: "asc" },
     });
 
     if (!user) {

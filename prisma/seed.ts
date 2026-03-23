@@ -11,6 +11,7 @@ async function main() {
   await prisma.notification.deleteMany();
   await prisma.comment.deleteMany();
   await prisma.like.deleteMany();
+  await prisma.photo.deleteMany();
   await prisma.feedEvent.deleteMany();
   await prisma.userAchievement.deleteMany();
   await prisma.waitlist.deleteMany();
@@ -73,6 +74,7 @@ async function main() {
       email: "admin@flostudio.mx",
       name: "Admin Flō",
       role: Role.ADMIN,
+      image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&fit=crop&crop=face",
     },
   });
   console.log("✓ Created admin user");
@@ -87,6 +89,8 @@ async function main() {
       color: "#C9A96E",
       photoUrl:
         "https://images.unsplash.com/photo-1594381898411-846e7d193883?w=400&h=400&fit=crop",
+      userImage:
+        "https://images.unsplash.com/photo-1548690312-e3b507d8c110?w=200&h=200&fit=crop&crop=face",
     },
     {
       email: "carolina@flostudio.mx",
@@ -96,6 +100,8 @@ async function main() {
       color: "#2D5016",
       photoUrl:
         "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400&h=400&fit=crop",
+      userImage:
+        "https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?w=200&h=200&fit=crop&crop=face",
     },
     {
       email: "isabella@flostudio.mx",
@@ -105,13 +111,15 @@ async function main() {
       color: "#8B4513",
       photoUrl:
         "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=400&fit=crop",
+      userImage:
+        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face",
     },
   ];
 
   const coachProfiles = [];
   for (const c of coachData) {
     const user = await prisma.user.create({
-      data: { email: c.email, name: c.name, role: Role.COACH },
+      data: { email: c.email, name: c.name, role: Role.COACH, image: c.userImage },
     });
     const profile = await prisma.coachProfile.create({
       data: {
@@ -263,6 +271,7 @@ async function main() {
       name: "María García",
       role: Role.CLIENT,
       phone: "+52 55 1234 5678",
+      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face",
     },
   });
 
@@ -272,6 +281,7 @@ async function main() {
       name: "Sofía López",
       role: Role.CLIENT,
       phone: "+52 55 2345 6789",
+      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face",
     },
   });
 
@@ -281,6 +291,7 @@ async function main() {
       name: "Camila Hernández",
       role: Role.CLIENT,
       phone: "+52 55 3456 7890",
+      image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face",
     },
   });
 
@@ -289,6 +300,7 @@ async function main() {
       email: "lucia@example.com",
       name: "Lucía Martínez",
       role: Role.CLIENT,
+      image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=face",
     },
   });
 
@@ -297,6 +309,7 @@ async function main() {
       email: "fernanda@example.com",
       name: "Fernanda Ruiz",
       role: Role.CLIENT,
+      image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&h=200&fit=crop&crop=face",
     },
   });
 
@@ -376,11 +389,92 @@ async function main() {
     bookingCount++;
   }
 
-  console.log(`✓ Created ${bookingCount} bookings`);
+  // --- Fill up a couple of future classes + add waitlist entries ---
+  let waitlistCount = 0;
+
+  // Create filler users so we can actually fill classes to capacity
+  const fillerNames = [
+    "Ana Pérez", "Elena Vega", "Diana Cruz", "Paula Ríos", "Laura Soto",
+    "Renata Mora", "Mariana Gil", "Daniela Paz", "Gabriela Luna", "Natalia Ramos",
+    "Andrea Silva", "Claudia Nava", "Regina Campos", "Valeria Ortiz", "Jimena Flores",
+  ];
+  const fillerUsers = [];
+  for (let i = 0; i < fillerNames.length; i++) {
+    const u = await prisma.user.create({
+      data: {
+        email: `filler${i}@example.com`,
+        name: fillerNames[i],
+        role: Role.CLIENT,
+        image: `https://i.pravatar.cc/200?img=${i + 10}`,
+      },
+    });
+    fillerUsers.push(u);
+  }
+
+  const allBookableUsers = [clientWithPack10, clientExpired, clientUnlimited, clientPrimeraVez, clientNoPackage, ...fillerUsers];
+
+  // Pick future classes that are truly in the future (not already past by time)
+  const now = new Date();
+  const trulyFuture = futureClasses.filter((c) => new Date(c.startsAt) > now);
+  // Pick classes on different days for visibility — skip first few, grab ones from tomorrow+
+  const tomorrow = addDays(todayStart, 1);
+  const tomorrowClasses = trulyFuture.filter((c) => {
+    const d = new Date(c.startsAt);
+    return d >= tomorrow && d < addDays(tomorrow, 1);
+  });
+  const dayAfterClasses = trulyFuture.filter((c) => {
+    const d = new Date(c.startsAt);
+    return d >= addDays(tomorrow, 1) && d < addDays(tomorrow, 2);
+  });
+  const classesToFill = [
+    tomorrowClasses[2] || tomorrowClasses[0] || trulyFuture[5],
+    dayAfterClasses[1] || dayAfterClasses[0] || trulyFuture[15],
+  ].filter(Boolean);
+
+  for (const fullClass of classesToFill) {
+    const ct = await prisma.class.findUnique({
+      where: { id: fullClass.id },
+      include: { classType: true, _count: { select: { bookings: { where: { status: "CONFIRMED" } } } } },
+    });
+    if (!ct) continue;
+    const cap = ct.classType.maxCapacity;
+    const existing = ct._count.bookings;
+    const needed = cap - existing;
+
+    let booked = 0;
+    for (let b = 0; b < needed && b < allBookableUsers.length; b++) {
+      try {
+        await prisma.booking.create({
+          data: { classId: fullClass.id, userId: allBookableUsers[b].id, status: BookingStatus.CONFIRMED },
+        });
+        bookingCount++;
+        booked++;
+      } catch { /* unique constraint — skip */ }
+    }
+
+    // Add waitlist entries — create dedicated waitlist users if needed
+    for (let w = 0; w < 3; w++) {
+      const waitUser = await prisma.user.create({
+        data: {
+          email: `waitlist-${fullClass.id}-${w}@example.com`,
+          name: `Waitlist User ${w + 1}`,
+          role: Role.CLIENT,
+          image: `https://i.pravatar.cc/200?img=${30 + w}`,
+        },
+      });
+      await prisma.waitlist.create({
+        data: { classId: fullClass.id, userId: waitUser.id, position: w + 1 },
+      });
+      waitlistCount++;
+    }
+  }
+
+  console.log(`✓ Created ${bookingCount} bookings + ${waitlistCount} waitlist entries`);
 
   // --- Feed Events (CLASS_COMPLETED for past classes) ---
   const coachUsers = await prisma.user.findMany({ where: { role: "COACH" } });
   let feedCount = 0;
+  let photoCount = 0;
 
   for (let i = 0; i < Math.min(pastClasses.length, 10); i++) {
     const cls = pastClasses[i];
@@ -392,10 +486,10 @@ async function main() {
     const attendees = attendeePool.slice(0, numAttendees).map((u) => ({
       id: u.id,
       name: u.name ?? "Miembro",
-      image: null,
+      image: u.image ?? null,
     }));
 
-    await prisma.feedEvent.create({
+    const feedEvent = await prisma.feedEvent.create({
       data: {
         userId: coach.id,
         eventType: "CLASS_COMPLETED",
@@ -413,51 +507,121 @@ async function main() {
         },
       },
     });
+
+    // Add sample photos to some feed events
+    const samplePhotos: string[][] = [
+      [
+        "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&h=600&fit=crop",
+        "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&h=600&fit=crop",
+      ],
+      [
+        "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&h=600&fit=crop",
+      ],
+      [
+        "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&h=600&fit=crop",
+        "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=800&h=600&fit=crop",
+        "https://images.unsplash.com/photo-1518310952931-b1de897abd40?w=800&h=600&fit=crop",
+      ],
+      [],
+      [
+        "https://images.unsplash.com/photo-1588286840104-8957b019727f?w=800&h=600&fit=crop",
+        "https://images.unsplash.com/photo-1562088287-bde35a1ea917?w=800&h=600&fit=crop",
+      ],
+      [],
+      [
+        "https://images.unsplash.com/photo-1607962837359-5e7e89f86776?w=800&h=600&fit=crop",
+      ],
+      [],
+      [
+        "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=600&fit=crop",
+        "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&h=600&fit=crop",
+        "https://images.unsplash.com/photo-1603988363607-e1e4a66962c6?w=800&h=600&fit=crop",
+        "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&h=600&fit=crop",
+      ],
+      [
+        "https://images.unsplash.com/photo-1594381898411-846e7d193883?w=800&h=600&fit=crop",
+      ],
+    ];
+
+    const urls = samplePhotos[i] ?? [];
+    for (const url of urls) {
+      const uploader = attendeePool[Math.floor(Math.random() * numAttendees)];
+      await prisma.photo.create({
+        data: {
+          userId: uploader.id,
+          feedEventId: feedEvent.id,
+          url,
+          mimeType: "image/jpeg",
+        },
+      });
+      photoCount++;
+    }
+
     feedCount++;
   }
-  console.log(`✓ Created ${feedCount} feed events`);
+  console.log(`✓ Created ${feedCount} feed events with ${photoCount} photos`);
 
-  // --- Achievements ---
-  const achievementDefs = [
-    { userId: clientWithPack10.id, type: "FIRST_CLASS", label: "Primera Clase", desc: "Completaste tu primera clase en Flō", icon: "🎉" },
-    { userId: clientWithPack10.id, type: "MILESTONE_5", label: "5 Clases", desc: "Llevas 5 clases completadas", icon: "⭐" },
-    { userId: clientUnlimited.id, type: "FIRST_CLASS", label: "Primera Clase", desc: "Completaste tu primera clase en Flō", icon: "🎉" },
-    { userId: clientExpired.id, type: "FIRST_CLASS", label: "Primera Clase", desc: "Completaste tu primera clase en Flō", icon: "🎉" },
-    { userId: clientWithPack10.id, type: "EARLY_BIRD", label: "Early Bird", desc: "Tomaste una clase antes de las 7am", icon: "🌅" },
-    { userId: clientUnlimited.id, type: "FIRST_CLASS_TYPE_REFORMER", label: "Reformer Desbloqueado", desc: "Tu primera clase de Reformer Pilates", icon: "🏋️" },
+  // --- Achievements (grouped by type) ---
+  const achievementRecords = [
+    { userId: clientWithPack10.id, type: "FIRST_CLASS" },
+    { userId: clientUnlimited.id, type: "FIRST_CLASS" },
+    { userId: clientExpired.id, type: "FIRST_CLASS" },
+    { userId: clientWithPack10.id, type: "MILESTONE_5" },
+    { userId: clientWithPack10.id, type: "EARLY_BIRD" },
+    { userId: clientUnlimited.id, type: "EARLY_BIRD" },
+    { userId: clientUnlimited.id, type: "FIRST_CLASS_TYPE_REFORMER" },
+    { userId: clientExpired.id, type: "FIRST_CLASS_TYPE_REFORMER" },
   ];
 
+  const achievementLabels: Record<string, { label: string; desc: string; icon: string }> = {
+    FIRST_CLASS: { label: "Primera Clase", desc: "Completaste tu primera clase en Flō", icon: "🎉" },
+    MILESTONE_5: { label: "5 Clases", desc: "Llevas 5 clases completadas", icon: "⭐" },
+    EARLY_BIRD: { label: "Early Bird", desc: "Tomaste una clase antes de las 7am", icon: "🌅" },
+    FIRST_CLASS_TYPE_REFORMER: { label: "Reformer Desbloqueado", desc: "Tu primera clase de Reformer Pilates", icon: "🏋️" },
+  };
+
   let achCount = 0;
-  for (const a of achievementDefs) {
-    const daysAgo = achievementDefs.length - achCount;
-    const earnedAt = addDays(today, -daysAgo);
-
+  for (const a of achievementRecords) {
     await prisma.userAchievement.create({
-      data: {
-        userId: a.userId,
-        achievementType: a.type,
-        earnedAt,
-        metadata: {},
-      },
-    });
-
-    await prisma.feedEvent.create({
-      data: {
-        userId: a.userId,
-        eventType: "ACHIEVEMENT_UNLOCKED",
-        visibility: "STUDIO_WIDE",
-        createdAt: earnedAt,
-        payload: {
-          achievementType: a.type,
-          label: a.label,
-          description: a.desc,
-          icon: a.icon,
-        },
-      },
+      data: { userId: a.userId, achievementType: a.type, earnedAt: addDays(today, -3), metadata: {} },
     });
     achCount++;
   }
-  console.log(`✓ Created ${achCount} achievements + feed events`);
+
+  // Group by type and create one feed event per type
+  const allUsers = [clientWithPack10, clientExpired, clientUnlimited, clientPrimeraVez, clientNoPackage];
+  const byType = new Map<string, typeof allUsers>();
+  for (const a of achievementRecords) {
+    const list = byType.get(a.type) ?? [];
+    const u = allUsers.find((u) => u.id === a.userId);
+    if (u) list.push(u);
+    byType.set(a.type, list);
+  }
+
+  let achEventCount = 0;
+  const typeKeys = [...byType.keys()];
+  for (let t = 0; t < typeKeys.length; t++) {
+    const type = typeKeys[t];
+    const users = byType.get(type)!;
+    const def = achievementLabels[type];
+    await prisma.feedEvent.create({
+      data: {
+        userId: users[0].id,
+        eventType: "ACHIEVEMENT_UNLOCKED",
+        visibility: "STUDIO_WIDE",
+        createdAt: addDays(today, -(typeKeys.length - t)),
+        payload: {
+          achievementType: type,
+          label: def.label,
+          description: def.desc,
+          icon: def.icon,
+          users: users.map((u) => ({ id: u.id, name: u.name ?? "Miembro", image: u.image })),
+        },
+      },
+    });
+    achEventCount++;
+  }
+  console.log(`✓ Created ${achCount} achievements → ${achEventCount} grouped feed events`);
 
   // --- Sample Likes & Comments ---
   const allFeedEvents = await prisma.feedEvent.findMany({ orderBy: { createdAt: "desc" }, take: 10 });
@@ -510,11 +674,13 @@ async function main() {
   // --- Summary ---
   console.log("\n📊 Seed Summary:");
   console.log(`   Class Types:    ${classTypes.length}`);
-  console.log(`   Users:          ${1 + coachProfiles.length + 5} (1 admin, ${coachProfiles.length} coaches, 5 clients)`);
+  console.log(`   Users:          ${1 + coachProfiles.length + 5 + fillerUsers.length} (1 admin, ${coachProfiles.length} coaches, ${5 + fillerUsers.length} clients)`);
   console.log(`   Packages:       ${packages.length}`);
   console.log(`   Classes:        ${allClasses.length}`);
   console.log(`   Bookings:       ${bookingCount}`);
-  console.log(`   Feed Events:    ${feedCount + achCount}`);
+  console.log(`   Waitlist:       ${waitlistCount}`);
+  console.log(`   Feed Events:    ${feedCount + achEventCount}`);
+  console.log(`   Photos:         ${photoCount}`);
   console.log(`   Achievements:   ${achCount}`);
   console.log(`   Likes:          ${likeCount}`);
   console.log(`   Comments:       ${commentCount}`);

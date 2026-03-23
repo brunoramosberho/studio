@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { checkAchievements } from "@/lib/achievements";
+import {
+  checkAchievements,
+  createGroupedAchievementEvents,
+  type GrantedAchievement,
+} from "@/lib/achievements";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -80,18 +84,20 @@ export async function POST(
       },
     });
 
-    const achievementResults: Record<string, string[]> = {};
+    const allGrants: GrantedAchievement[] = [];
     for (const userId of idsToMark) {
       const granted = await checkAchievements(userId);
-      if (granted.length > 0) {
-        achievementResults[userId] = granted;
-      }
+      allGrants.push(...granted);
+    }
+
+    if (allGrants.length > 0) {
+      await createGroupedAchievementEvents(allGrants);
     }
 
     return NextResponse.json({
       completed: true,
       attendeeCount: attendees.length,
-      achievements: achievementResults,
+      achievementsGranted: allGrants.length,
     });
   } catch (error) {
     console.error("POST /api/classes/[id]/complete error:", error);

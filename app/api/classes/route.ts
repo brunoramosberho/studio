@@ -31,7 +31,12 @@ export async function GET(request: NextRequest) {
         coach: {
           include: { user: { select: { name: true, image: true } } },
         },
-        _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
+        _count: {
+          select: {
+            bookings: { where: { status: "CONFIRMED" } },
+            waitlist: true,
+          },
+        },
       },
       orderBy: { startsAt: "asc" },
     });

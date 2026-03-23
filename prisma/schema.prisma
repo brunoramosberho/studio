@@ -63,6 +63,7 @@ model User {
   feedEvents           FeedEvent[]      @relation("FeedEventAuthor")
   likes                Like[]           @relation("UserLikes")
   comments             Comment[]        @relation("UserComments")
+  photos               Photo[]          @relation("UserPhotos")
   achievements         UserAchievement[] @relation("UserAchievements")
   notifications        Notification[]   @relation("UserNotifications")
   notificationsActed   Notification[]   @relation("NotificationActor")
@@ -221,6 +222,7 @@ model FeedEvent {
   createdAt  DateTime       @default(now())
   likes      Like[]
   comments   Comment[]
+  photos     Photo[]
 
   @@index([createdAt])
   @@index([userId])
@@ -250,6 +252,20 @@ model Comment {
   body        String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([feedEventId])
+}
+
+model Photo {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation("UserPhotos", fields: [userId], references: [id])
+  feedEventId  String
+  feedEvent    FeedEvent @relation(fields: [feedEventId], references: [id], onDelete: Cascade)
+  url          String
+  thumbnailUrl String?
+  mimeType     String    @default("image/jpeg")
+  createdAt    DateTime  @default(now())
 
   @@index([feedEventId])
 }

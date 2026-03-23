@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 
 const footerLinks = {
   studio: [
@@ -14,6 +18,17 @@ const footerLinks = {
 };
 
 export function Footer() {
+  const { data: session } = useSession();
+  const pathname = usePathname();
+
+  const hideForLoggedIn =
+    pathname === "/schedule" ||
+    pathname === "/coaches" ||
+    pathname.startsWith("/my") ||
+    pathname.startsWith("/class/") ||
+    pathname.startsWith("/book/");
+  if (session?.user && hideForLoggedIn) return null;
+
   return (
     <footer className="border-t border-border/50 bg-surface/50">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

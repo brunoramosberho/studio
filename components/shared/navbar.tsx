@@ -27,6 +27,13 @@ export function Navbar() {
     pathname.startsWith("/admin");
   if (isPortal) return null;
 
+  const hideForLoggedIn =
+    pathname === "/schedule" ||
+    pathname === "/coaches" ||
+    pathname.startsWith("/class/") ||
+    pathname.startsWith("/book/");
+  if (session?.user && hideForLoggedIn) return null;
+
   return (
     <header className="sticky top-0 z-40 w-full bg-white safe-top">
       <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
