@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
         where: {
           classId: { in: classIds },
           status: "CONFIRMED",
+          privacy: "PUBLIC",
           userId: { in: friendIds },
         },
         select: {
@@ -82,7 +83,9 @@ export async function GET(request: NextRequest) {
       for (const b of fBookings) {
         if (!b.user) continue;
         const list = friendBookings.get(b.classId) ?? [];
-        list.push(b.user);
+        if (!list.some((u) => u.id === b.user!.id)) {
+          list.push(b.user);
+        }
         friendBookings.set(b.classId, list);
       }
     }

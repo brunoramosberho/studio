@@ -97,7 +97,7 @@ export async function GET(
     if (isCoachOrAdmin && classData.bookings.length > 0) {
       const userIds = classData.bookings.filter((b) => b.user).map((b) => b.user!.id);
 
-      const [totalCounts, coachCounts] = await Promise.all([
+      const [totalCounts, coachCounts, cancelCounts, allBookingCounts] = await Promise.all([
         prisma.booking.groupBy({
           by: ["userId"],
           where: {
@@ -115,18 +115,37 @@ export async function GET(
           },
           _count: true,
         }),
+        prisma.booking.groupBy({
+          by: ["userId"],
+          where: {
+            userId: { in: userIds },
+            status: { in: ["CANCELLED", "NO_SHOW"] },
+          },
+          _count: true,
+        }),
+        prisma.booking.groupBy({
+          by: ["userId"],
+          where: { userId: { in: userIds } },
+          _count: true,
+        }),
       ]);
 
       const totalMap = new Map(totalCounts.map((r) => [r.userId, r._count]));
       const coachMap = new Map(coachCounts.map((r) => [r.userId, r._count]));
+      const cancelMap = new Map(cancelCounts.map((r) => [r.userId, r._count]));
+      const allMap = new Map(allBookingCounts.map((r) => [r.userId, r._count]));
 
       const now = new Date();
       const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
       bookings = classData.bookings.map((b) => {
-        const totalClasses = totalMap.get(b.user?.id ?? "") ?? 0;
-        const classesWithCoach = coachMap.get(b.user?.id ?? "") ?? 0;
+        const uid = b.user?.id ?? "";
+        const totalClasses = totalMap.get(uid) ?? 0;
+        const classesWithCoach = coachMap.get(uid) ?? 0;
+        const cancelled = cancelMap.get(uid) ?? 0;
+        const allBookings = allMap.get(uid) ?? 0;
+        const cancelRate = allBookings >= 3 ? Math.round((cancelled / allBookings) * 100) : null;
         const isNewMember = b.user ? b.user.createdAt >= thirtyDaysAgo : false;
         const isFirstEver = totalClasses <= 1;
         const isFirstWithCoach = classesWithCoach <= 1;
@@ -162,6 +181,7 @@ export async function GET(
             isFirstWithCoach,
             isTopClient,
             birthdayLabel,
+            cancelRate,
           },
         };
       });

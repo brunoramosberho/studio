@@ -2,8 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Users,
@@ -20,6 +20,12 @@ import {
   Crown,
   UserPlus,
   Trophy,
+  AlertTriangle,
+  Heart,
+  MessageCircle,
+  Camera,
+  ImagePlus,
+  Send,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +51,7 @@ interface AttendeeStats {
   isFirstWithCoach: boolean;
   isTopClient: boolean;
   birthdayLabel: "today" | "yesterday" | "this_week" | null;
+  cancelRate: number | null;
 }
 
 interface BookingEntry {
@@ -62,6 +69,33 @@ interface BookingEntry {
 
 interface ClassDetail extends Omit<ClassWithDetails, "bookings"> {
   bookings: BookingEntry[];
+}
+
+interface FeedPhoto {
+  id: string;
+  url: string;
+  thumbnailUrl: string | null;
+  user: { id: string; name: string | null; image: string | null };
+  createdAt: string;
+}
+
+interface FeedComment {
+  id: string;
+  body: string;
+  user: { id: string; name: string | null; image: string | null };
+  createdAt: string;
+}
+
+interface ClassFeedData {
+  feedEvent: {
+    id: string;
+    payload: Record<string, unknown>;
+    createdAt: string;
+    photos: FeedPhoto[];
+    comments: FeedComment[];
+    likeCount: number;
+    liked: boolean;
+  } | null;
 }
 
 const stagger = {
@@ -135,6 +169,18 @@ function AttendeeTags({ stats }: { stats: AttendeeStats }) {
     });
   }
 
+  if (stats.cancelRate != null && stats.cancelRate >= 20) {
+    tags.push({
+      label: `${stats.cancelRate}% cancela`,
+      icon: <AlertTriangle className="h-3 w-3" />,
+      className: stats.cancelRate >= 50
+        ? "bg-red-100 text-red-700 border-red-200"
+        : stats.cancelRate >= 35
+          ? "bg-orange-100 text-orange-700 border-orange-200"
+          : "bg-amber-50 text-amber-600 border-amber-200",
+    });
+  }
+
   if (tags.length === 0) return null;
 
   return (
@@ -163,6 +209,9 @@ export default function ClassRosterPage() {
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [notes, setNotes] = useState("");
   const [expandedSongs, setExpandedSongs] = useState<Record<string, boolean>>({});
+  const [commentText, setCommentText] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: classData, isLoading } = useQuery<ClassDetail>({
     queryKey: ["class-detail", id],
@@ -173,6 +222,72 @@ export default function ClassRosterPage() {
     },
     enabled: !!id,
   });
+
+  const isPastClass = classData ? new Date(classData.endsAt) < new Date() : false;
+
+  const { data: feedData } = useQuery<ClassFeedData>({
+    queryKey: ["class-feed", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/classes/${id}/feed`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!id && isPastClass,
+  });
+
+  const feedEvent = feedData?.feedEvent;
+
+  const likeMutation = useMutation({
+    mutationFn: async () => {
+      if (!feedEvent) return;
+      const res = await fetch(`/api/feed/${feedEvent.id}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "like" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["class-feed", id] }),
+  });
+
+  const commentMutation = useMutation({
+    mutationFn: async (body: string) => {
+      if (!feedEvent) return;
+      const res = await fetch(`/api/feed/${feedEvent.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      setCommentText("");
+      queryClient.invalidateQueries({ queryKey: ["class-feed", id] });
+    },
+  });
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !feedEvent) return;
+    setUploadingPhoto(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/feed/${feedEvent.id}/photos`, {
+        method: "POST",
+        body: form,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      queryClient.invalidateQueries({ queryKey: ["class-feed", id] });
+    } catch {
+      /* silently fail */
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -483,6 +598,167 @@ export default function ClassRosterPage() {
                   </span>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Feed section — only for past classes */}
+      {isPastClass && feedEvent && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="overflow-hidden border-coach/15">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Camera className="h-4 w-4 text-coach" />
+                Recuerdos de la clase
+              </CardTitle>
+              <p className="text-xs text-muted">
+                Fotos, likes y comentarios del feed
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-0">
+              {/* Like + comment + photo counts */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => likeMutation.mutate()}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                    feedEvent.liked
+                      ? "bg-red-50 text-red-600"
+                      : "bg-surface text-muted hover:text-foreground",
+                  )}
+                >
+                  <Heart
+                    className={cn("h-3.5 w-3.5", feedEvent.liked && "fill-red-500")}
+                  />
+                  {feedEvent.likeCount}
+                </button>
+                <span className="flex items-center gap-1.5 text-xs text-muted">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  {feedEvent.comments.length}
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-muted">
+                  <Camera className="h-3.5 w-3.5" />
+                  {feedEvent.photos.length}
+                </span>
+              </div>
+
+              {/* Photos grid */}
+              {feedEvent.photos.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {feedEvent.photos.map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="group relative aspect-square overflow-hidden rounded-xl bg-surface"
+                    >
+                      <img
+                        src={photo.thumbnailUrl ?? photo.url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent px-2 py-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                        <p className="text-[10px] font-medium text-white">
+                          {photo.user.name?.split(" ")[0]}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload photo */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-coach/30 py-3 text-xs font-medium text-coach transition-colors hover:bg-coach/5"
+              >
+                {uploadingPhoto ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="h-4 w-4" />
+                )}
+                {uploadingPhoto ? "Subiendo..." : "Agregar foto"}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+
+              {/* Comments */}
+              {feedEvent.comments.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    Comentarios
+                  </p>
+                  {feedEvent.comments.map((comment) => (
+                    <div key={comment.id} className="flex gap-2">
+                      <Avatar className="mt-0.5 h-6 w-6 shrink-0">
+                        {comment.user.image && (
+                          <AvatarImage src={comment.user.image} />
+                        )}
+                        <AvatarFallback className="text-[9px]">
+                          {(comment.user.name ?? "U").charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 rounded-xl bg-surface px-3 py-2">
+                        <p className="text-[11px] font-semibold">
+                          {comment.user.name?.split(" ")[0]}
+                        </p>
+                        <p className="text-xs text-foreground">{comment.body}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add comment */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (commentText.trim()) commentMutation.mutate(commentText.trim());
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Escribe un comentario..."
+                  className="flex-1 rounded-full border border-input-border bg-white px-4 py-2 text-sm transition-colors focus:border-coach focus:outline-none"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!commentText.trim() || commentMutation.isPending}
+                  className="h-9 w-9 rounded-full bg-coach p-0 hover:bg-coach/90"
+                >
+                  {commentMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Send className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Prompt to complete class if past but no feed event yet */}
+      {isPastClass && !feedEvent && classData.status !== "COMPLETED" && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="border-dashed border-coach/20">
+            <CardContent className="flex flex-col items-center gap-2 py-8 text-center">
+              <Camera className="h-8 w-8 text-muted/30" />
+              <p className="text-sm font-medium text-foreground">
+                Clase terminada
+              </p>
+              <p className="text-xs text-muted">
+                Guarda la asistencia para habilitar fotos, likes y comentarios en el feed.
+              </p>
             </CardContent>
           </Card>
         </motion.div>

@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   CalendarDays,
   UserCircle,
+  BarChart3,
   ArrowLeft,
   Menu,
   X,
@@ -19,6 +20,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 const navItems = [
   { href: "/coach", label: "Dashboard", icon: LayoutDashboard },
   { href: "/coach/schedule", label: "Mi Horario", icon: CalendarDays },
+  { href: "/coach/stats", label: "Mi Historial", icon: BarChart3 },
   { href: "/coach/profile", label: "Perfil", icon: UserCircle },
 ];
 

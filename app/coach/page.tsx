@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -11,12 +11,30 @@ import {
   Clock,
   ChevronRight,
   TrendingUp,
+  Trophy,
+  AlertTriangle,
+  Star,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn, formatTime, formatCurrency } from "@/lib/utils";
 import type { ClassWithDetails } from "@/types";
+
+interface TopClient {
+  user: {
+    id: string;
+    name: string | null;
+    image: string | null;
+    email: string;
+    memberSince: string;
+  };
+  classesWithCoach: number;
+  totalClasses: number;
+  noShows: number;
+  lastClass: { date: string; className: string } | null;
+}
 
 const stagger = {
   hidden: {},
@@ -86,6 +104,16 @@ export default function CoachDashboard() {
     enabled: !!session?.user?.id,
   });
 
+  const { data: topClients, isLoading: topClientsLoading } = useQuery<TopClient[]>({
+    queryKey: ["coach-top-clients"],
+    queryFn: async () => {
+      const res = await fetch("/api/coach/top-clients");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!session?.user?.id,
+  });
+
   const classes = todayClasses;
   const upcoming = classes
     ?.filter((c) => new Date(c.startsAt) > now)
@@ -112,29 +140,51 @@ export default function CoachDashboard() {
         variants={stagger}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-3 gap-3 sm:gap-4"
+        className="grid grid-cols-3 gap-3"
       >
-        {[
-          { label: "Clases hoy", value: classesToday, icon: CalendarDays },
-          { label: "Alumnos hoy", value: studentsToday, icon: Users },
-          { label: "Esta semana", value: "—", icon: TrendingUp },
-        ].map((stat) => (
-          <motion.div key={stat.label} variants={fadeUp}>
-            <Card className="border-coach/10">
-              <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
-                <stat.icon className="h-5 w-5 text-coach/60" />
-                {isLoading ? (
-                  <Skeleton className="h-8 w-12" />
-                ) : (
-                  <span className="font-mono text-2xl font-bold text-foreground">
-                    {stat.value}
-                  </span>
-                )}
-                <span className="text-xs text-muted">{stat.label}</span>
+        <motion.div variants={fadeUp}>
+          <Card className="border-coach/10">
+            <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
+              <CalendarDays className="h-5 w-5 text-coach/60" />
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <span className="font-mono text-2xl font-bold text-foreground">
+                  {classesToday}
+                </span>
+              )}
+              <span className="text-xs text-muted">Clases hoy</span>
+            </CardContent>
+          </Card>
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <Card className="border-coach/10">
+            <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
+              <Users className="h-5 w-5 text-coach/60" />
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <span className="font-mono text-2xl font-bold text-foreground">
+                  {studentsToday}
+                </span>
+              )}
+              <span className="text-xs text-muted">Alumnas hoy</span>
+            </CardContent>
+          </Card>
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <Link href="/coach/stats">
+            <Card className="border-coach/10 h-full transition-all hover:shadow-warm-md">
+              <CardContent className="flex h-full flex-col items-center justify-center gap-1 p-4 text-center">
+                <TrendingUp className="h-5 w-5 text-coach/60" />
+                <span className="text-xs font-semibold text-coach">
+                  Mi historial
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 text-muted" />
               </CardContent>
             </Card>
-          </motion.div>
-        ))}
+          </Link>
+        </motion.div>
       </motion.div>
 
       {/* Next class highlight */}
@@ -158,6 +208,9 @@ export default function CoachDashboard() {
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-coach/70">
+                    Empieza en
+                  </p>
                   <span className="font-mono text-xl font-bold text-coach">
                     {countdown}
                   </span>
@@ -289,6 +342,124 @@ export default function CoachDashboard() {
           </div>
         </motion.div>
       )}
+
+      {/* Top clients */}
+      <motion.div variants={stagger} initial="hidden" animate="show">
+        <h2 className="mb-4 font-display text-xl font-bold flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-coach" />
+          Mis mejores alumnas
+        </h2>
+
+        {topClientsLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-2xl" />
+            ))}
+          </div>
+        ) : !topClients?.length ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
+              <Users className="h-8 w-8 text-muted/30" />
+              <p className="text-sm text-muted">Aún no hay datos de alumnas</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {topClients.map((client, idx) => {
+              const name = client.user.name ?? client.user.email;
+              const initials = (client.user.name ?? "U")
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .slice(0, 2);
+              const memberMonths = Math.floor(
+                (Date.now() - new Date(client.user.memberSince).getTime()) /
+                  (1000 * 60 * 60 * 24 * 30),
+              );
+              const lastDate = client.lastClass
+                ? new Date(client.lastClass.date).toLocaleDateString("es-MX", {
+                    day: "numeric",
+                    month: "short",
+                  })
+                : null;
+
+              return (
+                <motion.div key={client.user.id} variants={fadeUp}>
+                  <Card className={cn(
+                    "transition-all",
+                    idx === 0 && "border-yellow-200 bg-yellow-50/30",
+                    idx === 1 && "border-stone-200 bg-stone-50/20",
+                    idx === 2 && "border-amber-200 bg-amber-50/15",
+                  )}>
+                    <CardContent className="flex items-center gap-3 p-3">
+                      <div className="relative">
+                        <Avatar className="h-10 w-10">
+                          {client.user.image && (
+                            <AvatarImage src={client.user.image} alt={name} />
+                          )}
+                          <AvatarFallback className="text-xs font-semibold">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        {idx < 3 && (
+                          <span className={cn(
+                            "absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold",
+                            idx === 0 && "bg-yellow-400 text-yellow-900",
+                            idx === 1 && "bg-stone-300 text-stone-700",
+                            idx === 2 && "bg-amber-300 text-amber-800",
+                          )}>
+                            {idx + 1}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{name}</p>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted">
+                          <span className="flex items-center gap-1">
+                            <Star className="h-3 w-3" />
+                            {client.classesWithCoach} contigo
+                          </span>
+                          <span>{client.totalClasses} total</span>
+                          {memberMonths > 0 && (
+                            <span>
+                              {memberMonths >= 12
+                                ? `${Math.floor(memberMonths / 12)}a ${memberMonths % 12}m`
+                                : `${memberMonths}m`}{" "}
+                              miembro
+                            </span>
+                          )}
+                        </div>
+                        {client.noShows > 0 && (
+                          <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] text-orange-600">
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            {client.noShows} cancelación{client.noShows > 1 ? "es" : ""}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="shrink-0 text-right">
+                        {lastDate && (
+                          <p className="text-[10px] text-muted">
+                            Última: {lastDate}
+                          </p>
+                        )}
+                        {client.lastClass && (
+                          <p className="text-[11px] font-medium text-foreground">
+                            {client.lastClass.className}
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </motion.div>
+
+      <div className="pb-8" />
     </div>
   );
 }
