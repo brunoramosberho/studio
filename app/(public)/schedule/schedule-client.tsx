@@ -104,8 +104,10 @@ export function ScheduleClient() {
     );
   }
 
+  const isLoggedIn = !!session;
+
   return (
-    <div className="mx-auto max-w-[1200px] px-4 pb-24 pt-4 lg:pb-8 lg:pt-6">
+    <div className={cn("pb-24 pt-4 lg:pb-8 lg:pt-6", !isLoggedIn && "mx-auto max-w-[1200px] px-4")}>
       {/* ── Mobile layout ── */}
       <div className="lg:hidden">
         {/* Credits badge + title */}
@@ -237,97 +239,93 @@ export function ScheduleClient() {
       </div>
 
       {/* ── Desktop layout ── */}
-      <div className="hidden lg:flex lg:gap-10">
-        {/* Sidebar */}
-        <aside className="shrink-0 lg:w-52">
-          <div className="sticky top-20 space-y-8">
-            <div>
-              <h1 className="font-display text-[2rem] font-bold leading-tight text-foreground">
+      <div className="hidden lg:block">
+        {/* Top bar: title (public only), week nav, filters */}
+        <div className="mb-5 flex flex-wrap items-center gap-4">
+          {!isLoggedIn && (
+            <div className="mr-auto">
+              <h1 className="font-display text-[1.75rem] font-bold leading-tight text-foreground">
                 Flō Studio
               </h1>
-              <p className="mt-2 text-[13px] leading-relaxed text-muted">
-                Pilates & Wellness
-              </p>
+              <p className="text-[13px] text-muted">Pilates & Wellness</p>
             </div>
-            <div className="space-y-4">
-              <FilterSelect
-                label="Por disciplina"
-                value={filterType}
-                onChange={setFilterType}
-                options={[
-                  { value: "all", label: "Todas" },
-                  ...classTypes.map((t) => ({ value: t.id, label: t.name })),
-                ]}
-              />
-              <FilterSelect
-                label="Por instructor"
-                value={filterCoach}
-                onChange={setFilterCoach}
-                options={[
-                  { value: "all", label: "Todos" },
-                  ...coaches.map((c) => ({
-                    value: c.id,
-                    label: c.user.name || "Coach",
-                  })),
-                ]}
-              />
-            </div>
-          </div>
-        </aside>
+          )}
 
-        {/* Calendar grid */}
-        <div className="min-w-0 flex-1">
-          <div className="mb-5 flex items-center">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
-              className="mr-auto rounded-full p-1.5 text-muted hover:text-foreground"
+              className="rounded-full p-1.5 text-muted hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-xs font-medium uppercase tracking-widest text-muted">
+            <span className="min-w-[140px] text-center text-xs font-medium uppercase tracking-widest text-muted">
               {format(weekStart, "MMMM yyyy", { locale: es })}
             </span>
             <button
               onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
-              className="ml-auto rounded-full p-1.5 text-muted hover:text-foreground"
+              className="rounded-full p-1.5 text-muted hover:text-foreground"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Day headers */}
-          <div className="mb-3 grid grid-cols-7 gap-3">
-            {days.map((day) => {
-              const today = isToday(day);
-              return (
-                <div key={day.toISOString()} className="text-center">
-                  <span
-                    className={cn(
-                      "text-[11px] font-semibold uppercase tracking-wider",
-                      today ? "text-foreground" : "text-muted",
-                    )}
-                  >
-                    {today && "● "}
-                    {format(day, "EEE", { locale: es })} {format(day, "d")}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="flex items-center gap-2 ml-auto">
+            <FilterSelect
+              label="Disciplina"
+              value={filterType}
+              onChange={setFilterType}
+              options={[
+                { value: "all", label: "Todas" },
+                ...classTypes.map((t) => ({ value: t.id, label: t.name })),
+              ]}
+            />
+            <FilterSelect
+              label="Instructor"
+              value={filterCoach}
+              onChange={setFilterCoach}
+              options={[
+                { value: "all", label: "Todos" },
+                ...coaches.map((c) => ({
+                  value: c.id,
+                  label: c.user.name || "Coach",
+                })),
+              ]}
+            />
           </div>
+        </div>
 
-          {/* Class columns */}
-          <div className="grid grid-cols-7 items-start gap-3">
-            {days.map((day) => {
-              const dayClasses = getClassesForDay(day);
-              return (
-                <div key={day.toISOString()} className="space-y-2">
-                  {dayClasses.map((cls) => (
-                    <DesktopClassCard key={cls.id} cls={cls} />
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+        {/* Day headers */}
+        <div className="mb-3 grid grid-cols-7 gap-2">
+          {days.map((day) => {
+            const today = isToday(day);
+            return (
+              <div key={day.toISOString()} className="text-center">
+                <span
+                  className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wider",
+                    today ? "text-foreground" : "text-muted",
+                  )}
+                >
+                  {today && "● "}
+                  {format(day, "EEE", { locale: es })} {format(day, "d")}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Class columns */}
+        <div className="grid grid-cols-7 items-start gap-2">
+          {days.map((day) => {
+            const dayClasses = getClassesForDay(day);
+            return (
+              <div key={day.toISOString()} className="space-y-2">
+                {dayClasses.map((cls) => (
+                  <DesktopClassCard key={cls.id} cls={cls} />
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -549,7 +547,7 @@ function DesktopClassCard({ cls }: { cls: ClassWithDetails }) {
   );
 }
 
-/* ── Sidebar filter dropdown (desktop) ── */
+/* ── Filter dropdown (inline) ── */
 function FilterSelect({
   label,
   value,
@@ -566,7 +564,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-lg border border-border bg-white py-2.5 pl-3 pr-9 text-[14px] font-medium text-foreground focus:border-foreground focus:outline-none"
+        className="appearance-none rounded-lg border border-border bg-white py-2 pl-3 pr-8 text-[13px] font-medium text-foreground focus:border-foreground focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
