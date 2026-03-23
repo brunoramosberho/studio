@@ -3,10 +3,59 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { sendBookingConfirmation } from "@/lib/email";
 
+export async function GET(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const status = request.nextUrl.searchParams.get("status");
+    const now = new Date();
+
+    const isUpcoming = status === "upcoming";
+    const isPast = status === "past";
+
+    const bookings = await prisma.booking.findMany({
+      where: {
+        userId: session.user.id,
+        ...(isUpcoming
+          ? { status: "CONFIRMED", class: { startsAt: { gte: now } } }
+          : isPast
+            ? {
+                OR: [
+                  { status: { in: ["ATTENDED", "NO_SHOW", "CANCELLED"] } },
+                  { class: { startsAt: { lt: now } } },
+                ],
+              }
+            : {}),
+      },
+      include: {
+        class: {
+          include: {
+            classType: true,
+            coach: { include: { user: { select: { name: true, image: true } } } },
+          },
+        },
+      },
+      orderBy: { class: { startsAt: isUpcoming ? "asc" : "desc" } },
+      take: 50,
+    });
+
+    return NextResponse.json(bookings);
+  } catch (error) {
+    console.error("GET /api/bookings error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch bookings" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { classId, guestName, guestEmail } = body;
+    const { classId, guestName, guestEmail, spotNumber, privacy } = body;
 
     if (!classId) {
       return NextResponse.json(
@@ -51,6 +100,24 @@ export async function POST(request: NextRequest) {
         { error: "Class is full. Consider joining the waitlist.", full: true },
         { status: 409 },
       );
+    }
+
+    if (spotNumber != null) {
+      if (spotNumber < 1 || spotNumber > classData.classType.maxCapacity) {
+        return NextResponse.json(
+          { error: "Número de lugar inválido" },
+          { status: 400 },
+        );
+      }
+      const spotTaken = await prisma.booking.findFirst({
+        where: { classId, spotNumber, status: "CONFIRMED" },
+      });
+      if (spotTaken) {
+        return NextResponse.json(
+          { error: "Ese lugar ya está ocupado. Selecciona otro." },
+          { status: 409 },
+        );
+      }
     }
 
     if (session?.user) {
@@ -105,6 +172,8 @@ export async function POST(request: NextRequest) {
         userId: session?.user?.id ?? null,
         guestName: isGuest ? guestName : null,
         guestEmail: isGuest ? guestEmail : null,
+        spotNumber: spotNumber ?? null,
+        privacy: privacy === "PRIVATE" ? "PRIVATE" : "PUBLIC",
         status: "CONFIRMED",
         packageUsed: packageUsedId,
       },
@@ -132,27 +201,23 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Generate CLASS_RESERVED feed event (visible to friends only)
-    if (session?.user?.id) {
-      const privacy = body.privacy ?? "public";
-      if (privacy !== "private") {
-        prisma.feedEvent
-          .create({
-            data: {
-              userId: session.user.id,
-              eventType: "CLASS_RESERVED",
-              visibility: "FRIENDS_ONLY",
-              payload: {
-                classId,
-                className: classData.classType.name,
-                coachName: classData.coach.user.name,
-                date: classData.startsAt.toISOString(),
-                duration: classData.classType.duration,
-              },
+    if (session?.user?.id && privacy !== "PRIVATE") {
+      prisma.feedEvent
+        .create({
+          data: {
+            userId: session.user.id,
+            eventType: "CLASS_RESERVED",
+            visibility: "FRIENDS_ONLY",
+            payload: {
+              classId,
+              className: classData.classType.name,
+              coachName: classData.coach.user.name,
+              date: classData.startsAt.toISOString(),
+              duration: classData.classType.duration,
             },
-          })
-          .catch(() => {});
-      }
+          },
+        })
+        .catch(() => {});
     }
 
     return NextResponse.json(booking, { status: 201 });

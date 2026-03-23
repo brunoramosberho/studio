@@ -156,12 +156,20 @@ model Booking {
   user        User?         @relation(fields: [userId], references: [id])
   guestEmail  String?
   guestName   String?
-  status      BookingStatus @default(CONFIRMED)
+  spotNumber  Int?
+  privacy     BookingPrivacy @default(PUBLIC)
+  status      BookingStatus  @default(CONFIRMED)
   packageUsed String?
-  createdAt   DateTime      @default(now())
+  createdAt   DateTime       @default(now())
 
+  @@unique([classId, spotNumber])
   @@index([classId])
   @@index([userId])
+}
+
+enum BookingPrivacy {
+  PUBLIC
+  PRIVATE
 }
 
 enum BookingStatus {

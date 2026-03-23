@@ -34,7 +34,7 @@ export default function PackagesPage() {
   useEffect(() => {
     async function fetchPackages() {
       try {
-        const res = await fetch("/api/packages/my");
+        const res = await fetch("/api/packages/mine");
         if (res.ok) setPackages(await res.json());
       } catch {
         /* silently fail */

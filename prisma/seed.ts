@@ -379,6 +379,7 @@ async function main() {
         classId: pastClasses[i].id,
         userId: client.id,
         status,
+        spotNumber: (i % 12) + 1,
       },
     });
     bookingCount++;
@@ -403,19 +404,30 @@ async function main() {
     fillerUsers.push(u);
   }
 
-  const mainClients = [clientWithPack10, clientExpired, clientUnlimited, clientPrimeraVez, clientNoPackage];
+  const otherClients = [clientExpired, clientUnlimited, clientPrimeraVez, clientNoPackage];
+  const mainClients = [clientWithPack10, ...otherClients];
   const allBookableUsers = [...mainClients, ...fillerUsers];
 
-  // --- Bookings for future classes (populate generously) ---
+  // --- Bookings for future classes (populate generously, with spot numbers) ---
+  // María (clientWithPack10) only gets booked into 3 classes so the logged-in
+  // user can test the spot-selection flow on most classes.
+  const mariaClassIndices = new Set([0, 5, 12]);
+
   for (let i = 0; i < Math.min(futureClasses.length, 50); i++) {
     const cls = futureClasses[i];
     const ct = classTypes[i % classTypes.length];
     const capacity = ct.maxCapacity;
 
-    // Book between 4 and 9 real+filler clients per class
     const numToBook = Math.min(capacity - 2, i < 20 ? 5 + (i % 5) : 3 + (i % 4));
-    const pool = [...mainClients, ...fillerUsers.slice(0, numToBook)].slice(0, numToBook);
+    const base = mariaClassIndices.has(i)
+      ? [clientWithPack10, ...otherClients]
+      : [...otherClients];
+    const pool = [...base, ...fillerUsers.slice(0, numToBook)].slice(0, numToBook);
 
+    const spots = Array.from({ length: capacity }, (_, s) => s + 1)
+      .sort(() => Math.random() - 0.5);
+
+    let spotIdx = 0;
     for (const client of pool) {
       try {
         await prisma.booking.create({
@@ -423,9 +435,11 @@ async function main() {
             classId: cls.id,
             userId: client.id,
             status: BookingStatus.CONFIRMED,
+            spotNumber: spots[spotIdx],
           },
         });
         bookingCount++;
+        spotIdx++;
       } catch { /* unique constraint */ }
     }
   }
@@ -461,11 +475,19 @@ async function main() {
     const existing = ct._count.bookings;
     const needed = cap - existing;
 
+    // Find which spots are already taken
+    const existingBookings = await prisma.booking.findMany({
+      where: { classId: fullClass.id, status: "CONFIRMED" },
+      select: { spotNumber: true },
+    });
+    const takenSpots = new Set(existingBookings.map((b) => b.spotNumber).filter(Boolean));
+    const freeSpots = Array.from({ length: cap }, (_, s) => s + 1).filter((s) => !takenSpots.has(s));
+
     let booked = 0;
-    for (let b = 0; b < needed && b < allBookableUsers.length; b++) {
+    for (let b = 0; b < needed && b < allBookableUsers.length && b < freeSpots.length; b++) {
       try {
         await prisma.booking.create({
-          data: { classId: fullClass.id, userId: allBookableUsers[b].id, status: BookingStatus.CONFIRMED },
+          data: { classId: fullClass.id, userId: allBookableUsers[b].id, status: BookingStatus.CONFIRMED, spotNumber: freeSpots[b] },
         });
         bookingCount++;
         booked++;

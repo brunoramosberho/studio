@@ -56,10 +56,46 @@ export async function GET(
     const isCoachOrAdmin =
       session?.user?.role === "COACH" || session?.user?.role === "ADMIN";
 
+    // Build friend set for the current user (used for spot map)
+    let friendIds = new Set<string>();
+    if (session?.user?.id) {
+      const friendships = await prisma.friendship.findMany({
+        where: {
+          status: "ACCEPTED",
+          OR: [
+            { requesterId: session.user.id },
+            { addresseeId: session.user.id },
+          ],
+        },
+        select: { requesterId: true, addresseeId: true },
+      });
+      for (const f of friendships) {
+        if (f.requesterId === session.user.id) friendIds.add(f.addresseeId);
+        else friendIds.add(f.requesterId);
+      }
+    }
+
+    // Build spot map: spotNumber -> { status, friend info }
+    const spotMap: Record<number, {
+      status: "self" | "friend" | "occupied";
+      userName?: string | null;
+      userImage?: string | null;
+    }> = {};
+    for (const b of classData.bookings) {
+      if (b.spotNumber == null) continue;
+      if (b.userId === session?.user?.id) {
+        spotMap[b.spotNumber] = { status: "self", userName: b.user?.name, userImage: b.user?.image };
+      } else if (b.userId && friendIds.has(b.userId) && b.privacy !== "PRIVATE") {
+        spotMap[b.spotNumber] = { status: "friend", userName: b.user?.name, userImage: b.user?.image };
+      } else {
+        spotMap[b.spotNumber] = { status: "occupied" };
+      }
+    }
+
     let bookings;
 
     if (isCoachOrAdmin && classData.bookings.length > 0) {
-      const userIds = classData.bookings.map((b) => b.user.id);
+      const userIds = classData.bookings.filter((b) => b.user).map((b) => b.user!.id);
 
       const [totalCounts, coachCounts] = await Promise.all([
         prisma.booking.groupBy({
@@ -89,15 +125,15 @@ export async function GET(
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
       bookings = classData.bookings.map((b) => {
-        const totalClasses = totalMap.get(b.user.id) ?? 0;
-        const classesWithCoach = coachMap.get(b.user.id) ?? 0;
-        const isNewMember = b.user.createdAt >= thirtyDaysAgo;
+        const totalClasses = totalMap.get(b.user?.id ?? "") ?? 0;
+        const classesWithCoach = coachMap.get(b.user?.id ?? "") ?? 0;
+        const isNewMember = b.user ? b.user.createdAt >= thirtyDaysAgo : false;
         const isFirstEver = totalClasses <= 1;
         const isFirstWithCoach = classesWithCoach <= 1;
         const isTopClient = totalClasses >= 10;
 
         let birthdayLabel: string | null = null;
-        if (b.user.birthday) {
+        if (b.user?.birthday) {
           const bday = new Date(b.user.birthday);
           const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           const yesterdayDate = new Date(todayDate.getTime() - 24 * 60 * 60 * 1000);
@@ -114,10 +150,10 @@ export async function GET(
 
         return {
           ...b,
-          user: {
+          user: b.user ? {
             ...b.user,
             favoriteSongs: b.user.favoriteSongs,
-          },
+          } : null,
           stats: {
             totalClasses,
             classesWithCoach,
@@ -132,14 +168,14 @@ export async function GET(
     } else {
       bookings = classData.bookings.map((b) => ({
         ...b,
-        user: {
+        user: b.user ? {
           ...b.user,
           favoriteSongs: isCoachOrAdmin ? b.user.favoriteSongs : [],
-        },
+        } : null,
       }));
     }
 
-    return NextResponse.json({ ...classData, bookings, spotsLeft });
+    return NextResponse.json({ ...classData, bookings, spotsLeft, spotMap });
   } catch (error) {
     console.error("GET /api/classes/[id] error:", error);
     return NextResponse.json(

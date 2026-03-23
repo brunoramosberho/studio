@@ -5,6 +5,8 @@ interface BookingPayload {
   packageId?: string;
   guestName?: string;
   guestEmail?: string;
+  spotNumber?: number;
+  privacy?: "PUBLIC" | "PRIVATE";
 }
 
 interface BookingError {
