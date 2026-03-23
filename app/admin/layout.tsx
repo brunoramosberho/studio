@@ -86,7 +86,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
-      <div className="flex">
+      <div className="flex min-h-[calc(100dvh-3.5rem-4px)]">
         {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 border-r border-border/50 bg-white lg:block">
           <nav className="sticky top-[calc(3.5rem+4px)] flex flex-col gap-0.5 p-3">
