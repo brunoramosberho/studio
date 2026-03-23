@@ -12,22 +12,52 @@ import {
   XCircle,
   Save,
   Loader2,
+  Music,
+  ChevronDown,
+  Star,
+  Sparkles,
+  Cake,
+  Crown,
+  UserPlus,
+  Trophy,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import type { ClassWithDetails, BookingStatus } from "@/types";
 
+interface FavoriteSong {
+  id: string;
+  title: string;
+  artist: string;
+}
+
+interface AttendeeStats {
+  totalClasses: number;
+  classesWithCoach: number;
+  isNewMember: boolean;
+  isFirstEver: boolean;
+  isFirstWithCoach: boolean;
+  isTopClient: boolean;
+  birthdayLabel: "today" | "yesterday" | "this_week" | null;
+}
+
 interface BookingEntry {
   id: string;
   status: BookingStatus;
-  user: { id: string; name: string | null; image: string | null; email: string };
+  stats?: AttendeeStats;
+  user: {
+    id: string;
+    name: string | null;
+    image: string | null;
+    email: string;
+    favoriteSongs?: FavoriteSong[];
+  };
 }
 
 interface ClassDetail extends Omit<ClassWithDetails, "bookings"> {
@@ -46,6 +76,85 @@ const fadeUp = {
 
 type AttendanceStatus = "CONFIRMED" | "ATTENDED" | "NO_SHOW";
 
+function AttendeeTags({ stats }: { stats: AttendeeStats }) {
+  const tags: { label: string; icon: React.ReactNode; className: string }[] = [];
+
+  if (stats.birthdayLabel === "today") {
+    tags.push({
+      label: "Cumpleaños hoy!",
+      icon: <Cake className="h-3 w-3" />,
+      className: "bg-pink-200 text-pink-800 border-pink-300 animate-pulse",
+    });
+  } else if (stats.birthdayLabel === "yesterday") {
+    tags.push({
+      label: "Cumpleaños ayer",
+      icon: <Cake className="h-3 w-3" />,
+      className: "bg-pink-100 text-pink-700 border-pink-200",
+    });
+  } else if (stats.birthdayLabel === "this_week") {
+    tags.push({
+      label: "Cumple esta semana",
+      icon: <Cake className="h-3 w-3" />,
+      className: "bg-pink-50 text-pink-600 border-pink-200",
+    });
+  }
+
+  if (stats.isFirstEver) {
+    tags.push({
+      label: "Primera clase",
+      icon: <Sparkles className="h-3 w-3" />,
+      className: "bg-amber-100 text-amber-700 border-amber-200",
+    });
+  } else if (stats.isFirstWithCoach) {
+    tags.push({
+      label: "Primera contigo",
+      icon: <UserPlus className="h-3 w-3" />,
+      className: "bg-violet-100 text-violet-700 border-violet-200",
+    });
+  }
+
+  if (stats.isTopClient) {
+    tags.push({
+      label: "Top client",
+      icon: <Crown className="h-3 w-3" />,
+      className: "bg-yellow-100 text-yellow-700 border-yellow-200",
+    });
+  } else if (stats.isNewMember) {
+    tags.push({
+      label: "Nuevo",
+      icon: <Star className="h-3 w-3" />,
+      className: "bg-blue-100 text-blue-700 border-blue-200",
+    });
+  }
+
+  if (stats.totalClasses > 1) {
+    tags.push({
+      label: `${stats.totalClasses} clases`,
+      icon: <Trophy className="h-3 w-3" />,
+      className: "bg-stone-100 text-stone-600 border-stone-200",
+    });
+  }
+
+  if (tags.length === 0) return null;
+
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1">
+      {tags.map((tag) => (
+        <span
+          key={tag.label}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-tight",
+            tag.className,
+          )}
+        >
+          {tag.icon}
+          {tag.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function ClassRosterPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -53,6 +162,7 @@ export default function ClassRosterPage() {
 
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [notes, setNotes] = useState("");
+  const [expandedSongs, setExpandedSongs] = useState<Record<string, boolean>>({});
 
   const { data: classData, isLoading } = useQuery<ClassDetail>({
     queryKey: ["class-detail", id],
@@ -100,7 +210,7 @@ export default function ClassRosterPage() {
         <Skeleton className="h-32 rounded-2xl" />
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-xl" />
+            <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
         </div>
       </div>
@@ -120,6 +230,13 @@ export default function ClassRosterPage() {
 
   const enrolled = classData.bookings.length;
   const capacity = classData.classType.maxCapacity;
+
+  const allSongs = classData.bookings.flatMap((b) =>
+    (b.user.favoriteSongs ?? []).map((s) => ({
+      ...s,
+      userName: b.user.name ?? b.user.email,
+    })),
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -191,55 +308,114 @@ export default function ClassRosterPage() {
                 .map((n) => n[0])
                 .join("")
                 .slice(0, 2);
+              const hasSongs = (booking.user.favoriteSongs?.length ?? 0) > 0;
+              const songsExpanded = expandedSongs[booking.id] ?? false;
 
               return (
                 <motion.div key={booking.id} variants={fadeUp}>
-                  <Card>
-                    <CardContent className="flex items-center gap-3 p-3">
-                      <Avatar className="h-10 w-10">
-                        {booking.user.image && (
-                          <AvatarImage src={booking.user.image} alt={name} />
-                        )}
-                        <AvatarFallback className="text-xs">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
+                  <Card className={cn(
+                    booking.stats?.birthdayLabel === "today" && "border-pink-300 bg-pink-50/50",
+                    booking.stats?.birthdayLabel === "yesterday" && "border-pink-200 bg-pink-50/30",
+                    booking.stats?.birthdayLabel === "this_week" && "border-pink-100 bg-pink-50/20",
+                    !booking.stats?.birthdayLabel && booking.stats?.isFirstEver && "border-amber-200 bg-amber-50/30",
+                  )}>
+                    <CardContent className="p-3">
+                      <div className="flex items-start gap-3">
+                        <Avatar className="mt-0.5 h-10 w-10">
+                          {booking.user.image && (
+                            <AvatarImage src={booking.user.image} alt={name} />
+                          )}
+                          <AvatarFallback className="text-xs">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
 
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold">{name}</p>
-                        <p className="truncate text-xs text-muted">
-                          {booking.user.email}
-                        </p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className="truncate text-sm font-semibold">{name}</p>
+                            {hasSongs && (
+                              <Music className="h-3 w-3 shrink-0 text-accent" />
+                            )}
+                          </div>
+
+                          {booking.stats && <AttendeeTags stats={booking.stats} />}
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {hasSongs && (
+                            <button
+                              onClick={() =>
+                                setExpandedSongs((prev) => ({
+                                  ...prev,
+                                  [booking.id]: !prev[booking.id],
+                                }))
+                              }
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface"
+                            >
+                              <ChevronDown
+                                className={cn(
+                                  "h-4 w-4 transition-transform",
+                                  songsExpanded && "rotate-180",
+                                )}
+                              />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => toggleAttendance(booking.id, status)}
+                            className={cn(
+                              "flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                              status === "ATTENDED" &&
+                                "bg-green-100 text-green-700",
+                              status === "NO_SHOW" &&
+                                "bg-red-100 text-red-700",
+                              status === "CONFIRMED" &&
+                                "bg-surface text-muted",
+                            )}
+                          >
+                            {status === "ATTENDED" && (
+                              <>
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Asistió
+                              </>
+                            )}
+                            {status === "NO_SHOW" && (
+                              <>
+                                <XCircle className="h-3.5 w-3.5" />
+                                No show
+                              </>
+                            )}
+                            {status === "CONFIRMED" && "Confirmado"}
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => toggleAttendance(booking.id, status)}
-                          className={cn(
-                            "flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                            status === "ATTENDED" &&
-                              "bg-green-100 text-green-700",
-                            status === "NO_SHOW" &&
-                              "bg-red-100 text-red-700",
-                            status === "CONFIRMED" &&
-                              "bg-surface text-muted",
-                          )}
+                      {hasSongs && songsExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="mt-3 overflow-hidden border-t border-border/50 pt-3"
                         >
-                          {status === "ATTENDED" && (
-                            <>
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              Asistió
-                            </>
-                          )}
-                          {status === "NO_SHOW" && (
-                            <>
-                              <XCircle className="h-3.5 w-3.5" />
-                              No show
-                            </>
-                          )}
-                          {status === "CONFIRMED" && "Confirmado"}
-                        </button>
-                      </div>
+                          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted">
+                            <Music className="h-3 w-3" />
+                            Canciones favoritas
+                          </p>
+                          <div className="space-y-1">
+                            {booking.user.favoriteSongs!.map((song) => (
+                              <div
+                                key={song.id}
+                                className="flex items-center gap-2 rounded-lg bg-accent/5 px-3 py-1.5"
+                              >
+                                <span className="text-sm font-medium text-foreground">
+                                  {song.title}
+                                </span>
+                                <span className="text-xs text-muted">
+                                  — {song.artist}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -263,7 +439,7 @@ export default function ClassRosterPage() {
 
       {/* Save button */}
       <Separator />
-      <div className="flex justify-end pb-8">
+      <div className="flex justify-end">
         <Button
           onClick={() => saveMutation.mutate()}
           disabled={
@@ -279,6 +455,40 @@ export default function ClassRosterPage() {
           Guardar asistencia
         </Button>
       </div>
+
+      {/* Aggregate favorite songs */}
+      {allSongs.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="border-accent/15">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Music className="h-4 w-4 text-accent" />
+                Canciones favoritas de la clase
+              </CardTitle>
+              <p className="text-xs text-muted">
+                Basado en las preferencias de los {classData.bookings.filter((b) => (b.user.favoriteSongs?.length ?? 0) > 0).length} alumnos que tienen canciones registradas
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-1.5 pt-0">
+              {allSongs.map((song) => (
+                <div
+                  key={`${song.id}-${song.userName}`}
+                  className="flex items-center gap-2 rounded-lg bg-accent/5 px-3 py-2"
+                >
+                  <Music className="h-3 w-3 shrink-0 text-accent/60" />
+                  <span className="text-sm font-medium">{song.title}</span>
+                  <span className="text-xs text-muted">— {song.artist}</span>
+                  <span className="ml-auto text-[11px] text-muted/70">
+                    {song.userName}
+                  </span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      <div className="pb-8" />
     </div>
   );
 }

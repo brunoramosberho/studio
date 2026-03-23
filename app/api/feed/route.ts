@@ -29,15 +29,21 @@ export async function GET(request: NextRequest) {
 
     if (filter === "friends" && currentUserId) {
       const friendIds = await getFriendIds(currentUserId);
+      const friendAndSelf = [...friendIds, currentUserId];
       whereClause = {
         OR: [
-          { visibility: "STUDIO_WIDE" },
           {
-            visibility: "FRIENDS_ONLY",
-            userId: { in: [...friendIds, currentUserId] },
+            userId: { in: friendAndSelf },
+            OR: [
+              { visibility: "STUDIO_WIDE" },
+              { visibility: "FRIENDS_ONLY" },
+            ],
+          },
+          {
+            eventType: "CLASS_COMPLETED",
+            visibility: "STUDIO_WIDE",
           },
         ],
-        userId: { in: [...friendIds, currentUserId] },
       };
     } else if (currentUserId) {
       const friendIds = await getFriendIds(currentUserId);
@@ -74,8 +80,27 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const hasMore = events.length > limit;
-    const items = hasMore ? events.slice(0, limit) : events;
+    let filtered = events;
+
+    if (filter === "friends" && currentUserId) {
+      const friendIds = await getFriendIds(currentUserId);
+      const friendAndSelf = new Set([...friendIds, currentUserId]);
+
+      filtered = events.filter((event) => {
+        if (friendAndSelf.has(event.userId)) return true;
+
+        if (event.eventType === "CLASS_COMPLETED") {
+          const payload = event.payload as Record<string, unknown> | null;
+          const attendees = (payload?.attendees ?? []) as { id: string }[];
+          return attendees.some((a) => friendAndSelf.has(a.id));
+        }
+
+        return false;
+      });
+    }
+
+    const hasMore = filtered.length > limit;
+    const items = hasMore ? filtered.slice(0, limit) : filtered;
     const nextCursor = hasMore ? items[items.length - 1].id : null;
 
     const feed = items.map((event) => ({

@@ -3,13 +3,13 @@
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { Home, Calendar, User, Package } from "lucide-react";
+import { Home, Dumbbell, CalendarCheck, User, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const sidebarLinks = [
   { href: "/my", icon: Home, label: "Feed" },
-  { href: "/schedule", icon: Calendar, label: "Reservar" },
-  { href: "/my/bookings", icon: Calendar, label: "Mis Reservas" },
+  { href: "/schedule", icon: Dumbbell, label: "Clases" },
+  { href: "/my/bookings", icon: CalendarCheck, label: "Mis Reservas" },
   { href: "/my/packages", icon: Package, label: "Mis Paquetes" },
   { href: "/my/profile", icon: User, label: "Perfil" },
 ];

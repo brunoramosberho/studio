@@ -56,13 +56,16 @@ export default function CoachDashboard() {
   const { data: session } = useSession();
   const coachName = session?.user?.name?.split(" ")[0] ?? "Coach";
 
-  const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+  const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7, 23, 59, 59).toISOString();
 
-  const { data: classes, isLoading } = useQuery<ClassWithDetails[]>({
-    queryKey: ["coach-classes-today"],
+  const { data: todayClasses, isLoading } = useQuery<ClassWithDetails[]>({
+    queryKey: ["coach-classes-today", todayStart],
     queryFn: async () => {
       const res = await fetch(
-        `/api/classes?from=${today}&to=${today}&coachId=${session?.user?.id}`,
+        `/api/classes?from=${todayStart}&to=${todayEnd}&coachId=${session?.user?.id}`,
       );
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
@@ -70,11 +73,24 @@ export default function CoachDashboard() {
     enabled: !!session?.user?.id,
   });
 
-  const now = new Date();
+  const { data: weekClasses } = useQuery<ClassWithDetails[]>({
+    queryKey: ["coach-classes-week", todayStart],
+    queryFn: async () => {
+      const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+      const res = await fetch(
+        `/api/classes?from=${tomorrowStart}&to=${weekEnd}&coachId=${session?.user?.id}`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!session?.user?.id,
+  });
+
+  const classes = todayClasses;
   const upcoming = classes
     ?.filter((c) => new Date(c.startsAt) > now)
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
-  const nextClass = upcoming?.[0] ?? null;
+  const nextClass = upcoming?.[0] ?? (weekClasses?.[0] ?? null);
   const countdown = useCountdown(nextClass ? new Date(nextClass.startsAt) : null);
 
   const classesToday = classes?.length ?? 0;
@@ -220,6 +236,59 @@ export default function CoachDashboard() {
           </div>
         )}
       </motion.div>
+      {/* Upcoming this week */}
+      {weekClasses && weekClasses.length > 0 && (
+        <motion.div variants={stagger} initial="hidden" animate="show">
+          <h2 className="mb-4 font-display text-xl font-bold">Próximos días</h2>
+          <div className="space-y-3">
+            {weekClasses.slice(0, 10).map((cls) => {
+              const enrolled = cls._count?.bookings ?? cls.bookings.length;
+              const capacity = cls.classType.maxCapacity;
+              const classDate = new Date(cls.startsAt);
+              const dayLabel = classDate.toLocaleDateString("es-MX", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+              });
+              return (
+                <motion.div key={cls.id} variants={fadeUp}>
+                  <Link href={`/coach/class/${cls.id}`}>
+                    <Card className="transition-all hover:shadow-warm-md">
+                      <CardContent className="flex items-center gap-4 p-4">
+                        <div className="flex shrink-0 flex-col items-center">
+                          <span className="text-[11px] font-medium uppercase text-muted">
+                            {dayLabel}
+                          </span>
+                          <span className="font-mono text-sm font-semibold">
+                            {formatTime(cls.startsAt)}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-display text-base font-bold">
+                            {cls.classType.name}
+                          </p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <Users className="h-3.5 w-3.5 text-muted" />
+                            <span className="text-sm text-muted">
+                              {enrolled}/{capacity}
+                            </span>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={enrolled >= capacity ? "danger" : "success"}
+                        >
+                          {enrolled >= capacity ? "Llena" : "Abierta"}
+                        </Badge>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

@@ -51,6 +51,7 @@ model User {
   image         String?
   role          Role      @default(CLIENT)
   phone         String?
+  birthday      DateTime?
   createdAt     DateTime  @default(now())
 
   packages     UserPackage[]
@@ -69,6 +70,18 @@ model User {
   notificationsActed   Notification[]   @relation("NotificationActor")
   friendshipsRequested Friendship[]     @relation("FriendshipRequester")
   friendshipsReceived  Friendship[]     @relation("FriendshipAddressee")
+  favoriteSongs        FavoriteSong[]   @relation("UserFavoriteSongs")
+}
+
+model FavoriteSong {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserFavoriteSongs", fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  artist    String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 enum Role {

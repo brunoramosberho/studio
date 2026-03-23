@@ -13,6 +13,9 @@ import {
   Package,
   UserPen,
   ShieldCheck,
+  Music,
+  Plus,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +31,12 @@ interface UserPackageInfo {
   creditsUsed: number;
   expiresAt: string;
   package: { name: string };
+}
+
+interface FavoriteSong {
+  id: string;
+  title: string;
+  artist: string;
 }
 
 const fadeUp = {
@@ -48,6 +57,13 @@ export default function ProfilePage() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [packages, setPackages] = useState<UserPackageInfo[]>([]);
   const [loadingPkgs, setLoadingPkgs] = useState(true);
+
+  const [songs, setSongs] = useState<FavoriteSong[]>([]);
+  const [loadingSongs, setLoadingSongs] = useState(true);
+  const [showSongForm, setShowSongForm] = useState(false);
+  const [songTitle, setSongTitle] = useState("");
+  const [songArtist, setSongArtist] = useState("");
+  const [addingSong, setAddingSong] = useState(false);
 
   useEffect(() => {
     if (session?.user) {
@@ -76,6 +92,48 @@ export default function ProfilePage() {
     }
     fetchPackages();
   }, []);
+
+  useEffect(() => {
+    async function fetchSongs() {
+      try {
+        const res = await fetch("/api/profile/songs");
+        if (res.ok) setSongs(await res.json());
+      } catch {}
+      setLoadingSongs(false);
+    }
+    fetchSongs();
+  }, []);
+
+  async function handleAddSong(e: React.FormEvent) {
+    e.preventDefault();
+    if (!songTitle.trim() || !songArtist.trim()) return;
+    setAddingSong(true);
+    try {
+      const res = await fetch("/api/profile/songs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: songTitle.trim(), artist: songArtist.trim() }),
+      });
+      if (res.ok) {
+        const newSong = await res.json();
+        setSongs((prev) => [newSong, ...prev]);
+        setSongTitle("");
+        setSongArtist("");
+        setShowSongForm(false);
+      }
+    } catch {}
+    setAddingSong(false);
+  }
+
+  async function handleRemoveSong(songId: string) {
+    setSongs((prev) => prev.filter((s) => s.id !== songId));
+    try {
+      await fetch(`/api/profile/songs?id=${songId}`, { method: "DELETE" });
+    } catch {
+      const res = await fetch("/api/profile/songs");
+      if (res.ok) setSongs(await res.json());
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -306,10 +364,116 @@ export default function ProfilePage() {
           </Link>
         </motion.div>
 
+        {/* Favorite songs */}
+        <motion.div
+          className="space-y-3"
+          custom={3}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+        >
+          <div className="flex items-center justify-between px-4">
+            <div className="flex items-center gap-2">
+              <Music className="h-4 w-4 text-accent" />
+              <h3 className="font-display text-base font-bold text-foreground">
+                Mis canciones favoritas
+              </h3>
+            </div>
+            <button
+              onClick={() => setShowSongForm(!showSongForm)}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/10 text-accent transition-colors active:bg-accent/20"
+            >
+              <Plus className={cn("h-4 w-4 transition-transform", showSongForm && "rotate-45")} />
+            </button>
+          </div>
+
+          <p className="px-4 text-xs text-muted">
+            Tus coaches podrán ver estas canciones para personalizar la música de tus clases
+          </p>
+
+          {showSongForm && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="overflow-hidden"
+            >
+              <Card className="mx-4">
+                <CardContent className="p-4">
+                  <form onSubmit={handleAddSong} className="space-y-3">
+                    <Input
+                      value={songTitle}
+                      onChange={(e) => setSongTitle(e.target.value)}
+                      placeholder="Nombre de la canción"
+                      className="text-[16px]"
+                    />
+                    <Input
+                      value={songArtist}
+                      onChange={(e) => setSongArtist(e.target.value)}
+                      placeholder="Artista"
+                      className="text-[16px]"
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={addingSong || !songTitle.trim() || !songArtist.trim()}
+                      className="w-full"
+                    >
+                      {addingSong ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="mr-2 h-4 w-4" />
+                      )}
+                      Agregar canción
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {loadingSongs ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted" />
+            </div>
+          ) : songs.length === 0 ? (
+            <div className="mx-4 rounded-xl border border-dashed border-border py-6 text-center">
+              <Music className="mx-auto h-6 w-6 text-muted/30" />
+              <p className="mt-2 text-sm text-muted">
+                Aún no tienes canciones favoritas
+              </p>
+            </div>
+          ) : (
+            <div className="mx-4 space-y-1.5">
+              {songs.map((song) => (
+                <div
+                  key={song.id}
+                  className="flex items-center gap-3 rounded-xl bg-surface/60 px-4 py-3"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                    <Music className="h-3.5 w-3.5 text-accent" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {song.title}
+                    </p>
+                    <p className="truncate text-xs text-muted">{song.artist}</p>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveSong(song.id)}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
         <Separator />
 
         {/* Sign out */}
-        <motion.div custom={3} variants={fadeUp} initial="hidden" animate="show">
+        <motion.div custom={4} variants={fadeUp} initial="hidden" animate="show">
           <Button
             variant="ghost"
             className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"

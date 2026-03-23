@@ -21,7 +21,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (typeId) where.classTypeId = typeId;
-    if (coachId) where.coachId = coachId;
+    if (coachId) {
+      const profile = await prisma.coachProfile.findUnique({
+        where: { userId: coachId },
+        select: { id: true },
+      });
+      where.coachId = profile ? profile.id : coachId;
+    }
     if (level) where.classType = { level };
 
     const session = await auth();

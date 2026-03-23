@@ -8,6 +8,7 @@ async function main() {
   console.log("🌱 Seeding Flō Studio database...\n");
 
   // Clear existing data (respecting foreign key order)
+  await prisma.favoriteSong.deleteMany();
   await prisma.friendship.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.comment.deleteMany();
@@ -272,16 +273,19 @@ async function main() {
       name: "María García",
       role: Role.CLIENT,
       phone: "+52 55 1234 5678",
+      birthday: new Date(1995, 6, 15),
       image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face",
     },
   });
 
+  // Birthday this week!
   const clientExpired = await prisma.user.create({
     data: {
       email: "sofia@example.com",
       name: "Sofía López",
       role: Role.CLIENT,
       phone: "+52 55 2345 6789",
+      birthday: new Date(1998, today.getMonth(), today.getDate() + 2),
       image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face",
     },
   });
@@ -292,15 +296,18 @@ async function main() {
       name: "Camila Hernández",
       role: Role.CLIENT,
       phone: "+52 55 3456 7890",
+      birthday: new Date(1992, 11, 3),
       image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face",
     },
   });
 
+  // New member — just joined
   const clientPrimeraVez = await prisma.user.create({
     data: {
       email: "lucia@example.com",
       name: "Lucía Martínez",
       role: Role.CLIENT,
+      birthday: new Date(2000, 3, 22),
       image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=face",
     },
   });
@@ -310,6 +317,7 @@ async function main() {
       email: "fernanda@example.com",
       name: "Fernanda Ruiz",
       role: Role.CLIENT,
+      birthday: new Date(1997, 8, 10),
       image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&h=200&fit=crop&crop=face",
     },
   });
@@ -376,24 +384,7 @@ async function main() {
     bookingCount++;
   }
 
-  // --- Bookings for future classes ---
-  for (let i = 0; i < Math.min(futureClasses.length, 6); i++) {
-    const clients = [clientWithPack10, clientUnlimited, clientPrimeraVez];
-    const client = clients[i % clients.length];
-    await prisma.booking.create({
-      data: {
-        classId: futureClasses[i].id,
-        userId: client.id,
-        status: BookingStatus.CONFIRMED,
-      },
-    });
-    bookingCount++;
-  }
-
-  // --- Fill up a couple of future classes + add waitlist entries ---
-  let waitlistCount = 0;
-
-  // Create filler users so we can actually fill classes to capacity
+  // --- Create filler users ---
   const fillerNames = [
     "Ana Pérez", "Elena Vega", "Diana Cruz", "Paula Ríos", "Laura Soto",
     "Renata Mora", "Mariana Gil", "Daniela Paz", "Gabriela Luna", "Natalia Ramos",
@@ -412,7 +403,35 @@ async function main() {
     fillerUsers.push(u);
   }
 
-  const allBookableUsers = [clientWithPack10, clientExpired, clientUnlimited, clientPrimeraVez, clientNoPackage, ...fillerUsers];
+  const mainClients = [clientWithPack10, clientExpired, clientUnlimited, clientPrimeraVez, clientNoPackage];
+  const allBookableUsers = [...mainClients, ...fillerUsers];
+
+  // --- Bookings for future classes (populate generously) ---
+  for (let i = 0; i < Math.min(futureClasses.length, 50); i++) {
+    const cls = futureClasses[i];
+    const ct = classTypes[i % classTypes.length];
+    const capacity = ct.maxCapacity;
+
+    // Book between 4 and 9 real+filler clients per class
+    const numToBook = Math.min(capacity - 2, i < 20 ? 5 + (i % 5) : 3 + (i % 4));
+    const pool = [...mainClients, ...fillerUsers.slice(0, numToBook)].slice(0, numToBook);
+
+    for (const client of pool) {
+      try {
+        await prisma.booking.create({
+          data: {
+            classId: cls.id,
+            userId: client.id,
+            status: BookingStatus.CONFIRMED,
+          },
+        });
+        bookingCount++;
+      } catch { /* unique constraint */ }
+    }
+  }
+
+  // --- Fill up a couple of future classes + add waitlist entries ---
+  let waitlistCount = 0;
 
   // Pick future classes that are truly in the future (not already past by time)
   const now = new Date();
@@ -753,6 +772,31 @@ async function main() {
   }
   console.log(`✓ Created ${notifCount} notifications`);
 
+  // --- Favorite Songs ---
+  const songData: { userId: string; title: string; artist: string }[] = [
+    { userId: clientWithPack10.id, title: "Flowers", artist: "Miley Cyrus" },
+    { userId: clientWithPack10.id, title: "Levitating", artist: "Dua Lipa" },
+    { userId: clientWithPack10.id, title: "Blinding Lights", artist: "The Weeknd" },
+    { userId: clientExpired.id, title: "Anti-Hero", artist: "Taylor Swift" },
+    { userId: clientExpired.id, title: "As It Was", artist: "Harry Styles" },
+    { userId: clientUnlimited.id, title: "Unholy", artist: "Sam Smith ft. Kim Petras" },
+    { userId: clientUnlimited.id, title: "Calm Down", artist: "Rema & Selena Gomez" },
+    { userId: clientUnlimited.id, title: "Shakira: Bzrp Session #53", artist: "Bizarrap & Shakira" },
+    { userId: clientUnlimited.id, title: "Ella Baila Sola", artist: "Eslabon Armado & Peso Pluma" },
+    { userId: clientPrimeraVez.id, title: "Kill Bill", artist: "SZA" },
+    { userId: clientPrimeraVez.id, title: "Creepin'", artist: "Metro Boomin, The Weeknd & 21 Savage" },
+    { userId: clientNoPackage.id, title: "Die For You", artist: "The Weeknd & Ariana Grande" },
+    { userId: clientNoPackage.id, title: "Boy's a Liar Pt. 2", artist: "PinkPantheress & Ice Spice" },
+    { userId: clientNoPackage.id, title: "La Bebe", artist: "Yng Lvcas & Peso Pluma" },
+  ];
+
+  let songCount = 0;
+  for (const s of songData) {
+    await prisma.favoriteSong.create({ data: s });
+    songCount++;
+  }
+  console.log(`✓ Created ${songCount} favorite songs`);
+
   // --- Summary ---
   console.log("\n📊 Seed Summary:");
   console.log(`   Class Types:    ${classTypes.length}`);
@@ -768,6 +812,7 @@ async function main() {
   console.log(`   Comments:       ${commentCount}`);
   console.log(`   Friendships:    ${friendshipCount}`);
   console.log(`   Notifications:  ${notifCount}`);
+  console.log(`   Songs:          ${songCount}`);
   console.log("\n✅ Seed completed successfully!");
 }
 
