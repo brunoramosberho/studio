@@ -82,11 +82,17 @@ export async function GET(request: NextRequest) {
 
     let filtered = events;
 
+    if (currentUserId) {
+      filtered = filtered.filter(
+        (e) => !(e.eventType === "CLASS_RESERVED" && e.userId === currentUserId),
+      );
+    }
+
     if (filter === "friends" && currentUserId) {
       const friendIds = await getFriendIds(currentUserId);
       const friendAndSelf = new Set([...friendIds, currentUserId]);
 
-      filtered = events.filter((event) => {
+      filtered = filtered.filter((event) => {
         if (friendAndSelf.has(event.userId)) return true;
 
         if (event.eventType === "CLASS_COMPLETED") {
@@ -103,7 +109,60 @@ export async function GET(request: NextRequest) {
     const items = hasMore ? filtered.slice(0, limit) : filtered;
     const nextCursor = hasMore ? items[items.length - 1].id : null;
 
-    const feed = items.map((event) => ({
+    let bookedClassIds = new Set<string>();
+    if (currentUserId) {
+      const reservedClassIds = items
+        .filter((e) => e.eventType === "CLASS_RESERVED")
+        .map((e) => (e.payload as Record<string, unknown>)?.classId as string)
+        .filter(Boolean);
+
+      if (reservedClassIds.length > 0) {
+        const myBookings = await prisma.booking.findMany({
+          where: {
+            userId: currentUserId,
+            classId: { in: reservedClassIds },
+            status: "CONFIRMED",
+          },
+          select: { classId: true },
+        });
+        bookedClassIds = new Set(myBookings.map((b) => b.classId));
+      }
+    }
+
+    // Group CLASS_RESERVED events by classId into a single post
+    const reservedByClass = new Map<string, typeof items>();
+    const nonReserved: typeof items = [];
+
+    for (const event of items) {
+      if (event.eventType === "CLASS_RESERVED") {
+        const classId = (event.payload as Record<string, unknown>)?.classId as string;
+        if (classId) {
+          const group = reservedByClass.get(classId) ?? [];
+          group.push(event);
+          reservedByClass.set(classId, group);
+          continue;
+        }
+      }
+      nonReserved.push(event);
+    }
+
+    type FeedEntry = {
+      id: string;
+      eventType: string;
+      payload: unknown;
+      visibility: string;
+      createdAt: Date;
+      user: { id: string; name: string | null; image: string | null };
+      photos: { id: string; url: string; thumbnailUrl: string | null; mimeType: string }[];
+      likeCount: number;
+      commentCount: number;
+      liked: boolean;
+      likeType: string | null;
+      currentUserBooked?: boolean;
+      reservedBy?: { id: string; name: string | null; image: string | null }[];
+    };
+
+    const feed: FeedEntry[] = nonReserved.map((event) => ({
       id: event.id,
       eventType: event.eventType,
       payload: event.payload,
@@ -116,6 +175,31 @@ export async function GET(request: NextRequest) {
       liked: currentUserId ? event.likes.length > 0 : false,
       likeType: currentUserId ? event.likes[0]?.type ?? null : null,
     }));
+
+    for (const [classId, group] of reservedByClass) {
+      const newest = group[0];
+      const totalLikes = group.reduce((s, e) => s + e._count.likes, 0);
+      const totalComments = group.reduce((s, e) => s + e._count.comments, 0);
+      const anyLiked = currentUserId ? group.some((e) => e.likes.length > 0) : false;
+
+      feed.push({
+        id: newest.id,
+        eventType: "CLASS_RESERVED",
+        payload: newest.payload,
+        visibility: newest.visibility,
+        createdAt: newest.createdAt,
+        user: newest.user,
+        photos: [],
+        likeCount: totalLikes,
+        commentCount: totalComments,
+        liked: anyLiked,
+        likeType: anyLiked ? (group.find((e) => e.likes.length > 0)?.likes[0]?.type ?? null) : null,
+        currentUserBooked: bookedClassIds.has(classId),
+        reservedBy: group.map((e) => e.user),
+      });
+    }
+
+    feed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return NextResponse.json({ feed, nextCursor });
   } catch (error) {

@@ -34,6 +34,8 @@ interface FeedItem {
   likeCount: number;
   commentCount: number;
   liked: boolean;
+  currentUserBooked?: boolean;
+  reservedBy?: { id: string; name: string | null; image: string | null }[];
 }
 
 interface FeedEventCardProps {
@@ -227,27 +229,61 @@ function AchievementCard({ event }: FeedEventCardProps) {
   );
 }
 
+function formatReservedNames(people: { name: string | null }[]) {
+  const names = people.map((p) => p.name?.split(" ")[0] ?? "Alguien");
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} y ${names[1]}`;
+  return `${names[0]}, ${names[1]} y ${names.length - 2} más`;
+}
+
 function ClassReservedCard({ event }: FeedEventCardProps) {
   const p = event.payload;
   const classId = p.classId as string | undefined;
   const classDate = p.date ? new Date(p.date as string) : null;
   const isFuture = classDate ? classDate.getTime() > Date.now() : false;
+  const alreadyBooked = !!event.currentUserBooked;
+
+  const people = event.reservedBy && event.reservedBy.length > 0
+    ? event.reservedBy
+    : [event.user];
+  const isGroup = people.length > 1;
+
+  const timeStr = classDate
+    ? classDate.toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true })
+    : null;
 
   return (
     <div className="space-y-2">
       <div className="flex items-start gap-3 px-4 pt-4 pb-3">
-        <Avatar className="h-10 w-10">
-          {event.user.image && <AvatarImage src={event.user.image} />}
-          <AvatarFallback className="text-xs font-medium">
-            {event.user.name?.charAt(0)}
-          </AvatarFallback>
-        </Avatar>
+        {isGroup ? (
+          <div className="flex -space-x-2">
+            {people.slice(0, 3).map((u) => (
+              <Avatar key={u.id} className="h-9 w-9 border-2 border-white">
+                {u.image && <AvatarImage src={u.image} />}
+                <AvatarFallback className="text-[9px] font-medium">
+                  {u.name?.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+            ))}
+          </div>
+        ) : (
+          <Avatar className="h-10 w-10">
+            {people[0].image && <AvatarImage src={people[0].image} />}
+            <AvatarFallback className="text-xs font-medium">
+              {people[0].name?.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-[14px] leading-snug">
             <span className="font-bold text-foreground">
-              {event.user.name?.split(" ")[0]}
+              {formatReservedNames(people)}
             </span>
-            <span className="text-muted"> reservó </span>
+            <span className="text-muted">
+              {alreadyBooked
+                ? (isGroup ? " también reservaron " : " también reservó ")
+                : (isGroup ? " reservaron " : " reservó ")}
+            </span>
             <span className="font-semibold text-foreground">
               {(p.className as string) ?? "una clase"}
             </span>
@@ -257,28 +293,33 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
             {classDate
               ? ` · ${classDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })}`
               : ""}
+            {timeStr ? ` · ${timeStr}` : ""}
           </p>
           <span className="text-[11px] text-muted/70">
             {timeAgo(event.createdAt)}
           </span>
         </div>
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/10">
-          <span className="text-sm">📅</span>
-        </div>
       </div>
 
-      {/* CTA to book the same class */}
-      {isFuture && classId && (
+      {isFuture && classId && !alreadyBooked && (
         <div className="px-4 pb-1">
           <Link
             href={`/class/${classId}`}
-            className="flex items-center justify-between rounded-xl bg-foreground/[0.03] px-4 py-2.5 transition-colors hover:bg-foreground/[0.06] active:scale-[0.99]"
+            className="group flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 transition-all hover:brightness-105 active:scale-[0.98]"
           >
-            <span className="text-[13px] font-semibold text-foreground">
-              Reservar tú también
+            <span className="text-[13px] font-bold text-white">
+              Reserva tú también
             </span>
-            <ArrowRight className="h-4 w-4 text-muted" />
+            <ArrowRight className="h-3.5 w-3.5 text-white transition-transform group-hover:translate-x-0.5" />
           </Link>
+        </div>
+      )}
+
+      {alreadyBooked && isFuture && (
+        <div className="mx-4 mb-1 rounded-lg bg-accent/8 px-3 py-1.5">
+          <span className="text-[12px] font-medium text-accent">
+            Ya estás en esta clase
+          </span>
         </div>
       )}
 

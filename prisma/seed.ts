@@ -746,24 +746,60 @@ async function main() {
   console.log(`✓ Created ${friendshipCount} friendships`);
 
   // --- CLASS_RESERVED feed events (friends-only) ---
+  // Use tomorrow+ classes so they're always truly in the future.
+  // María is booked at indices [0, 5, 12]. Tomorrow starts ~index 9.
+  const friends = [clientExpired, clientUnlimited, clientPrimeraVez];
+  const friendReservations: { friend: typeof clientExpired; classIdx: number; hoursAgo: number }[] = [
+    // Camila reserves a class María has NOT booked → CTA visible
+    { friend: clientUnlimited, classIdx: 10, hoursAgo: 1 },
+    // Sofía + Lucía reserve the SAME class María has NOT booked → grouped + CTA
+    { friend: clientExpired, classIdx: 11, hoursAgo: 2 },
+    { friend: clientPrimeraVez, classIdx: 11, hoursAgo: 3 },
+    // Sofía reserves the class María already booked (idx 12) → "también reservó"
+    { friend: clientExpired, classIdx: 12, hoursAgo: 4 },
+    // Camila reserves another class María has NOT booked → CTA visible
+    { friend: clientUnlimited, classIdx: 14, hoursAgo: 6 },
+  ];
+
   let reservedCount = 0;
-  const reservedClasses = futureClasses.slice(0, 4);
-  for (let i = 0; i < reservedClasses.length; i++) {
-    const cls = reservedClasses[i];
-    const ct = classTypes[i % classTypes.length];
-    const coach = coachUsers[i % coachUsers.length];
-    const user = allClientsForInteractions[i % allClientsForInteractions.length];
+  for (const { friend, classIdx, hoursAgo } of friendReservations) {
+    const cls = futureClasses[classIdx];
+    if (!cls) continue;
+    const ct = classTypes[classIdx % classTypes.length];
+    const coachUser = coachUsers[classIdx % coachUsers.length];
+
+    // Ensure the friend actually has a booking for that class
+    try {
+      const existingSpots = await prisma.booking.findMany({
+        where: { classId: cls.id, status: "CONFIRMED" },
+        select: { spotNumber: true, userId: true },
+      });
+      const alreadyBooked = existingSpots.some((b) => b.userId === friend.id);
+      if (!alreadyBooked) {
+        const takenSpots = new Set(existingSpots.map((b) => b.spotNumber).filter(Boolean));
+        const freeSpot = Array.from({ length: ct.maxCapacity }, (_, s) => s + 1).find((s) => !takenSpots.has(s));
+        await prisma.booking.create({
+          data: {
+            classId: cls.id,
+            userId: friend.id,
+            status: BookingStatus.CONFIRMED,
+            spotNumber: freeSpot ?? null,
+          },
+        });
+        bookingCount++;
+      }
+    } catch { /* unique constraint — skip */ }
 
     await prisma.feedEvent.create({
       data: {
-        userId: user.id,
+        userId: friend.id,
         eventType: "CLASS_RESERVED",
         visibility: "FRIENDS_ONLY",
-        createdAt: addDays(today, -(i + 1)),
+        createdAt: addMinutes(today, -(hoursAgo * 60)),
         payload: {
           classId: cls.id,
           className: ct.name,
-          coachName: coach.name,
+          coachName: coachUser.name,
           date: cls.startsAt.toISOString(),
           duration: ct.duration,
         },

@@ -17,6 +17,7 @@ import {
   Check,
   Eye,
   EyeOff,
+  Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -89,6 +90,13 @@ export default function ClassDetailPage() {
     .filter((p) => p.creditsTotal === null || p.creditsUsed < (p.creditsTotal ?? 0))
     .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
 
+  const activePackage = validPackages[0];
+  const creditsRemaining = activePackage
+    ? activePackage.creditsTotal === null
+      ? -1
+      : (activePackage.creditsTotal ?? 0) - activePackage.creditsUsed
+    : null;
+
   const myBooking = cls?.bookings.find(
     (b) => b.userId === session?.user?.id && b.status === "CONFIRMED",
   );
@@ -152,14 +160,24 @@ export default function ClassDetailPage() {
   return (
     <PageTransition>
       <div className="mx-auto max-w-lg px-4 pb-36 pt-4 sm:pb-16 sm:pt-12">
-        {/* Back */}
-        <Link
-          href="/schedule"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Horarios
-        </Link>
+        {/* Back + credits */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link
+            href="/schedule"
+            className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Horarios
+          </Link>
+          {isAuthenticated && creditsRemaining !== null && (
+            <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
+              <Ticket className="h-3.5 w-3.5 text-accent" />
+              <span className="text-[12px] font-semibold text-accent">
+                {creditsRemaining === -1 ? "Ilimitado" : `${creditsRemaining} clases`}
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Title + meta row (Siclo-style) */}
         <h1 className="font-display text-2xl font-bold text-foreground">
