@@ -217,31 +217,37 @@ export function ScheduleClient({
 
         {/* Filters (inline pills) */}
         <div className="mb-4 flex gap-2 overflow-x-auto scrollbar-none">
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="appearance-none rounded-full border border-border bg-white px-3 py-1.5 text-[12px] font-medium text-foreground focus:outline-none"
-          >
-            <option value="all">Disciplina</option>
-            {classTypes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-          {!hideCoachFilter && (
+          <div className="relative flex-shrink-0">
             <select
-              value={filterCoach}
-              onChange={(e) => setFilterCoach(e.target.value)}
-              className="appearance-none rounded-full border border-border bg-white px-3 py-1.5 text-[12px] font-medium text-foreground focus:outline-none"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="appearance-none rounded-full border border-border bg-white py-1.5 pl-3 pr-7 text-[12px] font-medium text-foreground focus:outline-none"
             >
-              <option value="all">Instructor</option>
-              {coaches.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.user.name}
+              <option value="all">Disciplina</option>
+              {classTypes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
                 </option>
               ))}
             </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+          </div>
+          {!hideCoachFilter && (
+            <div className="relative flex-shrink-0">
+              <select
+                value={filterCoach}
+                onChange={(e) => setFilterCoach(e.target.value)}
+                className="appearance-none rounded-full border border-border bg-white py-1.5 pl-3 pr-7 text-[12px] font-medium text-foreground focus:outline-none"
+              >
+                <option value="all">Instructor</option>
+                {coaches.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.user.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+            </div>
           )}
         </div>
 
@@ -418,14 +424,21 @@ function MobileClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDe
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p
-              className={cn(
-                "truncate text-[15px] font-bold",
-                past ? "text-muted" : "text-foreground",
+            <div className="flex items-center gap-1.5">
+              <p
+                className={cn(
+                  "truncate text-[15px] font-bold",
+                  past ? "text-muted" : "text-foreground",
+                )}
+              >
+                {cls.classType.name}
+              </p>
+              {!past && cls.tag && (
+                <span className="flex-shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                  {cls.tag}
+                </span>
               )}
-            >
-              {cls.classType.name}
-            </p>
+            </div>
             <p className="truncate text-[13px] text-muted">
               con {cls.coach.user.name?.split(" ")[0]}
             </p>
@@ -519,6 +532,11 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithD
           >
             {cls.classType.name}
           </p>
+          {!past && cls.tag && (
+            <span className="mt-0.5 inline-block rounded-full bg-accent/15 px-2 py-0.5 text-[9px] font-semibold text-accent">
+              {cls.tag}
+            </span>
+          )}
           <div className="mt-1 flex items-center gap-1.5">
             {cls.coach.user.image ? (
               <img

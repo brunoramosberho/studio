@@ -60,6 +60,7 @@ export default function AdminClassesPage() {
     date: "",
     time: "",
     recurring: false,
+    tag: "",
   });
 
   const { data: classes, isLoading } = useQuery<ClassWithDetails[]>({
@@ -102,7 +103,7 @@ export default function AdminClassesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-classes"] });
       setDialogOpen(false);
-      setFormData({ classTypeId: "", coachProfileId: "", date: "", time: "", recurring: false });
+      setFormData({ classTypeId: "", coachProfileId: "", date: "", time: "", recurring: false, tag: "" });
     },
   });
 
@@ -214,6 +215,11 @@ export default function AdminClassesPage() {
                         <p className="truncate font-display text-base font-bold">
                           {cls.classType.name}
                         </p>
+                        {cls.tag && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {cls.tag}
+                          </Badge>
+                        )}
                         {statusBadge(cls.status)}
                       </div>
                       <p className="mt-1 text-sm text-muted">
@@ -320,6 +326,17 @@ export default function AdminClassesPage() {
                   onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">
+                Tag especial <span className="text-muted font-normal">(opcional)</span>
+              </label>
+              <Input
+                placeholder="Ej: Halloween Special, Black Friday..."
+                value={formData.tag}
+                onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
+              />
             </div>
 
             <label className="flex items-center gap-2 text-sm">

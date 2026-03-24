@@ -217,7 +217,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { startsAt, endsAt, location, status, notes } = body;
+    const { startsAt, endsAt, location, status, notes, tag } = body;
 
     const updated = await prisma.class.update({
       where: { id },
@@ -227,6 +227,7 @@ export async function PUT(
         ...(location !== undefined && { location }),
         ...(status && { status }),
         ...(notes !== undefined && { notes }),
+        ...(tag !== undefined && { tag: tag || null }),
       },
       include: {
         classType: true,

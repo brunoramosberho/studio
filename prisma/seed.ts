@@ -249,6 +249,12 @@ async function main() {
       const startsAt = setMinutes(setHours(date, slot.hour), slot.minute);
       const endsAt = addMinutes(startsAt, classType.duration);
 
+      const sampleTags: (string | null)[] = [
+        null, null, null, null, null, null, null, null, null,
+        null, null, "Special Edition", null, null, null, null, null, "Candlelight",
+      ];
+      const tag = !dateIsPast ? (sampleTags[classIndex % sampleTags.length] ?? null) : null;
+
       const cls = await prisma.class.create({
         data: {
           classTypeId: classType.id,
@@ -256,6 +262,7 @@ async function main() {
           startsAt,
           endsAt,
           status: dateIsPast ? ClassStatus.COMPLETED : ClassStatus.SCHEDULED,
+          tag,
         },
       });
       allClasses.push(cls);

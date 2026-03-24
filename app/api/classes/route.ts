@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { classTypeId, coachId, startsAt, endsAt, location, isRecurring, recurringId, notes } = body;
+    const { classTypeId, coachId, startsAt, endsAt, location, isRecurring, recurringId, notes, tag } = body;
 
     if (!classTypeId || !coachId || !startsAt || !endsAt) {
       return NextResponse.json(
@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
         isRecurring: isRecurring ?? false,
         recurringId,
         notes,
+        tag: tag || null,
       },
       include: {
         classType: true,

@@ -133,6 +133,7 @@ model Class {
   isRecurring Boolean     @default(false)
   recurringId String?
   notes       String?
+  tag         String?
   bookings    Booking[]
   waitlist    Waitlist[]
 
