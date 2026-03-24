@@ -25,6 +25,16 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 50);
     const filter = searchParams.get("filter");
 
+    // Get user's city to scope feed geographically
+    let userCityId: string | null = null;
+    if (currentUserId) {
+      const userLoc = await prisma.user.findUnique({
+        where: { id: currentUserId },
+        select: { cityId: true },
+      });
+      userCityId = userLoc?.cityId ?? null;
+    }
+
     let whereClause: Record<string, unknown> = { visibility: "STUDIO_WIDE" };
 
     if (filter === "friends" && currentUserId) {
@@ -106,7 +116,7 @@ export async function GET(request: NextRequest) {
     }
 
     const hasMore = filtered.length > limit;
-    const items = hasMore ? filtered.slice(0, limit) : filtered;
+    let items = hasMore ? filtered.slice(0, limit) : filtered;
     const nextCursor = hasMore ? items[items.length - 1].id : null;
 
     let bookedClassIds = new Set<string>();
@@ -146,6 +156,42 @@ export async function GET(request: NextRequest) {
       nonReserved.push(event);
     }
 
+    // Resolve studio info for all class-related events
+    const allClassIds = new Set<string>();
+    for (const event of items) {
+      const classId = (event.payload as Record<string, unknown>)?.classId as string;
+      if (classId) allClassIds.add(classId);
+    }
+
+    let classStudioMap = new Map<string, { studioName: string; cityId: string }>();
+    if (allClassIds.size > 0) {
+      const classRooms = await prisma.class.findMany({
+        where: { id: { in: [...allClassIds] } },
+        select: { id: true, room: { select: { studio: { select: { name: true, cityId: true } } } } },
+      });
+      for (const c of classRooms) {
+        classStudioMap.set(c.id, {
+          studioName: c.room.studio.name,
+          cityId: c.room.studio.cityId,
+        });
+      }
+    }
+
+    // Filter by user's city if set
+    if (userCityId) {
+      const cityStudioIds = new Set(
+        [...classStudioMap.entries()]
+          .filter(([, v]) => v.cityId === userCityId)
+          .map(([k]) => k),
+      );
+
+      items = items.filter((event) => {
+        const classId = (event.payload as Record<string, unknown>)?.classId as string;
+        if (classId) return cityStudioIds.has(classId);
+        return true;
+      });
+    }
+
     type FeedEntry = {
       id: string;
       eventType: string;
@@ -160,21 +206,26 @@ export async function GET(request: NextRequest) {
       likeType: string | null;
       currentUserBooked?: boolean;
       reservedBy?: { id: string; name: string | null; image: string | null }[];
+      studioName?: string;
     };
 
-    const feed: FeedEntry[] = nonReserved.map((event) => ({
-      id: event.id,
-      eventType: event.eventType,
-      payload: event.payload,
-      visibility: event.visibility,
-      createdAt: event.createdAt,
-      user: event.user,
-      photos: event.photos,
-      likeCount: event._count.likes,
-      commentCount: event._count.comments,
-      liked: currentUserId ? event.likes.length > 0 : false,
-      likeType: currentUserId ? event.likes[0]?.type ?? null : null,
-    }));
+    const feed: FeedEntry[] = nonReserved.map((event) => {
+      const classId = (event.payload as Record<string, unknown>)?.classId as string;
+      return {
+        id: event.id,
+        eventType: event.eventType,
+        payload: event.payload,
+        visibility: event.visibility,
+        createdAt: event.createdAt,
+        user: event.user,
+        photos: event.photos,
+        likeCount: event._count.likes,
+        commentCount: event._count.comments,
+        liked: currentUserId ? event.likes.length > 0 : false,
+        likeType: currentUserId ? event.likes[0]?.type ?? null : null,
+        studioName: classId ? classStudioMap.get(classId)?.studioName : undefined,
+      };
+    });
 
     for (const [classId, group] of reservedByClass) {
       const newest = group[0];
@@ -196,6 +247,7 @@ export async function GET(request: NextRequest) {
         likeType: anyLiked ? (group.find((e) => e.likes.length > 0)?.likes[0]?.type ?? null) : null,
         currentUserBooked: bookedClassIds.has(classId),
         reservedBy: group.map((e) => e.user),
+        studioName: classStudioMap.get(classId)?.studioName,
       });
     }
 

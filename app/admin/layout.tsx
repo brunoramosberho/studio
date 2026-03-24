@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -15,9 +15,13 @@ import {
   ListOrdered,
   BarChart3,
   Palette,
+  Building2,
   ArrowLeft,
   Menu,
   X,
+  MapPin,
+  Loader2,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -27,6 +31,7 @@ const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/classes", label: "Clases", icon: Dumbbell },
   { href: "/admin/schedule", label: "Horario", icon: CalendarDays },
+  { href: "/admin/studios", label: "Estudios", icon: Building2 },
   { href: "/admin/coaches", label: "Coaches", icon: UserCog },
   { href: "/admin/clients", label: "Clientes", icon: Users },
   { href: "/admin/packages", label: "Paquetes", icon: Package },
@@ -34,6 +39,21 @@ const navItems = [
   { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
   { href: "/admin/branding", label: "Marca", icon: Palette },
 ];
+
+interface LocCountry {
+  id: string;
+  name: string;
+  code: string;
+  cities: { id: string; name: string }[];
+}
+
+function countryFlag(code: string) {
+  return code
+    .toUpperCase()
+    .split("")
+    .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
+    .join("");
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -50,6 +70,72 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+
+  const [locations, setLocations] = useState<LocCountry[]>([]);
+  const [locValue, setLocValue] = useState("");
+  const [locSaving, setLocSaving] = useState(false);
+  const [locSaved, setLocSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [locRes, profRes] = await Promise.all([
+          fetch("/api/locations"),
+          fetch("/api/profile"),
+        ]);
+        if (cancelled) return;
+        if (locRes.ok) setLocations(await locRes.json());
+        if (profRes.ok) {
+          const p = await profRes.json();
+          if (p.countryId && p.cityId) setLocValue(`${p.countryId}|${p.cityId}`);
+        }
+      } catch {}
+    }
+    if (session?.user) load();
+    return () => { cancelled = true; };
+  }, [session?.user]);
+
+  async function handleLocChange(val: string) {
+    setLocValue(val);
+    const [countryId, cityId] = val.split("|");
+    setLocSaving(true);
+    setLocSaved(false);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ countryId: countryId || null, cityId: cityId || null }),
+      });
+      if (res.ok) {
+        setLocSaved(true);
+        setTimeout(() => setLocSaved(false), 2000);
+      }
+    } catch {}
+    setLocSaving(false);
+  }
+
+  const locationPicker = locations.length > 0 ? (
+    <div className="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
+      <MapPin className="h-3.5 w-3.5 shrink-0 text-admin/60" />
+      <select
+        value={locValue}
+        onChange={(e) => handleLocChange(e.target.value)}
+        className="min-w-0 flex-1 appearance-none bg-transparent text-xs font-medium text-foreground outline-none"
+      >
+        <option value="">Seleccionar ubicación</option>
+        {locations.map((c) =>
+          c.cities.map((city) => (
+            <option key={city.id} value={`${c.id}|${city.id}`}>
+              {countryFlag(c.code)} {city.name}
+            </option>
+          )),
+        )}
+      </select>
+      {locSaving && <Loader2 className="h-3 w-3 animate-spin text-muted" />}
+      {locSaved && <Check className="h-3 w-3 text-green-500" />}
+    </div>
+  ) : null;
 
   return (
     <div className="min-h-dvh bg-background">
@@ -93,23 +179,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex min-h-[calc(100dvh-3.5rem-4px)]">
         {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 border-r border-border/50 bg-white lg:block">
-          <nav className="sticky top-[calc(3.5rem+4px)] flex flex-col gap-0.5 p-3">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                  isActive(item.href)
-                    ? "bg-admin/10 text-admin"
-                    : "text-muted hover:bg-surface hover:text-foreground",
-                )}
-              >
-                <item.icon className="h-4.5 w-4.5" />
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <div className="sticky top-[calc(3.5rem+4px)] flex h-[calc(100dvh-3.5rem-4px)] flex-col">
+            <nav className="flex-1 space-y-0.5 p-3">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                    isActive(item.href)
+                      ? "bg-admin/10 text-admin"
+                      : "text-muted hover:bg-surface hover:text-foreground",
+                  )}
+                >
+                  <item.icon className="h-4.5 w-4.5" />
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            {locationPicker && (
+              <div className="border-t border-border/50 p-3">
+                {locationPicker}
+              </div>
+            )}
+          </div>
         </aside>
 
         {/* Mobile sidebar */}
@@ -147,6 +240,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       {item.label}
                     </Link>
                   ))}
+                  {locationPicker && (
+                    <div className="mt-3 border-t border-border/50 pt-3">
+                      {locationPicker}
+                    </div>
+                  )}
                   <Link
                     href="/"
                     onClick={() => setSidebarOpen(false)}

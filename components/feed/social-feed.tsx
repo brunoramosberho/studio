@@ -18,6 +18,7 @@ interface FeedItem {
   liked: boolean;
   currentUserBooked?: boolean;
   reservedBy?: { id: string; name: string | null; image: string | null }[];
+  studioName?: string;
 }
 
 interface FeedPage {

@@ -36,6 +36,7 @@ interface FeedItem {
   liked: boolean;
   currentUserBooked?: boolean;
   reservedBy?: { id: string; name: string | null; image: string | null }[];
+  studioName?: string;
 }
 
 interface FeedEventCardProps {
@@ -113,6 +114,9 @@ function ClassCompletedCard({ event }: FeedEventCardProps) {
           <p className="mt-0.5 text-[12px] text-muted">
             {(p.date as string) ?? ""} · {(p.time as string) ?? ""} ·{" "}
             {(p.duration as number) ?? 50} min
+            {event.studioName && (
+              <span className="text-muted/50"> · {event.studioName}</span>
+            )}
           </p>
         </div>
         <span className="flex-shrink-0 text-[11px] text-muted/70">
@@ -294,6 +298,9 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
               ? ` · ${classDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })}`
               : ""}
             {timeStr ? ` · ${timeStr}` : ""}
+            {event.studioName && (
+              <span className="text-muted/50"> · {event.studioName}</span>
+            )}
           </p>
           <span className="text-[11px] text-muted/70">
             {timeAgo(event.createdAt)}

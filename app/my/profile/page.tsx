@@ -66,7 +66,7 @@ export default function ProfilePage() {
   const [songArtist, setSongArtist] = useState("");
   const [addingSong, setAddingSong] = useState(false);
 
-  interface LocationCountry { id: string; name: string; cities: { id: string; name: string }[] }
+  interface LocationCountry { id: string; name: string; code: string; cities: { id: string; name: string }[] }
   const [locations, setLocations] = useState<LocationCountry[]>([]);
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
@@ -155,18 +155,28 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleSaveLocation() {
+  function countryFlag(code: string) {
+    return code
+      .toUpperCase()
+      .split("")
+      .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
+      .join("");
+  }
+
+  async function handleLocationChange(countryId: string, cityId: string) {
+    setSelectedCountry(countryId);
+    setSelectedCity(cityId);
     setSavingLocation(true);
     setSavedLocation(false);
     try {
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ countryId: selectedCountry || null, cityId: selectedCity || null }),
+        body: JSON.stringify({ countryId: countryId || null, cityId: cityId || null }),
       });
       if (res.ok) {
         setSavedLocation(true);
-        setTimeout(() => setSavedLocation(false), 1500);
+        setTimeout(() => setSavedLocation(false), 2000);
       }
     } catch {}
     setSavingLocation(false);
@@ -387,71 +397,6 @@ export default function ProfilePage() {
           )}
         </motion.div>
 
-        {/* Location selector */}
-        {locations.length > 0 && (
-          <motion.div custom={2.5} variants={fadeUp} initial="hidden" animate="show">
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-accent" />
-                  <p className="text-sm font-semibold text-foreground">Mi ubicación</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted">
-                      País
-                    </label>
-                    <select
-                      value={selectedCountry}
-                      onChange={(e) => {
-                        setSelectedCountry(e.target.value);
-                        setSelectedCity("");
-                      }}
-                      className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none"
-                    >
-                      <option value="">Seleccionar</option>
-                      {locations.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted">
-                      Ciudad
-                    </label>
-                    <select
-                      value={selectedCity}
-                      onChange={(e) => setSelectedCity(e.target.value)}
-                      disabled={!selectedCountry}
-                      className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none disabled:opacity-50"
-                    >
-                      <option value="">Seleccionar</option>
-                      {locations
-                        .find((c) => c.id === selectedCountry)
-                        ?.cities.map((city) => (
-                          <option key={city.id} value={city.id}>{city.name}</option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={handleSaveLocation}
-                  disabled={savingLocation}
-                  className="w-full"
-                >
-                  {savingLocation ? (
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  ) : savedLocation ? (
-                    <Check className="mr-2 h-3.5 w-3.5" />
-                  ) : null}
-                  {savedLocation ? "Guardado" : "Guardar ubicación"}
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
         {/* Quick actions */}
         <motion.div
           className="space-y-1"
@@ -570,8 +515,46 @@ export default function ProfilePage() {
 
         <Separator />
 
+        {/* Location — minimal single dropdown */}
+        {locations.length > 0 && (
+          <motion.div custom={4} variants={fadeUp} initial="hidden" animate="show">
+            <div className="flex items-center gap-3 px-4 py-2">
+              <div className="flex items-center gap-2 text-[13px] text-muted">
+                <MapPin className="h-3.5 w-3.5" />
+                <span>Ubicación</span>
+              </div>
+              <div className="relative ml-auto">
+                <select
+                  value={selectedCity ? `${selectedCountry}|${selectedCity}` : ""}
+                  onChange={(e) => {
+                    const [cId, cityId] = e.target.value.split("|");
+                    handleLocationChange(cId || "", cityId || "");
+                  }}
+                  className="appearance-none rounded-full border border-border/60 bg-white py-1.5 pl-3 pr-7 text-[13px] font-medium text-foreground focus:border-accent focus:outline-none"
+                >
+                  <option value="">Seleccionar</option>
+                  {locations.map((country) =>
+                    country.cities.map((city) => (
+                      <option key={city.id} value={`${country.id}|${city.id}`}>
+                        {countryFlag(country.code)} {city.name}
+                      </option>
+                    )),
+                  )}
+                </select>
+                {savingLocation ? (
+                  <Loader2 className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 animate-spin text-muted" />
+                ) : savedLocation ? (
+                  <Check className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-green-500" />
+                ) : (
+                  <ChevronRight className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 rotate-90 text-muted" />
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Sign out */}
-        <motion.div custom={4} variants={fadeUp} initial="hidden" animate="show">
+        <motion.div custom={5} variants={fadeUp} initial="hidden" animate="show">
           <Button
             variant="ghost"
             className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
