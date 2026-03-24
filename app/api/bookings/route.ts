@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { classId, guestName, guestEmail, spotNumber, privacy } = body;
+    const { classId, packageId, guestName, guestEmail, spotNumber, privacy } = body;
 
     if (!classId) {
       return NextResponse.json(
@@ -148,9 +148,21 @@ export async function POST(request: NextRequest) {
         orderBy: { expiresAt: "asc" },
       });
 
-      const userPackage = userPackages.find(
-        (p) => p.creditsTotal === null || p.creditsUsed < p.creditsTotal,
-      );
+      let userPackage = null;
+
+      // If client specified a package, try to use it
+      if (packageId) {
+        userPackage = userPackages.find(
+          (p) => p.id === packageId && (p.creditsTotal === null || p.creditsUsed < p.creditsTotal),
+        );
+      }
+
+      // Default: soonest-expiring package with available credits
+      if (!userPackage) {
+        userPackage = userPackages.find(
+          (p) => p.creditsTotal === null || p.creditsUsed < p.creditsTotal,
+        );
+      }
 
       if (!userPackage) {
         return NextResponse.json(

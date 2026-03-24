@@ -87,8 +87,14 @@ export function ScheduleClient({
 
   const credits = useMemo(() => {
     if (!creditsPkgs?.length) return null;
-    const active = creditsPkgs[0];
-    return active.creditsTotal === null ? -1 : active.creditsTotal - active.creditsUsed;
+    const now = Date.now();
+    const active = creditsPkgs.filter((p: any) => new Date(p.expiresAt).getTime() > now);
+    if (!active.length) return null;
+    if (active.some((p: any) => p.creditsTotal === null)) return -1;
+    return active.reduce(
+      (sum: number, p: any) => sum + Math.max(0, (p.creditsTotal ?? 0) - p.creditsUsed),
+      0,
+    );
   }, [creditsPkgs]);
 
   const { data: allStudios = [], isLoading: loadingStudios } = useQuery<StudioItem[]>({

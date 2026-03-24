@@ -96,11 +96,14 @@ export default function ClassDetailPage() {
     .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
 
   const hasCredits = validPackages.length > 0;
-  const creditsRemaining = validPackages[0]
-    ? validPackages[0].creditsTotal === null
+  const creditsRemaining = validPackages.length === 0
+    ? null
+    : validPackages.some((p) => p.creditsTotal === null)
       ? -1
-      : (validPackages[0].creditsTotal ?? 0) - validPackages[0].creditsUsed
-    : null;
+      : validPackages.reduce(
+          (sum, p) => sum + Math.max(0, (p.creditsTotal ?? 0) - p.creditsUsed),
+          0,
+        );
 
   const myBooking = cls?.bookings.find(
     (b) => b.userId === session?.user?.id && b.status === "CONFIRMED",

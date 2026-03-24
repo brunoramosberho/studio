@@ -250,15 +250,19 @@ export default function ProfilePage() {
     .toUpperCase()
     .slice(0, 2);
 
-  const activePackage = packages.find(
+  const activePackages = packages.filter(
     (p) => new Date(p.expiresAt) > new Date(),
   );
+  const soonestPackage = activePackages[0] ?? null;
 
-  const creditsLeft = activePackage
-    ? activePackage.creditsTotal === null
+  const creditsLeft = activePackages.length === 0
+    ? 0
+    : activePackages.some((p) => p.creditsTotal === null)
       ? -1
-      : activePackage.creditsTotal - activePackage.creditsUsed
-    : 0;
+      : activePackages.reduce(
+          (sum, p) => sum + Math.max(0, (p.creditsTotal ?? 0) - p.creditsUsed),
+          0,
+        );
 
   return (
     <PageTransition>
@@ -308,16 +312,18 @@ export default function ProfilePage() {
                       creditsLeft
                     )}
                   </p>
-                  {activePackage && (
+                  {soonestPackage && (
                     <p className="mt-0.5 text-[12px] text-muted">
-                      {activePackage.package.name} · Expira{" "}
-                      {new Date(activePackage.expiresAt).toLocaleDateString(
+                      {activePackages.length === 1
+                        ? `${soonestPackage.package.name} · Expira `
+                        : `${activePackages.length} paquetes · Próx. expira `}
+                      {new Date(soonestPackage.expiresAt).toLocaleDateString(
                         "es-MX",
                         { day: "numeric", month: "short" },
                       )}
                     </p>
                   )}
-                  {!loadingPkgs && !activePackage && (
+                  {!loadingPkgs && !soonestPackage && (
                     <p className="mt-0.5 text-[12px] text-muted">
                       Sin paquete activo
                     </p>
