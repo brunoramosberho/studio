@@ -278,8 +278,16 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(booking, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/bookings error:", error);
+
+    if (error?.code === "P2002") {
+      return NextResponse.json(
+        { error: "Ese lugar ya está ocupado. Selecciona otro." },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to create booking" },
       { status: 500 },

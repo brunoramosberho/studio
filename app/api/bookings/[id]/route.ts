@@ -67,7 +67,10 @@ export async function PUT(
 
     const updated = await prisma.booking.update({
       where: { id },
-      data: { status },
+      data: {
+        status,
+        ...(status === "CANCELLED" ? { spotNumber: null } : {}),
+      },
       include: {
         class: {
           include: {
@@ -130,7 +133,7 @@ export async function DELETE(
 
     const cancelled = await prisma.booking.update({
       where: { id },
-      data: { status: "CANCELLED" },
+      data: { status: "CANCELLED", spotNumber: null },
     });
 
     return NextResponse.json(cancelled);
