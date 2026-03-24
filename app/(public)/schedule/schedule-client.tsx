@@ -27,6 +27,10 @@ import { cn, formatTime } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 import type { ClassWithDetails } from "@/types";
 
+function countryFlag(code: string) {
+  return code.toUpperCase().split("").map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65)).join("");
+}
+
 interface ScheduleClientProps {
   coachUserId?: string;
   classLinkPrefix?: string;
@@ -51,8 +55,9 @@ export function ScheduleClient({
   const [filterType, setFilterType] = useState<string>("all");
   const [filterCoach, setFilterCoach] = useState<string>("all");
   const [filterStudio, setFilterStudio] = useState<string>("all");
-  const [studios, setStudios] = useState<{ id: string; name: string }[]>([]);
-  const [userCityId, setUserCityId] = useState<string | null>(null);
+  const [allStudios, setAllStudios] = useState<{ id: string; name: string; cityId: string }[]>([]);
+  const [cities, setCities] = useState<{ id: string; name: string; countryCode: string }[]>([]);
+  const [filterCity, setFilterCity] = useState<string>("all");
   const dayScrollRef = useRef<HTMLDivElement>(null);
   const branding = useBranding();
 
@@ -96,28 +101,92 @@ export function ScheduleClient({
   }, [session]);
 
   useEffect(() => {
-    async function fetchStudios() {
+    async function loadStudiosAndCities() {
       try {
-        let cityId: string | null = null;
+        const [studiosRes, locRes] = await Promise.all([
+          fetch("/api/studios"),
+          fetch("/api/locations"),
+        ]);
+
+        let studioList: { id: string; name: string; cityId: string }[] = [];
+        let cityList: { id: string; name: string; countryCode: string }[] = [];
+
+        if (studiosRes.ok) {
+          const data = await studiosRes.json();
+          studioList = data.map((s: { id: string; name: string; cityId: string }) => ({
+            id: s.id,
+            name: s.name,
+            cityId: s.cityId,
+          }));
+          setAllStudios(studioList);
+        }
+
+        if (locRes.ok) {
+          const countries = await locRes.json();
+          cityList = countries.flatMap(
+            (c: { code: string; cities: { id: string; name: string }[] }) =>
+              c.cities.map((city) => ({ ...city, countryCode: c.code })),
+          );
+          setCities(cityList);
+        }
+
+        let detectedCityId: string | null = null;
+
+        // 1) Logged-in user: always use profile city
         if (session?.user) {
-          const profRes = await fetch("/api/profile");
-          if (profRes.ok) {
-            const prof = await profRes.json();
-            cityId = prof.cityId ?? null;
-            setUserCityId(cityId);
+          try {
+            const profRes = await fetch("/api/profile");
+            if (profRes.ok) {
+              const prof = await profRes.json();
+              if (prof.cityId && cityList.some((c) => c.id === prof.cityId)) {
+                detectedCityId = prof.cityId;
+              }
+            }
+          } catch {}
+        }
+
+        // 2) Guest or no profile city: detect by IP, then timezone fallback
+        if (!detectedCityId && cityList.length > 1) {
+          try {
+            const detectRes = await fetch("/api/detect-location");
+            if (detectRes.ok) {
+              const geo = await detectRes.json();
+              if (geo.cityId && cityList.some((c) => c.id === geo.cityId)) {
+                detectedCityId = geo.cityId;
+              }
+            }
+          } catch {}
+
+          // Timezone fallback (works locally and when IP detection fails)
+          if (!detectedCityId) {
+            try {
+              const tz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+              const isEurope = tz.startsWith("Europe/");
+              const europeCity = cityList.find((c) => c.countryCode === "ES");
+              const americaCity = cityList.find((c) => c.countryCode === "MX");
+              if (isEurope && europeCity) detectedCityId = europeCity.id;
+              else if (!isEurope && americaCity) detectedCityId = americaCity.id;
+            } catch {}
           }
         }
-        const url = cityId ? `/api/studios?cityId=${cityId}` : "/api/studios";
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          setStudios(data.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })));
+
+        // 3) Single city — auto-select
+        if (!detectedCityId && cityList.length === 1) {
+          detectedCityId = cityList[0].id;
+        }
+
+        if (detectedCityId) {
+          setFilterCity(detectedCityId);
         }
       } catch {}
     }
-    fetchStudios();
+    loadStudiosAndCities();
   }, [session?.user]);
 
+  const studios = filterCity === "all"
+    ? allStudios
+    : allStudios.filter((s) => s.cityId === filterCity);
+  const showCityFilter = cities.length > 1 && !session?.user;
   const showStudioFilter = studios.length > 1;
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -130,11 +199,16 @@ export function ScheduleClient({
     new Map(classes.map((c) => [c.coach.id, c.coach])).values(),
   );
 
+  const cityStudioIds = filterCity === "all"
+    ? null
+    : new Set(allStudios.filter((s) => s.cityId === filterCity).map((s) => s.id));
+
   function getClassesForDay(day: Date) {
     return classes
       .filter((c) => isSameDay(new Date(c.startsAt), day))
       .filter((c) => filterType === "all" || c.classType.id === filterType)
       .filter((c) => filterCoach === "all" || c.coach.id === filterCoach)
+      .filter((c) => !cityStudioIds || cityStudioIds.has(c.room?.studio?.id ?? ""))
       .filter((c) => filterStudio === "all" || c.room?.studio?.id === filterStudio)
       .sort(
         (a, b) =>
@@ -158,19 +232,37 @@ export function ScheduleClient({
     <div className={cn("pb-24 pt-4 lg:pb-8 lg:pt-6", !isLoggedIn && "mx-auto max-w-[1200px] px-4")}>
       {/* ── Mobile layout ── */}
       <div className="lg:hidden">
-        {/* Credits badge + title */}
+        {/* Title + city/credits */}
         <div className="mb-4 flex items-center justify-between">
           <h1 className="font-display text-xl font-bold text-foreground">
             {title}
           </h1>
-          {!hideCredits && credits !== null && (
-            <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
-              <Ticket className="h-3.5 w-3.5 text-accent" />
-              <span className="text-[12px] font-semibold text-accent">
-                {credits === -1 ? "Ilimitado" : `${credits} clases`}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {!hideCredits && credits !== null && (
+              <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
+                <Ticket className="h-3.5 w-3.5 text-accent" />
+                <span className="text-[12px] font-semibold text-accent">
+                  {credits === -1 ? "Ilimitado" : `${credits} clases`}
+                </span>
+              </div>
+            )}
+            {showCityFilter && (
+              <div className="relative">
+                <select
+                  value={filterCity}
+                  onChange={(e) => { setFilterCity(e.target.value); setFilterStudio("all"); }}
+                  className="appearance-none rounded-full border border-border bg-white py-1.5 pl-3 pr-7 text-[12px] font-medium text-foreground focus:outline-none"
+                >
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {countryFlag(c.countryCode)} {c.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Week navigation */}
@@ -343,6 +435,17 @@ export function ScheduleClient({
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
+            {showCityFilter && (
+              <FilterSelect
+                label="Ciudad"
+                value={filterCity}
+                onChange={(v) => { setFilterCity(v); setFilterStudio("all"); }}
+                options={[
+                  { value: "all", label: "Todas" },
+                  ...cities.map((c) => ({ value: c.id, label: `${countryFlag(c.countryCode)} ${c.name}` })),
+                ]}
+              />
+            )}
             {showStudioFilter && (
               <FilterSelect
                 label="Estudio"
@@ -657,14 +760,21 @@ function FilterSelect({
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
 }) {
+  const isAll = value === "all";
   return (
     <div className="relative">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none rounded-lg border border-border bg-white py-2 pl-3 pr-8 text-[13px] font-medium text-foreground focus:border-foreground focus:outline-none"
+        className={cn(
+          "appearance-none rounded-lg border bg-white py-2 pl-3 pr-8 text-[13px] font-medium focus:outline-none",
+          isAll
+            ? "border-border text-muted"
+            : "border-foreground/20 text-foreground",
+        )}
       >
-        {options.map((o) => (
+        <option value="all">{label}</option>
+        {options.filter((o) => o.value !== "all").map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
