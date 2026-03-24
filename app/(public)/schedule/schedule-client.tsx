@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -25,6 +25,7 @@ import {
 import { es } from "date-fns/locale";
 import { cn, formatTime } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
+import { useQuery } from "@tanstack/react-query";
 import type { ClassWithDetails } from "@/types";
 
 function countryFlag(code: string) {
@@ -39,6 +40,10 @@ interface ScheduleClientProps {
   hideCredits?: boolean;
 }
 
+interface StudioItem { id: string; name: string; cityId: string }
+interface CityItem { id: string; name: string; countryCode: string }
+interface LocationCountry { code: string; cities: { id: string; name: string }[] }
+
 export function ScheduleClient({
   coachUserId,
   classLinkPrefix = "/class",
@@ -47,141 +52,114 @@ export function ScheduleClient({
   hideCredits = false,
 }: ScheduleClientProps = {}) {
   const { data: session } = useSession();
-  const [classes, setClasses] = useState<ClassWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [credits, setCredits] = useState<number | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(startOfDay(new Date()));
   const [filterType, setFilterType] = useState<string>("all");
   const [filterCoach, setFilterCoach] = useState<string>("all");
   const [filterStudio, setFilterStudio] = useState<string>("all");
-  const [allStudios, setAllStudios] = useState<{ id: string; name: string; cityId: string }[]>([]);
-  const [cities, setCities] = useState<{ id: string; name: string; countryCode: string }[]>([]);
   const [filterCity, setFilterCity] = useState<string>("all");
   const dayScrollRef = useRef<HTMLDivElement>(null);
   const branding = useBranding();
 
+  const { data: classes = [], isLoading: loading } = useQuery<ClassWithDetails[]>({
+    queryKey: ["classes", coachUserId ?? "all"],
+    queryFn: async () => {
+      const url = coachUserId ? `/api/classes?coachId=${coachUserId}` : "/api/classes";
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const { data: creditsPkgs } = useQuery<{ creditsTotal: number | null; creditsUsed: number }[]>({
+    queryKey: ["packages", "mine"],
+    queryFn: async () => {
+      const res = await fetch("/api/packages/mine");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
+
+  const credits = useMemo(() => {
+    if (!creditsPkgs?.length) return null;
+    const active = creditsPkgs[0];
+    return active.creditsTotal === null ? -1 : active.creditsTotal - active.creditsUsed;
+  }, [creditsPkgs]);
+
+  const { data: allStudios = [] } = useQuery<StudioItem[]>({
+    queryKey: ["studios"],
+    queryFn: async () => {
+      const res = await fetch("/api/studios");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.map((s: StudioItem) => ({ id: s.id, name: s.name, cityId: s.cityId }));
+    },
+  });
+
+  const { data: cities = [] } = useQuery<CityItem[]>({
+    queryKey: ["cities"],
+    queryFn: async () => {
+      const res = await fetch("/api/locations");
+      if (!res.ok) return [];
+      const countries: LocationCountry[] = await res.json();
+      return countries.flatMap((c) =>
+        c.cities.map((city) => ({ ...city, countryCode: c.code })),
+      );
+    },
+  });
+
+  // City auto-detection (runs once when cities data arrives)
+  const [cityDetected, setCityDetected] = useState(false);
   useEffect(() => {
-    async function fetchClasses() {
-      setLoading(true);
-      try {
-        const url = coachUserId
-          ? `/api/classes?coachId=${coachUserId}`
-          : "/api/classes";
-        const res = await fetch(url);
-        if (res.ok) setClasses(await res.json());
-      } catch {
-        /* no db */
-      } finally {
-        setLoading(false);
+    if (cityDetected || cities.length === 0) return;
+    async function detectCity() {
+      let detectedCityId: string | null = null;
+
+      if (session?.user) {
+        try {
+          const profRes = await fetch("/api/profile");
+          if (profRes.ok) {
+            const prof = await profRes.json();
+            if (prof.cityId && cities.some((c) => c.id === prof.cityId)) {
+              detectedCityId = prof.cityId;
+            }
+          }
+        } catch {}
       }
-    }
-    fetchClasses();
-  }, [coachUserId]);
 
-  useEffect(() => {
-    if (!session?.user) return;
-    async function fetchCredits() {
-      try {
-        const res = await fetch("/api/packages/mine");
-        if (res.ok) {
-          const pkgs = await res.json();
-          const active = pkgs[0];
-          if (active) {
-            setCredits(
-              active.creditsTotal === null
-                ? -1
-                : active.creditsTotal - active.creditsUsed,
-            );
-          }
-        }
-      } catch {}
-    }
-    fetchCredits();
-  }, [session]);
-
-  useEffect(() => {
-    async function loadStudiosAndCities() {
-      try {
-        const [studiosRes, locRes] = await Promise.all([
-          fetch("/api/studios"),
-          fetch("/api/locations"),
-        ]);
-
-        let studioList: { id: string; name: string; cityId: string }[] = [];
-        let cityList: { id: string; name: string; countryCode: string }[] = [];
-
-        if (studiosRes.ok) {
-          const data = await studiosRes.json();
-          studioList = data.map((s: { id: string; name: string; cityId: string }) => ({
-            id: s.id,
-            name: s.name,
-            cityId: s.cityId,
-          }));
-          setAllStudios(studioList);
-        }
-
-        if (locRes.ok) {
-          const countries = await locRes.json();
-          cityList = countries.flatMap(
-            (c: { code: string; cities: { id: string; name: string }[] }) =>
-              c.cities.map((city) => ({ ...city, countryCode: c.code })),
-          );
-          setCities(cityList);
-        }
-
-        let detectedCityId: string | null = null;
-
-        // 1) Logged-in user: always use profile city
-        if (session?.user) {
-          try {
-            const profRes = await fetch("/api/profile");
-            if (profRes.ok) {
-              const prof = await profRes.json();
-              if (prof.cityId && cityList.some((c) => c.id === prof.cityId)) {
-                detectedCityId = prof.cityId;
-              }
+      if (!detectedCityId && cities.length > 1) {
+        try {
+          const detectRes = await fetch("/api/detect-location");
+          if (detectRes.ok) {
+            const geo = await detectRes.json();
+            if (geo.cityId && cities.some((c) => c.id === geo.cityId)) {
+              detectedCityId = geo.cityId;
             }
+          }
+        } catch {}
+
+        if (!detectedCityId) {
+          try {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+            const isEurope = tz.startsWith("Europe/");
+            const europeCity = cities.find((c) => c.countryCode === "ES");
+            const americaCity = cities.find((c) => c.countryCode === "MX");
+            if (isEurope && europeCity) detectedCityId = europeCity.id;
+            else if (!isEurope && americaCity) detectedCityId = americaCity.id;
           } catch {}
         }
+      }
 
-        // 2) Guest or no profile city: detect by IP, then timezone fallback
-        if (!detectedCityId && cityList.length > 1) {
-          try {
-            const detectRes = await fetch("/api/detect-location");
-            if (detectRes.ok) {
-              const geo = await detectRes.json();
-              if (geo.cityId && cityList.some((c) => c.id === geo.cityId)) {
-                detectedCityId = geo.cityId;
-              }
-            }
-          } catch {}
+      if (!detectedCityId && cities.length === 1) {
+        detectedCityId = cities[0].id;
+      }
 
-          // Timezone fallback (works locally and when IP detection fails)
-          if (!detectedCityId) {
-            try {
-              const tz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
-              const isEurope = tz.startsWith("Europe/");
-              const europeCity = cityList.find((c) => c.countryCode === "ES");
-              const americaCity = cityList.find((c) => c.countryCode === "MX");
-              if (isEurope && europeCity) detectedCityId = europeCity.id;
-              else if (!isEurope && americaCity) detectedCityId = americaCity.id;
-            } catch {}
-          }
-        }
-
-        // 3) Single city — auto-select
-        if (!detectedCityId && cityList.length === 1) {
-          detectedCityId = cityList[0].id;
-        }
-
-        if (detectedCityId) {
-          setFilterCity(detectedCityId);
-        }
-      } catch {}
+      if (detectedCityId) setFilterCity(detectedCityId);
+      setCityDetected(true);
     }
-    loadStudiosAndCities();
-  }, [session?.user]);
+    detectCity();
+  }, [cities, session?.user, cityDetected]);
 
   const studios = filterCity === "all"
     ? allStudios

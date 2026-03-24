@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/shared/page-transition";
 import { formatRelativeDay, formatTimeRange, cn } from "@/lib/utils";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { BookingWithDetails } from "@/types";
 
 const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
@@ -41,48 +42,45 @@ const statusLabels: Record<string, { label: string; variant: "success" | "defaul
   CANCELLED: { label: "Cancelada", variant: "warning" },
 };
 
+async function fetchBookingList(status: string): Promise<BookingWithDetails[]> {
+  const res = await fetch(`/api/bookings?status=${status}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export default function BookingsPage() {
   const { data: session } = useSession();
-  const [upcoming, setUpcoming] = useState<BookingWithDetails[]>([]);
-  const [past, setPast] = useState<BookingWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [cancelTarget, setCancelTarget] = useState<BookingWithDetails | null>(null);
-  const [cancelling, setCancelling] = useState(false);
 
-  useEffect(() => {
-    async function fetchBookings() {
-      try {
-        const [upRes, pastRes] = await Promise.all([
-          fetch("/api/bookings?status=upcoming"),
-          fetch("/api/bookings?status=past"),
-        ]);
-        if (upRes.ok) setUpcoming(await upRes.json());
-        if (pastRes.ok) setPast(await pastRes.json());
-      } catch {
-        /* silently fail */
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchBookings();
-  }, []);
+  const { data: upcoming = [], isLoading: loadingUpcoming } = useQuery({
+    queryKey: ["bookings", "upcoming"],
+    queryFn: () => fetchBookingList("upcoming"),
+    enabled: !!session?.user,
+  });
 
-  async function handleCancel() {
+  const { data: past = [], isLoading: loadingPast } = useQuery({
+    queryKey: ["bookings", "past"],
+    queryFn: () => fetchBookingList("past"),
+    enabled: !!session?.user,
+  });
+
+  const loading = loadingUpcoming || loadingPast;
+
+  const cancelMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const res = await fetch(`/api/bookings/${bookingId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Cancel failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      setCancelTarget(null);
+    },
+  });
+
+  function handleCancel() {
     if (!cancelTarget) return;
-    setCancelling(true);
-    try {
-      const res = await fetch(`/api/bookings/${cancelTarget.id}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        setUpcoming((prev) => prev.filter((b) => b.id !== cancelTarget.id));
-        setCancelTarget(null);
-      }
-    } catch {
-      /* silently fail */
-    } finally {
-      setCancelling(false);
-    }
+    cancelMutation.mutate(cancelTarget.id);
   }
 
   function canCancelFreely(booking: BookingWithDetails): boolean {
@@ -267,9 +265,9 @@ export default function BookingsPage() {
               <Button
                 variant="destructive"
                 onClick={handleCancel}
-                disabled={cancelling}
+                disabled={cancelMutation.isPending}
               >
-                {cancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Confirmar cancelación
               </Button>
             </DialogFooter>

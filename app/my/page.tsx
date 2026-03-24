@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Calendar, ArrowRight, Trophy, Users, Bell } from "lucide-react";
@@ -21,14 +20,17 @@ interface Achievement {
 export default function DashboardPage() {
   const { data: session } = useSession();
   const firstName = session?.user?.name?.split(" ")[0] ?? "";
-  const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    fetch("/api/notifications")
-      .then((r) => r.json())
-      .then((data) => setUnreadCount(data.unreadCount ?? 0))
-      .catch(() => {});
-  }, []);
+  const { data: notifData } = useQuery<{ unreadCount: number }>({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const res = await fetch("/api/notifications");
+      if (!res.ok) return { unreadCount: 0 };
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
+  const unreadCount = notifData?.unreadCount ?? 0;
 
   const { data: achievements } = useQuery<Achievement[]>({
     queryKey: ["achievements", "me"],
@@ -38,7 +40,6 @@ export default function DashboardPage() {
       return res.json();
     },
     enabled: !!session?.user,
-    staleTime: 60_000,
   });
 
   return (

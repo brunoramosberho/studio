@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PageTransition } from "@/components/shared/page-transition";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 interface UserPackageInfo {
@@ -40,6 +41,20 @@ interface FavoriteSong {
   artist: string;
 }
 
+interface LocationCountry {
+  id: string;
+  name: string;
+  code: string;
+  cities: { id: string; name: string }[];
+}
+
+interface ProfileData {
+  name: string;
+  phone: string | null;
+  countryId: string | null;
+  cityId: string | null;
+}
+
 const fadeUp = {
   hidden: { opacity: 0, y: 14 },
   show: (i: number) => ({
@@ -51,108 +66,118 @@ const fadeUp = {
 
 export default function ProfilePage() {
   const { data: session, update } = useSession();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [packages, setPackages] = useState<UserPackageInfo[]>([]);
-  const [loadingPkgs, setLoadingPkgs] = useState(true);
 
-  const [songs, setSongs] = useState<FavoriteSong[]>([]);
-  const [loadingSongs, setLoadingSongs] = useState(true);
   const [showSongForm, setShowSongForm] = useState(false);
   const [songTitle, setSongTitle] = useState("");
   const [songArtist, setSongArtist] = useState("");
-  const [addingSong, setAddingSong] = useState(false);
 
-  interface LocationCountry { id: string; name: string; code: string; cities: { id: string; name: string }[] }
-  const [locations, setLocations] = useState<LocationCountry[]>([]);
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [savingLocation, setSavingLocation] = useState(false);
   const [savedLocation, setSavedLocation] = useState(false);
 
-  useEffect(() => {
-    if (session?.user) {
-      setName(session.user.name ?? "");
-    }
-    async function fetchProfile() {
-      try {
-        const res = await fetch("/api/profile");
-        if (res.ok) {
-          const data = await res.json();
-          setPhone(data.phone ?? "");
-          if (data.name) setName(data.name);
-          if (data.countryId) setSelectedCountry(data.countryId);
-          if (data.cityId) setSelectedCity(data.cityId);
-        }
-      } catch {}
-    }
-    fetchProfile();
-  }, [session?.user]);
+  const { data: profile } = useQuery<ProfileData>({
+    queryKey: ["profile"],
+    queryFn: async () => {
+      const res = await fetch("/api/profile");
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
 
   useEffect(() => {
-    async function fetchPackages() {
-      try {
-        const res = await fetch("/api/packages/mine");
-        if (res.ok) setPackages(await res.json());
-      } catch {}
-      setLoadingPkgs(false);
+    if (profile) {
+      setName(profile.name || session?.user?.name || "");
+      setPhone(profile.phone ?? "");
+      if (profile.countryId) setSelectedCountry(profile.countryId);
+      if (profile.cityId) setSelectedCity(profile.cityId);
+    } else if (session?.user?.name) {
+      setName(session.user.name);
     }
-    fetchPackages();
-  }, []);
+  }, [profile, session?.user?.name]);
 
-  useEffect(() => {
-    async function fetchLocations() {
-      try {
-        const res = await fetch("/api/locations");
-        if (res.ok) setLocations(await res.json());
-      } catch {}
-    }
-    fetchLocations();
-  }, []);
+  const { data: packages = [], isLoading: loadingPkgs } = useQuery<UserPackageInfo[]>({
+    queryKey: ["packages", "mine"],
+    queryFn: async () => {
+      const res = await fetch("/api/packages/mine");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
 
-  useEffect(() => {
-    async function fetchSongs() {
-      try {
-        const res = await fetch("/api/profile/songs");
-        if (res.ok) setSongs(await res.json());
-      } catch {}
-      setLoadingSongs(false);
-    }
-    fetchSongs();
-  }, []);
+  const { data: locations = [] } = useQuery<LocationCountry[]>({
+    queryKey: ["locations"],
+    queryFn: async () => {
+      const res = await fetch("/api/locations");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
 
-  async function handleAddSong(e: React.FormEvent) {
-    e.preventDefault();
-    if (!songTitle.trim() || !songArtist.trim()) return;
-    setAddingSong(true);
-    try {
+  const { data: songs = [], isLoading: loadingSongs } = useQuery<FavoriteSong[]>({
+    queryKey: ["profile", "songs"],
+    queryFn: async () => {
+      const res = await fetch("/api/profile/songs");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
+
+  const addSongMutation = useMutation({
+    mutationFn: async ({ title, artist }: { title: string; artist: string }) => {
       const res = await fetch("/api/profile/songs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: songTitle.trim(), artist: songArtist.trim() }),
+        body: JSON.stringify({ title, artist }),
       });
-      if (res.ok) {
-        const newSong = await res.json();
-        setSongs((prev) => [newSong, ...prev]);
-        setSongTitle("");
-        setSongArtist("");
-        setShowSongForm(false);
-      }
-    } catch {}
-    setAddingSong(false);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile", "songs"] });
+      setSongTitle("");
+      setSongArtist("");
+      setShowSongForm(false);
+    },
+  });
+
+  const removeSongMutation = useMutation({
+    mutationFn: async (songId: string) => {
+      await fetch(`/api/profile/songs?id=${songId}`, { method: "DELETE" });
+    },
+    onMutate: async (songId) => {
+      await queryClient.cancelQueries({ queryKey: ["profile", "songs"] });
+      const prev = queryClient.getQueryData<FavoriteSong[]>(["profile", "songs"]);
+      queryClient.setQueryData<FavoriteSong[]>(["profile", "songs"], (old) =>
+        old?.filter((s) => s.id !== songId) ?? [],
+      );
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(["profile", "songs"], context.prev);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile", "songs"] });
+    },
+  });
+
+  function handleAddSong(e: React.FormEvent) {
+    e.preventDefault();
+    if (!songTitle.trim() || !songArtist.trim()) return;
+    addSongMutation.mutate({ title: songTitle.trim(), artist: songArtist.trim() });
   }
 
-  async function handleRemoveSong(songId: string) {
-    setSongs((prev) => prev.filter((s) => s.id !== songId));
-    try {
-      await fetch(`/api/profile/songs?id=${songId}`, { method: "DELETE" });
-    } catch {
-      const res = await fetch("/api/profile/songs");
-      if (res.ok) setSongs(await res.json());
-    }
+  function handleRemoveSong(songId: string) {
+    removeSongMutation.mutate(songId);
   }
 
   function countryFlag(code: string) {
@@ -175,6 +200,7 @@ export default function ProfilePage() {
         body: JSON.stringify({ countryId: countryId || null, cityId: cityId || null }),
       });
       if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
         setSavedLocation(true);
         setTimeout(() => setSavedLocation(false), 2000);
       }
@@ -193,6 +219,7 @@ export default function ProfilePage() {
         body: JSON.stringify({ name: name.trim(), phone: phone.trim() }),
       });
       if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
         setSaved(true);
         await update();
         setTimeout(() => {
@@ -380,10 +407,10 @@ export default function ProfilePage() {
                       <Button
                         type="submit"
                         size="sm"
-                        disabled={addingSong || !songTitle.trim() || !songArtist.trim()}
+                        disabled={addSongMutation.isPending || !songTitle.trim() || !songArtist.trim()}
                         className="h-9 shrink-0 px-3"
                       >
-                        {addingSong ? (
+                        {addSongMutation.isPending ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Plus className="h-3.5 w-3.5" />
