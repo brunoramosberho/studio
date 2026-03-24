@@ -4,6 +4,8 @@ import type { NextRequest } from "next/server";
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  if (pathname.startsWith("/api/")) return NextResponse.next();
+
   const sessionToken =
     req.cookies.get("authjs.session-token")?.value ||
     req.cookies.get("__Secure-authjs.session-token")?.value;
@@ -20,5 +22,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/my/:path*", "/coach/:path*", "/admin/:path*"],
+  matcher: ["/my/:path*", "/coach/:path*", "/admin/:path*", "/api/admin/:path*"],
 };
