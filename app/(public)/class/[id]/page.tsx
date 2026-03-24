@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -16,6 +16,7 @@ import {
   EyeOff,
   Ticket,
   MapPin,
+  Share,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +77,7 @@ export default function ClassDetailPage() {
   const [bookedSpotNumber, setBookedSpotNumber] = useState<number | null>(null);
   const [privacy, setPrivacy] = useState<"PUBLIC" | "PRIVATE">("PUBLIC");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const {
     data: cls,
@@ -143,6 +145,25 @@ export default function ClassDetailPage() {
     }
   }
 
+  const handleShare = useCallback(async () => {
+    if (!cls) return;
+    const classUrl = `${window.location.origin}/class/${id}`;
+    const date = new Date(cls.startsAt);
+    const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+    const time = formatTime(cls.startsAt);
+    const text = `${cls.classType.name} con ${cls.coach.user.name}\n${dayStr}, ${time}\n${cls.room.studio.name}\n¡Reserva tu lugar!`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: cls.classType.name, text, url: classUrl });
+      } catch {}
+    } else {
+      await navigator.clipboard.writeText(`${text}\n${classUrl}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [cls, id]);
+
   if (loading || authStatus === "loading") {
     return (
       <div className="flex min-h-[60dvh] items-center justify-center">
@@ -177,7 +198,7 @@ export default function ClassDetailPage() {
   return (
     <PageTransition>
       <div className="mx-auto max-w-lg px-4 pb-36 pt-4 sm:pb-16 sm:pt-12">
-        {/* Back + credits */}
+        {/* Back + credits + share */}
         <div className="mb-6 flex items-center justify-between">
           <Link
             href="/schedule"
@@ -186,14 +207,27 @@ export default function ClassDetailPage() {
             <ArrowLeft className="h-4 w-4" />
             Horarios
           </Link>
-          {isAuthenticated && creditsRemaining !== null && (
-            <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
-              <Ticket className="h-3.5 w-3.5 text-accent" />
-              <span className="text-[12px] font-semibold text-accent">
-                {creditsRemaining === -1 ? "Ilimitado" : `${creditsRemaining} clases`}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {isAuthenticated && creditsRemaining !== null && (
+              <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
+                <Ticket className="h-3.5 w-3.5 text-accent" />
+                <span className="text-[12px] font-semibold text-accent">
+                  {creditsRemaining === -1 ? "Ilimitado" : `${creditsRemaining} clases`}
+                </span>
+              </div>
+            )}
+            <button
+              onClick={handleShare}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-muted transition-colors hover:text-foreground active:scale-95"
+              title="Compartir clase"
+            >
+              {copied ? (
+                <Check className="h-4 w-4 text-green-600" />
+              ) : (
+                <Share className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Title + meta */}
@@ -305,18 +339,36 @@ export default function ClassDetailPage() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-6"
             >
-              <div className="flex items-center gap-3 rounded-xl bg-green-50 px-4 py-3">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-500">
-                  <Check className="h-3.5 w-3.5 text-white" />
+              <div className="rounded-xl bg-green-50 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-500">
+                    <Check className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-green-800">
+                      Reserva confirmada
+                    </p>
+                    <p className="text-xs text-green-600">
+                      Lugar #{bookedSpotNumber} · {formatTime(cls.startsAt)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-green-800">
-                    Reserva confirmada
-                  </p>
-                  <p className="text-xs text-green-600">
-                    Lugar #{bookedSpotNumber} · {formatTime(cls.startsAt)}
-                  </p>
-                </div>
+                <button
+                  onClick={handleShare}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      Link copiado
+                    </>
+                  ) : (
+                    <>
+                      <Share className="h-3.5 w-3.5" />
+                      Invitar amigos a esta clase
+                    </>
+                  )}
+                </button>
               </div>
             </motion.div>
           )}

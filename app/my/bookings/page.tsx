@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,7 +10,8 @@ import {
   AlertTriangle,
   Loader2,
   MapPin,
-  Share2,
+  Share,
+  Check,
   X,
   Users,
   Hash,
@@ -65,6 +66,7 @@ export default function BookingsPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [cancelTarget, setCancelTarget] = useState<EnrichedBooking | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const { data: upcoming = [], isLoading: loadingUpcoming } = useQuery({
     queryKey: ["bookings", "upcoming"],
@@ -90,7 +92,7 @@ export default function BookingsPage() {
     },
   });
 
-  async function handleShare(booking: EnrichedBooking) {
+  const handleShare = useCallback(async (booking: EnrichedBooking) => {
     const classUrl = `${window.location.origin}/class/${booking.classId}`;
     const date = new Date(booking.class.startsAt);
     const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
@@ -103,8 +105,10 @@ export default function BookingsPage() {
       } catch {}
     } else {
       await navigator.clipboard.writeText(`${text}\n${classUrl}`);
+      setCopiedId(booking.id);
+      setTimeout(() => setCopiedId(null), 2000);
     }
-  }
+  }, []);
 
   const loading = tab === "upcoming" ? loadingUpcoming : loadingPast;
   const bookings = tab === "upcoming" ? upcoming : past;
@@ -271,8 +275,17 @@ export default function BookingsPage() {
                             onClick={() => handleShare(booking)}
                             className="flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-[12px] font-medium text-foreground transition-colors hover:bg-surface/80 active:scale-95"
                           >
-                            <Share2 className="h-3.5 w-3.5" />
-                            Compartir
+                            {copiedId === booking.id ? (
+                              <>
+                                <Check className="h-3.5 w-3.5 text-green-600" />
+                                <span className="text-green-600">Copiado</span>
+                              </>
+                            ) : (
+                              <>
+                                <Share className="h-3.5 w-3.5" />
+                                Compartir
+                              </>
+                            )}
                           </button>
                           <div className="flex-1" />
                           <button
