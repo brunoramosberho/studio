@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -18,6 +18,7 @@ import {
   X,
   MapPin,
   Trophy,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +75,10 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
+
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showSongForm, setShowSongForm] = useState(false);
   const [songTitle, setSongTitle] = useState("");
@@ -220,6 +225,37 @@ export default function ProfilePage() {
     setSavingLocation(false);
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) return;
+
+    const preview = URL.createObjectURL(file);
+    setAvatarPreview(preview);
+    setUploadingAvatar(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/profile/avatar", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        await update();
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+      }
+    } catch {} finally {
+      setUploadingAvatar(false);
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -275,15 +311,34 @@ export default function ProfilePage() {
           initial="hidden"
           animate="show"
         >
-          <Avatar className="h-16 w-16">
-            {session?.user?.image && (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="group relative shrink-0"
+            disabled={uploadingAvatar}
+          >
+            <Avatar className="h-16 w-16">
               <AvatarImage
-                src={session.user.image}
-                alt={session.user.name ?? ""}
+                src={avatarPreview || session?.user?.image || undefined}
+                alt={session?.user?.name ?? ""}
               />
-            )}
-            <AvatarFallback className="text-lg">{initials}</AvatarFallback>
-          </Avatar>
+              <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+            </Avatar>
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/0 transition-colors group-hover:bg-foreground/40">
+              {uploadingAvatar ? (
+                <Loader2 className="h-5 w-5 animate-spin text-white" />
+              ) : (
+                <Camera className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+          </button>
           <div className="min-w-0 flex-1">
             <p className="font-display text-xl font-bold text-foreground">
               {session?.user?.name}
