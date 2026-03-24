@@ -73,61 +73,83 @@ async function main() {
   console.log(`✓ Created ${classTypes.length} class types`);
 
   // --- Location Hierarchy: Country > City > Studio > Room ---
+  const spain = await prisma.country.create({
+    data: { name: "España", code: "ES" },
+  });
   const mexico = await prisma.country.create({
     data: { name: "México", code: "MX" },
   });
 
+  const madrid = await prisma.city.create({
+    data: { name: "Madrid", countryId: spain.id },
+  });
   const cdmx = await prisma.city.create({
     data: { name: "Ciudad de México", countryId: mexico.id },
   });
 
+  // 2 studios in Madrid
+  const studioSalamanca = await prisma.studio.create({
+    data: { name: "Flō Salamanca", address: "Calle de Serrano 45, Barrio de Salamanca", cityId: madrid.id },
+  });
+  const studioChamberi = await prisma.studio.create({
+    data: { name: "Flō Chamberí", address: "Calle de Fuencarral 112, Chamberí", cityId: madrid.id },
+  });
+  // 1 studio in CDMX
   const studioPolanco = await prisma.studio.create({
     data: { name: "Flō Polanco", address: "Av. Presidente Masaryk 123, Polanco", cityId: cdmx.id },
   });
 
-  const studioRoma = await prisma.studio.create({
-    data: { name: "Flō Roma", address: "Av. Álvaro Obregón 200, Roma Norte", cityId: cdmx.id },
+  // Rooms — Madrid Salamanca
+  const roomReformerSalamanca = await prisma.room.create({
+    data: { name: "Sala Reformer", studioId: studioSalamanca.id, classTypeId: reformer.id, maxCapacity: 12 },
+  });
+  const roomMatSalamanca = await prisma.room.create({
+    data: { name: "Sala Mat", studioId: studioSalamanca.id, classTypeId: matFlow.id, maxCapacity: 20 },
+  });
+  const roomBarreSalamanca = await prisma.room.create({
+    data: { name: "Sala Barre", studioId: studioSalamanca.id, classTypeId: barreFusion.id, maxCapacity: 15 },
   });
 
-  // Rooms per studio — capacity is defined per room
+  // Rooms — Madrid Chamberí
+  const roomReformerChamberi = await prisma.room.create({
+    data: { name: "Sala Reformer", studioId: studioChamberi.id, classTypeId: reformer.id, maxCapacity: 10 },
+  });
+  const roomMatChamberi = await prisma.room.create({
+    data: { name: "Sala Mat", studioId: studioChamberi.id, classTypeId: matFlow.id, maxCapacity: 16 },
+  });
+  const roomBarreChamberi = await prisma.room.create({
+    data: { name: "Sala Barre", studioId: studioChamberi.id, classTypeId: barreFusion.id, maxCapacity: 12 },
+  });
+
+  // Rooms — CDMX Polanco
   const roomReformerPolanco = await prisma.room.create({
     data: { name: "Sala Reformer", studioId: studioPolanco.id, classTypeId: reformer.id, maxCapacity: 12 },
   });
   const roomMatPolanco = await prisma.room.create({
-    data: { name: "Sala Mat", studioId: studioPolanco.id, classTypeId: matFlow.id, maxCapacity: 20 },
+    data: { name: "Sala Mat", studioId: studioPolanco.id, classTypeId: matFlow.id, maxCapacity: 18 },
   });
   const roomBarrePolanco = await prisma.room.create({
-    data: { name: "Sala Barre", studioId: studioPolanco.id, classTypeId: barreFusion.id, maxCapacity: 15 },
+    data: { name: "Sala Barre", studioId: studioPolanco.id, classTypeId: barreFusion.id, maxCapacity: 14 },
   });
 
-  const roomReformerRoma = await prisma.room.create({
-    data: { name: "Sala Reformer", studioId: studioRoma.id, classTypeId: reformer.id, maxCapacity: 10 },
-  });
-  const roomMatRoma = await prisma.room.create({
-    data: { name: "Sala Mat", studioId: studioRoma.id, classTypeId: matFlow.id, maxCapacity: 16 },
-  });
-  const roomBarreRoma = await prisma.room.create({
-    data: { name: "Sala Barre", studioId: studioRoma.id, classTypeId: barreFusion.id, maxCapacity: 12 },
-  });
-
-  // Map classType → rooms (alternate between studios)
+  // Map classType → rooms (alternate between Madrid studios; Polanco classes are separate)
   const roomsByClassType: Record<string, { id: string; maxCapacity: number }[]> = {
-    [reformer.id]: [roomReformerPolanco, roomReformerRoma],
-    [matFlow.id]: [roomMatPolanco, roomMatRoma],
-    [barreFusion.id]: [roomBarrePolanco, roomBarreRoma],
+    [reformer.id]: [roomReformerSalamanca, roomReformerChamberi, roomReformerPolanco],
+    [matFlow.id]: [roomMatSalamanca, roomMatChamberi, roomMatPolanco],
+    [barreFusion.id]: [roomBarreSalamanca, roomBarreChamberi, roomBarrePolanco],
   };
 
-  console.log("✓ Created location hierarchy (1 country, 1 city, 2 studios, 6 rooms)");
+  console.log("✓ Created location hierarchy (2 countries, 2 cities, 3 studios, 9 rooms)");
 
   // --- Admin ---
   const admin = await prisma.user.create({
     data: {
-      email: "admin@flostudio.mx",
+      email: "admin@flostudio.es",
       name: "Admin Flō",
       role: Role.ADMIN,
       image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&fit=crop&crop=face",
-      countryId: mexico.id,
-      cityId: cdmx.id,
+      countryId: spain.id,
+      cityId: madrid.id,
     },
   });
   console.log("✓ Created admin user");
@@ -135,7 +157,7 @@ async function main() {
   // --- Coaches ---
   const coachData = [
     {
-      email: "valentina@flostudio.mx",
+      email: "valentina@flostudio.es",
       name: "Valentina Reyes",
       specialties: ["Reformer", "Prenatal"],
       bio: "Certificada en STOTT Pilates con más de 8 años de experiencia. Especialista en rehabilitación y Pilates prenatal.",
@@ -146,8 +168,8 @@ async function main() {
         "https://images.unsplash.com/photo-1548690312-e3b507d8c110?w=200&h=200&fit=crop&crop=face",
     },
     {
-      email: "carolina@flostudio.mx",
-      name: "Carolina Mendez",
+      email: "carolina@flostudio.es",
+      name: "Carolina Méndez",
       specialties: ["Mat", "Barre"],
       bio: "Bailarina profesional convertida en instructora de Pilates. Su enfoque único combina gracia y fuerza.",
       color: "#2D5016",
@@ -157,7 +179,7 @@ async function main() {
         "https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?w=200&h=200&fit=crop&crop=face",
     },
     {
-      email: "isabella@flostudio.mx",
+      email: "isabella@flostudio.es",
       name: "Isabella Torres",
       specialties: ["Reformer", "Barre", "Mat"],
       bio: "Con formación en fisioterapia y Pilates, Isabella diseña clases que transforman cuerpo y mente.",
@@ -172,7 +194,7 @@ async function main() {
   const coachProfiles = [];
   for (const c of coachData) {
     const user = await prisma.user.create({
-      data: { email: c.email, name: c.name, role: Role.COACH, image: c.userImage, countryId: mexico.id, cityId: cdmx.id },
+      data: { email: c.email, name: c.name, role: Role.COACH, image: c.userImage, countryId: spain.id, cityId: madrid.id },
     });
     const profile = await prisma.coachProfile.create({
       data: {
@@ -187,17 +209,18 @@ async function main() {
   }
   console.log(`✓ Created ${coachProfiles.length} coaches`);
 
-  // --- Packages (scoped to country) ---
+  // --- Packages (EUR for Spain, MXN for Mexico) ---
   const packages = await Promise.all([
     prisma.package.create({
       data: {
         name: "Primera Vez",
         credits: 1,
         validDays: 7,
-        price: 150,
+        price: 9,
+        currency: "EUR",
         isPromo: true,
         description: "Clase de prueba para nuevos clientes",
-        countryId: mexico.id,
+        countryId: spain.id,
       },
     }),
     prisma.package.create({
@@ -205,9 +228,10 @@ async function main() {
         name: "Clase Individual",
         credits: 1,
         validDays: 30,
-        price: 350,
+        price: 22,
+        currency: "EUR",
         description: "Una clase individual",
-        countryId: mexico.id,
+        countryId: spain.id,
       },
     }),
     prisma.package.create({
@@ -215,9 +239,10 @@ async function main() {
         name: "Pack 5 Clases",
         credits: 5,
         validDays: 60,
-        price: 1500,
+        price: 95,
+        currency: "EUR",
         description: "Paquete de 5 clases",
-        countryId: mexico.id,
+        countryId: spain.id,
       },
     }),
     prisma.package.create({
@@ -225,9 +250,10 @@ async function main() {
         name: "Pack 10 Clases",
         credits: 10,
         validDays: 90,
-        price: 2800,
+        price: 175,
+        currency: "EUR",
         description: "Paquete de 10 clases",
-        countryId: mexico.id,
+        countryId: spain.id,
       },
     }),
     prisma.package.create({
@@ -235,9 +261,10 @@ async function main() {
         name: "Pack 25 Clases",
         credits: 25,
         validDays: 180,
-        price: 6500,
+        price: 399,
+        currency: "EUR",
         description: "Paquete de 25 clases",
-        countryId: mexico.id,
+        countryId: spain.id,
       },
     }),
     prisma.package.create({
@@ -245,9 +272,10 @@ async function main() {
         name: "Pack 50 Clases",
         credits: 50,
         validDays: 365,
-        price: 12000,
+        price: 699,
+        currency: "EUR",
         description: "Paquete de 50 clases",
-        countryId: mexico.id,
+        countryId: spain.id,
       },
     }),
     prisma.package.create({
@@ -255,9 +283,10 @@ async function main() {
         name: "Ilimitado Mensual",
         credits: null,
         validDays: 30,
-        price: 2200,
+        price: 139,
+        currency: "EUR",
         description: "Clases ilimitadas por un mes",
-        countryId: mexico.id,
+        countryId: spain.id,
       },
     }),
   ]);
@@ -342,11 +371,11 @@ async function main() {
       email: "maria@example.com",
       name: "María García",
       role: Role.CLIENT,
-      phone: "+52 55 1234 5678",
+      phone: "+34 612 345 678",
       birthday: new Date(1995, 6, 15),
       image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face",
-      countryId: mexico.id,
-      cityId: cdmx.id,
+      countryId: spain.id,
+      cityId: madrid.id,
     },
   });
 
@@ -356,11 +385,11 @@ async function main() {
       email: "sofia@example.com",
       name: "Sofía López",
       role: Role.CLIENT,
-      phone: "+52 55 2345 6789",
+      phone: "+34 623 456 789",
       birthday: new Date(1998, today.getMonth(), today.getDate() + 2),
       image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face",
-      countryId: mexico.id,
-      cityId: cdmx.id,
+      countryId: spain.id,
+      cityId: madrid.id,
     },
   });
 
@@ -369,11 +398,11 @@ async function main() {
       email: "camila@example.com",
       name: "Camila Hernández",
       role: Role.CLIENT,
-      phone: "+52 55 3456 7890",
+      phone: "+34 634 567 890",
       birthday: new Date(1992, 11, 3),
       image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face",
-      countryId: mexico.id,
-      cityId: cdmx.id,
+      countryId: spain.id,
+      cityId: madrid.id,
     },
   });
 
@@ -385,8 +414,8 @@ async function main() {
       role: Role.CLIENT,
       birthday: new Date(2000, 3, 22),
       image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=face",
-      countryId: mexico.id,
-      cityId: cdmx.id,
+      countryId: spain.id,
+      cityId: madrid.id,
     },
   });
 
@@ -397,8 +426,8 @@ async function main() {
       role: Role.CLIENT,
       birthday: new Date(1997, 8, 10),
       image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&h=200&fit=crop&crop=face",
-      countryId: mexico.id,
-      cityId: cdmx.id,
+      countryId: spain.id,
+      cityId: madrid.id,
     },
   });
 

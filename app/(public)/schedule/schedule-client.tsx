@@ -52,6 +52,7 @@ export function ScheduleClient({
   const [filterCoach, setFilterCoach] = useState<string>("all");
   const [filterStudio, setFilterStudio] = useState<string>("all");
   const [studios, setStudios] = useState<{ id: string; name: string }[]>([]);
+  const [userCityId, setUserCityId] = useState<string | null>(null);
   const dayScrollRef = useRef<HTMLDivElement>(null);
   const branding = useBranding();
 
@@ -97,7 +98,17 @@ export function ScheduleClient({
   useEffect(() => {
     async function fetchStudios() {
       try {
-        const res = await fetch("/api/studios");
+        let cityId: string | null = null;
+        if (session?.user) {
+          const profRes = await fetch("/api/profile");
+          if (profRes.ok) {
+            const prof = await profRes.json();
+            cityId = prof.cityId ?? null;
+            setUserCityId(cityId);
+          }
+        }
+        const url = cityId ? `/api/studios?cityId=${cityId}` : "/api/studios";
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           setStudios(data.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })));
@@ -105,7 +116,7 @@ export function ScheduleClient({
       } catch {}
     }
     fetchStudios();
-  }, []);
+  }, [session?.user]);
 
   const showStudioFilter = studios.length > 1;
 

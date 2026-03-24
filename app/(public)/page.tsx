@@ -196,7 +196,7 @@ export default function LandingPage() {
                 size="lg"
                 className="border-white/20 text-white hover:border-accent hover:bg-accent hover:text-white"
               >
-                <Link href="/packages">Primera clase $150</Link>
+                <Link href="/packages">Primera clase €9</Link>
               </Button>
             </motion.div>
           </motion.div>
@@ -527,7 +527,7 @@ export default function LandingPage() {
             ¿Lista para empezar?
           </h2>
           <p className="mx-auto mt-6 max-w-md text-lg text-white/50">
-            Tu primera clase es a solo $150. Reserva hoy y descubre lo que tu
+            Tu primera clase es a solo €9. Reserva hoy y descubre lo que tu
             cuerpo puede lograr.
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">

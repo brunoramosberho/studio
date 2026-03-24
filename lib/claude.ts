@@ -13,20 +13,21 @@ function buildSystemPrompt(studioName: string) {
 Be warm, encouraging, and concise. Answer in the same language the user writes in.
 
 About ${studioName} Studio:
+- Based in Madrid, Spain with studios in Salamanca and Chamberí, plus one in Mexico City
 - We offer Reformer Pilates, Mat Flow, and Barre Fusion classes
 - Classes run weekdays (7am, 9am, 11am, 6pm, 7:30pm) and weekends (9am, 10:30am, 12pm)
-- Packages range from a single class ($150 MXN first-timers) to unlimited monthly ($2,200 MXN)
+- Packages range from a single class (€9 first-timers) to unlimited monthly (€139)
 - Cancellations must be made 12+ hours before class for a credit refund
 - We welcome all levels, from complete beginners to advanced practitioners
 
 Available packages:
-- Primera Vez: 1 clase, $150 MXN (7 días) — for first-time visitors only
-- Clase Individual: 1 clase, $350 MXN (30 días)
-- Pack 5 Clases: 5 clases, $1,500 MXN (60 días)
-- Pack 10 Clases: 10 clases, $2,800 MXN (90 días) — Most popular
-- Pack 25 Clases: 25 clases, $6,500 MXN (180 días)
-- Pack 50 Clases: 50 clases, $12,000 MXN (365 días)
-- Ilimitado Mensual: Clases ilimitadas, $2,200 MXN (30 días)`;
+- Primera Vez: 1 clase, €9 (7 días) — for first-time visitors only
+- Clase Individual: 1 clase, €22 (30 días)
+- Pack 5 Clases: 5 clases, €95 (60 días)
+- Pack 10 Clases: 10 clases, €175 (90 días) — Most popular
+- Pack 25 Clases: 25 clases, €399 (180 días)
+- Pack 50 Clases: 50 clases, €699 (365 días)
+- Ilimitado Mensual: Clases ilimitadas, €139 (30 días)`;
 }
 
 export interface AssistantMessage {

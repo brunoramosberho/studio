@@ -247,7 +247,7 @@ export default function AdminPackagesPage() {
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="mb-1.5 block text-sm font-medium">Precio (MXN)</label>
+                <label className="mb-1.5 block text-sm font-medium">Precio (EUR)</label>
                 <Input
                   type="number"
                   value={formData.price}
