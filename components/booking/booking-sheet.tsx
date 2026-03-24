@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,13 +13,17 @@ import {
   Sparkles,
   CreditCard,
   LogIn,
+  UserCheck,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn, formatTime } from "@/lib/utils";
 import type { Package } from "@prisma/client";
 
-type Step = "package" | "pay" | "booking" | "done";
+// Logged-in: package → booking → done
+// Guest: info → package → booking → done
+type Step = "info" | "package" | "booking" | "done";
 
 interface BookingSheetProps {
   open: boolean;
@@ -30,6 +34,13 @@ interface BookingSheetProps {
   classTime: string;
   privacy: "PUBLIC" | "PRIVATE";
   onSuccess: () => void;
+}
+
+interface EmailCheckResult {
+  exists: boolean;
+  hasCredits: boolean;
+  credits: number;
+  name: string | null;
 }
 
 export function BookingSheet({
@@ -47,7 +58,9 @@ export function BookingSheet({
   const router = useRouter();
   const isLoggedIn = !!session?.user;
 
-  const [step, setStep] = useState<Step>("package");
+  const initialStep: Step = isLoggedIn ? "package" : "info";
+
+  const [step, setStep] = useState<Step>(initialStep);
   const [selectedPkg, setSelectedPkg] = useState<Package | null>(null);
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
@@ -58,6 +71,10 @@ export function BookingSheet({
     spotNumber: number;
     packageName: string;
   } | null>(null);
+
+  const [emailCheck, setEmailCheck] = useState<EmailCheckResult | null>(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const emailCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: allPackages = [] } = useQuery<Package[]>({
     queryKey: ["packages-catalog"],
@@ -80,34 +97,65 @@ export function BookingSheet({
   });
 
   const isReturningUser = isLoggedIn && myPackages.length > 0;
-  const packages = allPackages.filter((p) => !(p.isPromo && isReturningUser));
+  const guestIsReturning = emailCheck?.exists && !emailCheck.hasCredits;
+  const packages = allPackages.filter(
+    (p) => !(p.isPromo && (isReturningUser || guestIsReturning)),
+  );
+
+  const checkEmail = useCallback(async (email: string) => {
+    if (!email || !email.includes("@")) {
+      setEmailCheck(null);
+      return;
+    }
+    setCheckingEmail(true);
+    try {
+      const res = await fetch("/api/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      setEmailCheck(data);
+      if (data.name && !guestName) setGuestName(data.name);
+    } catch {
+      setEmailCheck(null);
+    } finally {
+      setCheckingEmail(false);
+    }
+  }, [guestName]);
+
+  function handleEmailChange(email: string) {
+    setGuestEmail(email);
+    setEmailCheck(null);
+    if (emailCheckTimerRef.current) clearTimeout(emailCheckTimerRef.current);
+    if (email.includes("@") && email.includes(".")) {
+      emailCheckTimerRef.current = setTimeout(() => checkEmail(email), 600);
+    }
+  }
 
   useEffect(() => {
     if (open) {
-      setStep("package");
+      setStep(isLoggedIn ? "package" : "info");
       setSelectedPkg(null);
       setGuestName("");
       setGuestEmail("");
       setError(null);
       setResult(null);
       setLoading(false);
+      setEmailCheck(null);
     }
-  }, [open]);
+  }, [open, isLoggedIn]);
+
+  function handleInfoContinue(e: React.FormEvent) {
+    e.preventDefault();
+    if (!guestName.trim() || !guestEmail.trim()) return;
+    setStep("package");
+  }
 
   function handleSelectPackage(pkg: Package) {
     setSelectedPkg(pkg);
     setError(null);
-    if (isLoggedIn) {
-      executeBooking(pkg);
-    } else {
-      setStep("pay");
-    }
-  }
-
-  async function handlePaySubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedPkg) return;
-    executeBooking(selectedPkg);
+    executeBooking(pkg);
   }
 
   async function executeBooking(pkg: Package) {
@@ -138,7 +186,7 @@ export function BookingSheet({
 
       if (!res.ok) {
         setError(data.error || "Error al reservar");
-        setStep(isLoggedIn ? "package" : "pay");
+        setStep("package");
         setLoading(false);
         return;
       }
@@ -154,7 +202,7 @@ export function BookingSheet({
       onSuccess();
     } catch {
       setError("Error de conexión");
-      setStep(isLoggedIn ? "package" : "pay");
+      setStep("package");
     } finally {
       setLoading(false);
     }
@@ -168,11 +216,13 @@ export function BookingSheet({
     }).format(pkg.price);
   }
 
+  const canGoBack =
+    (step === "package" && !isLoggedIn);
+
   if (!open) return null;
 
   return (
     <>
-      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -181,7 +231,6 @@ export function BookingSheet({
         onClick={step !== "booking" ? onClose : undefined}
       />
 
-      {/* Sheet */}
       <motion.div
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
@@ -189,7 +238,6 @@ export function BookingSheet({
         transition={{ type: "spring", damping: 28, stiffness: 300 }}
         className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-y-auto rounded-t-3xl bg-white pb-safe shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
       >
-        {/* Drag indicator (mobile) */}
         <div className="flex justify-center pt-3 sm:hidden">
           <div className="h-1 w-10 rounded-full bg-border" />
         </div>
@@ -197,40 +245,174 @@ export function BookingSheet({
         {/* Header */}
         <div className="px-6 pb-2 pt-4">
           <div className="flex items-center justify-between">
-            {step === "pay" && (
+            {canGoBack && (
               <button
-                onClick={() => setStep("package")}
+                onClick={() => setStep("info")}
                 className="flex items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
               >
                 <ChevronLeft className="h-4 w-4" />
                 Atrás
               </button>
             )}
-            <div className={cn(step !== "pay" && "flex-1")}>
+            <div className={cn(!canGoBack && "flex-1")}>
               <p className="text-center text-xs text-muted">
                 {className} · {formatTime(classTime)} · Lugar #{spotNumber}
               </p>
             </div>
-            {step !== "pay" && <div className="w-12" />}
+            {!canGoBack && <div className="w-12" />}
           </div>
         </div>
 
         <div className="px-6 pb-8">
           <AnimatePresence mode="wait">
-            {/* ── Step: Package select ── */}
-            {step === "package" && (
+            {/* ── Step 1 (guest): Info ── */}
+            {step === "info" && (
               <motion.div
-                key="package"
+                key="info"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.2 }}
               >
                 <h2 className="mb-1 font-display text-xl font-bold text-foreground">
+                  Tus datos
+                </h2>
+                <p className="mb-5 text-sm text-muted">
+                  Ingresa tu información para reservar
+                </p>
+
+                <form onSubmit={handleInfoContinue} className="space-y-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Email</label>
+                    <Input
+                      type="email"
+                      placeholder="tu@correo.com"
+                      value={guestEmail}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                  </div>
+
+                  {checkingEmail && (
+                    <div className="flex items-center gap-2 py-1">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted" />
+                      <span className="text-xs text-muted">Verificando...</span>
+                    </div>
+                  )}
+
+                  {/* User has credits — suggest login */}
+                  {emailCheck?.exists && emailCheck.hasCredits && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl border border-green-200 bg-green-50 p-4"
+                    >
+                      <div className="flex items-start gap-3">
+                        <UserCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-green-800">
+                            ¡Ya tienes {emailCheck.credits === -1 ? "créditos ilimitados" : `${emailCheck.credits} clase${emailCheck.credits !== 1 ? "s" : ""}`} disponible{emailCheck.credits !== 1 ? "s" : ""}!
+                          </p>
+                          <p className="mt-0.5 text-xs text-green-700">
+                            Inicia sesión para reservar con tus créditos.
+                          </p>
+                          <div className="mt-3 flex flex-col gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => signIn("google", { callbackUrl: `/class/${classId}` })}
+                              className="w-full gap-1.5 rounded-full bg-green-700 text-white hover:bg-green-800"
+                            >
+                              <LogIn className="h-3.5 w-3.5" />
+                              Iniciar sesión con Google
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => signIn("resend", { email: guestEmail, callbackUrl: `/class/${classId}`, redirect: false })}
+                              className="w-full text-xs text-green-700 hover:text-green-800"
+                            >
+                              Enviar link por correo
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* User exists but no credits — autofill name, continue to buy */}
+                  {emailCheck?.exists && !emailCheck.hasCredits && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-xl bg-accent/5 px-4 py-3"
+                    >
+                      <p className="text-xs text-muted">
+                        Ya tienes cuenta. Necesitas comprar un paquete para reservar.
+                      </p>
+                    </motion.div>
+                  )}
+
+                  {/* Show name + continue only when NOT showing "you have credits" */}
+                  {!(emailCheck?.exists && emailCheck?.hasCredits) && (
+                    <>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted">Nombre</label>
+                        <Input
+                          placeholder="Tu nombre"
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <Button
+                        type="submit"
+                        size="lg"
+                        disabled={checkingEmail || !guestName.trim() || !guestEmail.trim()}
+                        className="mt-4 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                      >
+                        Elegir paquete
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Login link for users who just want to log in */}
+                  {!(emailCheck?.exists && emailCheck?.hasCredits) && (
+                    <div className="mt-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => signIn("google", { callbackUrl: `/class/${classId}` })}
+                        className="inline-flex items-center gap-1.5 text-xs text-accent transition-colors hover:text-accent/80"
+                      >
+                        <LogIn className="h-3.5 w-3.5" />
+                        Ya tengo cuenta · Iniciar sesión
+                      </button>
+                    </div>
+                  )}
+                </form>
+              </motion.div>
+            )}
+
+            {/* ── Step 2: Package select ── */}
+            {step === "package" && (
+              <motion.div
+                key="package"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <h2 className="mb-1 font-display text-xl font-bold text-foreground">
                   Elige tu paquete
                 </h2>
                 <p className="mb-5 text-sm text-muted">
-                  Selecciona un paquete para reservar tu lugar
+                  {!isLoggedIn && guestEmail
+                    ? `Para ${guestEmail}`
+                    : "Selecciona un paquete para reservar tu lugar"}
                 </p>
 
                 {error && (
@@ -240,8 +422,8 @@ export function BookingSheet({
                 )}
 
                 <div className="space-y-2.5">
-                  {packages.map((pkg, i) => {
-                    const isSingle = pkg.credits === 1;
+                  {packages.map((pkg) => {
+                    const isSingle = pkg.credits === 1 && !pkg.isPromo;
                     return (
                       <button
                         key={pkg.id}
@@ -258,6 +440,12 @@ export function BookingSheet({
                           <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
                             <Sparkles className="h-3 w-3" />
                             Recomendado
+                          </div>
+                        )}
+                        {pkg.isPromo && (
+                          <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
+                            <Sparkles className="h-3 w-3" />
+                            Primera vez
                           </div>
                         )}
                         <div className="flex items-center justify-between">
@@ -293,70 +481,16 @@ export function BookingSheet({
                     );
                   })}
                 </div>
-              </motion.div>
-            )}
 
-            {/* ── Step: Pay (guest info) ── */}
-            {step === "pay" && (
-              <motion.div
-                key="pay"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-              >
-                <h2 className="mb-1 font-display text-xl font-bold text-foreground">
-                  Tus datos
-                </h2>
-                <p className="mb-5 text-sm text-muted">
-                  {selectedPkg?.name} · {selectedPkg && formatPrice(selectedPkg)}
-                </p>
-
-                {error && (
-                  <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {error}
-                  </div>
-                )}
-
-                <form onSubmit={handlePaySubmit} className="space-y-3">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Nombre</label>
-                    <Input
-                      placeholder="Tu nombre"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      required
-                      autoFocus
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Email</label>
-                    <Input
-                      type="email"
-                      placeholder="tu@correo.com"
-                      value={guestEmail}
-                      onChange={(e) => setGuestEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    size="lg"
-                    disabled={loading || !guestName.trim() || !guestEmail.trim()}
-                    className="mt-4 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    Pagar {selectedPkg && formatPrice(selectedPkg)}
-                  </Button>
-                  <p className="text-center text-[10px] text-muted/60">
-                    Pago seguro · Podrás iniciar sesión después con este email
+                {!isLoggedIn && (
+                  <p className="mt-4 text-center text-[10px] text-muted/60">
+                    Pago seguro · Los créditos se activan al instante
                   </p>
-                </form>
+                )}
               </motion.div>
             )}
 
-            {/* ── Step: Booking in progress ── */}
+            {/* ── Step 3: Booking in progress ── */}
             {step === "booking" && (
               <motion.div
                 key="booking"
@@ -371,7 +505,7 @@ export function BookingSheet({
               </motion.div>
             )}
 
-            {/* ── Step: Done ── */}
+            {/* ── Step 4: Done ── */}
             {step === "done" && result && (
               <motion.div
                 key="done"

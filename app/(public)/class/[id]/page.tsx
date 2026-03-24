@@ -173,7 +173,6 @@ export default function ClassDetailPage() {
   const spotsLeft = cls.spotsLeft;
   const spotMap = cls.spotMap ?? {};
   const needsPackage = !isAuthenticated || !hasCredits;
-  const isFirstClass = !isAuthenticated || (isAuthenticated && userPackages.length === 0);
 
   return (
     <PageTransition>
@@ -340,11 +339,7 @@ export default function ClassDetailPage() {
                 ) : null}
                 {!selectedSpot
                   ? "Selecciona un lugar"
-                  : needsPackage
-                    ? isFirstClass
-                      ? "Reservar 1era clase"
-                      : "Reservar clase"
-                    : "Reservar clase"}
+                  : "Reservar clase"}
               </Button>
             ) : (
               <Button size="lg" variant="secondary" className="w-full rounded-full">
