@@ -46,10 +46,16 @@ export async function GET(request: NextRequest) {
     };
 
     const response = NextResponse.redirect(new URL(redirectMap[role] || "/", request.url));
-    response.cookies.set("authjs.session-token", sessionToken, {
+    const isSecure = request.url.startsWith("https://");
+    const cookieName = isSecure
+      ? "__Secure-authjs.session-token"
+      : "authjs.session-token";
+
+    response.cookies.set(cookieName, sessionToken, {
       expires,
       path: "/",
       httpOnly: true,
+      secure: isSecure,
       sameSite: "lax",
     });
 
