@@ -87,14 +87,12 @@ export function Navbar() {
               </Avatar>
             </Link>
           ) : (
-            <>
-              <Link
-                href="/login"
-                className="hidden text-[13px] font-medium text-muted transition-colors hover:text-foreground lg:block"
-              >
-                Cuenta
-              </Link>
-            </>
+            <Link
+              href="/login"
+              className="text-[13px] font-medium text-muted transition-colors hover:text-foreground"
+            >
+              Cuenta
+            </Link>
           )}
           <Button asChild size="sm" className="h-9 rounded-lg bg-foreground px-4 text-xs font-semibold uppercase tracking-wider text-white hover:bg-foreground/90">
             <Link href="/schedule">Reservar</Link>
