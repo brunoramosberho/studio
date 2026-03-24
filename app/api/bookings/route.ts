@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
           include: {
             classType: true,
             coach: { include: { user: { select: { name: true, image: true } } } },
+            room: { include: { studio: { select: { name: true } } } },
           },
         },
       },
@@ -42,7 +43,49 @@ export async function GET(request: NextRequest) {
       take: 50,
     });
 
-    return NextResponse.json(bookings);
+    // Attach friends going to the same classes (only for upcoming)
+    if (isUpcoming && bookings.length > 0) {
+      const friendships = await prisma.friendship.findMany({
+        where: {
+          status: "ACCEPTED",
+          OR: [{ requesterId: session.user.id }, { addresseeId: session.user.id }],
+        },
+        select: { requesterId: true, addresseeId: true },
+      });
+      const friendIds = friendships.map((f) =>
+        f.requesterId === session.user.id ? f.addresseeId : f.requesterId,
+      );
+
+      if (friendIds.length > 0) {
+        const classIds = bookings.map((b) => b.classId);
+        const friendBookings = await prisma.booking.findMany({
+          where: {
+            classId: { in: classIds },
+            userId: { in: friendIds },
+            status: "CONFIRMED",
+          },
+          select: {
+            classId: true,
+            user: { select: { id: true, name: true, image: true } },
+          },
+        });
+
+        const friendsByClass = new Map<string, { id: string; name: string | null; image: string | null }[]>();
+        for (const fb of friendBookings) {
+          const arr = friendsByClass.get(fb.classId) ?? [];
+          arr.push(fb.user);
+          friendsByClass.set(fb.classId, arr);
+        }
+
+        const enriched = bookings.map((b) => ({
+          ...b,
+          friendsGoing: friendsByClass.get(b.classId) ?? [],
+        }));
+        return NextResponse.json(enriched);
+      }
+    }
+
+    return NextResponse.json(bookings.map((b) => ({ ...b, friendsGoing: [] })));
   } catch (error) {
     console.error("GET /api/bookings error:", error);
     return NextResponse.json(
