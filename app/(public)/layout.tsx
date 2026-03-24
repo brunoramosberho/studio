@@ -6,7 +6,7 @@ import { Navbar } from "@/components/shared/navbar";
 import { Footer } from "@/components/shared/footer";
 import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
 
-const sidebarPaths = ["/schedule", "/coaches", "/class/", "/book/"];
+const sidebarPaths = ["/schedule", "/coaches", "/class/", "/book/", "/packages"];
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();

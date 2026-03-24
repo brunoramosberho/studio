@@ -59,7 +59,7 @@ export function BookingSheet({
     packageName: string;
   } | null>(null);
 
-  const { data: packages = [] } = useQuery<Package[]>({
+  const { data: allPackages = [] } = useQuery<Package[]>({
     queryKey: ["packages-catalog"],
     queryFn: async () => {
       const res = await fetch("/api/packages");
@@ -68,6 +68,19 @@ export function BookingSheet({
     },
     enabled: open,
   });
+
+  const { data: myPackages = [] } = useQuery<{ id: string }[]>({
+    queryKey: ["packages", "mine"],
+    queryFn: async () => {
+      const res = await fetch("/api/packages/mine");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: open && isLoggedIn,
+  });
+
+  const isReturningUser = isLoggedIn && myPackages.length > 0;
+  const packages = allPackages.filter((p) => !(p.isPromo && isReturningUser));
 
   useEffect(() => {
     if (open) {

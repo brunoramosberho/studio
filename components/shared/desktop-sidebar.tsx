@@ -116,7 +116,9 @@ export function DesktopSidebar() {
             const isActive =
               link.href === "/my"
                 ? pathname === "/my"
-                : pathname.startsWith(link.href);
+                : link.href === "/my/packages"
+                  ? pathname.startsWith("/my/packages") || pathname.startsWith("/packages")
+                  : pathname.startsWith(link.href);
 
             return (
               <Link

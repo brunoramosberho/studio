@@ -5,16 +5,21 @@ import { auth } from "@/lib/auth";
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { packageId } = body;
+    const { packageId, email, name } = body;
 
     if (!packageId) {
       return NextResponse.json(
         { error: "packageId is required" },
+        { status: 400 },
+      );
+    }
+
+    const userId = session?.user?.id ?? null;
+
+    if (!userId && (!email || !name)) {
+      return NextResponse.json(
+        { error: "email and name are required for new users" },
         { status: 400 },
       );
     }
@@ -25,32 +30,46 @@ export async function POST(request: NextRequest) {
 
     if (!pkg || !pkg.isActive) {
       return NextResponse.json(
-        { error: "Package not found or inactive" },
+        { error: "Paquete no encontrado" },
         { status: 404 },
       );
     }
 
-    if (process.env.STRIPE_SECRET_KEY) {
+    // Stripe checkout (if configured)
+    if (userId && process.env.STRIPE_SECRET_KEY) {
       const { createCheckoutSession } = await import("@/lib/stripe");
       const origin = request.nextUrl.origin;
       const checkoutSession = await createCheckoutSession({
         packageId: pkg.id,
         packageName: pkg.name,
         price: pkg.price,
-        userId: session.user.id,
+        userId,
         successUrl: `${origin}/packages/success?session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${origin}/packages`,
       });
       return NextResponse.json({ url: checkoutSession.url });
     }
 
+    // Resolve user
+    let finalUserId = userId;
+    if (!finalUserId) {
+      let user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: { email: email.toLowerCase(), name },
+        });
+      }
+      finalUserId = user.id;
+    }
+
+    // Simulated purchase
     const purchasedAt = new Date();
     const expiresAt = new Date(purchasedAt);
     expiresAt.setDate(expiresAt.getDate() + pkg.validDays);
 
     await prisma.userPackage.create({
       data: {
-        userId: session.user.id,
+        userId: finalUserId,
         packageId: pkg.id,
         creditsTotal: pkg.credits,
         creditsUsed: 0,
@@ -60,11 +79,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ simulated: true, success: true });
+    return NextResponse.json({
+      simulated: true,
+      success: true,
+      packageName: pkg.name,
+      credits: pkg.credits,
+    });
   } catch (error) {
     console.error("POST /api/packages/purchase error:", error);
     return NextResponse.json(
-      { error: "Failed to process purchase" },
+      { error: "Error al procesar la compra" },
       { status: 500 },
     );
   }

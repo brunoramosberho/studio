@@ -433,28 +433,28 @@ async function main() {
 
   console.log("✓ Created 5 sample clients");
 
-  // --- User Packages ---
-  await prisma.userPackage.create({
+  // --- User Packages (creditsUsed will be updated after bookings) ---
+  const upMaria = await prisma.userPackage.create({
     data: {
       userId: clientWithPack10.id,
       packageId: pack10.id,
       creditsTotal: 10,
-      creditsUsed: 5,
+      creditsUsed: 0,
       expiresAt: addDays(today, 60),
     },
   });
 
-  await prisma.userPackage.create({
+  const upSofia = await prisma.userPackage.create({
     data: {
       userId: clientExpired.id,
       packageId: pack10.id,
       creditsTotal: 10,
-      creditsUsed: 3,
+      creditsUsed: 0,
       expiresAt: addDays(today, -15),
     },
   });
 
-  await prisma.userPackage.create({
+  const upCamila = await prisma.userPackage.create({
     data: {
       userId: clientUnlimited.id,
       packageId: ilimitado.id,
@@ -464,7 +464,7 @@ async function main() {
     },
   });
 
-  await prisma.userPackage.create({
+  const upLucia = await prisma.userPackage.create({
     data: {
       userId: clientPrimeraVez.id,
       packageId: primeraVez.id,
@@ -473,6 +473,14 @@ async function main() {
       expiresAt: addDays(today, 7),
     },
   });
+
+  const userPackageMap: Record<string, string> = {
+    [clientWithPack10.id]: upMaria.id,
+    [clientExpired.id]: upSofia.id,
+    [clientUnlimited.id]: upCamila.id,
+    [clientPrimeraVez.id]: upLucia.id,
+  };
+  const creditsCounter: Record<string, number> = {};
 
   console.log("✓ Created user packages");
 
@@ -483,12 +491,30 @@ async function main() {
   for (let i = 0; i < Math.min(pastClasses.length, 12); i++) {
     const client = bookableClients[i % bookableClients.length];
     const status = i % 4 === 3 ? BookingStatus.NO_SHOW : BookingStatus.ATTENDED;
+    const pkgUsed = userPackageMap[client.id] ?? null;
     await prisma.booking.create({
       data: {
         classId: pastClasses[i].id,
         userId: client.id,
         status,
         spotNumber: (i % 12) + 1,
+        packageUsed: pkgUsed,
+      },
+    });
+    if (pkgUsed) creditsCounter[pkgUsed] = (creditsCounter[pkgUsed] ?? 0) + 1;
+    bookingCount++;
+  }
+
+  // --- Cancelled bookings for María (with packageUsed, credits already restored) ---
+  for (let i = 0; i < 2 && i < pastClasses.length; i++) {
+    const cls = pastClasses[pastClasses.length - 1 - i];
+    await prisma.booking.create({
+      data: {
+        classId: cls.id,
+        userId: clientWithPack10.id,
+        status: BookingStatus.CANCELLED,
+        spotNumber: null,
+        packageUsed: upMaria.id,
       },
     });
     bookingCount++;
@@ -541,14 +567,17 @@ async function main() {
     let spotIdx = 0;
     for (const client of pool) {
       try {
+        const pkgUsed = userPackageMap[client.id] ?? null;
         await prisma.booking.create({
           data: {
             classId: cls.id,
             userId: client.id,
             status: BookingStatus.CONFIRMED,
             spotNumber: spots[spotIdx],
+            packageUsed: pkgUsed,
           },
         });
+        if (pkgUsed) creditsCounter[pkgUsed] = (creditsCounter[pkgUsed] ?? 0) + 1;
         bookingCount++;
         spotIdx++;
       } catch { /* unique constraint */ }
@@ -597,9 +626,11 @@ async function main() {
     let booked = 0;
     for (let b = 0; b < needed && b < allBookableUsers.length && b < freeSpots.length; b++) {
       try {
+        const pkgUsed = userPackageMap[allBookableUsers[b].id] ?? null;
         await prisma.booking.create({
-          data: { classId: fullClass.id, userId: allBookableUsers[b].id, status: BookingStatus.CONFIRMED, spotNumber: freeSpots[b] },
+          data: { classId: fullClass.id, userId: allBookableUsers[b].id, status: BookingStatus.CONFIRMED, spotNumber: freeSpots[b], packageUsed: pkgUsed },
         });
+        if (pkgUsed) creditsCounter[pkgUsed] = (creditsCounter[pkgUsed] ?? 0) + 1;
         bookingCount++;
         booked++;
       } catch { /* unique constraint — skip */ }
@@ -623,6 +654,12 @@ async function main() {
   }
 
   console.log(`✓ Created ${bookingCount} bookings + ${waitlistCount} waitlist entries`);
+
+  // --- Update creditsUsed on user packages to match actual bookings ---
+  for (const [upId, used] of Object.entries(creditsCounter)) {
+    await prisma.userPackage.update({ where: { id: upId }, data: { creditsUsed: used } });
+  }
+  console.log("✓ Synced creditsUsed on user packages");
 
   // --- Feed Events (CLASS_COMPLETED for past classes) ---
   const coachUsers = await prisma.user.findMany({ where: { role: "COACH" } });
@@ -890,14 +927,17 @@ async function main() {
         const classRoom = roomsByClassType[ct.id];
         const roomCap = classRoom[classIdx % classRoom.length].maxCapacity;
         const freeSpot = Array.from({ length: roomCap }, (_, s) => s + 1).find((s) => !takenSpots.has(s));
+        const pkgUsed = userPackageMap[friend.id] ?? null;
         await prisma.booking.create({
           data: {
             classId: cls.id,
             userId: friend.id,
             status: BookingStatus.CONFIRMED,
             spotNumber: freeSpot ?? null,
+            packageUsed: pkgUsed,
           },
         });
+        if (pkgUsed) creditsCounter[pkgUsed] = (creditsCounter[pkgUsed] ?? 0) + 1;
         bookingCount++;
       }
     } catch { /* unique constraint — skip */ }
