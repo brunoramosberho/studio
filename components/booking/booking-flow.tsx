@@ -183,7 +183,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
         coachName={classData.coach.user.name ?? "Coach"}
         startsAt={classData.startsAt.toString()}
         endsAt={classData.endsAt.toString()}
-        location={classData.location ?? undefined}
+        location={classData.room?.studio?.name ?? undefined}
       />
     );
   }
