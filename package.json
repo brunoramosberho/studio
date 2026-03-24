@@ -41,6 +41,7 @@
     "react": "19.2.3",
     "react-big-calendar": "^1.19.4",
     "react-dom": "19.2.3",
+    "react-easy-crop": "^5.5.7",
     "recharts": "^3.8.0",
     "resend": "^6.9.3",
     "stripe": "^20.4.1",

@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PageTransition } from "@/components/shared/page-transition";
+import { AvatarCrop } from "@/components/shared/avatar-crop";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AchievementBadge } from "@/components/feed/achievement-badge";
 import { cn } from "@/lib/utils";
@@ -78,6 +79,7 @@ export default function ProfilePage() {
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showSongForm, setShowSongForm] = useState(false);
@@ -225,20 +227,24 @@ export default function ProfilePage() {
     setSavingLocation(false);
   }
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !file.type.startsWith("image/")) return;
 
-    if (!file.type.startsWith("image/")) return;
-    if (file.size > 5 * 1024 * 1024) return;
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
 
-    const preview = URL.createObjectURL(file);
-    setAvatarPreview(preview);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    setAvatarPreview(URL.createObjectURL(blob));
     setUploadingAvatar(true);
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", new File([blob], "avatar.jpg", { type: "image/jpeg" }));
 
       const res = await fetch("/api/profile/avatar", {
         method: "POST",
@@ -251,9 +257,8 @@ export default function ProfilePage() {
       }
     } catch {} finally {
       setUploadingAvatar(false);
+      setCropSrc(null);
     }
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -691,6 +696,15 @@ export default function ProfilePage() {
           </Button>
         </motion.div>
       </div>
+
+      {/* Avatar crop modal */}
+      <AvatarCrop
+        open={!!cropSrc}
+        imageSrc={cropSrc ?? ""}
+        onClose={() => setCropSrc(null)}
+        onConfirm={handleCropConfirm}
+        uploading={uploadingAvatar}
+      />
     </PageTransition>
   );
 }
