@@ -5,7 +5,6 @@ export async function GET() {
   let studioName = "Flō";
   let tagline = "Pilates & Wellness";
   let slogan = "Muévete. Respira. Floréce.";
-  let appIconUrl: string | null = null;
   let colorBg = "#FAF9F6";
 
   try {
@@ -16,20 +15,14 @@ export async function GET() {
       studioName = settings.studioName;
       tagline = settings.tagline;
       slogan = settings.slogan;
-      appIconUrl = settings.appIconUrl;
       colorBg = settings.colorBg;
     }
   } catch {}
 
-  const icons = appIconUrl
-    ? [
-        { src: appIconUrl, sizes: "192x192", type: "image/png" },
-        { src: appIconUrl, sizes: "512x512", type: "image/png" },
-      ]
-    : [
-        { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-        { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
-      ];
+  const icons = [
+    { src: "/api/icon?size=192", sizes: "192x192", type: "image/png" },
+    { src: "/api/icon?size=512", sizes: "512x512", type: "image/png" },
+  ];
 
   const manifest = {
     name: `${studioName} Studio`,

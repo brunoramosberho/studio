@@ -61,15 +61,14 @@ async function getSettings() {
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
   const fullName = `${s.studioName} Studio`;
-  const iconUrl = s.appIconUrl || "/icon-192.png";
   return {
     title: { default: `${fullName} — ${s.tagline}`, template: `%s | ${fullName}` },
     description: `${s.slogan} ${s.metaDescription}`,
     keywords: ["pilates", "wellness", "reformer", "barre", "mat flow", "studio"],
     manifest: "/api/manifest",
     icons: {
-      icon: iconUrl,
-      apple: iconUrl,
+      icon: "/api/icon?size=192",
+      apple: "/api/icon?size=180",
     },
     appleWebApp: { capable: true, statusBarStyle: "default", title: fullName },
     openGraph: { title: `${fullName} — ${s.tagline}`, description: s.slogan, type: "website" },
