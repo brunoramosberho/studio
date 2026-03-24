@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,8 +11,10 @@ import {
   UserCircle,
   BarChart3,
   ArrowLeft,
+  ArrowRightLeft,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -21,8 +23,8 @@ import { useBranding } from "@/components/branding-provider";
 const navItems = [
   { href: "/coach", label: "Dashboard", icon: LayoutDashboard },
   { href: "/coach/schedule", label: "Mi Horario", icon: CalendarDays },
+  { href: "/coach/fans", label: "Mis Fans", icon: UserCircle },
   { href: "/coach/stats", label: "Mi Historial", icon: BarChart3 },
-  { href: "/coach/profile", label: "Perfil", icon: UserCircle },
 ];
 
 export default function CoachLayout({ children }: { children: React.ReactNode }) {
@@ -61,11 +63,11 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
 
           <div className="flex items-center gap-3">
             <Link
-              href="/"
-              className="hidden items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground sm:flex"
+              href="/my"
+              className="hidden items-center gap-1.5 rounded-lg border border-border/50 px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground sm:flex"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Sitio público
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              Vista de cliente
             </Link>
             <Avatar className="h-8 w-8 ring-2 ring-coach/20">
               <AvatarImage src={session?.user?.image || undefined} />
@@ -73,6 +75,13 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
                 {initials}
               </AvatarFallback>
             </Avatar>
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+              title="Cerrar sesión"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </header>
@@ -147,12 +156,12 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
                     );
                   })}
                   <Link
-                    href="/"
+                    href="/my"
                     onClick={() => setSidebarOpen(false)}
                     className="mt-4 flex items-center gap-3 rounded-xl border border-border/50 px-3 py-3 text-sm text-muted transition-colors hover:bg-surface"
                   >
-                    <ArrowLeft className="h-5 w-5" />
-                    Sitio público
+                    <ArrowRightLeft className="h-5 w-5" />
+                    Vista de cliente
                   </Link>
                 </nav>
               </motion.aside>

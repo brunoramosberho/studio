@@ -75,6 +75,7 @@ export function BookingSheet({
   const [emailCheck, setEmailCheck] = useState<EmailCheckResult | null>(null);
   const [checkingEmail, setCheckingEmail] = useState(false);
   const emailCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bookingInFlight = useRef(false);
 
   const { data: allPackages = [] } = useQuery<Package[]>({
     queryKey: ["packages-catalog"],
@@ -143,6 +144,7 @@ export function BookingSheet({
       setResult(null);
       setLoading(false);
       setEmailCheck(null);
+      bookingInFlight.current = false;
     }
   }, [open, isLoggedIn]);
 
@@ -153,12 +155,15 @@ export function BookingSheet({
   }
 
   function handleSelectPackage(pkg: Package) {
+    if (bookingInFlight.current) return;
     setSelectedPkg(pkg);
     setError(null);
     executeBooking(pkg);
   }
 
   async function executeBooking(pkg: Package) {
+    if (bookingInFlight.current) return;
+    bookingInFlight.current = true;
     setLoading(true);
     setError(null);
     setStep("booking");
@@ -205,6 +210,7 @@ export function BookingSheet({
       setStep("package");
     } finally {
       setLoading(false);
+      bookingInFlight.current = false;
     }
   }
 

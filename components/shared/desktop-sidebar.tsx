@@ -13,6 +13,7 @@ import {
   MapPin,
   Loader2,
   Check,
+  ArrowRightLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
@@ -44,6 +45,7 @@ export function DesktopSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { studioName, logoUrl } = useBranding();
+  const role = (session?.user as Record<string, unknown> | undefined)?.role;
 
   const [locations, setLocations] = useState<LocCountry[]>([]);
   const [locValue, setLocValue] = useState("");
@@ -159,6 +161,18 @@ export function DesktopSidebar() {
               {locSaving && <Loader2 className="h-3 w-3 animate-spin text-muted" />}
               {locSaved && <Check className="h-3 w-3 text-green-500" />}
             </div>
+          </div>
+        )}
+
+        {role === "COACH" && (
+          <div className="border-t border-border/50 px-3 py-3">
+            <Link
+              href="/coach"
+              className="flex items-center gap-2.5 rounded-xl border border-coach/20 bg-coach/5 px-3 py-2.5 text-sm font-medium text-coach transition-colors hover:bg-coach/10"
+            >
+              <ArrowRightLeft className="h-4 w-4" />
+              Coach Portal
+            </Link>
           </div>
         )}
 

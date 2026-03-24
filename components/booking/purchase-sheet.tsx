@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,6 +42,7 @@ export function PurchaseSheet({
   const [guestEmail, setGuestEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const purchaseInFlight = useRef(false);
 
   function resetState() {
     setStep(isLoggedIn ? "confirm" : "guest");
@@ -49,9 +50,12 @@ export function PurchaseSheet({
     setGuestEmail("");
     setError(null);
     setLoading(false);
+    purchaseInFlight.current = false;
   }
 
   async function executePurchase() {
+    if (purchaseInFlight.current) return;
+    purchaseInFlight.current = true;
     setLoading(true);
     setError(null);
     setStep("processing");
@@ -83,6 +87,7 @@ export function PurchaseSheet({
       setStep(isLoggedIn ? "confirm" : "guest");
     } finally {
       setLoading(false);
+      purchaseInFlight.current = false;
     }
   }
 

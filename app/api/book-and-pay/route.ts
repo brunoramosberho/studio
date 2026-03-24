@@ -93,39 +93,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Atomic: create package + booking in a single transaction
     const purchasedAt = new Date();
     const expiresAt = new Date(purchasedAt);
     expiresAt.setDate(expiresAt.getDate() + pkg.validDays);
 
-    const userPackage = await prisma.userPackage.create({
-      data: {
-        userId: finalUserId,
-        packageId: pkg.id,
-        creditsTotal: pkg.credits,
-        creditsUsed: 1,
-        expiresAt,
-        stripePaymentId: `sim_${Date.now()}`,
-        purchasedAt,
-      },
-    });
+    const { userPackage, booking } = await prisma.$transaction(async (tx) => {
+      const up = await tx.userPackage.create({
+        data: {
+          userId: finalUserId!,
+          packageId: pkg.id,
+          creditsTotal: pkg.credits,
+          creditsUsed: 1,
+          expiresAt,
+          stripePaymentId: `sim_${Date.now()}`,
+          purchasedAt,
+        },
+      });
 
-    const booking = await prisma.booking.create({
-      data: {
-        classId,
-        userId: finalUserId,
-        spotNumber: spotNumber ?? null,
-        privacy: privacy === "PRIVATE" ? "PRIVATE" : "PUBLIC",
-        status: "CONFIRMED",
-        packageUsed: userPackage.id,
-      },
-      include: {
-        class: {
-          include: {
-            classType: true,
-            coach: { include: { user: { select: { name: true } } } },
+      const bk = await tx.booking.create({
+        data: {
+          classId,
+          userId: finalUserId!,
+          spotNumber: spotNumber ?? null,
+          privacy: privacy === "PRIVATE" ? "PRIVATE" : "PUBLIC",
+          status: "CONFIRMED",
+          packageUsed: up.id,
+        },
+        include: {
+          class: {
+            include: {
+              classType: true,
+              coach: { include: { user: { select: { name: true } } } },
+            },
           },
         },
-      },
+      });
+
+      return { userPackage: up, booking: bk };
     });
 
     if (finalEmail && finalName) {
@@ -144,7 +149,7 @@ export async function POST(request: NextRequest) {
       prisma.feedEvent
         .create({
           data: {
-            userId: finalUserId,
+            userId: finalUserId!,
             eventType: "CLASS_RESERVED",
             visibility: "FRIENDS_ONLY",
             payload: {

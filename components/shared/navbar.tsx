@@ -78,7 +78,7 @@ export function Navbar() {
         {/* Right side */}
         <div className="flex items-center gap-3">
           {session?.user ? (
-            <Link href="/my">
+            <Link href={(session.user as Record<string, unknown>).role === "ADMIN" ? "/admin" : "/my"}>
               <Avatar className="h-8 w-8">
                 <AvatarImage src={session.user.image || undefined} />
                 <AvatarFallback className="bg-surface text-xs text-muted">
