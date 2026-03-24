@@ -162,9 +162,6 @@ export function StudioMap({
             return <div key={key} className="h-[38px] w-[38px]" />;
           })}
         </div>
-        {coachPos && (
-          <p className="text-center text-[10px] text-muted/50">Coach</p>
-        )}
       </div>
     );
   }

@@ -96,7 +96,7 @@ export function FloatingChat() {
                 className="flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4"
               >
                 {messages.length === 0 ? (
-                  <EmptyState onQuickQuestion={handleQuickQuestion} />
+                  <EmptyState onQuickQuestion={handleQuickQuestion} studioName={studioName} />
                 ) : (
                   messages.map((msg, i) => (
                     <MessageBubble
@@ -182,8 +182,10 @@ export function FloatingChat() {
 
 function EmptyState({
   onQuickQuestion,
+  studioName,
 }: {
   onQuickQuestion: (q: string) => void;
+  studioName: string;
 }) {
   return (
     <motion.div
