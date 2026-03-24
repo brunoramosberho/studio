@@ -2,20 +2,11 @@
 
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { Calendar, ArrowRight, Trophy, Users, Bell } from "lucide-react";
+import { Calendar, ArrowRight, Users, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
 import { SocialFeed } from "@/components/feed/social-feed";
 import { useQuery } from "@tanstack/react-query";
-import { AchievementBadge } from "@/components/feed/achievement-badge";
-
-interface Achievement {
-  id: string;
-  achievementType: string;
-  earnedAt: string;
-  label: string;
-  icon: string;
-}
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -31,16 +22,6 @@ export default function DashboardPage() {
     enabled: !!session?.user,
   });
   const unreadCount = notifData?.unreadCount ?? 0;
-
-  const { data: achievements } = useQuery<Achievement[]>({
-    queryKey: ["achievements", "me"],
-    queryFn: async () => {
-      const res = await fetch("/api/achievements/me");
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!session?.user,
-  });
 
   return (
     <PageTransition>
@@ -91,30 +72,6 @@ export default function DashboardPage() {
             </Link>
           </Button>
         </div>
-
-        {/* My achievements banner */}
-        {achievements && achievements.length > 0 && (
-          <div className="rounded-2xl border bg-white p-4 shadow-warm-sm">
-            <div className="mb-2 flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-accent" />
-              <span className="text-[13px] font-semibold text-foreground">
-                Mis logros
-              </span>
-              <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
-                {achievements.length}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {achievements.slice(0, 8).map((a) => (
-                <AchievementBadge
-                  key={a.id}
-                  type={a.achievementType}
-                  size="sm"
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Social feed with filter tabs */}
         <SocialFeed />

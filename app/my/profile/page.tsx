@@ -17,6 +17,7 @@ import {
   Plus,
   X,
   MapPin,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AchievementBadge } from "@/components/feed/achievement-badge";
 import { cn } from "@/lib/utils";
 
 interface UserPackageInfo {
@@ -126,6 +128,16 @@ export default function ProfilePage() {
     queryKey: ["profile", "songs"],
     queryFn: async () => {
       const res = await fetch("/api/profile/songs");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
+
+  const { data: achievements = [] } = useQuery<{ id: string; achievementType: string }[]>({
+    queryKey: ["achievements", "me"],
+    queryFn: async () => {
+      const res = await fetch("/api/achievements/me");
       if (!res.ok) return [];
       return res.json();
     },
@@ -319,9 +331,35 @@ export default function ProfilePage() {
           </Card>
         </motion.div>
 
+        {/* Achievements */}
+        {achievements.length > 0 && (
+          <motion.div custom={2} variants={fadeUp} initial="hidden" animate="show">
+            <div className="rounded-2xl border border-border/50 bg-white p-4">
+              <div className="mb-2.5 flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-accent" />
+                <span className="text-[13px] font-semibold text-foreground">
+                  Mis logros
+                </span>
+                <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
+                  {achievements.length}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {achievements.map((a) => (
+                  <AchievementBadge
+                    key={a.id}
+                    type={a.achievementType}
+                    size="sm"
+                  />
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Favorite songs (collapsible) */}
         <motion.div
-          custom={2}
+          custom={3}
           variants={fadeUp}
           initial="hidden"
           animate="show"
@@ -427,7 +465,7 @@ export default function ProfilePage() {
         {/* Quick actions */}
         <motion.div
           className="space-y-1"
-          custom={3}
+          custom={4}
           variants={fadeUp}
           initial="hidden"
           animate="show"
@@ -544,7 +582,7 @@ export default function ProfilePage() {
 
         {/* Location — minimal single dropdown */}
         {locations.length > 0 && (
-          <motion.div custom={4} variants={fadeUp} initial="hidden" animate="show">
+          <motion.div custom={5} variants={fadeUp} initial="hidden" animate="show">
             <div className="flex items-center gap-3 px-4 py-2">
               <div className="flex items-center gap-2 text-[13px] text-muted">
                 <MapPin className="h-3.5 w-3.5" />
@@ -581,7 +619,7 @@ export default function ProfilePage() {
         )}
 
         {/* Sign out */}
-        <motion.div custom={5} variants={fadeUp} initial="hidden" animate="show">
+        <motion.div custom={6} variants={fadeUp} initial="hidden" animate="show">
           <Button
             variant="ghost"
             className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"

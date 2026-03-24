@@ -54,11 +54,18 @@ export function ScheduleClient({
   const [filterType, setFilterType] = useState<string>("all");
   const [filterCoach, setFilterCoach] = useState<string>("all");
   const [filterStudio, setFilterStudio] = useState<string>("all");
-  const [filterCity, setFilterCity] = useState<string>("all");
+  const [filterCity, setFilterCityRaw] = useState<string>(() => {
+    if (typeof window === "undefined") return "all";
+    return sessionStorage.getItem("schedule-city") || "all";
+  });
+  function setFilterCity(city: string) {
+    setFilterCityRaw(city);
+    try { sessionStorage.setItem("schedule-city", city); } catch {}
+  }
   const dayScrollRef = useRef<HTMLDivElement>(null);
   const branding = useBranding();
 
-  const { data: classes = [], isLoading: loading } = useQuery<ClassWithDetails[]>({
+  const { data: classes = [], isLoading: loadingClasses } = useQuery<ClassWithDetails[]>({
     queryKey: ["classes", coachUserId ?? "all"],
     queryFn: async () => {
       const url = coachUserId ? `/api/classes?coachId=${coachUserId}` : "/api/classes";
@@ -84,7 +91,7 @@ export function ScheduleClient({
     return active.creditsTotal === null ? -1 : active.creditsTotal - active.creditsUsed;
   }, [creditsPkgs]);
 
-  const { data: allStudios = [] } = useQuery<StudioItem[]>({
+  const { data: allStudios = [], isLoading: loadingStudios } = useQuery<StudioItem[]>({
     queryKey: ["studios"],
     queryFn: async () => {
       const res = await fetch("/api/studios");
@@ -173,7 +180,7 @@ export function ScheduleClient({
     new Map(classes.map((c) => [c.coach.id, c.coach])).values(),
   );
 
-  const cityStudioIds = filterCity === "all"
+  const cityStudioIds = filterCity === "all" || allStudios.length === 0
     ? null
     : new Set(allStudios.filter((s) => s.cityId === filterCity).map((s) => s.id));
 
@@ -192,7 +199,9 @@ export function ScheduleClient({
 
   const selectedClasses = getClassesForDay(selectedDay);
 
-  if (loading) {
+  const initialLoading = (loadingClasses || !cityDetected) && classes.length === 0;
+
+  if (initialLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-5 w-5 animate-spin text-muted" />
