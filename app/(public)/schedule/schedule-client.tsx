@@ -615,6 +615,9 @@ function MobileClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDe
             </div>
             <p className="truncate text-[13px] text-muted">
               con {cls.coach.user.name?.split(" ")[0]}
+              {cls.room?.studio?.name && (
+                <span className="text-muted/50"> · {cls.room.studio.name}</span>
+              )}
             </p>
             {!past && cls.friendsGoing && cls.friendsGoing.length > 0 && (
               <div className="mt-1 flex items-center gap-1">
@@ -774,6 +777,11 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithD
               {cls.coach.user.name?.split(" ")[0]}
             </p>
           </div>
+          {cls.room?.studio?.name && (
+            <p className={cn("mt-0.5 truncate text-[10px]", past ? "text-muted/30" : "text-muted/50")}>
+              {cls.room.studio.name}
+            </p>
+          )}
         </div>
         {!past && isFull ? (
           <span className="self-start rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold text-amber-700">

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
-import { Mail, ArrowRight, Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
+import { Mail, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageTransition } from "@/components/shared/page-transition";
@@ -20,14 +21,43 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const { studioName, logoUrl } = useBranding();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: session, update: updateSession } = useSession();
+  const callbackUrl = searchParams.get("callbackUrl") || "/my";
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (session?.user && !authenticated) {
+      setAuthenticated(true);
+      router.replace(callbackUrl);
+    }
+  }, [session, callbackUrl, router, authenticated]);
+
+  useEffect(() => {
+    if (!magicLinkSent) {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
+    }
+    pollRef.current = setInterval(async () => {
+      const updated = await updateSession();
+      if (updated?.user) {
+        setAuthenticated(true);
+        if (pollRef.current) clearInterval(pollRef.current);
+        router.replace(callbackUrl);
+      }
+    }, 3000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [magicLinkSent, updateSession, callbackUrl, router]);
 
   async function handleGoogleSignIn() {
-    await signIn("google", { callbackUrl: "/my" });
+    await signIn("google", { callbackUrl });
   }
 
   async function handleMagicLink(e: React.FormEvent) {
@@ -38,7 +68,7 @@ export default function LoginPage() {
     try {
       await signIn("resend", {
         email,
-        callbackUrl: "/my",
+        callbackUrl,
         redirect: false,
       });
       setMagicLinkSent(true);
@@ -48,108 +78,134 @@ export default function LoginPage() {
   }
 
   return (
-    <PageTransition>
-      <div className="flex min-h-dvh items-center justify-center px-4 py-16">
-        <div className="w-full max-w-sm">
-          <div className="mb-10 text-center">
-            <Link href="/">
-              {logoUrl ? (
-                <img src={logoUrl} alt={studioName} className="mx-auto h-12 object-contain" />
-              ) : (
-                <span className="font-display text-4xl font-bold text-foreground">
-                  {studioName}
-                </span>
-              )}
-            </Link>
-            <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
-              Bienvenida a {studioName}
-            </h1>
-            <p className="mt-2 text-sm text-muted">
-              Inicia sesión para reservar tus clases
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <Button
-              variant="surface"
-              size="lg"
-              className="w-full justify-center gap-3 border border-border"
-              onClick={handleGoogleSignIn}
-            >
-              <GoogleIcon className="h-5 w-5" />
-              Continuar con Google
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-4 text-muted">o</span>
-              </div>
-            </div>
-
-            {magicLinkSent ? (
-              <div className="rounded-2xl bg-accent/5 p-6 text-center">
-                <Mail className="mx-auto h-10 w-10 text-accent" />
-                <h3 className="mt-4 font-display text-lg font-bold text-foreground">
-                  Revisa tu correo
-                </h3>
-                <p className="mt-2 text-sm text-muted">
-                  Te enviamos un enlace mágico a{" "}
-                  <span className="font-medium text-foreground">{email}</span>.
-                  Haz clic en el enlace para iniciar sesión.
-                </p>
-                <button
-                  onClick={() => setMagicLinkSent(false)}
-                  className="mt-4 text-xs text-accent hover:text-accent/80"
-                >
-                  Usar otro correo
-                </button>
-              </div>
+    <div className="flex min-h-dvh items-center justify-center px-4 py-16">
+      <div className="w-full max-w-sm">
+        <div className="mb-10 text-center">
+          <Link href="/">
+            {logoUrl ? (
+              <img src={logoUrl} alt={studioName} className="mx-auto h-12 object-contain" />
             ) : (
-              <form onSubmit={handleMagicLink} className="space-y-4">
-                <div>
-                  <Input
-                    type="email"
-                    placeholder="tu@correo.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  variant="secondary"
-                  size="lg"
-                  className="w-full justify-center"
-                  disabled={loading || !email.trim()}
-                >
-                  {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Mail className="mr-2 h-4 w-4" />
-                  )}
-                  Enviar enlace mágico
-                  {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
-                </Button>
-              </form>
+              <span className="font-display text-4xl font-bold text-foreground">
+                {studioName}
+              </span>
             )}
-          </div>
-
-          <p className="mt-8 text-center text-[11px] leading-relaxed text-muted/60">
-            Al continuar, aceptas nuestros{" "}
-            <a href="#" className="underline underline-offset-2 hover:text-muted">
-              términos de servicio
-            </a>{" "}
-            y{" "}
-            <a href="#" className="underline underline-offset-2 hover:text-muted">
-              política de privacidad
-            </a>
-            .
+          </Link>
+          <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
+            Bienvenida a {studioName}
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            Inicia sesión para reservar tus clases
           </p>
         </div>
+
+        <div className="space-y-4">
+          <Button
+            variant="surface"
+            size="lg"
+            className="w-full justify-center gap-3 border border-border"
+            onClick={handleGoogleSignIn}
+          >
+            <GoogleIcon className="h-5 w-5" />
+            Continuar con Google
+          </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-4 text-muted">o</span>
+            </div>
+          </div>
+
+          {magicLinkSent ? (
+            <div className="rounded-2xl bg-accent/5 p-6 text-center">
+              {authenticated ? (
+                <>
+                  <CheckCircle2 className="mx-auto h-10 w-10 text-green-500" />
+                  <h3 className="mt-4 font-display text-lg font-bold text-foreground">
+                    ¡Sesión iniciada!
+                  </h3>
+                  <p className="mt-2 text-sm text-muted">
+                    Redirigiendo...
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Mail className="mx-auto h-10 w-10 text-accent" />
+                  <h3 className="mt-4 font-display text-lg font-bold text-foreground">
+                    Revisa tu correo
+                  </h3>
+                  <p className="mt-2 text-sm text-muted">
+                    Te enviamos un enlace mágico a{" "}
+                    <span className="font-medium text-foreground">{email}</span>.
+                    Haz clic en el enlace para iniciar sesión.
+                  </p>
+                  <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-muted/60">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Esperando verificación...
+                  </div>
+                  <button
+                    onClick={() => setMagicLinkSent(false)}
+                    className="mt-4 text-xs text-accent hover:text-accent/80"
+                  >
+                    Usar otro correo
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <form onSubmit={handleMagicLink} className="space-y-4">
+              <div>
+                <Input
+                  type="email"
+                  placeholder="tu@correo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                variant="secondary"
+                size="lg"
+                className="w-full justify-center"
+                disabled={loading || !email.trim()}
+              >
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="mr-2 h-4 w-4" />
+                )}
+                Enviar enlace mágico
+                {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+              </Button>
+            </form>
+          )}
+        </div>
+
+        <p className="mt-8 text-center text-[11px] leading-relaxed text-muted/60">
+          Al continuar, aceptas nuestros{" "}
+          <a href="#" className="underline underline-offset-2 hover:text-muted">
+            términos de servicio
+          </a>{" "}
+          y{" "}
+          <a href="#" className="underline underline-offset-2 hover:text-muted">
+            política de privacidad
+          </a>
+          .
+        </p>
       </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <PageTransition>
+      <Suspense>
+        <LoginForm />
+      </Suspense>
     </PageTransition>
   );
 }

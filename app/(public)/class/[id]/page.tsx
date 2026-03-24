@@ -11,22 +11,20 @@ import {
   Loader2,
   AlertCircle,
   Info,
-  ShoppingBag,
-  ArrowRight,
-  LogIn,
   Check,
   Eye,
   EyeOff,
   Ticket,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/shared/page-transition";
 import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
-import { formatDate, formatTimeRange, formatTime, getLevelLabel } from "@/lib/utils";
+import { formatTime } from "@/lib/utils";
 import { useBooking } from "@/hooks/useBooking";
 import { usePackages } from "@/hooks/usePackages";
+import { BookingSheet } from "@/components/booking/booking-sheet";
 
 interface ClassData {
   id: string;
@@ -35,6 +33,7 @@ interface ClassData {
   status: string;
   coachId: string;
   notes: string | null;
+  tag: string | null;
   classType: {
     id: string;
     name: string;
@@ -69,13 +68,14 @@ export default function ClassDetailPage() {
   const queryClient = useQueryClient();
   const { bookAsync, isBooking } = useBooking();
   const isAuthenticated = authStatus === "authenticated";
-  const { packages, isLoading: packagesLoading } = usePackages(isAuthenticated);
+  const { packages: userPackages, isLoading: packagesLoading } = usePackages(isAuthenticated);
 
   const [selectedSpot, setSelectedSpot] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookedSpotNumber, setBookedSpotNumber] = useState<number | null>(null);
   const [privacy, setPrivacy] = useState<"PUBLIC" | "PRIVATE">("PUBLIC");
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const {
     data: cls,
@@ -91,15 +91,15 @@ export default function ClassDetailPage() {
     enabled: !!id,
   });
 
-  const validPackages = packages
+  const validPackages = userPackages
     .filter((p) => p.creditsTotal === null || p.creditsUsed < (p.creditsTotal ?? 0))
     .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
 
-  const activePackage = validPackages[0];
-  const creditsRemaining = activePackage
-    ? activePackage.creditsTotal === null
+  const hasCredits = validPackages.length > 0;
+  const creditsRemaining = validPackages[0]
+    ? validPackages[0].creditsTotal === null
       ? -1
-      : (activePackage.creditsTotal ?? 0) - activePackage.creditsUsed
+      : (validPackages[0].creditsTotal ?? 0) - validPackages[0].creditsUsed
     : null;
 
   const myBooking = cls?.bookings.find(
@@ -111,10 +111,9 @@ export default function ClassDetailPage() {
     if (myBookedSpot) setSelectedSpot(null);
   }, [myBookedSpot]);
 
-  async function handleBook() {
+  async function handleDirectBook() {
     if (!selectedSpot) return;
     setError(null);
-
     try {
       await bookAsync({
         classId: id,
@@ -128,6 +127,16 @@ export default function ClassDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["classes", id] });
     } catch (err: any) {
       setError(err.error || "No se pudo completar la reserva");
+    }
+  }
+
+  function handleReserveClick() {
+    if (!selectedSpot) return;
+
+    if (isAuthenticated && hasCredits) {
+      handleDirectBook();
+    } else {
+      setSheetOpen(true);
     }
   }
 
@@ -160,7 +169,8 @@ export default function ClassDetailPage() {
 
   const spotsLeft = cls.spotsLeft;
   const spotMap = cls.spotMap ?? {};
-  const hasPackage = validPackages.length > 0;
+  const needsPackage = !isAuthenticated || !hasCredits;
+  const isFirstClass = !isAuthenticated || (isAuthenticated && userPackages.length === 0);
 
   return (
     <PageTransition>
@@ -184,18 +194,18 @@ export default function ClassDetailPage() {
           )}
         </div>
 
-        {/* Title + meta row (Siclo-style) */}
+        {/* Title + meta */}
         <h1 className="font-display text-2xl font-bold text-foreground">
           {cls.classType.name}
           {cls.coach.user.name && (
-            <span className="text-muted font-normal">
+            <span className="font-normal text-muted">
               {" "}con {cls.coach.user.name}
             </span>
           )}
         </h1>
 
         <div className="mt-2 flex items-center justify-between">
-          <p className="text-sm text-muted">
+          <div className="flex items-center gap-2 text-sm text-muted">
             {(bookedSpotNumber ?? myBookedSpot) ? (
               <span className="font-semibold text-foreground">
                 Lugar: {bookedSpotNumber ?? myBookedSpot}
@@ -205,8 +215,11 @@ export default function ClassDetailPage() {
                 Lugar: {selectedSpot}
               </span>
             ) : null}
-          </p>
-          <p className="text-sm text-muted uppercase tracking-wide">
+            {cls.tag && (
+              <Badge variant="outline" className="text-[10px]">{cls.tag}</Badge>
+            )}
+          </div>
+          <p className="text-sm uppercase tracking-wide text-muted">
             {new Date(cls.startsAt).toLocaleDateString("es-MX", {
               day: "2-digit",
               month: "short",
@@ -220,10 +233,17 @@ export default function ClassDetailPage() {
           </p>
         </div>
 
-        {/* Divider */}
+        {/* Studio */}
+        {cls.room?.studio && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted/70">
+            <MapPin className="h-3 w-3" />
+            {cls.room.studio.name} · {cls.room.name}
+          </div>
+        )}
+
         <div className="my-6 h-px bg-border/50" />
 
-        {/* Studio Map */}
+        {/* Studio Map — always interactive */}
         <div className="py-4">
           <StudioMap
             maxCapacity={cls.room.maxCapacity}
@@ -234,13 +254,13 @@ export default function ClassDetailPage() {
               setError(null);
             }}
             myBookedSpot={myBookedSpot}
-            disabled={!!myBooking || bookingSuccess || !isAuthenticated || !hasPackage}
+            disabled={!!myBooking || bookingSuccess}
             layout={cls.room.layout}
           />
         </div>
 
         {/* Privacy toggle */}
-        {isAuthenticated && hasPackage && !myBooking && !bookingSuccess && (
+        {!myBooking && !bookingSuccess && selectedSpot && (
           <button
             onClick={() => setPrivacy(privacy === "PUBLIC" ? "PRIVATE" : "PUBLIC")}
             className="mx-auto flex items-center gap-2 rounded-full px-3 py-1.5 text-xs text-muted transition-colors hover:text-foreground"
@@ -300,58 +320,32 @@ export default function ClassDetailPage() {
           )}
         </AnimatePresence>
 
-        {/* Divider */}
         <div className="my-6 h-px bg-border/50" />
 
-        {/* CTA area */}
+        {/* CTA */}
         {!myBooking && !bookingSuccess && (
           <div className="space-y-4">
-            {isAuthenticated ? (
-              packagesLoading ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted" />
-                </div>
-              ) : !hasPackage ? (
-                <div className="text-center">
-                  <ShoppingBag className="mx-auto h-8 w-8 text-muted/30" />
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    Necesitas un paquete
-                  </p>
-                  <p className="mt-1 text-xs text-muted">
-                    Adquiere un paquete para reservar tu lugar.
-                  </p>
-                  <Button asChild className="mt-4 w-full" size="lg">
-                    <Link href="/packages">
-                      Ver paquetes
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              ) : spotsLeft > 0 ? (
-                <Button
-                  size="lg"
-                  className="w-full min-h-[48px] rounded-full bg-foreground text-background hover:bg-foreground/90"
-                  onClick={handleBook}
-                  disabled={isBooking || !selectedSpot}
-                >
-                  {isBooking ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  {selectedSpot
-                    ? "Reservar clase"
-                    : "Selecciona un lugar"}
-                </Button>
-              ) : (
-                <Button size="lg" variant="secondary" className="w-full rounded-full">
-                  Unirme a lista de espera
-                </Button>
-              )
+            {spotsLeft > 0 ? (
+              <Button
+                size="lg"
+                className="w-full min-h-[48px] rounded-full bg-foreground text-background hover:bg-foreground/90"
+                onClick={handleReserveClick}
+                disabled={isBooking || !selectedSpot || (isAuthenticated && packagesLoading)}
+              >
+                {isBooking ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                {!selectedSpot
+                  ? "Selecciona un lugar"
+                  : needsPackage
+                    ? isFirstClass
+                      ? "Reservar 1era clase"
+                      : "Reservar clase"
+                    : "Reservar clase"}
+              </Button>
             ) : (
-              <Button asChild size="lg" className="w-full min-h-[48px] rounded-full bg-foreground text-background hover:bg-foreground/90">
-                <Link href="/login">
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Inicia sesión para reservar
-                </Link>
+              <Button size="lg" variant="secondary" className="w-full rounded-full">
+                Clase llena
               </Button>
             )}
           </div>
@@ -374,7 +368,7 @@ export default function ClassDetailPage() {
           </div>
         )}
 
-        {/* Policy — below everything */}
+        {/* Policy */}
         <div className="mt-10 flex items-start gap-2.5">
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted/40" />
           <p className="text-[11px] leading-relaxed text-muted/60">
@@ -383,6 +377,27 @@ export default function ClassDetailPage() {
           </p>
         </div>
       </div>
+
+      {/* Booking Sheet */}
+      <AnimatePresence>
+        {sheetOpen && selectedSpot && (
+          <BookingSheet
+            open={sheetOpen}
+            onClose={() => setSheetOpen(false)}
+            classId={id}
+            spotNumber={selectedSpot}
+            className={cls.classType.name}
+            classTime={cls.startsAt}
+            privacy={privacy}
+            onSuccess={() => {
+              setBookingSuccess(true);
+              setBookedSpotNumber(selectedSpot);
+              setSelectedSpot(null);
+              queryClient.invalidateQueries({ queryKey: ["classes", id] });
+            }}
+          />
+        )}
+      </AnimatePresence>
     </PageTransition>
   );
 }
