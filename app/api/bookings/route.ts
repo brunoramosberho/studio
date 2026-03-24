@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
 
         const friendsByClass = new Map<string, { id: string; name: string | null; image: string | null }[]>();
         for (const fb of friendBookings) {
+          if (!fb.user) continue;
           const arr = friendsByClass.get(fb.classId) ?? [];
           arr.push(fb.user);
           friendsByClass.set(fb.classId, arr);
