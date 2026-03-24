@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, studioId, classTypeId, maxCapacity } = body;
+    const { name, studioId, classTypeId, maxCapacity, layout } = body;
 
     if (!name || !studioId || !classTypeId || !maxCapacity) {
       return NextResponse.json(
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
         studioId,
         classTypeId,
         maxCapacity: parseInt(maxCapacity, 10),
+        ...(layout !== undefined && { layout: layout ?? undefined }),
       },
       include: {
         classType: { select: { id: true, name: true } },

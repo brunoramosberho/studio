@@ -15,6 +15,7 @@ const badgeVariants = cva(
         danger: "bg-red-50 text-destructive",
         coach: "bg-coach/10 text-coach",
         admin: "bg-admin/10 text-admin",
+        outline: "border border-border text-muted bg-transparent",
       },
     },
     defaultVariants: {

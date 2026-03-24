@@ -14,7 +14,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, classTypeId, maxCapacity } = body;
+    const { name, classTypeId, maxCapacity, layout } = body;
 
     const room = await prisma.room.update({
       where: { id },
@@ -22,6 +22,7 @@ export async function PUT(
         ...(name !== undefined && { name }),
         ...(classTypeId !== undefined && { classTypeId }),
         ...(maxCapacity !== undefined && { maxCapacity: parseInt(maxCapacity, 10) }),
+        ...(layout !== undefined && { layout: layout }),
       },
       include: {
         classType: { select: { id: true, name: true } },

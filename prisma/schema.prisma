@@ -276,6 +276,7 @@ model Room {
   classTypeId String
   classType   ClassType @relation(fields: [classTypeId], references: [id])
   maxCapacity Int
+  layout      Json?
   classes     Class[]
 
   @@index([studioId])

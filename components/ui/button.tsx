@@ -12,6 +12,8 @@ const buttonVariants = cva(
           "bg-accent text-white hover:bg-accent/90 shadow-[var(--shadow-warm)]",
         secondary:
           "border-2 border-accent text-accent hover:bg-accent hover:text-white",
+        outline:
+          "border border-border text-foreground hover:bg-surface",
         ghost: "text-foreground hover:bg-surface",
         destructive:
           "bg-destructive text-white hover:bg-destructive/90",

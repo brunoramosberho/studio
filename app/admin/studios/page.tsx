@@ -35,6 +35,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  RoomLayoutEditor,
+  createEmptyLayout,
+  type RoomLayout,
+} from "@/components/admin/room-layout-editor";
 
 interface City {
   id: string;
@@ -47,6 +52,7 @@ interface RoomData {
   name: string;
   maxCapacity: number;
   classTypeId: string;
+  layout: RoomLayout | null;
 }
 
 interface StudioData {
@@ -93,7 +99,7 @@ export default function AdminStudiosPage() {
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<(RoomData & { studioId: string }) | null>(null);
   const [roomForStudio, setRoomForStudio] = useState<string>("");
-  const [roomForm, setRoomForm] = useState({ name: "", classTypeId: "", maxCapacity: "" });
+  const [roomForm, setRoomForm] = useState({ name: "", classTypeId: "", maxCapacity: "", layout: createEmptyLayout() as RoomLayout });
 
   const [expandedStudio, setExpandedStudio] = useState<string | null>(null);
 
@@ -187,10 +193,17 @@ export default function AdminStudiosPage() {
   // Room mutations
   const createRoomMut = useMutation({
     mutationFn: async () => {
+      const capacity = roomForm.layout.spots.length || parseInt(roomForm.maxCapacity, 10) || 0;
       const res = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...roomForm, studioId: roomForStudio }),
+        body: JSON.stringify({
+          name: roomForm.name,
+          classTypeId: roomForm.classTypeId,
+          maxCapacity: capacity,
+          layout: roomForm.layout.spots.length > 0 ? roomForm.layout : null,
+          studioId: roomForStudio,
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -201,7 +214,7 @@ export default function AdminStudiosPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setRoomDialogOpen(false);
-      setRoomForm({ name: "", classTypeId: "", maxCapacity: "" });
+      setRoomForm({ name: "", classTypeId: "", maxCapacity: "", layout: createEmptyLayout() });
       setRoomForStudio("");
     },
   });
@@ -209,10 +222,16 @@ export default function AdminStudiosPage() {
   const updateRoomMut = useMutation({
     mutationFn: async () => {
       if (!editingRoom) return;
+      const capacity = roomForm.layout.spots.length || parseInt(roomForm.maxCapacity, 10) || 0;
       const res = await fetch(`/api/rooms/${editingRoom.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(roomForm),
+        body: JSON.stringify({
+          name: roomForm.name,
+          classTypeId: roomForm.classTypeId,
+          maxCapacity: capacity,
+          layout: roomForm.layout.spots.length > 0 ? roomForm.layout : null,
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -224,7 +243,7 @@ export default function AdminStudiosPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setRoomDialogOpen(false);
       setEditingRoom(null);
-      setRoomForm({ name: "", classTypeId: "", maxCapacity: "" });
+      setRoomForm({ name: "", classTypeId: "", maxCapacity: "", layout: createEmptyLayout() });
     },
   });
 
@@ -256,7 +275,7 @@ export default function AdminStudiosPage() {
   function openCreateRoom(studioId: string) {
     setEditingRoom(null);
     setRoomForStudio(studioId);
-    setRoomForm({ name: "", classTypeId: "", maxCapacity: "" });
+    setRoomForm({ name: "", classTypeId: "", maxCapacity: "", layout: createEmptyLayout() });
     setRoomDialogOpen(true);
   }
 
@@ -267,6 +286,7 @@ export default function AdminStudiosPage() {
       name: room.name,
       classTypeId: room.classTypeId,
       maxCapacity: String(room.maxCapacity),
+      layout: room.layout ?? createEmptyLayout(),
     });
     setRoomDialogOpen(true);
   }
@@ -408,7 +428,14 @@ export default function AdminStudiosPage() {
                                   <DoorOpen className="h-4 w-4 text-muted" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-foreground">{room.name}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-medium text-foreground">{room.name}</p>
+                                    {room.layout && (
+                                      <span className="rounded bg-violet-50 px-1.5 py-0.5 text-[9px] font-semibold text-violet-600">
+                                        Layout
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-xs text-muted">
                                     {classTypeForRoom(room.classTypeId)} · {room.maxCapacity} spots
                                   </p>
@@ -539,53 +566,72 @@ export default function AdminStudiosPage() {
 
       {/* Room dialog */}
       <Dialog open={roomDialogOpen} onOpenChange={setRoomDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingRoom ? "Editar Sala" : "Nueva Sala"}</DialogTitle>
             <DialogDescription>
               {editingRoom
-                ? "Modifica los datos de la sala"
-                : "Agrega una nueva sala al estudio"}
+                ? "Modifica los datos y el layout de la sala"
+                : "Configura la sala y diseña la distribución de lugares"}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted">Nombre</label>
-              <Input
-                placeholder="Ej: Sala Reformer 1"
-                value={roomForm.name}
-                onChange={(e) => setRoomForm((f) => ({ ...f, name: e.target.value }))}
-              />
+          <div className="space-y-5 pt-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted">Nombre</label>
+                <Input
+                  placeholder="Ej: Sala Reformer 1"
+                  value={roomForm.name}
+                  onChange={(e) => setRoomForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted">Disciplina</label>
+                <Select
+                  value={roomForm.classTypeId}
+                  onValueChange={(val) => setRoomForm((f) => ({ ...f, classTypeId: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar disciplina" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classTypes?.map((ct) => (
+                      <SelectItem key={ct.id} value={ct.id}>
+                        {ct.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted">Disciplina</label>
-              <Select
-                value={roomForm.classTypeId}
-                onValueChange={(val) => setRoomForm((f) => ({ ...f, classTypeId: val }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar disciplina" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classTypes?.map((ct) => (
-                    <SelectItem key={ct.id} value={ct.id}>
-                      {ct.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted">Capacidad máxima</label>
-              <Input
-                type="number"
-                min={1}
-                placeholder="Ej: 12"
-                value={roomForm.maxCapacity}
-                onChange={(e) => setRoomForm((f) => ({ ...f, maxCapacity: e.target.value }))}
+            {/* Layout editor */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted">
+                  Layout de la sala
+                </label>
+                {roomForm.layout.spots.length > 0 && (
+                  <span className="rounded-full bg-admin/10 px-2.5 py-0.5 text-[11px] font-semibold text-admin tabular-nums">
+                    {roomForm.layout.spots.length} lugares
+                    {!roomForm.layout.coachPosition && " · sin posición de coach"}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-muted">
+                Haz clic en las celdas para colocar lugares y la posición del coach. El lugar del coach no se puede reservar.
+              </p>
+              <RoomLayoutEditor
+                value={roomForm.layout}
+                onChange={(layout) =>
+                  setRoomForm((f) => ({
+                    ...f,
+                    layout,
+                    maxCapacity: String(layout.spots.length || f.maxCapacity),
+                  }))
+                }
               />
             </div>
 
@@ -600,7 +646,10 @@ export default function AdminStudiosPage() {
               <Button
                 className="flex-1 bg-admin text-white hover:bg-admin/90"
                 disabled={
-                  !roomForm.name || !roomForm.classTypeId || !roomForm.maxCapacity || roomSubmitting
+                  !roomForm.name ||
+                  !roomForm.classTypeId ||
+                  (roomForm.layout.spots.length === 0 && !roomForm.maxCapacity) ||
+                  roomSubmitting
                 }
                 onClick={handleRoomSubmit}
               >

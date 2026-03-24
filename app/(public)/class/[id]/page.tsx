@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/shared/page-transition";
-import { StudioMap, type SpotInfo } from "@/components/shared/studio-map";
+import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
 import { formatDate, formatTimeRange, formatTime, getLevelLabel } from "@/lib/utils";
 import { useBooking } from "@/hooks/useBooking";
 import { usePackages } from "@/hooks/usePackages";
@@ -48,6 +48,7 @@ interface ClassData {
     id: string;
     name: string;
     maxCapacity: number;
+    layout: RoomLayoutData | null;
     studio: { id: string; name: string; address: string | null };
   };
   coach: {
@@ -234,6 +235,7 @@ export default function ClassDetailPage() {
             }}
             myBookedSpot={myBookedSpot}
             disabled={!!myBooking || bookingSuccess || !isAuthenticated || !hasPackage}
+            layout={cls.room.layout}
           />
         </div>
 
