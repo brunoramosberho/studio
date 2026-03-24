@@ -18,9 +18,6 @@ import {
   isSameDay,
   isToday,
   isPast,
-  startOfWeek,
-  subWeeks,
-  addWeeks,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn, formatTime } from "@/lib/utils";
@@ -167,8 +164,7 @@ export function ScheduleClient({
   const showCityFilter = cities.length > 1 && !session?.user;
   const showStudioFilter = studios.length > 1;
 
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const days = Array.from({ length: 7 }, (_, i) => addDays(currentDate, i));
 
   const classTypes = Array.from(
     new Map(classes.map((c) => [c.classType.id, c.classType])).values(),
@@ -247,22 +243,22 @@ export function ScheduleClient({
         <div className="mb-3 flex items-center justify-between">
           <button
             onClick={() => {
-              const prev = subWeeks(currentDate, 1);
+              const prev = addDays(currentDate, -7);
               setCurrentDate(prev);
-              setSelectedDay(startOfWeek(prev, { weekStartsOn: 1 }));
+              setSelectedDay(prev);
             }}
             className="rounded-full p-1.5 text-muted active:bg-surface"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <span className="text-[12px] font-semibold uppercase tracking-widest text-muted">
-            {format(weekStart, "MMMM yyyy", { locale: es })}
+            {format(currentDate, "MMMM yyyy", { locale: es })}
           </span>
           <button
             onClick={() => {
-              const next = addWeeks(currentDate, 1);
+              const next = addDays(currentDate, 7);
               setCurrentDate(next);
-              setSelectedDay(startOfWeek(next, { weekStartsOn: 1 }));
+              setSelectedDay(next);
             }}
             className="rounded-full p-1.5 text-muted active:bg-surface"
           >
@@ -374,9 +370,7 @@ export function ScheduleClient({
               Sin clases para este día
             </p>
           ) : (
-            selectedClasses.map((cls) => (
-              <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
-            ))
+            <CollapsiblePastClasses classes={selectedClasses} classLinkPrefix={classLinkPrefix} />
           )}
         </div>
       </div>
@@ -396,16 +390,16 @@ export function ScheduleClient({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
+              onClick={() => setCurrentDate(addDays(currentDate, -7))}
               className="rounded-full p-1.5 text-muted hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="min-w-[140px] text-center text-xs font-medium uppercase tracking-widest text-muted">
-              {format(weekStart, "MMMM yyyy", { locale: es })}
+              {format(currentDate, "MMMM yyyy", { locale: es })}
             </span>
             <button
-              onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
+              onClick={() => setCurrentDate(addDays(currentDate, 7))}
               className="rounded-full p-1.5 text-muted hover:text-foreground"
             >
               <ChevronRight className="h-4 w-4" />
@@ -486,16 +480,49 @@ export function ScheduleClient({
           {days.map((day) => {
             const dayClasses = getClassesForDay(day);
             return (
-              <div key={day.toISOString()} className="space-y-2">
-                {dayClasses.map((cls) => (
-                  <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
-                ))}
-              </div>
+              <DesktopDayColumn key={day.toISOString()} classes={dayClasses} classLinkPrefix={classLinkPrefix} />
             );
           })}
         </div>
       </div>
     </div>
+  );
+}
+
+/* ── Collapsible past classes section ── */
+function CollapsiblePastClasses({ classes, classLinkPrefix }: { classes: ClassWithDetails[]; classLinkPrefix: string }) {
+  const pastClasses = classes.filter((c) => isPast(new Date(c.startsAt)));
+  const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startsAt)));
+  const [showPast, setShowPast] = useState(false);
+
+  if (pastClasses.length === 0 || upcomingClasses.length === 0) {
+    return (
+      <>
+        {classes.map((cls) => (
+          <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {showPast && pastClasses.map((cls) => (
+        <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+      ))}
+      <button
+        onClick={() => setShowPast(!showPast)}
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[12px] font-medium text-muted transition-colors active:bg-surface"
+      >
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showPast && "rotate-180")} />
+        {showPast
+          ? "Ocultar anteriores"
+          : `${pastClasses.length} clase${pastClasses.length > 1 ? "s" : ""} anterior${pastClasses.length > 1 ? "es" : ""}`}
+      </button>
+      {upcomingClasses.map((cls) => (
+        <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+      ))}
+    </>
   );
 }
 
@@ -627,6 +654,40 @@ function MobileClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDe
 }
 
 /* ── Desktop class card ── */
+function DesktopDayColumn({ classes, classLinkPrefix }: { classes: ClassWithDetails[]; classLinkPrefix: string }) {
+  const pastClasses = classes.filter((c) => isPast(new Date(c.startsAt)));
+  const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startsAt)));
+  const [showPast, setShowPast] = useState(false);
+
+  if (pastClasses.length === 0 || upcomingClasses.length === 0) {
+    return (
+      <div className="space-y-2">
+        {classes.map((cls) => (
+          <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {showPast && pastClasses.map((cls) => (
+        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+      ))}
+      <button
+        onClick={() => setShowPast(!showPast)}
+        className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-border/60 py-1.5 text-[10px] font-medium text-muted transition-colors hover:bg-surface/60"
+      >
+        <ChevronDown className={cn("h-3 w-3 transition-transform", showPast && "rotate-180")} />
+        {showPast ? "Ocultar" : `${pastClasses.length} anterior${pastClasses.length > 1 ? "es" : ""}`}
+      </button>
+      {upcomingClasses.map((cls) => (
+        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+      ))}
+    </div>
+  );
+}
+
 function DesktopClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDetails; classLinkPrefix?: string }) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
