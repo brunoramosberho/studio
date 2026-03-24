@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import Google from "next-auth/providers/google";
 import Resend from "next-auth/providers/resend";
 import Credentials from "next-auth/providers/credentials";
+import crypto from "crypto";
 import { prisma } from "./db";
 
 const providers: Provider[] = [];
@@ -129,6 +130,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (session.user as unknown as Record<string, unknown>).role = dbUser?.role || "CLIENT";
       }
       return session;
+    },
+  },
+  events: {
+    async signIn({ user }) {
+      if (!user?.email) return;
+      try {
+        const pending = await prisma.pendingLogin.findFirst({
+          where: {
+            email: user.email.toLowerCase(),
+            approved: false,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        if (!pending) return;
+
+        const sessionToken = crypto.randomUUID();
+        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+        await prisma.session.create({
+          data: { sessionToken, userId: user.id!, expires },
+        });
+
+        await prisma.pendingLogin.update({
+          where: { id: pending.id },
+          data: { approved: true, sessionToken },
+        });
+      } catch (e) {
+        console.error("Failed to approve pending login:", e);
+      }
     },
   },
   session: {

@@ -43,6 +43,19 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model PendingLogin {
+  id           String   @id @default(cuid())
+  email        String
+  token        String   @unique
+  approved     Boolean  @default(false)
+  sessionToken String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?

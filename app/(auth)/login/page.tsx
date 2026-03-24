@@ -21,6 +21,8 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
+const SESSION_COOKIE = "authjs.session-token";
+
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [magicLinkSent, setMagicLinkSent] = useState(false);
@@ -29,9 +31,10 @@ function LoginForm() {
   const { studioName, logoUrl } = useBranding();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: session, update: updateSession } = useSession();
+  const { data: session } = useSession();
   const callbackUrl = searchParams.get("callbackUrl") || "/my";
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (session?.user && !authenticated) {
@@ -41,20 +44,30 @@ function LoginForm() {
   }, [session, callbackUrl, router, authenticated]);
 
   useEffect(() => {
-    if (!magicLinkSent) {
+    if (!magicLinkSent || !pendingTokenRef.current) {
       if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
+
+    const token = pendingTokenRef.current;
+
     pollRef.current = setInterval(async () => {
-      const updated = await updateSession();
-      if (updated?.user) {
-        setAuthenticated(true);
-        if (pollRef.current) clearInterval(pollRef.current);
-        router.replace(callbackUrl);
-      }
-    }, 3000);
+      try {
+        const res = await fetch(`/api/auth/pending-login?token=${token}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.approved && data.sessionToken) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          document.cookie = `${SESSION_COOKIE}=${data.sessionToken}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
+          setAuthenticated(true);
+          setTimeout(() => router.replace(callbackUrl), 500);
+        }
+      } catch {}
+    }, 2500);
+
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [magicLinkSent, updateSession, callbackUrl, router]);
+  }, [magicLinkSent, callbackUrl, router]);
 
   async function handleGoogleSignIn() {
     await signIn("google", { callbackUrl });
@@ -66,6 +79,16 @@ function LoginForm() {
 
     setLoading(true);
     try {
+      const pendingRes = await fetch("/api/auth/pending-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (pendingRes.ok) {
+        const { token } = await pendingRes.json();
+        pendingTokenRef.current = token;
+      }
+
       await signIn("resend", {
         email,
         callbackUrl,
@@ -137,16 +160,16 @@ function LoginForm() {
                     Revisa tu correo
                   </h3>
                   <p className="mt-2 text-sm text-muted">
-                    Te enviamos un enlace mágico a{" "}
+                    Te enviamos un enlace a{" "}
                     <span className="font-medium text-foreground">{email}</span>.
-                    Haz clic en el enlace para iniciar sesión.
+                    Ábrelo desde cualquier dispositivo para aprobar el inicio de sesión.
                   </p>
-                  <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-muted/60">
+                  <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted/60">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Esperando verificación...
+                    Esperando aprobación...
                   </div>
                   <button
-                    onClick={() => setMagicLinkSent(false)}
+                    onClick={() => { setMagicLinkSent(false); pendingTokenRef.current = null; }}
                     className="mt-4 text-xs text-accent hover:text-accent/80"
                   >
                     Usar otro correo
