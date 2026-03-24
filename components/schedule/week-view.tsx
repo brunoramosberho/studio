@@ -170,7 +170,7 @@ export function WeekView({
                     <motion.div key={c.id} variants={staggerItem}>
                       <ClassCard
                         classData={c}
-                        maxCapacity={c.classType.maxCapacity}
+                        maxCapacity={c.room?.maxCapacity ?? 0}
                         onClick={() => onClassClick(c)}
                       />
                     </motion.div>
@@ -216,7 +216,7 @@ function MobileDayClasses({
             >
               <ClassCard
                 classData={c}
-                maxCapacity={c.classType.maxCapacity}
+                maxCapacity={c.room?.maxCapacity ?? 0}
                 onClick={() => onClassClick(c)}
               />
             </motion.div>

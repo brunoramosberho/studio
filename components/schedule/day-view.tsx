@@ -111,7 +111,7 @@ export function DayView({
               >
                 <ClassCard
                   classData={c}
-                  maxCapacity={c.classType.maxCapacity}
+                  maxCapacity={c.room?.maxCapacity ?? 0}
                   onClick={() => onClassClick(c)}
                   className="h-full"
                 />

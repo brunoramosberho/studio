@@ -9,8 +9,20 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { countryId: true },
+    });
+
     const userPackages = await prisma.userPackage.findMany({
-      where: { userId: session.user.id },
+      where: {
+        userId: session.user.id,
+        ...(user?.countryId && {
+          package: {
+            OR: [{ countryId: user.countryId }, { countryId: null }],
+          },
+        }),
+      },
       include: { package: true },
       orderBy: { expiresAt: "asc" },
     });

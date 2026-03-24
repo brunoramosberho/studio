@@ -103,7 +103,8 @@ export async function GET() {
           id: true,
           startsAt: true,
           endsAt: true,
-          classType: { select: { name: true, color: true, maxCapacity: true } },
+          classType: { select: { name: true, color: true } },
+          room: { select: { maxCapacity: true } },
           _count: {
             select: {
               bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
@@ -124,7 +125,7 @@ export async function GET() {
         endsAt: c.endsAt,
         className: c.classType.name,
         classColor: c.classType.color,
-        capacity: c.classType.maxCapacity,
+        capacity: c.room.maxCapacity,
         students: c._count.bookings,
         isPast: new Date(c.startsAt) < now,
       })),

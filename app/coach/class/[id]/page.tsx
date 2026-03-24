@@ -344,7 +344,7 @@ export default function ClassRosterPage() {
   }
 
   const enrolled = classData.bookings.length;
-  const capacity = classData.classType.maxCapacity;
+  const capacity = classData.room?.maxCapacity ?? 0;
 
   const allSongs = classData.bookings.flatMap((b) =>
     (b.user.favoriteSongs ?? []).map((s) => ({

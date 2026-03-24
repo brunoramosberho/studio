@@ -11,6 +11,10 @@ import type {
   Level,
   ClassStatus,
   BookingStatus,
+  Room,
+  Studio,
+  Country,
+  City,
 } from "@prisma/client";
 
 export type {
@@ -26,10 +30,19 @@ export type {
   Level,
   ClassStatus,
   BookingStatus,
+  Room,
+  Studio,
+  Country,
+  City,
 };
+
+export interface RoomWithStudio extends Room {
+  studio: Studio;
+}
 
 export interface ClassWithDetails extends Class {
   classType: ClassType;
+  room: RoomWithStudio;
   coach: CoachProfile & { user: Pick<User, "name" | "image"> };
   bookings: Booking[];
   _count?: { bookings: number; waitlist: number };

@@ -15,6 +15,7 @@ export async function GET(
       where: { id },
       include: {
         classType: true,
+        room: { include: { studio: true } },
         coach: {
           include: { user: { select: { name: true, image: true } } },
         },
@@ -51,7 +52,7 @@ export async function GET(
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    const spotsLeft = classData.classType.maxCapacity - classData._count.bookings;
+    const spotsLeft = classData.room.maxCapacity - classData._count.bookings;
 
     const isCoachOrAdmin =
       session?.user?.role === "COACH" || session?.user?.role === "ADMIN";
@@ -217,20 +218,21 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { startsAt, endsAt, location, status, notes, tag } = body;
+    const { startsAt, endsAt, roomId, status, notes, tag } = body;
 
     const updated = await prisma.class.update({
       where: { id },
       data: {
         ...(startsAt && { startsAt: new Date(startsAt) }),
         ...(endsAt && { endsAt: new Date(endsAt) }),
-        ...(location !== undefined && { location }),
+        ...(roomId && { roomId }),
         ...(status && { status }),
         ...(notes !== undefined && { notes }),
         ...(tag !== undefined && { tag: tag || null }),
       },
       include: {
         classType: true,
+        room: { include: { studio: true } },
         coach: {
           include: { user: { select: { name: true, image: true } } },
         },

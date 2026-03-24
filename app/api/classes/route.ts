@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const typeId = searchParams.get("typeId");
     const coachId = searchParams.get("coachId");
     const level = searchParams.get("level");
+    const studioId = searchParams.get("studioId");
 
     const where: Record<string, unknown> = {};
 
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
       where.coachId = profile ? profile.id : coachId;
     }
     if (level) where.classType = { level };
+    if (studioId) where.room = { studioId };
 
     const session = await auth();
     const currentUserId = session?.user?.id;
@@ -51,6 +53,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         classType: true,
+        room: { include: { studio: true } },
         coach: {
           include: { user: { select: { name: true, image: true } } },
         },
@@ -113,11 +116,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { classTypeId, coachId, startsAt, endsAt, location, isRecurring, recurringId, notes, tag } = body;
+    const { classTypeId, coachId, startsAt, endsAt, roomId, isRecurring, recurringId, notes, tag } = body;
 
-    if (!classTypeId || !coachId || !startsAt || !endsAt) {
+    if (!classTypeId || !coachId || !startsAt || !endsAt || !roomId) {
       return NextResponse.json(
-        { error: "Missing required fields: classTypeId, coachId, startsAt, endsAt" },
+        { error: "Missing required fields: classTypeId, coachId, startsAt, endsAt, roomId" },
         { status: 400 },
       );
     }
@@ -126,9 +129,9 @@ export async function POST(request: NextRequest) {
       data: {
         classTypeId,
         coachId,
+        roomId,
         startsAt: new Date(startsAt),
         endsAt: new Date(endsAt),
-        location,
         isRecurring: isRecurring ?? false,
         recurringId,
         notes,
@@ -136,6 +139,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         classType: true,
+        room: { include: { studio: true } },
         coach: {
           include: { user: { select: { name: true, image: true } } },
         },

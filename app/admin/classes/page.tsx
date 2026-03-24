@@ -57,6 +57,7 @@ export default function AdminClassesPage() {
   const [formData, setFormData] = useState({
     classTypeId: "",
     coachProfileId: "",
+    roomId: "",
     date: "",
     time: "",
     recurring: false,
@@ -90,6 +91,27 @@ export default function AdminClassesPage() {
     },
   });
 
+  interface StudioWithRooms {
+    id: string;
+    name: string;
+    rooms: { id: string; name: string; maxCapacity: number; classTypeId: string }[];
+  }
+
+  const { data: studios } = useQuery<StudioWithRooms[]>({
+    queryKey: ["studios-list"],
+    queryFn: async () => {
+      const res = await fetch("/api/studios");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const availableRooms = studios?.flatMap((s) =>
+    s.rooms
+      .filter((r) => !formData.classTypeId || r.classTypeId === formData.classTypeId)
+      .map((r) => ({ ...r, studioName: s.name })),
+  ) ?? [];
+
   const createMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/classes", {
@@ -103,7 +125,7 @@ export default function AdminClassesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-classes"] });
       setDialogOpen(false);
-      setFormData({ classTypeId: "", coachProfileId: "", date: "", time: "", recurring: false, tag: "" });
+      setFormData({ classTypeId: "", coachProfileId: "", roomId: "", date: "", time: "", recurring: false, tag: "" });
     },
   });
 
@@ -226,13 +248,16 @@ export default function AdminClassesPage() {
                         {format(new Date(cls.startsAt), "EEE d MMM", { locale: es })} ·{" "}
                         {formatTime(cls.startsAt)} – {formatTime(cls.endsAt)} ·{" "}
                         {cls.coach.user.name}
+                        {cls.room?.studio && (
+                          <span className="text-muted/60"> · {cls.room.studio.name} — {cls.room.name}</span>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1.5 text-sm text-muted">
                         <Users className="h-4 w-4" />
                         <span className="font-mono">
-                          {enrolled}/{cls.classType.maxCapacity}
+                          {enrolled}/{cls.room?.maxCapacity ?? "?"}
                         </span>
                       </div>
                       <Button variant="ghost" size="sm" className="gap-1">
@@ -303,6 +328,25 @@ export default function AdminClassesPage() {
                   {coaches?.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Sala</label>
+              <Select
+                value={formData.roomId}
+                onValueChange={(v) => setFormData({ ...formData, roomId: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar sala" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableRooms.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.studioName} — {r.name} ({r.maxCapacity} lugares)
                     </SelectItem>
                   ))}
                 </SelectContent>

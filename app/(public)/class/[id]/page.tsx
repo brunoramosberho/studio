@@ -32,7 +32,6 @@ interface ClassData {
   id: string;
   startsAt: string;
   endsAt: string;
-  location: string | null;
   status: string;
   coachId: string;
   notes: string | null;
@@ -41,10 +40,15 @@ interface ClassData {
     name: string;
     description: string | null;
     duration: number;
-    maxCapacity: number;
     level: string;
     color: string;
     icon: string | null;
+  };
+  room: {
+    id: string;
+    name: string;
+    maxCapacity: number;
+    studio: { id: string; name: string; address: string | null };
   };
   coach: {
     id: string;
@@ -221,7 +225,7 @@ export default function ClassDetailPage() {
         {/* Studio Map */}
         <div className="py-4">
           <StudioMap
-            maxCapacity={cls.classType.maxCapacity}
+            maxCapacity={cls.room.maxCapacity}
             spotMap={spotMap}
             selectedSpot={selectedSpot}
             onSelectSpot={(spot) => {

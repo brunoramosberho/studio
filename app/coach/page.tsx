@@ -204,7 +204,7 @@ export default function CoachDashboard() {
                   <p className="text-sm text-muted">
                     {formatTime(nextClass.startsAt)} ·{" "}
                     {nextClass._count?.bookings ?? nextClass.bookings.length}/
-                    {nextClass.classType.maxCapacity} inscritos
+                    {nextClass.room?.maxCapacity ?? "?"} inscritos
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
@@ -243,7 +243,7 @@ export default function CoachDashboard() {
           <div className="space-y-3">
             {classes.map((cls) => {
               const enrolled = cls._count?.bookings ?? cls.bookings.length;
-              const capacity = cls.classType.maxCapacity;
+              const capacity = cls.room?.maxCapacity ?? 0;
               const past = new Date(cls.endsAt) < now;
               return (
                 <motion.div key={cls.id} variants={fadeUp}>
@@ -296,7 +296,7 @@ export default function CoachDashboard() {
           <div className="space-y-3">
             {weekClasses.slice(0, 10).map((cls) => {
               const enrolled = cls._count?.bookings ?? cls.bookings.length;
-              const capacity = cls.classType.maxCapacity;
+              const capacity = cls.room?.maxCapacity ?? 0;
               const classDate = new Date(cls.startsAt);
               const dayLabel = classDate.toLocaleDateString("es-MX", {
                 weekday: "short",

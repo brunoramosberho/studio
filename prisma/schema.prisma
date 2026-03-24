@@ -52,6 +52,10 @@ model User {
   role          Role      @default(CLIENT)
   phone         String?
   birthday      DateTime?
+  countryId     String?
+  country       Country?  @relation(fields: [countryId], references: [id])
+  cityId        String?
+  city          City?     @relation(fields: [cityId], references: [id])
   createdAt     DateTime  @default(now())
 
   packages     UserPackage[]
@@ -71,6 +75,9 @@ model User {
   friendshipsRequested Friendship[]     @relation("FriendshipRequester")
   friendshipsReceived  Friendship[]     @relation("FriendshipAddressee")
   favoriteSongs        FavoriteSong[]   @relation("UserFavoriteSongs")
+
+  @@index([countryId])
+  @@index([cityId])
 }
 
 model FavoriteSong {
@@ -106,11 +113,11 @@ model ClassType {
   name        String
   description String?
   duration    Int
-  maxCapacity Int
   level       Level   @default(ALL)
   color       String
   icon        String?
   classes     Class[]
+  rooms       Room[]
 }
 
 enum Level {
@@ -126,9 +133,10 @@ model Class {
   classType   ClassType   @relation(fields: [classTypeId], references: [id])
   coachId     String
   coach       CoachProfile @relation(fields: [coachId], references: [id])
+  roomId      String
+  room        Room         @relation(fields: [roomId], references: [id])
   startsAt    DateTime
   endsAt      DateTime
-  location    String?
   status      ClassStatus @default(SCHEDULED)
   isRecurring Boolean     @default(false)
   recurringId String?
@@ -140,6 +148,7 @@ model Class {
   @@index([startsAt])
   @@index([classTypeId])
   @@index([coachId])
+  @@index([roomId])
   @@index([status])
 }
 
@@ -203,7 +212,11 @@ model Package {
   isPromo       Boolean       @default(false)
   isActive      Boolean       @default(true)
   stripePriceId String?
+  countryId     String?
+  country       Country?      @relation(fields: [countryId], references: [id])
   userPackages  UserPackage[]
+
+  @@index([countryId])
 }
 
 model UserPackage {
@@ -220,6 +233,53 @@ model UserPackage {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+// ── Location Hierarchy ──
+
+model Country {
+  id       String    @id @default(cuid())
+  name     String
+  code     String    @unique
+  cities   City[]
+  packages Package[]
+  users    User[]
+}
+
+model City {
+  id        String   @id @default(cuid())
+  name      String
+  countryId String
+  country   Country  @relation(fields: [countryId], references: [id])
+  studios   Studio[]
+  users     User[]
+
+  @@index([countryId])
+}
+
+model Studio {
+  id      String  @id @default(cuid())
+  name    String
+  address String?
+  cityId  String
+  city    City    @relation(fields: [cityId], references: [id])
+  rooms   Room[]
+
+  @@index([cityId])
+}
+
+model Room {
+  id          String    @id @default(cuid())
+  name        String
+  studioId    String
+  studio      Studio    @relation(fields: [studioId], references: [id])
+  classTypeId String
+  classType   ClassType @relation(fields: [classTypeId], references: [id])
+  maxCapacity Int
+  classes     Class[]
+
+  @@index([studioId])
+  @@index([classTypeId])
 }
 
 // ── Social Graph ──

@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
       where: { id: classId },
       include: {
         classType: true,
+        room: { include: { studio: true } },
         coach: { include: { user: { select: { name: true } } } },
         _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
       },
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const spotsLeft = classData.classType.maxCapacity - classData._count.bookings;
+    const spotsLeft = classData.room.maxCapacity - classData._count.bookings;
     if (spotsLeft <= 0) {
       return NextResponse.json(
         { error: "Class is full. Consider joining the waitlist.", full: true },
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (spotNumber != null) {
-      if (spotNumber < 1 || spotNumber > classData.classType.maxCapacity) {
+      if (spotNumber < 1 || spotNumber > classData.room.maxCapacity) {
         return NextResponse.json(
           { error: "Número de lugar inválido" },
           { status: 400 },
@@ -197,7 +198,7 @@ export async function POST(request: NextRequest) {
         coachName: classData.coach.user.name ?? "Coach",
         date: classData.startsAt,
         startTime: classData.startsAt,
-        location: classData.location ?? undefined,
+        location: classData.room.studio.name ?? undefined,
       });
     }
 

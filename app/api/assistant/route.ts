@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         classType: true,
+        room: { include: { studio: true } },
         coach: { include: { user: { select: { name: true } } } },
         _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
       },
@@ -43,10 +44,10 @@ export async function POST(request: NextRequest) {
 
     const scheduleContext = upcomingClasses
       .map((c) => {
-        const spotsLeft = c.classType.maxCapacity - c._count.bookings;
+        const spotsLeft = c.room.maxCapacity - c._count.bookings;
         const day = format(c.startsAt, "EEEE d 'de' MMMM", { locale: es });
         const time = format(c.startsAt, "h:mm a");
-        return `- ${c.classType.name} | ${day} ${time} | Coach: ${c.coach.user.name} | Nivel: ${c.classType.level} | Lugares: ${spotsLeft}/${c.classType.maxCapacity}`;
+        return `- ${c.classType.name} | ${day} ${time} | Coach: ${c.coach.user.name} | Nivel: ${c.classType.level} | Lugares: ${spotsLeft}/${c.room.maxCapacity} | Estudio: ${c.room.studio.name}`;
       })
       .join("\n");
 

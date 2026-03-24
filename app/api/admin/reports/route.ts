@@ -62,7 +62,7 @@ export async function GET() {
           status: { in: ["SCHEDULED", "COMPLETED"] },
         },
         include: {
-          classType: { select: { maxCapacity: true } },
+          room: { select: { maxCapacity: true } },
           _count: {
             select: { bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } } },
           },
@@ -89,7 +89,7 @@ export async function GET() {
     let avgOccupancy = 0;
     if (classesThisMonth.length > 0) {
       const totalOccupancy = classesThisMonth.reduce((sum, c) => {
-        const capacity = c.classType.maxCapacity;
+        const capacity = c.room.maxCapacity;
         if (capacity === 0) return sum;
         return sum + c._count.bookings / capacity;
       }, 0);

@@ -16,6 +16,7 @@ import {
   Music,
   Plus,
   X,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +66,13 @@ export default function ProfilePage() {
   const [songArtist, setSongArtist] = useState("");
   const [addingSong, setAddingSong] = useState(false);
 
+  interface LocationCountry { id: string; name: string; cities: { id: string; name: string }[] }
+  const [locations, setLocations] = useState<LocationCountry[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [savingLocation, setSavingLocation] = useState(false);
+  const [savedLocation, setSavedLocation] = useState(false);
+
   useEffect(() => {
     if (session?.user) {
       setName(session.user.name ?? "");
@@ -76,6 +84,8 @@ export default function ProfilePage() {
           const data = await res.json();
           setPhone(data.phone ?? "");
           if (data.name) setName(data.name);
+          if (data.countryId) setSelectedCountry(data.countryId);
+          if (data.cityId) setSelectedCity(data.cityId);
         }
       } catch {}
     }
@@ -91,6 +101,16 @@ export default function ProfilePage() {
       setLoadingPkgs(false);
     }
     fetchPackages();
+  }, []);
+
+  useEffect(() => {
+    async function fetchLocations() {
+      try {
+        const res = await fetch("/api/locations");
+        if (res.ok) setLocations(await res.json());
+      } catch {}
+    }
+    fetchLocations();
   }, []);
 
   useEffect(() => {
@@ -133,6 +153,23 @@ export default function ProfilePage() {
       const res = await fetch("/api/profile/songs");
       if (res.ok) setSongs(await res.json());
     }
+  }
+
+  async function handleSaveLocation() {
+    setSavingLocation(true);
+    setSavedLocation(false);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ countryId: selectedCountry || null, cityId: selectedCity || null }),
+      });
+      if (res.ok) {
+        setSavedLocation(true);
+        setTimeout(() => setSavedLocation(false), 1500);
+      }
+    } catch {}
+    setSavingLocation(false);
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -349,6 +386,71 @@ export default function ProfilePage() {
             </motion.div>
           )}
         </motion.div>
+
+        {/* Location selector */}
+        {locations.length > 0 && (
+          <motion.div custom={2.5} variants={fadeUp} initial="hidden" animate="show">
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-accent" />
+                  <p className="text-sm font-semibold text-foreground">Mi ubicación</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted">
+                      País
+                    </label>
+                    <select
+                      value={selectedCountry}
+                      onChange={(e) => {
+                        setSelectedCountry(e.target.value);
+                        setSelectedCity("");
+                      }}
+                      className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none"
+                    >
+                      <option value="">Seleccionar</option>
+                      {locations.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted">
+                      Ciudad
+                    </label>
+                    <select
+                      value={selectedCity}
+                      onChange={(e) => setSelectedCity(e.target.value)}
+                      disabled={!selectedCountry}
+                      className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none disabled:opacity-50"
+                    >
+                      <option value="">Seleccionar</option>
+                      {locations
+                        .find((c) => c.id === selectedCountry)
+                        ?.cities.map((city) => (
+                          <option key={city.id} value={city.id}>{city.name}</option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleSaveLocation}
+                  disabled={savingLocation}
+                  className="w-full"
+                >
+                  {savingLocation ? (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : savedLocation ? (
+                    <Check className="mr-2 h-3.5 w-3.5" />
+                  ) : null}
+                  {savedLocation ? "Guardado" : "Guardar ubicación"}
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Quick actions */}
         <motion.div

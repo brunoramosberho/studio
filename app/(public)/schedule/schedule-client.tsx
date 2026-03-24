@@ -50,6 +50,8 @@ export function ScheduleClient({
   const [selectedDay, setSelectedDay] = useState(startOfDay(new Date()));
   const [filterType, setFilterType] = useState<string>("all");
   const [filterCoach, setFilterCoach] = useState<string>("all");
+  const [filterStudio, setFilterStudio] = useState<string>("all");
+  const [studios, setStudios] = useState<{ id: string; name: string }[]>([]);
   const dayScrollRef = useRef<HTMLDivElement>(null);
   const branding = useBranding();
 
@@ -92,6 +94,21 @@ export function ScheduleClient({
     fetchCredits();
   }, [session]);
 
+  useEffect(() => {
+    async function fetchStudios() {
+      try {
+        const res = await fetch("/api/studios");
+        if (res.ok) {
+          const data = await res.json();
+          setStudios(data.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })));
+        }
+      } catch {}
+    }
+    fetchStudios();
+  }, []);
+
+  const showStudioFilter = studios.length > 1;
+
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -107,6 +124,7 @@ export function ScheduleClient({
       .filter((c) => isSameDay(new Date(c.startsAt), day))
       .filter((c) => filterType === "all" || c.classType.id === filterType)
       .filter((c) => filterCoach === "all" || c.coach.id === filterCoach)
+      .filter((c) => filterStudio === "all" || c.room?.studio?.id === filterStudio)
       .sort(
         (a, b) =>
           new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
@@ -217,6 +235,23 @@ export function ScheduleClient({
 
         {/* Filters (inline pills) */}
         <div className="mb-4 flex gap-2 overflow-x-auto scrollbar-none">
+          {showStudioFilter && (
+            <div className="relative flex-shrink-0">
+              <select
+                value={filterStudio}
+                onChange={(e) => setFilterStudio(e.target.value)}
+                className="appearance-none rounded-full border border-border bg-white py-1.5 pl-3 pr-7 text-[12px] font-medium text-foreground focus:outline-none"
+              >
+                <option value="all">Estudio</option>
+                {studios.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+            </div>
+          )}
           <div className="relative flex-shrink-0">
             <select
               value={filterType}
@@ -297,6 +332,17 @@ export function ScheduleClient({
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
+            {showStudioFilter && (
+              <FilterSelect
+                label="Estudio"
+                value={filterStudio}
+                onChange={setFilterStudio}
+                options={[
+                  { value: "all", label: "Todos" },
+                  ...studios.map((s) => ({ value: s.id, label: s.name })),
+                ]}
+              />
+            )}
             <FilterSelect
               label="Disciplina"
               value={filterType}
@@ -365,7 +411,7 @@ export function ScheduleClient({
 function MobileClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDetails; classLinkPrefix?: string }) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
-  const maxCap = cls.classType.maxCapacity;
+  const maxCap = cls.room?.maxCapacity ?? 0;
   const spotsLeft = maxCap - booked;
   const isFull = spotsLeft <= 0;
   const hasWaitlist = (cls._count?.waitlist ?? 0) > 0;
@@ -492,7 +538,7 @@ function MobileClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDe
 function DesktopClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDetails; classLinkPrefix?: string }) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
-  const maxCap = cls.classType.maxCapacity;
+  const maxCap = cls.room?.maxCapacity ?? 0;
   const spotsLeft = maxCap - booked;
   const isFull = spotsLeft <= 0;
   const hasWaitlist = (cls._count?.waitlist ?? 0) > 0;
