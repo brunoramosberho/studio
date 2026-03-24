@@ -15,6 +15,7 @@ export interface StudioBranding {
   colorBorder: string;
   colorCoach: string;
   colorAdmin: string;
+  coachIconSvg: string | null;
 }
 
 export const DEFAULTS: StudioBranding = {
@@ -34,6 +35,7 @@ export const DEFAULTS: StudioBranding = {
   colorBorder: "#E8E2D9",
   colorCoach: "#2D5016",
   colorAdmin: "#1A2C4E",
+  coachIconSvg: null,
 };
 
 export interface FontPairing {

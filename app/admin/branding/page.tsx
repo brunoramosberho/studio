@@ -40,6 +40,7 @@ export default function BrandingPage() {
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const appIconInputRef = useRef<HTMLInputElement>(null);
+  const coachIconInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/admin/settings")
@@ -120,6 +121,27 @@ export default function BrandingPage() {
       reader.onload = () => update("appIconUrl", reader.result as string);
       reader.readAsDataURL(file);
     }
+  }
+
+  function handleCoachIconUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !file.name.endsWith(".svg")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let svg = reader.result as string;
+      svg = svg
+        .replace(/<svg([^>]*)>/, (_match, attrs: string) => {
+          let cleaned = attrs
+            .replace(/\s*width="[^"]*"/g, "")
+            .replace(/\s*height="[^"]*"/g, "");
+          return `<svg${cleaned} width="100%" height="100%">`;
+        })
+        .replace(/fill="(?!none)[^"]*"/g, 'fill="currentColor"')
+        .replace(/stroke="(?!none)[^"]*"/g, 'stroke="currentColor"')
+        .replace(/style="[^"]*"/g, "");
+      update("coachIconSvg", svg);
+    };
+    reader.readAsText(file);
   }
 
   if (loading) {
@@ -366,6 +388,85 @@ export default function BrandingPage() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Coach Icon */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
+        <Card>
+          <CardContent className="p-6">
+            <div className="mb-5 flex items-center gap-2 text-sm font-semibold text-foreground">
+              <ImageIcon className="h-4 w-4 text-admin" />
+              Ícono de Coach (Mapa de clase)
+            </div>
+
+            <div className="flex items-center gap-6">
+              <div
+                className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border-2 border-dashed border-border"
+                style={{ color: settings.colorAccent }}
+              >
+                {settings.coachIconSvg ? (
+                  <div
+                    className="h-6 w-6 [&>svg]:h-full [&>svg]:w-full"
+                    dangerouslySetInnerHTML={{ __html: settings.coachIconSvg }}
+                  />
+                ) : (
+                  <span className="text-xs font-medium text-muted/40">SVG</span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <input
+                  ref={coachIconInputRef}
+                  type="file"
+                  accept=".svg"
+                  onChange={handleCoachIconUpload}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => coachIconInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  Subir SVG
+                </Button>
+                {settings.coachIconSvg && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => update("coachIconSvg", null)}
+                    className="gap-2 text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Eliminar
+                  </Button>
+                )}
+                <p className="text-xs text-muted">
+                  SVG monocromático. Se usa en el lugar del coach dentro del mapa de clase. Toma el color automáticamente.
+                </p>
+              </div>
+            </div>
+
+            {settings.coachIconSvg && (
+              <div className="mt-4 rounded-xl border border-border bg-surface/50 p-4">
+                <p className="mb-3 text-xs font-medium text-muted">Vista previa en mapa</p>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-[38px] w-[38px] items-center justify-center rounded-full"
+                    style={{ backgroundColor: `${settings.colorAccent}20`, color: settings.colorAccent }}
+                  >
+                    <div
+                      className="h-4 w-4 [&>svg]:h-full [&>svg]:w-full"
+                      dangerouslySetInnerHTML={{ __html: settings.coachIconSvg }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted">Así se verá en el mapa de clase</span>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

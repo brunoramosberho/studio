@@ -20,6 +20,7 @@ const DEFAULTS = {
   colorBorder: "#E8E2D9",
   colorCoach: "#2D5016",
   colorAdmin: "#1A2C4E",
+  coachIconSvg: null,
 };
 
 export async function GET() {
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
       "studioName", "tagline", "slogan", "metaDescription", "logoUrl", "appIconUrl",
       "fontPairing", "colorBg", "colorFg", "colorSurface", "colorAccent",
       "colorAccentSoft", "colorMuted", "colorBorder", "colorCoach", "colorAdmin",
+      "coachIconSvg",
     ];
 
     for (const field of allowedFields) {

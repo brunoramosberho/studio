@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { User } from "lucide-react";
+import { useBranding } from "@/components/branding-provider";
 
 export interface SpotInfo {
   status: "self" | "friend" | "occupied";
@@ -38,6 +39,7 @@ export function StudioMap({
   layout,
 }: StudioMapProps) {
   const [tapped, setTapped] = useState<number | null>(null);
+  const { coachIconSvg } = useBranding();
 
   const hasLayout = layout && layout.spots.length > 0;
 
@@ -126,8 +128,18 @@ export function StudioMap({
   function renderCoachCell(key: string) {
     return (
       <div key={key} className="flex flex-col items-center">
-        <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-violet-100 text-violet-600">
-          <User className="h-4 w-4" />
+        <div
+          className="flex h-[38px] w-[38px] items-center justify-center rounded-full"
+          style={{ backgroundColor: "var(--color-accent-soft)", color: "var(--color-accent)" }}
+        >
+          {coachIconSvg ? (
+            <div
+              className="h-5 w-5 [&>svg]:h-full [&>svg]:w-full"
+              dangerouslySetInnerHTML={{ __html: coachIconSvg }}
+            />
+          ) : (
+            <User className="h-4 w-4" />
+          )}
         </div>
       </div>
     );

@@ -437,5 +437,6 @@ model StudioSettings {
   colorBorder     String   @default("#E8E2D9")
   colorCoach      String   @default("#2D5016")
   colorAdmin      String   @default("#1A2C4E")
+  coachIconSvg    String?  @db.Text
   updatedAt       DateTime @updatedAt
 }
