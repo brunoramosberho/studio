@@ -218,11 +218,13 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { startsAt, endsAt, roomId, status, notes, tag } = body;
+    const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag } = body;
 
     const updated = await prisma.class.update({
       where: { id },
       data: {
+        ...(classTypeId && { classTypeId }),
+        ...(coachId && { coachId }),
         ...(startsAt && { startsAt: new Date(startsAt) }),
         ...(endsAt && { endsAt: new Date(endsAt) }),
         ...(roomId && { roomId }),

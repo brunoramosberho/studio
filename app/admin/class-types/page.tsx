@@ -1,0 +1,416 @@
+"use client";
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Clock,
+  Dumbbell,
+  AlertTriangle,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05 } },
+};
+const fadeUp = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+};
+
+const LEVEL_LABELS: Record<string, string> = {
+  ALL: "Todos los niveles",
+  BEGINNER: "Principiante",
+  INTERMEDIATE: "Intermedio",
+  ADVANCED: "Avanzado",
+};
+
+const PRESET_COLORS = [
+  "#1A2C4E", "#C9A96E", "#8B5E3C", "#2D6A4F", "#6B21A8",
+  "#0369A1", "#B91C1C", "#D97706", "#059669", "#DB2777",
+  "#4338CA", "#475569",
+];
+
+interface ClassTypeData {
+  id: string;
+  name: string;
+  description: string | null;
+  duration: number;
+  level: string;
+  color: string;
+  icon: string | null;
+  _count: { classes: number; rooms: number };
+}
+
+interface FormData {
+  name: string;
+  description: string;
+  duration: number;
+  level: string;
+  color: string;
+}
+
+const emptyForm: FormData = {
+  name: "",
+  description: "",
+  duration: 50,
+  level: "ALL",
+  color: PRESET_COLORS[0],
+};
+
+export default function AdminClassTypesPage() {
+  const queryClient = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<ClassTypeData | null>(null);
+  const [formData, setFormData] = useState<FormData>(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState<ClassTypeData | null>(null);
+
+  const { data: classTypes, isLoading } = useQuery<ClassTypeData[]>({
+    queryKey: ["admin", "class-types"],
+    queryFn: async () => {
+      const res = await fetch("/api/class-types");
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  function openCreate() {
+    setEditing(null);
+    setFormData(emptyForm);
+    setDialogOpen(true);
+  }
+
+  function openEdit(ct: ClassTypeData) {
+    setEditing(ct);
+    setFormData({
+      name: ct.name,
+      description: ct.description ?? "",
+      duration: ct.duration,
+      level: ct.level,
+      color: ct.color,
+    });
+    setDialogOpen(true);
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const url = editing ? `/api/class-types/${editing.id}` : "/api/class-types";
+      const method = editing ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error al guardar");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "class-types"] });
+      queryClient.invalidateQueries({ queryKey: ["class-types"] });
+      setDialogOpen(false);
+      setEditing(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/class-types/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error al eliminar");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "class-types"] });
+      queryClient.invalidateQueries({ queryKey: ["class-types"] });
+      setDeleteTarget(null);
+    },
+  });
+
+  const isFormValid = formData.name.trim() && formData.duration > 0 && formData.color;
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">Disciplinas</h1>
+          <p className="mt-1 text-sm text-muted">
+            Tipos de clase disponibles en el estudio
+          </p>
+        </motion.div>
+
+        <Button onClick={openCreate} className="gap-2 bg-admin hover:bg-admin/90">
+          <Plus className="h-4 w-4" />
+          Nueva disciplina
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-2xl" />
+          ))}
+        </div>
+      ) : !classTypes?.length ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+            <Dumbbell className="h-10 w-10 text-muted/30" />
+            <div>
+              <p className="font-medium text-muted">No hay disciplinas configuradas</p>
+              <p className="mt-1 text-sm text-muted/70">
+                Crea tu primera disciplina para poder programar clases
+              </p>
+            </div>
+            <Button onClick={openCreate} variant="outline" size="sm" className="mt-2 gap-2">
+              <Plus className="h-3.5 w-3.5" />
+              Crear disciplina
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="show"
+          className="grid gap-3 sm:grid-cols-2"
+        >
+          {classTypes.map((ct) => (
+            <motion.div key={ct.id} variants={fadeUp}>
+              <Card className="group transition-shadow hover:shadow-warm">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
+                        style={{ backgroundColor: ct.color }}
+                      >
+                        <Dumbbell className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-display text-base font-bold">{ct.name}</p>
+                        {ct.description && (
+                          <p className="mt-0.5 text-xs text-muted line-clamp-1">
+                            {ct.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => openEdit(ct)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteTarget(ct)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className="gap-1">
+                      <Clock className="h-3 w-3" />
+                      {ct.duration} min
+                    </Badge>
+                    <Badge variant="outline">{LEVEL_LABELS[ct.level] ?? ct.level}</Badge>
+                    {ct._count.classes > 0 && (
+                      <span className="text-xs text-muted">
+                        {ct._count.classes} clase{ct._count.classes !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
+      {/* Create / Edit dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditing(null); saveMutation.reset(); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Editar disciplina" : "Nueva disciplina"}</DialogTitle>
+            <DialogDescription>
+              {editing
+                ? "Modifica los datos de la disciplina"
+                : "Define un nuevo tipo de clase para el estudio"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted">Nombre</label>
+              <Input
+                placeholder="Ej: Reformer, Mat Flow, Barre..."
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted">
+                Descripción <span className="font-normal">(opcional)</span>
+              </label>
+              <Input
+                placeholder="Breve descripción de la clase"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted">Duración (min)</label>
+                <Input
+                  type="number"
+                  min={15}
+                  max={180}
+                  step={5}
+                  value={formData.duration}
+                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 50 })}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted">Nivel</label>
+                <Select
+                  value={formData.level}
+                  onValueChange={(v) => setFormData({ ...formData, level: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Todos los niveles</SelectItem>
+                    <SelectItem value="BEGINNER">Principiante</SelectItem>
+                    <SelectItem value="INTERMEDIATE">Intermedio</SelectItem>
+                    <SelectItem value="ADVANCED">Avanzado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted">Color</label>
+              <div className="flex flex-wrap gap-2">
+                {PRESET_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, color: c })}
+                    className={cn(
+                      "h-8 w-8 rounded-full transition-all",
+                      formData.color === c
+                        ? "ring-2 ring-admin ring-offset-2"
+                        : "hover:scale-110",
+                    )}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+              <Input
+                className="mt-2"
+                placeholder="#hex color"
+                value={formData.color}
+                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+              />
+            </div>
+
+            {saveMutation.isError && (
+              <p className="text-sm text-destructive">
+                {saveMutation.error?.message || "Error al guardar"}
+              </p>
+            )}
+
+            <Separator />
+
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending || !isFormValid}
+                className="gap-2 bg-admin hover:bg-admin/90"
+              >
+                {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {editing ? "Guardar" : "Crear disciplina"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={() => { setDeleteTarget(null); deleteMutation.reset(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Eliminar disciplina
+            </DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de eliminar{" "}
+              <span className="font-medium text-foreground">{deleteTarget?.name}</span>?
+              Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteMutation.isError && (
+            <p className="text-sm text-destructive">
+              {deleteMutation.error?.message || "Error al eliminar"}
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

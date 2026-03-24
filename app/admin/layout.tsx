@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   CalendarDays,
   Dumbbell,
+  ClipboardList,
   Users,
   UserCog,
   Package,
@@ -29,7 +30,8 @@ import { useBranding } from "@/components/branding-provider";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/classes", label: "Clases", icon: Dumbbell },
+  { href: "/admin/class-types", label: "Disciplinas", icon: Dumbbell },
+  { href: "/admin/classes", label: "Clases", icon: ClipboardList },
   { href: "/admin/schedule", label: "Horario", icon: CalendarDays },
   { href: "/admin/studios", label: "Estudios", icon: Building2 },
   { href: "/admin/coaches", label: "Coaches", icon: UserCog },
