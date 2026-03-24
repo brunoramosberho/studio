@@ -75,51 +75,41 @@ export default function BrandingPage() {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
 
+  function readAsDataUrl(file: File, key: keyof StudioBranding) {
+    const reader = new FileReader();
+    reader.onload = () => update(key, reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("bucket", "logos");
-
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (res.ok) {
-        const { url } = await res.json();
-        update("logoUrl", url);
-      }
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("bucket", "logos");
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error();
+      const { url } = await res.json();
+      update("logoUrl", url);
     } catch {
-      const reader = new FileReader();
-      reader.onload = () => update("logoUrl", reader.result as string);
-      reader.readAsDataURL(file);
+      readAsDataUrl(file, "logoUrl");
     }
   }
 
   async function handleAppIconUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("bucket", "icons");
-
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (res.ok) {
-        const { url } = await res.json();
-        update("appIconUrl", url);
-      }
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("bucket", "icons");
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error();
+      const { url } = await res.json();
+      update("appIconUrl", url);
     } catch {
-      const reader = new FileReader();
-      reader.onload = () => update("appIconUrl", reader.result as string);
-      reader.readAsDataURL(file);
+      readAsDataUrl(file, "appIconUrl");
     }
   }
 
