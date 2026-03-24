@@ -413,6 +413,7 @@ model StudioSettings {
   slogan          String   @default("Muévete. Respira. Floréce.")
   metaDescription String   @default("Tu espacio de Pilates y bienestar.")
   logoUrl         String?
+  appIconUrl      String?
   fontPairing     String   @default("playfair-dmsans")
   colorBg         String   @default("#FAF9F6")
   colorFg         String   @default("#1C1917")

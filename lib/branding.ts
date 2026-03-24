@@ -4,6 +4,7 @@ export interface StudioBranding {
   slogan: string;
   metaDescription: string;
   logoUrl: string | null;
+  appIconUrl: string | null;
   fontPairing: string;
   colorBg: string;
   colorFg: string;
@@ -22,6 +23,7 @@ export const DEFAULTS: StudioBranding = {
   slogan: "Muévete. Respira. Floréce.",
   metaDescription: "Tu espacio de Pilates y bienestar.",
   logoUrl: null,
+  appIconUrl: null,
   fontPairing: "playfair-dmsans",
   colorBg: "#FAF9F6",
   colorFg: "#1C1917",

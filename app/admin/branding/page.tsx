@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   FileText,
   Loader2,
+  Smartphone,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export default function BrandingPage() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const appIconInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/admin/settings")
@@ -90,9 +92,32 @@ export default function BrandingPage() {
         update("logoUrl", url);
       }
     } catch {
-      // If upload API doesn't exist, use data URL as fallback
       const reader = new FileReader();
       reader.onload = () => update("logoUrl", reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  }
+
+  async function handleAppIconUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("bucket", "icons");
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const { url } = await res.json();
+        update("appIconUrl", url);
+      }
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => update("appIconUrl", reader.result as string);
       reader.readAsDataURL(file);
     }
   }
@@ -240,6 +265,105 @@ export default function BrandingPage() {
                   </Button>
                 )}
                 <p className="text-xs text-muted">PNG, SVG o JPG. Se recomienda fondo transparente.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* App Icon */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+        <Card>
+          <CardContent className="p-6">
+            <div className="mb-5 flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Smartphone className="h-4 w-4 text-admin" />
+              Ícono de App
+            </div>
+
+            <div className="flex items-center gap-6">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[18px] border-2 border-dashed border-border bg-surface shadow-sm">
+                {settings.appIconUrl ? (
+                  <img src={settings.appIconUrl} alt="App Icon" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="font-display text-2xl font-bold text-muted/30">
+                    {settings.studioName.charAt(0)}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <input
+                  ref={appIconInputRef}
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleAppIconUpload}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => appIconInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  Subir ícono
+                </Button>
+                {settings.appIconUrl && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => update("appIconUrl", null)}
+                    className="gap-2 text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Eliminar
+                  </Button>
+                )}
+                <p className="text-xs text-muted">
+                  PNG cuadrado, mínimo 512×512px. Aparece al instalar como app.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-border bg-surface/50 p-4">
+              <p className="mb-2 text-xs font-medium text-muted">Vista previa</p>
+              <div className="flex items-center gap-4">
+                <div className="text-center">
+                  <div
+                    className="mx-auto h-[60px] w-[60px] overflow-hidden rounded-[14px] shadow-md"
+                    style={{ backgroundColor: settings.colorBg }}
+                  >
+                    {settings.appIconUrl ? (
+                      <img src={settings.appIconUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <span className="font-display text-xl font-bold" style={{ color: settings.colorAccent }}>
+                          {settings.studioName.charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-[10px] font-medium text-foreground">{settings.studioName}</p>
+                  <p className="text-[9px] text-muted">iPhone</p>
+                </div>
+                <div className="text-center">
+                  <div
+                    className="mx-auto h-[48px] w-[48px] overflow-hidden rounded-full shadow-md"
+                    style={{ backgroundColor: settings.colorBg }}
+                  >
+                    {settings.appIconUrl ? (
+                      <img src={settings.appIconUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <span className="font-display text-lg font-bold" style={{ color: settings.colorAccent }}>
+                          {settings.studioName.charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-[10px] font-medium text-foreground">{settings.studioName}</p>
+                  <p className="text-[9px] text-muted">Android</p>
+                </div>
               </div>
             </div>
           </CardContent>

@@ -20,6 +20,7 @@ import {
 } from "next/font/google";
 import { Providers } from "./providers";
 import { MobileNav } from "@/components/shared/mobile-nav";
+import { InstallPrompt } from "@/components/shared/install-prompt";
 import "./globals.css";
 
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair", display: "swap" });
@@ -60,11 +61,16 @@ async function getSettings() {
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
   const fullName = `${s.studioName} Studio`;
+  const iconUrl = s.appIconUrl || "/icon-192.png";
   return {
     title: { default: `${fullName} — ${s.tagline}`, template: `%s | ${fullName}` },
     description: `${s.slogan} ${s.metaDescription}`,
     keywords: ["pilates", "wellness", "reformer", "barre", "mat flow", "studio"],
-    manifest: "/manifest.json",
+    manifest: "/api/manifest",
+    icons: {
+      icon: iconUrl,
+      apple: iconUrl,
+    },
     appleWebApp: { capable: true, statusBarStyle: "default", title: fullName },
     openGraph: { title: `${fullName} — ${s.tagline}`, description: s.slogan, type: "website" },
   };
@@ -89,6 +95,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <MobileNav />
+          <InstallPrompt />
         </Providers>
       </body>
     </html>

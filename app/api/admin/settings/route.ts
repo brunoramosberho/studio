@@ -9,6 +9,7 @@ const DEFAULTS = {
   slogan: "Muévete. Respira. Floréce.",
   metaDescription: "Tu espacio de Pilates y bienestar.",
   logoUrl: null,
+  appIconUrl: null,
   fontPairing: "playfair-dmsans",
   colorBg: "#FAF9F6",
   colorFg: "#1C1917",
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     const data: Record<string, string | null> = {};
     const allowedFields = [
-      "studioName", "tagline", "slogan", "metaDescription", "logoUrl",
+      "studioName", "tagline", "slogan", "metaDescription", "logoUrl", "appIconUrl",
       "fontPairing", "colorBg", "colorFg", "colorSurface", "colorAccent",
       "colorAccentSoft", "colorMuted", "colorBorder", "colorCoach", "colorAdmin",
     ];
