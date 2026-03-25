@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
           .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
           .png()
           .toBuffer();
-        return new NextResponse(png, {
+        return new NextResponse(new Uint8Array(png), {
           headers: {
             "Content-Type": "image/png",
             "Cache-Control": "public, max-age=86400",
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
           .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
           .png()
           .toBuffer();
-        return new NextResponse(png, {
+        return new NextResponse(new Uint8Array(png), {
           headers: {
             "Content-Type": "image/png",
             "Cache-Control": "public, max-age=86400",
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 </svg>`;
 
     const png = await sharp(Buffer.from(svg)).resize(size, size).png().toBuffer();
-    return new NextResponse(png, {
+    return new NextResponse(new Uint8Array(png), {
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=3600",
