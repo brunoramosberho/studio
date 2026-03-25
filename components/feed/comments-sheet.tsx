@@ -84,10 +84,10 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
       {/* Toggle button */}
       <button
         onClick={toggle}
-        className="flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-muted transition-colors hover:bg-surface"
+        className="flex items-center gap-1 py-1.5 pr-2 text-[13px] text-muted transition-colors"
       >
-        <MessageCircle className="h-4 w-4" />
-        {displayCount > 0 && <span>{displayCount}</span>}
+        <MessageCircle className="h-[18px] w-[18px]" />
+        {displayCount > 0 && <span className="text-[12px]">{displayCount}</span>}
       </button>
 
       {/* Inline comments */}

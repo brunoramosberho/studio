@@ -203,18 +203,51 @@ export async function GET(
   });
   const myUpcomingSet = new Set(myUpcomingBookings.map((b) => b.classId));
 
-  const upcomingClasses = upcomingBookingsRaw.map((b) => ({
-    id: b.classId,
-    className: b.class.classType.name,
-    color: b.class.classType.color,
-    duration: b.class.classType.duration,
-    coachName: b.class.coach.user.name,
-    startsAt: b.class.startsAt,
-    endsAt: b.class.endsAt,
-    studioName: b.class.room.studio.name,
-    spotsLeft: b.class.room.maxCapacity - b.class._count.bookings,
-    currentUserBooked: myUpcomingSet.has(b.classId),
-  }));
+  // Find CLASS_RESERVED feed events for these upcoming classes
+  const reservedFeedEvents = await prisma.feedEvent.findMany({
+    where: {
+      userId: targetId,
+      eventType: "CLASS_RESERVED",
+    },
+    include: {
+      _count: { select: { likes: true, comments: true } },
+      likes: {
+        where: { userId: currentUserId },
+        select: { id: true },
+        take: 1,
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const feedEventByClassId = new Map<string, typeof reservedFeedEvents[number]>();
+  for (const fe of reservedFeedEvents) {
+    const payload = fe.payload as Record<string, unknown>;
+    const cid = payload.classId as string | undefined;
+    if (cid && !feedEventByClassId.has(cid)) {
+      feedEventByClassId.set(cid, fe);
+    }
+  }
+
+  const upcomingClasses = upcomingBookingsRaw.map((b) => {
+    const fe = feedEventByClassId.get(b.classId);
+    return {
+      id: b.classId,
+      className: b.class.classType.name,
+      color: b.class.classType.color,
+      duration: b.class.classType.duration,
+      coachName: b.class.coach.user.name,
+      startsAt: b.class.startsAt,
+      endsAt: b.class.endsAt,
+      studioName: b.class.room.studio.name,
+      spotsLeft: b.class.room.maxCapacity - b.class._count.bookings,
+      currentUserBooked: myUpcomingSet.has(b.classId),
+      feedEventId: fe?.id ?? null,
+      likeCount: fe?._count.likes ?? 0,
+      commentCount: fe?._count.comments ?? 0,
+      liked: (fe?.likes.length ?? 0) > 0,
+    };
+  });
 
   const recentActivity = pastClasses.map((b) => ({
     id: b.id,

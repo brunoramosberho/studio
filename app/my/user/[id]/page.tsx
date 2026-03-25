@@ -15,9 +15,9 @@ import {
   Clock,
   ArrowRight,
   Dumbbell,
-  Heart,
-  MessageCircle,
 } from "lucide-react";
+import { LikeButton } from "@/components/feed/like-button";
+import { CommentsSheet } from "@/components/feed/comments-sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
@@ -34,6 +34,10 @@ interface UpcomingClass {
   studioName: string;
   spotsLeft: number;
   currentUserBooked: boolean;
+  feedEventId?: string | null;
+  likeCount?: number;
+  commentCount?: number;
+  liked?: boolean;
 }
 
 interface ActivityItem {
@@ -114,45 +118,58 @@ function timeAgo(dateStr: string) {
 
 function ClassCard({ cls, showCoach = true }: { cls: UpcomingClass; showCoach?: boolean }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3">
-      <div
-        className="h-10 w-10 shrink-0 rounded-xl"
-        style={{ backgroundColor: cls.color + "20" }}
-      >
-        <div className="flex h-full items-center justify-center">
-          <Dumbbell className="h-4 w-4" style={{ color: cls.color }} />
+    <div className="overflow-hidden rounded-2xl border border-border/50 bg-white">
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div
+          className="h-10 w-10 shrink-0 rounded-xl"
+          style={{ backgroundColor: cls.color + "20" }}
+        >
+          <div className="flex h-full items-center justify-center">
+            <Dumbbell className="h-4 w-4" style={{ color: cls.color }} />
+          </div>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14px] font-semibold text-foreground">{cls.className}</p>
+          <p className="text-[12px] text-muted">
+            {showCoach && cls.coachName ? `${cls.coachName} · ` : ""}
+            {formatClassDate(cls.startsAt)} · {formatClassTime(cls.startsAt)}
+          </p>
+          <p className="text-[11px] text-muted/70">{cls.studioName}</p>
+        </div>
+        <div className="shrink-0 text-right">
+          {cls.currentUserBooked ? (
+            <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
+              Inscrito/a
+            </span>
+          ) : cls.spotsLeft > 0 ? (
+            <Link href={`/class/${cls.id}`}>
+              <Button size="sm" className="h-8 gap-1.5 text-[12px]">
+                Reservar
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          ) : (
+            <span className="text-[11px] text-muted">Lleno</span>
+          )}
         </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-semibold text-foreground">{cls.className}</p>
-        <p className="text-[12px] text-muted">
-          {showCoach && cls.coachName ? `${cls.coachName} · ` : ""}
-          {formatClassDate(cls.startsAt)} · {formatClassTime(cls.startsAt)}
-        </p>
-        <p className="text-[11px] text-muted/70">{cls.studioName}</p>
-      </div>
-      <div className="shrink-0 text-right">
-        {cls.currentUserBooked ? (
-          <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
-            Inscrito/a
-          </span>
-        ) : cls.spotsLeft > 0 ? (
-          <Link href={`/class/${cls.id}`}>
-            <Button size="sm" className="h-8 gap-1.5 text-[12px]">
-              Reservar
-              <ArrowRight className="h-3 w-3" />
-            </Button>
-          </Link>
-        ) : (
-          <span className="text-[11px] text-muted">Lleno</span>
-        )}
-      </div>
+      {cls.feedEventId && (
+        <div className="flex items-center gap-1 border-t border-border/30 px-3 py-0.5">
+          <LikeButton
+            eventId={cls.feedEventId}
+            initialLiked={cls.liked ?? false}
+            initialCount={cls.likeCount ?? 0}
+          />
+          <CommentsSheet eventId={cls.feedEventId} commentCount={cls.commentCount ?? 0} />
+        </div>
+      )}
     </div>
   );
 }
 
 function FeedEventMini({ event }: { event: FeedItem }) {
   const p = event.payload;
+  const isAchievement = event.eventType === "ACHIEVEMENT_UNLOCKED";
 
   function getDescription() {
     switch (event.eventType) {
@@ -168,29 +185,28 @@ function FeedEventMini({ event }: { event: FeedItem }) {
   }
 
   return (
-    <div className="flex items-start gap-3 rounded-xl bg-white px-3 py-2.5">
-      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface">
-        {event.eventType === "ACHIEVEMENT_UNLOCKED" ? (
-          <span className="text-sm">🏆</span>
-        ) : (
-          <Dumbbell className="h-3.5 w-3.5 text-muted" />
-        )}
+    <div className="overflow-hidden rounded-xl bg-white">
+      <div className="flex items-start gap-3 px-3 py-2.5">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface">
+          {isAchievement ? (
+            <span className="text-sm">🏆</span>
+          ) : (
+            <Dumbbell className="h-3.5 w-3.5 text-muted" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] text-foreground">{getDescription()}</p>
+          <p className="text-[11px] text-muted">{timeAgo(event.createdAt)}</p>
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] text-foreground">{getDescription()}</p>
-        <p className="text-[11px] text-muted">{timeAgo(event.createdAt)}</p>
-      </div>
-      <div className="flex items-center gap-2 text-[11px] text-muted">
-        {event.likeCount > 0 && (
-          <span className="flex items-center gap-0.5">
-            <Heart className="h-3 w-3" /> {event.likeCount}
-          </span>
-        )}
-        {event.commentCount > 0 && (
-          <span className="flex items-center gap-0.5">
-            <MessageCircle className="h-3 w-3" /> {event.commentCount}
-          </span>
-        )}
+      <div className="flex items-center gap-1 border-t border-border/30 px-3 py-0.5">
+        <LikeButton
+          eventId={event.id}
+          initialLiked={event.liked}
+          initialCount={event.likeCount}
+          isAchievement={isAchievement}
+        />
+        <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
       </div>
     </div>
   );

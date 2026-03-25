@@ -242,7 +242,15 @@ export function BookingSheet({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-y-auto rounded-t-3xl bg-white pb-safe shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-white pb-safe shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        onFocus={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.tagName === "INPUT") {
+            setTimeout(() => {
+              target.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 350);
+          }
+        }}
       >
         <div className="flex justify-center pt-3 sm:hidden">
           <div className="h-1 w-10 rounded-full bg-border" />

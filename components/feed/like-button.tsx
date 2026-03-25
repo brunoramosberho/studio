@@ -42,25 +42,23 @@ export function LikeButton({
     }
   }, [liked, eventId, isAchievement]);
 
-  const label = isAchievement ? "🙌" : null;
-
   return (
     <button
       onClick={toggle}
       className={cn(
-        "flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all active:scale-95",
+        "flex items-center gap-1 py-1.5 pr-2 text-[13px] transition-all active:scale-95",
         liked
           ? isAchievement
-            ? "bg-accent/10 text-accent"
-            : "bg-rose-50 text-rose-600"
-          : "text-muted hover:bg-surface",
+            ? "text-accent"
+            : "text-rose-500"
+          : "text-muted",
       )}
     >
       {isAchievement ? (
         <span
           className={cn(
-            "text-base transition-transform",
-            animating && "animate-bounce",
+            "text-[15px] leading-none transition-transform",
+            animating && "scale-125",
           )}
         >
           🙌
@@ -68,13 +66,13 @@ export function LikeButton({
       ) : (
         <Heart
           className={cn(
-            "h-4 w-4 transition-transform",
+            "h-[18px] w-[18px] transition-transform",
             liked && "fill-rose-500 text-rose-500",
             animating && "scale-125",
           )}
         />
       )}
-      {count > 0 && <span>{count}</span>}
+      {count > 0 && <span className="text-[12px]">{count}</span>}
     </button>
   );
 }
