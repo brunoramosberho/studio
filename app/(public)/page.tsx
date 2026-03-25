@@ -128,7 +128,7 @@ export default function LandingPage() {
   useEffect(() => {
     fetch("/api/coaches")
       .then((r) => r.json())
-      .then((data) => setCoaches(data))
+      .then((data) => setCoaches(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
 

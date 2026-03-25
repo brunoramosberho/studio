@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireTenant } from "@/lib/tenant";
+import { getTenant } from "@/lib/tenant";
 
 export async function GET() {
   try {
-    const tenant = await requireTenant();
+    const tenant = await getTenant();
+    if (!tenant) return NextResponse.json([]);
 
     const coaches = await prisma.coachProfile.findMany({
       where: { tenantId: tenant.id },
@@ -16,9 +17,6 @@ export async function GET() {
     return NextResponse.json(coaches);
   } catch (error) {
     console.error("GET /api/coaches error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch coaches" },
-      { status: 500 },
-    );
+    return NextResponse.json([], { status: 500 });
   }
 }
