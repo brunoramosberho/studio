@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { sendPushToUser } from "@/lib/push";
 
 export async function GET(
   _request: NextRequest,
@@ -62,6 +63,21 @@ export async function POST(
         user: { select: { id: true, name: true, image: true } },
       },
     });
+
+    const feedEvent = await prisma.feedEvent.findUnique({
+      where: { id: eventId },
+      select: { userId: true },
+    });
+    if (feedEvent && feedEvent.userId !== session.user.id) {
+      const commenterName = session.user.name?.split(" ")[0] ?? "Alguien";
+      const preview = commentBody.trim().slice(0, 60);
+      sendPushToUser(feedEvent.userId, {
+        title: "Nuevo comentario",
+        body: `${commenterName}: ${preview}`,
+        url: "/my",
+        tag: `comment-${eventId}`,
+      }).catch(() => {});
+    }
 
     return NextResponse.json(comment, { status: 201 });
   } catch (error) {

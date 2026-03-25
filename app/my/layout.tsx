@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
+import { PushManager } from "@/components/shared/push-manager";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -27,6 +28,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           {children}
         </div>
       </main>
+      <PushManager />
     </div>
   );
 }

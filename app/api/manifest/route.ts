@@ -35,6 +35,8 @@ export async function GET() {
     theme_color: colorBg,
     orientation: "portrait",
     icons,
+    gcm_sender_id: "",
+    permissions: ["notifications"],
   };
 
   return NextResponse.json(manifest, {

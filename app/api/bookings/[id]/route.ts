@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
+import { sendPushToUser } from "@/lib/push";
 
 const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
 
@@ -81,6 +82,25 @@ export async function PUT(
       },
     });
 
+    if (status === "CANCELLED") {
+      const waitlisted = await prisma.waitlist.findMany({
+        where: { classId: booking.classId },
+        include: {
+          class: { include: { classType: { select: { name: true } } } },
+        },
+        orderBy: { position: "asc" },
+        take: 3,
+      });
+      for (const w of waitlisted) {
+        sendPushToUser(w.userId, {
+          title: "Lugar disponible",
+          body: `Se liberó un lugar en ${w.class.classType.name}`,
+          url: `/class/${booking.classId}`,
+          tag: `waitlist-${booking.classId}`,
+        }).catch(() => {});
+      }
+    }
+
     if (status === "ATTENDED" && booking.userId) {
       checkAchievements(booking.userId)
         .then((grants) => {
@@ -135,6 +155,24 @@ export async function DELETE(
       where: { id },
       data: { status: "CANCELLED", spotNumber: null },
     });
+
+    // Notify waitlisted users that a spot opened up
+    const waitlisted = await prisma.waitlist.findMany({
+      where: { classId: booking.classId },
+      include: {
+        class: { include: { classType: { select: { name: true } } } },
+      },
+      orderBy: { position: "asc" },
+      take: 3,
+    });
+    for (const w of waitlisted) {
+      sendPushToUser(w.userId, {
+        title: "Lugar disponible",
+        body: `Se liberó un lugar en ${w.class.classType.name}`,
+        url: `/class/${booking.classId}`,
+        tag: `waitlist-${booking.classId}`,
+      }).catch(() => {});
+    }
 
     return NextResponse.json(cancelled);
   } catch (error) {

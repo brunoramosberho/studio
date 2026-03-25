@@ -88,6 +88,7 @@ model User {
   friendshipsRequested Friendship[]     @relation("FriendshipRequester")
   friendshipsReceived  Friendship[]     @relation("FriendshipAddressee")
   favoriteSongs        FavoriteSong[]   @relation("UserFavoriteSongs")
+  pushSubscriptions    PushSubscription[] @relation("UserPushSubscriptions")
 
   @@index([countryId])
   @@index([cityId])
@@ -182,8 +183,9 @@ model Booking {
   spotNumber  Int?
   privacy     BookingPrivacy @default(PUBLIC)
   status      BookingStatus  @default(CONFIRMED)
-  packageUsed String?
-  createdAt   DateTime       @default(now())
+  packageUsed    String?
+  createdAt      DateTime       @default(now())
+  reminderSentAt DateTime?
 
   @@unique([classId, spotNumber])
   @@index([classId])
@@ -415,6 +417,20 @@ model Notification {
   createdAt   DateTime  @default(now())
 
   @@index([userId, readAt])
+}
+
+// ── Push Notifications ──
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserPushSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // ── Studio Branding ──

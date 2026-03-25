@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { sendPushToUser } from "@/lib/push";
 
 export async function GET() {
   const session = await auth();
@@ -89,6 +90,14 @@ export async function POST(request: NextRequest) {
       actorId: session.user.id,
     },
   });
+
+  const senderName = session.user.name?.split(" ")[0] ?? "Alguien";
+  sendPushToUser(targetUserId, {
+    title: "Solicitud de amistad",
+    body: `${senderName} quiere ser tu amigo/a`,
+    url: "/my/friends",
+    tag: `friend-request-${session.user.id}`,
+  }).catch(() => {});
 
   return NextResponse.json(friendship, { status: 201 });
 }

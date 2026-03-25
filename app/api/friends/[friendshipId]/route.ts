@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { sendPushToUser } from "@/lib/push";
 
 export async function PATCH(
   request: NextRequest,
@@ -43,6 +44,14 @@ export async function PATCH(
         actorId: session.user.id,
       },
     });
+
+    const acceptorName = session.user.name?.split(" ")[0] ?? "Alguien";
+    sendPushToUser(friendship.requesterId, {
+      title: "Solicitud aceptada",
+      body: `${acceptorName} aceptó tu solicitud de amistad`,
+      url: `/my/user/${session.user.id}`,
+      tag: `friend-accepted-${session.user.id}`,
+    }).catch(() => {});
   }
 
   return NextResponse.json(updated);

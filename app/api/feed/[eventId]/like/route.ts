@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { sendPushToUser } from "@/lib/push";
 
 export async function POST(
   request: NextRequest,
@@ -32,6 +33,21 @@ export async function POST(
         type,
       },
     });
+
+    const feedEvent = await prisma.feedEvent.findUnique({
+      where: { id: eventId },
+      select: { userId: true },
+    });
+    if (feedEvent && feedEvent.userId !== session.user.id) {
+      const likerName = session.user.name?.split(" ")[0] ?? "Alguien";
+      const label = type === "kudos" ? "te dio kudos" : "le dio like a tu actividad";
+      sendPushToUser(feedEvent.userId, {
+        title: type === "kudos" ? "Kudos" : "Nuevo like",
+        body: `${likerName} ${label}`,
+        url: "/my",
+        tag: `like-${eventId}-${session.user.id}`,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ liked: true, type });
   } catch (error) {
