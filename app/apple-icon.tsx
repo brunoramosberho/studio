@@ -12,6 +12,7 @@ export default async function AppleIcon() {
     });
 
     const iconUrl = settings?.appIconUrl;
+    const bg = settings?.colorBg || "#FAF9F6";
 
     if (iconUrl) {
       return new ImageResponse(
@@ -23,6 +24,7 @@ export default async function AppleIcon() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              background: bg,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
