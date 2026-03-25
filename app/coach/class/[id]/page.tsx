@@ -227,7 +227,7 @@ export default function ClassRosterPage() {
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [showRoster, setShowRoster] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const captionTimerRef = useRef<NodeJS.Timeout>();
+  const captionTimerRef = useRef<NodeJS.Timeout>(undefined);
 
   const { data: classData, isLoading } = useQuery<ClassDetail>({
     queryKey: ["class-detail", id],
