@@ -48,7 +48,7 @@ const fontVars = [
 ].map((f) => f.variable).join(" ");
 
 import { getServerBranding } from "@/lib/branding.server";
-import { DEFAULTS } from "@/lib/branding";
+import { DEFAULTS, getFontPairing } from "@/lib/branding";
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getServerBranding();
@@ -96,13 +96,31 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const b = await getServerBranding();
+  const fp = getFontPairing(b.fontPairing);
+
+  const themeStyle = {
+    "--color-background": b.colorBg,
+    "--color-foreground": b.colorFg,
+    "--color-surface": b.colorSurface,
+    "--color-accent": b.colorAccent,
+    "--color-accent-soft": b.colorAccentSoft,
+    "--color-muted": b.colorMuted,
+    "--color-border": b.colorBorder,
+    "--color-ring": b.colorAccent,
+    "--color-coach": b.colorCoach,
+    "--color-admin": b.colorAdmin,
+    "--font-display": fp.displayVar,
+    "--font-body": fp.bodyVar,
+  } as React.CSSProperties;
+
   return (
-    <html lang="es" className={fontVars}>
+    <html lang="es" className={fontVars} style={themeStyle}>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <Providers>
           {children}
