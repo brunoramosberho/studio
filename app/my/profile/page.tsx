@@ -57,6 +57,8 @@ interface ProfileData {
   phone: string | null;
   countryId: string | null;
   cityId: string | null;
+  instagramUser: string | null;
+  stravaUser: string | null;
 }
 
 const fadeUp = {
@@ -86,6 +88,9 @@ export default function ProfilePage() {
   const [songTitle, setSongTitle] = useState("");
   const [songArtist, setSongArtist] = useState("");
 
+  const [instagramUser, setInstagramUser] = useState("");
+  const [stravaUser, setStravaUser] = useState("");
+
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [savingLocation, setSavingLocation] = useState(false);
@@ -105,6 +110,8 @@ export default function ProfilePage() {
     if (profile) {
       setName(profile.name || session?.user?.name || "");
       setPhone(profile.phone ?? "");
+      setInstagramUser(profile.instagramUser ?? "");
+      setStravaUser(profile.stravaUser ?? "");
       if (profile.countryId) setSelectedCountry(profile.countryId);
       if (profile.cityId) setSelectedCity(profile.cityId);
     } else if (session?.user?.name) {
@@ -269,7 +276,7 @@ export default function ProfilePage() {
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim() }),
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), instagramUser: instagramUser.trim(), stravaUser: stravaUser.trim() }),
       });
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -598,6 +605,29 @@ export default function ProfilePage() {
                         className="mt-1.5 opacity-50"
                       />
                     </div>
+                    <div className="space-y-3 rounded-xl bg-surface/50 p-3">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
+                        Redes sociales
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <svg className="h-4.5 w-4.5 shrink-0 text-muted" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                        <Input
+                          value={instagramUser}
+                          onChange={(e) => setInstagramUser(e.target.value)}
+                          placeholder="tu_usuario"
+                          className="h-8 text-[13px]"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <svg className="h-4.5 w-4.5 shrink-0 text-muted" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066l-2.084 4.116zm-3.08-8.399l2.086 4.116h3.065L12.304 3.614v.001l-5.154 10.172h3.066l2.091-4.242zM12.29 0l5.15 10.172h3.065L12.29 0zm0 0l-5.15 10.172H4.075L12.29 0z"/></svg>
+                        <Input
+                          value={stravaUser}
+                          onChange={(e) => setStravaUser(e.target.value)}
+                          placeholder="https://strava.app.link/..."
+                          className="h-8 text-[13px]"
+                        />
+                      </div>
+                    </div>
                     <Button
                       type="submit"
                       size="sm"
@@ -689,7 +719,7 @@ export default function ProfilePage() {
           <Button
             variant="ghost"
             className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => signOut({ callbackUrl: "/" })}
+            onClick={() => signOut({ callbackUrl: window.location.origin })}
           >
             <LogOut className="mr-2 h-4 w-4" />
             Cerrar sesión

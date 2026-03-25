@@ -1,8 +1,10 @@
 "use client";
 
-import { Shield, Dumbbell, User } from "lucide-react";
+import { Shield, Dumbbell, User, Globe } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/shared/page-transition";
+
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
 
 const roles = [
   {
@@ -12,7 +14,6 @@ const roles = [
     icon: Shield,
     color: "text-admin",
     bg: "bg-admin/10",
-    href: "/api/dev/login?role=ADMIN",
   },
   {
     role: "COACH",
@@ -21,7 +22,6 @@ const roles = [
     icon: Dumbbell,
     color: "text-coach",
     bg: "bg-coach/10",
-    href: "/api/dev/login?role=COACH",
   },
   {
     role: "CLIENT",
@@ -30,11 +30,23 @@ const roles = [
     icon: User,
     color: "text-accent",
     bg: "bg-accent/10",
-    href: "/api/dev/login?role=CLIENT",
+  },
+  {
+    role: "SUPER_ADMIN",
+    label: "Super Admin",
+    description: "Panel de plataforma: tenants, métricas globales, impersonar admins",
+    icon: Globe,
+    color: "text-indigo-600",
+    bg: "bg-indigo-100",
   },
 ];
 
 export default function DevLoginPage() {
+  const superAdminHref =
+    typeof window !== "undefined"
+      ? `${window.location.protocol}//admin.${ROOT_DOMAIN}/api/dev/login?role=SUPER_ADMIN`
+      : `http://admin.${ROOT_DOMAIN}/api/dev/login?role=SUPER_ADMIN`;
+
   return (
     <PageTransition>
       <div className="flex min-h-[80dvh] items-center justify-center px-4">
@@ -53,7 +65,7 @@ export default function DevLoginPage() {
 
           <div className="space-y-4">
             {roles.map((r) => (
-              <a key={r.role} href={r.href}>
+              <a key={r.role} href={r.role === "SUPER_ADMIN" ? superAdminHref : `/api/dev/login?role=${r.role}`}>
                 <Card className="cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md">
                   <CardContent className="flex items-center gap-4 p-6">
                     <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${r.bg}`}>

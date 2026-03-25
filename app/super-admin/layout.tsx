@@ -5,8 +5,8 @@ import Link from "next/link";
 import { LayoutDashboard, Building2, Shield } from "lucide-react";
 
 const navItems = [
-  { href: "/super-admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/super-admin/tenants", label: "Tenants", icon: Building2 },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/tenants", label: "Tenants", icon: Building2 },
 ];
 
 export default async function SuperAdminLayout({
@@ -22,7 +22,7 @@ export default async function SuperAdminLayout({
     select: { isSuperAdmin: true },
   });
 
-  if (!user?.isSuperAdmin) redirect("/");
+  if (!user?.isSuperAdmin) redirect("/login");
 
   return (
     <div className="flex min-h-dvh bg-white">

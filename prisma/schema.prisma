@@ -135,6 +135,8 @@ model User {
   country       Country?  @relation(fields: [countryId], references: [id])
   cityId        String?
   city          City?     @relation(fields: [cityId], references: [id])
+  instagramUser String?
+  stravaUser    String?
   createdAt     DateTime  @default(now())
 
   memberships  Membership[]

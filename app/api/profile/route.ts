@@ -10,7 +10,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, name: true, email: true, phone: true, image: true, countryId: true, cityId: true },
+    select: { id: true, name: true, email: true, phone: true, image: true, countryId: true, cityId: true, instagramUser: true, stravaUser: true },
   });
 
   return NextResponse.json(user);
@@ -23,7 +23,7 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, phone, countryId, cityId } = body;
+  const { name, phone, countryId, cityId, instagramUser, stravaUser } = body;
 
   const updated = await prisma.user.update({
     where: { id: session.user.id },
@@ -32,8 +32,10 @@ export async function PUT(request: NextRequest) {
       ...(phone !== undefined && { phone }),
       ...(countryId !== undefined && { countryId: countryId || null }),
       ...(cityId !== undefined && { cityId: cityId || null }),
+      ...(instagramUser !== undefined && { instagramUser: instagramUser?.trim() || null }),
+      ...(stravaUser !== undefined && { stravaUser: stravaUser?.trim() || null }),
     },
-    select: { id: true, name: true, email: true, phone: true, image: true, countryId: true, cityId: true },
+    select: { id: true, name: true, email: true, phone: true, image: true, countryId: true, cityId: true, instagramUser: true, stravaUser: true },
   });
 
   return NextResponse.json(updated);

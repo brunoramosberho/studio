@@ -23,6 +23,8 @@ export async function GET(
       id: true,
       name: true,
       image: true,
+      instagramUser: true,
+      stravaUser: true,
       createdAt: true,
       coachProfiles: {
         where: { tenantId },
@@ -83,6 +85,7 @@ export async function GET(
   });
   const sharedClassCount = theirBookings.filter((b) => myClassIdSet.has(b.classId)).length;
 
+  const showSocials = isFriend || isCoach;
   const base = {
     id: user.id,
     name: user.name,
@@ -96,6 +99,8 @@ export async function GET(
     pendingFromMe,
     isFriend,
     isCoach,
+    instagramUser: showSocials ? user.instagramUser : null,
+    stravaUser: showSocials ? user.stravaUser : null,
   };
 
   // Coach: always show upcoming classes they teach

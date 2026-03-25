@@ -76,7 +76,7 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
               </AvatarFallback>
             </Avatar>
             <button
-              onClick={() => signOut({ callbackUrl: "/" })}
+              onClick={() => signOut({ callbackUrl: window.location.origin })}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-red-50 hover:text-red-600"
               title="Cerrar sesión"
             >

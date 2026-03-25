@@ -180,7 +180,7 @@ export default function TenantsPage() {
               <Card
                 key={tenant.id}
                 className="cursor-pointer border border-gray-100 transition-shadow hover:shadow-md"
-                onClick={() => router.push(`/super-admin/tenants/${tenant.id}`)}
+                onClick={() => router.push(`/tenants/${tenant.id}`)}
               >
                 <CardContent className="flex items-center gap-4 p-5">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600">

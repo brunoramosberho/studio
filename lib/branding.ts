@@ -22,21 +22,21 @@ export interface StudioBranding {
 
 export const DEFAULTS: StudioBranding = {
   studioName: "Reserva",
-  tagline: "Pilates & Wellness",
-  slogan: "Muévete. Respira. Floréce.",
-  metaDescription: "Tu espacio de Pilates y bienestar.",
+  tagline: "Booking & Management",
+  slogan: "La plataforma para tu estudio.",
+  metaDescription: "Gestiona reservas, clases y clientes en un solo lugar.",
   logoUrl: null,
   appIconUrl: null,
-  fontPairing: "playfair-dmsans",
-  colorBg: "#FAF9F6",
-  colorFg: "#1C1917",
-  colorSurface: "#F5F2ED",
-  colorAccent: "#C9A96E",
-  colorAccentSoft: "#E8D9BF",
-  colorMuted: "#8C8279",
-  colorBorder: "#E8E2D9",
-  colorCoach: "#2D5016",
-  colorAdmin: "#1A2C4E",
+  fontPairing: "inter-inter",
+  colorBg: "#FFFFFF",
+  colorFg: "#0F172A",
+  colorSurface: "#F8FAFC",
+  colorAccent: "#6366F1",
+  colorAccentSoft: "#E0E7FF",
+  colorMuted: "#64748B",
+  colorBorder: "#E2E8F0",
+  colorCoach: "#059669",
+  colorAdmin: "#4338CA",
   coachIconSvg: null,
 };
 
@@ -50,6 +50,7 @@ export interface FontPairing {
 }
 
 export const FONT_PAIRINGS: FontPairing[] = [
+  { id: "inter-inter", label: "Inter", displayFont: "Inter", bodyFont: "Inter", displayVar: "var(--font-inter), sans-serif", bodyVar: "var(--font-inter), sans-serif" },
   { id: "playfair-dmsans", label: "Playfair + DM Sans", displayFont: "Playfair Display", bodyFont: "DM Sans", displayVar: "var(--font-playfair), serif", bodyVar: "var(--font-dmsans), sans-serif" },
   { id: "cormorant-lato", label: "Cormorant + Lato", displayFont: "Cormorant Garamond", bodyFont: "Lato", displayVar: "var(--font-cormorant), serif", bodyVar: "var(--font-lato), sans-serif" },
   { id: "libre-source", label: "Libre Baskerville + Source Sans", displayFont: "Libre Baskerville", bodyFont: "Source Sans 3", displayVar: "var(--font-libre), serif", bodyVar: "var(--font-source), sans-serif" },

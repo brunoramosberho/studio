@@ -154,7 +154,7 @@ export default function TenantDetailPage({
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => router.push("/super-admin/tenants")}
+          onClick={() => router.push("/tenants")}
           className="shrink-0"
         >
           <ArrowLeft className="h-5 w-5" />

@@ -23,16 +23,28 @@ export function middleware(req: NextRequest) {
   const host = req.headers.get("host") || ROOT_DOMAIN;
   const subdomain = getSubdomain(host);
 
-  // Super admin: admin.reserva.fit → rewrite to /super-admin/*
+  // Super admin: admin.reserva.fit → rewrite page routes to /super-admin/*
   if (subdomain === "admin") {
     const headers = new Headers(req.headers);
     headers.set("x-tenant-slug", "__super_admin__");
+
+    // Don't rewrite API routes, auth pages, or dev login — let them resolve normally
+    if (pathname.startsWith("/api/") || pathname === "/login" || pathname === "/dev") {
+      return NextResponse.next({ request: { headers } });
+    }
 
     const rewrittenPath = pathname === "/" ? "/super-admin" : `/super-admin${pathname}`;
     const url = req.nextUrl.clone();
     url.pathname = rewrittenPath;
 
     return NextResponse.rewrite(url, { request: { headers } });
+  }
+
+  // Root domain (no subdomain): show directory on /
+  if (!subdomain && pathname === "/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/directory";
+    return NextResponse.rewrite(url);
   }
 
   // Inject tenant slug header for all requests
@@ -54,7 +66,7 @@ export function middleware(req: NextRequest) {
 
   if (
     pathname.startsWith("/my") ||
-    pathname.startsWith("/coach") ||
+    (pathname.startsWith("/coach") && !pathname.startsWith("/coaches")) ||
     pathname.startsWith("/admin")
   ) {
     if (!isLoggedIn) {

@@ -12,8 +12,36 @@ export async function GET(request: NextRequest) {
     const role = request.nextUrl.searchParams.get("role") || "ADMIN";
     const tenant = await getTenant();
 
+    const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
+    const rootHostname = ROOT_DOMAIN.split(":")[0];
+    const host = request.headers.get("host") || ROOT_DOMAIN;
+    const isSecure = request.url.startsWith("https://");
+    const protocol = isSecure ? "https" : "http";
+
     let user;
-    if (tenant) {
+
+    if (role === "SUPER_ADMIN") {
+      // Find an existing admin user (prefer one with isSuperAdmin already set)
+      user = await prisma.user.findFirst({
+        where: { isSuperAdmin: true },
+        orderBy: { createdAt: "asc" },
+      });
+
+      if (!user) {
+        // Promote the first admin membership holder to super admin
+        const adminMembership = await prisma.membership.findFirst({
+          where: { role: "ADMIN" },
+          include: { user: true },
+          orderBy: { createdAt: "asc" },
+        });
+        if (adminMembership) {
+          user = await prisma.user.update({
+            where: { id: adminMembership.user.id },
+            data: { isSuperAdmin: true },
+          });
+        }
+      }
+    } else if (tenant) {
       const membership = await prisma.membership.findFirst({
         where: {
           tenantId: tenant.id,
@@ -66,14 +94,12 @@ export async function GET(request: NextRequest) {
       CLIENT: "/my",
     };
 
-    const response = NextResponse.redirect(new URL(redirectMap[role] || "/", request.url));
-    const isSecure = request.url.startsWith("https://");
+    const redirectPath = role === "SUPER_ADMIN" ? "/" : (redirectMap[role] || "/");
+    const redirectUrl = new URL(redirectPath, `${protocol}://${host}`);
+    const response = NextResponse.redirect(redirectUrl);
     const cookieName = isSecure
       ? "__Secure-authjs.session-token"
       : "authjs.session-token";
-
-    const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
-    const rootHostname = ROOT_DOMAIN.split(":")[0];
 
     response.cookies.set(cookieName, sessionToken, {
       expires,
