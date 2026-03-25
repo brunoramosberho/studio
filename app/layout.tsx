@@ -47,6 +47,7 @@ const fontVars = [
   nunito, montserrat, roboto,
 ].map((f) => f.variable).join(" ");
 
+import { headers } from "next/headers";
 import { getServerBranding } from "@/lib/branding.server";
 import { DEFAULTS, getFontPairing } from "@/lib/branding";
 
@@ -54,11 +55,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const s = await getServerBranding();
   const fullName = `${s.studioName} Studio`;
 
-  const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
+  const h = await headers();
+  const host = h.get("host") || process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
+  const protocol = host.includes("localhost") ? "http" : "https";
+  const baseUrl = `${protocol}://${host}`;
 
   return {
     metadataBase: new URL(baseUrl),
