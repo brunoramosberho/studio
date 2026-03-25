@@ -2,7 +2,7 @@
   "framework": "nextjs",
   "buildCommand": "npx prisma generate && next build",
   "installCommand": "npm install",
-  "regions": ["iad1"],
+  "regions": ["dub1"],
   "crons": [
     {
       "path": "/api/cron/class-reminders",
