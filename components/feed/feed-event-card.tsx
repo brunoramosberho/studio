@@ -143,6 +143,7 @@ function AttendeesRow({
 function ClassCompletedCard({ event }: FeedEventCardProps) {
   const p = event.payload;
   const attendees = (p.attendees as Attendee[]) ?? [];
+  const caption = (p.caption as string) ?? null;
   const [media, setMedia] = useState<MediaItem[]>(event.photos ?? []);
   const [showPeople, setShowPeople] = useState(false);
 
@@ -173,6 +174,13 @@ function ClassCompletedCard({ event }: FeedEventCardProps) {
           {timeAgo(event.createdAt)}
         </span>
       </div>
+
+      {/* Caption */}
+      {caption && (
+        <p className="whitespace-pre-line px-4 pb-2 text-[14px] leading-relaxed text-foreground/90">
+          {caption}
+        </p>
+      )}
 
       {/* Media — full width, edge-to-edge */}
       {media.length > 0 && (

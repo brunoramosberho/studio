@@ -18,6 +18,9 @@ import {
   Plus,
   X,
   Image as ImageIcon,
+  Bell,
+  MapPin,
+  Globe,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +30,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
 import { cn } from "@/lib/utils";
+
+interface CityOption {
+  id: string;
+  name: string;
+  countryCode: string;
+}
 
 interface FeedItem {
   id: string;
@@ -95,6 +104,24 @@ export default function AdminFeedPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("announcement");
+  const [targetCityIds, setTargetCityIds] = useState<string[]>([]);
+  const [sendPush, setSendPush] = useState(false);
+
+  const { data: cities } = useQuery<CityOption[]>({
+    queryKey: ["feed-cities"],
+    queryFn: async () => {
+      const res = await fetch("/api/locations");
+      if (!res.ok) return [];
+      const countries = await res.json();
+      return countries.flatMap((c: { code: string; cities: { id: string; name: string }[] }) =>
+        c.cities.map((city: { id: string; name: string }) => ({
+          id: city.id,
+          name: city.name,
+          countryCode: c.code,
+        })),
+      );
+    },
+  });
 
   const {
     data,
@@ -122,7 +149,13 @@ export default function AdminFeedPage() {
       const res = await fetch("/api/admin/feed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, category }),
+        body: JSON.stringify({
+          title,
+          body,
+          category,
+          targetCityIds: targetCityIds.length > 0 ? targetCityIds : null,
+          sendPush,
+        }),
       });
       if (!res.ok) throw new Error("Failed");
       return res.json();
@@ -132,6 +165,8 @@ export default function AdminFeedPage() {
       setTitle("");
       setBody("");
       setCategory("announcement");
+      setTargetCityIds([]);
+      setSendPush(false);
       setComposerOpen(false);
     },
   });
@@ -315,6 +350,81 @@ export default function AdminFeedPage() {
                   />
                 </div>
 
+                {/* Audience selector */}
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-muted">
+                    <MapPin className="mr-1 inline h-3.5 w-3.5" />
+                    Audiencia
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setTargetCityIds([])}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all",
+                        targetCityIds.length === 0
+                          ? "bg-admin/10 text-admin ring-2 ring-admin/20"
+                          : "bg-surface text-muted hover:text-foreground",
+                      )}
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      Todas las ciudades
+                    </button>
+                    {cities?.map((city) => (
+                      <button
+                        key={city.id}
+                        onClick={() => {
+                          setTargetCityIds((prev) =>
+                            prev.includes(city.id)
+                              ? prev.filter((id) => id !== city.id)
+                              : [...prev, city.id],
+                          );
+                        }}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all",
+                          targetCityIds.includes(city.id)
+                            ? "bg-admin/10 text-admin ring-2 ring-admin/20"
+                            : "bg-surface text-muted hover:text-foreground",
+                        )}
+                      >
+                        {city.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Push notification toggle */}
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-surface/50">
+                  <div className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-lg",
+                    sendPush ? "bg-admin/10" : "bg-surface",
+                  )}>
+                    <Bell className={cn("h-4.5 w-4.5", sendPush ? "text-admin" : "text-muted")} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">Enviar push notification</p>
+                    <p className="text-[11px] text-muted">
+                      {targetCityIds.length === 0
+                        ? "Se enviará a todos los miembros"
+                        : `Se enviará a miembros en ${targetCityIds.length} ciudad${targetCityIds.length !== 1 ? "es" : ""}`}
+                    </p>
+                  </div>
+                  <div className={cn(
+                    "relative h-6 w-11 rounded-full transition-colors",
+                    sendPush ? "bg-admin" : "bg-border",
+                  )}>
+                    <div className={cn(
+                      "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                      sendPush ? "translate-x-5" : "translate-x-0.5",
+                    )} />
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={sendPush}
+                    onChange={(e) => setSendPush(e.target.checked)}
+                    className="sr-only"
+                  />
+                </label>
+
                 <div className="flex gap-3 pt-2">
                   <Button
                     variant="outline"
@@ -481,8 +591,25 @@ export default function AdminFeedPage() {
                           </div>
                         )}
 
-                        {/* Metrics row */}
-                        <div className="mt-2.5 flex items-center gap-4">
+                        {/* Audience + Metrics row */}
+                        {isStudioPost && (
+                          <div className="mt-2 flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3 text-muted/60" />
+                            <span className="text-[11px] text-muted/70">
+                              {(payload.targetCityIds as string[] | null)
+                                ? `${(payload.targetCityIds as string[]).length} ciudad${(payload.targetCityIds as string[]).length !== 1 ? "es" : ""}`
+                                : "Todas las ciudades"}
+                            </span>
+                            {payload.sentPush && (
+                              <>
+                                <span className="text-muted/30">·</span>
+                                <Bell className="h-3 w-3 text-muted/60" />
+                                <span className="text-[11px] text-muted/70">Push enviado</span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        <div className="mt-2 flex items-center gap-4">
                           <span className="flex items-center gap-1 text-xs text-muted">
                             <Heart className="h-3.5 w-3.5" />
                             {event.likeCount}

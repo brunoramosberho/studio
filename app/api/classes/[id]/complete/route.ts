@@ -26,7 +26,7 @@ export async function POST(
         classType: true,
         coach: { include: { user: { select: { name: true } } } },
         bookings: {
-          where: { status: "CONFIRMED" },
+          where: { status: { not: "CANCELLED" } },
           include: { user: { select: { id: true, name: true, image: true } } },
         },
       },
@@ -36,6 +36,26 @@ export async function POST(
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
+    const existingEvent = await prisma.feedEvent.findFirst({
+      where: {
+        tenantId: ctx.tenant.id,
+        eventType: "CLASS_COMPLETED",
+        payload: { path: ["classId"], equals: id },
+      },
+      select: { id: true, payload: true },
+    });
+
+    if (cls.status === "COMPLETED" && existingEvent) {
+      const payload = existingEvent.payload as Record<string, unknown>;
+      return NextResponse.json({
+        completed: true,
+        feedEventId: existingEvent.id,
+        attendeeCount: (payload.attendeeCount as number) ?? 0,
+        achievementsGranted: 0,
+        alreadyCompleted: true,
+      });
+    }
+
     const idsToMark =
       attendedUserIds ??
       cls.bookings.filter((b) => b.userId).map((b) => b.userId!);
@@ -43,16 +63,21 @@ export async function POST(
     for (const booking of cls.bookings) {
       if (!booking.userId) continue;
       const attended = idsToMark.includes(booking.userId);
-      await prisma.booking.update({
-        where: { id: booking.id },
-        data: { status: attended ? "ATTENDED" : "NO_SHOW" },
-      });
+      const newStatus = attended ? "ATTENDED" : "NO_SHOW";
+      if (booking.status !== newStatus) {
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: { status: newStatus },
+        });
+      }
     }
 
-    await prisma.class.update({
-      where: { id },
-      data: { status: "COMPLETED" },
-    });
+    if (cls.status !== "COMPLETED") {
+      await prisma.class.update({
+        where: { id },
+        data: { status: "COMPLETED" },
+      });
+    }
 
     const attendees = cls.bookings
       .filter((b) => b.userId && idsToMark.includes(b.userId))
@@ -62,24 +87,31 @@ export async function POST(
         image: b.user?.image ?? null,
       }));
 
-    await prisma.feedEvent.create({
-      data: {
-        tenantId: ctx.tenant.id,
-        userId: cls.coach.userId,
-        eventType: "CLASS_COMPLETED",
-        visibility: "STUDIO_WIDE",
-        payload: {
-          classId: cls.id,
-          className: cls.classType.name,
-          coachName: cls.coach.user.name,
-          date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),
-          time: format(cls.startsAt, "h:mm a"),
-          duration: cls.classType.duration,
-          attendees,
-          attendeeCount: attendees.length,
+    let feedEventId: string;
+
+    if (existingEvent) {
+      feedEventId = existingEvent.id;
+    } else {
+      const event = await prisma.feedEvent.create({
+        data: {
+          tenantId: ctx.tenant.id,
+          userId: cls.coach.userId,
+          eventType: "CLASS_COMPLETED",
+          visibility: "STUDIO_WIDE",
+          payload: {
+            classId: cls.id,
+            className: cls.classType.name,
+            coachName: cls.coach.user.name,
+            date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),
+            time: format(cls.startsAt, "h:mm a"),
+            duration: cls.classType.duration,
+            attendees,
+            attendeeCount: attendees.length,
+          },
         },
-      },
-    });
+      });
+      feedEventId = event.id;
+    }
 
     const allGrants: GrantedAchievement[] = [];
     for (const userId of idsToMark) {
@@ -93,6 +125,7 @@ export async function POST(
 
     return NextResponse.json({
       completed: true,
+      feedEventId,
       attendeeCount: attendees.length,
       achievementsGranted: allGrants.length,
     });

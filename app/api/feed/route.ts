@@ -173,6 +173,13 @@ export async function GET(request: NextRequest) {
       items = items.filter((event) => {
         if (friendIds.has(event.userId)) return true;
 
+        if (event.eventType === "STUDIO_POST") {
+          const payload = event.payload as Record<string, unknown> | null;
+          const targetCities = payload?.targetCityIds as string[] | null;
+          if (!targetCities) return true;
+          return targetCities.includes(userCityId!);
+        }
+
         if (event.eventType === "CLASS_COMPLETED") {
           const payload = event.payload as Record<string, unknown> | null;
           const attendees = (payload?.attendees ?? []) as { id: string }[];
