@@ -35,6 +35,7 @@ interface FeedItem {
   likeCount: number;
   commentCount: number;
   liked: boolean;
+  isPinned?: boolean;
   currentUserBooked?: boolean;
   reservedBy?: { id: string; name: string | null; image: string | null }[];
   studioName?: string;
@@ -415,10 +416,78 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
   );
 }
 
+function StudioPostCard({ event }: FeedEventCardProps) {
+  const p = event.payload;
+  const title = p.title as string | null;
+  const body = p.body as string | null;
+  const category = (p.category as string) ?? "announcement";
+
+  const categoryStyles: Record<string, { emoji: string; bg: string }> = {
+    announcement: { emoji: "📢", bg: "bg-blue-50" },
+    challenge: { emoji: "🏆", bg: "bg-amber-50" },
+    photo: { emoji: "📸", bg: "bg-pink-50" },
+    motivation: { emoji: "✨", bg: "bg-purple-50" },
+  };
+  const style = categoryStyles[category] ?? categoryStyles.announcement;
+
+  return (
+    <div>
+      {event.isPinned && (
+        <div className="flex items-center gap-1.5 px-4 pt-2 text-[11px] font-medium text-accent">
+          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" />
+          </svg>
+          Publicación fijada
+        </div>
+      )}
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-full", style.bg)}>
+          <span className="text-lg">{style.emoji}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-semibold leading-tight text-foreground">
+            {title ?? (
+              category === "announcement" ? "Anuncio del estudio" :
+              category === "challenge" ? "Reto del estudio" :
+              category === "photo" ? "Foto del estudio" :
+              "Mensaje del estudio"
+            )}
+          </p>
+          <p className="text-[12px] text-muted">{timeAgo(event.createdAt)}</p>
+        </div>
+      </div>
+
+      {body && (
+        <div className="px-4 pb-3">
+          <p className="whitespace-pre-line text-[14px] leading-relaxed text-foreground/90">{body}</p>
+        </div>
+      )}
+
+      {event.photos.length > 0 && (
+        <MediaGallery media={event.photos} className="rounded-none" />
+      )}
+
+      <div className="flex items-center gap-1 px-2 py-1.5">
+        <LikeButton
+          eventId={event.id}
+          initialLiked={event.liked}
+          initialCount={event.likeCount}
+        />
+        <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
+      </div>
+    </div>
+  );
+}
+
 export function FeedEventCard({ event }: FeedEventCardProps) {
   return (
-    <article className="overflow-hidden border-y border-border/40 bg-white sm:rounded-2xl sm:border sm:shadow-warm-sm">
-      {event.eventType === "ACHIEVEMENT_UNLOCKED" ? (
+    <article className={cn(
+      "overflow-hidden border-y border-border/40 bg-white sm:rounded-2xl sm:border sm:shadow-warm-sm",
+      event.isPinned && "ring-1 ring-accent/20",
+    )}>
+      {event.eventType === "STUDIO_POST" ? (
+        <StudioPostCard event={event} />
+      ) : event.eventType === "ACHIEVEMENT_UNLOCKED" ? (
         <AchievementCard event={event} />
       ) : event.eventType === "CLASS_RESERVED" ? (
         <ClassReservedCard event={event} />

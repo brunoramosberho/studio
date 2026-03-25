@@ -16,6 +16,7 @@ interface FeedItem {
   likeCount: number;
   commentCount: number;
   liked: boolean;
+  isPinned?: boolean;
   currentUserBooked?: boolean;
   reservedBy?: { id: string; name: string | null; image: string | null }[];
   studioName?: string;

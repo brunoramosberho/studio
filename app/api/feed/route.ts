@@ -218,6 +218,7 @@ export async function GET(request: NextRequest) {
       commentCount: number;
       liked: boolean;
       likeType: string | null;
+      isPinned: boolean;
       currentUserBooked?: boolean;
       reservedBy?: { id: string; name: string | null; image: string | null }[];
       studioName?: string;
@@ -237,6 +238,7 @@ export async function GET(request: NextRequest) {
         commentCount: event._count.comments,
         liked: currentUserId ? event.likes.length > 0 : false,
         likeType: currentUserId ? event.likes[0]?.type ?? null : null,
+        isPinned: event.isPinned,
         studioName: classId ? classStudioMap.get(classId)?.studioName : undefined,
       };
     });
@@ -259,13 +261,17 @@ export async function GET(request: NextRequest) {
         commentCount: totalComments,
         liked: anyLiked,
         likeType: anyLiked ? (group.find((e) => e.likes.length > 0)?.likes[0]?.type ?? null) : null,
+        isPinned: false,
         currentUserBooked: bookedClassIds.has(classId),
         reservedBy: group.map((e) => e.user),
         studioName: classStudioMap.get(classId)?.studioName,
       });
     }
 
-    feed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    feed.sort((a, b) => {
+      if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
     return NextResponse.json({ feed, nextCursor });
   } catch (error) {
