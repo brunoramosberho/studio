@@ -1,95 +1,96 @@
+import { NextRequest } from "next/server";
 import { ImageResponse } from "next/og";
 import { prisma } from "@/lib/db";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const size = parseInt(searchParams.get("size") || "512", 10);
-
-  let studioName = "Flō";
-  let colorBg = "#FAF9F6";
-  let colorAccent = "#C9A96E";
-  let appIconUrl: string | null = null;
+export async function GET(request: NextRequest) {
+  const size = parseInt(request.nextUrl.searchParams.get("size") || "512", 10);
 
   try {
     const settings = await prisma.studioSettings.findUnique({
       where: { id: "singleton" },
+      select: { appIconUrl: true, studioName: true, colorBg: true, colorAccent: true },
     });
-    if (settings) {
-      studioName = settings.studioName;
-      colorBg = settings.colorBg;
-      colorAccent = settings.colorAccent;
-      appIconUrl = settings.appIconUrl;
+
+    const iconUrl = settings?.appIconUrl;
+
+    if (iconUrl) {
+      return new ImageResponse(
+        (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={iconUrl}
+              width={size}
+              height={size}
+              style={{ objectFit: "contain" }}
+              alt=""
+            />
+          </div>
+        ),
+        { width: size, height: size },
+      );
     }
-  } catch {}
 
-  if (appIconUrl) {
-    try {
-      const res = await fetch(appIconUrl);
-      if (res.ok) {
-        return new Response(await res.arrayBuffer(), {
-          headers: {
-            "Content-Type": "image/png",
-            "Cache-Control": "public, max-age=86400",
-          },
-        });
-      }
-    } catch {}
-  }
+    const name = settings?.studioName || "S";
+    const bg = settings?.colorBg || "#FAF9F6";
+    const fg = settings?.colorAccent || "#1C1917";
+    const initial = name.charAt(0).toUpperCase();
+    const fontSize = Math.round(size * 0.45);
+    const radius = Math.round(size * 0.2);
 
-  const letter = studioName.charAt(0).toUpperCase();
-  const fontSize = Math.round(size * 0.48);
-
-  let fontData: ArrayBuffer | undefined;
-  try {
-    const fontRes = await fetch(
-      "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff",
-    );
-    if (fontRes.ok) fontData = await fontRes.arrayBuffer();
-  } catch {}
-
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          width: size,
-          height: size,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: colorBg,
-        }}
-      >
-        <span
+    return new ImageResponse(
+      (
+        <div
           style={{
-            fontSize,
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: bg,
+            borderRadius: radius,
+            fontFamily: "system-ui, sans-serif",
             fontWeight: 700,
-            fontFamily: "Inter",
-            color: colorAccent,
-            lineHeight: 1,
+            fontSize,
+            color: fg,
           }}
         >
-          {letter}
-        </span>
-      </div>
-    ),
-    {
-      width: size,
-      height: size,
-      headers: {
-        "Cache-Control": "public, max-age=86400",
-      },
-      ...(fontData
-        ? {
-            fonts: [
-              {
-                name: "Inter",
-                data: fontData,
-                weight: 700 as const,
-                style: "normal" as const,
-              },
-            ],
-          }
-        : {}),
-    },
-  );
+          {initial}
+        </div>
+      ),
+      { width: size, height: size },
+    );
+  } catch {
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#FAF9F6",
+            borderRadius: 40,
+            fontFamily: "system-ui, sans-serif",
+            fontWeight: 700,
+            fontSize: 200,
+            color: "#1C1917",
+          }}
+        >
+          S
+        </div>
+      ),
+      { width: size, height: size },
+    );
+  }
 }
