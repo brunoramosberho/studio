@@ -130,35 +130,35 @@ async function main() {
 
   // Rooms — Madrid Salamanca
   const roomReformerSalamanca = await prisma.room.create({
-    data: { tenantId, name: "Sala Reformer", studioId: studioSalamanca.id, classTypeId: reformer.id, maxCapacity: 12 },
+    data: { tenantId, name: "Sala Reformer", studioId: studioSalamanca.id, classTypes: { connect: { id: reformer.id } }, maxCapacity: 12 },
   });
   const roomMatSalamanca = await prisma.room.create({
-    data: { tenantId, name: "Sala Mat", studioId: studioSalamanca.id, classTypeId: matFlow.id, maxCapacity: 20 },
+    data: { tenantId, name: "Sala Mat", studioId: studioSalamanca.id, classTypes: { connect: { id: matFlow.id } }, maxCapacity: 20 },
   });
   const roomBarreSalamanca = await prisma.room.create({
-    data: { tenantId, name: "Sala Barre", studioId: studioSalamanca.id, classTypeId: barreFusion.id, maxCapacity: 15 },
+    data: { tenantId, name: "Sala Barre", studioId: studioSalamanca.id, classTypes: { connect: { id: barreFusion.id } }, maxCapacity: 15 },
   });
 
   // Rooms — Madrid Chamberí
   const roomReformerChamberi = await prisma.room.create({
-    data: { tenantId, name: "Sala Reformer", studioId: studioChamberi.id, classTypeId: reformer.id, maxCapacity: 10 },
+    data: { tenantId, name: "Sala Reformer", studioId: studioChamberi.id, classTypes: { connect: { id: reformer.id } }, maxCapacity: 10 },
   });
   const roomMatChamberi = await prisma.room.create({
-    data: { tenantId, name: "Sala Mat", studioId: studioChamberi.id, classTypeId: matFlow.id, maxCapacity: 16 },
+    data: { tenantId, name: "Sala Mat", studioId: studioChamberi.id, classTypes: { connect: { id: matFlow.id } }, maxCapacity: 16 },
   });
   const roomBarreChamberi = await prisma.room.create({
-    data: { tenantId, name: "Sala Barre", studioId: studioChamberi.id, classTypeId: barreFusion.id, maxCapacity: 12 },
+    data: { tenantId, name: "Sala Barre", studioId: studioChamberi.id, classTypes: { connect: { id: barreFusion.id } }, maxCapacity: 12 },
   });
 
   // Rooms — CDMX Polanco
   const roomReformerPolanco = await prisma.room.create({
-    data: { tenantId, name: "Sala Reformer", studioId: studioPolanco.id, classTypeId: reformer.id, maxCapacity: 12 },
+    data: { tenantId, name: "Sala Reformer", studioId: studioPolanco.id, classTypes: { connect: { id: reformer.id } }, maxCapacity: 12 },
   });
   const roomMatPolanco = await prisma.room.create({
-    data: { tenantId, name: "Sala Mat", studioId: studioPolanco.id, classTypeId: matFlow.id, maxCapacity: 18 },
+    data: { tenantId, name: "Sala Mat", studioId: studioPolanco.id, classTypes: { connect: { id: matFlow.id } }, maxCapacity: 18 },
   });
   const roomBarrePolanco = await prisma.room.create({
-    data: { tenantId, name: "Sala Barre", studioId: studioPolanco.id, classTypeId: barreFusion.id, maxCapacity: 14 },
+    data: { tenantId, name: "Sala Barre", studioId: studioPolanco.id, classTypes: { connect: { id: barreFusion.id } }, maxCapacity: 14 },
   });
 
   // Map classType → rooms (alternate between Madrid studios; Polanco classes are separate)

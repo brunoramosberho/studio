@@ -429,6 +429,7 @@ enum FeedEventType {
   CLASS_COMPLETED
   CLASS_RESERVED
   ACHIEVEMENT_UNLOCKED
+  STUDIO_POST
 }
 
 enum FeedVisibility {
@@ -446,6 +447,7 @@ model FeedEvent {
   eventType  FeedEventType
   payload    Json
   visibility FeedVisibility @default(STUDIO_WIDE)
+  isPinned   Boolean        @default(false)
   createdAt  DateTime       @default(now())
   likes      Like[]
   comments   Comment[]
