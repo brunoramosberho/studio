@@ -600,7 +600,7 @@ export default function AdminFeedPage() {
                                 ? `${(payload.targetCityIds as string[]).length} ciudad${(payload.targetCityIds as string[]).length !== 1 ? "es" : ""}`
                                 : "Todas las ciudades"}
                             </span>
-                            {payload.sentPush && (
+                            {!!payload.sentPush && (
                               <>
                                 <span className="text-muted/30">·</span>
                                 <Bell className="h-3 w-3 text-muted/60" />
