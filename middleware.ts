@@ -4,13 +4,11 @@ import type { NextRequest } from "next/server";
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
 
 function getSubdomain(host: string): string | null {
-  // Strip port for matching
   const hostname = host.split(":")[0];
   const rootHostname = ROOT_DOMAIN.split(":")[0];
 
-  // e.g. betoro.reserva.fit → "betoro" | reserva.fit → null
-  // e.g. betoro.localhost → "betoro" | localhost → null
   if (hostname === rootHostname) return null;
+  if (hostname === `www.${rootHostname}`) return null;
   if (hostname.endsWith(`.${rootHostname}`)) {
     return hostname.replace(`.${rootHostname}`, "");
   }
