@@ -3,7 +3,6 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { requireAuth, requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation } from "@/lib/email";
-import { sendPushToUser } from "@/lib/push";
 
 export async function GET(request: NextRequest) {
   try {
@@ -282,24 +281,6 @@ export async function POST(request: NextRequest) {
         })
         .catch(() => {});
 
-      // Notify friends about this reservation
-      const friendships = await prisma.friendship.findMany({
-        where: {
-          status: "ACCEPTED",
-          OR: [{ requesterId: session.user.id }, { addresseeId: session.user.id }],
-        },
-        select: { requesterId: true, addresseeId: true },
-      });
-      const bookerName = session.user.name?.split(" ")[0] ?? "Un amigo";
-      for (const f of friendships) {
-        const friendId = f.requesterId === session.user.id ? f.addresseeId : f.requesterId;
-        sendPushToUser(friendId, {
-          title: "Nueva reserva",
-          body: `${bookerName} reservó ${classData.classType.name}`,
-          url: `/class/${classId}`,
-          tag: `reserved-${classId}-${session.user.id}`,
-        }).catch(() => {});
-      }
     }
 
     return NextResponse.json(booking, { status: 201 });
