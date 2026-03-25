@@ -36,7 +36,6 @@ export default async function AppleIcon() {
     }
 
     const name = settings?.studioName || "S";
-    const bg = settings?.colorBg || "#FAF9F6";
     const fg = settings?.colorAccent || "#1C1917";
 
     return new ImageResponse(

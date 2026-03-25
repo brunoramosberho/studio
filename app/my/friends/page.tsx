@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, UserPlus, Check, X, Loader2 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -135,20 +136,22 @@ export default function FriendsPage() {
                       key={req.friendshipId}
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
                     >
-                      <Avatar className="h-11 w-11">
-                        {req.image && <AvatarImage src={req.image} />}
-                        <AvatarFallback className="text-sm">
-                          {req.name?.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[15px] font-semibold text-foreground">
-                          {req.name}
-                        </p>
-                        <p className="text-[12px] text-muted">
-                          Quiere ser tu amigo/a
-                        </p>
-                      </div>
+                      <Link href={`/my/user/${req.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                        <Avatar className="h-11 w-11">
+                          {req.image && <AvatarImage src={req.image} />}
+                          <AvatarFallback className="text-sm">
+                            {req.name?.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-semibold text-foreground">
+                            {req.name}
+                          </p>
+                          <p className="text-[12px] text-muted">
+                            Quiere ser tu amigo/a
+                          </p>
+                        </div>
+                      </Link>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleAccept(req.friendshipId)}
@@ -191,15 +194,17 @@ export default function FriendsPage() {
                       key={f.friendshipId}
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
                     >
-                      <Avatar className="h-11 w-11">
-                        {f.image && <AvatarImage src={f.image} />}
-                        <AvatarFallback className="text-sm">
-                          {f.name?.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <p className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
-                        {f.name}
-                      </p>
+                      <Link href={`/my/user/${f.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                        <Avatar className="h-11 w-11">
+                          {f.image && <AvatarImage src={f.image} />}
+                          <AvatarFallback className="text-sm">
+                            {f.name?.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
+                          {f.name}
+                        </p>
+                      </Link>
                       <button
                         onClick={() => handleRemove(f.friendshipId)}
                         className="rounded-full px-3 py-1.5 text-[12px] font-medium text-muted active:bg-surface hover:text-destructive"
@@ -224,22 +229,24 @@ export default function FriendsPage() {
                       key={s.id}
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
                     >
-                      <Avatar className="h-11 w-11">
-                        {s.image && <AvatarImage src={s.image} />}
-                        <AvatarFallback className="text-sm">
-                          {s.name?.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[15px] font-medium text-foreground">
-                          {s.name}
-                        </p>
-                        {s.mutualClasses > 0 && (
-                          <p className="text-[12px] text-muted">
-                            {s.mutualClasses} clase{s.mutualClasses > 1 ? "s" : ""} en común
+                      <Link href={`/my/user/${s.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                        <Avatar className="h-11 w-11">
+                          {s.image && <AvatarImage src={s.image} />}
+                          <AvatarFallback className="text-sm">
+                            {s.name?.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-medium text-foreground">
+                            {s.name}
                           </p>
-                        )}
-                      </div>
+                          {s.mutualClasses > 0 && (
+                            <p className="text-[12px] text-muted">
+                              {s.mutualClasses} clase{s.mutualClasses > 1 ? "s" : ""} en común
+                            </p>
+                          )}
+                        </div>
+                      </Link>
                       <Button
                         size="sm"
                         variant={sent.has(s.id) ? "ghost" : "secondary"}

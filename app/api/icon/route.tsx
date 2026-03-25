@@ -42,7 +42,6 @@ export async function GET(request: NextRequest) {
     }
 
     const name = settings?.studioName || "S";
-    const bg = settings?.colorBg || "#FAF9F6";
     const fg = settings?.colorAccent || "#1C1917";
     const initial = name.charAt(0).toUpperCase();
     const fontSize = Math.round(size * 0.45);

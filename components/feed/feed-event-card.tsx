@@ -9,6 +9,7 @@ import { LikeButton } from "./like-button";
 import { CommentsSheet } from "./comments-sheet";
 import { MediaGallery } from "./media-gallery";
 import { PhotoUpload } from "./photo-upload";
+import { PeopleListSheet, type PersonItem } from "./people-list-sheet";
 import { cn } from "@/lib/utils";
 
 interface Attendee {
@@ -58,18 +59,69 @@ function timeAgo(dateStr: string) {
   });
 }
 
-function AttendeesRow({ attendees }: { attendees: Attendee[] }) {
+function TappableAvatar({
+  user,
+  className,
+}: {
+  user: { id: string; name?: string | null; image?: string | null };
+  className?: string;
+}) {
+  return (
+    <Link href={`/my/user/${user.id}`} className="shrink-0">
+      <Avatar className={cn("h-10 w-10", className)}>
+        {user.image && <AvatarImage src={user.image} />}
+        <AvatarFallback className="text-xs font-medium">
+          {user.name?.charAt(0)}
+        </AvatarFallback>
+      </Avatar>
+    </Link>
+  );
+}
+
+function TappableGroupAvatars({
+  users,
+  onTapGroup,
+  avatarSize = "h-9 w-9",
+}: {
+  users: { id: string; name?: string | null; image?: string | null }[];
+  onTapGroup: () => void;
+  avatarSize?: string;
+}) {
+  if (users.length === 1) {
+    return (
+      <TappableAvatar user={users[0]} className={avatarSize} />
+    );
+  }
+
+  return (
+    <button className="flex -space-x-2" onClick={onTapGroup}>
+      {users.slice(0, 3).map((u) => (
+        <Avatar key={u.id} className={cn(avatarSize, "border-2 border-white")}>
+          {u.image && <AvatarImage src={u.image} />}
+          <AvatarFallback className="text-[9px] font-medium">
+            {u.name?.charAt(0)}
+          </AvatarFallback>
+        </Avatar>
+      ))}
+    </button>
+  );
+}
+
+function AttendeesRow({
+  attendees,
+  onTap,
+}: {
+  attendees: Attendee[];
+  onTap: () => void;
+}) {
   const shown = attendees.slice(0, 8);
   const extra = attendees.length - shown.length;
 
   return (
-    <div className="flex items-center gap-2">
+    <button className="flex items-center gap-2" onClick={onTap}>
       <div className="flex -space-x-1.5">
-        {shown.map((a) => (
-          <Avatar
-            key={a.id}
-            className="h-6 w-6 border-[1.5px] border-white"
-          >
+        {shown.map((a, idx) => (
+          <Avatar key={`${a.id}-${idx}`} className="h-6 w-6 border-[1.5px] border-white">
             {a.image && <AvatarImage src={a.image} />}
             <AvatarFallback className="text-[8px] font-medium">
               {a.name?.charAt(0)}
@@ -83,7 +135,7 @@ function AttendeesRow({ attendees }: { attendees: Attendee[] }) {
           : `${attendees.length} asistentes`}
         {extra > 0 && ` +${extra} más`}
       </span>
-    </div>
+    </button>
   );
 }
 
@@ -91,17 +143,19 @@ function ClassCompletedCard({ event }: FeedEventCardProps) {
   const p = event.payload;
   const attendees = (p.attendees as Attendee[]) ?? [];
   const [media, setMedia] = useState<MediaItem[]>(event.photos ?? []);
+  const [showPeople, setShowPeople] = useState(false);
+
+  const peopleList: PersonItem[] = attendees.map((a) => ({
+    id: a.id,
+    name: a.name,
+    image: a.image,
+  }));
 
   return (
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-start gap-3 px-4 pt-4">
-        <Avatar className="h-10 w-10">
-          {event.user.image && <AvatarImage src={event.user.image} />}
-          <AvatarFallback className="text-xs font-medium">
-            {event.user.name?.charAt(0)}
-          </AvatarFallback>
-        </Avatar>
+        <TappableAvatar user={event.user} />
         <div className="min-w-0 flex-1">
           <p className="text-[14px] leading-snug">
             <span className="font-bold text-foreground">
@@ -127,7 +181,19 @@ function ClassCompletedCard({ event }: FeedEventCardProps) {
       {/* Attendees */}
       {attendees.length > 0 && (
         <div className="px-4">
-          <AttendeesRow attendees={attendees} />
+          {attendees.length === 1 ? (
+            <Link href={`/my/user/${attendees[0].id}`} className="inline-flex items-center gap-2">
+              <Avatar className="h-6 w-6 border-[1.5px] border-white">
+                {attendees[0].image && <AvatarImage src={attendees[0].image} />}
+                <AvatarFallback className="text-[8px] font-medium">
+                  {attendees[0].name?.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-[12px] text-muted">{attendees[0].name}</span>
+            </Link>
+          ) : (
+            <AttendeesRow attendees={attendees} onTap={() => setShowPeople(true)} />
+          )}
         </div>
       )}
 
@@ -153,6 +219,13 @@ function ClassCompletedCard({ event }: FeedEventCardProps) {
           }
         />
       </div>
+
+      <PeopleListSheet
+        open={showPeople}
+        onClose={() => setShowPeople(false)}
+        title="Asistentes"
+        people={peopleList}
+      />
     </div>
   );
 }
@@ -163,6 +236,7 @@ function AchievementCard({ event }: FeedEventCardProps) {
     { id: event.user.id, name: event.user.name ?? "Miembro", image: event.user.image },
   ];
   const isSingle = users.length === 1;
+  const [showPeople, setShowPeople] = useState(false);
 
   function formatNames(list: Attendee[]) {
     const names = list.map((u) => u.name?.split(" ")[0] ?? "Alguien");
@@ -171,37 +245,31 @@ function AchievementCard({ event }: FeedEventCardProps) {
     return `${names[0]}, ${names[1]} y ${names.length - 2} más`;
   }
 
+  const peopleList: PersonItem[] = users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    image: u.image,
+  }));
+
   return (
     <div className="space-y-3">
       {/* Header with avatars */}
       <div className="flex items-start gap-3 px-4 pt-4">
-        {isSingle ? (
-          <Avatar className="h-10 w-10">
-            {users[0].image && <AvatarImage src={users[0].image} />}
-            <AvatarFallback className="text-xs font-medium">
-              {users[0].name?.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
-        ) : (
-          <div className="flex -space-x-2">
-            {users.slice(0, 3).map((u) => (
-              <Avatar
-                key={u.id}
-                className="h-9 w-9 border-2 border-white"
-              >
-                {u.image && <AvatarImage src={u.image} />}
-                <AvatarFallback className="text-[9px] font-medium">
-                  {u.name?.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-            ))}
-          </div>
-        )}
+        <TappableGroupAvatars
+          users={users}
+          onTapGroup={() => setShowPeople(true)}
+        />
         <div className="min-w-0 flex-1">
           <p className="text-[14px] leading-snug">
-            <span className="font-bold text-foreground">
-              {formatNames(users)}
-            </span>
+            {isSingle ? (
+              <Link href={`/my/user/${users[0].id}`} className="font-bold text-foreground hover:underline">
+                {formatNames(users)}
+              </Link>
+            ) : (
+              <button onClick={() => setShowPeople(true)} className="font-bold text-foreground text-left">
+                {formatNames(users)}
+              </button>
+            )}
             <span className="text-muted">
               {isSingle ? " desbloqueó un logro" : " desbloquearon un logro"}
             </span>
@@ -229,6 +297,13 @@ function AchievementCard({ event }: FeedEventCardProps) {
         />
         <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
       </div>
+
+      <PeopleListSheet
+        open={showPeople}
+        onClose={() => setShowPeople(false)}
+        title="Logro desbloqueado"
+        people={peopleList}
+      />
     </div>
   );
 }
@@ -246,6 +321,7 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
   const classDate = p.date ? new Date(p.date as string) : null;
   const isFuture = classDate ? classDate.getTime() > Date.now() : false;
   const alreadyBooked = !!event.currentUserBooked;
+  const [showPeople, setShowPeople] = useState(false);
 
   const people = event.reservedBy && event.reservedBy.length > 0
     ? event.reservedBy
@@ -256,33 +332,30 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
     ? classDate.toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true })
     : null;
 
+  const peopleList: PersonItem[] = people.map((u) => ({
+    id: u.id,
+    name: u.name,
+    image: u.image,
+  }));
+
   return (
     <div className="space-y-2">
       <div className="flex items-start gap-3 px-4 pt-4 pb-3">
-        {isGroup ? (
-          <div className="flex -space-x-2">
-            {people.slice(0, 3).map((u) => (
-              <Avatar key={u.id} className="h-9 w-9 border-2 border-white">
-                {u.image && <AvatarImage src={u.image} />}
-                <AvatarFallback className="text-[9px] font-medium">
-                  {u.name?.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-            ))}
-          </div>
-        ) : (
-          <Avatar className="h-10 w-10">
-            {people[0].image && <AvatarImage src={people[0].image} />}
-            <AvatarFallback className="text-xs font-medium">
-              {people[0].name?.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
-        )}
+        <TappableGroupAvatars
+          users={people}
+          onTapGroup={() => setShowPeople(true)}
+        />
         <div className="min-w-0 flex-1">
           <p className="text-[14px] leading-snug">
-            <span className="font-bold text-foreground">
-              {formatReservedNames(people)}
-            </span>
+            {isGroup ? (
+              <button onClick={() => setShowPeople(true)} className="font-bold text-foreground text-left">
+                {formatReservedNames(people)}
+              </button>
+            ) : (
+              <Link href={`/my/user/${people[0].id}`} className="font-bold text-foreground hover:underline">
+                {formatReservedNames(people)}
+              </Link>
+            )}
             <span className="text-muted">
               {alreadyBooked
                 ? (isGroup ? " también reservaron " : " también reservó ")
@@ -338,6 +411,13 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
         />
         <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
       </div>
+
+      <PeopleListSheet
+        open={showPeople}
+        onClose={() => setShowPeople(false)}
+        title="Reservaron"
+        people={peopleList}
+      />
     </div>
   );
 }
