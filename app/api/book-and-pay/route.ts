@@ -151,24 +151,36 @@ export async function POST(request: NextRequest) {
       }).catch(() => {});
     }
 
-    if (privacy !== "PRIVATE") {
-      prisma.feedEvent
-        .create({
-          data: {
-            tenantId: tenant.id,
-            userId: finalUserId!,
-            eventType: "CLASS_RESERVED",
-            visibility: "FRIENDS_ONLY",
-            payload: {
-              classId,
-              className: classData.classType.name,
-              coachName: classData.coach.user.name,
-              date: classData.startsAt.toISOString(),
-              duration: classData.classType.duration,
+    if (privacy !== "PRIVATE" && finalUserId) {
+      const existingEvent = await prisma.feedEvent.findFirst({
+        where: {
+          tenantId: tenant.id,
+          userId: finalUserId,
+          eventType: "CLASS_RESERVED",
+          payload: { path: ["classId"], equals: classId },
+        },
+        select: { id: true },
+      });
+
+      if (!existingEvent) {
+        prisma.feedEvent
+          .create({
+            data: {
+              tenantId: tenant.id,
+              userId: finalUserId,
+              eventType: "CLASS_RESERVED",
+              visibility: "FRIENDS_ONLY",
+              payload: {
+                classId,
+                className: classData.classType.name,
+                coachName: classData.coach.user.name,
+                date: classData.startsAt.toISOString(),
+                duration: classData.classType.duration,
+              },
             },
-          },
-        })
-        .catch(() => {});
+          })
+          .catch(() => {});
+      }
     }
 
     return NextResponse.json({

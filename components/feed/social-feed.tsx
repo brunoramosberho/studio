@@ -152,16 +152,18 @@ export function SocialFeed() {
       ) : allEvents.length === 0 ? (
         <EmptyFeed filter={filter} />
       ) : (
-        <>
-          {allEvents.map((event) => (
-            <FeedEventCard key={event.id} event={event} />
-          ))}
-          <div ref={sentinelRef} className="flex justify-center py-4">
+        <div className="-mx-4 sm:mx-0">
+          <div className="space-y-2 sm:space-y-4">
+            {allEvents.map((event) => (
+              <FeedEventCard key={event.id} event={event} />
+            ))}
+          </div>
+          <div ref={sentinelRef} className="flex justify-center py-6">
             {isFetchingNextPage && (
               <Loader2 className="h-5 w-5 animate-spin text-muted" />
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

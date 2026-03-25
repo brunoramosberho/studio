@@ -263,24 +263,35 @@ export async function POST(request: NextRequest) {
     }
 
     if (session?.user?.id && privacy !== "PRIVATE") {
-      prisma.feedEvent
-        .create({
-          data: {
-            tenantId: tenant.id,
-            userId: session.user.id,
-            eventType: "CLASS_RESERVED",
-            visibility: "FRIENDS_ONLY",
-            payload: {
-              classId,
-              className: classData.classType.name,
-              coachName: classData.coach.user.name,
-              date: classData.startsAt.toISOString(),
-              duration: classData.classType.duration,
-            },
-          },
-        })
-        .catch(() => {});
+      const existingEvent = await prisma.feedEvent.findFirst({
+        where: {
+          tenantId: tenant.id,
+          userId: session.user.id,
+          eventType: "CLASS_RESERVED",
+          payload: { path: ["classId"], equals: classId },
+        },
+        select: { id: true },
+      });
 
+      if (!existingEvent) {
+        prisma.feedEvent
+          .create({
+            data: {
+              tenantId: tenant.id,
+              userId: session.user.id,
+              eventType: "CLASS_RESERVED",
+              visibility: "FRIENDS_ONLY",
+              payload: {
+                classId,
+                className: classData.classType.name,
+                coachName: classData.coach.user.name,
+                date: classData.startsAt.toISOString(),
+                duration: classData.classType.duration,
+              },
+            },
+          })
+          .catch(() => {});
+      }
     }
 
     return NextResponse.json(booking, { status: 201 });

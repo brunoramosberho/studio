@@ -143,6 +143,52 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Resolve studio info for all class-related events
+    const allClassIds = new Set<string>();
+    for (const event of items) {
+      const classId = (event.payload as Record<string, unknown>)?.classId as string;
+      if (classId) allClassIds.add(classId);
+    }
+
+    const classStudioMap = new Map<string, { studioName: string; cityId: string }>();
+    if (allClassIds.size > 0) {
+      const classRooms = await prisma.class.findMany({
+        where: { id: { in: [...allClassIds] } },
+        select: { id: true, room: { select: { studio: { select: { name: true, cityId: true } } } } },
+      });
+      for (const c of classRooms) {
+        classStudioMap.set(c.id, {
+          studioName: c.room.studio.name,
+          cityId: c.room.studio.cityId,
+        });
+      }
+    }
+
+    // Filter by user's city — friends and self always pass through
+    if (userCityId) {
+      const friendIds = currentUserId
+        ? new Set(await getFriendIds(currentUserId, tenant.id).then((ids) => [...ids, currentUserId]))
+        : new Set<string>();
+
+      items = items.filter((event) => {
+        if (friendIds.has(event.userId)) return true;
+
+        if (event.eventType === "CLASS_COMPLETED") {
+          const payload = event.payload as Record<string, unknown> | null;
+          const attendees = (payload?.attendees ?? []) as { id: string }[];
+          if (attendees.some((a) => friendIds.has(a.id))) return true;
+        }
+
+        const classId = (event.payload as Record<string, unknown>)?.classId as string;
+        if (classId) {
+          const studio = classStudioMap.get(classId);
+          return studio?.cityId === userCityId;
+        }
+
+        return true;
+      });
+    }
+
     // Group CLASS_RESERVED events by classId into a single post
     const reservedByClass = new Map<string, typeof items>();
     const nonReserved: typeof items = [];
@@ -158,42 +204,6 @@ export async function GET(request: NextRequest) {
         }
       }
       nonReserved.push(event);
-    }
-
-    // Resolve studio info for all class-related events
-    const allClassIds = new Set<string>();
-    for (const event of items) {
-      const classId = (event.payload as Record<string, unknown>)?.classId as string;
-      if (classId) allClassIds.add(classId);
-    }
-
-    let classStudioMap = new Map<string, { studioName: string; cityId: string }>();
-    if (allClassIds.size > 0) {
-      const classRooms = await prisma.class.findMany({
-        where: { id: { in: [...allClassIds] } },
-        select: { id: true, room: { select: { studio: { select: { name: true, cityId: true } } } } },
-      });
-      for (const c of classRooms) {
-        classStudioMap.set(c.id, {
-          studioName: c.room.studio.name,
-          cityId: c.room.studio.cityId,
-        });
-      }
-    }
-
-    // Filter by user's city if set
-    if (userCityId) {
-      const cityStudioIds = new Set(
-        [...classStudioMap.entries()]
-          .filter(([, v]) => v.cityId === userCityId)
-          .map(([k]) => k),
-      );
-
-      items = items.filter((event) => {
-        const classId = (event.payload as Record<string, unknown>)?.classId as string;
-        if (classId) return cityStudioIds.has(classId);
-        return true;
-      });
     }
 
     type FeedEntry = {

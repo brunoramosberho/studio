@@ -29,7 +29,7 @@ interface ReportsData {
   revenueChart: { name: string; revenue: number }[];
   attendanceChart: { name: string; rate: number }[];
   popularClasses: { name: string; count: number; color: string }[];
-  retention: { month: string; rate: number }[];
+  retention: { month: string; rate: number; total: number; active: number }[];
 }
 
 const PIE_COLORS = ["#C9A96E", "#1A2C4E", "#2D5016", "#7C3AED", "#DC2626", "#0891B2"];
@@ -56,7 +56,7 @@ export default function AdminReportsPage() {
   const { data, isLoading } = useQuery<ReportsData>({
     queryKey: ["admin-reports-detail", dateFrom, dateTo],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/reports?${queryParams.toString()}`);
+      const res = await fetch(`/api/admin/reports/detailed?${queryParams.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
@@ -217,8 +217,10 @@ export default function AdminReportsPage() {
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>Retención de clientes</CardTitle>
-                <CardDescription>Porcentaje de clientes que regresan cada mes</CardDescription>
+                <CardTitle>Retención por cohorte</CardTitle>
+                <CardDescription>
+                  Porcentaje de miembros que siguen activos (asistieron en los últimos 30 días), agrupados por antigüedad
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-80">
@@ -240,7 +242,20 @@ export default function AdminReportsPage() {
                         domain={[0, 100]}
                         tickFormatter={(v: number) => `${v}%`}
                       />
-                      <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(45, 80, 22, 0.05)" }} />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const d = payload[0].payload as { month: string; rate: number; total: number; active: number };
+                          return (
+                            <div className="rounded-xl border border-border bg-white px-3 py-2 shadow-warm">
+                              <p className="text-xs text-muted">{d.month}</p>
+                              <p className="font-mono text-sm font-bold text-foreground">{d.rate}%</p>
+                              <p className="text-xs text-muted">{d.active} de {d.total} miembros</p>
+                            </div>
+                          );
+                        }}
+                        cursor={{ fill: "rgba(45, 80, 22, 0.05)" }}
+                      />
                       <Bar
                         dataKey="rate"
                         fill="#2D5016"
@@ -250,6 +265,11 @@ export default function AdminReportsPage() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
+                {data?.retention && data.retention.some((r) => r.rate < 60) && (
+                  <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    Algún cohorte está por debajo del 60% de retención. El benchmark saludable es &gt;60% a 90 días.
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

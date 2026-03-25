@@ -152,35 +152,51 @@ function ClassCompletedCard({ event }: FeedEventCardProps) {
   }));
 
   return (
-    <div className="space-y-3">
+    <div>
       {/* Header */}
-      <div className="flex items-start gap-3 px-4 pt-4">
+      <div className="flex items-center gap-3 px-4 py-3">
         <TappableAvatar user={event.user} />
         <div className="min-w-0 flex-1">
-          <p className="text-[14px] leading-snug">
-            <span className="font-bold text-foreground">
-              {(p.className as string) ?? "Clase"}
-            </span>
-            <span className="text-muted">
+          <p className="text-[14px] font-semibold leading-tight text-foreground">
+            {(p.className as string) ?? "Clase"}
+            <span className="font-normal text-muted">
               {" "}con {(p.coachName as string) ?? event.user.name}
             </span>
           </p>
-          <p className="mt-0.5 text-[12px] text-muted">
-            {(p.date as string) ?? ""} · {(p.time as string) ?? ""} ·{" "}
-            {(p.duration as number) ?? 50} min
-            {event.studioName && (
-              <span className="text-muted/50"> · {event.studioName}</span>
-            )}
+          <p className="text-[12px] text-muted">
+            {(p.date as string) ?? ""} · {(p.time as string) ?? ""}
+            {event.studioName && ` · ${event.studioName}`}
           </p>
         </div>
-        <span className="flex-shrink-0 text-[11px] text-muted/70">
+        <span className="flex-shrink-0 text-[11px] text-muted/60">
           {timeAgo(event.createdAt)}
         </span>
       </div>
 
+      {/* Media — full width, edge-to-edge */}
+      {media.length > 0 && (
+        <MediaGallery media={media} className="rounded-none" />
+      )}
+
+      {/* Actions bar */}
+      <div className="flex items-center gap-1 px-2 py-1.5">
+        <LikeButton
+          eventId={event.id}
+          initialLiked={event.liked}
+          initialCount={event.likeCount}
+        />
+        <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
+        <PhotoUpload
+          eventId={event.id}
+          onUploaded={(photo) =>
+            setMedia((prev) => [...prev, { ...photo, thumbnailUrl: null }])
+          }
+        />
+      </div>
+
       {/* Attendees */}
       {attendees.length > 0 && (
-        <div className="px-4">
+        <div className="px-4 pb-3">
           {attendees.length === 1 ? (
             <Link href={`/my/user/${attendees[0].id}`} className="inline-flex items-center gap-2">
               <Avatar className="h-6 w-6 border-[1.5px] border-white">
@@ -196,29 +212,6 @@ function ClassCompletedCard({ event }: FeedEventCardProps) {
           )}
         </div>
       )}
-
-      {/* Media gallery */}
-      {media.length > 0 && (
-        <div className="px-4">
-          <MediaGallery media={media} />
-        </div>
-      )}
-
-      {/* Actions bar */}
-      <div className="flex items-center gap-1 border-t border-border/30 px-2 pt-1 pb-1">
-        <LikeButton
-          eventId={event.id}
-          initialLiked={event.liked}
-          initialCount={event.likeCount}
-        />
-        <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
-        <PhotoUpload
-          eventId={event.id}
-          onUploaded={(photo) =>
-            setMedia((prev) => [...prev, { ...photo, thumbnailUrl: null }])
-          }
-        />
-      </div>
 
       <PeopleListSheet
         open={showPeople}
@@ -424,7 +417,7 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
 
 export function FeedEventCard({ event }: FeedEventCardProps) {
   return (
-    <article className="overflow-hidden rounded-2xl border border-border/50 bg-white shadow-warm-sm transition-shadow hover:shadow-warm">
+    <article className="overflow-hidden border-y border-border/40 bg-white sm:rounded-2xl sm:border sm:shadow-warm-sm">
       {event.eventType === "ACHIEVEMENT_UNLOCKED" ? (
         <AchievementCard event={event} />
       ) : event.eventType === "CLASS_RESERVED" ? (

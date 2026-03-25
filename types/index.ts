@@ -76,5 +76,44 @@ export interface AdminStats {
   avgOccupancy: number;
   newClientsThisWeek: number;
   popularClassType: string;
-  packagesSoldThisMonth: Record<string, number>;
+  bookingsTodayChange: number;
+  revenueWeekChange: number;
+  occupancyChange: number;
+  newClientsChange: number;
+  revenueChart: { name: string; revenue: number }[];
+  recentBookings: {
+    id: string;
+    userName: string;
+    className: string;
+    createdAt: string;
+  }[];
+  classesToday: number;
+  attendanceToday: number;
+  revenueToday: number;
+  revenueThisMonth: number;
+  revenueMonthChange: number;
+  completedClassesMonth: number;
+  activeMembersCount: number;
+  lowOccupancyClasses: {
+    id: string;
+    name: string;
+    startsAt: string;
+    occupancyPct: number;
+    enrolled: number;
+    capacity: number;
+    coachName: string | null;
+  }[];
+  expiringPackages: {
+    userId: string;
+    userName: string | null;
+    userImage: string | null;
+    packageName: string;
+    expiresAt: string;
+  }[];
+  birthdaysThisWeek: {
+    id: string;
+    name: string | null;
+    image: string | null;
+    birthday: string;
+  }[];
 }
