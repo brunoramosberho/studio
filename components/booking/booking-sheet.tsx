@@ -248,7 +248,7 @@ export function BookingSheet({
           if (target.tagName === "INPUT") {
             setTimeout(() => {
               target.scrollIntoView({ behavior: "smooth", block: "center" });
-            }, 350);
+            }, 600);
           }
         }}
       >
