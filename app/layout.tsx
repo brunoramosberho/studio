@@ -61,17 +61,38 @@ async function getSettings() {
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
   const fullName = `${s.studioName} Studio`;
+
+  const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000";
+
   return {
+    metadataBase: new URL(baseUrl),
     title: { default: `${fullName} — ${s.tagline}`, template: `%s | ${fullName}` },
     description: `${s.slogan} ${s.metaDescription}`,
     keywords: ["pilates", "wellness", "reformer", "barre", "mat flow", "studio"],
     manifest: "/api/manifest",
     icons: {
       icon: "/api/icon?size=192",
-      apple: "/api/icon?size=180",
+      apple: [
+        { url: "/api/icon?size=180", sizes: "180x180", type: "image/png" },
+      ],
     },
     appleWebApp: { capable: true, statusBarStyle: "default", title: fullName },
-    openGraph: { title: `${fullName} — ${s.tagline}`, description: s.slogan, type: "website" },
+    openGraph: {
+      title: `${fullName} — ${s.tagline}`,
+      description: s.slogan,
+      type: "website",
+      images: [{ url: "/api/icon?size=512", width: 512, height: 512 }],
+    },
+    twitter: {
+      card: "summary",
+      title: `${fullName} — ${s.tagline}`,
+      description: s.slogan,
+      images: ["/api/icon?size=512"],
+    },
   };
 }
 

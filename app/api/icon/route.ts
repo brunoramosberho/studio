@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import sharp from "sharp";
 
 export async function GET(request: NextRequest) {
   const size = parseInt(request.nextUrl.searchParams.get("size") || "512", 10);
@@ -15,11 +16,14 @@ export async function GET(request: NextRequest) {
     if (iconUrl?.startsWith("data:")) {
       const match = iconUrl.match(/^data:([^;]+);base64,(.+)$/);
       if (match) {
-        const contentType = match[1];
-        const buffer = Buffer.from(match[2], "base64");
-        return new NextResponse(buffer, {
+        const raw = Buffer.from(match[2], "base64");
+        const png = await sharp(raw)
+          .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+          .png()
+          .toBuffer();
+        return new NextResponse(png, {
           headers: {
-            "Content-Type": contentType,
+            "Content-Type": "image/png",
             "Cache-Control": "public, max-age=86400",
           },
         });
@@ -27,7 +31,23 @@ export async function GET(request: NextRequest) {
     }
 
     if (iconUrl?.startsWith("http")) {
-      return NextResponse.redirect(iconUrl);
+      try {
+        const res = await fetch(iconUrl);
+        if (!res.ok) throw new Error("fetch failed");
+        const raw = Buffer.from(await res.arrayBuffer());
+        const png = await sharp(raw)
+          .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+          .png()
+          .toBuffer();
+        return new NextResponse(png, {
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": "public, max-age=86400",
+          },
+        });
+      } catch {
+        return NextResponse.redirect(iconUrl);
+      }
     }
 
     const name = settings?.studioName || "S";
@@ -42,9 +62,10 @@ export async function GET(request: NextRequest) {
     font-family="system-ui,sans-serif" font-weight="700" font-size="${fontSize}" fill="${fg}">${initial}</text>
 </svg>`;
 
-    return new NextResponse(svg, {
+    const png = await sharp(Buffer.from(svg)).resize(size, size).png().toBuffer();
+    return new NextResponse(png, {
       headers: {
-        "Content-Type": "image/svg+xml",
+        "Content-Type": "image/png",
         "Cache-Control": "public, max-age=3600",
       },
     });
