@@ -156,3 +156,70 @@ export async function sendClassReminder({
     console.error("Failed to send class reminder:", error);
   }
 }
+
+export async function sendRoleInvitation({
+  to,
+  role,
+  invitedBy,
+  loginUrl,
+}: {
+  to: string;
+  role: "ADMIN" | "COACH";
+  invitedBy: string;
+  loginUrl: string;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+
+    const roleLabel = role === "ADMIN" ? "Administrador" : "Coach";
+    const roleColor = role === "ADMIN" ? b.colorAdmin : b.colorCoach;
+    const emoji = role === "ADMIN" ? "&#128272;" : "&#127947;";
+    const description =
+      role === "ADMIN"
+        ? "gestionar el estudio, ver reportes y administrar el equipo"
+        : "dar clases, ver tu agenda y conectar con tus alumnos";
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:${roleColor}15;line-height:56px;font-size:28px;">${emoji}</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ¡Estás invitado!
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          <strong style="color:${b.colorFg};">${invitedBy}</strong> te ha invitado a unirte a
+          <strong style="color:${b.colorFg};">${studioFull}</strong>
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;text-align:center;">
+          <div style="display:inline-block;background:${roleColor}20;color:${roleColor};font-size:13px;font-weight:700;padding:6px 16px;border-radius:20px;letter-spacing:0.5px;">
+            ${roleLabel}
+          </div>
+          <p style="margin:12px 0 0;font-size:14px;color:${b.colorFg};line-height:1.5;">
+            Como ${roleLabel.toLowerCase()} podrás ${description}.
+          </p>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${loginUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Acceder a la plataforma
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Inicia sesión con este correo electrónico (${to}) usando Google o el enlace mágico.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Te invitaron como ${roleLabel} a ${studioFull}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send role invitation:", error);
+  }
+}

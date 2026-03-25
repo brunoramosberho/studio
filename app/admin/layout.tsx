@@ -13,10 +13,10 @@ import {
   Users,
   UserCog,
   Package,
-  ListOrdered,
   BarChart3,
   Palette,
   Building2,
+  ShieldCheck,
   ArrowLeft,
   Menu,
   X,
@@ -31,16 +31,16 @@ import { useBranding } from "@/components/branding-provider";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/class-types", label: "Disciplinas", icon: Dumbbell },
-  { href: "/admin/classes", label: "Clases", icon: ClipboardList },
   { href: "/admin/schedule", label: "Horario", icon: CalendarDays },
-  { href: "/admin/studios", label: "Estudios", icon: Building2 },
-  { href: "/admin/coaches", label: "Coaches", icon: UserCog },
+  { href: "/admin/classes", label: "Clases", icon: ClipboardList },
+  { href: "/admin/class-types", label: "Disciplinas", icon: Dumbbell },
   { href: "/admin/clients", label: "Clientes", icon: Users },
+  { href: "/admin/coaches", label: "Coaches", icon: UserCog },
   { href: "/admin/packages", label: "Paquetes", icon: Package },
-  { href: "/admin/waitlist", label: "Lista de espera", icon: ListOrdered },
   { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
+  { href: "/admin/studios", label: "Estudios", icon: Building2 },
   { href: "/admin/branding", label: "Marca", icon: Palette },
+  { href: "/admin/team", label: "Equipo", icon: ShieldCheck },
 ];
 
 interface LocCountry {
