@@ -77,7 +77,7 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: "/api/icon?size=192",
       apple: [
-        { url: "/api/icon?size=180", sizes: "180x180", type: "image/png" },
+        { url: "/apple-icon", sizes: "180x180", type: "image/png" },
       ],
     },
     appleWebApp: { capable: true, statusBarStyle: "default", title: fullName },

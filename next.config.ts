@@ -24,6 +24,12 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns", "framer-motion"],
   },
+  async rewrites() {
+    return [
+      { source: "/apple-touch-icon.png", destination: "/apple-icon" },
+      { source: "/apple-touch-icon-precomposed.png", destination: "/apple-icon" },
+    ];
+  },
 };
 
 export default nextConfig;
