@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireTenant } from "@/lib/tenant";
 
 export async function GET() {
   try {
+    const tenant = await requireTenant();
+
     const coaches = await prisma.coachProfile.findMany({
+      where: { tenantId: tenant.id },
       include: {
         user: { select: { name: true, email: true, image: true } },
       },

@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getServerBranding } from "./branding";
+import { getServerBranding } from "./branding.server";
 
 function getAnthropic() {
   return new Anthropic({

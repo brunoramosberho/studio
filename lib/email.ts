@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { formatDate, formatTime } from "./utils";
-import { getServerBranding } from "./branding";
+import { getServerBranding } from "./branding.server";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);

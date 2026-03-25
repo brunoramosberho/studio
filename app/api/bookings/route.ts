@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { requireAuth, requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation } from "@/lib/email";
 import { sendPushToUser } from "@/lib/push";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, tenant } = await requireAuth();
 
     const status = request.nextUrl.searchParams.get("status");
     const now = new Date();
@@ -19,6 +17,7 @@ export async function GET(request: NextRequest) {
 
     const bookings = await prisma.booking.findMany({
       where: {
+        tenantId: tenant.id,
         userId: session.user.id,
         ...(isUpcoming
           ? { status: "CONFIRMED", class: { startsAt: { gte: now } } }
@@ -61,6 +60,7 @@ export async function GET(request: NextRequest) {
         const classIds = bookings.map((b) => b.classId);
         const friendBookings = await prisma.booking.findMany({
           where: {
+            tenantId: tenant.id,
             classId: { in: classIds },
             userId: { in: friendIds },
             status: "CONFIRMED",
@@ -99,6 +99,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const tenant = await requireTenant();
     const body = await request.json();
     const { classId, packageId, guestName, guestEmail, spotNumber, privacy } = body;
 
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     const classData = await prisma.class.findUnique({
-      where: { id: classId },
+      where: { id: classId, tenantId: tenant.id },
       include: {
         classType: true,
         room: { include: { studio: true } },
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
         );
       }
       const spotTaken = await prisma.booking.findFirst({
-        where: { classId, spotNumber, status: "CONFIRMED" },
+        where: { classId, tenantId: tenant.id, spotNumber, status: "CONFIRMED" },
       });
       if (spotTaken) {
         return NextResponse.json(
@@ -169,6 +170,7 @@ export async function POST(request: NextRequest) {
     if (session?.user) {
       const existingBooking = await prisma.booking.findFirst({
         where: {
+          tenantId: tenant.id,
           classId,
           userId: session.user.id,
           status: "CONFIRMED",
@@ -188,6 +190,7 @@ export async function POST(request: NextRequest) {
       const userPackages = await prisma.userPackage.findMany({
         where: {
           userId: session.user.id,
+          tenantId: tenant.id,
           expiresAt: { gt: new Date() },
         },
         orderBy: { expiresAt: "asc" },
@@ -226,6 +229,7 @@ export async function POST(request: NextRequest) {
 
     const booking = await prisma.booking.create({
       data: {
+        tenantId: tenant.id,
         classId,
         userId: session?.user?.id ?? null,
         guestName: isGuest ? guestName : null,
@@ -263,6 +267,7 @@ export async function POST(request: NextRequest) {
       prisma.feedEvent
         .create({
           data: {
+            tenantId: tenant.id,
             userId: session.user.id,
             eventType: "CLASS_RESERVED",
             visibility: "FRIENDS_ONLY",

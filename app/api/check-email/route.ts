@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireTenant } from "@/lib/tenant";
 
 export async function POST(request: NextRequest) {
   try {
+    const tenant = await requireTenant();
     const { email } = await request.json();
     if (!email) {
       return NextResponse.json({ exists: false });
@@ -14,7 +16,7 @@ export async function POST(request: NextRequest) {
         id: true,
         name: true,
         packages: {
-          where: { expiresAt: { gt: new Date() } },
+          where: { tenantId: tenant.id, expiresAt: { gt: new Date() } },
           select: {
             creditsTotal: true,
             creditsUsed: true,

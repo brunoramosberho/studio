@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/tenant";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { tenant } = await requireRole("ADMIN");
 
     const { id } = await params;
     const body = await request.json();
     const { name, classTypeId, maxCapacity, layout } = body;
 
     const room = await prisma.room.update({
-      where: { id },
+      where: { id, tenantId: tenant.id },
       data: {
         ...(name !== undefined && { name }),
         ...(classTypeId !== undefined && { classTypeId }),
@@ -41,14 +38,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { tenant } = await requireRole("ADMIN");
 
     const { id } = await params;
 
-    const classCount = await prisma.class.count({ where: { roomId: id } });
+    const classCount = await prisma.class.count({ where: { roomId: id, tenantId: tenant.id } });
     if (classCount > 0) {
       return NextResponse.json(
         { error: "No se puede eliminar una sala con clases asignadas." },
@@ -56,7 +50,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.room.delete({ where: { id } });
+    await prisma.room.delete({ where: { id, tenantId: tenant.id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("DELETE /api/rooms/[id] error:", error);

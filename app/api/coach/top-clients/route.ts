@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/tenant";
 
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, tenant } = await requireAuth();
 
-    const coachProfile = await prisma.coachProfile.findUnique({
-      where: { userId: session.user.id },
+    const coachProfile = await prisma.coachProfile.findFirst({
+      where: { userId: session.user.id, tenantId: tenant.id },
       select: { id: true },
     });
 
@@ -23,7 +20,7 @@ export async function GET() {
       where: {
         userId: { not: null },
         status: { in: ["ATTENDED", "CONFIRMED"] },
-        class: { coachId: coachProfile.id },
+        class: { coachId: coachProfile.id, tenantId: tenant.id },
       },
       _count: true,
       orderBy: { _count: { userId: "desc" } },
@@ -53,7 +50,7 @@ export async function GET() {
         where: {
           userId: { in: userIds },
           status: { in: ["ATTENDED", "CONFIRMED"] },
-          class: { coachId: coachProfile.id },
+          class: { coachId: coachProfile.id, tenantId: tenant.id },
         },
         distinct: ["userId"],
         orderBy: { createdAt: "desc" },
@@ -73,7 +70,7 @@ export async function GET() {
         where: {
           userId: { in: userIds },
           status: { in: ["CANCELLED", "NO_SHOW"] },
-          class: { coachId: coachProfile.id },
+          class: { coachId: coachProfile.id, tenantId: tenant.id },
         },
         _count: true,
       }),

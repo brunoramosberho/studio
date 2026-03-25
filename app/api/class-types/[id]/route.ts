@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/tenant";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const ctx = await requireRole("ADMIN");
 
     const { id } = await params;
+
+    const existing = await prisma.classType.findFirst({
+      where: { id, tenantId: ctx.tenant.id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Class type not found" }, { status: 404 });
+    }
+
     const body = await request.json();
     const { name, description, duration, level, color, icon } = body;
 
@@ -31,6 +36,9 @@ export async function PUT(
 
     return NextResponse.json(updated);
   } catch (error) {
+    if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
+    }
     console.error("PUT /api/class-types/[id] error:", error);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
@@ -41,14 +49,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const ctx = await requireRole("ADMIN");
 
     const { id } = await params;
 
-    const classCount = await prisma.class.count({ where: { classTypeId: id } });
+    const existing = await prisma.classType.findFirst({
+      where: { id, tenantId: ctx.tenant.id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Class type not found" }, { status: 404 });
+    }
+
+    const classCount = await prisma.class.count({ where: { classTypeId: id, tenantId: ctx.tenant.id } });
     if (classCount > 0) {
       return NextResponse.json(
         { error: `No se puede eliminar: hay ${classCount} clase(s) usando esta disciplina` },
@@ -59,6 +71,9 @@ export async function DELETE(
     await prisma.classType.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
+    }
     console.error("DELETE /api/class-types/[id] error:", error);
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }

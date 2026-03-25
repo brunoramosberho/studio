@@ -3,9 +3,11 @@ import { prisma } from "@/lib/db";
 import { streamAssistantResponse, type AssistantMessage } from "@/lib/claude";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { requireTenant } from "@/lib/tenant";
 
 export async function POST(request: NextRequest) {
   try {
+    const tenant = await requireTenant();
     const body = await request.json();
     const { messages } = body as { messages: AssistantMessage[] };
 
@@ -29,6 +31,7 @@ export async function POST(request: NextRequest) {
 
     const upcomingClasses = await prisma.class.findMany({
       where: {
+        tenantId: tenant.id,
         startsAt: { gte: now, lte: weekAhead },
         status: "SCHEDULED",
       },

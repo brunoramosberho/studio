@@ -22,15 +22,15 @@ export async function POST(request: NextRequest) {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
-      const { packageId, userId } = session.metadata ?? {};
+      const { packageId, userId, tenantId } = session.metadata ?? {};
 
-      if (!packageId || !userId) {
+      if (!packageId || !userId || !tenantId) {
         console.error("Stripe webhook missing metadata:", session.metadata);
         return NextResponse.json({ received: true });
       }
 
-      const pkg = await prisma.package.findUnique({
-        where: { id: packageId },
+      const pkg = await prisma.package.findFirst({
+        where: { id: packageId, tenantId },
       });
 
       if (!pkg) {
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId,
           packageId: pkg.id,
+          tenantId,
           creditsTotal: pkg.credits,
           creditsUsed: 0,
           expiresAt,

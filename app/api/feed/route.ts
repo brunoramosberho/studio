@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getAuthContext, requireTenant } from "@/lib/tenant";
 
-async function getFriendIds(userId: string): Promise<string[]> {
+async function getFriendIds(userId: string, tenantId: string): Promise<string[]> {
   const friendships = await prisma.friendship.findMany({
     where: {
+      tenantId,
       status: "ACCEPTED",
       OR: [{ requesterId: userId }, { addresseeId: userId }],
     },
@@ -17,8 +18,9 @@ async function getFriendIds(userId: string): Promise<string[]> {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    const currentUserId = session?.user?.id;
+    const tenant = await requireTenant();
+    const ctx = await getAuthContext();
+    const currentUserId = ctx?.session?.user?.id;
 
     const { searchParams } = request.nextUrl;
     const cursor = searchParams.get("cursor");
@@ -35,12 +37,13 @@ export async function GET(request: NextRequest) {
       userCityId = userLoc?.cityId ?? null;
     }
 
-    let whereClause: Record<string, unknown> = { visibility: "STUDIO_WIDE" };
+    let whereClause: Record<string, unknown> = { tenantId: tenant.id, visibility: "STUDIO_WIDE" };
 
     if (filter === "friends" && currentUserId) {
-      const friendIds = await getFriendIds(currentUserId);
+      const friendIds = await getFriendIds(currentUserId, tenant.id);
       const friendAndSelf = [...friendIds, currentUserId];
       whereClause = {
+        tenantId: tenant.id,
         OR: [
           {
             userId: { in: friendAndSelf },
@@ -56,8 +59,9 @@ export async function GET(request: NextRequest) {
         ],
       };
     } else if (currentUserId) {
-      const friendIds = await getFriendIds(currentUserId);
+      const friendIds = await getFriendIds(currentUserId, tenant.id);
       whereClause = {
+        tenantId: tenant.id,
         OR: [
           { visibility: "STUDIO_WIDE" },
           {
@@ -99,7 +103,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (filter === "friends" && currentUserId) {
-      const friendIds = await getFriendIds(currentUserId);
+      const friendIds = await getFriendIds(currentUserId, tenant.id);
       const friendAndSelf = new Set([...friendIds, currentUserId]);
 
       filtered = filtered.filter((event) => {

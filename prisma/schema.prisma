@@ -8,6 +8,69 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ── Multi-tenant ──
+
+model Tenant {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  isActive        Boolean  @default(true)
+
+  // Branding (migrated from StudioSettings)
+  tagline         String   @default("Pilates & Wellness")
+  slogan          String   @default("Muévete. Respira. Floréce.")
+  metaDescription String   @default("Tu espacio de Pilates y bienestar.")
+  logoUrl         String?
+  appIconUrl      String?
+  fontPairing     String   @default("playfair-dmsans")
+  colorBg         String   @default("#FAF9F6")
+  colorFg         String   @default("#1C1917")
+  colorSurface    String   @default("#F5F2ED")
+  colorAccent     String   @default("#C9A96E")
+  colorAccentSoft String   @default("#E8D9BF")
+  colorMuted      String   @default("#8C8279")
+  colorBorder     String   @default("#E8E2D9")
+  colorCoach      String   @default("#2D5016")
+  colorAdmin      String   @default("#1A2C4E")
+  coachIconSvg    String?  @db.Text
+
+  stripeCustomerId String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  memberships       Membership[]
+  studios           Studio[]
+  classTypes        ClassType[]
+  coachProfiles     CoachProfile[]
+  classes           Class[]
+  bookings          Booking[]
+  waitlists         Waitlist[]
+  packages          Package[]
+  userPackages      UserPackage[]
+  rooms             Room[]
+  feedEvents        FeedEvent[]
+  notifications     Notification[]
+  achievements      UserAchievement[]
+  friendships       Friendship[]
+  pushSubscriptions PushSubscription[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role      Role     @default(CLIENT)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
+}
+
+// ── Auth (global) ──
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -56,13 +119,16 @@ model PendingLogin {
   @@index([token])
 }
 
+// ── Users (global) ──
+
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String    @unique
   emailVerified DateTime?
   image         String?
-  role          Role      @default(CLIENT)
+  role          Role      @default(CLIENT) // deprecated: kept for migration, use Membership.role
+  isSuperAdmin  Boolean   @default(false)
   phone         String?
   birthday      DateTime?
   countryId     String?
@@ -71,9 +137,10 @@ model User {
   city          City?     @relation(fields: [cityId], references: [id])
   createdAt     DateTime  @default(now())
 
+  memberships  Membership[]
   packages     UserPackage[]
   bookings     Booking[]
-  coachProfile CoachProfile?
+  coachProfiles CoachProfile[]
   accounts     Account[]
   sessions     Session[]
   waitlists    Waitlist[]
@@ -111,15 +178,22 @@ enum Role {
   ADMIN
 }
 
+// ── Studio domain models (tenant-scoped) ──
+
 model CoachProfile {
   id          String   @id @default(cuid())
-  userId      String   @unique
+  userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
   bio         String?
   specialties String[]
   photoUrl    String?
   color       String   @default("#C9A96E")
   classes     Class[]
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
 }
 
 model ClassType {
@@ -130,8 +204,12 @@ model ClassType {
   level       Level   @default(ALL)
   color       String
   icon        String?
+  tenantId    String
+  tenant      Tenant  @relation(fields: [tenantId], references: [id])
   classes     Class[]
   rooms       Room[]
+
+  @@index([tenantId])
 }
 
 enum Level {
@@ -149,6 +227,8 @@ model Class {
   coach       CoachProfile @relation(fields: [coachId], references: [id])
   roomId      String
   room        Room         @relation(fields: [roomId], references: [id])
+  tenantId    String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
   startsAt    DateTime
   endsAt      DateTime
   status      ClassStatus @default(SCHEDULED)
@@ -164,6 +244,7 @@ model Class {
   @@index([coachId])
   @@index([roomId])
   @@index([status])
+  @@index([tenantId])
 }
 
 enum ClassStatus {
@@ -178,6 +259,8 @@ model Booking {
   class       Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
   userId      String?
   user        User?         @relation(fields: [userId], references: [id])
+  tenantId    String
+  tenant      Tenant        @relation(fields: [tenantId], references: [id])
   guestEmail  String?
   guestName   String?
   spotNumber  Int?
@@ -190,6 +273,7 @@ model Booking {
   @@unique([classId, spotNumber])
   @@index([classId])
   @@index([userId])
+  @@index([tenantId])
 }
 
 enum BookingPrivacy {
@@ -210,10 +294,13 @@ model Waitlist {
   class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
   position  Int
   createdAt DateTime @default(now())
 
   @@index([classId])
+  @@index([tenantId])
 }
 
 model Package {
@@ -227,11 +314,14 @@ model Package {
   isPromo       Boolean       @default(false)
   isActive      Boolean       @default(true)
   stripePriceId String?
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
   countryId     String?
   country       Country?      @relation(fields: [countryId], references: [id])
   userPackages  UserPackage[]
 
   @@index([countryId])
+  @@index([tenantId])
 }
 
 model UserPackage {
@@ -240,6 +330,8 @@ model UserPackage {
   user            User     @relation(fields: [userId], references: [id])
   packageId       String
   package         Package  @relation(fields: [packageId], references: [id])
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
   creditsTotal    Int?
   creditsUsed     Int      @default(0)
   expiresAt       DateTime
@@ -248,6 +340,7 @@ model UserPackage {
 
   @@index([userId])
   @@index([expiresAt])
+  @@index([tenantId])
 }
 
 // ── Location Hierarchy ──
@@ -273,14 +366,17 @@ model City {
 }
 
 model Studio {
-  id      String  @id @default(cuid())
-  name    String
-  address String?
-  cityId  String
-  city    City    @relation(fields: [cityId], references: [id])
-  rooms   Room[]
+  id        String  @id @default(cuid())
+  name      String
+  address   String?
+  cityId    String
+  city      City    @relation(fields: [cityId], references: [id])
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  rooms     Room[]
 
   @@index([cityId])
+  @@index([tenantId])
 }
 
 model Room {
@@ -290,12 +386,15 @@ model Room {
   studio      Studio    @relation(fields: [studioId], references: [id])
   classTypeId String
   classType   ClassType @relation(fields: [classTypeId], references: [id])
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
   maxCapacity Int
   layout      Json?
   classes     Class[]
 
   @@index([studioId])
   @@index([classTypeId])
+  @@index([tenantId])
 }
 
 // ── Social Graph ──
@@ -306,13 +405,16 @@ model Friendship {
   requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
   addresseeId String
   addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  tenantId    String
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
   status      FriendshipStatus @default(PENDING)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  @@unique([requesterId, addresseeId])
+  @@unique([requesterId, addresseeId, tenantId])
   @@index([requesterId, status])
   @@index([addresseeId, status])
+  @@index([tenantId])
 }
 
 enum FriendshipStatus {
@@ -339,6 +441,8 @@ model FeedEvent {
   id         String         @id @default(cuid())
   userId     String
   user       User           @relation("FeedEventAuthor", fields: [userId], references: [id])
+  tenantId   String
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
   eventType  FeedEventType
   payload    Json
   visibility FeedVisibility @default(STUDIO_WIDE)
@@ -350,6 +454,7 @@ model FeedEvent {
   @@index([createdAt])
   @@index([userId])
   @@index([eventType])
+  @@index([tenantId])
 }
 
 model Like {
@@ -397,18 +502,23 @@ model UserAchievement {
   id              String   @id @default(cuid())
   userId          String
   user            User     @relation("UserAchievements", fields: [userId], references: [id])
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
   achievementType String
   metadata        Json?
   earnedAt        DateTime @default(now())
 
-  @@unique([userId, achievementType])
+  @@unique([userId, tenantId, achievementType])
   @@index([userId])
+  @@index([tenantId])
 }
 
 model Notification {
   id          String    @id @default(cuid())
   userId      String
   user        User      @relation("UserNotifications", fields: [userId], references: [id])
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
   type        String
   actorId     String?
   actor       User?     @relation("NotificationActor", fields: [actorId], references: [id])
@@ -417,6 +527,7 @@ model Notification {
   createdAt   DateTime  @default(now())
 
   @@index([userId, readAt])
+  @@index([tenantId])
 }
 
 // ── Push Notifications ──
@@ -425,15 +536,18 @@ model PushSubscription {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation("UserPushSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
   endpoint  String   @unique
   p256dh    String
   auth      String
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([tenantId])
 }
 
-// ── Studio Branding ──
+// ── Studio Branding (deprecated: kept for migration, use Tenant) ──
 
 model StudioSettings {
   id              String   @id @default("singleton")

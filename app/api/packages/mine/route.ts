@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/tenant";
 
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, tenant } = await requireAuth();
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: session.user!.id! },
       select: { countryId: true },
     });
 
     const userPackages = await prisma.userPackage.findMany({
       where: {
-        userId: session.user.id,
+        userId: session.user!.id!,
+        tenantId: tenant.id,
         ...(user?.countryId && {
           package: {
             OR: [{ countryId: user.countryId }, { countryId: null }],

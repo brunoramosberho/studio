@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { requireRole } from "@/lib/tenant";
 import { sendRoleInvitation } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const ctx = await requireRole("ADMIN");
 
   const { email } = await request.json();
   if (!email || typeof email !== "string") {
@@ -18,10 +15,13 @@ export async function POST(request: NextRequest) {
 
   const existing = await prisma.user.findUnique({
     where: { email: normalizedEmail },
-    include: { coachProfile: true },
+    include: {
+      coachProfiles: { where: { tenantId: ctx.tenant.id } },
+      memberships: { where: { tenantId: ctx.tenant.id } },
+    },
   });
 
-  if (existing?.role === "COACH" && existing.coachProfile) {
+  if (existing?.coachProfiles?.length && existing.memberships.some((m) => m.role === "COACH")) {
     return NextResponse.json(
       { error: "Este usuario ya es coach" },
       { status: 409 },
@@ -32,13 +32,21 @@ export async function POST(request: NextRequest) {
 
   if (existing) {
     await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: existing.id },
-        data: { role: "COACH" },
-      });
-      if (!existing.coachProfile) {
+      if (!existing.coachProfiles?.length) {
         await tx.coachProfile.create({
-          data: { userId: existing.id },
+          data: { userId: existing.id, tenantId: ctx.tenant.id },
+        });
+      }
+
+      const existingMembership = existing.memberships[0];
+      if (existingMembership) {
+        await tx.membership.update({
+          where: { id: existingMembership.id },
+          data: { role: "COACH" },
+        });
+      } else {
+        await tx.membership.create({
+          data: { userId: existing.id, tenantId: ctx.tenant.id, role: "COACH" },
         });
       }
     });
@@ -46,12 +54,12 @@ export async function POST(request: NextRequest) {
     await sendRoleInvitation({
       to: normalizedEmail,
       role: "COACH",
-      invitedBy: session.user.name || "Un administrador",
+      invitedBy: ctx.session.user.name || "Un administrador",
       loginUrl: `${origin}/login`,
     });
 
-    const coach = await prisma.coachProfile.findUnique({
-      where: { userId: existing.id },
+    const coach = await prisma.coachProfile.findFirst({
+      where: { userId: existing.id, tenantId: ctx.tenant.id },
       include: { user: { select: { name: true, email: true, image: true } } },
     });
 
@@ -59,18 +67,23 @@ export async function POST(request: NextRequest) {
   }
 
   const user = await prisma.user.create({
-    data: { email: normalizedEmail, role: "COACH" },
+    data: { email: normalizedEmail },
   });
 
-  const coach = await prisma.coachProfile.create({
-    data: { userId: user.id },
-    include: { user: { select: { name: true, email: true, image: true } } },
-  });
+  const [coach] = await prisma.$transaction([
+    prisma.coachProfile.create({
+      data: { userId: user.id, tenantId: ctx.tenant.id },
+      include: { user: { select: { name: true, email: true, image: true } } },
+    }),
+    prisma.membership.create({
+      data: { userId: user.id, tenantId: ctx.tenant.id, role: "COACH" },
+    }),
+  ]);
 
   await sendRoleInvitation({
     to: normalizedEmail,
     role: "COACH",
-    invitedBy: session.user.name || "Un administrador",
+    invitedBy: ctx.session.user.name || "Un administrador",
     loginUrl: `${origin}/login`,
   });
 
@@ -78,18 +91,15 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const ctx = await requireRole("ADMIN");
 
   const { coachProfileId } = await request.json();
   if (!coachProfileId) {
     return NextResponse.json({ error: "coachProfileId requerido" }, { status: 400 });
   }
 
-  const profile = await prisma.coachProfile.findUnique({
-    where: { id: coachProfileId },
+  const profile = await prisma.coachProfile.findFirst({
+    where: { id: coachProfileId, tenantId: ctx.tenant.id },
     include: { _count: { select: { classes: true } } },
   });
 
@@ -99,10 +109,15 @@ export async function DELETE(request: NextRequest) {
 
   await prisma.$transaction(async (tx) => {
     await tx.coachProfile.delete({ where: { id: coachProfileId } });
-    await tx.user.update({
-      where: { id: profile.userId },
-      data: { role: "CLIENT" },
+    const membership = await tx.membership.findUnique({
+      where: { userId_tenantId: { userId: profile.userId, tenantId: ctx.tenant.id } },
     });
+    if (membership) {
+      await tx.membership.update({
+        where: { id: membership.id },
+        data: { role: "CLIENT" },
+      });
+    }
   });
 
   return NextResponse.json({ success: true });

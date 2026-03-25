@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { requireRole } from "@/lib/tenant";
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const ctx = await requireRole("ADMIN");
 
   const { userPackageId, delta } = await request.json();
 
@@ -14,8 +11,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid params" }, { status: 400 });
   }
 
-  const pkg = await prisma.userPackage.findUnique({
-    where: { id: userPackageId },
+  const pkg = await prisma.userPackage.findFirst({
+    where: { id: userPackageId, tenantId: ctx.tenant.id },
   });
 
   if (!pkg) {

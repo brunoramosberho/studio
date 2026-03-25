@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireTenant, requireAuth } from "@/lib/tenant";
 import { uploadMedia } from "@/lib/supabase-storage";
 
 export async function GET(
@@ -8,9 +8,10 @@ export async function GET(
   { params }: { params: Promise<{ eventId: string }> },
 ) {
   try {
+    const tenant = await requireTenant();
     const { eventId } = await params;
     const photos = await prisma.photo.findMany({
-      where: { feedEventId: eventId },
+      where: { feedEventId: eventId, feedEvent: { tenantId: tenant.id } },
       orderBy: { createdAt: "asc" },
       include: { user: { select: { id: true, name: true, image: true } } },
     });
@@ -26,12 +27,17 @@ export async function POST(
   { params }: { params: Promise<{ eventId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, tenant } = await requireAuth();
 
     const { eventId } = await params;
+
+    const feedEvent = await prisma.feedEvent.findFirst({
+      where: { id: eventId, tenantId: tenant.id },
+      select: { id: true },
+    });
+    if (!feedEvent) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 

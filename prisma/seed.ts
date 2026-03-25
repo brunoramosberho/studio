@@ -9,6 +9,7 @@ async function main() {
 
   // Clear existing data (respecting foreign key order)
   await prisma.studioSettings.deleteMany();
+  await prisma.pushSubscription.deleteMany();
   await prisma.favoriteSong.deleteMany();
   await prisma.friendship.deleteMany();
   await prisma.notification.deleteMany();
@@ -28,16 +29,42 @@ async function main() {
   await prisma.userPackage.deleteMany();
   await prisma.package.deleteMany();
   await prisma.coachProfile.deleteMany();
+  await prisma.membership.deleteMany();
   await prisma.session.deleteMany();
   await prisma.account.deleteMany();
   await prisma.verificationToken.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.tenant.deleteMany();
 
   console.log("✓ Cleared existing data");
+
+  // --- Tenant ---
+  const tenant = await prisma.tenant.create({
+    data: {
+      slug: "betoro",
+      name: "Flō",
+      tagline: "Pilates & Wellness",
+      slogan: "Muévete. Respira. Floréce.",
+      metaDescription: "Tu espacio de Pilates y bienestar.",
+      fontPairing: "playfair-dmsans",
+      colorBg: "#FAF9F6",
+      colorFg: "#1C1917",
+      colorSurface: "#F5F2ED",
+      colorAccent: "#C9A96E",
+      colorAccentSoft: "#E8D9BF",
+      colorMuted: "#8C8279",
+      colorBorder: "#E8E2D9",
+      colorCoach: "#2D5016",
+      colorAdmin: "#1A2C4E",
+    },
+  });
+  const tenantId = tenant.id;
+  console.log("✓ Created tenant: " + tenant.slug);
 
   // --- Class Types ---
   const reformer = await prisma.classType.create({
     data: {
+      tenantId,
       name: "Reformer Pilates",
       duration: 50,
       level: Level.ALL,
@@ -49,6 +76,7 @@ async function main() {
 
   const matFlow = await prisma.classType.create({
     data: {
+      tenantId,
       name: "Mat Flow",
       duration: 45,
       level: Level.ALL,
@@ -60,6 +88,7 @@ async function main() {
 
   const barreFusion = await prisma.classType.create({
     data: {
+      tenantId,
       name: "Barre Fusion",
       duration: 55,
       level: Level.INTERMEDIATE,
@@ -89,47 +118,47 @@ async function main() {
 
   // 2 studios in Madrid
   const studioSalamanca = await prisma.studio.create({
-    data: { name: "Flō Salamanca", address: "Calle de Serrano 45, Barrio de Salamanca", cityId: madrid.id },
+    data: { tenantId, name: "Flō Salamanca", address: "Calle de Serrano 45, Barrio de Salamanca", cityId: madrid.id },
   });
   const studioChamberi = await prisma.studio.create({
-    data: { name: "Flō Chamberí", address: "Calle de Fuencarral 112, Chamberí", cityId: madrid.id },
+    data: { tenantId, name: "Flō Chamberí", address: "Calle de Fuencarral 112, Chamberí", cityId: madrid.id },
   });
   // 1 studio in CDMX
   const studioPolanco = await prisma.studio.create({
-    data: { name: "Flō Polanco", address: "Av. Presidente Masaryk 123, Polanco", cityId: cdmx.id },
+    data: { tenantId, name: "Flō Polanco", address: "Av. Presidente Masaryk 123, Polanco", cityId: cdmx.id },
   });
 
   // Rooms — Madrid Salamanca
   const roomReformerSalamanca = await prisma.room.create({
-    data: { name: "Sala Reformer", studioId: studioSalamanca.id, classTypeId: reformer.id, maxCapacity: 12 },
+    data: { tenantId, name: "Sala Reformer", studioId: studioSalamanca.id, classTypeId: reformer.id, maxCapacity: 12 },
   });
   const roomMatSalamanca = await prisma.room.create({
-    data: { name: "Sala Mat", studioId: studioSalamanca.id, classTypeId: matFlow.id, maxCapacity: 20 },
+    data: { tenantId, name: "Sala Mat", studioId: studioSalamanca.id, classTypeId: matFlow.id, maxCapacity: 20 },
   });
   const roomBarreSalamanca = await prisma.room.create({
-    data: { name: "Sala Barre", studioId: studioSalamanca.id, classTypeId: barreFusion.id, maxCapacity: 15 },
+    data: { tenantId, name: "Sala Barre", studioId: studioSalamanca.id, classTypeId: barreFusion.id, maxCapacity: 15 },
   });
 
   // Rooms — Madrid Chamberí
   const roomReformerChamberi = await prisma.room.create({
-    data: { name: "Sala Reformer", studioId: studioChamberi.id, classTypeId: reformer.id, maxCapacity: 10 },
+    data: { tenantId, name: "Sala Reformer", studioId: studioChamberi.id, classTypeId: reformer.id, maxCapacity: 10 },
   });
   const roomMatChamberi = await prisma.room.create({
-    data: { name: "Sala Mat", studioId: studioChamberi.id, classTypeId: matFlow.id, maxCapacity: 16 },
+    data: { tenantId, name: "Sala Mat", studioId: studioChamberi.id, classTypeId: matFlow.id, maxCapacity: 16 },
   });
   const roomBarreChamberi = await prisma.room.create({
-    data: { name: "Sala Barre", studioId: studioChamberi.id, classTypeId: barreFusion.id, maxCapacity: 12 },
+    data: { tenantId, name: "Sala Barre", studioId: studioChamberi.id, classTypeId: barreFusion.id, maxCapacity: 12 },
   });
 
   // Rooms — CDMX Polanco
   const roomReformerPolanco = await prisma.room.create({
-    data: { name: "Sala Reformer", studioId: studioPolanco.id, classTypeId: reformer.id, maxCapacity: 12 },
+    data: { tenantId, name: "Sala Reformer", studioId: studioPolanco.id, classTypeId: reformer.id, maxCapacity: 12 },
   });
   const roomMatPolanco = await prisma.room.create({
-    data: { name: "Sala Mat", studioId: studioPolanco.id, classTypeId: matFlow.id, maxCapacity: 18 },
+    data: { tenantId, name: "Sala Mat", studioId: studioPolanco.id, classTypeId: matFlow.id, maxCapacity: 18 },
   });
   const roomBarrePolanco = await prisma.room.create({
-    data: { name: "Sala Barre", studioId: studioPolanco.id, classTypeId: barreFusion.id, maxCapacity: 14 },
+    data: { tenantId, name: "Sala Barre", studioId: studioPolanco.id, classTypeId: barreFusion.id, maxCapacity: 14 },
   });
 
   // Map classType → rooms (alternate between Madrid studios; Polanco classes are separate)
@@ -151,6 +180,9 @@ async function main() {
       countryId: spain.id,
       cityId: madrid.id,
     },
+  });
+  await prisma.membership.create({
+    data: { userId: admin.id, tenantId, role: Role.ADMIN },
   });
   console.log("✓ Created admin user");
 
@@ -199,11 +231,15 @@ async function main() {
     const profile = await prisma.coachProfile.create({
       data: {
         userId: user.id,
+        tenantId,
         bio: c.bio,
         specialties: c.specialties,
         photoUrl: c.photoUrl,
         color: c.color,
       },
+    });
+    await prisma.membership.create({
+      data: { userId: user.id, tenantId, role: Role.COACH },
     });
     coachProfiles.push(profile);
   }
@@ -213,6 +249,7 @@ async function main() {
   const packages = await Promise.all([
     prisma.package.create({
       data: {
+        tenantId,
         name: "Primera Vez",
         credits: 1,
         validDays: 7,
@@ -225,6 +262,7 @@ async function main() {
     }),
     prisma.package.create({
       data: {
+        tenantId,
         name: "Clase Individual",
         credits: 1,
         validDays: 30,
@@ -236,6 +274,7 @@ async function main() {
     }),
     prisma.package.create({
       data: {
+        tenantId,
         name: "Pack 5 Clases",
         credits: 5,
         validDays: 60,
@@ -247,6 +286,7 @@ async function main() {
     }),
     prisma.package.create({
       data: {
+        tenantId,
         name: "Pack 10 Clases",
         credits: 10,
         validDays: 90,
@@ -258,6 +298,7 @@ async function main() {
     }),
     prisma.package.create({
       data: {
+        tenantId,
         name: "Pack 25 Clases",
         credits: 25,
         validDays: 180,
@@ -269,6 +310,7 @@ async function main() {
     }),
     prisma.package.create({
       data: {
+        tenantId,
         name: "Pack 50 Clases",
         credits: 50,
         validDays: 365,
@@ -280,6 +322,7 @@ async function main() {
     }),
     prisma.package.create({
       data: {
+        tenantId,
         name: "Ilimitado Mensual",
         credits: null,
         validDays: 30,
@@ -347,6 +390,7 @@ async function main() {
 
       const cls = await prisma.class.create({
         data: {
+          tenantId,
           classTypeId: classType.id,
           coachId: coach.id,
           roomId: room.id,
@@ -431,11 +475,19 @@ async function main() {
     },
   });
 
+  // Create memberships for all clients
+  for (const client of [clientWithPack10, clientExpired, clientUnlimited, clientPrimeraVez, clientNoPackage]) {
+    await prisma.membership.create({
+      data: { userId: client.id, tenantId, role: Role.CLIENT },
+    });
+  }
+
   console.log("✓ Created 5 sample clients");
 
   // --- User Packages (creditsUsed will be updated after bookings) ---
   const upMaria = await prisma.userPackage.create({
     data: {
+      tenantId,
       userId: clientWithPack10.id,
       packageId: pack10.id,
       creditsTotal: 10,
@@ -446,6 +498,7 @@ async function main() {
 
   const upSofia = await prisma.userPackage.create({
     data: {
+      tenantId,
       userId: clientExpired.id,
       packageId: pack10.id,
       creditsTotal: 10,
@@ -456,6 +509,7 @@ async function main() {
 
   const upCamila = await prisma.userPackage.create({
     data: {
+      tenantId,
       userId: clientUnlimited.id,
       packageId: ilimitado.id,
       creditsTotal: null,
@@ -466,6 +520,7 @@ async function main() {
 
   const upLucia = await prisma.userPackage.create({
     data: {
+      tenantId,
       userId: clientPrimeraVez.id,
       packageId: primeraVez.id,
       creditsTotal: 1,
@@ -494,6 +549,7 @@ async function main() {
     const pkgUsed = userPackageMap[client.id] ?? null;
     await prisma.booking.create({
       data: {
+        tenantId,
         classId: pastClasses[i].id,
         userId: client.id,
         status,
@@ -510,6 +566,7 @@ async function main() {
     const cls = pastClasses[pastClasses.length - 1 - i];
     await prisma.booking.create({
       data: {
+        tenantId,
         classId: cls.id,
         userId: clientWithPack10.id,
         status: BookingStatus.CANCELLED,
@@ -535,6 +592,9 @@ async function main() {
         role: Role.CLIENT,
         image: `https://i.pravatar.cc/200?img=${i + 10}`,
       },
+    });
+    await prisma.membership.create({
+      data: { userId: u.id, tenantId, role: Role.CLIENT },
     });
     fillerUsers.push(u);
   }
@@ -570,6 +630,7 @@ async function main() {
         const pkgUsed = userPackageMap[client.id] ?? null;
         await prisma.booking.create({
           data: {
+            tenantId,
             classId: cls.id,
             userId: client.id,
             status: BookingStatus.CONFIRMED,
@@ -628,7 +689,7 @@ async function main() {
       try {
         const pkgUsed = userPackageMap[allBookableUsers[b].id] ?? null;
         await prisma.booking.create({
-          data: { classId: fullClass.id, userId: allBookableUsers[b].id, status: BookingStatus.CONFIRMED, spotNumber: freeSpots[b], packageUsed: pkgUsed },
+          data: { tenantId, classId: fullClass.id, userId: allBookableUsers[b].id, status: BookingStatus.CONFIRMED, spotNumber: freeSpots[b], packageUsed: pkgUsed },
         });
         if (pkgUsed) creditsCounter[pkgUsed] = (creditsCounter[pkgUsed] ?? 0) + 1;
         bookingCount++;
@@ -646,8 +707,11 @@ async function main() {
           image: `https://i.pravatar.cc/200?img=${30 + w}`,
         },
       });
+      await prisma.membership.create({
+        data: { userId: waitUser.id, tenantId, role: Role.CLIENT },
+      });
       await prisma.waitlist.create({
-        data: { classId: fullClass.id, userId: waitUser.id, position: w + 1 },
+        data: { tenantId, classId: fullClass.id, userId: waitUser.id, position: w + 1 },
       });
       waitlistCount++;
     }
@@ -681,6 +745,7 @@ async function main() {
 
     const feedEvent = await prisma.feedEvent.create({
       data: {
+        tenantId,
         userId: coach.id,
         eventType: "CLASS_COMPLETED",
         visibility: "STUDIO_WIDE",
@@ -773,7 +838,7 @@ async function main() {
   let achCount = 0;
   for (const a of achievementRecords) {
     await prisma.userAchievement.create({
-      data: { userId: a.userId, achievementType: a.type, earnedAt: addDays(today, -3), metadata: {} },
+      data: { tenantId, userId: a.userId, achievementType: a.type, earnedAt: addDays(today, -3), metadata: {} },
     });
     achCount++;
   }
@@ -796,6 +861,7 @@ async function main() {
     const def = achievementLabels[type];
     await prisma.feedEvent.create({
       data: {
+        tenantId,
         userId: users[0].id,
         eventType: "ACHIEVEMENT_UNLOCKED",
         visibility: "STUDIO_WIDE",
@@ -873,6 +939,7 @@ async function main() {
   for (const [a, b] of friendshipPairs) {
     await prisma.friendship.create({
       data: {
+        tenantId,
         requesterId: a.id,
         addresseeId: b.id,
         status: "ACCEPTED",
@@ -884,6 +951,7 @@ async function main() {
   // One pending request
   await prisma.friendship.create({
     data: {
+      tenantId,
       requesterId: clientNoPackage.id,
       addresseeId: clientWithPack10.id,
       status: "PENDING",
@@ -930,6 +998,7 @@ async function main() {
         const pkgUsed = userPackageMap[friend.id] ?? null;
         await prisma.booking.create({
           data: {
+            tenantId,
             classId: cls.id,
             userId: friend.id,
             status: BookingStatus.CONFIRMED,
@@ -944,6 +1013,7 @@ async function main() {
 
     await prisma.feedEvent.create({
       data: {
+        tenantId,
         userId: friend.id,
         eventType: "CLASS_RESERVED",
         visibility: "FRIENDS_ONLY",
@@ -973,9 +1043,13 @@ async function main() {
   ];
 
   for (let i = 0; i < notifData.length; i++) {
+    const n = notifData[i];
     await prisma.notification.create({
       data: {
-        ...notifData[i],
+        tenantId,
+        userId: n.userId,
+        type: n.type,
+        actorId: n.actorId,
         createdAt: addDays(today, -(i)),
       },
     });

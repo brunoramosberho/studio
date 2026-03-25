@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireTenant, requireRole } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
+    const tenant = await requireTenant();
     const cityId = request.nextUrl.searchParams.get("cityId");
 
     const studios = await prisma.studio.findMany({
-      where: cityId ? { cityId } : {},
+      where: {
+        tenantId: tenant.id,
+        ...(cityId && { cityId }),
+      },
       include: {
         city: { include: { country: true } },
         rooms: {
@@ -27,10 +31,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { tenant } = await requireRole("ADMIN");
 
     const body = await request.json();
     const { name, address, cityId } = body;
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const studio = await prisma.studio.create({
-      data: { name, address: address || null, cityId },
+      data: { name, address: address || null, cityId, tenantId: tenant.id },
       include: {
         city: { include: { country: true } },
         rooms: {

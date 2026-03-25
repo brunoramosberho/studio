@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireTenant, requireAuth } from "@/lib/tenant";
 import { sendPushToUser } from "@/lib/push";
 
 export async function GET(
@@ -8,10 +8,11 @@ export async function GET(
   { params }: { params: Promise<{ eventId: string }> },
 ) {
   try {
+    const tenant = await requireTenant();
     const { eventId } = await params;
 
     const comments = await prisma.comment.findMany({
-      where: { feedEventId: eventId },
+      where: { feedEventId: eventId, feedEvent: { tenantId: tenant.id } },
       orderBy: { createdAt: "asc" },
       include: {
         user: { select: { id: true, name: true, image: true } },
@@ -33,10 +34,7 @@ export async function POST(
   { params }: { params: Promise<{ eventId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, tenant } = await requireAuth();
 
     const { eventId } = await params;
     const body = await request.json();
@@ -52,6 +50,15 @@ export async function POST(
       );
     }
 
+    const feedEvent = await prisma.feedEvent.findFirst({
+      where: { id: eventId, tenantId: tenant.id },
+      select: { id: true, userId: true },
+    });
+
+    if (!feedEvent) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
     const comment = await prisma.comment.create({
       data: {
         userId: session.user.id,
@@ -64,11 +71,7 @@ export async function POST(
       },
     });
 
-    const feedEvent = await prisma.feedEvent.findUnique({
-      where: { id: eventId },
-      select: { userId: true },
-    });
-    if (feedEvent && feedEvent.userId !== session.user.id) {
+    if (feedEvent.userId !== session.user.id) {
       const commenterName = session.user.name?.split(" ")[0] ?? "Alguien";
       const preview = commentBody.trim().slice(0, 60);
       sendPushToUser(feedEvent.userId, {

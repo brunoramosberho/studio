@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Home, Dumbbell, CalendarCheck, User, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTenant } from "@/components/tenant-provider";
 
 const tabs = [
   { href: "/my", icon: Home, label: "Feed" },
@@ -19,9 +20,9 @@ export function MobileNav() {
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  if (!session?.user) return null;
+  const { role } = useTenant();
 
-  const role = (session.user as Record<string, unknown>).role;
+  if (!session?.user) return null;
   if (role === "ADMIN") return null;
 
   const shouldHide = hiddenOnPaths.some(

@@ -7,6 +7,10 @@ import Credentials from "next-auth/providers/credentials";
 import crypto from "crypto";
 import { prisma } from "./db";
 
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
+const rootHostname = ROOT_DOMAIN.split(":")[0];
+const isProduction = process.env.NODE_ENV === "production";
+
 const providers: Provider[] = [];
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
@@ -25,7 +29,7 @@ if (process.env.RESEND_API_KEY) {
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.EMAIL_FROM || "hola@magicpay.mx",
       async sendVerificationRequest({ identifier: email, url, provider }) {
-        const { getServerBranding } = await import("./branding");
+        const { getServerBranding } = await import("./branding.server");
         const { Resend: ResendClient } = await import("resend");
         const b = await getServerBranding();
         const studioFull = `${b.studioName} Studio`;
@@ -120,15 +124,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
     verifyRequest: "/login?verify=true",
   },
+  cookies: {
+    sessionToken: {
+      name: isProduction ? "__Secure-authjs.session-token" : "authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: isProduction,
+        domain: isProduction ? `.${rootHostname}` : undefined,
+      },
+    },
+  },
   callbacks: {
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
-          select: { role: true },
+          select: { isSuperAdmin: true },
         });
-        (session.user as unknown as Record<string, unknown>).role = dbUser?.role || "CLIENT";
+        (session.user as unknown as Record<string, unknown>).isSuperAdmin =
+          dbUser?.isSuperAdmin ?? false;
       }
       return session;
     },

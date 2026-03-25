@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth, requireTenant } from "@/lib/tenant";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
     const body = await request.json();
     const { packageId, email, name } = body;
 
@@ -15,7 +14,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = session?.user?.id ?? null;
+    const tenant = await requireTenant();
+    let session: Awaited<ReturnType<typeof requireAuth>>["session"] | null = null;
+    let userId: string | null = null;
+
+    try {
+      const ctx = await requireAuth();
+      session = ctx.session;
+      userId = ctx.session.user!.id!;
+    } catch {
+      // Guest purchase allowed
+    }
 
     if (!userId && (!email || !name)) {
       return NextResponse.json(
@@ -28,7 +37,7 @@ export async function POST(request: NextRequest) {
       where: { id: packageId },
     });
 
-    if (!pkg || !pkg.isActive) {
+    if (!pkg || !pkg.isActive || pkg.tenantId !== tenant.id) {
       return NextResponse.json(
         { error: "Paquete no encontrado" },
         { status: 404 },
@@ -44,6 +53,7 @@ export async function POST(request: NextRequest) {
         packageName: pkg.name,
         price: pkg.price,
         userId,
+        tenantId: tenant.id,
         successUrl: `${origin}/packages/success?session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${origin}/packages`,
       });
@@ -71,6 +81,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: finalUserId,
         packageId: pkg.id,
+        tenantId: tenant.id,
         creditsTotal: pkg.credits,
         creditsUsed: 0,
         expiresAt,

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
+    const tenant = await requireTenant();
     const session = await auth();
     const body = await request.json();
     const { email, name, packageId, classId, spotNumber, privacy } = body;
@@ -25,13 +27,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pkg = await prisma.package.findUnique({ where: { id: packageId } });
+    const pkg = await prisma.package.findUnique({
+      where: { id: packageId, tenantId: tenant.id },
+    });
     if (!pkg || !pkg.isActive) {
       return NextResponse.json({ error: "Paquete no encontrado" }, { status: 404 });
     }
 
     const classData = await prisma.class.findUnique({
-      where: { id: classId },
+      where: { id: classId, tenantId: tenant.id },
       include: {
         classType: true,
         room: { include: { studio: true } },
@@ -57,7 +61,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Número de lugar inválido" }, { status: 400 });
       }
       const spotTaken = await prisma.booking.findFirst({
-        where: { classId, spotNumber, status: "CONFIRMED" },
+        where: { classId, tenantId: tenant.id, spotNumber, status: "CONFIRMED" },
       });
       if (spotTaken) {
         return NextResponse.json(
@@ -84,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     const existingBooking = await prisma.booking.findFirst({
-      where: { classId, userId: finalUserId, status: "CONFIRMED" },
+      where: { classId, tenantId: tenant.id, userId: finalUserId, status: "CONFIRMED" },
     });
     if (existingBooking) {
       return NextResponse.json(
@@ -101,6 +105,7 @@ export async function POST(request: NextRequest) {
     const { userPackage, booking } = await prisma.$transaction(async (tx) => {
       const up = await tx.userPackage.create({
         data: {
+          tenantId: tenant.id,
           userId: finalUserId!,
           packageId: pkg.id,
           creditsTotal: pkg.credits,
@@ -113,6 +118,7 @@ export async function POST(request: NextRequest) {
 
       const bk = await tx.booking.create({
         data: {
+          tenantId: tenant.id,
           classId,
           userId: finalUserId!,
           spotNumber: spotNumber ?? null,
@@ -149,6 +155,7 @@ export async function POST(request: NextRequest) {
       prisma.feedEvent
         .create({
           data: {
+            tenantId: tenant.id,
             userId: finalUserId!,
             eventType: "CLASS_RESERVED",
             visibility: "FRIENDS_ONLY",

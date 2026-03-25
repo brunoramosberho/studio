@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireTenant, getAuthContext } from "@/lib/tenant";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const tenant = await requireTenant();
+    const authCtx = await getAuthContext();
     const { id } = await params;
 
     const events = await prisma.feedEvent.findMany({
-      where: { eventType: "CLASS_COMPLETED" },
+      where: { eventType: "CLASS_COMPLETED", tenantId: tenant.id },
       orderBy: { createdAt: "desc" },
     });
 
@@ -23,6 +24,8 @@ export async function GET(
     if (!feedEvent) {
       return NextResponse.json({ feedEvent: null });
     }
+
+    const currentUserId = authCtx?.session?.user?.id;
 
     const [photos, comments, likeCount, myLike] = await Promise.all([
       prisma.photo.findMany({
@@ -36,11 +39,11 @@ export async function GET(
         include: { user: { select: { id: true, name: true, image: true } } },
       }),
       prisma.like.count({ where: { feedEventId: feedEvent.id } }),
-      session?.user?.id
+      currentUserId
         ? prisma.like.findUnique({
             where: {
               userId_feedEventId: {
-                userId: session.user.id,
+                userId: currentUserId,
                 feedEventId: feedEvent.id,
               },
             },

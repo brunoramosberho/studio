@@ -1,46 +1,52 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { requireRole } from "@/lib/tenant";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const ctx = await requireRole("ADMIN");
 
-  const clients = await prisma.user.findMany({
+  const memberships = await prisma.membership.findMany({
     where: {
+      tenantId: ctx.tenant.id,
       role: "CLIENT",
-      NOT: [
-        { email: { contains: "filler" } },
-        { email: { contains: "waitlist" } },
-      ],
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      image: true,
-      packages: {
-        orderBy: { expiresAt: "desc" },
-        take: 1,
-        include: { package: { select: { name: true } } },
+      user: {
+        NOT: [
+          { email: { contains: "filler" } },
+          { email: { contains: "waitlist" } },
+        ],
       },
-      bookings: {
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        include: {
-          class: {
-            include: { classType: { select: { name: true } } },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          packages: {
+            where: { tenantId: ctx.tenant.id },
+            orderBy: { expiresAt: "desc" },
+            take: 1,
+            include: { package: { select: { name: true } } },
           },
+          bookings: {
+            orderBy: { createdAt: "desc" },
+            take: 5,
+            include: {
+              class: {
+                include: { classType: { select: { name: true } } },
+              },
+            },
+          },
+          _count: { select: { bookings: true } },
         },
       },
-      _count: { select: { bookings: true } },
     },
     orderBy: { createdAt: "asc" },
   });
 
-  const result = clients.map((c) => {
+  const result = memberships.map((m) => {
+    const c = m.user;
     const activePkg = c.packages.find(
       (p) => new Date(p.expiresAt) > new Date(),
     );

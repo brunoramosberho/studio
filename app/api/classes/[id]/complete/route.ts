@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/tenant";
 import {
   checkAchievements,
   createGroupedAchievementEvents,
@@ -14,18 +14,14 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    const role = (session?.user as Record<string, unknown>)?.role;
-    if (!session?.user || (role !== "ADMIN" && role !== "COACH")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const ctx = await requireRole("ADMIN", "COACH");
 
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const { attendedUserIds } = body as { attendedUserIds?: string[] };
 
-    const cls = await prisma.class.findUnique({
-      where: { id },
+    const cls = await prisma.class.findFirst({
+      where: { id, tenantId: ctx.tenant.id },
       include: {
         classType: true,
         coach: { include: { user: { select: { name: true } } } },
@@ -68,6 +64,7 @@ export async function POST(
 
     await prisma.feedEvent.create({
       data: {
+        tenantId: ctx.tenant.id,
         userId: cls.coach.userId,
         eventType: "CLASS_COMPLETED",
         visibility: "STUDIO_WIDE",
@@ -86,12 +83,12 @@ export async function POST(
 
     const allGrants: GrantedAchievement[] = [];
     for (const userId of idsToMark) {
-      const granted = await checkAchievements(userId);
+      const granted = await checkAchievements(userId, ctx.tenant.id);
       allGrants.push(...granted);
     }
 
     if (allGrants.length > 0) {
-      await createGroupedAchievementEvents(allGrants);
+      await createGroupedAchievementEvents(allGrants, ctx.tenant.id);
     }
 
     return NextResponse.json({
@@ -100,6 +97,9 @@ export async function POST(
       achievementsGranted: allGrants.length,
     });
   } catch (error) {
+    if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
+    }
     console.error("POST /api/classes/[id]/complete error:", error);
     return NextResponse.json(
       { error: "Failed to complete class" },

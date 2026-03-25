@@ -44,6 +44,7 @@
     "react-easy-crop": "^5.5.7",
     "recharts": "^3.8.0",
     "resend": "^6.9.3",
+    "server-only": "^0.0.1",
     "stripe": "^20.4.1",
     "tailwind-merge": "^3.5.0",
     "web-push": "^3.6.7",

@@ -1,20 +1,14 @@
 import { ImageResponse } from "next/og";
-import { prisma } from "@/lib/db";
+import { getServerBranding } from "@/lib/branding.server";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
 export default async function AppleIcon() {
   try {
-    const settings = await prisma.studioSettings.findUnique({
-      where: { id: "singleton" },
-      select: { appIconUrl: true, studioName: true, colorBg: true, colorAccent: true },
-    });
+    const b = await getServerBranding();
 
-    const iconUrl = settings?.appIconUrl;
-    const bg = settings?.colorBg || "#FAF9F6";
-
-    if (iconUrl) {
+    if (b.appIconUrl) {
       return new ImageResponse(
         (
           <div
@@ -24,19 +18,18 @@ export default async function AppleIcon() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: bg,
+              background: b.colorBg,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={iconUrl} width={180} height={180} style={{ objectFit: "contain" }} alt="" />
+            <img src={b.appIconUrl} width={180} height={180} style={{ objectFit: "contain" }} alt="" />
           </div>
         ),
         { ...size },
       );
     }
 
-    const name = settings?.studioName || "S";
-    const fg = settings?.colorAccent || "#1C1917";
+    const initial = b.studioName.charAt(0).toUpperCase();
 
     return new ImageResponse(
       (
@@ -47,15 +40,15 @@ export default async function AppleIcon() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: bg,
+            background: b.colorBg,
             borderRadius: 36,
             fontFamily: "system-ui, sans-serif",
             fontWeight: 700,
             fontSize: 80,
-            color: fg,
+            color: b.colorAccent,
           }}
         >
-          {name.charAt(0).toUpperCase()}
+          {initial}
         </div>
       ),
       { ...size },
@@ -78,7 +71,7 @@ export default async function AppleIcon() {
             color: "#1C1917",
           }}
         >
-          S
+          R
         </div>
       ),
       { ...size },

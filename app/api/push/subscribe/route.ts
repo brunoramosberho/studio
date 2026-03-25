@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/tenant";
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { session, tenant } = await requireAuth();
 
   const { endpoint, p256dh, auth: authKey } = await request.json();
 
@@ -21,11 +18,13 @@ export async function POST(request: NextRequest) {
       endpoint,
       p256dh,
       auth: authKey,
+      tenantId: tenant.id,
     },
     update: {
       userId: session.user.id,
       p256dh,
       auth: authKey,
+      tenantId: tenant.id,
     },
   });
 
@@ -33,10 +32,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { session, tenant } = await requireAuth();
 
   const { endpoint } = await request.json();
 
@@ -45,7 +41,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   await prisma.pushSubscription.deleteMany({
-    where: { endpoint, userId: session.user.id },
+    where: { endpoint, userId: session.user.id, tenantId: tenant.id },
   });
 
   return NextResponse.json({ ok: true });

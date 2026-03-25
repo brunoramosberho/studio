@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/tenant";
 
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const ctx = await requireRole("ADMIN");
+    const tenantId = ctx.tenant.id;
 
     const now = new Date();
     const startOfToday = new Date(now);
@@ -34,6 +32,7 @@ export async function GET() {
         where: {
           createdAt: { gte: startOfToday, lte: endOfToday },
           status: { in: ["CONFIRMED", "ATTENDED"] },
+          class: { tenantId },
         },
       }),
 
@@ -41,23 +40,26 @@ export async function GET() {
         where: {
           createdAt: { gte: startOfWeek },
           status: { in: ["CONFIRMED", "ATTENDED"] },
+          class: { tenantId },
         },
       }),
 
       prisma.userPackage.findMany({
-        where: { purchasedAt: { gte: startOfWeek } },
+        where: { purchasedAt: { gte: startOfWeek }, tenantId },
         include: { package: { select: { price: true } } },
       }),
 
-      prisma.user.count({
+      prisma.membership.count({
         where: {
           createdAt: { gte: startOfWeek },
+          tenantId,
           role: "CLIENT",
         },
       }),
 
       prisma.class.findMany({
         where: {
+          tenantId,
           startsAt: { gte: thirtyDaysAgo },
           status: { in: ["SCHEDULED", "COMPLETED"] },
         },
@@ -74,6 +76,7 @@ export async function GET() {
         where: {
           createdAt: { gte: thirtyDaysAgo },
           status: { in: ["CONFIRMED", "ATTENDED"] },
+          class: { tenantId },
         },
         _count: { id: true },
         orderBy: { _count: { id: "desc" } },

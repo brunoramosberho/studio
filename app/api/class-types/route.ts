@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireTenant, requireRole } from "@/lib/tenant";
 
 export async function GET() {
   try {
+    const tenant = await requireTenant();
+
     const classTypes = await prisma.classType.findMany({
+      where: { tenantId: tenant.id },
       orderBy: { name: "asc" },
       include: {
         _count: { select: { classes: true, rooms: true } },
@@ -19,10 +22,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const ctx = await requireRole("ADMIN");
 
     const body = await request.json();
     const { name, description, duration, level, color, icon } = body;
@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
 
     const classType = await prisma.classType.create({
       data: {
+        tenantId: ctx.tenant.id,
         name,
         description: description || null,
         duration: parseInt(duration, 10),
@@ -48,6 +49,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(classType, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
+    }
     console.error("POST /api/class-types error:", error);
     return NextResponse.json({ error: "Failed to create" }, { status: 500 });
   }

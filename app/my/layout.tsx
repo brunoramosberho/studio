@@ -1,23 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
 import { PushManager } from "@/components/shared/push-manager";
+import { useTenant } from "@/components/tenant-provider";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
   const router = useRouter();
-  const role = (session?.user as Record<string, unknown> | undefined)?.role;
+  const { role, loading } = useTenant();
 
   useEffect(() => {
-    if (role === "ADMIN") {
+    if (!loading && role === "ADMIN") {
       router.replace("/admin");
     }
-  }, [role, router]);
+  }, [role, loading, router]);
 
-  if (role === "ADMIN") return null;
+  if (loading || role === "ADMIN") return null;
 
   return (
     <div className="min-h-dvh bg-background">

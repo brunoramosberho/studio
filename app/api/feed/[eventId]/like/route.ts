@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/tenant";
 import { sendPushToUser } from "@/lib/push";
 
 export async function POST(
@@ -8,12 +8,17 @@ export async function POST(
   { params }: { params: Promise<{ eventId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, tenant } = await requireAuth();
 
     const { eventId } = await params;
+
+    const feedEvent = await prisma.feedEvent.findFirst({
+      where: { id: eventId, tenantId: tenant.id },
+      select: { id: true, userId: true },
+    });
+    if (!feedEvent) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
     const body = await request.json().catch(() => ({}));
     const type = (body as { type?: string }).type ?? "like";
 
@@ -34,11 +39,7 @@ export async function POST(
       },
     });
 
-    const feedEvent = await prisma.feedEvent.findUnique({
-      where: { id: eventId },
-      select: { userId: true },
-    });
-    if (feedEvent && feedEvent.userId !== session.user.id) {
+    if (feedEvent.userId !== session.user.id) {
       const likerName = session.user.name?.split(" ")[0] ?? "Alguien";
       const label = type === "kudos" ? "te dio kudos" : "le dio like a tu actividad";
       sendPushToUser(feedEvent.userId, {

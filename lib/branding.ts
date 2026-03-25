@@ -1,3 +1,5 @@
+import type { Tenant } from "@prisma/client";
+
 export interface StudioBranding {
   studioName: string;
   tagline: string;
@@ -19,7 +21,7 @@ export interface StudioBranding {
 }
 
 export const DEFAULTS: StudioBranding = {
-  studioName: "Flō",
+  studioName: "Reserva",
   tagline: "Pilates & Wellness",
   slogan: "Muévete. Respira. Floréce.",
   metaDescription: "Tu espacio de Pilates y bienestar.",
@@ -62,16 +64,25 @@ export function getFontPairing(id: string): FontPairing {
   return FONT_PAIRINGS.find((p) => p.id === id) ?? FONT_PAIRINGS[0];
 }
 
-/** Server-side helper to get branding from DB */
-export async function getServerBranding(): Promise<StudioBranding> {
-  try {
-    const { prisma } = await import("@/lib/db");
-    const settings = await prisma.studioSettings.findUnique({
-      where: { id: "singleton" },
-    });
-    if (!settings) return DEFAULTS;
-    return settings as unknown as StudioBranding;
-  } catch {
-    return DEFAULTS;
-  }
+export function tenantToBranding(tenant: Tenant): StudioBranding {
+  return {
+    studioName: tenant.name,
+    tagline: tenant.tagline,
+    slogan: tenant.slogan,
+    metaDescription: tenant.metaDescription,
+    logoUrl: tenant.logoUrl,
+    appIconUrl: tenant.appIconUrl,
+    fontPairing: tenant.fontPairing,
+    colorBg: tenant.colorBg,
+    colorFg: tenant.colorFg,
+    colorSurface: tenant.colorSurface,
+    colorAccent: tenant.colorAccent,
+    colorAccentSoft: tenant.colorAccentSoft,
+    colorMuted: tenant.colorMuted,
+    colorBorder: tenant.colorBorder,
+    colorCoach: tenant.colorCoach,
+    colorAdmin: tenant.colorAdmin,
+    coachIconSvg: tenant.coachIconSvg,
+  };
 }
+

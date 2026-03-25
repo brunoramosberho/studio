@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { getServerBranding } from "./branding";
+import { getServerBranding } from "./branding.server";
 
 let _stripe: Stripe | null = null;
 
@@ -21,6 +21,7 @@ export async function createCheckoutSession({
   packageName,
   price,
   userId,
+  tenantId,
   successUrl,
   cancelUrl,
 }: {
@@ -28,6 +29,7 @@ export async function createCheckoutSession({
   packageName: string;
   price: number;
   userId: string;
+  tenantId: string;
   successUrl: string;
   cancelUrl: string;
 }) {
@@ -54,6 +56,7 @@ export async function createCheckoutSession({
     metadata: {
       packageId,
       userId,
+      tenantId,
     },
   });
 

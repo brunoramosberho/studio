@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/tenant";
 import { sendPushToUser } from "@/lib/push";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+  const { session, tenant } = await requireAuth();
   const userId = session.user.id;
 
   const friendships = await prisma.friendship.findMany({
     where: {
+      tenantId: tenant.id,
       status: "ACCEPTED",
       OR: [{ requesterId: userId }, { addresseeId: userId }],
     },
@@ -29,7 +26,7 @@ export async function GET() {
   });
 
   const pending = await prisma.friendship.findMany({
-    where: { addresseeId: userId, status: "PENDING" },
+    where: { tenantId: tenant.id, addresseeId: userId, status: "PENDING" },
     include: {
       requester: { select: { id: true, name: true, image: true, email: true } },
     },
@@ -46,10 +43,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { session, tenant } = await requireAuth();
 
   const { targetUserId } = await request.json();
   if (!targetUserId || targetUserId === session.user.id) {
@@ -58,6 +52,7 @@ export async function POST(request: NextRequest) {
 
   const existing = await prisma.friendship.findFirst({
     where: {
+      tenantId: tenant.id,
       OR: [
         { requesterId: session.user.id, addresseeId: targetUserId },
         { requesterId: targetUserId, addresseeId: session.user.id },
@@ -80,7 +75,7 @@ export async function POST(request: NextRequest) {
   }
 
   const friendship = await prisma.friendship.create({
-    data: { requesterId: session.user.id, addresseeId: targetUserId },
+    data: { requesterId: session.user.id, addresseeId: targetUserId, tenantId: tenant.id },
   });
 
   await prisma.notification.create({
@@ -88,6 +83,7 @@ export async function POST(request: NextRequest) {
       userId: targetUserId,
       type: "FRIEND_REQUEST",
       actorId: session.user.id,
+      tenantId: tenant.id,
     },
   });
 

@@ -79,17 +79,19 @@ export const ACHIEVEMENT_DEFS: Record<
 
 async function grantAchievement(
   userId: string,
+  tenantId: string,
   achievementType: string,
   metadata?: Record<string, string | number>,
 ) {
   const existing = await prisma.userAchievement.findUnique({
-    where: { userId_achievementType: { userId, achievementType } },
+    where: { userId_tenantId_achievementType: { userId, tenantId, achievementType } },
   });
   if (existing) return null;
 
   await prisma.userAchievement.create({
     data: {
       userId,
+      tenantId,
       achievementType,
       metadata: (metadata ?? {}) as unknown as import("@prisma/client/runtime/library").JsonObject,
     },
@@ -109,6 +111,7 @@ export interface GrantedAchievement {
  */
 export async function createGroupedAchievementEvents(
   grants: GrantedAchievement[],
+  tenantId: string,
 ) {
   const byType = new Map<string, string[]>();
   for (const g of grants) {
@@ -127,6 +130,7 @@ export async function createGroupedAchievementEvents(
     await prisma.feedEvent.create({
       data: {
         userId: users[0].id,
+        tenantId,
         eventType: "ACHIEVEMENT_UNLOCKED",
         visibility: "STUDIO_WIDE",
         payload: {
@@ -145,7 +149,7 @@ export async function createGroupedAchievementEvents(
   }
 }
 
-export async function checkAchievements(userId: string) {
+export async function checkAchievements(userId: string, tenantId: string) {
   const attendedBookings = await prisma.booking.findMany({
     where: { userId, status: "ATTENDED" },
     include: { class: { include: { classType: true } } },
@@ -157,7 +161,7 @@ export async function checkAchievements(userId: string) {
 
   // FIRST_CLASS
   if (totalAttended >= 1) {
-    const r = await grantAchievement(userId, "FIRST_CLASS");
+    const r = await grantAchievement(userId, tenantId, "FIRST_CLASS");
     if (r) granted.push({ userId, achievementType: r });
   }
 
@@ -172,7 +176,7 @@ export async function checkAchievements(userId: string) {
   };
   for (const [name, achievement] of Object.entries(typeMap)) {
     if (classTypeNames.has(name)) {
-      const r = await grantAchievement(userId, achievement, { classType: name });
+      const r = await grantAchievement(userId, tenantId, achievement, { classType: name });
       if (r) granted.push({ userId, achievementType: r });
     }
   }
@@ -181,7 +185,7 @@ export async function checkAchievements(userId: string) {
   const milestones = [5, 10, 25, 50, 100] as const;
   for (const m of milestones) {
     if (totalAttended >= m) {
-      const r = await grantAchievement(userId, `MILESTONE_${m}`, { count: m });
+      const r = await grantAchievement(userId, tenantId, `MILESTONE_${m}`, { count: m });
       if (r) granted.push({ userId, achievementType: r });
     }
   }
@@ -190,11 +194,11 @@ export async function checkAchievements(userId: string) {
   for (const b of attendedBookings) {
     const hour = new Date(b.class.startsAt).getHours();
     if (hour < 7) {
-      const r = await grantAchievement(userId, "EARLY_BIRD");
+      const r = await grantAchievement(userId, tenantId, "EARLY_BIRD");
       if (r) granted.push({ userId, achievementType: r });
     }
     if (hour >= 20) {
-      const r = await grantAchievement(userId, "NIGHT_OWL");
+      const r = await grantAchievement(userId, tenantId, "NIGHT_OWL");
       if (r) granted.push({ userId, achievementType: r });
     }
   }
@@ -208,7 +212,7 @@ export async function checkAchievements(userId: string) {
   }
   for (const count of weekCounts.values()) {
     if (count >= 5) {
-      const r = await grantAchievement(userId, "WEEK_WARRIOR");
+      const r = await grantAchievement(userId, tenantId, "WEEK_WARRIOR");
       if (r) granted.push({ userId, achievementType: r });
       break;
     }
@@ -239,11 +243,11 @@ export async function checkAchievements(userId: string) {
   }
 
   if (maxStreak >= 7) {
-    const r = await grantAchievement(userId, "STREAK_7");
+    const r = await grantAchievement(userId, tenantId, "STREAK_7");
     if (r) granted.push({ userId, achievementType: r });
   }
   if (maxStreak >= 30) {
-    const r = await grantAchievement(userId, "STREAK_30");
+    const r = await grantAchievement(userId, tenantId, "STREAK_30");
     if (r) granted.push({ userId, achievementType: r });
   }
 

@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/tenant";
 import { sendPushToUser } from "@/lib/push";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ friendshipId: string }> },
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { session, tenant } = await requireAuth();
 
   const { friendshipId } = await params;
   const { action } = await request.json();
@@ -23,7 +20,7 @@ export async function PATCH(
     where: { id: friendshipId },
   });
 
-  if (!friendship || friendship.addresseeId !== session.user.id) {
+  if (!friendship || friendship.tenantId !== tenant.id || friendship.addresseeId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -42,6 +39,7 @@ export async function PATCH(
         userId: friendship.requesterId,
         type: "FRIEND_ACCEPTED",
         actorId: session.user.id,
+        tenantId: tenant.id,
       },
     });
 
@@ -61,10 +59,7 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ friendshipId: string }> },
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { session, tenant } = await requireAuth();
 
   const { friendshipId } = await params;
 
@@ -74,6 +69,7 @@ export async function DELETE(
 
   if (
     !friendship ||
+    friendship.tenantId !== tenant.id ||
     (friendship.requesterId !== session.user.id &&
       friendship.addresseeId !== session.user.id)
   ) {

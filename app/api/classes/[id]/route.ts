@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireTenant, requireRole, getAuthContext } from "@/lib/tenant";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const tenant = await requireTenant();
     const { id } = await params;
 
-    const session = await auth();
+    const authCtx = await getAuthContext();
+    const currentUserId = authCtx?.session?.user?.id;
 
-    const classData = await prisma.class.findUnique({
-      where: { id },
+    const classData = await prisma.class.findFirst({
+      where: { id, tenantId: tenant.id },
       include: {
         classType: true,
         room: { include: { studio: true } },
@@ -55,23 +57,23 @@ export async function GET(
     const spotsLeft = classData.room.maxCapacity - classData._count.bookings;
 
     const isCoachOrAdmin =
-      session?.user?.role === "COACH" || session?.user?.role === "ADMIN";
+      authCtx?.membership?.role === "COACH" || authCtx?.membership?.role === "ADMIN";
 
     // Build friend set for the current user (used for spot map)
     let friendIds = new Set<string>();
-    if (session?.user?.id) {
+    if (currentUserId) {
       const friendships = await prisma.friendship.findMany({
         where: {
           status: "ACCEPTED",
           OR: [
-            { requesterId: session.user.id },
-            { addresseeId: session.user.id },
+            { requesterId: currentUserId },
+            { addresseeId: currentUserId },
           ],
         },
         select: { requesterId: true, addresseeId: true },
       });
       for (const f of friendships) {
-        if (f.requesterId === session.user.id) friendIds.add(f.addresseeId);
+        if (f.requesterId === currentUserId) friendIds.add(f.addresseeId);
         else friendIds.add(f.requesterId);
       }
     }
@@ -84,7 +86,7 @@ export async function GET(
     }> = {};
     for (const b of classData.bookings) {
       if (b.spotNumber == null) continue;
-      if (b.userId === session?.user?.id) {
+      if (b.userId === currentUserId) {
         spotMap[b.spotNumber] = { status: "self", userName: b.user?.name, userImage: b.user?.image };
       } else if (b.userId && friendIds.has(b.userId) && b.privacy !== "PRIVATE") {
         spotMap[b.spotNumber] = { status: "friend", userName: b.user?.name, userImage: b.user?.image };
@@ -211,12 +213,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user || !["ADMIN", "COACH"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const ctx = await requireRole("ADMIN", "COACH");
 
     const { id } = await params;
+
+    const existing = await prisma.class.findFirst({
+      where: { id, tenantId: ctx.tenant.id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+
     const body = await request.json();
     const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag } = body;
 
@@ -243,6 +250,9 @@ export async function PUT(
 
     return NextResponse.json(updated);
   } catch (error) {
+    if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
+    }
     console.error("PUT /api/classes/[id] error:", error);
     return NextResponse.json(
       { error: "Failed to update class" },
@@ -256,12 +266,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const ctx = await requireRole("ADMIN");
 
     const { id } = await params;
+
+    const existing = await prisma.class.findFirst({
+      where: { id, tenantId: ctx.tenant.id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
 
     const cancelled = await prisma.class.update({
       where: { id },
@@ -270,6 +284,9 @@ export async function DELETE(
 
     return NextResponse.json(cancelled);
   } catch (error) {
+    if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
+    }
     console.error("DELETE /api/classes/[id] error:", error);
     return NextResponse.json(
       { error: "Failed to cancel class" },

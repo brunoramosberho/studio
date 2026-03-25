@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Navbar } from "@/components/shared/navbar";
 import { Footer } from "@/components/shared/footer";
 import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
+import { useTenant } from "@/components/tenant-provider";
 
 const sidebarPaths = ["/schedule", "/coaches", "/class/", "/book/", "/packages"];
 
@@ -19,8 +20,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const { data: session } = useSession();
   const pathname = usePathname();
   const router = useRouter();
+  const { role } = useTenant();
 
-  const role = (session?.user as Record<string, unknown> | undefined)?.role;
   const isAdmin = role === "ADMIN";
 
   useEffect(() => {

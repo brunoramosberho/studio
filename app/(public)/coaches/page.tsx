@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/shared/page-transition";
 import { prisma } from "@/lib/db";
-import { getServerBranding } from "@/lib/branding";
+import { getServerBranding } from "@/lib/branding.server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const b = await getServerBranding();

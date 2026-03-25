@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/tenant";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
 import { sendPushToUser } from "@/lib/push";
 
@@ -27,10 +27,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, tenant, membership } = await requireAuth();
 
     const { id } = await params;
     const body = await request.json();
@@ -44,7 +41,7 @@ export async function PUT(
     }
 
     const booking = await prisma.booking.findUnique({
-      where: { id },
+      where: { id, tenantId: tenant.id },
       include: { class: true },
     });
 
@@ -56,8 +53,8 @@ export async function PUT(
     }
 
     const isOwner = booking.userId === session.user.id;
-    const isAdmin = session.user.role === "ADMIN";
-    const isCoach = session.user.role === "COACH";
+    const isAdmin = membership.role === "ADMIN";
+    const isCoach = membership.role === "COACH";
     if (!isOwner && !isAdmin && !isCoach) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -67,7 +64,7 @@ export async function PUT(
     }
 
     const updated = await prisma.booking.update({
-      where: { id },
+      where: { id, tenantId: tenant.id },
       data: {
         status,
         ...(status === "CANCELLED" ? { spotNumber: null } : {}),
@@ -84,7 +81,7 @@ export async function PUT(
 
     if (status === "CANCELLED") {
       const waitlisted = await prisma.waitlist.findMany({
-        where: { classId: booking.classId },
+        where: { classId: booking.classId, tenantId: tenant.id },
         include: {
           class: { include: { classType: { select: { name: true } } } },
         },
@@ -102,9 +99,9 @@ export async function PUT(
     }
 
     if (status === "ATTENDED" && booking.userId) {
-      checkAchievements(booking.userId)
+      checkAchievements(booking.userId, tenant.id)
         .then((grants) => {
-          if (grants.length > 0) return createGroupedAchievementEvents(grants);
+          if (grants.length > 0) return createGroupedAchievementEvents(grants, tenant.id);
         })
         .catch((err) => console.error("Achievement check failed:", err));
     }
@@ -124,15 +121,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, tenant, membership } = await requireAuth();
 
     const { id } = await params;
 
     const booking = await prisma.booking.findUnique({
-      where: { id },
+      where: { id, tenantId: tenant.id },
       include: { class: true },
     });
 
@@ -144,7 +138,7 @@ export async function DELETE(
     }
 
     const isOwner = booking.userId === session.user.id;
-    const isAdmin = session.user.role === "ADMIN";
+    const isAdmin = membership.role === "ADMIN";
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -152,13 +146,13 @@ export async function DELETE(
     await restoreCreditIfEligible(booking);
 
     const cancelled = await prisma.booking.update({
-      where: { id },
+      where: { id, tenantId: tenant.id },
       data: { status: "CANCELLED", spotNumber: null },
     });
 
     // Notify waitlisted users that a spot opened up
     const waitlisted = await prisma.waitlist.findMany({
-      where: { classId: booking.classId },
+      where: { classId: booking.classId, tenantId: tenant.id },
       include: {
         class: { include: { classType: { select: { name: true } } } },
       },

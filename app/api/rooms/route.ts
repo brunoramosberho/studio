@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/tenant";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { tenant } = await requireRole("ADMIN");
 
     const body = await request.json();
     const { name, studioId, classTypeId, maxCapacity, layout } = body;
@@ -25,6 +22,7 @@ export async function POST(request: NextRequest) {
         studioId,
         classTypeId,
         maxCapacity: parseInt(maxCapacity, 10),
+        tenantId: tenant.id,
         ...(layout !== undefined && { layout: layout ?? undefined }),
       },
       include: {

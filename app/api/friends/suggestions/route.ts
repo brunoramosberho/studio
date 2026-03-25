@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/tenant";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+  const { session, tenant } = await requireAuth();
   const userId = session.user.id;
 
   const existingFriendships = await prisma.friendship.findMany({
     where: {
+      tenantId: tenant.id,
       OR: [{ requesterId: userId }, { addresseeId: userId }],
       status: { in: ["PENDING", "ACCEPTED"] },
     },
@@ -24,7 +21,12 @@ export async function GET() {
     excludeIds.add(f.addresseeId);
   }
 
-  // Suggest clients who attend the same classes
+  const tenantMemberIds = await prisma.membership.findMany({
+    where: { tenantId: tenant.id, role: "CLIENT", userId: { notIn: [...excludeIds] } },
+    select: { userId: true },
+  });
+  const memberIdSet = new Set(tenantMemberIds.map((m) => m.userId));
+
   const myClassIds = await prisma.booking.findMany({
     where: { userId, status: { in: ["CONFIRMED", "ATTENDED"] } },
     select: { classId: true },
@@ -39,7 +41,7 @@ export async function GET() {
       by: ["userId"],
       where: {
         classId: { in: classIds },
-        userId: { notIn: [...excludeIds] },
+        userId: { notIn: [...excludeIds], in: [...memberIdSet] },
         status: { in: ["CONFIRMED", "ATTENDED"] },
       },
       _count: { classId: true },
@@ -49,7 +51,7 @@ export async function GET() {
 
     const userIds = coAttendees.map((a) => a.userId).filter((id): id is string => id !== null);
     const users = await prisma.user.findMany({
-      where: { id: { in: userIds }, role: "CLIENT" },
+      where: { id: { in: userIds } },
       select: { id: true, name: true, image: true },
     });
 
@@ -62,21 +64,23 @@ export async function GET() {
       }));
   }
 
-  // If not enough suggestions, add random studio members
   if (suggestions.length < 5) {
-    const filler = await prisma.user.findMany({
+    const fillerMembers = await prisma.membership.findMany({
       where: {
+        tenantId: tenant.id,
         role: "CLIENT",
-        id: { notIn: [...excludeIds, ...suggestions.map((s) => s.id)] },
-        email: { not: { contains: "filler" } },
-        name: { not: { contains: "Waitlist" } },
+        userId: { notIn: [...excludeIds, ...suggestions.map((s) => s.id)] },
+        user: {
+          email: { not: { contains: "filler" } },
+          name: { not: { contains: "Waitlist" } },
+        },
       },
-      select: { id: true, name: true, image: true },
+      select: { user: { select: { id: true, name: true, image: true } } },
       take: 5 - suggestions.length,
       orderBy: { createdAt: "desc" },
     });
 
-    suggestions.push(...filler.map((u) => ({ ...u, mutualClasses: 0 })));
+    suggestions.push(...fillerMembers.map((m) => ({ ...m.user, mutualClasses: 0 })));
   }
 
   return NextResponse.json(suggestions);

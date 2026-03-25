@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireTenant, requireRole, getAuthContext } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
+    const tenant = await requireTenant();
     const { searchParams } = request.nextUrl;
     const from = searchParams.get("from");
     const to = searchParams.get("to");
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     const level = searchParams.get("level");
     const studioId = searchParams.get("studioId");
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { tenantId: tenant.id };
 
     if (from || to) {
       where.startsAt = {
@@ -23,8 +24,8 @@ export async function GET(request: NextRequest) {
 
     if (typeId) where.classTypeId = typeId;
     if (coachId) {
-      const profile = await prisma.coachProfile.findUnique({
-        where: { userId: coachId },
+      const profile = await prisma.coachProfile.findFirst({
+        where: { userId: coachId, tenantId: tenant.id },
         select: { id: true },
       });
       where.coachId = profile ? profile.id : coachId;
@@ -32,8 +33,8 @@ export async function GET(request: NextRequest) {
     if (level) where.classType = { level };
     if (studioId) where.room = { studioId };
 
-    const session = await auth();
-    const currentUserId = session?.user?.id;
+    const authCtx = await getAuthContext();
+    const currentUserId = authCtx?.session?.user?.id;
 
     let friendIds: string[] = [];
     if (currentUserId) {
@@ -110,10 +111,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const ctx = await requireRole("ADMIN");
 
     const body = await request.json();
     const { classTypeId, coachId, startsAt, endsAt, roomId, isRecurring, recurringId, notes, tag } = body;
@@ -127,6 +125,7 @@ export async function POST(request: NextRequest) {
 
     const newClass = await prisma.class.create({
       data: {
+        tenantId: ctx.tenant.id,
         classTypeId,
         coachId,
         roomId,
@@ -148,6 +147,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newClass, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
+    }
     console.error("POST /api/classes error:", error);
     return NextResponse.json(
       { error: "Failed to create class" },

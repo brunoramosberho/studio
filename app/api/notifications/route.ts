@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/tenant";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { session, tenant } = await requireAuth();
 
   const notifications = await prisma.notification.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, tenantId: tenant.id },
     include: {
       actor: { select: { id: true, name: true, image: true } },
     },
@@ -18,23 +15,20 @@ export async function GET() {
   });
 
   const unreadCount = await prisma.notification.count({
-    where: { userId: session.user.id, readAt: null },
+    where: { userId: session.user.id, tenantId: tenant.id, readAt: null },
   });
 
   return NextResponse.json({ notifications, unreadCount });
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { session, tenant } = await requireAuth();
 
   const { action } = await request.json();
 
   if (action === "read-all") {
     await prisma.notification.updateMany({
-      where: { userId: session.user.id, readAt: null },
+      where: { userId: session.user.id, tenantId: tenant.id, readAt: null },
       data: { readAt: new Date() },
     });
     return NextResponse.json({ ok: true });

@@ -47,19 +47,11 @@ const fontVars = [
   nunito, montserrat, roboto,
 ].map((f) => f.variable).join(" ");
 
-import { prisma } from "@/lib/db";
+import { getServerBranding } from "@/lib/branding.server";
 import { DEFAULTS } from "@/lib/branding";
 
-async function getSettings() {
-  try {
-    return (await prisma.studioSettings.findUnique({ where: { id: "singleton" } })) ?? DEFAULTS;
-  } catch {
-    return DEFAULTS;
-  }
-}
-
 export async function generateMetadata(): Promise<Metadata> {
-  const s = await getSettings();
+  const s = await getServerBranding();
   const fullName = `${s.studioName} Studio`;
 
   const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL

@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/tenant";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, tenant } = await requireAuth();
 
     const body = await request.json();
     const { classId } = body;
@@ -20,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const classData = await prisma.class.findUnique({
-      where: { id: classId },
+      where: { id: classId, tenantId: tenant.id },
     });
 
     if (!classData) {
@@ -28,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     const existingEntry = await prisma.waitlist.findFirst({
-      where: { classId, userId: session.user.id },
+      where: { classId, tenantId: tenant.id, userId: session.user.id },
     });
 
     if (existingEntry) {
@@ -39,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const maxPosition = await prisma.waitlist.aggregate({
-      where: { classId },
+      where: { classId, tenantId: tenant.id },
       _max: { position: true },
     });
 
@@ -47,6 +44,7 @@ export async function POST(request: NextRequest) {
 
     const entry = await prisma.waitlist.create({
       data: {
+        tenantId: tenant.id,
         classId,
         userId: session.user.id,
         position,

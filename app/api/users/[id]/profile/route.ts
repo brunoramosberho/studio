@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/tenant";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  let ctx;
+  try {
+    ctx = await requireAuth();
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id: targetId } = await params;
-  const currentUserId = session.user.id;
+  const currentUserId = ctx.session.user.id;
+  const tenantId = ctx.tenant.id;
 
   const user = await prisma.user.findUnique({
     where: { id: targetId },
@@ -20,10 +23,16 @@ export async function GET(
       id: true,
       name: true,
       image: true,
-      role: true,
       createdAt: true,
-      coachProfile: {
+      coachProfiles: {
+        where: { tenantId },
         select: { id: true, bio: true, specialties: true, photoUrl: true },
+        take: 1,
+      },
+      memberships: {
+        where: { tenantId },
+        select: { role: true },
+        take: 1,
       },
     },
   });
@@ -32,8 +41,12 @@ export async function GET(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const userRole = user.memberships[0]?.role ?? "CLIENT";
+  const coachProfile = user.coachProfiles[0] ?? null;
+
   const friendship = await prisma.friendship.findFirst({
     where: {
+      tenantId,
       OR: [
         { requesterId: currentUserId, addresseeId: targetId },
         { requesterId: targetId, addresseeId: currentUserId },
@@ -48,13 +61,14 @@ export async function GET(
 
   const friendCount = await prisma.friendship.count({
     where: {
+      tenantId,
       status: "ACCEPTED",
       OR: [{ requesterId: targetId }, { addresseeId: targetId }],
     },
   });
 
   const isFriend = friendshipStatus === "ACCEPTED";
-  const isCoach = user.role === "COACH";
+  const isCoach = userRole === "COACH";
 
   // Shared classes (classes both users attended/booked)
   const myClassIds = await prisma.booking.findMany({
@@ -73,7 +87,7 @@ export async function GET(
     id: user.id,
     name: user.name,
     image: user.image,
-    role: user.role,
+    role: userRole,
     memberSince: user.createdAt,
     friendCount,
     sharedClassCount,
@@ -86,11 +100,12 @@ export async function GET(
 
   // Coach: always show upcoming classes they teach
   let coachClasses: unknown[] = [];
-  if (isCoach && user.coachProfile) {
+  if (isCoach && coachProfile) {
     const now = new Date();
     const raw = await prisma.class.findMany({
       where: {
-        coachId: user.coachProfile.id,
+        tenantId,
+        coachId: coachProfile.id,
         startsAt: { gt: now },
         status: "SCHEDULED",
       },
@@ -133,8 +148,8 @@ export async function GET(
 
     return NextResponse.json({
       ...base,
-      coachBio: user.coachProfile.bio,
-      coachSpecialties: user.coachProfile.specialties,
+      coachBio: coachProfile.bio,
+      coachSpecialties: coachProfile.specialties,
       coachClasses,
     });
   }
@@ -206,6 +221,7 @@ export async function GET(
   // Find CLASS_RESERVED feed events for these upcoming classes
   const reservedFeedEvents = await prisma.feedEvent.findMany({
     where: {
+      tenantId,
       userId: targetId,
       eventType: "CLASS_RESERVED",
     },
@@ -260,6 +276,7 @@ export async function GET(
   // Feed events from this friend
   const feedEvents = await prisma.feedEvent.findMany({
     where: {
+      tenantId,
       userId: targetId,
       visibility: { in: ["STUDIO_WIDE", "FRIENDS_ONLY"] },
     },
