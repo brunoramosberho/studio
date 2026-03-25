@@ -285,9 +285,13 @@ export function BookingSheet({
 
                 <form onSubmit={handleInfoContinue} className="space-y-3">
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Email</label>
+                    <label htmlFor="guest-email" className="mb-1.5 block text-xs font-medium text-muted">Email</label>
                     <Input
+                      id="guest-email"
+                      name="email"
                       type="email"
+                      inputMode="email"
+                      autoComplete="email"
                       placeholder="tu@correo.com"
                       value={guestEmail}
                       onChange={(e) => handleEmailChange(e.target.value)}
@@ -361,8 +365,11 @@ export function BookingSheet({
                   {!(emailCheck?.exists && emailCheck?.hasCredits) && (
                     <>
                       <div>
-                        <label className="mb-1.5 block text-xs font-medium text-muted">Nombre</label>
+                        <label htmlFor="guest-name" className="mb-1.5 block text-xs font-medium text-muted">Nombre</label>
                         <Input
+                          id="guest-name"
+                          name="name"
+                          autoComplete="name"
                           placeholder="Tu nombre"
                           value={guestName}
                           onChange={(e) => setGuestName(e.target.value)}
