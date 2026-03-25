@@ -15,11 +15,66 @@ import {
   LogIn,
   UserCheck,
   ArrowRight,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn, formatTime } from "@/lib/utils";
 import type { Package } from "@prisma/client";
+
+function GuestLoginPrompt({ email, classId }: { email: string; classId: string }) {
+  const [magicSent, setMagicSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  async function handleMagicLink() {
+    setSending(true);
+    await signIn("resend", { email, callbackUrl: "/my/bookings", redirect: false });
+    setMagicSent(true);
+    setSending(false);
+  }
+
+  if (magicSent) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-5 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
+          <Mail className="h-5 w-5 text-accent" />
+        </div>
+        <p className="mt-3 text-sm font-medium text-foreground">
+          Revisa tu correo
+        </p>
+        <p className="mt-1 text-xs text-muted">
+          Enviamos un enlace a <span className="font-medium text-foreground">{email}</span> para acceder a tu cuenta.
+        </p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <>
+      <p className="mt-5 text-sm text-muted">
+        Accede a tu cuenta para ver tus reservas y gestionar tus clases.
+      </p>
+      <Button
+        onClick={() => signIn("google", { callbackUrl: "/my/bookings" })}
+        className="mt-4 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
+        size="lg"
+      >
+        <LogIn className="h-4 w-4" />
+        Continuar con Google
+      </Button>
+      <Button
+        variant="outline"
+        onClick={handleMagicLink}
+        disabled={sending}
+        className="mt-2 w-full gap-2 rounded-full"
+        size="lg"
+      >
+        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+        Enviar enlace a {email}
+      </Button>
+    </>
+  );
+}
 
 // Logged-in: package → booking → done
 // Guest: info → package → booking → done
@@ -33,7 +88,7 @@ interface BookingSheetProps {
   className: string;
   classTime: string;
   privacy: "PUBLIC" | "PRIVATE";
-  onSuccess: () => void;
+  onSuccess: (guestEmail?: string) => void;
 }
 
 interface EmailCheckResult {
@@ -135,6 +190,13 @@ export function BookingSheet({
   }
 
   useEffect(() => {
+    if (step === "done" && !isLoggedIn) {
+      const timer = setTimeout(() => onClose(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [step, isLoggedIn, onClose]);
+
+  useEffect(() => {
     if (open) {
       setStep(isLoggedIn ? "package" : "info");
       setSelectedPkg(null);
@@ -204,7 +266,7 @@ export function BookingSheet({
       setStep("done");
       queryClient.invalidateQueries({ queryKey: ["classes"] });
       queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
-      onSuccess();
+      onSuccess(isLoggedIn ? undefined : guestEmail);
     } catch {
       setError("Error de conexión");
       setStep("package");
@@ -242,7 +304,7 @@ export function BookingSheet({
         animate={{ y: 0 }}
         exit={{ y: "-100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 top-0 z-50 max-h-[65dvh] overflow-y-auto rounded-b-3xl bg-white pt-safe shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="fixed inset-x-0 top-0 z-50 max-h-[90dvh] overflow-y-auto rounded-b-3xl bg-white pt-safe shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[90vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
       >
         {/* Header */}
         <div className="px-6 pb-2 pt-4">
@@ -549,7 +611,7 @@ export function BookingSheet({
                   </span>
                 </div>
 
-                {isLoggedIn ? (
+                {isLoggedIn && (
                   <Button
                     onClick={() => router.push("/my/bookings")}
                     className="mt-8 w-full rounded-full bg-foreground text-background hover:bg-foreground/90"
@@ -557,23 +619,6 @@ export function BookingSheet({
                   >
                     Ver mis reservas
                   </Button>
-                ) : (
-                  <>
-                    <Button
-                      onClick={() => signIn("google", { callbackUrl: "/my/bookings" })}
-                      className="mt-8 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
-                      size="lg"
-                    >
-                      <LogIn className="h-4 w-4" />
-                      Iniciar sesión y ver reservas
-                    </Button>
-                    <button
-                      onClick={onClose}
-                      className="mt-3 text-xs text-muted transition-colors hover:text-foreground"
-                    >
-                      Cerrar
-                    </button>
-                  </>
                 )}
               </motion.div>
             )}

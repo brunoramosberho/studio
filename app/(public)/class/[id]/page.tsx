@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,6 +17,8 @@ import {
   Ticket,
   MapPin,
   Share,
+  LogIn,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +80,9 @@ export default function ClassDetailPage() {
   const [privacy, setPrivacy] = useState<"PUBLIC" | "PRIVATE">("PUBLIC");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [guestEmail, setGuestEmail] = useState<string | null>(null);
+  const [magicSent, setMagicSent] = useState(false);
+  const [sendingMagic, setSendingMagic] = useState(false);
 
   const {
     data: cls,
@@ -370,6 +375,69 @@ export default function ClassDetailPage() {
                   )}
                 </button>
               </div>
+
+              {/* Mobile install hint */}
+              {!isAuthenticated && guestEmail && typeof window !== "undefined" && /iPad|iPhone|iPod|android/i.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches && (
+                <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface/80 p-3 sm:hidden">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+                    <Share className="h-3.5 w-3.5 text-accent" />
+                  </div>
+                  <p className="text-xs text-muted">
+                    <strong className="text-foreground">Tip:</strong> Agrega esta app a tu pantalla de inicio para reservar más rápido.
+                  </p>
+                </div>
+              )}
+
+              {/* Guest login prompt */}
+              {!isAuthenticated && guestEmail && (
+                <div className="mt-4 rounded-xl border border-border/50 bg-white p-4">
+                  {magicSent ? (
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                        <Mail className="h-4 w-4 text-accent" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Revisa tu correo</p>
+                        <p className="text-xs text-muted">Enviamos un enlace a {guestEmail}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-foreground">
+                        Accede a tu cuenta
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted">
+                        Gestiona reservas, acumula logros y conecta con tu comunidad.
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => signIn("google", { callbackUrl: `/class/${id}` })}
+                          className="flex-1 gap-1.5 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                        >
+                          <LogIn className="h-3.5 w-3.5" />
+                          Google
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={sendingMagic}
+                          onClick={async () => {
+                            setSendingMagic(true);
+                            await signIn("resend", { email: guestEmail, callbackUrl: "/my/bookings", redirect: false });
+                            setMagicSent(true);
+                            setSendingMagic(false);
+                          }}
+                          className="flex-1 gap-1.5 rounded-full"
+                        >
+                          {sendingMagic ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                          Email
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -439,10 +507,11 @@ export default function ClassDetailPage() {
             className={cls.classType.name}
             classTime={cls.startsAt}
             privacy={privacy}
-            onSuccess={() => {
+            onSuccess={(email) => {
               setBookingSuccess(true);
               setBookedSpotNumber(selectedSpot);
               setSelectedSpot(null);
+              if (email) setGuestEmail(email);
               queryClient.invalidateQueries({ queryKey: ["classes", id] });
             }}
           />

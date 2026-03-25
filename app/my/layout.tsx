@@ -2,21 +2,27 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
 import { PushManager } from "@/components/shared/push-manager";
 import { useTenant } from "@/components/tenant-provider";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { status } = useSession();
   const { role, loading } = useTenant();
 
   useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/login");
+      return;
+    }
     if (!loading && role === "ADMIN") {
       router.replace("/admin");
     }
-  }, [role, loading, router]);
+  }, [status, role, loading, router]);
 
-  if (loading || role === "ADMIN") return null;
+  if (status === "loading" || status === "unauthenticated" || loading || role === "ADMIN") return null;
 
   return (
     <div className="min-h-dvh bg-background">
