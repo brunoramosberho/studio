@@ -124,7 +124,7 @@ export default function AdminStudiosPage() {
   const { data: classTypes } = useQuery<ClassType[]>({
     queryKey: ["class-types"],
     queryFn: async () => {
-      const res = await fetch("/api/classes?types=true");
+      const res = await fetch("/api/class-types");
       if (!res.ok) return [];
       return res.json();
     },
