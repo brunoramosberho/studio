@@ -53,7 +53,7 @@ const fadeUp = {
 interface StudioWithRooms {
   id: string;
   name: string;
-  rooms: { id: string; name: string; maxCapacity: number; classTypeId: string }[];
+  rooms: { id: string; name: string; maxCapacity: number; classTypes: { id: string; name: string }[] }[];
 }
 
 interface ClassFormData {
@@ -125,7 +125,7 @@ export default function AdminClassesPage() {
 
   const availableRooms = studios?.flatMap((s) =>
     s.rooms
-      .filter((r) => !formData.classTypeId || r.classTypeId === formData.classTypeId)
+      .filter((r) => !formData.classTypeId || r.classTypes.some((ct) => ct.id === formData.classTypeId))
       .map((r) => ({ ...r, studioName: s.name })),
   ) ?? [];
 

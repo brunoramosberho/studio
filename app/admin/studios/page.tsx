@@ -51,7 +51,7 @@ interface RoomData {
   id: string;
   name: string;
   maxCapacity: number;
-  classTypeId: string;
+  classTypes: { id: string; name: string }[];
   layout: RoomLayout | null;
 }
 
@@ -99,7 +99,7 @@ export default function AdminStudiosPage() {
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<(RoomData & { studioId: string }) | null>(null);
   const [roomForStudio, setRoomForStudio] = useState<string>("");
-  const [roomForm, setRoomForm] = useState({ name: "", classTypeId: "", maxCapacity: "", layout: createEmptyLayout() as RoomLayout });
+  const [roomForm, setRoomForm] = useState({ name: "", classTypeIds: [] as string[], maxCapacity: "", layout: createEmptyLayout() as RoomLayout });
 
   const [expandedStudio, setExpandedStudio] = useState<string | null>(null);
 
@@ -199,7 +199,7 @@ export default function AdminStudiosPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: roomForm.name,
-          classTypeId: roomForm.classTypeId,
+          classTypeIds: roomForm.classTypeIds,
           maxCapacity: capacity,
           layout: roomForm.layout.spots.length > 0 ? roomForm.layout : null,
           studioId: roomForStudio,
@@ -214,7 +214,7 @@ export default function AdminStudiosPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setRoomDialogOpen(false);
-      setRoomForm({ name: "", classTypeId: "", maxCapacity: "", layout: createEmptyLayout() });
+      setRoomForm({ name: "", classTypeIds: [], maxCapacity: "", layout: createEmptyLayout() });
       setRoomForStudio("");
     },
   });
@@ -228,7 +228,7 @@ export default function AdminStudiosPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: roomForm.name,
-          classTypeId: roomForm.classTypeId,
+          classTypeIds: roomForm.classTypeIds,
           maxCapacity: capacity,
           layout: roomForm.layout.spots.length > 0 ? roomForm.layout : null,
         }),
@@ -243,7 +243,7 @@ export default function AdminStudiosPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setRoomDialogOpen(false);
       setEditingRoom(null);
-      setRoomForm({ name: "", classTypeId: "", maxCapacity: "", layout: createEmptyLayout() });
+      setRoomForm({ name: "", classTypeIds: [], maxCapacity: "", layout: createEmptyLayout() });
     },
   });
 
@@ -275,7 +275,7 @@ export default function AdminStudiosPage() {
   function openCreateRoom(studioId: string) {
     setEditingRoom(null);
     setRoomForStudio(studioId);
-    setRoomForm({ name: "", classTypeId: "", maxCapacity: "", layout: createEmptyLayout() });
+    setRoomForm({ name: "", classTypeIds: [], maxCapacity: "", layout: createEmptyLayout() });
     setRoomDialogOpen(true);
   }
 
@@ -284,7 +284,7 @@ export default function AdminStudiosPage() {
     setRoomForStudio(studioId);
     setRoomForm({
       name: room.name,
-      classTypeId: room.classTypeId,
+      classTypeIds: room.classTypes.map((ct) => ct.id),
       maxCapacity: String(room.maxCapacity),
       layout: room.layout ?? createEmptyLayout(),
     });
@@ -353,8 +353,8 @@ export default function AdminStudiosPage() {
         <div className="space-y-4">
           {studios.map((studio) => {
             const isExpanded = expandedStudio === studio.id;
-            const classTypeForRoom = (ctId: string) =>
-              classTypes?.find((ct) => ct.id === ctId)?.name ?? "—";
+            const disciplinesForRoom = (room: RoomData) =>
+              room.classTypes.map((ct) => ct.name).join(", ") || "—";
 
             return (
               <motion.div key={studio.id} variants={fadeUp} initial="hidden" animate="show">
@@ -437,7 +437,7 @@ export default function AdminStudiosPage() {
                                     )}
                                   </div>
                                   <p className="text-xs text-muted">
-                                    {classTypeForRoom(room.classTypeId)} · {room.maxCapacity} spots
+                                    {disciplinesForRoom(room)} · {room.maxCapacity} spots
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -588,22 +588,37 @@ export default function AdminStudiosPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted">Disciplina</label>
-                <Select
-                  value={roomForm.classTypeId}
-                  onValueChange={(val) => setRoomForm((f) => ({ ...f, classTypeId: val }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar disciplina" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classTypes?.map((ct) => (
-                      <SelectItem key={ct.id} value={ct.id}>
-                        {ct.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label className="text-xs font-medium text-muted">Disciplinas</label>
+                <div className="rounded-lg border border-border bg-white p-2 space-y-1 max-h-40 overflow-y-auto">
+                  {classTypes?.length ? classTypes.map((ct) => (
+                    <label
+                      key={ct.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-surface/70"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={roomForm.classTypeIds.includes(ct.id)}
+                        onChange={(e) => {
+                          setRoomForm((f) => ({
+                            ...f,
+                            classTypeIds: e.target.checked
+                              ? [...f.classTypeIds, ct.id]
+                              : f.classTypeIds.filter((id) => id !== ct.id),
+                          }));
+                        }}
+                        className="h-4 w-4 rounded border-border text-admin accent-admin"
+                      />
+                      {ct.name}
+                    </label>
+                  )) : (
+                    <p className="px-2 py-1 text-xs text-muted">No hay disciplinas</p>
+                  )}
+                </div>
+                {roomForm.classTypeIds.length > 0 && (
+                  <p className="text-[11px] text-muted">
+                    {roomForm.classTypeIds.length} seleccionada{roomForm.classTypeIds.length !== 1 && "s"}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -647,7 +662,7 @@ export default function AdminStudiosPage() {
                 className="flex-1 bg-admin text-white hover:bg-admin/90"
                 disabled={
                   !roomForm.name ||
-                  !roomForm.classTypeId ||
+                  roomForm.classTypeIds.length === 0 ||
                   (roomForm.layout.spots.length === 0 && !roomForm.maxCapacity) ||
                   roomSubmitting
                 }

@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
       include: {
         city: { include: { country: true } },
         rooms: {
-          select: { id: true, name: true, maxCapacity: true, classTypeId: true, layout: true },
+          select: {
+            id: true, name: true, maxCapacity: true, layout: true,
+            classTypes: { select: { id: true, name: true } },
+          },
           orderBy: { name: "asc" },
         },
       },
@@ -45,7 +48,10 @@ export async function POST(request: NextRequest) {
       include: {
         city: { include: { country: true } },
         rooms: {
-          select: { id: true, name: true, maxCapacity: true, classTypeId: true, layout: true },
+          select: {
+            id: true, name: true, maxCapacity: true, layout: true,
+            classTypes: { select: { id: true, name: true } },
+          },
           orderBy: { name: "asc" },
         },
       },

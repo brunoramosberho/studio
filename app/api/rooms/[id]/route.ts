@@ -11,18 +11,20 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, classTypeId, maxCapacity, layout } = body;
+    const { name, classTypeIds, maxCapacity, layout } = body;
 
     const room = await prisma.room.update({
       where: { id, tenantId: tenant.id },
       data: {
         ...(name !== undefined && { name }),
-        ...(classTypeId !== undefined && { classTypeId }),
+        ...(Array.isArray(classTypeIds) && {
+          classTypes: { set: classTypeIds.map((ctId: string) => ({ id: ctId })) },
+        }),
         ...(maxCapacity !== undefined && { maxCapacity: parseInt(maxCapacity, 10) }),
         ...(layout !== undefined && { layout: layout }),
       },
       include: {
-        classType: { select: { id: true, name: true } },
+        classTypes: { select: { id: true, name: true } },
       },
     });
 

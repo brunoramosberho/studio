@@ -209,7 +209,7 @@ model ClassType {
   tenantId    String
   tenant      Tenant  @relation(fields: [tenantId], references: [id])
   classes     Class[]
-  rooms       Room[]
+  rooms       Room[]  @relation("RoomClassTypes")
 
   @@index([tenantId])
 }
@@ -382,20 +382,18 @@ model Studio {
 }
 
 model Room {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
   studioId    String
-  studio      Studio    @relation(fields: [studioId], references: [id])
-  classTypeId String
-  classType   ClassType @relation(fields: [classTypeId], references: [id])
+  studio      Studio      @relation(fields: [studioId], references: [id])
+  classTypes  ClassType[] @relation("RoomClassTypes")
   tenantId    String
-  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
   maxCapacity Int
   layout      Json?
   classes     Class[]
 
   @@index([studioId])
-  @@index([classTypeId])
   @@index([tenantId])
 }
 

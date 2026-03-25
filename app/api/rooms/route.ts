@@ -7,11 +7,11 @@ export async function POST(request: NextRequest) {
     const { tenant } = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { name, studioId, classTypeId, maxCapacity, layout } = body;
+    const { name, studioId, classTypeIds, maxCapacity, layout } = body;
 
-    if (!name || !studioId || !classTypeId || !maxCapacity) {
+    if (!name || !studioId || !Array.isArray(classTypeIds) || classTypeIds.length === 0 || !maxCapacity) {
       return NextResponse.json(
-        { error: "Name, studio, class type, and capacity are required" },
+        { error: "Name, studio, at least one discipline, and capacity are required" },
         { status: 400 },
       );
     }
@@ -20,13 +20,13 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         studioId,
-        classTypeId,
+        classTypes: { connect: classTypeIds.map((id: string) => ({ id })) },
         maxCapacity: parseInt(maxCapacity, 10),
         tenantId: tenant.id,
         ...(layout !== undefined && { layout: layout ?? undefined }),
       },
       include: {
-        classType: { select: { id: true, name: true } },
+        classTypes: { select: { id: true, name: true } },
       },
     });
 
