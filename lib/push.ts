@@ -3,10 +3,17 @@ import { prisma } from "@/lib/db";
 
 const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || "";
-const VAPID_SUBJECT = process.env.NEXT_PUBLIC_APP_URL || "https://localhost:3000";
 
-if (VAPID_PUBLIC && VAPID_PRIVATE) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
+let vapidReady = false;
+
+function ensureVapid() {
+  if (vapidReady || !VAPID_PUBLIC || !VAPID_PRIVATE) return;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  const subject = appUrl.startsWith("https://")
+    ? appUrl
+    : `mailto:${process.env.VAPID_CONTACT_EMAIL || "push@example.com"}`;
+  webpush.setVapidDetails(subject, VAPID_PUBLIC, VAPID_PRIVATE);
+  vapidReady = true;
 }
 
 export interface PushPayload {
@@ -23,6 +30,7 @@ export interface PushPayload {
  */
 export async function sendPushToUser(userId: string, payload: PushPayload) {
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
+  ensureVapid();
 
   const subscriptions = await prisma.pushSubscription.findMany({
     where: { userId },

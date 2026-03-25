@@ -89,7 +89,7 @@ export function PushManager() {
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 60 }}
-          className="fixed inset-x-4 bottom-20 z-50 mx-auto max-w-sm rounded-2xl border border-border/50 bg-white p-4 shadow-[var(--shadow-warm-lg)] md:bottom-6"
+          className="fixed inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 mx-auto max-w-sm rounded-2xl border border-border/50 bg-white p-4 shadow-[var(--shadow-warm-lg)] md:bottom-6"
         >
           <button
             onClick={handleDismiss}
