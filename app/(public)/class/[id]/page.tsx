@@ -345,6 +345,7 @@ export default function ClassDetailPage() {
             myBookedSpot={myBookedSpot}
             disabled={!!myBooking || bookingSuccess}
             layout={cls.room.layout}
+            coachName={cls.coach.user.name}
           />
         </div>
 

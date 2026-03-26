@@ -27,6 +27,7 @@ interface StudioMapProps {
   myBookedSpot?: number | null;
   disabled?: boolean;
   layout?: RoomLayoutData | null;
+  coachName?: string | null;
 }
 
 export function StudioMap({
@@ -37,8 +38,10 @@ export function StudioMap({
   myBookedSpot,
   disabled,
   layout,
+  coachName,
 }: StudioMapProps) {
   const [tapped, setTapped] = useState<number | null>(null);
+  const [coachTapped, setCoachTapped] = useState(false);
   const { coachIconSvg } = useBranding();
 
   const hasLayout = layout && layout.spots.length > 0;
@@ -126,10 +129,16 @@ export function StudioMap({
   }
 
   function renderCoachCell(key: string) {
+    const firstName = coachName?.split(" ")[0] ?? null;
+
     return (
-      <div key={key} className="flex flex-col items-center">
-        <div
-          className="flex h-[38px] w-[38px] items-center justify-center rounded-full"
+      <div key={key} className="relative flex flex-col items-center">
+        <button
+          type="button"
+          onClick={() => setCoachTapped((v) => !v)}
+          onMouseEnter={() => setCoachTapped(true)}
+          onMouseLeave={() => setCoachTapped(false)}
+          className="flex h-[38px] w-[38px] items-center justify-center rounded-full transition-transform active:scale-95"
           style={{ backgroundColor: "var(--color-accent-soft)", color: "var(--color-accent)" }}
         >
           {coachIconSvg ? (
@@ -140,7 +149,13 @@ export function StudioMap({
           ) : (
             <User className="h-4 w-4" />
           )}
-        </div>
+        </button>
+
+        {coachTapped && firstName && (
+          <div className="absolute -top-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-0.5 text-[10px] font-medium text-background shadow-lg">
+            {firstName}
+          </div>
+        )}
       </div>
     );
   }
