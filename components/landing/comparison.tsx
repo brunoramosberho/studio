@@ -16,7 +16,7 @@ const rows = [
   { feature: "Push notifications nativas", reserva: true, momence: true, mariana: true },
   { feature: "Multi-sede", reserva: true, momence: true, mariana: true },
   { feature: "Onboarding personalizado en español", reserva: true, momence: false, mariana: false },
-  { feature: "Precio desde", reserva: "$199/m", momence: "$129/m", mariana: "Custom" },
+  { feature: "Precio desde", reserva: "€299/m", momence: "$129/m", mariana: "Custom" },
 ];
 
 function CellIcon({ value }: { value: boolean | string }) {

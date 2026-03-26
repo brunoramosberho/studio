@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 const plans = [
   {
     name: "Starter",
-    monthly: 199,
+    monthly: 299,
     annual: 166,
     onboarding: 799,
     popular: false,
@@ -18,19 +18,19 @@ const plans = [
       "Reservas con mapa de spots",
       "Pagos y paquetes con Stripe",
       "Feed social y logros",
-      "PWA white-label",
       "Push notifications",
     ],
   },
   {
     name: "Growth",
-    monthly: 349,
+    monthly: 449,
     annual: 291,
     onboarding: 1499,
     popular: true,
     features: [
       "Hasta 600 miembros",
       "Todo de Starter +",
+      "PWA white-label",
       "AI Assistant con insights",
       "Shop integrado",
       "Dashboard avanzado",
@@ -40,7 +40,7 @@ const plans = [
   },
   {
     name: "Scale",
-    monthly: 599,
+    monthly: 699,
     annual: 499,
     onboarding: 0,
     popular: false,
@@ -137,15 +137,15 @@ export function Pricing() {
                       className="text-4xl font-extrabold text-gray-900 dark:text-white"
                       style={{ fontFamily: "var(--font-jakarta)" }}
                     >
-                      ${annual ? plan.annual : plan.monthly}
+                      €{annual ? plan.annual : plan.monthly}
                     </motion.span>
                   </AnimatePresence>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">USD/mes</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">EUR/mes</span>
                 </div>
 
                 <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                   {plan.onboarding > 0
-                    ? `Onboarding: $${plan.onboarding.toLocaleString()} USD (una vez)`
+                    ? `Onboarding: €${plan.onboarding.toLocaleString()} EUR (una vez)`
                     : "Onboarding incluido"}
                 </p>
 
