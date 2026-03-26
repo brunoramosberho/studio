@@ -150,6 +150,19 @@ export async function DELETE(
       data: { status: "CANCELLED", spotNumber: null },
     });
 
+    if (booking.userId) {
+      prisma.feedEvent
+        .deleteMany({
+          where: {
+            tenantId: tenant.id,
+            userId: booking.userId,
+            eventType: "CLASS_RESERVED",
+            payload: { path: ["classId"], equals: booking.classId },
+          },
+        })
+        .catch(() => {});
+    }
+
     // Notify waitlisted users that a spot opened up
     const waitlisted = await prisma.waitlist.findMany({
       where: { classId: booking.classId, tenantId: tenant.id },

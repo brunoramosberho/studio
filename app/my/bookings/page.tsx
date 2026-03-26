@@ -318,7 +318,7 @@ export default function BookingsPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm"
+                className="fixed inset-0 z-[60] bg-foreground/40 backdrop-blur-sm"
                 onClick={() => !cancelMutation.isPending && setCancelTarget(null)}
               />
               <motion.div
@@ -326,7 +326,7 @@ export default function BookingsPage() {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 300 }}
-                className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-white pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+                className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-white pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
               >
                 <div className="flex justify-center pt-3 sm:hidden">
                   <div className="h-1 w-10 rounded-full bg-border" />
