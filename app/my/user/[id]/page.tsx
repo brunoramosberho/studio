@@ -3,7 +3,7 @@
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -223,6 +223,7 @@ export default function UserProfilePage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"upcoming" | "activity">("upcoming");
+  const [photoOpen, setPhotoOpen] = useState(false);
 
   const { data: profile, isLoading } = useQuery<UserProfile>({
     queryKey: ["user-profile", id],
@@ -316,10 +317,15 @@ export default function UserProfilePage({
           initial="hidden"
           animate="show"
         >
-          <Avatar className="h-20 w-20">
-            {profile.image && <AvatarImage src={profile.image} />}
-            <AvatarFallback className="text-xl">{initials}</AvatarFallback>
-          </Avatar>
+          <button
+            onClick={() => profile.image && setPhotoOpen(true)}
+            className={cn("rounded-full", profile.image && "cursor-pointer active:scale-95 transition-transform")}
+          >
+            <Avatar className="h-20 w-20">
+              {profile.image && <AvatarImage src={profile.image} />}
+              <AvatarFallback className="text-xl">{initials}</AvatarFallback>
+            </Avatar>
+          </button>
           <h2 className="mt-3 font-display text-xl font-bold text-foreground">
             {profile.name}
           </h2>
@@ -582,6 +588,30 @@ export default function UserProfilePage({
           </motion.div>
         )}
       </div>
+
+      {/* Photo lightbox */}
+      <AnimatePresence>
+        {photoOpen && profile.image && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-2xl"
+            onClick={() => setPhotoOpen(false)}
+          >
+            <motion.img
+              src={profile.image}
+              alt={profile.name || ""}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="h-72 w-72 rounded-full object-cover shadow-2xl sm:h-80 sm:w-80"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageTransition>
   );
 }
