@@ -15,7 +15,7 @@ const tabs = [
   { href: "/my/profile", icon: User, label: "Perfil" },
 ];
 
-const hiddenOnPaths = ["/login", "/admin", "/coach", "/dev"];
+const hiddenOnPaths = ["/login", "/admin", "/coach", "/dev", "/directory"];
 
 export function MobileNav() {
   const pathname = usePathname();
