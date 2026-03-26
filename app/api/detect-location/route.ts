@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getTenant } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,9 +39,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    let cityName: string | null = matchedCity?.name ?? null;
+    let countryName: string | null = country.name;
+    let hasStudios = false;
+
+    if (matchedCity) {
+      const tenant = await getTenant();
+      if (tenant) {
+        const studioCount = await prisma.studio.count({
+          where: { cityId: matchedCity.id, tenantId: tenant.id },
+        });
+        hasStudios = studioCount > 0;
+      }
+    }
+
     return NextResponse.json({
       countryId: country.id,
       cityId: matchedCity?.id ?? null,
+      cityName,
+      countryName,
+      hasStudios,
       detected: { country: vercelCountry, city: vercelCity },
     });
   } catch (error) {
