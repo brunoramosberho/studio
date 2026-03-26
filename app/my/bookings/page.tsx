@@ -12,7 +12,6 @@ import {
   MapPin,
   Share,
   Check,
-  X,
   Users,
   Hash,
 } from "lucide-react";
@@ -199,7 +198,10 @@ export default function BookingsPage() {
 
               return (
                 <motion.div key={booking.id} variants={fadeUp}>
-                  <div className="overflow-hidden rounded-2xl border border-border/50 bg-white transition-shadow hover:shadow-warm-sm">
+                  <Link
+                    href={`/class/${booking.classId}`}
+                    className="block overflow-hidden rounded-2xl border border-border/50 bg-white transition-shadow hover:shadow-warm-sm active:scale-[0.99]"
+                  >
                     {/* Color accent bar */}
                     <div
                       className="h-1"
@@ -270,9 +272,9 @@ export default function BookingsPage() {
 
                       {/* Actions */}
                       {isUpcoming && booking.status === "CONFIRMED" && (
-                        <div className="mt-3 flex items-center gap-2 border-t border-border/30 pt-3">
+                        <div className="mt-3 flex items-center gap-2 border-t border-border/30 pt-3" onClick={(e) => e.preventDefault()}>
                           <button
-                            onClick={() => handleShare(booking)}
+                            onClick={(e) => { e.preventDefault(); handleShare(booking); }}
                             className="flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-[12px] font-medium text-foreground transition-colors hover:bg-surface/80 active:scale-95"
                           >
                             {copiedId === booking.id ? (
@@ -289,10 +291,9 @@ export default function BookingsPage() {
                           </button>
                           <div className="flex-1" />
                           <button
-                            onClick={() => setCancelTarget(booking)}
-                            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+                            onClick={(e) => { e.preventDefault(); setCancelTarget(booking); }}
+                            className="rounded-full bg-red-50 px-3 py-1.5 text-[12px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
                           >
-                            <X className="h-3.5 w-3.5" />
                             Cancelar
                           </button>
                           {!free && (
@@ -303,7 +304,7 @@ export default function BookingsPage() {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </Link>
                 </motion.div>
               );
             })}

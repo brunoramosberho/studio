@@ -48,6 +48,8 @@ export interface ClassWithDetails extends Class {
   _count?: { bookings: number; waitlist: number };
   spotsLeft?: number;
   friendsGoing?: { id: string; name: string | null; image: string | null }[];
+  isBooked?: boolean;
+  myBookingId?: string | null;
 }
 
 export interface BookingWithDetails extends Booking {

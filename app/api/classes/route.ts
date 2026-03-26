@@ -94,9 +94,25 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    let myBookingMap = new Map<string, string>();
+    if (currentUserId) {
+      const classIds = classes.map((c) => c.id);
+      const myBookings = await prisma.booking.findMany({
+        where: {
+          classId: { in: classIds },
+          status: "CONFIRMED",
+          userId: currentUserId,
+        },
+        select: { id: true, classId: true },
+      });
+      for (const b of myBookings) myBookingMap.set(b.classId, b.id);
+    }
+
     const result = classes.map((c) => ({
       ...c,
       friendsGoing: friendBookings.get(c.id) ?? [],
+      isBooked: myBookingMap.has(c.id),
+      myBookingId: myBookingMap.get(c.id) ?? null,
     }));
 
     return NextResponse.json(result);

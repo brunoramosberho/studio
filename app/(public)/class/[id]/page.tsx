@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,7 @@ import {
   Share,
   LogIn,
   Mail,
+  CalendarPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +68,7 @@ interface ClassData {
 
 export default function ClassDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { data: session, status: authStatus } = useSession();
   const queryClient = useQueryClient();
   const { bookAsync, isBooking } = useBooking();
@@ -150,6 +152,46 @@ export default function ClassDetailPage() {
     }
   }
 
+  const calendarUrls = useMemo(() => {
+    if (!cls) return null;
+    const start = new Date(cls.startsAt);
+    const end = new Date(cls.endsAt);
+    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const title = `${cls.classType.name} con ${cls.coach.user.name ?? ""}`;
+    const location = [cls.room.studio.name, cls.room.studio.address].filter(Boolean).join(", ");
+    const details = `${cls.room.name} · ${cls.classType.duration} min`;
+
+    const google = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${fmt(start)}/${fmt(end)}&location=${encodeURIComponent(location)}&details=${encodeURIComponent(details)}`;
+
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Reserva//Class//ES",
+      "BEGIN:VEVENT",
+      `DTSTART:${fmt(start)}`,
+      `DTEND:${fmt(end)}`,
+      `SUMMARY:${title}`,
+      `LOCATION:${location}`,
+      `DESCRIPTION:${details}`,
+      `URL:${typeof window !== "undefined" ? window.location.href : ""}`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+
+    return { google, ics };
+  }, [cls]);
+
+  const handleDownloadIcs = useCallback(() => {
+    if (!calendarUrls || !cls) return;
+    const blob = new Blob([calendarUrls.ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${cls.classType.name.replace(/\s+/g, "-")}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [calendarUrls, cls]);
+
   const handleShare = useCallback(async () => {
     if (!cls) return;
     const classUrl = `${window.location.origin}/class/${id}`;
@@ -205,13 +247,13 @@ export default function ClassDetailPage() {
       <div className="mx-auto max-w-lg px-4 pb-36 pt-4 sm:pb-16 sm:pt-12">
         {/* Back + credits + share */}
         <div className="mb-6 flex items-center justify-between">
-          <Link
-            href="/schedule"
+          <button
+            onClick={() => router.back()}
             className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-            Horarios
-          </Link>
+            Volver
+          </button>
           <div className="flex items-center gap-2">
             {isAuthenticated && creditsRemaining !== null && (
               <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
@@ -358,22 +400,34 @@ export default function ClassDetailPage() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={handleShare}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
-                >
-                  {copied ? (
-                    <>
+                <div className="mt-3 flex gap-2">
+                  <a
+                    href={calendarUrls?.google}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                  >
+                    <CalendarPlus className="h-3.5 w-3.5" />
+                    Google
+                  </a>
+                  <button
+                    onClick={handleDownloadIcs}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                  >
+                    <CalendarPlus className="h-3.5 w-3.5" />
+                    Apple
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center justify-center rounded-lg bg-green-100 px-3 py-2 text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                  >
+                    {copied ? (
                       <Check className="h-3.5 w-3.5" />
-                      Link copiado
-                    </>
-                  ) : (
-                    <>
+                    ) : (
                       <Share className="h-3.5 w-3.5" />
-                      Invitar amigos a esta clase
-                    </>
-                  )}
-                </button>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Mobile install hint */}
@@ -471,17 +525,37 @@ export default function ClassDetailPage() {
 
         {/* Already booked */}
         {myBooking && !bookingSuccess && (
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent">
-              <Check className="h-3.5 w-3.5 text-white" />
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent">
+                <Check className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Reserva confirmada
+                </p>
+                {myBookedSpot && (
+                  <p className="text-xs text-muted">Lugar #{myBookedSpot}</p>
+                )}
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                Reserva confirmada
-              </p>
-              {myBookedSpot && (
-                <p className="text-xs text-muted">Lugar #{myBookedSpot}</p>
-              )}
+            <div className="flex gap-2">
+              <a
+                href={calendarUrls?.google}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent/10 py-2 text-[13px] font-medium text-accent transition-colors hover:bg-accent/15 active:scale-[0.98]"
+              >
+                <CalendarPlus className="h-3.5 w-3.5" />
+                Google
+              </a>
+              <button
+                onClick={handleDownloadIcs}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent/10 py-2 text-[13px] font-medium text-accent transition-colors hover:bg-accent/15 active:scale-[0.98]"
+              >
+                <CalendarPlus className="h-3.5 w-3.5" />
+                Apple
+              </button>
             </div>
           </div>
         )}

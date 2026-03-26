@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -10,6 +10,7 @@ import {
   Loader2,
   Users,
   Ticket,
+  AlertTriangle,
 } from "lucide-react";
 import {
   format,
@@ -20,9 +21,11 @@ import {
   isPast,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn, formatTime } from "@/lib/utils";
+import { cn, formatTime, formatRelativeDay } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
 import type { ClassWithDetails } from "@/types";
 
 function countryFlag(code: string) {
@@ -64,6 +67,24 @@ export function ScheduleClient({
   }
   const dayScrollRef = useRef<HTMLDivElement>(null);
   const branding = useBranding();
+  const queryClient = useQueryClient();
+  const [cancelTarget, setCancelTarget] = useState<ClassWithDetails | null>(null);
+
+  const cancelMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const res = await fetch(`/api/bookings/${bookingId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Cancel failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
+      setCancelTarget(null);
+    },
+  });
+
+  const handleCancelBooking = useCallback((bookingId: string, cls?: ClassWithDetails) => {
+    if (cls) setCancelTarget(cls);
+  }, []);
 
   const { data: classes = [], isLoading: loadingClasses } = useQuery<ClassWithDetails[]>({
     queryKey: ["classes", coachUserId ?? "all"],
@@ -385,7 +406,7 @@ export function ScheduleClient({
               Sin clases para este día
             </p>
           ) : (
-            <CollapsiblePastClasses classes={selectedClasses} classLinkPrefix={classLinkPrefix} />
+            <CollapsiblePastClasses classes={selectedClasses} classLinkPrefix={classLinkPrefix} onCancel={handleCancelBooking} cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null} />
           )}
         </div>
       </div>
@@ -495,17 +516,117 @@ export function ScheduleClient({
           {days.map((day) => {
             const dayClasses = getClassesForDay(day);
             return (
-              <DesktopDayColumn key={day.toISOString()} classes={dayClasses} classLinkPrefix={classLinkPrefix} />
+              <DesktopDayColumn key={day.toISOString()} classes={dayClasses} classLinkPrefix={classLinkPrefix} onCancel={handleCancelBooking} cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null} />
             );
           })}
         </div>
       </div>
+
+      {/* Cancel confirmation sheet */}
+      <AnimatePresence>
+        {cancelTarget && cancelTarget.myBookingId && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-foreground/40 backdrop-blur-sm"
+              onClick={() => !cancelMutation.isPending && setCancelTarget(null)}
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-white pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+            >
+              <div className="flex justify-center pt-3 sm:hidden">
+                <div className="h-1 w-10 rounded-full bg-border" />
+              </div>
+
+              <div className="p-6 text-center">
+                <div
+                  className={cn(
+                    "mx-auto flex h-14 w-14 items-center justify-center rounded-full",
+                    canCancelClassFreely(cancelTarget) ? "bg-orange-50" : "bg-red-50",
+                  )}
+                >
+                  <AlertTriangle
+                    className={cn(
+                      "h-6 w-6",
+                      canCancelClassFreely(cancelTarget) ? "text-orange-500" : "text-red-500",
+                    )}
+                  />
+                </div>
+
+                <h3 className="mt-4 font-display text-lg font-bold text-foreground">
+                  Cancelar reserva
+                </h3>
+                <p className="mt-1 text-sm text-muted">
+                  {cancelTarget.classType.name} · {formatRelativeDay(cancelTarget.startsAt)}
+                </p>
+
+                {canCancelClassFreely(cancelTarget) ? (
+                  <div className="mt-4 rounded-xl bg-green-50 px-4 py-3">
+                    <p className="text-[13px] font-medium text-green-700">
+                      Tu crédito será devuelto
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-green-600">
+                      Faltan más de 12 horas para la clase
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
+                    <p className="text-[13px] font-medium text-red-700">
+                      Tu crédito NO será devuelto
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-red-600">
+                      Faltan menos de 12 horas ({hoursUntilClass(cancelTarget)}h).
+                      Las cancelaciones tardías no reembolsan créditos.
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-6 flex flex-col gap-2">
+                  <Button
+                    variant="destructive"
+                    className="w-full rounded-full"
+                    onClick={() => cancelMutation.mutate(cancelTarget.myBookingId!)}
+                    disabled={cancelMutation.isPending}
+                  >
+                    {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {canCancelClassFreely(cancelTarget) ? "Cancelar reserva" : "Cancelar sin reembolso"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full rounded-full"
+                    onClick={() => setCancelTarget(null)}
+                    disabled={cancelMutation.isPending}
+                  >
+                    Volver
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
+const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
+
+function canCancelClassFreely(cls: ClassWithDetails): boolean {
+  return new Date(cls.startsAt).getTime() - Date.now() > CANCELLATION_WINDOW_MS;
+}
+
+function hoursUntilClass(cls: ClassWithDetails): number {
+  return Math.max(0, Math.round((new Date(cls.startsAt).getTime() - Date.now()) / 3_600_000));
+}
+
 /* ── Collapsible past classes section ── */
-function CollapsiblePastClasses({ classes, classLinkPrefix }: { classes: ClassWithDetails[]; classLinkPrefix: string }) {
+function CollapsiblePastClasses({ classes, classLinkPrefix, onCancel, cancellingId }: { classes: ClassWithDetails[]; classLinkPrefix: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null }) {
   const pastClasses = classes.filter((c) => isPast(new Date(c.startsAt)));
   const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startsAt)));
   const [showPast, setShowPast] = useState(false);
@@ -514,7 +635,7 @@ function CollapsiblePastClasses({ classes, classLinkPrefix }: { classes: ClassWi
     return (
       <>
         {classes.map((cls) => (
-          <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+          <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
         ))}
       </>
     );
@@ -523,7 +644,7 @@ function CollapsiblePastClasses({ classes, classLinkPrefix }: { classes: ClassWi
   return (
     <>
       {showPast && pastClasses.map((cls) => (
-        <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+        <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
       ))}
       <button
         onClick={() => setShowPast(!showPast)}
@@ -535,20 +656,22 @@ function CollapsiblePastClasses({ classes, classLinkPrefix }: { classes: ClassWi
           : `${pastClasses.length} clase${pastClasses.length > 1 ? "s" : ""} anterior${pastClasses.length > 1 ? "es" : ""}`}
       </button>
       {upcomingClasses.map((cls) => (
-        <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+        <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
       ))}
     </>
   );
 }
 
 /* ── Mobile class card — Siclo-style list item ── */
-function MobileClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDetails; classLinkPrefix?: string }) {
+function MobileClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellingId }: { cls: ClassWithDetails; classLinkPrefix?: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null }) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.room?.maxCapacity ?? 0;
   const spotsLeft = maxCap - booked;
   const isFull = spotsLeft <= 0;
   const hasWaitlist = (cls._count?.waitlist ?? 0) > 0;
+  const myBookingId = cls.myBookingId;
+  const isCancelling = cancellingId === myBookingId;
 
   return (
     <Link
@@ -647,9 +770,17 @@ function MobileClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDe
           </div>
         </div>
 
-        {/* Spots / Waitlist indicator */}
+        {/* Spots / Waitlist / Cancel */}
         <div className="flex flex-shrink-0 flex-col items-end gap-0.5">
-          {!past && isFull ? (
+          {!past && myBookingId ? (
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCancel(myBookingId, cls); }}
+              disabled={isCancelling}
+              className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95 disabled:opacity-50"
+            >
+              {isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : "Cancelar"}
+            </button>
+          ) : !past && isFull ? (
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
               {hasWaitlist ? "Lista de espera" : "Llena"}
             </span>
@@ -672,7 +803,7 @@ function MobileClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDe
 }
 
 /* ── Desktop class card ── */
-function DesktopDayColumn({ classes, classLinkPrefix }: { classes: ClassWithDetails[]; classLinkPrefix: string }) {
+function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId }: { classes: ClassWithDetails[]; classLinkPrefix: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null }) {
   const pastClasses = classes.filter((c) => isPast(new Date(c.startsAt)));
   const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startsAt)));
   const [showPast, setShowPast] = useState(false);
@@ -681,7 +812,7 @@ function DesktopDayColumn({ classes, classLinkPrefix }: { classes: ClassWithDeta
     return (
       <div className="space-y-2">
         {classes.map((cls) => (
-          <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+          <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
         ))}
       </div>
     );
@@ -690,7 +821,7 @@ function DesktopDayColumn({ classes, classLinkPrefix }: { classes: ClassWithDeta
   return (
     <div className="space-y-2">
       {showPast && pastClasses.map((cls) => (
-        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
       ))}
       <button
         onClick={() => setShowPast(!showPast)}
@@ -700,19 +831,21 @@ function DesktopDayColumn({ classes, classLinkPrefix }: { classes: ClassWithDeta
         {showPast ? "Ocultar" : `${pastClasses.length} anterior${pastClasses.length > 1 ? "es" : ""}`}
       </button>
       {upcomingClasses.map((cls) => (
-        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} />
+        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
       ))}
     </div>
   );
 }
 
-function DesktopClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithDetails; classLinkPrefix?: string }) {
+function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellingId }: { cls: ClassWithDetails; classLinkPrefix?: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null }) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.room?.maxCapacity ?? 0;
   const spotsLeft = maxCap - booked;
   const isFull = spotsLeft <= 0;
   const hasWaitlist = (cls._count?.waitlist ?? 0) > 0;
+  const myBookingId = cls.myBookingId;
+  const isCancelling = cancellingId === myBookingId;
 
   return (
     <Link href={`${classLinkPrefix}/${cls.id}`} className={cn(past && "pointer-events-none")}>
@@ -789,7 +922,15 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class" }: { cls: ClassWithD
             </p>
           )}
         </div>
-        {!past && isFull ? (
+        {!past && myBookingId ? (
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCancel(myBookingId, cls); }}
+            disabled={isCancelling}
+            className="self-start rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95 disabled:opacity-50"
+          >
+            {isCancelling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Cancelar"}
+          </button>
+        ) : !past && isFull ? (
           <span className="self-start rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold text-amber-700">
             {hasWaitlist ? "Lista de espera" : "Llena"}
           </span>
