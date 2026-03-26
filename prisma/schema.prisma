@@ -272,6 +272,7 @@ model Booking {
   privacy     BookingPrivacy @default(PUBLIC)
   status      BookingStatus  @default(CONFIRMED)
   packageUsed    String?
+  creditLost     Boolean        @default(false)
   createdAt      DateTime       @default(now())
   reminderSentAt DateTime?
 

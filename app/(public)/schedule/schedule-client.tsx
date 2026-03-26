@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   Loader2,
   Users,
   Ticket,
   AlertTriangle,
+  Dumbbell,
 } from "lucide-react";
+import { getIconComponent } from "@/components/admin/icon-picker";
 import {
   format,
   addDays,
@@ -48,14 +48,21 @@ interface LocationCountry { code: string; cities: { id: string; name: string }[]
 export function ScheduleClient({
   coachUserId,
   classLinkPrefix = "/class",
-  title = "Horarios",
+  title = "Horarios esta semana",
   hideCoachFilter = false,
   hideCredits = false,
 }: ScheduleClientProps = {}) {
   const { data: session } = useSession();
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(startOfDay(new Date()));
-  const [filterType, setFilterType] = useState<string>("all");
+  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set());
+  const toggleType = useCallback((id: string) => {
+    setFilterTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
   const [filterCoaches, setFilterCoaches] = useState<Set<string>>(new Set());
   const toggleCoach = useCallback((id: string) => {
     setFilterCoaches((prev) => {
@@ -207,7 +214,8 @@ export function ScheduleClient({
   const showCityFilter = cities.length > 1 && !session?.user;
   const showStudioFilter = studios.length > 1;
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(currentDate, i));
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
 
   const classTypes = Array.from(
     new Map(classes.map((c) => [c.classType.id, c.classType])).values(),
@@ -225,7 +233,7 @@ export function ScheduleClient({
       const match = classTypes.find(
         (ct) => ct.name.toLowerCase() === disc.toLowerCase(),
       );
-      if (match) setFilterType(match.id);
+      if (match) setFilterTypes(new Set([match.id]));
     }
     setDisciplineApplied(true);
   }, [searchParams, classTypes, disciplineApplied]);
@@ -237,7 +245,7 @@ export function ScheduleClient({
   function getClassesForDay(day: Date) {
     return classes
       .filter((c) => isSameDay(new Date(c.startsAt), day))
-      .filter((c) => filterType === "all" || c.classType.id === filterType)
+      .filter((c) => filterTypes.size === 0 || filterTypes.has(c.classType.id))
       .filter((c) => filterCoaches.size === 0 || filterCoaches.has(c.coach.id))
       .filter((c) => !cityStudioIds || cityStudioIds.has(c.room?.studio?.id ?? ""))
       .filter((c) => filterStudio === "all" || c.room?.studio?.id === filterStudio)
@@ -256,7 +264,7 @@ export function ScheduleClient({
       .map((day) => ({ day, classes: getClassesForDay(day) }))
       .filter((d) => d.classes.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDay, classes, filterType, filterCoaches, filterStudio, filterCity, days]);
+  }, [selectedDay, classes, filterTypes, filterCoaches, filterStudio, filterCity, days]);
 
   const initialLoading = (loadingClasses || !cityDetected) && classes.length === 0;
 
@@ -305,33 +313,6 @@ export function ScheduleClient({
               </div>
             )}
           </div>
-        </div>
-
-        {/* Week navigation */}
-        <div className="mb-3 flex items-center justify-between">
-          <button
-            onClick={() => {
-              const prev = addDays(currentDate, -7);
-              setCurrentDate(prev);
-              setSelectedDay(prev);
-            }}
-            className="rounded-full p-1.5 text-muted active:bg-surface"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <span className="text-[12px] font-semibold uppercase tracking-widest text-muted">
-            {format(currentDate, "MMMM yyyy", { locale: es })}
-          </span>
-          <button
-            onClick={() => {
-              const next = addDays(currentDate, 7);
-              setCurrentDate(next);
-              setSelectedDay(next);
-            }}
-            className="rounded-full p-1.5 text-muted active:bg-surface"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
         </div>
 
         {/* Day tabs — horizontal scroll */}
@@ -422,41 +403,54 @@ export function ScheduleClient({
           </div>
         )}
 
-        {/* Filters (inline pills) */}
-        <div className="mb-4 flex gap-2 overflow-x-auto scrollbar-none">
-          {showStudioFilter && (
-            <div className="relative flex-shrink-0">
-              <select
-                value={filterStudio}
-                onChange={(e) => setFilterStudio(e.target.value)}
-                className="appearance-none rounded-full border border-border bg-white py-1.5 pl-3 pr-7 text-[12px] font-medium text-foreground focus:outline-none"
-              >
-                <option value="all">Estudio</option>
-                {studios.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+        {/* Discipline pills + studio selector */}
+        {(classTypes.length > 0 || showStudioFilter) && (
+          <div className="-mx-4 mb-4 overflow-x-auto px-4 scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
+            <div className="flex items-center gap-1.5">
+              {showStudioFilter && (
+                <div className="relative flex-shrink-0">
+                  <select
+                    value={filterStudio}
+                    onChange={(e) => setFilterStudio(e.target.value)}
+                    className="appearance-none rounded-full border border-border bg-white py-1 pl-2.5 pr-6 text-[11px] font-medium text-foreground focus:outline-none"
+                  >
+                    <option value="all">Estudio</option>
+                    {studios.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted" />
+                </div>
+              )}
+              {classTypes.map((ct) => {
+                const active = filterTypes.has(ct.id);
+                const Icon = ct.icon ? getIconComponent(ct.icon) : null;
+                return (
+                  <button
+                    key={ct.id}
+                    onClick={() => toggleType(ct.id)}
+                    className={cn(
+                      "flex flex-shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all",
+                      active
+                        ? "border-transparent text-white"
+                        : "border-border bg-white text-foreground hover:bg-muted/30",
+                    )}
+                    style={active ? { backgroundColor: ct.color } : undefined}
+                  >
+                    {Icon ? (
+                      <Icon className="h-3 w-3" />
+                    ) : (
+                      <Dumbbell className="h-3 w-3" />
+                    )}
+                    {ct.name}
+                  </button>
+                );
+              })}
             </div>
-          )}
-          <div className="relative flex-shrink-0">
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="appearance-none rounded-full border border-border bg-white py-1.5 pl-3 pr-7 text-[12px] font-medium text-foreground focus:outline-none"
-            >
-              <option value="all">Disciplina</option>
-              {classTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
           </div>
-        </div>
+        )}
 
         {/* Continuous class list from selected day onwards */}
         <div className="flex flex-col gap-3">
@@ -493,33 +487,19 @@ export function ScheduleClient({
 
       {/* ── Desktop layout ── */}
       <div className="hidden lg:block">
-        {/* Top bar: title (public only), week nav, filters */}
+        {/* Top bar: title, filters */}
         <div className="mb-5 flex flex-wrap items-center gap-4">
-          {!isLoggedIn && (
-            <div className="mr-auto">
-              <h1 className="font-display text-[1.75rem] font-bold leading-tight text-foreground">
-                {branding.studioName} Studio
-              </h1>
-              <p className="text-[13px] text-muted">{branding.tagline}</p>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentDate(addDays(currentDate, -7))}
-              className="rounded-full p-1.5 text-muted hover:text-foreground"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="min-w-[140px] text-center text-xs font-medium uppercase tracking-widest text-muted">
-              {format(currentDate, "MMMM yyyy", { locale: es })}
-            </span>
-            <button
-              onClick={() => setCurrentDate(addDays(currentDate, 7))}
-              className="rounded-full p-1.5 text-muted hover:text-foreground"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+          <div className="mr-auto">
+            {!isLoggedIn ? (
+              <>
+                <h1 className="font-display text-[1.75rem] font-bold leading-tight text-foreground">
+                  {branding.studioName} Studio
+                </h1>
+                <p className="text-[13px] text-muted">{branding.tagline}</p>
+              </>
+            ) : (
+              <h1 className="font-display text-xl font-bold text-foreground">{title}</h1>
+            )}
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
@@ -545,17 +525,40 @@ export function ScheduleClient({
                 ]}
               />
             )}
-            <FilterSelect
-              label="Disciplina"
-              value={filterType}
-              onChange={setFilterType}
-              options={[
-                { value: "all", label: "Todas" },
-                ...classTypes.map((t) => ({ value: t.id, label: t.name })),
-              ]}
-            />
           </div>
         </div>
+
+        {/* Discipline pills — desktop */}
+        {classTypes.length > 0 && (
+          <div className="mb-5 overflow-x-auto scrollbar-none">
+            <div className="flex gap-2">
+              {classTypes.map((ct) => {
+                const active = filterTypes.has(ct.id);
+                const Icon = ct.icon ? getIconComponent(ct.icon) : null;
+                return (
+                  <button
+                    key={ct.id}
+                    onClick={() => toggleType(ct.id)}
+                    className={cn(
+                      "flex flex-shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
+                      active
+                        ? "border-transparent text-white"
+                        : "border-border bg-white text-foreground hover:bg-muted/30",
+                    )}
+                    style={active ? { backgroundColor: ct.color } : undefined}
+                  >
+                    {Icon ? (
+                      <Icon className="h-3.5 w-3.5" />
+                    ) : (
+                      <Dumbbell className="h-3.5 w-3.5" />
+                    )}
+                    {ct.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Coach avatar strip — desktop */}
         {!hideCoachFilter && coaches.length > 0 && (

@@ -405,6 +405,7 @@ function StatusBadge({ status }: { status: string }) {
     CONFIRMED: { label: "Completada", color: "text-green-700", bg: "bg-green-50" },
     ATTENDED: { label: "Asistió", color: "text-green-700", bg: "bg-green-50" },
     NO_SHOW: { label: "Crédito perdido", color: "text-red-600", bg: "bg-red-50" },
+    CANCELLED: { label: "Cancelación tardía", color: "text-red-600", bg: "bg-red-50" },
   };
   const s = config[status] ?? config.CONFIRMED;
   return (

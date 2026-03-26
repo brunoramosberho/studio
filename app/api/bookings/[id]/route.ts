@@ -6,20 +6,22 @@ import { sendPushToUser } from "@/lib/push";
 
 const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
 
+/** Returns true if credit was restored, false if it was lost */
 async function restoreCreditIfEligible(booking: {
   packageUsed: string | null;
   class: { startsAt: Date };
-}) {
-  if (!booking.packageUsed) return;
+}): Promise<boolean> {
+  if (!booking.packageUsed) return true;
 
   const hoursUntilClass =
     new Date(booking.class.startsAt).getTime() - Date.now();
-  if (hoursUntilClass <= CANCELLATION_WINDOW_MS) return;
+  if (hoursUntilClass <= CANCELLATION_WINDOW_MS) return false;
 
   await prisma.userPackage.update({
     where: { id: booking.packageUsed },
     data: { creditsUsed: { decrement: 1 } },
   });
+  return true;
 }
 
 export async function PUT(
@@ -59,15 +61,17 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    let creditLost = false;
     if (status === "CANCELLED") {
-      await restoreCreditIfEligible(booking);
+      const restored = await restoreCreditIfEligible(booking);
+      creditLost = !restored;
     }
 
     const updated = await prisma.booking.update({
       where: { id, tenantId: tenant.id },
       data: {
         status,
-        ...(status === "CANCELLED" ? { spotNumber: null } : {}),
+        ...(status === "CANCELLED" ? { spotNumber: null, creditLost } : {}),
       },
       include: {
         class: {
@@ -143,11 +147,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    await restoreCreditIfEligible(booking);
+    const restored = await restoreCreditIfEligible(booking);
 
     const cancelled = await prisma.booking.update({
       where: { id, tenantId: tenant.id },
-      data: { status: "CANCELLED", spotNumber: null },
+      data: { status: "CANCELLED", spotNumber: null, creditLost: !restored },
     });
 
     if (booking.userId) {

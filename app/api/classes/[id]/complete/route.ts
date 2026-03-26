@@ -102,6 +102,7 @@ export async function POST(
             classId: cls.id,
             className: cls.classType.name,
             coachName: cls.coach.user.name,
+            coachUserId: cls.coach.userId,
             date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),
             time: format(cls.startsAt, "h:mm a"),
             duration: cls.classType.duration,

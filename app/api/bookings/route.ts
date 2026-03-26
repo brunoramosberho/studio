@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
                 OR: [
                   { status: { in: ["ATTENDED", "NO_SHOW"] } },
                   { status: "CONFIRMED", class: { startsAt: { lt: now } } },
+                  { status: "CANCELLED", creditLost: true },
                 ],
               }
             : {}),

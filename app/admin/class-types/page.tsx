@@ -12,6 +12,7 @@ import {
   Dumbbell,
   AlertTriangle,
 } from "lucide-react";
+import { IconPicker, getIconComponent } from "@/components/admin/icon-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +75,7 @@ interface FormData {
   duration: number;
   level: string;
   color: string;
+  icon: string | null;
 }
 
 const emptyForm: FormData = {
@@ -82,6 +84,7 @@ const emptyForm: FormData = {
   duration: 50,
   level: "ALL",
   color: PRESET_COLORS[0],
+  icon: null,
 };
 
 export default function AdminClassTypesPage() {
@@ -114,6 +117,7 @@ export default function AdminClassTypesPage() {
       duration: ct.duration,
       level: ct.level,
       color: ct.color,
+      icon: ct.icon,
     });
     setDialogOpen(true);
   }
@@ -213,7 +217,10 @@ export default function AdminClassTypesPage() {
                         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
                         style={{ backgroundColor: ct.color }}
                       >
-                        <Dumbbell className="h-5 w-5" />
+                        {(() => {
+                          const Icon = ct.icon ? getIconComponent(ct.icon) : null;
+                          return Icon ? <Icon className="h-5 w-5" /> : <Dumbbell className="h-5 w-5" />;
+                        })()}
                       </div>
                       <div>
                         <p className="font-display text-base font-bold">{ct.name}</p>
@@ -349,6 +356,15 @@ export default function AdminClassTypesPage() {
                 placeholder="#hex color"
                 value={formData.color}
                 onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted">Icono</label>
+              <IconPicker
+                value={formData.icon}
+                onChange={(icon) => setFormData({ ...formData, icon })}
+                accentColor={formData.color}
               />
             </div>
 
