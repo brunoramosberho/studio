@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Home, Dumbbell, CalendarCheck, User, Mic } from "lucide-react";
+import { Home, Dumbbell, CalendarCheck, User, Mic, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/tenant-provider";
 
@@ -11,6 +11,7 @@ const tabs = [
   { href: "/my", icon: Home, label: "Feed" },
   { href: "/schedule", icon: Dumbbell, label: "Clases" },
   { href: "/my/bookings", icon: CalendarCheck, label: "Reservas" },
+  { href: "/shop", icon: ShoppingBag, label: "Shop" },
   { href: "/my/profile", icon: User, label: "Perfil" },
 ];
 

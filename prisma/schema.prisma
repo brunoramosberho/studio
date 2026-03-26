@@ -54,6 +54,8 @@ model Tenant {
   achievements      UserAchievement[]
   friendships       Friendship[]
   pushSubscriptions PushSubscription[]
+  productCategories ProductCategory[]
+  products          Product[]
 }
 
 model Membership {
@@ -558,6 +560,42 @@ model PushSubscription {
 
   @@index([userId])
   @@index([tenantId])
+}
+
+// ── Shop ──
+
+model ProductCategory {
+  id        String    @id @default(cuid())
+  name      String
+  position  Int       @default(0)
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  products  Product[]
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId])
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  currency    String           @default("MXN")
+  imageUrl    String?
+  isVisible   Boolean          @default(true)
+  isActive    Boolean          @default(true)
+  externalUrl String?
+  position    Int              @default(0)
+  categoryId  String
+  category    ProductCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tenantId    String
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([tenantId])
+  @@index([categoryId])
 }
 
 // ── Studio Branding (deprecated: kept for migration, use Tenant) ──

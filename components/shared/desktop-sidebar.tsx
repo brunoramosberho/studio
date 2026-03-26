@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   User,
   Package,
+  ShoppingBag,
   MapPin,
   Loader2,
   Check,
@@ -23,6 +24,7 @@ const sidebarLinks = [
   { href: "/schedule", icon: Dumbbell, label: "Clases" },
   { href: "/my/bookings", icon: CalendarCheck, label: "Mis Reservas" },
   { href: "/my/packages", icon: Package, label: "Mis Paquetes" },
+  { href: "/shop", icon: ShoppingBag, label: "Shop" },
   { href: "/my/profile", icon: User, label: "Perfil" },
 ];
 

@@ -8,7 +8,7 @@ import { Footer } from "@/components/shared/footer";
 import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
 import { useTenant } from "@/components/tenant-provider";
 
-const sidebarPaths = ["/schedule", "/coaches", "/class/", "/book/", "/packages"];
+const sidebarPaths = ["/schedule", "/coaches", "/class/", "/book/", "/packages", "/shop"];
 
 const adminRedirects: Record<string, string> = {
   "/schedule": "/admin/schedule",

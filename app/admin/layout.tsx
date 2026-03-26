@@ -18,6 +18,7 @@ import {
   Building2,
   ShieldCheck,
   Megaphone,
+  ShoppingBag,
   ArrowLeft,
   Menu,
   X,
@@ -38,6 +39,7 @@ const navItems = [
   { href: "/admin/clients", label: "Clientes", icon: Users },
   { href: "/admin/coaches", label: "Coaches", icon: UserCog },
   { href: "/admin/packages", label: "Paquetes", icon: Package },
+  { href: "/admin/shop", label: "Tienda", icon: ShoppingBag },
   { href: "/admin/feed", label: "Feed", icon: Megaphone },
   { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
   { href: "/admin/studios", label: "Estudios", icon: Building2 },
@@ -178,7 +180,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </AvatarFallback>
             </Avatar>
             <button
-              onClick={() => signOut({ callbackUrl: window.location.origin })}
+              onClick={async () => { await signOut({ redirect: false }); window.location.href = window.location.origin; }}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-red-50 hover:text-red-600"
               title="Cerrar sesión"
             >
