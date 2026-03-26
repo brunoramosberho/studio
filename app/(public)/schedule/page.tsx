@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ScheduleClient } from "./schedule-client";
 
 export const metadata = {
@@ -5,5 +6,9 @@ export const metadata = {
 };
 
 export default function SchedulePage() {
-  return <ScheduleClient />;
+  return (
+    <Suspense>
+      <ScheduleClient />
+    </Suspense>
+  );
 }

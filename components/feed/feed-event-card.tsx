@@ -160,9 +160,21 @@ function ClassCompletedCard({ event }: FeedEventCardProps) {
         <TappableAvatar user={event.user} />
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold leading-tight text-foreground">
-            {(p.className as string) ?? "Clase"}
+            <Link
+              href={`/schedule?discipline=${encodeURIComponent((p.className as string) ?? "")}`}
+              className="hover:underline"
+            >
+              {(p.className as string) ?? "Clase"}
+            </Link>
             <span className="font-normal text-muted">
-              {" "}con {(p.coachName as string) ?? event.user.name}
+              {" "}con{" "}
+              {p.coachUserId ? (
+                <Link href={`/my/user/${p.coachUserId}`} className="font-medium hover:underline">
+                  {(p.coachName as string) ?? event.user.name}
+                </Link>
+              ) : (
+                ((p.coachName as string) ?? event.user.name)
+              )}
             </span>
           </p>
           <p className="text-[12px] text-muted">
@@ -363,12 +375,26 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
                 ? (isGroup ? " también reservaron " : " también reservó ")
                 : (isGroup ? " reservaron " : " reservó ")}
             </span>
-            <span className="font-semibold text-foreground">
+            <Link
+              href={`/schedule?discipline=${encodeURIComponent((p.className as string) ?? "")}`}
+              className="font-semibold text-foreground hover:underline"
+            >
               {(p.className as string) ?? "una clase"}
-            </span>
+            </Link>
           </p>
           <p className="mt-0.5 text-[12px] text-muted">
-            {p.coachName ? `con ${p.coachName}` : ""}
+            {p.coachName ? (
+              <>
+                con{" "}
+                {p.coachUserId ? (
+                  <Link href={`/my/user/${p.coachUserId}`} className="font-medium text-foreground/70 hover:underline">
+                    {p.coachName as string}
+                  </Link>
+                ) : (
+                  (p.coachName as string)
+                )}
+              </>
+            ) : ""}
             {classDate
               ? ` · ${classDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })}`
               : ""}

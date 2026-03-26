@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   ChevronLeft,
@@ -206,6 +207,20 @@ export function ScheduleClient({
   const coaches = Array.from(
     new Map(classes.map((c) => [c.coach.id, c.coach])).values(),
   );
+
+  const searchParams = useSearchParams();
+  const [disciplineApplied, setDisciplineApplied] = useState(false);
+  useEffect(() => {
+    if (disciplineApplied || classTypes.length === 0) return;
+    const disc = searchParams.get("discipline");
+    if (disc) {
+      const match = classTypes.find(
+        (ct) => ct.name.toLowerCase() === disc.toLowerCase(),
+      );
+      if (match) setFilterType(match.id);
+    }
+    setDisciplineApplied(true);
+  }, [searchParams, classTypes, disciplineApplied]);
 
   const cityStudioIds = filterCity === "all" || allStudios.length === 0
     ? null
