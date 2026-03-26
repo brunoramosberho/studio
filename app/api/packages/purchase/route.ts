@@ -44,6 +44,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (userId && pkg.countryId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { countryId: true },
+      });
+      if (user?.countryId && user.countryId !== pkg.countryId) {
+        return NextResponse.json(
+          { error: "Este paquete no está disponible en tu país" },
+          { status: 403 },
+        );
+      }
+    }
+
     // Stripe checkout (if configured)
     if (userId && process.env.STRIPE_SECRET_KEY) {
       const { createCheckoutSession } = await import("@/lib/stripe");
