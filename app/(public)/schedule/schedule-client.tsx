@@ -849,7 +849,7 @@ function MobileClassCard({ cls, classLinkPrefix = "/class", onCancel, cancelling
                 {cls.classType.name}
               </p>
               {!past && cls.tag && (
-                <span className="flex-shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                <span className="flex-shrink-0 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
                   {cls.tag}
                 </span>
               )}
@@ -995,7 +995,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
             {cls.classType.name}
           </p>
           {!past && cls.tag && (
-            <span className="mt-0.5 inline-block rounded-full bg-accent/15 px-2 py-0.5 text-[9px] font-semibold text-accent">
+            <span className="mt-0.5 inline-block rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[9px] font-bold text-white shadow-sm">
               {cls.tag}
             </span>
           )}
