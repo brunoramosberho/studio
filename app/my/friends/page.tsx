@@ -36,6 +36,7 @@ export default function FriendsPage() {
   const router = useRouter();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pending, setPending] = useState<PendingRequest[]>([]);
+  const [sentRequests, setSentRequests] = useState<PendingRequest[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [sent, setSent] = useState<Set<string>>(new Set());
@@ -48,6 +49,7 @@ export default function FriendsPage() {
       .then(([data, sug]) => {
         setFriends(data.friends ?? []);
         setPending(data.pendingRequests ?? []);
+        setSentRequests(data.sentRequests ?? []);
         setSuggestions(sug ?? []);
       })
       .catch(() => {})
@@ -80,6 +82,13 @@ export default function FriendsPage() {
     });
     if (res.ok) {
       setPending((prev) => prev.filter((p) => p.friendshipId !== friendshipId));
+    }
+  }
+
+  async function handleCancelSent(friendshipId: string) {
+    const res = await fetch(`/api/friends/${friendshipId}`, { method: "DELETE" });
+    if (res.ok) {
+      setSentRequests((prev) => prev.filter((r) => r.friendshipId !== friendshipId));
     }
   }
 
@@ -166,6 +175,46 @@ export default function FriendsPage() {
                           <X className="h-4 w-4" />
                         </button>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Sent requests */}
+            {sentRequests.length > 0 && (
+              <section>
+                <h2 className="mb-3 text-[12px] font-semibold uppercase tracking-wider text-muted">
+                  Solicitudes enviadas
+                </h2>
+                <div className="space-y-2">
+                  {sentRequests.map((req) => (
+                    <div
+                      key={req.friendshipId}
+                      className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
+                    >
+                      <Link href={`/my/user/${req.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                        <Avatar className="h-11 w-11">
+                          {req.image && <AvatarImage src={req.image} />}
+                          <AvatarFallback className="text-sm">
+                            {req.name?.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-semibold text-foreground">
+                            {req.name}
+                          </p>
+                          <p className="text-[12px] text-muted">
+                            Pendiente
+                          </p>
+                        </div>
+                      </Link>
+                      <button
+                        onClick={() => handleCancelSent(req.friendshipId)}
+                        className="rounded-full bg-red-50 px-3 py-1.5 text-[12px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
+                      >
+                        Cancelar
+                      </button>
                     </div>
                   ))}
                 </div>

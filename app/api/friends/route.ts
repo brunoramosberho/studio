@@ -25,7 +25,7 @@ export async function GET() {
     return { ...friend, friendshipId: f.id };
   });
 
-  const pending = await prisma.friendship.findMany({
+  const incoming = await prisma.friendship.findMany({
     where: { tenantId: tenant.id, addresseeId: userId, status: "PENDING" },
     include: {
       requester: { select: { id: true, name: true, image: true, email: true } },
@@ -33,13 +33,27 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  const pendingRequests = pending.map((f) => ({
+  const pendingRequests = incoming.map((f) => ({
     friendshipId: f.id,
     ...f.requester,
     sentAt: f.createdAt,
   }));
 
-  return NextResponse.json({ friends, pendingRequests });
+  const outgoing = await prisma.friendship.findMany({
+    where: { tenantId: tenant.id, requesterId: userId, status: "PENDING" },
+    include: {
+      addressee: { select: { id: true, name: true, image: true, email: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const sentRequests = outgoing.map((f) => ({
+    friendshipId: f.id,
+    ...f.addressee,
+    sentAt: f.createdAt,
+  }));
+
+  return NextResponse.json({ friends, pendingRequests, sentRequests });
 }
 
 export async function POST(request: NextRequest) {
