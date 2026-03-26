@@ -56,7 +56,15 @@ export function ScheduleClient({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(startOfDay(new Date()));
   const [filterType, setFilterType] = useState<string>("all");
-  const [filterCoach, setFilterCoach] = useState<string>("all");
+  const [filterCoaches, setFilterCoaches] = useState<Set<string>>(new Set());
+  const toggleCoach = useCallback((id: string) => {
+    setFilterCoaches((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
   const [filterStudio, setFilterStudio] = useState<string>("all");
   const [filterCity, setFilterCityRaw] = useState<string>(() => {
     if (typeof window === "undefined") return "all";
@@ -230,7 +238,7 @@ export function ScheduleClient({
     return classes
       .filter((c) => isSameDay(new Date(c.startsAt), day))
       .filter((c) => filterType === "all" || c.classType.id === filterType)
-      .filter((c) => filterCoach === "all" || c.coach.id === filterCoach)
+      .filter((c) => filterCoaches.size === 0 || filterCoaches.has(c.coach.id))
       .filter((c) => !cityStudioIds || cityStudioIds.has(c.room?.studio?.id ?? ""))
       .filter((c) => filterStudio === "all" || c.room?.studio?.id === filterStudio)
       .sort(
@@ -248,7 +256,7 @@ export function ScheduleClient({
       .map((day) => ({ day, classes: getClassesForDay(day) }))
       .filter((d) => d.classes.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDay, classes, filterType, filterCoach, filterStudio, filterCity, days]);
+  }, [selectedDay, classes, filterType, filterCoaches, filterStudio, filterCity, days]);
 
   const initialLoading = (loadingClasses || !cityDetected) && classes.length === 0;
 
@@ -375,12 +383,12 @@ export function ScheduleClient({
           <div className="-mx-4 mb-3 overflow-x-auto px-4 scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
             <div className="flex gap-4">
               {coaches.map((c) => {
-                const active = filterCoach === c.id;
+                const active = filterCoaches.has(c.id);
                 const firstName = c.user.name?.split(" ")[0] || "Coach";
                 return (
                   <button
                     key={c.id}
-                    onClick={() => setFilterCoach(active ? "all" : c.id)}
+                    onClick={() => toggleCoach(c.id)}
                     className="flex flex-shrink-0 flex-col items-center gap-1"
                   >
                     <div
@@ -554,12 +562,12 @@ export function ScheduleClient({
           <div className="mb-5 overflow-x-auto scrollbar-none">
             <div className="flex gap-5">
               {coaches.map((c) => {
-                const active = filterCoach === c.id;
+                const active = filterCoaches.has(c.id);
                 const firstName = c.user.name?.split(" ")[0] || "Coach";
                 return (
                   <button
                     key={c.id}
-                    onClick={() => setFilterCoach(active ? "all" : c.id)}
+                    onClick={() => toggleCoach(c.id)}
                     className="flex flex-shrink-0 flex-col items-center gap-1.5"
                   >
                     <div
