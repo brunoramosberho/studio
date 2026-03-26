@@ -1,25 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Star,
   CheckCircle2,
   Sparkles,
   Gift,
   Ticket,
-  Loader2,
+  Layers,
+  CalendarSync,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/shared/page-transition";
 import { PurchaseSheet } from "@/components/booking/purchase-sheet";
-import { formatCurrency } from "@/lib/utils";
-import type { Package } from "@prisma/client";
+import { formatCurrency, cn } from "@/lib/utils";
+
+interface ClassTypeRef {
+  id: string;
+  name: string;
+}
+
+interface PackageData {
+  id: string;
+  name: string;
+  description: string | null;
+  type: "OFFER" | "PACK" | "SUBSCRIPTION";
+  credits: number | null;
+  validDays: number;
+  price: number;
+  currency: string;
+  isPromo: boolean;
+  isActive: boolean;
+  classTypes: ClassTypeRef[];
+  recurringInterval: string | null;
+  sortOrder: number;
+}
 
 interface UserPackageSummary {
   id: string;
@@ -29,7 +48,15 @@ interface UserPackageSummary {
   package: { name: string };
 }
 
-function buildFeatures(pkg: Package) {
+type TabType = "OFFER" | "PACK" | "SUBSCRIPTION";
+
+const TABS: { type: TabType; label: string; icon: typeof Gift }[] = [
+  { type: "OFFER", label: "Ofertas", icon: Gift },
+  { type: "PACK", label: "Paquetes", icon: Layers },
+  { type: "SUBSCRIPTION", label: "Suscripciones", icon: CalendarSync },
+];
+
+function buildFeatures(pkg: PackageData): string[] {
   const features: string[] = [];
 
   if (pkg.credits) {
@@ -40,9 +67,16 @@ function buildFeatures(pkg: Package) {
   }
 
   features.push(`Válido por ${pkg.validDays} días`);
-  features.push("Cualquier modalidad");
 
-  if (pkg.credits && pkg.credits >= 10) features.push("Reserva prioritaria");
+  if (pkg.classTypes.length > 0) {
+    features.push(pkg.classTypes.map((c) => c.name).join(", "));
+  } else {
+    features.push("Cualquier disciplina");
+  }
+
+  if (pkg.type === "SUBSCRIPTION") {
+    features.push(pkg.recurringInterval === "year" ? "Renovación anual" : "Renovación mensual");
+  }
 
   return features;
 }
@@ -61,10 +95,10 @@ export default function PackagesPage() {
   const { data: session, status: authStatus } = useSession();
   const isLoggedIn = authStatus === "authenticated";
 
-  const [selectedPkg, setSelectedPkg] = useState<Package | null>(null);
+  const [selectedPkg, setSelectedPkg] = useState<PackageData | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const { data: packages = [], isLoading: loadingPackages } = useQuery<Package[]>({
+  const { data: packages = [], isLoading: loadingPackages } = useQuery<PackageData[]>({
     queryKey: ["packages-catalog"],
     queryFn: async () => {
       const res = await fetch("/api/packages");
@@ -92,20 +126,24 @@ export default function PackagesPage() {
       return sum + Math.max(0, (p.creditsTotal ?? 0) - p.creditsUsed);
     }, 0);
 
-  const visiblePackages = packages.filter((pkg) => {
-    if (pkg.isPromo && isReturningUser) return false;
-    return true;
-  });
-
-  const maxCredits = Math.max(
-    ...visiblePackages.filter((p) => p.credits).map((p) => p.credits!),
-    0,
-  );
-  const popularPkg = visiblePackages.find(
-    (p) => p.credits && p.credits >= 10 && p.credits < maxCredits,
+  const visiblePackages = useMemo(
+    () => packages.filter((pkg) => !(pkg.isPromo && isReturningUser)),
+    [packages, isReturningUser],
   );
 
-  function handleBuy(pkg: Package) {
+  const availableTabs = useMemo(() => {
+    return TABS.filter((tab) => visiblePackages.some((p) => p.type === tab.type));
+  }, [visiblePackages]);
+
+  const [activeTab, setActiveTab] = useState<TabType | null>(null);
+  const currentTab = activeTab ?? availableTabs[0]?.type ?? "PACK";
+
+  const filtered = useMemo(
+    () => visiblePackages.filter((p) => p.type === currentTab),
+    [visiblePackages, currentTab],
+  );
+
+  function handleBuy(pkg: PackageData) {
     setSelectedPkg(pkg);
     setSheetOpen(true);
   }
@@ -114,18 +152,18 @@ export default function PackagesPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-16 lg:px-8">
         {/* Header */}
         <div className="mb-8 sm:mb-12 sm:text-center">
           <h1 className="font-display text-3xl font-bold text-foreground sm:text-4xl">
-            Paquetes
+            Precios
           </h1>
           <p className="mt-2 text-sm text-muted sm:mx-auto sm:max-w-lg sm:mt-3 sm:text-base">
-            Elige el plan que se adapte a tu ritmo. Todas las modalidades incluidas.
+            Ofertas de entrada, paquetes de clases y suscripciones para tu ritmo.
           </p>
         </div>
 
-        {/* Active credits summary (logged in) */}
+        {/* Credits summary */}
         {isLoggedIn && activeCredits > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
@@ -136,11 +174,39 @@ export default function PackagesPage() {
             <span className="text-sm text-foreground">
               Tienes{" "}
               <span className="font-bold text-accent">
-                {activeCredits === Infinity ? "créditos ilimitados" : `${activeCredits} crédito${activeCredits !== 1 ? "s" : ""}`}
+                {activeCredits === Infinity
+                  ? "créditos ilimitados"
+                  : `${activeCredits} crédito${activeCredits !== 1 ? "s" : ""}`}
               </span>{" "}
               disponibles
             </span>
           </motion.div>
+        )}
+
+        {/* Tabs */}
+        {!loading && availableTabs.length > 1 && (
+          <div className="mb-8 flex justify-center">
+            <div className="flex gap-1 rounded-xl bg-surface p-1">
+              {availableTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.type}
+                    onClick={() => setActiveTab(tab.type)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-all",
+                      currentTab === tab.type
+                        ? "bg-white text-foreground shadow-sm"
+                        : "text-muted hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="h-4 w-4 opacity-80" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Loading */}
@@ -159,79 +225,80 @@ export default function PackagesPage() {
             variants={stagger}
             initial="hidden"
             animate="show"
+            key={currentTab}
           >
-            {visiblePackages.map((pkg) => {
-              const isPopular = popularPkg?.id === pkg.id;
+            {filtered.map((pkg) => {
               const features = buildFeatures(pkg);
 
               return (
                 <motion.div key={pkg.id} variants={fadeUp}>
-                  <Card
-                    className={`relative flex flex-col h-full transition-all duration-300 hover:shadow-[var(--shadow-warm-md)] hover:-translate-y-0.5 ${
-                      isPopular
-                        ? "border-2 border-accent shadow-[var(--shadow-warm-lift)]"
-                        : ""
-                    } ${pkg.isPromo ? "border-2 border-dashed border-accent/40" : ""}`}
+                  <div
+                    className={cn(
+                      "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-warm-md",
+                      pkg.isPromo && "border-2 border-dashed border-accent/40",
+                    )}
                   >
-                    {isPopular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge className="bg-accent text-white shadow-[var(--shadow-warm)]">
-                          <Star className="mr-1 h-3 w-3" /> Más popular
-                        </Badge>
-                      </div>
-                    )}
                     {pkg.isPromo && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge className="bg-accent/10 text-accent shadow-[var(--shadow-warm)]">
-                          <Gift className="mr-1 h-3 w-3" /> Primera vez
-                        </Badge>
+                      <div className="absolute -top-0 right-4 rounded-b-lg bg-accent/10 px-3 py-1">
+                        <span className="flex items-center gap-1 text-[11px] font-semibold text-accent">
+                          <Gift className="h-3 w-3" />
+                          Primera vez
+                        </span>
                       </div>
                     )}
 
-                    <CardHeader className="pb-2">
+                    <div className="mb-4">
                       {pkg.description && (
-                        <CardDescription className="text-xs font-medium uppercase tracking-wider text-accent">
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-accent">
                           {pkg.description}
-                        </CardDescription>
+                        </p>
                       )}
-                      <CardTitle className="text-xl">{pkg.name}</CardTitle>
-                    </CardHeader>
+                      <h3 className="font-display text-xl font-bold text-foreground">
+                        {pkg.name}
+                      </h3>
+                    </div>
 
-                    <CardContent className="flex flex-1 flex-col">
-                      <div className="mb-4">
-                        <span className="font-mono text-3xl font-medium text-foreground">
-                          {formatCurrency(pkg.price, pkg.currency)}
+                    <div className="mb-5">
+                      <span className="font-mono text-3xl font-medium text-foreground">
+                        {formatCurrency(pkg.price, pkg.currency)}
+                      </span>
+                      {pkg.credits && (
+                        <span className="ml-1 text-sm text-muted">
+                          / {pkg.credits} {pkg.credits === 1 ? "clase" : "clases"}
                         </span>
-                        {pkg.credits && (
-                          <span className="ml-1 text-sm text-muted">
-                            / {pkg.credits} {pkg.credits === 1 ? "clase" : "clases"}
-                          </span>
-                        )}
-                      </div>
+                      )}
+                      {pkg.type === "SUBSCRIPTION" && (
+                        <span className="ml-1 text-sm text-muted">
+                          / {pkg.recurringInterval === "year" ? "año" : "mes"}
+                        </span>
+                      )}
+                    </div>
 
-                      <ul className="flex-1 space-y-2.5">
-                        {features.map((feature) => (
-                          <li
-                            key={feature}
-                            className="flex items-start gap-2 text-sm text-muted"
-                          >
-                            <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-
-                      <div className="mt-6">
-                        <Button
-                          className="w-full rounded-full"
-                          variant={isPopular ? "default" : "secondary"}
-                          onClick={() => handleBuy(pkg)}
+                    <ul className="flex-1 space-y-2.5">
+                      {features.map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-start gap-2 text-sm text-muted"
                         >
-                          {pkg.isPromo ? "Probar ahora" : "Comprar"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className="mt-6">
+                      <Button
+                        className="w-full rounded-full"
+                        onClick={() => handleBuy(pkg)}
+                      >
+                        {pkg.isPromo
+                          ? "Probar ahora"
+                          : pkg.type === "SUBSCRIPTION"
+                            ? "Suscribirme"
+                            : `Comprar por ${formatCurrency(pkg.price, pkg.currency)}`}
+                      </Button>
+                    </div>
+                  </div>
                 </motion.div>
               );
             })}
@@ -264,7 +331,7 @@ export default function PackagesPage() {
           <PurchaseSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}
-            pkg={selectedPkg}
+            pkg={selectedPkg as any}
           />
         )}
       </AnimatePresence>

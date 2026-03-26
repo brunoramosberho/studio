@@ -73,6 +73,11 @@ export default function PackagesPage() {
                     {pkg.package.description}
                   </CardDescription>
                 )}
+                {(pkg.package as any).classTypes?.length > 0 && (
+                  <p className="mt-1.5 text-xs text-muted">
+                    Válido para: {(pkg.package as any).classTypes.map((ct: { name: string }) => ct.name).join(", ")}
+                  </p>
+                )}
               </div>
               <Package className="h-5 w-5 text-muted/30" />
             </div>

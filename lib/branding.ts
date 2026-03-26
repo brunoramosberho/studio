@@ -43,6 +43,7 @@ export const DEFAULTS: StudioBranding = {
 export interface FontPairing {
   id: string;
   label: string;
+  description: string;
   displayFont: string;
   bodyFont: string;
   displayVar: string;
@@ -50,15 +51,12 @@ export interface FontPairing {
 }
 
 export const FONT_PAIRINGS: FontPairing[] = [
-  { id: "inter-inter", label: "Inter", displayFont: "Inter", bodyFont: "Inter", displayVar: "var(--font-inter), sans-serif", bodyVar: "var(--font-inter), sans-serif" },
-  { id: "playfair-dmsans", label: "Playfair + DM Sans", displayFont: "Playfair Display", bodyFont: "DM Sans", displayVar: "var(--font-playfair), serif", bodyVar: "var(--font-dmsans), sans-serif" },
-  { id: "cormorant-lato", label: "Cormorant + Lato", displayFont: "Cormorant Garamond", bodyFont: "Lato", displayVar: "var(--font-cormorant), serif", bodyVar: "var(--font-lato), sans-serif" },
-  { id: "libre-source", label: "Libre Baskerville + Source Sans", displayFont: "Libre Baskerville", bodyFont: "Source Sans 3", displayVar: "var(--font-libre), serif", bodyVar: "var(--font-source), sans-serif" },
-  { id: "josefin-work", label: "Josefin Sans + Work Sans", displayFont: "Josefin Sans", bodyFont: "Work Sans", displayVar: "var(--font-josefin), sans-serif", bodyVar: "var(--font-work), sans-serif" },
-  { id: "crimson-inter", label: "Crimson Text + Inter", displayFont: "Crimson Text", bodyFont: "Inter", displayVar: "var(--font-crimson), serif", bodyVar: "var(--font-inter), sans-serif" },
-  { id: "raleway-opensans", label: "Raleway + Open Sans", displayFont: "Raleway", bodyFont: "Open Sans", displayVar: "var(--font-raleway), sans-serif", bodyVar: "var(--font-opensans), sans-serif" },
-  { id: "lora-nunito", label: "Lora + Nunito", displayFont: "Lora", bodyFont: "Nunito", displayVar: "var(--font-lora), serif", bodyVar: "var(--font-nunito), sans-serif" },
-  { id: "montserrat-roboto", label: "Montserrat + Roboto", displayFont: "Montserrat", bodyFont: "Roboto", displayVar: "var(--font-montserrat), sans-serif", bodyVar: "var(--font-roboto), sans-serif" },
+  { id: "jakarta-dmsans", label: "Plus Jakarta Sans + DM Sans", description: "Premium y elegante — ideal para estudios de alta gama", displayFont: "Plus Jakarta Sans", bodyFont: "DM Sans", displayVar: "var(--font-jakarta), sans-serif", bodyVar: "var(--font-dmsans), sans-serif" },
+  { id: "geist-inter", label: "Geist + Inter", description: "Tech y moderna — para identidad minimalista", displayFont: "Geist", bodyFont: "Inter", displayVar: "var(--font-geist-sans), sans-serif", bodyVar: "var(--font-inter), sans-serif" },
+  { id: "outfit-nunito", label: "Outfit + Nunito Sans", description: "Amigable y cálida — para estudios casual o familiar", displayFont: "Outfit", bodyFont: "Nunito Sans", displayVar: "var(--font-outfit), sans-serif", bodyVar: "var(--font-nunitosans), sans-serif" },
+  { id: "montserrat-roboto", label: "Montserrat + Roboto", description: "Clásica y versátil — funciona para cualquier estudio", displayFont: "Montserrat", bodyFont: "Roboto", displayVar: "var(--font-montserrat), sans-serif", bodyVar: "var(--font-roboto), sans-serif" },
+  { id: "inter-inter", label: "Inter", description: "Limpia y universal — la opción más neutra", displayFont: "Inter", bodyFont: "Inter", displayVar: "var(--font-inter), sans-serif", bodyVar: "var(--font-inter), sans-serif" },
+  { id: "raleway-opensans", label: "Raleway + Open Sans", description: "Suave y relajada — ideal para yoga o pilates", displayFont: "Raleway", bodyFont: "Open Sans", displayVar: "var(--font-raleway), sans-serif", bodyVar: "var(--font-opensans), sans-serif" },
 ];
 
 export function getFontPairing(id: string): FontPairing {

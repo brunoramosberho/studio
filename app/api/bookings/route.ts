@@ -192,22 +192,27 @@ export async function POST(request: NextRequest) {
           tenantId: tenant.id,
           expiresAt: { gt: new Date() },
         },
+        include: { package: { include: { classTypes: { select: { id: true } } } } },
         orderBy: { expiresAt: "asc" },
       });
 
+      const classTypeId = classData.classTypeId;
+      function packageCoversClass(p: (typeof userPackages)[number]) {
+        if (!p.package.classTypes.length) return true;
+        return p.package.classTypes.some((ct) => ct.id === classTypeId);
+      }
+
       let userPackage = null;
 
-      // If client specified a package, try to use it
       if (packageId) {
         userPackage = userPackages.find(
-          (p) => p.id === packageId && (p.creditsTotal === null || p.creditsUsed < p.creditsTotal),
+          (p) => p.id === packageId && (p.creditsTotal === null || p.creditsUsed < p.creditsTotal) && packageCoversClass(p),
         );
       }
 
-      // Default: soonest-expiring package with available credits
       if (!userPackage) {
         userPackage = userPackages.find(
-          (p) => p.creditsTotal === null || p.creditsUsed < p.creditsTotal,
+          (p) => (p.creditsTotal === null || p.creditsUsed < p.creditsTotal) && packageCoversClass(p),
         );
       }
 

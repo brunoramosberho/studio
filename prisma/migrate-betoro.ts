@@ -30,7 +30,7 @@ async function main() {
         settings?.metaDescription || "Tu espacio de Pilates y bienestar.",
       logoUrl: settings?.logoUrl,
       appIconUrl: settings?.appIconUrl,
-      fontPairing: settings?.fontPairing || "playfair-dmsans",
+      fontPairing: settings?.fontPairing || "jakarta-dmsans",
       colorBg: settings?.colorBg || "#FAF9F6",
       colorFg: settings?.colorFg || "#1C1917",
       colorSurface: settings?.colorSurface || "#F5F2ED",

@@ -471,38 +471,93 @@ export default function BrandingPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              {FONT_PAIRINGS.map((fp) => (
-                <button
-                  key={fp.id}
-                  onClick={() => update("fontPairing", fp.id)}
-                  className={cn(
-                    "rounded-xl border-2 p-4 text-left transition-all",
-                    settings.fontPairing === fp.id
-                      ? "border-admin bg-admin/5"
-                      : "border-border hover:border-admin/30",
-                  )}
-                >
-                  <p
-                    className="text-lg font-bold leading-tight"
-                    style={{ fontFamily: `${fp.displayVar}` }}
+              {FONT_PAIRINGS.map((fp) => {
+                const selected = settings.fontPairing === fp.id;
+                return (
+                  <button
+                    key={fp.id}
+                    onClick={() => update("fontPairing", fp.id)}
+                    className={cn(
+                      "rounded-xl border-2 p-4 text-left transition-all",
+                      selected
+                        ? "border-admin bg-admin/5 shadow-sm"
+                        : "border-border hover:border-admin/30",
+                    )}
                   >
-                    {fp.displayFont}
-                  </p>
-                  <p
-                    className="mt-1 text-sm text-muted"
-                    style={{ fontFamily: `${fp.bodyVar}` }}
-                  >
-                    {fp.bodyFont} — Texto de ejemplo para ver cómo se ve
-                  </p>
-                  {settings.fontPairing === fp.id && (
-                    <div className="mt-2 flex items-center gap-1 text-xs font-medium text-admin">
-                      <Check className="h-3 w-3" />
-                      Seleccionada
-                    </div>
-                  )}
-                </button>
-              ))}
+                    <p
+                      className="text-lg font-bold leading-tight"
+                      style={{ fontFamily: fp.displayVar }}
+                    >
+                      {fp.label}
+                    </p>
+                    <p
+                      className="mt-1.5 text-[13px] leading-relaxed text-muted"
+                      style={{ fontFamily: fp.bodyVar }}
+                    >
+                      {fp.description}
+                    </p>
+                    <p
+                      className="mt-2 text-sm"
+                      style={{ fontFamily: fp.bodyVar }}
+                    >
+                      Reserva tu próxima clase hoy
+                    </p>
+                    {selected && (
+                      <div className="mt-2 flex items-center gap-1 text-xs font-medium text-admin">
+                        <Check className="h-3 w-3" />
+                        Seleccionada
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+
+            {(() => {
+              const activeFp = FONT_PAIRINGS.find((fp) => fp.id === settings.fontPairing) ?? FONT_PAIRINGS[0];
+              return (
+                <div className="mt-6 rounded-xl border border-border p-4">
+                  <p className="mb-3 text-xs font-medium text-muted">Vista previa — {activeFp.label}</p>
+                  <div
+                    className="overflow-hidden rounded-lg p-6"
+                    style={{ backgroundColor: settings.colorBg, color: settings.colorFg }}
+                  >
+                    <h3
+                      className="text-2xl font-bold"
+                      style={{ fontFamily: activeFp.displayVar }}
+                    >
+                      {settings.studioName}
+                    </h3>
+                    <p
+                      className="mt-1 text-sm"
+                      style={{ fontFamily: activeFp.bodyVar, color: settings.colorMuted }}
+                    >
+                      {settings.tagline || "Descripción de ejemplo"}
+                    </p>
+                    <p
+                      className="mt-3 text-base leading-relaxed"
+                      style={{ fontFamily: activeFp.bodyVar }}
+                    >
+                      Descubre nuestras clases, reserva tu lugar y transforma tu rutina.
+                    </p>
+                    <div className="mt-4 flex gap-2">
+                      <span
+                        className="rounded-full px-4 py-1.5 text-sm font-semibold text-white"
+                        style={{ backgroundColor: settings.colorAccent, fontFamily: activeFp.displayVar }}
+                      >
+                        Reservar
+                      </span>
+                      <span
+                        className="rounded-full px-4 py-1.5 text-sm font-medium"
+                        style={{ backgroundColor: settings.colorAccentSoft, color: settings.colorFg, fontFamily: activeFp.bodyVar }}
+                      >
+                        Ver horarios
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </motion.div>

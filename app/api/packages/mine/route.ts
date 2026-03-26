@@ -21,7 +21,7 @@ export async function GET() {
           },
         }),
       },
-      include: { package: true },
+      include: { package: { include: { classTypes: { select: { id: true, name: true } } } } },
       orderBy: { expiresAt: "asc" },
     });
 

@@ -89,6 +89,7 @@ interface BookingSheetProps {
   classTime: string;
   privacy: "PUBLIC" | "PRIVATE";
   onSuccess: (guestEmail?: string) => void;
+  classTypeId?: string;
 }
 
 interface EmailCheckResult {
@@ -107,6 +108,7 @@ export function BookingSheet({
   classTime,
   privacy,
   onSuccess,
+  classTypeId,
 }: BookingSheetProps) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -154,9 +156,13 @@ export function BookingSheet({
 
   const isReturningUser = isLoggedIn && myPackages.length > 0;
   const guestIsReturning = emailCheck?.exists && !emailCheck.hasCredits;
-  const packages = allPackages.filter(
-    (p) => !(p.isPromo && (isReturningUser || guestIsReturning)),
-  );
+  const packages = allPackages.filter((p) => {
+    if (p.isPromo && (isReturningUser || guestIsReturning)) return false;
+    if (classTypeId && (p as any).classTypes?.length > 0) {
+      return (p as any).classTypes.some((ct: { id: string }) => ct.id === classTypeId);
+    }
+    return true;
+  });
 
   const checkEmail = useCallback(async (email: string) => {
     if (!email || !email.includes("@")) {

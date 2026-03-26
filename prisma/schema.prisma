@@ -22,7 +22,7 @@ model Tenant {
   metaDescription String   @default("Tu espacio de Pilates y bienestar.")
   logoUrl         String?
   appIconUrl      String?
-  fontPairing     String   @default("playfair-dmsans")
+  fontPairing     String   @default("jakarta-dmsans")
   colorBg         String   @default("#FAF9F6")
   colorFg         String   @default("#1C1917")
   colorSurface    String   @default("#F5F2ED")
@@ -210,6 +210,7 @@ model ClassType {
   tenant      Tenant  @relation(fields: [tenantId], references: [id])
   classes     Class[]
   rooms       Room[]  @relation("RoomClassTypes")
+  packages    Package[] @relation("PackageClassTypes")
 
   @@index([tenantId])
 }
@@ -305,10 +306,17 @@ model Waitlist {
   @@index([tenantId])
 }
 
+enum PackageType {
+  OFFER
+  PACK
+  SUBSCRIPTION
+}
+
 model Package {
   id            String        @id @default(cuid())
   name          String
   description   String?
+  type          PackageType   @default(PACK)
   credits       Int?
   validDays     Int
   price         Float
@@ -320,6 +328,9 @@ model Package {
   tenant        Tenant        @relation(fields: [tenantId], references: [id])
   countryId     String?
   country       Country?      @relation(fields: [countryId], references: [id])
+  classTypes    ClassType[]   @relation("PackageClassTypes")
+  recurringInterval String?
+  sortOrder     Int           @default(0)
   userPackages  UserPackage[]
 
   @@index([countryId])
@@ -559,7 +570,7 @@ model StudioSettings {
   metaDescription String   @default("Tu espacio de Pilates y bienestar.")
   logoUrl         String?
   appIconUrl      String?
-  fontPairing     String   @default("playfair-dmsans")
+  fontPairing     String   @default("jakarta-dmsans")
   colorBg         String   @default("#FAF9F6")
   colorFg         String   @default("#1C1917")
   colorSurface    String   @default("#F5F2ED")

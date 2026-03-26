@@ -100,8 +100,14 @@ export default function ClassDetailPage() {
     enabled: !!id,
   });
 
+  const classTypeId = cls?.classType?.id;
   const validPackages = userPackages
     .filter((p) => p.creditsTotal === null || p.creditsUsed < (p.creditsTotal ?? 0))
+    .filter((p) => {
+      const cts = (p.package as any)?.classTypes;
+      if (!cts?.length) return true;
+      return classTypeId ? cts.some((ct: { id: string }) => ct.id === classTypeId) : true;
+    })
     .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
 
   const hasCredits = validPackages.length > 0;
@@ -581,6 +587,7 @@ export default function ClassDetailPage() {
             className={cls.classType.name}
             classTime={cls.startsAt}
             privacy={privacy}
+            classTypeId={cls.classType.id}
             onSuccess={(email) => {
               setBookingSuccess(true);
               setBookedSpotNumber(selectedSpot);
