@@ -346,6 +346,71 @@ export function ScheduleClient({
           })}
         </div>
 
+        {/* Coach avatar strip */}
+        {!hideCoachFilter && coaches.length > 0 && (
+          <div className="-mx-4 mb-3 overflow-x-auto px-4 scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setFilterCoach("all")}
+                className="flex flex-shrink-0 flex-col items-center gap-1"
+              >
+                <div
+                  className={cn(
+                    "flex h-14 w-14 items-center justify-center rounded-full border-2 transition-all",
+                    filterCoach === "all"
+                      ? "border-foreground bg-foreground text-white"
+                      : "border-border bg-surface text-muted",
+                  )}
+                >
+                  <Users className="h-5 w-5" />
+                </div>
+                <span className={cn(
+                  "text-[11px] font-medium",
+                  filterCoach === "all" ? "text-foreground" : "text-muted",
+                )}>
+                  Todos
+                </span>
+              </button>
+              {coaches.map((c) => {
+                const active = filterCoach === c.id;
+                const firstName = c.user.name?.split(" ")[0] || "Coach";
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setFilterCoach(active ? "all" : c.id)}
+                    className="flex flex-shrink-0 flex-col items-center gap-1"
+                  >
+                    <div
+                      className={cn(
+                        "h-14 w-14 overflow-hidden rounded-full border-2 transition-all",
+                        active ? "border-foreground ring-2 ring-foreground/20" : "border-transparent",
+                      )}
+                    >
+                      {c.user.image ? (
+                        <img
+                          src={c.user.image}
+                          alt={firstName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-accent/20 text-base font-bold text-accent">
+                          {firstName.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    <span className={cn(
+                      "max-w-[56px] truncate text-[11px] font-medium",
+                      active ? "text-foreground" : "text-muted",
+                    )}>
+                      {firstName}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Filters (inline pills) */}
         <div className="mb-4 flex gap-2 overflow-x-auto scrollbar-none">
           {showStudioFilter && (
@@ -380,23 +445,6 @@ export function ScheduleClient({
             </select>
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
           </div>
-          {!hideCoachFilter && (
-            <div className="relative flex-shrink-0">
-              <select
-                value={filterCoach}
-                onChange={(e) => setFilterCoach(e.target.value)}
-                className="appearance-none rounded-full border border-border bg-white py-1.5 pl-3 pr-7 text-[12px] font-medium text-foreground focus:outline-none"
-              >
-                <option value="all">Instructor</option>
-                {coaches.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.user.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-            </div>
-          )}
         </div>
 
         {/* Class list for selected day */}
@@ -474,22 +522,75 @@ export function ScheduleClient({
                 ...classTypes.map((t) => ({ value: t.id, label: t.name })),
               ]}
             />
-            {!hideCoachFilter && (
-              <FilterSelect
-                label="Instructor"
-                value={filterCoach}
-                onChange={setFilterCoach}
-                options={[
-                  { value: "all", label: "Todos" },
-                  ...coaches.map((c) => ({
-                    value: c.id,
-                    label: c.user.name || "Coach",
-                  })),
-                ]}
-              />
-            )}
           </div>
         </div>
+
+        {/* Coach avatar strip — desktop */}
+        {!hideCoachFilter && coaches.length > 0 && (
+          <div className="mb-5 overflow-x-auto scrollbar-none">
+            <div className="flex gap-5">
+              <button
+                onClick={() => setFilterCoach("all")}
+                className="flex flex-shrink-0 flex-col items-center gap-1.5"
+              >
+                <div
+                  className={cn(
+                    "flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all",
+                    filterCoach === "all"
+                      ? "border-foreground bg-foreground text-white"
+                      : "border-border bg-surface text-muted hover:border-foreground/30",
+                  )}
+                >
+                  <Users className="h-4 w-4" />
+                </div>
+                <span className={cn(
+                  "text-[11px] font-medium",
+                  filterCoach === "all" ? "text-foreground" : "text-muted",
+                )}>
+                  Todos
+                </span>
+              </button>
+              {coaches.map((c) => {
+                const active = filterCoach === c.id;
+                const firstName = c.user.name?.split(" ")[0] || "Coach";
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setFilterCoach(active ? "all" : c.id)}
+                    className="flex flex-shrink-0 flex-col items-center gap-1.5"
+                  >
+                    <div
+                      className={cn(
+                        "h-12 w-12 overflow-hidden rounded-full border-2 transition-all",
+                        active
+                          ? "border-foreground ring-2 ring-foreground/20"
+                          : "border-transparent hover:border-foreground/20",
+                      )}
+                    >
+                      {c.user.image ? (
+                        <img
+                          src={c.user.image}
+                          alt={firstName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-accent/20 text-sm font-bold text-accent">
+                          {firstName.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    <span className={cn(
+                      "max-w-[52px] truncate text-[11px] font-medium",
+                      active ? "text-foreground" : "text-muted",
+                    )}>
+                      {firstName}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Day headers */}
         <div className="mb-3 grid grid-cols-7 gap-2">
