@@ -350,27 +350,6 @@ export function ScheduleClient({
         {!hideCoachFilter && coaches.length > 0 && (
           <div className="-mx-4 mb-3 overflow-x-auto px-4 scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
             <div className="flex gap-4">
-              <button
-                onClick={() => setFilterCoach("all")}
-                className="flex flex-shrink-0 flex-col items-center gap-1"
-              >
-                <div
-                  className={cn(
-                    "flex h-14 w-14 items-center justify-center rounded-full border-2 transition-all",
-                    filterCoach === "all"
-                      ? "border-foreground bg-foreground text-white"
-                      : "border-border bg-surface text-muted",
-                  )}
-                >
-                  <Users className="h-5 w-5" />
-                </div>
-                <span className={cn(
-                  "text-[11px] font-medium",
-                  filterCoach === "all" ? "text-foreground" : "text-muted",
-                )}>
-                  Todos
-                </span>
-              </button>
               {coaches.map((c) => {
                 const active = filterCoach === c.id;
                 const firstName = c.user.name?.split(" ")[0] || "Coach";
@@ -529,27 +508,6 @@ export function ScheduleClient({
         {!hideCoachFilter && coaches.length > 0 && (
           <div className="mb-5 overflow-x-auto scrollbar-none">
             <div className="flex gap-5">
-              <button
-                onClick={() => setFilterCoach("all")}
-                className="flex flex-shrink-0 flex-col items-center gap-1.5"
-              >
-                <div
-                  className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all",
-                    filterCoach === "all"
-                      ? "border-foreground bg-foreground text-white"
-                      : "border-border bg-surface text-muted hover:border-foreground/30",
-                  )}
-                >
-                  <Users className="h-4 w-4" />
-                </div>
-                <span className={cn(
-                  "text-[11px] font-medium",
-                  filterCoach === "all" ? "text-foreground" : "text-muted",
-                )}>
-                  Todos
-                </span>
-              </button>
               {coaches.map((c) => {
                 const active = filterCoach === c.id;
                 const firstName = c.user.name?.split(" ")[0] || "Coach";
