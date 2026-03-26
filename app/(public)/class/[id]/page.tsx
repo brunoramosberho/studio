@@ -350,22 +350,37 @@ export default function ClassDetailPage() {
 
         {/* Privacy toggle */}
         {!myBooking && !bookingSuccess && selectedSpot && (
-          <button
-            onClick={() => setPrivacy(privacy === "PUBLIC" ? "PRIVATE" : "PUBLIC")}
-            className="mx-auto flex items-center gap-2 rounded-full px-3 py-1.5 text-xs text-muted transition-colors hover:text-foreground"
-          >
-            {privacy === "PUBLIC" ? (
-              <>
-                <Eye className="h-3.5 w-3.5" />
-                <span>Visible para amigos</span>
-              </>
-            ) : (
-              <>
-                <EyeOff className="h-3.5 w-3.5" />
-                <span>Reserva privada</span>
-              </>
-            )}
-          </button>
+          <div className="mt-1 flex flex-col items-center gap-1.5">
+            <div className="flex w-fit items-center rounded-full bg-surface p-0.5 text-xs">
+              <button
+                onClick={() => setPrivacy("PUBLIC")}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all ${
+                  privacy === "PUBLIC"
+                    ? "bg-foreground text-background shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <Eye className="h-3 w-3" />
+                <span>Visible</span>
+              </button>
+              <button
+                onClick={() => setPrivacy("PRIVATE")}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all ${
+                  privacy === "PRIVATE"
+                    ? "bg-foreground text-background shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <EyeOff className="h-3 w-3" />
+                <span>Privada</span>
+              </button>
+            </div>
+            <p className="text-[11px] text-muted/60">
+              {privacy === "PUBLIC"
+                ? "Tus amigos podrán ver que asistirás a esta clase"
+                : "Nadie verá que reservaste esta clase"}
+            </p>
+          </div>
         )}
 
         {/* Error */}
