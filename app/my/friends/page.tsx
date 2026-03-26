@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, UserPlus, Check, X, Loader2 } from "lucide-react";
+import { ArrowLeft, UserPlus, Check, X, Loader2, Search } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
@@ -40,6 +40,7 @@ export default function FriendsPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [sent, setSent] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -111,6 +112,13 @@ export default function FriendsPage() {
     }
   }
 
+  const q = search.toLowerCase().trim();
+  const matchName = (name: string | null) => !q || (name?.toLowerCase().includes(q) ?? false);
+  const filteredFriends = friends.filter((f) => matchName(f.name));
+  const filteredPending = pending.filter((r) => matchName(r.name));
+  const filteredSent = sentRequests.filter((r) => matchName(r.name));
+  const filteredSuggestions = suggestions.filter((s) => matchName(s.name));
+
   return (
     <PageTransition>
       <div className="pb-24">
@@ -127,6 +135,18 @@ export default function FriendsPage() {
           </h1>
         </div>
 
+        {/* Search */}
+        <div className="relative mb-5">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre..."
+            className="h-11 w-full rounded-2xl border border-border/50 bg-white pl-10 pr-4 text-[14px] text-foreground placeholder:text-muted/60 focus:border-accent focus:outline-none"
+          />
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-5 w-5 animate-spin text-muted" />
@@ -134,13 +154,13 @@ export default function FriendsPage() {
         ) : (
           <div className="space-y-6">
             {/* Pending requests */}
-            {pending.length > 0 && (
+            {filteredPending.length > 0 && (
               <section>
                 <h2 className="mb-3 text-[12px] font-semibold uppercase tracking-wider text-muted">
                   Solicitudes pendientes
                 </h2>
                 <div className="space-y-2">
-                  {pending.map((req) => (
+                  {filteredPending.map((req) => (
                     <div
                       key={req.friendshipId}
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
@@ -182,13 +202,13 @@ export default function FriendsPage() {
             )}
 
             {/* Sent requests */}
-            {sentRequests.length > 0 && (
+            {filteredSent.length > 0 && (
               <section>
                 <h2 className="mb-3 text-[12px] font-semibold uppercase tracking-wider text-muted">
                   Solicitudes enviadas
                 </h2>
                 <div className="space-y-2">
-                  {sentRequests.map((req) => (
+                  {filteredSent.map((req) => (
                     <div
                       key={req.friendshipId}
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
@@ -224,9 +244,9 @@ export default function FriendsPage() {
             {/* Friends list */}
             <section>
               <h2 className="mb-3 text-[12px] font-semibold uppercase tracking-wider text-muted">
-                Tus amigos ({friends.length})
+                Tus amigos ({filteredFriends.length})
               </h2>
-              {friends.length === 0 ? (
+              {filteredFriends.length === 0 ? (
                 <div className="rounded-2xl border border-border/50 bg-white py-12 text-center">
                   <span className="text-3xl">👋</span>
                   <p className="mt-3 text-[14px] font-medium text-foreground">
@@ -238,7 +258,7 @@ export default function FriendsPage() {
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  {friends.map((f) => (
+                  {filteredFriends.map((f) => (
                     <div
                       key={f.friendshipId}
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
@@ -267,13 +287,13 @@ export default function FriendsPage() {
             </section>
 
             {/* Suggestions */}
-            {suggestions.length > 0 && (
+            {filteredSuggestions.length > 0 && (
               <section>
                 <h2 className="mb-3 text-[12px] font-semibold uppercase tracking-wider text-muted">
                   Personas del estudio
                 </h2>
                 <div className="space-y-1.5">
-                  {suggestions.map((s) => (
+                  {filteredSuggestions.map((s) => (
                     <div
                       key={s.id}
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
