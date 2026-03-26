@@ -459,7 +459,7 @@ export function ScheduleClient({
         </div>
 
         {/* Continuous class list from selected day onwards */}
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {mobileDays.length === 0 ? (
             <p className="py-16 text-center text-sm text-muted">
               Sin clases disponibles
@@ -745,7 +745,7 @@ function CollapsiblePastClasses({ classes, classLinkPrefix, onCancel, cancelling
 
   if (pastClasses.length === 0 || upcomingClasses.length === 0) {
     return (
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         {classes.map((cls) => (
           <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
         ))}
@@ -754,7 +754,7 @@ function CollapsiblePastClasses({ classes, classLinkPrefix, onCancel, cancelling
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       {showPast && pastClasses.map((cls) => (
         <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
       ))}
