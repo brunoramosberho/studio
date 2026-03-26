@@ -719,7 +719,7 @@ export default function ProfilePage() {
           <Button
             variant="ghost"
             className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => signOut({ callbackUrl: window.location.origin })}
+            onClick={async () => { await signOut({ redirect: false }); window.location.href = window.location.origin; }}
           >
             <LogOut className="mr-2 h-4 w-4" />
             Cerrar sesión
