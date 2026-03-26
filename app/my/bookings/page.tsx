@@ -6,20 +6,18 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
-  Clock,
   AlertTriangle,
   Loader2,
-  MapPin,
   Share,
   Check,
   Users,
-  Hash,
+  Dumbbell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PageTransition } from "@/components/shared/page-transition";
-import { formatRelativeDay, formatTimeRange, cn } from "@/lib/utils";
+import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { BookingWithDetails } from "@/types";
 
@@ -112,13 +110,6 @@ export default function BookingsPage() {
   const loading = tab === "upcoming" ? loadingUpcoming : loadingPast;
   const bookings = tab === "upcoming" ? upcoming : past;
 
-  const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-    CONFIRMED: { label: "Confirmada", color: "text-green-700", bg: "bg-green-50" },
-    ATTENDED: { label: "Asistió", color: "text-green-700", bg: "bg-green-50" },
-    NO_SHOW: { label: "No asistió", color: "text-red-600", bg: "bg-red-50" },
-    CANCELLED: { label: "Cancelada", color: "text-orange-600", bg: "bg-orange-50" },
-  };
-
   return (
     <PageTransition>
       <div className="space-y-5 pb-20">
@@ -157,9 +148,9 @@ export default function BookingsPage() {
 
         {/* Content */}
         {loading ? (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             {[0, 1, 2].map((i) => (
-              <Skeleton key={i} className="h-32 rounded-2xl" />
+              <Skeleton key={i} className="h-24 rounded-2xl" />
             ))}
           </div>
         ) : bookings.length === 0 ? (
@@ -183,127 +174,130 @@ export default function BookingsPage() {
           </div>
         ) : (
           <motion.div
-            className="space-y-3"
+            className="flex flex-col gap-3"
             variants={stagger}
             initial="hidden"
             animate="show"
             key={tab}
           >
             {bookings.map((booking) => {
-              const status = statusConfig[booking.status] ?? statusConfig.CONFIRMED;
               const isUpcoming = tab === "upcoming";
-              const free = canCancelFreely(booking);
-              const hours = hoursUntilClass(booking);
+              const isPast = tab === "past";
               const studioName = (booking.class as unknown as { room?: { studio?: { name?: string } } }).room?.studio?.name;
 
               return (
                 <motion.div key={booking.id} variants={fadeUp}>
                   <Link
                     href={`/class/${booking.classId}`}
-                    className="block overflow-hidden rounded-2xl border border-border/50 bg-white transition-shadow hover:shadow-warm-sm active:scale-[0.99]"
+                    className={cn(
+                      "block rounded-2xl border border-border/50 bg-white transition-shadow active:scale-[0.99]",
+                      isPast && "opacity-60",
+                    )}
                   >
-                    {/* Color accent bar */}
-                    <div
-                      className="h-1"
-                      style={{ backgroundColor: booking.class.classType.color || "#e5e5e5" }}
-                    />
-
-                    <div className="p-4">
-                      {/* Top row: class info + status */}
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-display text-base font-bold text-foreground">
-                            {booking.class.classType.name}
-                          </p>
-                          <p className="mt-0.5 text-[13px] text-muted">
-                            con {booking.class.coach.user.name}
-                          </p>
-                        </div>
-                        <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold", status.bg, status.color)}>
-                          {status.label}
-                        </span>
+                    <div className="flex items-center gap-3 px-4 py-3.5">
+                      {/* Time */}
+                      <div className="w-14 flex-shrink-0 text-center">
+                        <p className="text-[15px] font-bold text-foreground">
+                          {formatTime(booking.class.startsAt)}
+                        </p>
+                        <p className="text-[11px] text-muted">
+                          {booking.class.classType.duration} min
+                        </p>
                       </div>
 
-                      {/* Details row */}
-                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-muted">
-                        <span className="flex items-center gap-1.5 capitalize">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {formatRelativeDay(booking.class.startsAt)}
-                        </span>
-                        <span className="flex items-center gap-1.5 font-mono text-foreground">
-                          <Clock className="h-3.5 w-3.5 text-muted" />
-                          {formatTimeRange(booking.class.startsAt, booking.class.endsAt)}
-                        </span>
-                        {booking.spotNumber && (
-                          <span className="flex items-center gap-1">
-                            <Hash className="h-3.5 w-3.5" />
-                            Lugar {booking.spotNumber}
-                          </span>
-                        )}
-                        {studioName && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3.5 w-3.5" />
-                            {studioName}
-                          </span>
-                        )}
-                      </div>
+                      {/* Divider */}
+                      <div
+                        className="h-10 w-0.5 flex-shrink-0 rounded-full"
+                        style={{ backgroundColor: (booking.class.classType.color || "#6366f1") + "40" }}
+                      />
 
-                      {/* Friends going */}
-                      {isUpcoming && booking.friendsGoing?.length > 0 && (
-                        <div className="mt-3 flex items-center gap-2 rounded-xl bg-accent/5 px-3 py-2">
-                          <Users className="h-3.5 w-3.5 text-accent" />
-                          <div className="flex -space-x-1.5">
-                            {booking.friendsGoing.slice(0, 5).map((f) => (
-                              <Avatar key={f.id} className="h-6 w-6 ring-2 ring-white">
-                                {f.image && <AvatarImage src={f.image} />}
-                                <AvatarFallback className="text-[9px] font-semibold">
-                                  {(f.name ?? "?")[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                            ))}
-                          </div>
-                          <span className="text-[12px] font-medium text-accent">
-                            {booking.friendsGoing.length === 1
-                              ? `${booking.friendsGoing[0].name?.split(" ")[0]} va`
-                              : `${booking.friendsGoing.length} amigos van`}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      {isUpcoming && booking.status === "CONFIRMED" && (
-                        <div className="mt-3 flex items-center gap-2 border-t border-border/30 pt-3" onClick={(e) => e.preventDefault()}>
-                          <button
-                            onClick={(e) => { e.preventDefault(); handleShare(booking); }}
-                            className="flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-[12px] font-medium text-foreground transition-colors hover:bg-surface/80 active:scale-95"
-                          >
-                            {copiedId === booking.id ? (
-                              <>
-                                <Check className="h-3.5 w-3.5 text-green-600" />
-                                <span className="text-green-600">Copiado</span>
-                              </>
-                            ) : (
-                              <>
-                                <Share className="h-3.5 w-3.5" />
-                                Compartir
-                              </>
+                      {/* Coach photo + info */}
+                      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                        {booking.class.coach.user.image ? (
+                          <img
+                            src={booking.class.coach.user.image}
+                            alt={booking.class.coach.user.name || "Coach"}
+                            className={cn(
+                              "h-9 w-9 flex-shrink-0 rounded-full object-cover",
+                              isPast && "grayscale",
                             )}
-                          </button>
-                          <div className="flex-1" />
-                          <button
-                            onClick={(e) => { e.preventDefault(); setCancelTarget(booking); }}
-                            className="rounded-full bg-red-50 px-3 py-1.5 text-[12px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
-                          >
-                            Cancelar
-                          </button>
-                          {!free && (
-                            <span className="text-[10px] text-orange-500">
-                              Sin reembolso
-                            </span>
-                          )}
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent">
+                            {booking.class.coach.user.name?.charAt(0) || "C"}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className="truncate text-[15px] font-bold text-foreground">
+                              {booking.class.classType.name}
+                            </p>
+                            {booking.spotNumber && (
+                              <span className="flex-shrink-0 rounded bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+                                #{booking.spotNumber}
+                              </span>
+                            )}
+                          </div>
+                          <p className="truncate text-[13px] text-muted">
+                            con {booking.class.coach.user.name?.split(" ")[0]}
+                            {studioName && (
+                              <span className="text-muted/50"> · {studioName}</span>
+                            )}
+                          </p>
+                          <p className="text-[11px] capitalize text-muted/70">
+                            {formatRelativeDay(booking.class.startsAt)}
+                          </p>
                         </div>
-                      )}
+                      </div>
+
+                      {/* Right side: status or actions */}
+                      <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                        {isPast && (
+                          <StatusBadge status={booking.status} />
+                        )}
+                        {isUpcoming && booking.status === "CONFIRMED" && (
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.preventDefault()}>
+                            <button
+                              onClick={(e) => { e.preventDefault(); handleShare(booking); }}
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-muted transition-colors active:scale-95"
+                            >
+                              {copiedId === booking.id ? (
+                                <Check className="h-3.5 w-3.5 text-green-600" />
+                              ) : (
+                                <Share className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => { e.preventDefault(); setCancelTarget(booking); }}
+                              className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Friends going */}
+                    {isUpcoming && booking.friendsGoing?.length > 0 && (
+                      <div className="flex items-center gap-2 border-t border-border/30 px-4 py-2">
+                        <div className="flex -space-x-1.5">
+                          {booking.friendsGoing.slice(0, 4).map((f) => (
+                            <Avatar key={f.id} className="h-5 w-5 ring-2 ring-white">
+                              {f.image && <AvatarImage src={f.image} />}
+                              <AvatarFallback className="text-[8px] font-semibold">
+                                {(f.name ?? "?")[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                        </div>
+                        <span className="text-[11px] font-medium text-accent">
+                          {booking.friendsGoing.length === 1
+                            ? `${booking.friendsGoing[0].name?.split(" ")[0]} va`
+                            : `${booking.friendsGoing.length} amigos van`}
+                        </span>
+                      </div>
+                    )}
                   </Link>
                 </motion.div>
               );
@@ -337,17 +331,13 @@ export default function BookingsPage() {
                   <div
                     className={cn(
                       "mx-auto flex h-14 w-14 items-center justify-center rounded-full",
-                      canCancelFreely(cancelTarget)
-                        ? "bg-orange-50"
-                        : "bg-red-50",
+                      canCancelFreely(cancelTarget) ? "bg-orange-50" : "bg-red-50",
                     )}
                   >
                     <AlertTriangle
                       className={cn(
                         "h-6 w-6",
-                        canCancelFreely(cancelTarget)
-                          ? "text-orange-500"
-                          : "text-red-500",
+                        canCancelFreely(cancelTarget) ? "text-orange-500" : "text-red-500",
                       )}
                     />
                   </div>
@@ -407,5 +397,20 @@ export default function BookingsPage() {
         </AnimatePresence>
       </div>
     </PageTransition>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; color: string; bg: string }> = {
+    CONFIRMED: { label: "Confirmada", color: "text-green-700", bg: "bg-green-50" },
+    ATTENDED: { label: "Asistió", color: "text-green-700", bg: "bg-green-50" },
+    NO_SHOW: { label: "No asistió", color: "text-red-600", bg: "bg-red-50" },
+    CANCELLED: { label: "Cancelada", color: "text-orange-600", bg: "bg-orange-50" },
+  };
+  const s = config[status] ?? config.CONFIRMED;
+  return (
+    <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", s.bg, s.color)}>
+      {s.label}
+    </span>
   );
 }
