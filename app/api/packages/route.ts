@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PackageType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireTenant, getAuthContext, requireRole } from "@/lib/tenant";
 
