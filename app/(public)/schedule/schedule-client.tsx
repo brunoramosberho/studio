@@ -226,6 +226,15 @@ export function ScheduleClient({
 
   const selectedClasses = getClassesForDay(selectedDay);
 
+  const mobileDays = useMemo(() => {
+    const idx = days.findIndex((d) => isSameDay(d, selectedDay));
+    const remaining = idx >= 0 ? days.slice(idx) : days;
+    return remaining
+      .map((day) => ({ day, classes: getClassesForDay(day) }))
+      .filter((d) => d.classes.length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDay, classes, filterType, filterCoach, filterStudio, filterCity, days]);
+
   const initialLoading = (loadingClasses || !cityDetected) && classes.length === 0;
 
   if (initialLoading) {
@@ -426,14 +435,35 @@ export function ScheduleClient({
           </div>
         </div>
 
-        {/* Class list for selected day */}
-        <div className="space-y-2">
-          {selectedClasses.length === 0 ? (
+        {/* Continuous class list from selected day onwards */}
+        <div className="space-y-3">
+          {mobileDays.length === 0 ? (
             <p className="py-16 text-center text-sm text-muted">
-              Sin clases para este día
+              Sin clases disponibles
             </p>
           ) : (
-            <CollapsiblePastClasses classes={selectedClasses} classLinkPrefix={classLinkPrefix} onCancel={handleCancelBooking} cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null} />
+            mobileDays.map(({ day, classes: dayClasses }, groupIdx) => (
+              <div key={day.toISOString()}>
+                {/* Day separator (skip for first group if it's the selected day) */}
+                {groupIdx > 0 && (
+                  <div className="flex items-center gap-3 pb-2 pt-4">
+                    <div className="h-px flex-1 bg-border/60" />
+                    <span className="text-[12px] font-medium text-muted">
+                      {isToday(day)
+                        ? "hoy"
+                        : format(day, "EEEE d", { locale: es })}
+                    </span>
+                    <div className="h-px flex-1 bg-border/60" />
+                  </div>
+                )}
+                <CollapsiblePastClasses
+                  classes={dayClasses}
+                  classLinkPrefix={classLinkPrefix}
+                  onCancel={handleCancelBooking}
+                  cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null}
+                />
+              </div>
+            ))
           )}
         </div>
       </div>
@@ -692,16 +722,16 @@ function CollapsiblePastClasses({ classes, classLinkPrefix, onCancel, cancelling
 
   if (pastClasses.length === 0 || upcomingClasses.length === 0) {
     return (
-      <>
+      <div className="space-y-3">
         {classes.map((cls) => (
           <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
         ))}
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="space-y-3">
       {showPast && pastClasses.map((cls) => (
         <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
       ))}
@@ -717,7 +747,7 @@ function CollapsiblePastClasses({ classes, classLinkPrefix, onCancel, cancelling
       {upcomingClasses.map((cls) => (
         <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
       ))}
-    </>
+    </div>
   );
 }
 
