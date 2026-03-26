@@ -9,7 +9,9 @@ export async function POST(request: NextRequest) {
     const tenant = await requireTenant();
     const session = await auth();
     const body = await request.json();
-    const { email, name, packageId, classId, spotNumber, privacy } = body;
+    const { packageId, classId, spotNumber, privacy } = body;
+    const email = body.email?.trim().toLowerCase() ?? null;
+    const name = body.name?.trim().replace(/\S+/g, (w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) ?? null;
 
     if (!classId || !packageId) {
       return NextResponse.json(
@@ -76,10 +78,10 @@ export async function POST(request: NextRequest) {
     let finalName = session?.user?.name ?? name;
 
     if (!finalUserId) {
-      let user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      let user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
         user = await prisma.user.create({
-          data: { email: email.toLowerCase(), name },
+          data: { email, name },
         });
       }
       finalUserId = user.id;
@@ -174,6 +176,7 @@ export async function POST(request: NextRequest) {
                 classId,
                 className: classData.classType.name,
                 coachName: classData.coach.user.name,
+                coachUserId: classData.coach.userId,
                 date: classData.startsAt.toISOString(),
                 duration: classData.classType.duration,
               },

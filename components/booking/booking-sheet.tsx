@@ -178,7 +178,7 @@ export function BookingSheet({
       });
       const data = await res.json();
       setEmailCheck(data);
-      if (data.name && !guestName) setGuestName(data.name);
+      if (data.name && !guestName) setGuestName(toTitleCase(data.name));
     } catch {
       setEmailCheck(null);
     } finally {
@@ -186,7 +186,19 @@ export function BookingSheet({
     }
   }, [guestName]);
 
-  function handleEmailChange(email: string) {
+  function toTitleCase(str: string) {
+    return str.replace(
+      /\S+/g,
+      (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+    );
+  }
+
+  function handleNameChange(raw: string) {
+    setGuestName(toTitleCase(raw));
+  }
+
+  function handleEmailChange(raw: string) {
+    const email = raw.toLowerCase();
     setGuestEmail(email);
     setEmailCheck(null);
     if (emailCheckTimerRef.current) clearTimeout(emailCheckTimerRef.current);
@@ -440,7 +452,7 @@ export function BookingSheet({
                           autoComplete="name"
                           placeholder="Tu nombre"
                           value={guestName}
-                          onChange={(e) => setGuestName(e.target.value)}
+                          onChange={(e) => handleNameChange(e.target.value)}
                           required
                         />
                       </div>
