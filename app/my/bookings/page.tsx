@@ -402,10 +402,9 @@ export default function BookingsPage() {
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; color: string; bg: string }> = {
-    CONFIRMED: { label: "Confirmada", color: "text-green-700", bg: "bg-green-50" },
+    CONFIRMED: { label: "Completada", color: "text-green-700", bg: "bg-green-50" },
     ATTENDED: { label: "Asistió", color: "text-green-700", bg: "bg-green-50" },
-    NO_SHOW: { label: "No asistió", color: "text-red-600", bg: "bg-red-50" },
-    CANCELLED: { label: "Cancelada", color: "text-orange-600", bg: "bg-orange-50" },
+    NO_SHOW: { label: "Crédito perdido", color: "text-red-600", bg: "bg-red-50" },
   };
   const s = config[status] ?? config.CONFIRMED;
   return (

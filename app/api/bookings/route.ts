@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
           : isPast
             ? {
                 OR: [
-                  { status: { in: ["ATTENDED", "NO_SHOW", "CANCELLED"] } },
-                  { class: { startsAt: { lt: now } } },
+                  { status: { in: ["ATTENDED", "NO_SHOW"] } },
+                  { status: "CONFIRMED", class: { startsAt: { lt: now } } },
                 ],
               }
             : {}),
@@ -290,6 +290,7 @@ export async function POST(request: NextRequest) {
                 classId,
                 className: classData.classType.name,
                 coachName: classData.coach.user.name,
+                coachUserId: classData.coach.userId,
                 date: classData.startsAt.toISOString(),
                 duration: classData.classType.duration,
               },
