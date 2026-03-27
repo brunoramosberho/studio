@@ -17,6 +17,8 @@ import {
   Drumstick, Apple, Coffee, GlassWater,
   Brain, Eye, Focus, Crosshair,
   StretchHorizontal, Move, ArrowUpFromLine, ArrowBigUp,
+  Bath, ShowerHead, TowelRack, Thermometer, ThermometerSnowflake, ThermometerSun,
+  Heater, Amphora, HandHeart, Armchair, Stethoscope, Bandage, AirVent, WandSparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -61,6 +63,22 @@ const ICON_OPTIONS: IconOption[] = [
   { id: "droplets", label: "Gotas", icon: Droplets, tags: ["water", "aqua", "sweat", "sudor", "agua"] },
   { id: "snowflake", label: "Copo", icon: Snowflake, tags: ["cold", "cryo", "frío", "cool"] },
   { id: "tornado", label: "Tornado", icon: Tornado, tags: ["spin", "power", "energía", "giro"] },
+
+  // Wellness, spa & hydrotherapy
+  { id: "bath", label: "Bañera", icon: Bath, tags: ["bath", "baño", "bañera", "hidro", "jacuzzi", "wellness", "spa"] },
+  { id: "shower-head", label: "Ducha", icon: ShowerHead, tags: ["shower", "ducha", "contrast", "escocesa", "wellness", "spa"] },
+  { id: "towel-rack", label: "Toallero", icon: TowelRack, tags: ["towel", "toalla", "toallero", "spa", "albornoz", "wellness"] },
+  { id: "heater", label: "Calor / sauna", icon: Heater, tags: ["heater", "sauna", "calor", "heat", "wellness", "steam"] },
+  { id: "thermometer-sun", label: "Temperatura caliente", icon: ThermometerSun, tags: ["hot", "caliente", "sauna", "calor", "wellness"] },
+  { id: "thermometer-snowflake", label: "Temperatura fría", icon: ThermometerSnowflake, tags: ["cold", "frío", "cold plunge", "plunge", "crio", "crioterapia", "wellness"] },
+  { id: "thermometer", label: "Termómetro", icon: Thermometer, tags: ["temperature", "temperatura", "contrast", "contraste", "wellness"] },
+  { id: "air-vent", label: "Vapor / aire", icon: AirVent, tags: ["steam", "vapor", "steam room", "sauna", "ventilación", "wellness"] },
+  { id: "amphora", label: "Ánfora", icon: Amphora, tags: ["amphora", "ánfora", "aceites", "aromaterapia", "spa", "aceite", "ritual"] },
+  { id: "hand-heart", label: "Masaje / cuidado", icon: HandHeart, tags: ["massage", "masaje", "touch", "cuidado", "wellness", "terapia"] },
+  { id: "wand-sparkles", label: "Tratamiento / ritual", icon: WandSparkles, tags: ["spa", "ritual", "tratamiento", "facial", "belleza", "wellness"] },
+  { id: "armchair", label: "Descanso", icon: Armchair, tags: ["lounge", "relax", "descanso", "wellness", "chill"] },
+  { id: "stethoscope", label: "Terapia clínica", icon: Stethoscope, tags: ["therapy", "terapia", "physio", "fisio", "fisioterapia", "salud", "wellness"] },
+  { id: "bandage", label: "Recuperación", icon: Bandage, tags: ["recovery", "recuperación", "lesión", "rehab", "wellness"] },
 
   // Combat & Power
   { id: "swords", label: "Espadas", icon: Swords, tags: ["combat", "fight", "combate", "pelea", "box"] },
