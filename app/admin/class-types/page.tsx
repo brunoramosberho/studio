@@ -66,6 +66,8 @@ interface ClassTypeData {
   level: string;
   color: string;
   icon: string | null;
+  mediaUrl: string | null;
+  tags: string[];
   _count: { classes: number; rooms: number };
 }
 
@@ -76,6 +78,8 @@ interface FormData {
   level: string;
   color: string;
   icon: string | null;
+  mediaUrl: string;
+  tags: string[];
 }
 
 const emptyForm: FormData = {
@@ -85,6 +89,8 @@ const emptyForm: FormData = {
   level: "ALL",
   color: PRESET_COLORS[0],
   icon: null,
+  mediaUrl: "",
+  tags: [],
 };
 
 export default function AdminClassTypesPage() {
@@ -93,6 +99,7 @@ export default function AdminClassTypesPage() {
   const [editing, setEditing] = useState<ClassTypeData | null>(null);
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<ClassTypeData | null>(null);
+  const [tagInput, setTagInput] = useState("");
 
   const { data: classTypes, isLoading } = useQuery<ClassTypeData[]>({
     queryKey: ["admin", "class-types"],
@@ -106,6 +113,7 @@ export default function AdminClassTypesPage() {
   function openCreate() {
     setEditing(null);
     setFormData(emptyForm);
+    setTagInput("");
     setDialogOpen(true);
   }
 
@@ -118,7 +126,10 @@ export default function AdminClassTypesPage() {
       level: ct.level,
       color: ct.color,
       icon: ct.icon,
+      mediaUrl: ct.mediaUrl ?? "",
+      tags: ct.tags ?? [],
     });
+    setTagInput("");
     setDialogOpen(true);
   }
 
@@ -262,6 +273,19 @@ export default function AdminClassTypesPage() {
                       </span>
                     )}
                   </div>
+                  {ct.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {ct.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                          style={{ backgroundColor: `${ct.color}12`, color: ct.color }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -365,6 +389,57 @@ export default function AdminClassTypesPage() {
                 value={formData.icon}
                 onChange={(icon) => setFormData({ ...formData, icon })}
                 accentColor={formData.color}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted">
+                Video o imagen <span className="font-normal">(URL, opcional)</span>
+              </label>
+              <Input
+                placeholder="https://cdn.example.com/video.mp4"
+                value={formData.mediaUrl}
+                onChange={(e) => setFormData({ ...formData, mediaUrl: e.target.value })}
+              />
+              <p className="mt-1 text-[11px] text-muted">Se muestra al tocar la disciplina en el feed</p>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted">
+                Tags <span className="font-normal">(Enter para agregar)</span>
+              </label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {formData.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                    style={{ borderColor: `${formData.color}30`, color: formData.color, backgroundColor: `${formData.color}08` }}
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, tags: formData.tags.filter((t) => t !== tag) })}
+                      className="ml-0.5 hover:opacity-60"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <Input
+                placeholder="Ej: HIIT, Cardio, Fuerza..."
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const val = tagInput.trim();
+                    if (val && !formData.tags.includes(val)) {
+                      setFormData({ ...formData, tags: [...formData.tags, val] });
+                    }
+                    setTagInput("");
+                  }
+                }}
               />
             </div>
 

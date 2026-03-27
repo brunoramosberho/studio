@@ -11,6 +11,7 @@ import { CommentsSheet } from "./comments-sheet";
 import { MediaGallery } from "./media-gallery";
 import { PhotoUpload } from "./photo-upload";
 import { PeopleListSheet, type PersonItem } from "./people-list-sheet";
+import { DisciplineSheet, type DisciplineData } from "./discipline-sheet";
 import { cn } from "@/lib/utils";
 
 interface Attendee {
@@ -65,22 +66,25 @@ function DisciplinePill({
   name,
   iconId,
   color,
+  onTap,
 }: {
   name: string;
   iconId?: string | null;
   color?: string | null;
+  onTap?: () => void;
 }) {
   const Icon = iconId ? getIconComponent(iconId) : null;
   const pillColor = color || "#475569";
   return (
-    <Link
-      href={`/schedule?discipline=${encodeURIComponent(name)}`}
+    <button
+      type="button"
+      onClick={onTap}
       className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-opacity hover:opacity-70"
       style={{ borderColor: `${pillColor}30`, backgroundColor: `${pillColor}12`, color: pillColor }}
     >
       {Icon ? <Icon className="h-2.5 w-2.5" /> : <Dumbbell className="h-2.5 w-2.5" />}
       {name}
-    </Link>
+    </button>
   );
 }
 
@@ -164,7 +168,7 @@ function AttendeesRow({
   );
 }
 
-function ClassCompletedCard({ event }: FeedEventCardProps) {
+function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { onOpenDiscipline?: () => void }) {
   const p = event.payload;
   const attendees = (p.attendees as Attendee[]) ?? [];
   const caption = (p.caption as string) ?? null;
@@ -188,6 +192,7 @@ function ClassCompletedCard({ event }: FeedEventCardProps) {
               name={(p.className as string) ?? "Clase"}
               iconId={p.classTypeIcon as string | null}
               color={p.classTypeColor as string | null}
+              onTap={onOpenDiscipline}
             />
             <span className="text-muted">
               con{" "}
@@ -352,7 +357,7 @@ function formatReservedNames(people: { name: string | null }[]) {
   return `${names[0]}, ${names[1]} y ${names.length - 2} más`;
 }
 
-function ClassReservedCard({ event }: FeedEventCardProps) {
+function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { onOpenDiscipline?: () => void }) {
   const p = event.payload;
   const classId = p.classId as string | undefined;
   const classDate = p.date ? new Date(p.date as string) : null;
@@ -402,6 +407,7 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
               name={(p.className as string) ?? "una clase"}
               iconId={p.classTypeIcon as string | null}
               color={p.classTypeColor as string | null}
+              onTap={onOpenDiscipline}
             />
           </p>
           <p className="mt-0.5 text-[12px] text-muted">
@@ -535,7 +541,25 @@ function StudioPostCard({ event }: FeedEventCardProps) {
   );
 }
 
+function extractDiscipline(payload: Record<string, unknown>): DisciplineData {
+  return {
+    name: (payload.className as string) ?? "Clase",
+    description: (payload.classTypeDescription as string) ?? null,
+    color: (payload.classTypeColor as string) ?? null,
+    icon: (payload.classTypeIcon as string) ?? null,
+    mediaUrl: (payload.classTypeMediaUrl as string) ?? null,
+    tags: (payload.classTypeTags as string[]) ?? [],
+    duration: (payload.classTypeDuration as number) ?? (payload.duration as number) ?? undefined,
+    level: (payload.classTypeLevel as string) ?? undefined,
+  };
+}
+
 export function FeedEventCard({ event }: FeedEventCardProps) {
+  const [disciplineOpen, setDisciplineOpen] = useState(false);
+  const discipline = extractDiscipline(event.payload);
+
+  const openDiscipline = () => setDisciplineOpen(true);
+
   return (
     <article className={cn(
       "overflow-hidden border-y border-border/40 bg-white sm:rounded-2xl sm:border sm:shadow-warm-sm",
@@ -546,10 +570,16 @@ export function FeedEventCard({ event }: FeedEventCardProps) {
       ) : event.eventType === "ACHIEVEMENT_UNLOCKED" ? (
         <AchievementCard event={event} />
       ) : event.eventType === "CLASS_RESERVED" ? (
-        <ClassReservedCard event={event} />
+        <ClassReservedCard event={event} onOpenDiscipline={openDiscipline} />
       ) : (
-        <ClassCompletedCard event={event} />
+        <ClassCompletedCard event={event} onOpenDiscipline={openDiscipline} />
       )}
+
+      <DisciplineSheet
+        open={disciplineOpen}
+        onClose={() => setDisciplineOpen(false)}
+        discipline={discipline}
+      />
     </article>
   );
 }

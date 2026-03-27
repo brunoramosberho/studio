@@ -201,17 +201,19 @@ model CoachProfile {
 }
 
 model ClassType {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   description String?
   duration    Int
-  level       Level   @default(ALL)
+  level       Level    @default(ALL)
   color       String
   icon        String?
+  mediaUrl    String?
+  tags        String[] @default([])
   tenantId    String
-  tenant      Tenant  @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
   classes     Class[]
-  rooms       Room[]  @relation("RoomClassTypes")
+  rooms       Room[]   @relation("RoomClassTypes")
   packages    Package[] @relation("PackageClassTypes")
 
   @@index([tenantId])

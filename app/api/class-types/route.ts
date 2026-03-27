@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const ctx = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { name, description, duration, level, color, icon } = body;
+    const { name, description, duration, level, color, icon, mediaUrl, tags } = body;
 
     if (!name || !duration || !color) {
       return NextResponse.json(
@@ -43,6 +43,8 @@ export async function POST(request: NextRequest) {
         level: level || "ALL",
         color,
         icon: icon || null,
+        mediaUrl: mediaUrl || null,
+        tags: Array.isArray(tags) ? tags : [],
       },
       include: { _count: { select: { classes: true, rooms: true } } },
     });

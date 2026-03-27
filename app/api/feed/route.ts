@@ -151,13 +151,13 @@ export async function GET(request: NextRequest) {
     }
 
     const classStudioMap = new Map<string, { studioName: string; cityId: string }>();
-    const classTypeMap = new Map<string, { color: string; icon: string | null }>();
+    const classTypeMap = new Map<string, { color: string; icon: string | null; mediaUrl: string | null; tags: string[]; description: string | null; duration: number; level: string; classTypeId: string }>();
     if (allClassIds.size > 0) {
       const classRooms = await prisma.class.findMany({
         where: { id: { in: [...allClassIds] } },
         select: {
           id: true,
-          classType: { select: { color: true, icon: true } },
+          classType: { select: { id: true, color: true, icon: true, mediaUrl: true, tags: true, description: true, duration: true, level: true } },
           room: { select: { studio: { select: { name: true, cityId: true } } } },
         },
       });
@@ -167,8 +167,14 @@ export async function GET(request: NextRequest) {
           cityId: c.room.studio.cityId,
         });
         classTypeMap.set(c.id, {
+          classTypeId: c.classType.id,
           color: c.classType.color,
           icon: c.classType.icon,
+          mediaUrl: c.classType.mediaUrl,
+          tags: c.classType.tags,
+          description: c.classType.description,
+          duration: c.classType.duration,
+          level: c.classType.level,
         });
       }
     }
@@ -176,11 +182,17 @@ export async function GET(request: NextRequest) {
     for (const event of items) {
       const payload = event.payload as Record<string, unknown> | null;
       const classId = payload?.classId as string | undefined;
-      if (classId && payload && (!payload.classTypeColor || !payload.classTypeIcon)) {
+      if (classId && payload) {
         const ct = classTypeMap.get(classId);
         if (ct) {
           payload.classTypeColor = ct.color;
           payload.classTypeIcon = ct.icon;
+          payload.classTypeMediaUrl = ct.mediaUrl;
+          payload.classTypeTags = ct.tags;
+          payload.classTypeDescription = ct.description;
+          payload.classTypeDuration = ct.duration;
+          payload.classTypeLevel = ct.level;
+          payload.classTypeId = ct.classTypeId;
         }
       }
     }

@@ -19,7 +19,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, description, duration, level, color, icon } = body;
+    const { name, description, duration, level, color, icon, mediaUrl, tags } = body;
 
     const updated = await prisma.classType.update({
       where: { id },
@@ -30,6 +30,8 @@ export async function PUT(
         ...(level !== undefined && { level }),
         ...(color !== undefined && { color }),
         ...(icon !== undefined && { icon: icon || null }),
+        ...(mediaUrl !== undefined && { mediaUrl: mediaUrl || null }),
+        ...(tags !== undefined && { tags: Array.isArray(tags) ? tags : [] }),
       },
       include: { _count: { select: { classes: true, rooms: true } } },
     });
