@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { randomUUID } from "crypto";
 import { getTenant } from "@/lib/tenant";
+import type { Role } from "@prisma/client";
+
+function fillerUserWhere() {
+  return {
+    NOT: [
+      { email: { contains: "filler" } },
+      { email: { contains: "waitlist" } },
+    ],
+  };
+}
+
+function devLoginEmailForRole(role: string): string | undefined {
+  const coach = process.env.DEV_LOGIN_COACH_EMAIL?.trim();
+  const client = process.env.DEV_LOGIN_CLIENT_EMAIL?.trim();
+  if (role === "COACH" && coach) return coach;
+  if (role === "CLIENT" && client) return client;
+  return undefined;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,32 +60,59 @@ export async function GET(request: NextRequest) {
         }
       }
     } else if (tenant) {
-      const membership = await prisma.membership.findFirst({
-        where: {
-          tenantId: tenant.id,
-          role: role as "ADMIN" | "COACH" | "CLIENT",
-          user: {
-            NOT: [
-              { email: { contains: "filler" } },
-              { email: { contains: "waitlist" } },
-            ],
+      const tenantRole = role as "ADMIN" | "COACH" | "CLIENT";
+      const preferEmail = devLoginEmailForRole(role);
+
+      if (preferEmail) {
+        const byEmail = await prisma.membership.findFirst({
+          where: {
+            tenantId: tenant.id,
+            role: tenantRole,
+            user: {
+              email: { equals: preferEmail, mode: "insensitive" },
+              ...fillerUserWhere(),
+            },
           },
-        },
-        include: { user: true },
-        orderBy: { createdAt: "asc" },
-      });
-      user = membership?.user;
+          include: { user: true },
+        });
+        user = byEmail?.user;
+      }
+
+      if (!user) {
+        const membership = await prisma.membership.findFirst({
+          where: {
+            tenantId: tenant.id,
+            role: tenantRole,
+            user: fillerUserWhere(),
+          },
+          include: { user: true },
+          orderBy: { createdAt: "asc" },
+        });
+        user = membership?.user;
+      }
     } else {
-      user = await prisma.user.findFirst({
-        where: {
-          role: role as "ADMIN" | "COACH" | "CLIENT",
-          NOT: [
-            { email: { contains: "filler" } },
-            { email: { contains: "waitlist" } },
-          ],
-        },
-        orderBy: { createdAt: "asc" },
-      });
+      const preferEmail = devLoginEmailForRole(role);
+      const legacyRole = role as Role;
+
+      if (preferEmail) {
+        user = await prisma.user.findFirst({
+          where: {
+            role: legacyRole,
+            email: { equals: preferEmail, mode: "insensitive" },
+            ...fillerUserWhere(),
+          },
+        });
+      }
+
+      if (!user) {
+        user = await prisma.user.findFirst({
+          where: {
+            role: legacyRole,
+            ...fillerUserWhere(),
+          },
+          orderBy: { createdAt: "asc" },
+        });
+      }
     }
 
     if (!user) {

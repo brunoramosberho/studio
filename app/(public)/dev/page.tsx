@@ -46,6 +46,12 @@ export default function DevLoginPage() {
             <p className="mt-2 text-sm text-muted">
               Inicia sesión como cualquier rol para explorar la app.
             </p>
+            <p className="mx-auto mt-3 max-w-md text-center text-[11px] leading-snug text-muted/70">
+              Coach y cliente: por defecto se usa el usuario más antiguo de ese rol en el tenant. Para elegir otro,
+              define <span className="font-mono text-muted">DEV_LOGIN_COACH_EMAIL</span> y{" "}
+              <span className="font-mono text-muted">DEV_LOGIN_CLIENT_EMAIL</span> en{" "}
+              <span className="font-mono text-muted">.env</span>.
+            </p>
           </div>
 
           <div className="space-y-4">
