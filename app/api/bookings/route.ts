@@ -290,6 +290,8 @@ export async function POST(request: NextRequest) {
               payload: {
                 classId,
                 className: classData.classType.name,
+                classTypeColor: classData.classType.color,
+                classTypeIcon: classData.classType.icon,
                 coachName: classData.coach.user.name,
                 coachUserId: classData.coach.userId,
                 date: classData.startsAt.toISOString(),

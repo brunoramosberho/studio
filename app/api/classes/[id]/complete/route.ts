@@ -101,6 +101,8 @@ export async function POST(
           payload: {
             classId: cls.id,
             className: cls.classType.name,
+            classTypeColor: cls.classType.color,
+            classTypeIcon: cls.classType.icon,
             coachName: cls.coach.user.name,
             coachUserId: cls.coach.userId,
             date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),

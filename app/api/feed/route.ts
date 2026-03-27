@@ -151,16 +151,37 @@ export async function GET(request: NextRequest) {
     }
 
     const classStudioMap = new Map<string, { studioName: string; cityId: string }>();
+    const classTypeMap = new Map<string, { color: string; icon: string | null }>();
     if (allClassIds.size > 0) {
       const classRooms = await prisma.class.findMany({
         where: { id: { in: [...allClassIds] } },
-        select: { id: true, room: { select: { studio: { select: { name: true, cityId: true } } } } },
+        select: {
+          id: true,
+          classType: { select: { color: true, icon: true } },
+          room: { select: { studio: { select: { name: true, cityId: true } } } },
+        },
       });
       for (const c of classRooms) {
         classStudioMap.set(c.id, {
           studioName: c.room.studio.name,
           cityId: c.room.studio.cityId,
         });
+        classTypeMap.set(c.id, {
+          color: c.classType.color,
+          icon: c.classType.icon,
+        });
+      }
+    }
+
+    for (const event of items) {
+      const payload = event.payload as Record<string, unknown> | null;
+      const classId = payload?.classId as string | undefined;
+      if (classId && payload && (!payload.classTypeColor || !payload.classTypeIcon)) {
+        const ct = classTypeMap.get(classId);
+        if (ct) {
+          payload.classTypeColor = ct.color;
+          payload.classTypeIcon = ct.icon;
+        }
       }
     }
 

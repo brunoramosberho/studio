@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Dumbbell } from "lucide-react";
+import { getIconComponent } from "@/components/admin/icon-picker";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AchievementIllustration } from "./achievement-badge";
 import { LikeButton } from "./like-button";
@@ -58,6 +59,29 @@ function timeAgo(dateStr: string) {
     day: "numeric",
     month: "short",
   });
+}
+
+function DisciplinePill({
+  name,
+  iconId,
+  color,
+}: {
+  name: string;
+  iconId?: string | null;
+  color?: string | null;
+}) {
+  const Icon = iconId ? getIconComponent(iconId) : null;
+  const pillColor = color || "#475569";
+  return (
+    <Link
+      href={`/schedule?discipline=${encodeURIComponent(name)}`}
+      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-opacity hover:opacity-70"
+      style={{ borderColor: `${pillColor}30`, backgroundColor: `${pillColor}12`, color: pillColor }}
+    >
+      {Icon ? <Icon className="h-2.5 w-2.5" /> : <Dumbbell className="h-2.5 w-2.5" />}
+      {name}
+    </Link>
+  );
 }
 
 function TappableAvatar({
@@ -159,21 +183,20 @@ function ClassCompletedCard({ event }: FeedEventCardProps) {
       <div className="flex items-center gap-3 px-4 py-3">
         <TappableAvatar user={event.user} />
         <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold leading-tight text-foreground">
-            <Link
-              href={`/schedule?discipline=${encodeURIComponent((p.className as string) ?? "")}`}
-              className="hover:underline"
-            >
-              {(p.className as string) ?? "Clase"}
-            </Link>
-            <span className="font-normal text-muted">
-              {" "}con{" "}
+          <p className="flex flex-wrap items-center gap-1.5 text-[14px] leading-snug">
+            <DisciplinePill
+              name={(p.className as string) ?? "Clase"}
+              iconId={p.classTypeIcon as string | null}
+              color={p.classTypeColor as string | null}
+            />
+            <span className="text-muted">
+              con{" "}
               {p.coachUserId ? (
-                <Link href={`/my/user/${p.coachUserId}`} className="font-medium hover:underline">
+                <Link href={`/my/user/${p.coachUserId}`} className="font-medium text-foreground/70 hover:underline">
                   {(p.coachName as string) ?? event.user.name}
                 </Link>
               ) : (
-                ((p.coachName as string) ?? event.user.name)
+                <span className="font-medium text-foreground/70">{(p.coachName as string) ?? event.user.name}</span>
               )}
             </span>
           </p>
@@ -360,7 +383,7 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
           onTapGroup={() => setShowPeople(true)}
         />
         <div className="min-w-0 flex-1">
-          <p className="text-[14px] leading-snug">
+          <p className="flex flex-wrap items-center gap-1 text-[14px] leading-snug">
             {isGroup ? (
               <button onClick={() => setShowPeople(true)} className="font-bold text-foreground text-left">
                 {formatReservedNames(people)}
@@ -372,15 +395,14 @@ function ClassReservedCard({ event }: FeedEventCardProps) {
             )}
             <span className="text-muted">
               {alreadyBooked
-                ? (isGroup ? " también reservaron " : " también reservó ")
-                : (isGroup ? " reservaron " : " reservó ")}
+                ? (isGroup ? "también reservaron" : "también reservó")
+                : (isGroup ? "reservaron" : "reservó")}
             </span>
-            <Link
-              href={`/schedule?discipline=${encodeURIComponent((p.className as string) ?? "")}`}
-              className="font-semibold text-foreground hover:underline"
-            >
-              {(p.className as string) ?? "una clase"}
-            </Link>
+            <DisciplinePill
+              name={(p.className as string) ?? "una clase"}
+              iconId={p.classTypeIcon as string | null}
+              color={p.classTypeColor as string | null}
+            />
           </p>
           <p className="mt-0.5 text-[12px] text-muted">
             {p.coachName ? (
