@@ -151,7 +151,7 @@ export function DisciplineSheet({ open, onClose, discipline }: DisciplineSheetPr
             </div>
 
             {/* Content + CTA — compact, shrink-0 so media gets priority */}
-            <div className="shrink-0 space-y-3 px-5 pb-5 pt-4">
+            <div className="shrink-0 space-y-3 px-5 pb-8 pt-4">
               {/* Quick stats + tags inline */}
               <div className="flex flex-wrap items-center gap-2">
                 {d.duration && (
