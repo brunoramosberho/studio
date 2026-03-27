@@ -1,7 +1,9 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { useState, useEffect, useCallback } from "react";
 import { X, Share, Plus, Download } from "lucide-react";
+import { getMobileInstallPlatform, isStandalonePWA } from "@/lib/pwa-install";
 import { cn } from "@/lib/utils";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -25,28 +27,15 @@ function wasDismissedRecently(): boolean {
 function markDismissed() {
   try {
     localStorage.setItem(DISMISSED_KEY, Date.now().toString());
-  } catch {}
-}
-
-function isStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as unknown as { standalone?: boolean }).standalone === true
-  );
+  } catch {
+    /* ignore */
+  }
 }
 
 type Platform = "ios" | "android" | null;
 
-function detectPlatform(): Platform {
-  if (typeof navigator === "undefined") return null;
-  const ua = navigator.userAgent;
-  if (/iPad|iPhone|iPod/.test(ua)) return "ios";
-  if (/android/i.test(ua)) return "android";
-  return null;
-}
-
 export function InstallPrompt() {
+  const { data: session, status } = useSession();
   const [visible, setVisible] = useState(false);
   const [platform, setPlatform] = useState<Platform>(null);
   const [deferredPrompt, setDeferredPrompt] =
@@ -58,9 +47,12 @@ export function InstallPrompt() {
   }, []);
 
   useEffect(() => {
-    if (isStandalone() || wasDismissedRecently()) return;
+    if (status === "loading") return;
+    if (status === "authenticated" && session?.user) return;
 
-    const plat = detectPlatform();
+    if (isStandalonePWA() || wasDismissedRecently()) return;
+
+    const plat = getMobileInstallPlatform();
     if (!plat) return;
     setPlatform(plat);
 
@@ -91,7 +83,7 @@ export function InstallPrompt() {
       const timer = setTimeout(() => setVisible(true), 3000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [status, session?.user]);
 
   async function handleInstall() {
     if (deferredPrompt) {

@@ -3,6 +3,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useCallback, useRef, useEffect, useState } from "react";
 import { FeedEventCard } from "./feed-event-card";
+import { FeedPwaHint } from "./feed-pwa-hint";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -130,6 +131,8 @@ export function SocialFeed() {
 
   return (
     <div className="space-y-4">
+      <FeedPwaHint />
+
       {/* Filter tabs */}
       <div className="flex gap-1 rounded-xl bg-surface p-1">
         {filterTabs.map((tab) => (
