@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { enrichPayloadsWithCurrentClassType } from "@/lib/feed-class-payload-sync";
 import { requireTenant, getAuthContext } from "@/lib/tenant";
 
 export async function GET(
@@ -26,6 +27,11 @@ export async function GET(
     }
 
     const currentUserId = authCtx?.session?.user?.id;
+
+    const payload = feedEvent.payload
+      ? { ...(feedEvent.payload as Record<string, unknown>) }
+      : null;
+    await enrichPayloadsWithCurrentClassType(prisma, [payload]);
 
     const [photos, comments, likeCount, myLike] = await Promise.all([
       prisma.photo.findMany({
@@ -54,7 +60,7 @@ export async function GET(
     return NextResponse.json({
       feedEvent: {
         id: feedEvent.id,
-        payload: feedEvent.payload,
+        payload,
         createdAt: feedEvent.createdAt,
         photos,
         comments,

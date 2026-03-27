@@ -1,10 +1,15 @@
+/**
+ * Tienda Be-Toro → enlaces a Shopify (https://be-toro.com/products/...).
+ *
+ * - Desde el seed principal: se llama `seedBeToroShop` al final.
+ * - Solo shop: `npm run seed:shop` (no toca clases ni usuarios).
+ */
 import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
 
 const SHOPIFY_BASE = "https://be-toro.com/products";
 
 const leggings = [
+  // Shopify slug es "sculpt" aunque el título del producto sea "Essential Leggings"
   { name: "Essential Leggings", price: 55, handle: "sculpt", image: "https://cdn.shopify.com/s/files/1/0921/4197/7937/files/SculptsportsbrayLegginsc-190_570501d2-f198-42af-b3a9-9f722c2d24e3.jpg?v=1773880864" },
   { name: "Flare Leggings", price: 55, handle: "flare-leggings-copia", image: "https://cdn.shopify.com/s/files/1/0921/4197/7937/files/FlareLeggingsNavy_StraplessTopWhite-32_2c073c35-a6a0-4149-8ebc-24c06949a444.jpg?v=1773881096" },
   { name: "The Sway Leggings", price: 55, handle: "the-sway-leggings", image: "https://cdn.shopify.com/s/files/1/0921/4197/7937/files/Sway_set-36_e272d352-fa31-4bf9-b69a-9ad2134e5126.jpg?v=1773879066" },
@@ -28,30 +33,19 @@ const bodysuits = [
   { name: "Nova", price: 75, handle: "nova", image: "https://cdn.shopify.com/s/files/1/0921/4197/7937/files/Screen_Shot_2025-12-16_at_8.52.24_PM_c606f59c-a214-46ca-a918-83211ed730e3.png?v=1773906609" },
 ];
 
-async function main() {
-  const tenant = await prisma.tenant.findUnique({ where: { slug: "betoro" } });
-  if (!tenant) {
-    console.error("Tenant 'betoro' not found");
-    process.exit(1);
-  }
+export async function seedBeToroShop(db: PrismaClient, tenantId: string): Promise<number> {
+  await db.product.deleteMany({ where: { tenantId } });
+  await db.productCategory.deleteMany({ where: { tenantId } });
 
-  // Clean existing shop data
-  await prisma.product.deleteMany({ where: { tenantId: tenant.id } });
-  await prisma.productCategory.deleteMany({ where: { tenantId: tenant.id } });
-
-  const catLeggings = await prisma.productCategory.create({
-    data: { name: "Leggings", position: 0, tenantId: tenant.id },
+  const catLeggings = await db.productCategory.create({
+    data: { name: "Leggings", position: 0, tenantId },
   });
-
-  const catTops = await prisma.productCategory.create({
-    data: { name: "Tops", position: 1, tenantId: tenant.id },
+  const catTops = await db.productCategory.create({
+    data: { name: "Tops", position: 1, tenantId },
   });
-
-  const catBodysuits = await prisma.productCategory.create({
-    data: { name: "Bodysuits", position: 2, tenantId: tenant.id },
+  const catBodysuits = await db.productCategory.create({
+    data: { name: "Bodysuits", position: 2, tenantId },
   });
-
-  const tenantId = tenant.id;
 
   async function seedProducts(
     items: { name: string; price: number; handle: string; image: string }[],
@@ -59,7 +53,7 @@ async function main() {
   ) {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      await prisma.product.create({
+      await db.product.create({
         data: {
           name: item.name,
           price: item.price,
@@ -80,10 +74,34 @@ async function main() {
   await seedProducts(tops, catTops.id);
   await seedProducts(bodysuits, catBodysuits.id);
 
-  const count = await prisma.product.count({ where: { tenantId: tenant.id } });
-  console.log(`Seeded ${count} products for BeToro in 3 categories`);
+  return db.product.count({ where: { tenantId } });
 }
 
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+async function main() {
+  const prisma = new PrismaClient();
+  try {
+    let tenant = await prisma.tenant.findUnique({
+      where: { slug: envSlugOrDefault() },
+    });
+    if (!tenant) {
+      tenant = await prisma.tenant.findFirst({ orderBy: { createdAt: "asc" } });
+    }
+    if (!tenant) {
+      console.error("No hay tenant en la base. Ejecuta primero el seed principal o crea un tenant.");
+      process.exit(1);
+    }
+    const n = await seedBeToroShop(prisma, tenant.id);
+    console.log(`Seeded ${n} products for Be-Toro (Shopify) in 3 categories`);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+function envSlugOrDefault() {
+  return process.env.SEED_TENANT_SLUG?.trim() || "betoro";
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

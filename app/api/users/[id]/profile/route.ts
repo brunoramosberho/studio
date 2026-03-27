@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { enrichPayloadsWithCurrentClassType } from "@/lib/feed-class-payload-sync";
 import { requireAuth } from "@/lib/tenant";
 
 export async function GET(
@@ -300,6 +301,11 @@ export async function GET(
     orderBy: { createdAt: "desc" },
     take: 20,
   });
+
+  await enrichPayloadsWithCurrentClassType(
+    prisma,
+    feedEvents.map((e) => e.payload as Record<string, unknown> | null),
+  );
 
   const activityFeed = feedEvents.map((e) => ({
     id: e.id,

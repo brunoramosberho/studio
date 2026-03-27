@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { enrichPayloadsWithCurrentClassType } from "@/lib/feed-class-payload-sync";
 import { requireRole } from "@/lib/tenant";
 import { sendPushToUser, type PushPayload } from "@/lib/push";
 
@@ -34,6 +35,11 @@ export async function GET(request: NextRequest) {
     const hasMore = events.length > limit;
     const items = hasMore ? events.slice(0, limit) : events;
     const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+    await enrichPayloadsWithCurrentClassType(
+      prisma,
+      items.map((e) => e.payload as Record<string, unknown> | null),
+    );
 
     const feed = items.map((e) => ({
       id: e.id,

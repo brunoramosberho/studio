@@ -151,13 +151,38 @@ export async function GET(request: NextRequest) {
     }
 
     const classStudioMap = new Map<string, { studioName: string; cityId: string }>();
-    const classTypeMap = new Map<string, { color: string; icon: string | null; mediaUrl: string | null; tags: string[]; description: string | null; duration: number; level: string; classTypeId: string }>();
+    const classTypeMap = new Map<
+      string,
+      {
+        name: string;
+        color: string;
+        icon: string | null;
+        mediaUrl: string | null;
+        tags: string[];
+        description: string | null;
+        duration: number;
+        level: string;
+        classTypeId: string;
+      }
+    >();
     if (allClassIds.size > 0) {
       const classRooms = await prisma.class.findMany({
         where: { id: { in: [...allClassIds] } },
         select: {
           id: true,
-          classType: { select: { id: true, color: true, icon: true, mediaUrl: true, tags: true, description: true, duration: true, level: true } },
+          classType: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+              icon: true,
+              mediaUrl: true,
+              tags: true,
+              description: true,
+              duration: true,
+              level: true,
+            },
+          },
           room: { select: { studio: { select: { name: true, cityId: true } } } },
         },
       });
@@ -168,6 +193,7 @@ export async function GET(request: NextRequest) {
         });
         classTypeMap.set(c.id, {
           classTypeId: c.classType.id,
+          name: c.classType.name,
           color: c.classType.color,
           icon: c.classType.icon,
           mediaUrl: c.classType.mediaUrl,
@@ -185,6 +211,7 @@ export async function GET(request: NextRequest) {
       if (classId && payload) {
         const ct = classTypeMap.get(classId);
         if (ct) {
+          payload.className = ct.name;
           payload.classTypeColor = ct.color;
           payload.classTypeIcon = ct.icon;
           payload.classTypeMediaUrl = ct.mediaUrl;
