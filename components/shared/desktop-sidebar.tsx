@@ -9,6 +9,7 @@ import {
   Dumbbell,
   CalendarCheck,
   User,
+  Users,
   Package,
   ShoppingBag,
   MapPin,
@@ -22,6 +23,7 @@ import { useBranding } from "@/components/branding-provider";
 const sidebarLinks = [
   { href: "/my", icon: Home, label: "Feed" },
   { href: "/schedule", icon: Dumbbell, label: "Clases" },
+  { href: "/coaches", icon: Users, label: "Coaches" },
   { href: "/my/bookings", icon: CalendarCheck, label: "Mis Reservas" },
   { href: "/my/packages", icon: Package, label: "Mis Paquetes" },
   { href: "/shop", icon: ShoppingBag, label: "Shop" },

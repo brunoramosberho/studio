@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { title, artist } = body;
+  const { title, artist, spotifyTrackId, albumArt, previewUrl } = body;
 
   if (!title?.trim() || !artist?.trim()) {
     return NextResponse.json(
@@ -32,11 +32,27 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const sid = typeof spotifyTrackId === "string" && spotifyTrackId.trim() ? spotifyTrackId.trim() : null;
+  if (sid) {
+    const dup = await prisma.favoriteSong.findFirst({
+      where: { userId: session.user.id, spotifyTrackId: sid },
+    });
+    if (dup) {
+      return NextResponse.json(
+        { error: "Esta canción ya está en tu lista" },
+        { status: 409 },
+      );
+    }
+  }
+
   const song = await prisma.favoriteSong.create({
     data: {
       userId: session.user.id,
       title: title.trim(),
       artist: artist.trim(),
+      spotifyTrackId: sid,
+      albumArt: albumArt || null,
+      previewUrl: previewUrl || null,
     },
   });
 

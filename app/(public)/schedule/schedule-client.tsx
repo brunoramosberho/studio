@@ -11,6 +11,7 @@ import {
   Ticket,
   AlertTriangle,
   Dumbbell,
+  ArrowRight,
 } from "lucide-react";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import {
@@ -224,6 +225,11 @@ export function ScheduleClient({
     new Map(classes.map((c) => [c.coach.id, c.coach])).values(),
   );
 
+  const selectedCoach =
+    filterCoaches.size === 1
+      ? coaches.find((c) => filterCoaches.has(c.id)) ?? null
+      : null;
+
   const searchParams = useSearchParams();
   const [disciplineApplied, setDisciplineApplied] = useState(false);
   useEffect(() => {
@@ -361,46 +367,89 @@ export function ScheduleClient({
 
         {/* Coach avatar strip */}
         {!hideCoachFilter && coaches.length > 0 && (
-          <div className="-mx-4 mb-3 overflow-x-auto px-4 scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
-            <div className="flex gap-4">
-              {coaches.map((c) => {
-                const active = filterCoaches.has(c.id);
-                const firstName = c.user.name?.split(" ")[0] || "Coach";
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => toggleCoach(c.id)}
-                    className="flex flex-shrink-0 flex-col items-center gap-1"
-                  >
-                    <div
-                      className={cn(
-                        "h-14 w-14 overflow-hidden rounded-full border-2 transition-all",
-                        active ? "border-foreground ring-2 ring-foreground/20" : "border-transparent",
-                      )}
+          <>
+            <div className="-mx-4 mb-2 overflow-x-auto px-4 scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
+              <div className="flex gap-4">
+                {coaches.map((c) => {
+                  const active = filterCoaches.has(c.id);
+                  const firstName = c.user.name?.split(" ")[0] || "Coach";
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => toggleCoach(c.id)}
+                      className="flex flex-shrink-0 flex-col items-center gap-1"
                     >
-                      {c.user.image ? (
-                        <img
-                          src={c.user.image}
-                          alt={firstName}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-accent/20 text-base font-bold text-accent">
-                          {firstName.charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <span className={cn(
-                      "max-w-[56px] truncate text-[11px] font-medium",
-                      active ? "text-foreground" : "text-muted",
-                    )}>
-                      {firstName}
-                    </span>
-                  </button>
-                );
-              })}
+                      <div
+                        className={cn(
+                          "h-14 w-14 overflow-hidden rounded-full border-2 transition-all",
+                          active ? "border-foreground ring-2 ring-foreground/20" : "border-transparent",
+                        )}
+                      >
+                        {c.user.image ? (
+                          <img
+                            src={c.user.image}
+                            alt={firstName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-accent/20 text-base font-bold text-accent">
+                            {firstName.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <span className={cn(
+                        "max-w-[56px] truncate text-[11px] font-medium",
+                        active ? "text-foreground" : "text-muted",
+                      )}>
+                        {firstName}
+                      </span>
+                    </button>
+                  );
+                })}
+                <Link
+                  href="/coaches"
+                  className="flex flex-shrink-0 flex-col items-center gap-1"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-surface transition-colors hover:bg-surface/80">
+                    <ArrowRight className="h-4 w-4 text-muted" />
+                  </div>
+                  <span className="text-[11px] font-medium text-muted">Todos</span>
+                </Link>
+              </div>
             </div>
-          </div>
+
+            <AnimatePresence>
+              {selectedCoach && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mb-3 overflow-hidden"
+                >
+                  <Link
+                    href={`/my/user/${selectedCoach.userId}`}
+                    className="flex items-center gap-2.5 rounded-xl bg-surface/80 px-3 py-2 transition-colors active:bg-surface"
+                  >
+                    {selectedCoach.user.image && (
+                      <img
+                        src={selectedCoach.user.image}
+                        alt=""
+                        className="h-7 w-7 rounded-full object-cover"
+                      />
+                    )}
+                    <span className="flex-1 text-[13px] font-medium text-foreground">
+                      {selectedCoach.user.name?.split(" ")[0]}
+                    </span>
+                    <span className="text-[12px] font-medium text-accent">
+                      Ver perfil
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-accent" />
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
         )}
 
         {/* Discipline pills + studio selector */}
@@ -562,8 +611,8 @@ export function ScheduleClient({
 
         {/* Coach avatar strip — desktop */}
         {!hideCoachFilter && coaches.length > 0 && (
-          <div className="mb-5 overflow-x-auto scrollbar-none">
-            <div className="flex gap-5">
+          <div className="mb-5">
+            <div className="flex items-start gap-5 overflow-x-auto scrollbar-none">
               {coaches.map((c) => {
                 const active = filterCoaches.has(c.id);
                 const firstName = c.user.name?.split(" ")[0] || "Coach";
@@ -602,7 +651,48 @@ export function ScheduleClient({
                   </button>
                 );
               })}
+              <Link
+                href="/coaches"
+                className="flex flex-shrink-0 flex-col items-center gap-1.5"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border/60 bg-surface transition-colors hover:bg-surface/80">
+                  <ArrowRight className="h-4 w-4 text-muted" />
+                </div>
+                <span className="text-[11px] font-medium text-muted">Todos</span>
+              </Link>
             </div>
+
+            <AnimatePresence>
+              {selectedCoach && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-3 overflow-hidden"
+                >
+                  <Link
+                    href={`/my/user/${selectedCoach.userId}`}
+                    className="inline-flex items-center gap-2.5 rounded-xl bg-surface/80 px-4 py-2 transition-colors hover:bg-surface"
+                  >
+                    {selectedCoach.user.image && (
+                      <img
+                        src={selectedCoach.user.image}
+                        alt=""
+                        className="h-7 w-7 rounded-full object-cover"
+                      />
+                    )}
+                    <span className="text-[13px] font-medium text-foreground">
+                      {selectedCoach.user.name?.split(" ")[0]}
+                    </span>
+                    <span className="text-[12px] font-medium text-accent">
+                      Ver perfil
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-accent" />
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 

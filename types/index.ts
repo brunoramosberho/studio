@@ -45,11 +45,13 @@ export interface ClassWithDetails extends Class {
   room: RoomWithStudio;
   coach: CoachProfile & { user: Pick<User, "name" | "image"> };
   bookings: Booking[];
-  _count?: { bookings: number; waitlist: number };
+  _count?: { bookings: number; waitlist: number; songRequests?: number };
   spotsLeft?: number;
   friendsGoing?: { id: string; name: string | null; image: string | null }[];
   isBooked?: boolean;
   myBookingId?: string | null;
+  songRequestsEnabled: boolean;
+  songRequestCriteria: string[];
 }
 
 export interface BookingWithDetails extends Booking {

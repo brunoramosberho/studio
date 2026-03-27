@@ -29,6 +29,7 @@ import { formatTime } from "@/lib/utils";
 import { useBooking } from "@/hooks/useBooking";
 import { usePackages } from "@/hooks/usePackages";
 import { BookingSheet } from "@/components/booking/booking-sheet";
+import { SongRequest } from "@/components/booking/song-request";
 
 interface ClassData {
   id: string;
@@ -61,9 +62,11 @@ interface ClassData {
     user: { name: string | null; image: string | null };
   };
   bookings: { id: string; userId: string | null; spotNumber: number | null; status: string }[];
-  _count: { bookings: number; waitlist: number };
+  _count: { bookings: number; waitlist: number; songRequests?: number };
   spotsLeft: number;
   spotMap: Record<number, SpotInfo>;
+  songRequestsEnabled?: boolean;
+  songRequestCriteria?: string[];
 }
 
 export default function ClassDetailPage() {
@@ -85,6 +88,8 @@ export default function ClassDetailPage() {
   const [guestEmail, setGuestEmail] = useState<string | null>(null);
   const [magicSent, setMagicSent] = useState(false);
   const [sendingMagic, setSendingMagic] = useState(false);
+  const [showSongRequest, setShowSongRequest] = useState(false);
+  const [songRequestChecked, setSongRequestChecked] = useState(false);
 
   const {
     data: cls,
@@ -128,6 +133,17 @@ export default function ClassDetailPage() {
   useEffect(() => {
     if (myBookedSpot) setSelectedSpot(null);
   }, [myBookedSpot]);
+
+  useEffect(() => {
+    if (!bookingSuccess || songRequestChecked || !isAuthenticated) return;
+    setSongRequestChecked(true);
+    fetch(`/api/classes/${id}/song-request`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.eligible && !data.songRequest) setShowSongRequest(true);
+      })
+      .catch(() => {});
+  }, [bookingSuccess, id, isAuthenticated, songRequestChecked]);
 
   async function handleDirectBook() {
     if (!selectedSpot) return;
@@ -463,6 +479,24 @@ export default function ClassDetailPage() {
                   </p>
                 </div>
               )}
+
+              {/* Song request prompt */}
+              <AnimatePresence>
+                {showSongRequest && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-4 overflow-hidden rounded-xl border border-border/50 bg-white"
+                  >
+                    <SongRequest
+                      classId={id}
+                      onComplete={() => setShowSongRequest(false)}
+                      onSkip={() => setShowSongRequest(false)}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Guest login prompt */}
               {!isAuthenticated && guestEmail && (

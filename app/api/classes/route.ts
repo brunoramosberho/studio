@@ -130,7 +130,14 @@ export async function POST(request: NextRequest) {
     const ctx = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { classTypeId, coachId, startsAt, endsAt, roomId, isRecurring, recurringId, notes, tag } = body;
+    const { classTypeId, coachId, startsAt, endsAt, roomId, isRecurring, recurringId, notes, tag, songRequestsEnabled, songRequestCriteria } = body;
+
+    const resolvedSongEnabled = songRequestsEnabled ?? true;
+    const resolvedSongCriteria = !resolvedSongEnabled
+      ? (Array.isArray(songRequestCriteria) ? songRequestCriteria : [])
+      : Array.isArray(songRequestCriteria) && songRequestCriteria.length > 0
+        ? songRequestCriteria
+        : ["ALL"];
 
     if (!classTypeId || !coachId || !startsAt || !endsAt || !roomId) {
       return NextResponse.json(
@@ -151,6 +158,8 @@ export async function POST(request: NextRequest) {
         recurringId,
         notes,
         tag: tag || null,
+        songRequestsEnabled: resolvedSongEnabled,
+        songRequestCriteria: resolvedSongCriteria,
       },
       include: {
         classType: true,

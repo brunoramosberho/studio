@@ -13,6 +13,7 @@ import {
   Search,
   Clock,
   MapPin,
+  Music,
 } from "lucide-react";
 import { format, isPast, addMinutes } from "date-fns";
 import { es } from "date-fns/locale";
@@ -56,6 +57,14 @@ interface StudioWithRooms {
   rooms: { id: string; name: string; maxCapacity: number; classTypes: { id: string; name: string }[] }[];
 }
 
+const SONG_CRITERIA_OPTIONS = [
+  { value: "ALL", label: "Todos los asistentes" },
+  { value: "BIRTHDAY_WEEK", label: "Cumpleañeros de la semana" },
+  { value: "ANNIVERSARY", label: "Aniversario de su primera clase" },
+  { value: "FIRST_CLASS", label: "Primera clase" },
+  { value: "CLASS_MILESTONE", label: "Hito de clases (10, 25, 50, 100…)" },
+];
+
 interface ClassFormData {
   classTypeId: string;
   coachProfileId: string;
@@ -65,6 +74,8 @@ interface ClassFormData {
   duration: number;
   recurring: boolean;
   tag: string;
+  songRequestsEnabled: boolean;
+  songRequestCriteria: string[];
 }
 
 const emptyForm: ClassFormData = {
@@ -76,6 +87,8 @@ const emptyForm: ClassFormData = {
   duration: 50,
   recurring: false,
   tag: "",
+  songRequestsEnabled: true,
+  songRequestCriteria: ["ALL"],
 };
 
 export default function AdminClassesPage() {
@@ -149,6 +162,8 @@ export default function AdminClassesPage() {
       duration: durationMin,
       recurring: cls.isRecurring,
       tag: cls.tag ?? "",
+      songRequestsEnabled: cls.songRequestsEnabled ?? false,
+      songRequestCriteria: cls.songRequestCriteria?.length ? cls.songRequestCriteria : ["ALL"],
     });
     setDialogOpen(true);
   }
@@ -164,6 +179,8 @@ export default function AdminClassesPage() {
       roomId: formData.roomId,
       isRecurring: formData.recurring,
       tag: formData.tag || null,
+      songRequestsEnabled: formData.songRequestsEnabled,
+      songRequestCriteria: formData.songRequestsEnabled ? formData.songRequestCriteria : [],
     };
   }
 
@@ -488,6 +505,46 @@ export default function AdminClassesPage() {
                 value={formData.tag}
                 onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
               />
+            </div>
+
+            {/* Song request config */}
+            <div className="rounded-xl border border-border/60 bg-surface/30 p-3 space-y-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={formData.songRequestsEnabled}
+                  onChange={(e) => setFormData({ ...formData, songRequestsEnabled: e.target.checked })}
+                  className="rounded border-input-border"
+                />
+                <Music className="h-3.5 w-3.5 text-muted" />
+                Permitir sugerencias de canciones
+              </label>
+              {formData.songRequestsEnabled && (
+                <div className="space-y-2 pl-6">
+                  <p className="text-xs text-muted">¿Quién puede sugerir?</p>
+                  {SONG_CRITERIA_OPTIONS.map((opt) => (
+                    <label key={opt.value} className="flex items-center gap-2 text-[13px]">
+                      <input
+                        type="checkbox"
+                        checked={formData.songRequestCriteria.includes(opt.value)}
+                        onChange={(e) => {
+                          const current = new Set(formData.songRequestCriteria);
+                          if (opt.value === "ALL") {
+                            setFormData({ ...formData, songRequestCriteria: e.target.checked ? ["ALL"] : [] });
+                          } else {
+                            current.delete("ALL");
+                            if (e.target.checked) current.add(opt.value);
+                            else current.delete(opt.value);
+                            setFormData({ ...formData, songRequestCriteria: Array.from(current) });
+                          }
+                        }}
+                        className="rounded border-input-border"
+                      />
+                      {opt.label}
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             {!editingClass && (

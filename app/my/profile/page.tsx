@@ -14,7 +14,6 @@ import {
   UserPen,
   ShieldCheck,
   Music,
-  Plus,
   X,
   MapPin,
   Trophy,
@@ -29,6 +28,7 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AchievementBadge } from "@/components/feed/achievement-badge";
+import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
 import { cn } from "@/lib/utils";
 
 interface UserPackageInfo {
@@ -43,6 +43,8 @@ interface FavoriteSong {
   id: string;
   title: string;
   artist: string;
+  spotifyTrackId?: string | null;
+  albumArt?: string | null;
 }
 
 interface LocationCountry {
@@ -85,8 +87,8 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showSongForm, setShowSongForm] = useState(false);
-  const [songTitle, setSongTitle] = useState("");
-  const [songArtist, setSongArtist] = useState("");
+  const [songPickerKey, setSongPickerKey] = useState(0);
+  const [songAddError, setSongAddError] = useState<string | null>(null);
 
   const [instagramUser, setInstagramUser] = useState("");
   const [stravaUser, setStravaUser] = useState("");
@@ -159,20 +161,31 @@ export default function ProfilePage() {
   });
 
   const addSongMutation = useMutation({
-    mutationFn: async ({ title, artist }: { title: string; artist: string }) => {
+    mutationFn: async (track: SpotifyTrack) => {
       const res = await fetch("/api/profile/songs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, artist }),
+        body: JSON.stringify({
+          title: track.name,
+          artist: track.artist,
+          spotifyTrackId: track.trackId,
+          albumArt: track.albumArt,
+          previewUrl: track.previewUrl,
+        }),
       });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : "No se pudo añadir la canción");
+      }
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile", "songs"] });
-      setSongTitle("");
-      setSongArtist("");
-      setShowSongForm(false);
+      setSongAddError(null);
+      setSongPickerKey((k) => k + 1);
+    },
+    onError: (err: Error) => {
+      setSongAddError(err.message);
     },
   });
 
@@ -195,12 +208,6 @@ export default function ProfilePage() {
       queryClient.invalidateQueries({ queryKey: ["profile", "songs"] });
     },
   });
-
-  function handleAddSong(e: React.FormEvent) {
-    e.preventDefault();
-    if (!songTitle.trim() || !songArtist.trim()) return;
-    addSongMutation.mutate({ title: songTitle.trim(), artist: songArtist.trim() });
-  }
 
   function handleRemoveSong(songId: string) {
     removeSongMutation.mutate(songId);
@@ -483,6 +490,17 @@ export default function ProfilePage() {
                         key={song.id}
                         className="flex items-center gap-2.5 rounded-lg bg-surface/60 px-3 py-2"
                       >
+                        {song.albumArt ? (
+                          <img
+                            src={song.albumArt}
+                            alt={song.title}
+                            className="h-9 w-9 shrink-0 rounded-md object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/10">
+                            <Music className="h-4 w-4 text-muted" />
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[13px] font-medium text-foreground">
                             {song.title}
@@ -502,32 +520,17 @@ export default function ProfilePage() {
 
                 <Card>
                   <CardContent className="p-3">
-                    <form onSubmit={handleAddSong} className="flex items-center gap-2">
-                      <Input
-                        value={songTitle}
-                        onChange={(e) => setSongTitle(e.target.value)}
-                        placeholder="Canción"
-                        className="h-9 text-[14px]"
-                      />
-                      <Input
-                        value={songArtist}
-                        onChange={(e) => setSongArtist(e.target.value)}
-                        placeholder="Artista"
-                        className="h-9 text-[14px]"
-                      />
-                      <Button
-                        type="submit"
-                        size="sm"
-                        disabled={addSongMutation.isPending || !songTitle.trim() || !songArtist.trim()}
-                        className="h-9 shrink-0 px-3"
-                      >
-                        {addSongMutation.isPending ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Plus className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                    </form>
+                    {songAddError ? (
+                      <p className="mb-3 text-xs text-destructive">{songAddError}</p>
+                    ) : null}
+                    <SpotifyTrackPicker
+                      key={songPickerKey}
+                      searchPlaceholder="Busca en Spotify por canción o artista..."
+                      confirmLabel="Añadir a favoritos"
+                      isSubmitting={addSongMutation.isPending}
+                      onSearchInteraction={() => setSongAddError(null)}
+                      onConfirm={(track) => addSongMutation.mutateAsync(track)}
+                    />
                   </CardContent>
                 </Card>
               </div>

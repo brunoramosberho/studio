@@ -56,6 +56,7 @@ model Tenant {
   pushSubscriptions PushSubscription[]
   productCategories ProductCategory[]
   products          Product[]
+  songRequests      ClassSongRequest[]
 }
 
 model Membership {
@@ -159,6 +160,7 @@ model User {
   friendshipsRequested Friendship[]     @relation("FriendshipRequester")
   friendshipsReceived  Friendship[]     @relation("FriendshipAddressee")
   favoriteSongs        FavoriteSong[]   @relation("UserFavoriteSongs")
+  songRequests         ClassSongRequest[] @relation("UserSongRequests")
   pushSubscriptions    PushSubscription[] @relation("UserPushSubscriptions")
 
   @@index([countryId])
@@ -166,12 +168,15 @@ model User {
 }
 
 model FavoriteSong {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation("UserFavoriteSongs", fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  artist    String
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation("UserFavoriteSongs", fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  artist         String
+  spotifyTrackId String?
+  albumArt       String?
+  previewUrl     String?
+  createdAt      DateTime @default(now())
 
   @@index([userId])
 }
@@ -243,8 +248,11 @@ model Class {
   recurringId String?
   notes       String?
   tag         String?
-  bookings    Booking[]
-  waitlist    Waitlist[]
+  bookings             Booking[]
+  waitlist             Waitlist[]
+  songRequests         ClassSongRequest[]
+  songRequestsEnabled  Boolean   @default(true)
+  songRequestCriteria  String[]  @default(["ALL"])
 
   @@index([startsAt])
   @@index([classTypeId])
@@ -258,6 +266,26 @@ enum ClassStatus {
   SCHEDULED
   CANCELLED
   COMPLETED
+}
+
+model ClassSongRequest {
+  id             String   @id @default(cuid())
+  classId        String
+  class          Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation("UserSongRequests", fields: [userId], references: [id], onDelete: Cascade)
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  title          String
+  artist         String
+  spotifyTrackId String?
+  albumArt       String?
+  previewUrl     String?
+  createdAt      DateTime @default(now())
+
+  @@unique([classId, userId])
+  @@index([classId])
+  @@index([tenantId])
 }
 
 model Booking {

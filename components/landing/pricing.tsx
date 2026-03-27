@@ -10,7 +10,7 @@ const plans = [
   {
     name: "Starter",
     monthly: 299,
-    annual: 166,
+    annual: 249,
     onboarding: 799,
     popular: false,
     features: [
@@ -24,7 +24,7 @@ const plans = [
   {
     name: "Growth",
     monthly: 449,
-    annual: 291,
+    annual: 374,
     onboarding: 1499,
     popular: true,
     features: [
@@ -35,6 +35,7 @@ const plans = [
       "Shop integrado",
       "Dashboard avanzado",
       "Coach portal",
+      "1 deseo al mes",
       "Migración de datos incluida",
     ],
   },
@@ -50,6 +51,7 @@ const plans = [
       "Multi-sede",
       "Custom domain",
       "Account manager dedicado",
+      "2 deseos al mes",
       "Onboarding incluido",
       "SLA de uptime",
     ],

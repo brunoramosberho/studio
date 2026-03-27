@@ -35,7 +35,7 @@ export async function GET(
                 favoriteSongs: {
                   orderBy: { createdAt: "desc" },
                   take: 5,
-                  select: { id: true, title: true, artist: true },
+                  select: { id: true, title: true, artist: true, albumArt: true, spotifyTrackId: true },
                 },
               },
             },
@@ -45,6 +45,7 @@ export async function GET(
           select: {
             bookings: { where: { status: "CONFIRMED" } },
             waitlist: true,
+            songRequests: true,
           },
         },
       },
@@ -225,7 +226,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag } = body;
+    const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag, songRequestsEnabled, songRequestCriteria } = body;
 
     const updated = await prisma.class.update({
       where: { id },
@@ -238,6 +239,8 @@ export async function PUT(
         ...(status && { status }),
         ...(notes !== undefined && { notes }),
         ...(tag !== undefined && { tag: tag || null }),
+        ...(songRequestsEnabled !== undefined && { songRequestsEnabled }),
+        ...(songRequestCriteria !== undefined && { songRequestCriteria: Array.isArray(songRequestCriteria) ? songRequestCriteria : [] }),
       },
       include: {
         classType: true,

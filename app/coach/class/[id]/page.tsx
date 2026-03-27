@@ -43,6 +43,16 @@ interface FavoriteSong {
   id: string;
   title: string;
   artist: string;
+  albumArt?: string | null;
+}
+
+interface SongRequestEntry {
+  id: string;
+  title: string;
+  artist: string;
+  albumArt: string | null;
+  spotifyTrackId: string | null;
+  user: { id: string; name: string | null; image: string | null };
 }
 
 interface AttendeeStats {
@@ -237,6 +247,18 @@ export default function ClassRosterPage() {
       return res.json();
     },
     enabled: !!id,
+  });
+
+  const songRequestsEnabled = (classData as any)?.songRequestsEnabled ?? false;
+
+  const { data: songRequests = [] } = useQuery<SongRequestEntry[]>({
+    queryKey: ["class-song-requests", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/classes/${id}/song-request?list=all`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!id && songRequestsEnabled,
   });
 
   const isPastClass = classData ? new Date(classData.endsAt) < new Date() : false;
@@ -994,6 +1016,11 @@ export default function ClassRosterPage() {
                                     key={song.id}
                                     className="flex items-center gap-2 rounded-lg bg-accent/5 px-3 py-1.5"
                                   >
+                                    {song.albumArt ? (
+                                      <img src={song.albumArt} alt={song.title} className="h-7 w-7 shrink-0 rounded object-cover" />
+                                    ) : (
+                                      <Music className="h-3 w-3 shrink-0 text-accent/60" />
+                                    )}
                                     <span className="text-sm font-medium text-foreground">
                                       {song.title}
                                     </span>
@@ -1013,6 +1040,61 @@ export default function ClassRosterPage() {
               </motion.div>
             )}
           </div>
+
+          {/* Song Requests (Spotify) */}
+          {songRequests.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <Card className="border-green-200/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Music className="h-4 w-4 text-green-600" />
+                    Canciones sugeridas
+                  </CardTitle>
+                  <p className="text-xs text-muted">
+                    {songRequests.length} sugerencia{songRequests.length !== 1 ? "s" : ""} de los asistentes
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-1.5 pt-0">
+                  {songRequests.map((sr) => (
+                    <div
+                      key={sr.id}
+                      className="flex items-center gap-2.5 rounded-lg bg-green-50/60 px-3 py-2"
+                    >
+                      {sr.albumArt ? (
+                        <img
+                          src={sr.albumArt}
+                          alt={sr.title}
+                          className="h-9 w-9 shrink-0 rounded-md object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-green-100">
+                          <Music className="h-4 w-4 text-green-600" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{sr.title}</p>
+                        <p className="truncate text-xs text-muted">{sr.artist}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <Avatar className="h-5 w-5">
+                          {sr.user.image && <AvatarImage src={sr.user.image} />}
+                          <AvatarFallback className="text-[8px]">
+                            {(sr.user.name ?? "U").charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-[11px] text-muted/70">
+                          {sr.user.name?.split(" ")[0]}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* Songs */}
           {allSongs.length > 0 && (
@@ -1042,7 +1124,11 @@ export default function ClassRosterPage() {
                       key={`${song.id}-${song.userName}`}
                       className="flex items-center gap-2 rounded-lg bg-accent/5 px-3 py-2"
                     >
-                      <Music className="h-3 w-3 shrink-0 text-accent/60" />
+                      {(song as any).albumArt ? (
+                        <img src={(song as any).albumArt} alt={song.title} className="h-8 w-8 shrink-0 rounded object-cover" />
+                      ) : (
+                        <Music className="h-3 w-3 shrink-0 text-accent/60" />
+                      )}
                       <span className="text-sm font-medium">{song.title}</span>
                       <span className="text-xs text-muted">— {song.artist}</span>
                       <span className="ml-auto text-[11px] text-muted/70">
