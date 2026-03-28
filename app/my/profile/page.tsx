@@ -87,6 +87,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showSongForm, setShowSongForm] = useState(false);
+  const [showAllAchievements, setShowAllAchievements] = useState(false);
   const [songPickerKey, setSongPickerKey] = useState(0);
   const [songAddError, setSongAddError] = useState<string | null>(null);
 
@@ -155,6 +156,32 @@ export default function ProfilePage() {
     queryFn: async () => {
       const res = await fetch("/api/achievements/me");
       if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
+
+  const { data: gamification } = useQuery<{
+    level: { name: string; icon: string; color: string; minClasses: number } | null;
+    nextLevel: { name: string; icon: string; color: string; minClasses: number } | null;
+    totalClasses: number;
+    classesToNext: number;
+    progressPercent: number;
+    currentStreak: number;
+    longestStreak: number;
+    freeClassCredits: number;
+    levels: { name: string; icon: string; color: string; minClasses: number; reached: boolean; isCurrent: boolean; rewardOnUnlock: unknown }[];
+    achievements: {
+      id: string; key: string; name: string; description: string | null;
+      icon: string; achievementType: string; earned: boolean; earnedAt: string | null;
+      rewardType: string; rewardValue: unknown;
+    }[];
+    rewards: { id: string; rewardKind: string; rewardData: Record<string, unknown>; expiresAt: string | null }[];
+  }>({
+    queryKey: ["gamification", "me"],
+    queryFn: async () => {
+      const res = await fetch("/api/gamification/me");
+      if (!res.ok) return null;
       return res.json();
     },
     enabled: !!session?.user,
@@ -411,27 +438,190 @@ export default function ProfilePage() {
           </Card>
         </motion.div>
 
-        {/* Achievements */}
-        {achievements.length > 0 && (
+        {/* Level progress bar */}
+        {gamification?.level && (
           <motion.div custom={2} variants={fadeUp} initial="hidden" animate="show">
             <div className="rounded-2xl border border-border/50 bg-white p-4">
-              <div className="mb-2.5 flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-accent" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">{gamification.level.icon}</span>
+                  <div>
+                    <p className="text-[15px] font-bold text-foreground">
+                      {gamification.level.name}
+                    </p>
+                    <p className="text-[11px] text-muted">
+                      {gamification.totalClasses} clases
+                      {gamification.currentStreak > 0 && (
+                        <> · racha de {gamification.currentStreak}d</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                {gamification.nextLevel && (
+                  <span className="text-[11px] font-medium text-muted">
+                    {gamification.classesToNext} para {gamification.nextLevel.icon} {gamification.nextLevel.name}
+                  </span>
+                )}
+              </div>
+              {gamification.nextLevel && (
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${gamification.progressPercent}%`,
+                      backgroundColor: gamification.level.color,
+                    }}
+                  />
+                </div>
+              )}
+              {gamification.levels.length > 0 && (
+                <div className="mt-3 flex items-center justify-between">
+                  {gamification.levels.map((l) => (
+                    <div
+                      key={l.name}
+                      className={cn(
+                        "flex flex-col items-center gap-0.5",
+                        l.reached ? "opacity-100" : "opacity-30",
+                      )}
+                    >
+                      <span className={cn("text-base", l.isCurrent && "text-lg")}>{l.icon}</span>
+                      <span className="text-[9px] font-medium text-muted">{l.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Achievements */}
+        {gamification && gamification.achievements.length > 0 && (() => {
+          const earned = gamification.achievements.filter((a) => a.earned);
+          const locked = gamification.achievements.filter((a) => !a.earned);
+          return (
+            <motion.div custom={3} variants={fadeUp} initial="hidden" animate="show">
+              <div className="rounded-2xl border border-border/50 bg-white p-4">
+                <button
+                  onClick={() => setShowAllAchievements(!showAllAchievements)}
+                  className="flex w-full items-center gap-2"
+                >
+                  <Trophy className="h-4 w-4 text-accent" />
+                  <span className="text-[13px] font-semibold text-foreground">
+                    Logros
+                  </span>
+                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
+                    {earned.length}/{gamification.achievements.length}
+                  </span>
+                  <ChevronRight
+                    className={cn(
+                      "ml-auto h-4 w-4 text-muted transition-transform",
+                      showAllAchievements && "rotate-90",
+                    )}
+                  />
+                </button>
+
+                {/* Compact: horizontal scroll of earned badges */}
+                {!showAllAchievements && earned.length > 0 && (
+                  <div className="mt-2.5 flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+                    {earned.map((a) => (
+                      <div key={a.id} className="flex flex-col items-center gap-0.5">
+                        <span className="text-xl">{a.icon}</span>
+                        <span className="whitespace-nowrap text-[9px] font-medium text-muted">
+                          {a.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Expanded: full grid */}
+                {showAllAchievements && (
+                  <div className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-5">
+                    {earned.map((a) => (
+                      <div
+                        key={a.id}
+                        className="flex flex-col items-center gap-0.5 rounded-lg bg-surface px-1.5 py-2 text-center"
+                      >
+                        <span className="text-lg">{a.icon}</span>
+                        <span className="text-[9px] font-semibold leading-tight text-foreground">
+                          {a.name}
+                        </span>
+                        {a.earnedAt && (
+                          <span className="text-[8px] text-muted">
+                            {new Date(a.earnedAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    {locked.map((a) => (
+                      <div
+                        key={a.id}
+                        className="flex flex-col items-center gap-0.5 rounded-lg bg-surface/40 px-1.5 py-2 text-center opacity-35 grayscale"
+                      >
+                        <span className="text-lg">{a.icon}</span>
+                        <span className="text-[9px] font-semibold leading-tight text-foreground">
+                          {a.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          );
+        })()}
+
+        {/* Active rewards */}
+        {gamification && (gamification.rewards.length > 0 || gamification.freeClassCredits > 0) && (
+          <motion.div custom={4} variants={fadeUp} initial="hidden" animate="show">
+            <div className="rounded-2xl border border-border/50 bg-white p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Package className="h-4 w-4 text-accent" />
                 <span className="text-[13px] font-semibold text-foreground">
-                  Mis logros
-                </span>
-                <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
-                  {achievements.length}
+                  Mis premios
                 </span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {achievements.map((a) => (
-                  <AchievementBadge
-                    key={a.id}
-                    type={a.achievementType}
-                    size="sm"
-                  />
-                ))}
+              <div className="space-y-2">
+                {gamification.freeClassCredits > 0 && (
+                  <div className="flex items-center gap-3 rounded-xl bg-green-50 px-3 py-2.5">
+                    <span className="text-lg">🎁</span>
+                    <div>
+                      <p className="text-[13px] font-semibold text-green-800">
+                        {gamification.freeClassCredits} clase{gamification.freeClassCredits > 1 ? "s" : ""} gratis
+                      </p>
+                      <p className="text-[11px] text-green-600">Disponible</p>
+                    </div>
+                  </div>
+                )}
+                {gamification.rewards
+                  .filter((r) => r.rewardKind === "DISCOUNT_CODE")
+                  .map((r) => {
+                    const data = r.rewardData as { discountPercent?: number; code?: string };
+                    return (
+                      <div key={r.id} className="flex items-center gap-3 rounded-xl bg-accent/5 px-3 py-2.5">
+                        <span className="text-lg">🏷️</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-semibold text-foreground">
+                            {data.discountPercent ?? 10}% de descuento
+                          </p>
+                          {r.expiresAt && (
+                            <p className="text-[11px] text-muted">
+                              Válido hasta{" "}
+                              {new Date(r.expiresAt).toLocaleDateString("es-MX", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </p>
+                          )}
+                        </div>
+                        {data.code && (
+                          <span className="rounded-md bg-surface px-2 py-1 font-mono text-[11px] font-semibold text-accent">
+                            {data.code}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </motion.div>

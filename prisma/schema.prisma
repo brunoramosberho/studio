@@ -51,7 +51,10 @@ model Tenant {
   rooms             Room[]
   feedEvents        FeedEvent[]
   notifications     Notification[]
-  achievements      UserAchievement[]
+  achievements       Achievement[]
+  memberProgress     MemberProgress[]
+  memberRewards      MemberReward[]
+  memberAchievements MemberAchievement[]
   friendships       Friendship[]
   pushSubscriptions PushSubscription[]
   productCategories ProductCategory[]
@@ -154,7 +157,9 @@ model User {
   likes                Like[]           @relation("UserLikes")
   comments             Comment[]        @relation("UserComments")
   photos               Photo[]          @relation("UserPhotos")
-  achievements         UserAchievement[] @relation("UserAchievements")
+  memberAchievements   MemberAchievement[] @relation("MemberAchievements")
+  memberProgressRows   MemberProgress[]    @relation("MemberProgressUser")
+  memberRewards        MemberReward[]      @relation("MemberRewardsUser")
   notifications        Notification[]   @relation("UserNotifications")
   notificationsActed   Notification[]   @relation("NotificationActor")
   friendshipsRequested Friendship[]     @relation("FriendshipRequester")
@@ -476,6 +481,7 @@ enum FeedEventType {
   CLASS_COMPLETED
   CLASS_RESERVED
   ACHIEVEMENT_UNLOCKED
+  LEVEL_UP
   STUDIO_POST
 }
 
@@ -498,7 +504,8 @@ model FeedEvent {
   createdAt  DateTime       @default(now())
   likes      Like[]
   comments   Comment[]
-  photos     Photo[]
+  photos            Photo[]
+  memberAchievement MemberAchievement?
 
   @@index([createdAt])
   @@index([userId])
@@ -547,18 +554,136 @@ model Photo {
   @@index([feedEventId])
 }
 
-model UserAchievement {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation("UserAchievements", fields: [userId], references: [id])
-  tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
-  achievementType String
-  metadata        Json?
-  earnedAt        DateTime @default(now())
+// ── Gamificación: catálogo + progreso por tenant (studio_id del spec → tenantId) ──
 
-  @@unique([userId, tenantId, achievementType])
-  @@index([userId])
+enum AchievementCategory {
+  MILESTONE
+  STREAK
+  BIRTHDAY
+  SOCIAL
+  CUSTOM
+}
+
+enum AchievementTriggerType {
+  CLASS_COUNT
+  STREAK_DAYS
+  BIRTHDAY
+  MANUAL
+  REFERRAL
+  FIRST_7AM_CLASS
+  FIRST_9PM_CLASS
+  FIVE_CLASSES_ONE_WEEK
+  FIRST_CLASS_OF_TYPE
+}
+
+enum AchievementRewardType {
+  NONE
+  DISCOUNT_PERCENT
+  FREE_CLASS
+}
+
+enum MemberRewardSourceType {
+  ACHIEVEMENT
+  LEVEL_UP
+}
+
+enum MemberRewardKind {
+  DISCOUNT_CODE
+  FREE_CLASS
+}
+
+/// Definición de logro: tenantId null = sistema (todos los estudios). key único global.
+model Achievement {
+  id            String                   @id @default(cuid())
+  tenantId      String?
+  tenant        Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  key           String                   @unique
+  name          String
+  description   String?
+  icon          String                   @default("🏆")
+  category      AchievementCategory
+  triggerType   AchievementTriggerType
+  triggerValue  Int?
+  triggerConfig Json?
+  rewardType    AchievementRewardType    @default(NONE)
+  rewardValue   Json?
+  isSystem      Boolean                  @default(true)
+  active        Boolean                  @default(true)
+  createdAt     DateTime                 @default(now())
+  memberEarned  MemberAchievement[]
+
+  @@index([tenantId, active])
+}
+
+/// Niveles globales (Bronce → Elite), no por tenant.
+model LoyaltyLevel {
+  id             String           @id @default(cuid())
+  sortOrder      Int              @unique
+  name           String
+  minClasses     Int              @unique
+  icon           String
+  color          String
+  rewardOnUnlock Json?
+  members        MemberProgress[] @relation("MemberCurrentLevel")
+
+  @@index([minClasses])
+}
+
+/// Estado de gamificación por miembro y tenant.
+model MemberProgress {
+  userId               String
+  tenantId             String
+  user                 User          @relation("MemberProgressUser", fields: [userId], references: [id], onDelete: Cascade)
+  tenant               Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  currentLevelId       String?
+  currentLevel         LoyaltyLevel? @relation("MemberCurrentLevel", fields: [currentLevelId], references: [id])
+  totalClassesAttended Int           @default(0)
+  currentStreak        Int           @default(0)
+  longestStreak        Int           @default(0)
+  lastClassDate        DateTime?     @db.Date
+  freeClassCredits     Int           @default(0)
+  updatedAt            DateTime      @updatedAt
+
+  @@id([userId, tenantId])
+  @@index([tenantId])
+}
+
+/// Logro desbloqueado (antes UserAchievement + achievementType string).
+model MemberAchievement {
+  id              String      @id @default(cuid())
+  userId          String
+  tenantId        String
+  user            User        @relation("MemberAchievements", fields: [userId], references: [id], onDelete: Cascade)
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  achievementId   String
+  achievement     Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  earnedAt        DateTime    @default(now())
+  metadata        Json?
+  rewardApplied   Boolean     @default(false)
+  rewardAppliedAt DateTime?
+  feedEventId     String?     @unique
+  feedEvent       FeedEvent?  @relation(fields: [feedEventId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, tenantId, achievementId])
+  @@index([userId, tenantId])
+  @@index([achievementId])
+}
+
+model MemberReward {
+  id          String                 @id @default(cuid())
+  userId      String
+  tenantId    String
+  user        User                   @relation("MemberRewardsUser", fields: [userId], references: [id], onDelete: Cascade)
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceType  MemberRewardSourceType
+  sourceId    String?
+  rewardKind  MemberRewardKind
+  rewardData  Json
+  appliedAt   DateTime               @default(now())
+  expiresAt   DateTime?
+  consumedAt  DateTime?
+
+  @@index([userId, tenantId])
   @@index([tenantId])
 }
 

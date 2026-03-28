@@ -300,3 +300,122 @@ export async function sendRoleInvitation({
     console.error("Failed to send role invitation:", error);
   }
 }
+
+export async function sendAchievementUnlocked({
+  to,
+  name,
+  achievementName,
+  achievementIcon,
+  achievementDescription,
+  rewardText,
+}: {
+  to: string;
+  name: string;
+  achievementName: string;
+  achievementIcon: string;
+  achievementDescription: string;
+  rewardText: string | null;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:64px;height:64px;margin:0 auto 16px;border-radius:50%;background:${b.colorAccent}15;line-height:64px;font-size:32px;">${achievementIcon}</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ¡Logro desbloqueado!
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};">
+          Hola ${name}, acabas de conseguir un nuevo logro.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:24px;text-align:center;">
+          <p style="margin:0 0 4px;font-size:18px;font-weight:700;color:${b.colorFg};">
+            ${achievementIcon} ${achievementName}
+          </p>
+          <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+            ${achievementDescription}
+          </p>
+        </td></tr>
+      </table>
+
+      ${rewardText ? `
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#dcfce7;border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:16px 24px;text-align:center;">
+          <p style="margin:0;font-size:14px;font-weight:600;color:#166534;">
+            🎁 ${rewardText}
+          </p>
+        </td></tr>
+      </table>
+      ` : ""}
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Sigue así — cada clase te acerca a más logros y premios.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `${achievementIcon} ¡Logro: "${achievementName}"!`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send achievement email:", error);
+  }
+}
+
+export async function sendLevelUp({
+  to,
+  name,
+  levelName,
+  levelIcon,
+  rewardText,
+}: {
+  to: string;
+  name: string;
+  levelName: string;
+  levelIcon: string;
+  rewardText: string | null;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:64px;height:64px;margin:0 auto 16px;border-radius:50%;background:${b.colorAccent}15;line-height:64px;font-size:36px;">${levelIcon}</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ¡Subiste a ${levelName}!
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};">
+          Hola ${name}, tu dedicación ha dado frutos.
+        </p>
+      </div>
+
+      ${rewardText ? `
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#dcfce7;border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:16px 24px;text-align:center;">
+          <p style="margin:0;font-size:14px;font-weight:600;color:#166534;">
+            🎁 ${rewardText}
+          </p>
+        </td></tr>
+      </table>
+      ` : ""}
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Sigue asistiendo para alcanzar el siguiente nivel.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `${levelIcon} ¡Subiste a ${levelName}!`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send level-up email:", error);
+  }
+}

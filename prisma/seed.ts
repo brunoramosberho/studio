@@ -1,4 +1,11 @@
-import { PrismaClient, Role, Level, ClassStatus, BookingStatus } from "@prisma/client";
+import {
+  PrismaClient,
+  Prisma,
+  Role,
+  Level,
+  ClassStatus,
+  BookingStatus,
+} from "@prisma/client";
 import { addDays, setHours, setMinutes, startOfWeek, subWeeks, addMinutes, format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -7,6 +14,11 @@ import {
   studioSettingsData,
 } from "./seed-branding";
 import { seedBeToroShop } from "./seed-shop";
+import {
+  feedAchievementTypeFromKey,
+  LOYALTY_LEVELS_SEED,
+  SYSTEM_ACHIEVEMENTS_SEED,
+} from "../lib/gamification/catalog";
 
 const prisma = new PrismaClient();
 
@@ -27,7 +39,11 @@ async function main() {
   await prisma.like.deleteMany();
   await prisma.photo.deleteMany();
   await prisma.feedEvent.deleteMany();
-  await prisma.userAchievement.deleteMany();
+  await prisma.memberAchievement.deleteMany();
+  await prisma.memberReward.deleteMany();
+  await prisma.memberProgress.deleteMany();
+  await prisma.achievement.deleteMany();
+  await prisma.loyaltyLevel.deleteMany();
   await prisma.waitlist.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.class.deleteMany();
@@ -57,23 +73,71 @@ async function main() {
   const tenantId = tenant.id;
   console.log("✓ Created tenant: " + tenant.slug);
 
+  for (const L of LOYALTY_LEVELS_SEED) {
+    await prisma.loyaltyLevel.create({
+      data: {
+        sortOrder: L.sortOrder,
+        name: L.name,
+        minClasses: L.minClasses,
+        icon: L.icon,
+        color: L.color,
+        rewardOnUnlock:
+          L.rewardOnUnlock == null
+            ? undefined
+            : (L.rewardOnUnlock as Prisma.InputJsonValue),
+      },
+    });
+  }
+
+  for (const A of SYSTEM_ACHIEVEMENTS_SEED) {
+    await prisma.achievement.create({
+      data: {
+        tenantId: null,
+        key: A.key,
+        name: A.name,
+        description: A.description,
+        icon: A.icon,
+        category: A.category,
+        triggerType: A.triggerType,
+        triggerValue: A.triggerValue,
+        triggerConfig:
+          A.triggerConfig == null
+            ? undefined
+            : (A.triggerConfig as Prisma.InputJsonValue),
+        rewardType: A.rewardType,
+        rewardValue:
+          A.rewardValue == null
+            ? undefined
+            : (A.rewardValue as Prisma.InputJsonValue),
+        isSystem: true,
+        active: true,
+      },
+    });
+  }
+  console.log(
+    `✓ Gamificación: ${LOYALTY_LEVELS_SEED.length} niveles, ${SYSTEM_ACHIEVEMENTS_SEED.length} logros de sistema`,
+  );
+
   // --- Class Types ---
-  const yoga = await prisma.classType.create({
+  const btm = await prisma.classType.create({
     data: {
       tenantId,
-      name: "Yoga",
-      duration: 50,
-      level: Level.ALL,
-      color: "#C9A96E",
+      name: "BTM",
+      duration: 55,
+      level: Level.INTERMEDIATE,
+      color: "#BF5E2A",
+      icon: "music",
       description:
-        "Une cuerpo y respiración: flexibilidad, calma y energía en cada sesión.",
+        "High intensity, low impact class powered by music and rhythm. Sculpt, tone, and sweat to the beat.",
       tags: [
-        "Flexibilidad",
-        "Respiración",
-        "Mindfulness",
-        "Postura",
-        "Antiestrés",
-        "Mat",
+        "Alta intensidad",
+        "Bajo impacto",
+        "Ritmo",
+        "Música",
+        "Tonificación",
+        "Sculpt",
+        "Full body",
+        "Beat-driven",
       ],
     },
   });
@@ -85,35 +149,41 @@ async function main() {
       duration: 45,
       level: Level.ALL,
       color: "#2D5016",
+      icon: "waves",
       description:
-        "Secuencias fluidas en mat: core, movilidad y consciencia corporal con buen ritmo.",
+        "Flowing sequences that build core strength, mobility, and body awareness at a steady, rhythmic pace.",
       tags: [
         "Flujo",
-        "Mat",
         "Core",
         "Movilidad",
         "Bajo impacto",
-        "Full body",
+        "Flexibilidad",
+        "Respiración",
+        "Mind-body",
+        "Recovery",
       ],
     },
   });
 
-  const btm = await prisma.classType.create({
+  const yoga = await prisma.classType.create({
     data: {
       tenantId,
-      name: "BTM",
-      duration: 55,
-      level: Level.INTERMEDIATE,
-      color: "#8B4513",
+      name: "Yoga",
+      duration: 50,
+      level: Level.ALL,
+      color: "#8C8279",
+      icon: "person-standing",
       description:
-        "Barre y tonificación: piernas, glúteos y core con música y técnica impecable.",
+        "Connect body and breath: build flexibility, find calm, and restore your energy each session.",
       tags: [
-        "Barre",
-        "Tonificación",
-        "Sculpt",
-        "Glúteos y piernas",
-        "Core",
-        "Ritmo",
+        "Flexibilidad",
+        "Respiración",
+        "Mindfulness",
+        "Postura",
+        "Antiestrés",
+        "Equilibrio",
+        "Mat",
+        "Relajación",
       ],
     },
   });
@@ -962,58 +1032,70 @@ async function main() {
   }
   console.log(`✓ Created ${feedCount} CLASS_COMPLETED feed events with ${photoCount} photos (from real attendance)`);
 
-  // --- Achievements (grouped by type) ---
+  // --- Logros demo (MemberAchievement + feed agrupado) ---
   const achievementRecords = [
-    { userId: clientWithPack10.id, type: "FIRST_CLASS" },
-    { userId: clientUnlimited.id, type: "FIRST_CLASS" },
-    { userId: clientExpired.id, type: "FIRST_CLASS" },
-    { userId: clientWithPack10.id, type: "MILESTONE_5" },
-    { userId: clientWithPack10.id, type: "EARLY_BIRD" },
-    { userId: clientUnlimited.id, type: "EARLY_BIRD" },
-    { userId: clientUnlimited.id, type: "FIRST_CLASS_TYPE_REFORMER" },
-    { userId: clientExpired.id, type: "FIRST_CLASS_TYPE_REFORMER" },
+    { userId: clientWithPack10.id, key: "first_class" as const },
+    { userId: clientUnlimited.id, key: "first_class" as const },
+    { userId: clientExpired.id, key: "first_class" as const },
+    { userId: clientWithPack10.id, key: "classes_5" as const },
+    { userId: clientWithPack10.id, key: "early_bird" as const },
+    { userId: clientUnlimited.id, key: "early_bird" as const },
+    { userId: clientUnlimited.id, key: "first_class_type_reformer" as const },
+    { userId: clientExpired.id, key: "first_class_type_reformer" as const },
   ];
 
   const achievementLabels: Record<string, { label: string; desc: string; icon: string }> = {
-    FIRST_CLASS: { label: "Primera Clase", desc: "Completaste tu primera clase en Flō", icon: "🎉" },
-    MILESTONE_5: { label: "5 Clases", desc: "Llevas 5 clases completadas", icon: "⭐" },
-    EARLY_BIRD: { label: "Early Bird", desc: "Tomaste una clase antes de las 7am", icon: "🌅" },
-    FIRST_CLASS_TYPE_REFORMER: { label: "Reformer Desbloqueado", desc: "Tu primera clase de Reformer Pilates", icon: "🏋️" },
+    first_class: { label: "Primera Clase", desc: "Completaste tu primera clase en Flō", icon: "🎉" },
+    classes_5: { label: "5 Clases", desc: "Llevas 5 clases completadas", icon: "⭐" },
+    early_bird: { label: "Early Bird", desc: "Tomaste una clase antes de las 7am", icon: "🌅" },
+    first_class_type_reformer: {
+      label: "Reformer Desbloqueado",
+      desc: "Tu primera clase de Reformer Pilates",
+      icon: "🏋️",
+    },
   };
 
   let achCount = 0;
   for (const a of achievementRecords) {
-    await prisma.userAchievement.create({
-      data: { tenantId, userId: a.userId, achievementType: a.type, earnedAt: addDays(today, -3), metadata: {} },
+    const ach = await prisma.achievement.findUnique({ where: { key: a.key } });
+    if (!ach) continue;
+    await prisma.memberAchievement.create({
+      data: {
+        tenantId,
+        userId: a.userId,
+        achievementId: ach.id,
+        earnedAt: addDays(today, -3),
+        metadata: {},
+      },
     });
     achCount++;
   }
 
-  // Group by type and create one feed event per type
   const allUsers = [clientWithPack10, clientExpired, clientUnlimited, clientPrimeraVez, clientNoPackage];
-  const byType = new Map<string, typeof allUsers>();
+  const byKey = new Map<string, typeof allUsers>();
   for (const a of achievementRecords) {
-    const list = byType.get(a.type) ?? [];
+    const list = byKey.get(a.key) ?? [];
     const u = allUsers.find((u) => u.id === a.userId);
     if (u) list.push(u);
-    byType.set(a.type, list);
+    byKey.set(a.key, list);
   }
 
   let achEventCount = 0;
-  const typeKeys = [...byType.keys()];
-  for (let t = 0; t < typeKeys.length; t++) {
-    const type = typeKeys[t];
-    const users = byType.get(type)!;
-    const def = achievementLabels[type];
-    await prisma.feedEvent.create({
+  const keyList = [...byKey.keys()];
+  for (let t = 0; t < keyList.length; t++) {
+    const key = keyList[t];
+    const users = byKey.get(key)!;
+    const def = achievementLabels[key];
+    const feedEvent = await prisma.feedEvent.create({
       data: {
         tenantId,
         userId: users[0].id,
         eventType: "ACHIEVEMENT_UNLOCKED",
         visibility: "STUDIO_WIDE",
-        createdAt: addDays(today, -(typeKeys.length - t)),
+        createdAt: addDays(today, -(keyList.length - t)),
         payload: {
-          achievementType: type,
+          achievementKey: key,
+          achievementType: feedAchievementTypeFromKey(key),
           label: def.label,
           description: def.desc,
           icon: def.icon,
@@ -1021,9 +1103,83 @@ async function main() {
         },
       },
     });
+
+    const achievementRow = await prisma.achievement.findUnique({ where: { key } });
+    if (achievementRow) {
+      const firstMa = await prisma.memberAchievement.findFirst({
+        where: {
+          tenantId,
+          achievementId: achievementRow.id,
+          userId: users[0].id,
+          feedEventId: null,
+        },
+      });
+      if (firstMa) {
+        await prisma.memberAchievement.update({
+          where: { id: firstMa.id },
+          data: { feedEventId: feedEvent.id },
+        });
+      }
+    }
     achEventCount++;
   }
-  console.log(`✓ Created ${achCount} achievements → ${achEventCount} grouped feed events`);
+  console.log(`✓ Created ${achCount} member achievements → ${achEventCount} grouped feed events`);
+
+  // --- Level-up feed events + MemberProgress (NO user/tenant changes) ---
+  const bronzeLevel = await prisma.loyaltyLevel.findFirst({ where: { name: "Bronce" } });
+  const silverLevel = await prisma.loyaltyLevel.findFirst({ where: { name: "Plata" } });
+  const goldLevel = await prisma.loyaltyLevel.findFirst({ where: { name: "Oro" } });
+
+  const memberProgressSeeds = [
+    { user: clientWithPack10, totalClasses: 28, streak: 4, longest: 7, level: goldLevel },
+    { user: clientUnlimited, totalClasses: 14, streak: 2, longest: 5, level: silverLevel },
+    { user: clientExpired, totalClasses: 6, streak: 0, longest: 3, level: bronzeLevel },
+    { user: clientPrimeraVez, totalClasses: 1, streak: 1, longest: 1, level: bronzeLevel },
+  ];
+
+  for (const mp of memberProgressSeeds) {
+    if (!mp.level) continue;
+    await prisma.memberProgress.create({
+      data: {
+        userId: mp.user.id,
+        tenantId,
+        currentLevelId: mp.level.id,
+        totalClassesAttended: mp.totalClasses,
+        currentStreak: mp.streak,
+        longestStreak: mp.longest,
+        lastClassDate: addDays(today, -1),
+      },
+    });
+  }
+  console.log(`✓ Created ${memberProgressSeeds.length} MemberProgress rows`);
+
+  const levelUpEvents = [
+    { user: clientWithPack10, level: goldLevel, daysAgo: 5 },
+    { user: clientUnlimited, level: silverLevel, daysAgo: 8 },
+  ];
+
+  let levelUpCount = 0;
+  for (const ev of levelUpEvents) {
+    if (!ev.level) continue;
+    await prisma.feedEvent.create({
+      data: {
+        tenantId,
+        userId: ev.user.id,
+        eventType: "LEVEL_UP",
+        visibility: "STUDIO_WIDE",
+        createdAt: addDays(today, -ev.daysAgo),
+        payload: {
+          levelId: ev.level.id,
+          levelName: ev.level.name,
+          icon: ev.level.icon,
+          color: ev.level.color,
+          minClasses: ev.level.minClasses,
+        },
+      },
+    });
+    levelUpCount++;
+  }
+  console.log(`✓ Created ${levelUpCount} LEVEL_UP feed events`);
 
   // --- Sample Likes & Comments (spread across feed) ---
   const allFeedEvents = await prisma.feedEvent.findMany({ orderBy: { createdAt: "desc" }, take: 65 });
@@ -1060,7 +1216,10 @@ async function main() {
           data: {
             userId: shuffledLikers[j].id,
             feedEventId: evt.id,
-            type: evt.eventType === "ACHIEVEMENT_UNLOCKED" ? "kudos" : "like",
+            type:
+              evt.eventType === "ACHIEVEMENT_UNLOCKED" || evt.eventType === "LEVEL_UP"
+                ? "kudos"
+                : "like",
           },
         });
         likeCount++;
@@ -1094,7 +1253,10 @@ async function main() {
           commentCount++;
         }
       }
-    } else if (i < 10 && evt.eventType === "ACHIEVEMENT_UNLOCKED") {
+    } else if (
+      i < 10 &&
+      (evt.eventType === "ACHIEVEMENT_UNLOCKED" || evt.eventType === "LEVEL_UP")
+    ) {
       const commenter = allClientsForInteractions[(i + 1) % allClientsForInteractions.length];
       await prisma.comment.create({
         data: {
@@ -1271,9 +1433,11 @@ async function main() {
   console.log(`   Classes:        ${allClasses.length}`);
   console.log(`   Bookings:       ${bookingCount}`);
   console.log(`   Waitlist:       ${waitlistCount}`);
-  console.log(`   Feed Events:    ${feedCount + achEventCount + reservedCount} (clases + logros + reservas)`);
+  console.log(`   Feed Events:    ${feedCount + achEventCount + levelUpCount + reservedCount} (clases + logros + level-ups + reservas)`);
   console.log(`   Photos:         ${photoCount}`);
   console.log(`   Achievements:   ${achCount}`);
+  console.log(`   MemberProgress: ${memberProgressSeeds.length}`);
+  console.log(`   Level-Ups:      ${levelUpCount}`);
   console.log(`   Likes:          ${likeCount}`);
   console.log(`   Comments:       ${commentCount}`);
   console.log(`   Friendships:    ${friendshipCount}`);

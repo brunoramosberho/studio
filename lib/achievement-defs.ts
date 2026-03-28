@@ -72,4 +72,24 @@ export const ACHIEVEMENT_DEFS: Record<
     description: "5 clases en una sola semana",
     icon: "⚔️",
   },
+  STREAK_3: {
+    label: "En racha",
+    description: "3 días seguidos con clase",
+    icon: "⚡",
+  },
+  STREAK_14: {
+    label: "Dos semanas seguidas",
+    description: "14 días seguidos con clase",
+    icon: "🚀",
+  },
+  BIRTHDAY: {
+    label: "Feliz cumpleaños",
+    description: "¡Celebramos contigo en tu día!",
+    icon: "🎂",
+  },
+  FIRST_REFERRAL: {
+    label: "Embajador",
+    description: "Tu primer referido se unió al estudio",
+    icon: "🤝",
+  },
 };

@@ -36,12 +36,12 @@ export type TenantBrandingSeed = {
 export function getTenantBrandingFromEnv(): TenantBrandingSeed {
   return {
     slug: envStr("SEED_TENANT_SLUG", "betoro"),
-    name: envStr("SEED_TENANT_NAME", "Flō"),
-    tagline: envStr("SEED_TENANT_TAGLINE", "Pilates & Wellness"),
-    slogan: envStr("SEED_TENANT_SLOGAN", "Muévete. Respira. Floréce."),
+    name: envStr("SEED_TENANT_NAME", "BE TORO"),
+    tagline: envStr("SEED_TENANT_TAGLINE", "Feel Good. Move Better. Be Toro"),
+    slogan: envStr("SEED_TENANT_SLOGAN", "Move to the rhythm"),
     metaDescription: envStr(
       "SEED_TENANT_META_DESCRIPTION",
-      "Tu espacio de Pilates y bienestar.",
+      "A high intensity, low impact methodology that blends music, rhythm, and positive energy — turning every class into a physical and emotional boost.",
     ),
     logoUrl: envOpt("SEED_TENANT_LOGO_URL"),
     appIconUrl: envOpt("SEED_TENANT_APP_ICON_URL"),
@@ -49,8 +49,8 @@ export function getTenantBrandingFromEnv(): TenantBrandingSeed {
     colorBg: envStr("SEED_COLOR_BG", "#FAF9F6"),
     colorFg: envStr("SEED_COLOR_FG", "#1C1917"),
     colorSurface: envStr("SEED_COLOR_SURFACE", "#F5F2ED"),
-    colorAccent: envStr("SEED_COLOR_ACCENT", "#C9A96E"),
-    colorAccentSoft: envStr("SEED_COLOR_ACCENT_SOFT", "#E8D9BF"),
+    colorAccent: envStr("SEED_COLOR_ACCENT", "#BF5E2A"),
+    colorAccentSoft: envStr("SEED_COLOR_ACCENT_SOFT", "#E5D9CC"),
     colorMuted: envStr("SEED_COLOR_MUTED", "#8C8279"),
     colorBorder: envStr("SEED_COLOR_BORDER", "#E8E2D9"),
     colorCoach: envStr("SEED_COLOR_COACH", "#2D5016"),

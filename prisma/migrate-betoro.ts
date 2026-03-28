@@ -95,7 +95,9 @@ async function main() {
     "UserPackage",
     "FeedEvent",
     "Notification",
-    "UserAchievement",
+    "MemberAchievement",
+    "MemberReward",
+    "MemberProgress",
     "Friendship",
     "PushSubscription",
   ];

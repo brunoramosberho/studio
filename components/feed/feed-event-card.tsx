@@ -13,6 +13,7 @@ import { PhotoUpload } from "./photo-upload";
 import { PeopleListSheet, type PersonItem } from "./people-list-sheet";
 import { DisciplineSheet, type DisciplineData } from "./discipline-sheet";
 import { cn } from "@/lib/utils";
+import { feedAchievementTypeFromKey } from "@/lib/gamification/catalog";
 
 interface Attendee {
   id: string;
@@ -274,6 +275,11 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
 
 function AchievementCard({ event }: FeedEventCardProps) {
   const p = event.payload;
+  const illustrationType =
+    (p.achievementType as string) ??
+    (typeof p.achievementKey === "string"
+      ? feedAchievementTypeFromKey(p.achievementKey)
+      : "FIRST_CLASS");
   const users = (p.users as Attendee[]) ?? [
     { id: event.user.id, name: event.user.name ?? "Miembro", image: event.user.image },
   ];
@@ -324,9 +330,7 @@ function AchievementCard({ event }: FeedEventCardProps) {
 
       {/* Achievement illustration */}
       <div className="px-4">
-        <AchievementIllustration
-          type={(p.achievementType as string) ?? "FIRST_CLASS"}
-        />
+        <AchievementIllustration type={illustrationType} />
       </div>
 
       {/* Actions bar */}
@@ -541,6 +545,49 @@ function StudioPostCard({ event }: FeedEventCardProps) {
   );
 }
 
+function LevelUpCard({ event }: FeedEventCardProps) {
+  const p = event.payload;
+  const levelName = (p.levelName as string) ?? "Nuevo nivel";
+  const icon = (p.icon as string) ?? "⭐";
+  const color = (p.color as string) ?? "#6366F1";
+
+  return (
+    <div className="space-y-3 px-4 pb-4 pt-4">
+      <div className="flex items-start gap-3">
+        <Link href={`/my/user/${event.user.id}`} className="flex-shrink-0">
+          <Avatar className="h-10 w-10 ring-2 ring-white">
+            {event.user.image && <AvatarImage src={event.user.image} />}
+            <AvatarFallback className="text-sm font-bold">
+              {event.user.name?.charAt(0) ?? "?"}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] leading-snug">
+            <Link href={`/my/user/${event.user.id}`} className="font-bold text-foreground hover:underline">
+              {event.user.name?.split(" ")[0] ?? "Alguien"}
+            </Link>
+            <span className="text-muted"> subió de nivel</span>
+          </p>
+          <span className="text-[11px] text-muted/70">{timeAgo(event.createdAt)}</span>
+        </div>
+      </div>
+      <div
+        className="rounded-2xl border p-4 text-center"
+        style={{ borderColor: `${color}40`, backgroundColor: `${color}12` }}
+      >
+        <p className="text-3xl">{icon}</p>
+        <p className="mt-2 font-display text-lg font-bold text-foreground">{levelName}</p>
+        <p className="mt-1 text-xs text-muted">Nivel de lealtad desbloqueado</p>
+      </div>
+      <div className="flex items-center gap-1 border-t border-border/30 px-2 pt-1 pb-1">
+        <LikeButton eventId={event.id} initialLiked={event.liked} initialCount={event.likeCount} />
+        <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
+      </div>
+    </div>
+  );
+}
+
 function extractDiscipline(payload: Record<string, unknown>): DisciplineData {
   return {
     name: (payload.className as string) ?? "Clase",
@@ -569,6 +616,8 @@ export function FeedEventCard({ event }: FeedEventCardProps) {
         <StudioPostCard event={event} />
       ) : event.eventType === "ACHIEVEMENT_UNLOCKED" ? (
         <AchievementCard event={event} />
+      ) : event.eventType === "LEVEL_UP" ? (
+        <LevelUpCard event={event} />
       ) : event.eventType === "CLASS_RESERVED" ? (
         <ClassReservedCard event={event} onOpenDiscipline={openDiscipline} />
       ) : (

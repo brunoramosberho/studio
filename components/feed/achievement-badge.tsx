@@ -105,6 +105,34 @@ const achievementStyles: Record<
     text: "text-emerald-800",
     glow: "shadow-emerald-200/50",
   },
+  STREAK_3: {
+    gradient: "from-amber-400 via-yellow-400 to-lime-400",
+    ring: "ring-amber-200",
+    bg: "bg-amber-50",
+    text: "text-amber-900",
+    glow: "shadow-amber-200/50",
+  },
+  STREAK_14: {
+    gradient: "from-fuchsia-500 via-purple-500 to-indigo-500",
+    ring: "ring-fuchsia-200",
+    bg: "bg-fuchsia-50",
+    text: "text-fuchsia-900",
+    glow: "shadow-fuchsia-200/50",
+  },
+  BIRTHDAY: {
+    gradient: "from-pink-400 via-rose-400 to-orange-300",
+    ring: "ring-pink-200",
+    bg: "bg-pink-50",
+    text: "text-pink-900",
+    glow: "shadow-pink-200/50",
+  },
+  FIRST_REFERRAL: {
+    gradient: "from-teal-500 via-cyan-500 to-blue-500",
+    ring: "ring-teal-200",
+    bg: "bg-teal-50",
+    text: "text-teal-900",
+    glow: "shadow-teal-200/50",
+  },
 };
 
 const defaultStyle = {
