@@ -161,6 +161,79 @@ export async function sendClassReminder({
   }
 }
 
+export async function sendWaitlistPromotion({
+  to,
+  name,
+  className,
+  coachName,
+  date,
+  startTime,
+  location,
+  timezone,
+}: {
+  to: string;
+  name: string;
+  className: string;
+  coachName: string;
+  date: Date;
+  startTime: Date;
+  location?: string;
+  timezone?: string;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#dcfce7;line-height:56px;font-size:28px;">&#127881;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ¡Entraste a la clase!
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};">
+          Hola ${name}, se liberó un lugar y ya tienes tu reserva confirmada.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>Fecha</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Hora</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Coach</strong></td>
+              <td style="padding:3px 0 3px 16px;">${coachName}</td>
+            </tr>
+            ${location ? `<tr>
+              <td style="padding:3px 0;"><strong>Estudio</strong></td>
+              <td style="padding:3px 0 3px 16px;">${location}</td>
+            </tr>` : ""}
+          </table>
+        </td></tr>
+      </table>
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Puedes cancelar hasta 12 horas antes de tu clase para recuperar tu crédito.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `¡Entraste a la clase! ${className} — ${formatDate(date)}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send waitlist promotion email:", error);
+  }
+}
+
 export async function sendRoleInvitation({
   to,
   role,

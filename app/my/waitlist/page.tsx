@@ -53,7 +53,7 @@ export default function WaitlistPage() {
   async function handleRemove(entryId: string) {
     setRemovingId(entryId);
     try {
-      const res = await fetch(`/api/waitlist/${entryId}`, { method: "DELETE" });
+      const res = await fetch(`/api/waitlist/entry/${entryId}`, { method: "DELETE" });
       if (res.ok) {
         setEntries((prev) => prev.filter((e) => e.id !== entryId));
       }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, requireRole, getAuthContext } from "@/lib/tenant";
+import { refundAndClearWaitlist } from "@/lib/waitlist";
 
 export async function GET(
   _request: NextRequest,
@@ -199,7 +200,16 @@ export async function GET(
       }));
     }
 
-    return NextResponse.json({ ...classData, bookings, spotsLeft, spotMap });
+    let myWaitlistEntry: { id: string; position: number } | null = null;
+    if (currentUserId) {
+      const wl = await prisma.waitlist.findUnique({
+        where: { classId_userId: { classId: id, userId: currentUserId } },
+        select: { id: true, position: true },
+      });
+      if (wl) myWaitlistEntry = wl;
+    }
+
+    return NextResponse.json({ ...classData, bookings, spotsLeft, spotMap, myWaitlistEntry });
   } catch (error) {
     console.error("GET /api/classes/[id] error:", error);
     return NextResponse.json(
@@ -284,6 +294,10 @@ export async function DELETE(
       where: { id },
       data: { status: "CANCELLED" },
     });
+
+    refundAndClearWaitlist(id, ctx.tenant.id).catch((err) =>
+      console.error("Waitlist refund on class cancel failed:", err),
+    );
 
     return NextResponse.json(cancelled);
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
+import { refundAndClearWaitlist } from "@/lib/waitlist";
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -80,5 +81,27 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, sent });
+  // Refund credits for waitlist entries on classes that have already started
+  let waitlistRefunded = 0;
+  for (const tenant of tenants) {
+    const staleWaitlists = await prisma.waitlist.findMany({
+      where: {
+        tenantId: tenant.id,
+        class: {
+          OR: [
+            { startsAt: { lte: now } },
+            { status: { in: ["CANCELLED", "COMPLETED"] } },
+          ],
+        },
+      },
+      select: { classId: true },
+      distinct: ["classId"],
+    });
+
+    for (const { classId } of staleWaitlists) {
+      waitlistRefunded += await refundAndClearWaitlist(classId, tenant.id);
+    }
+  }
+
+  return NextResponse.json({ ok: true, sent, waitlistRefunded });
 }

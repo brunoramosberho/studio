@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ACHIEVEMENT_DEFS } from "@/lib/achievements";
+import { ACHIEVEMENT_DEFS } from "@/lib/achievement-defs";
 
 const achievementStyles: Record<
   string,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
-import { sendPushToUser } from "@/lib/push";
+import { promoteFromWaitlist } from "@/lib/waitlist";
 
 const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
 
@@ -84,22 +84,9 @@ export async function PUT(
     });
 
     if (status === "CANCELLED") {
-      const waitlisted = await prisma.waitlist.findMany({
-        where: { classId: booking.classId, tenantId: tenant.id },
-        include: {
-          class: { include: { classType: { select: { name: true } } } },
-        },
-        orderBy: { position: "asc" },
-        take: 3,
-      });
-      for (const w of waitlisted) {
-        sendPushToUser(w.userId, {
-          title: "Lugar disponible",
-          body: `Se liberó un lugar en ${w.class.classType.name}`,
-          url: `/class/${booking.classId}`,
-          tag: `waitlist-${booking.classId}`,
-        }).catch(() => {});
-      }
+      promoteFromWaitlist(booking.classId, tenant.id).catch((err) =>
+        console.error("Waitlist promotion failed:", err),
+      );
     }
 
     if (status === "ATTENDED" && booking.userId) {
@@ -167,23 +154,9 @@ export async function DELETE(
         .catch(() => {});
     }
 
-    // Notify waitlisted users that a spot opened up
-    const waitlisted = await prisma.waitlist.findMany({
-      where: { classId: booking.classId, tenantId: tenant.id },
-      include: {
-        class: { include: { classType: { select: { name: true } } } },
-      },
-      orderBy: { position: "asc" },
-      take: 3,
-    });
-    for (const w of waitlisted) {
-      sendPushToUser(w.userId, {
-        title: "Lugar disponible",
-        body: `Se liberó un lugar en ${w.class.classType.name}`,
-        url: `/class/${booking.classId}`,
-        tag: `waitlist-${booking.classId}`,
-      }).catch(() => {});
-    }
+    promoteFromWaitlist(booking.classId, tenant.id).catch((err) =>
+      console.error("Waitlist promotion failed:", err),
+    );
 
     return NextResponse.json(cancelled);
   } catch (error) {

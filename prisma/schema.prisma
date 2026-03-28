@@ -325,16 +325,18 @@ enum BookingStatus {
 }
 
 model Waitlist {
-  id        String   @id @default(cuid())
-  classId   String
-  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  position  Int
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  classId     String
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  position    Int
+  packageUsed String?
+  createdAt   DateTime @default(now())
 
+  @@unique([classId, userId])
   @@index([classId])
   @@index([tenantId])
 }

@@ -4,12 +4,13 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   Info,
   Check,
   Eye,
@@ -20,12 +21,14 @@ import {
   LogIn,
   Mail,
   CalendarPlus,
+  Clock,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/shared/page-transition";
 import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
-import { formatTime } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
 import { useBooking } from "@/hooks/useBooking";
 import { usePackages } from "@/hooks/usePackages";
 import { BookingSheet } from "@/components/booking/booking-sheet";
@@ -67,6 +70,7 @@ interface ClassData {
   spotMap: Record<number, SpotInfo>;
   songRequestsEnabled?: boolean;
   songRequestCriteria?: string[];
+  myWaitlistEntry?: { id: string; position: number } | null;
 }
 
 export default function ClassDetailPage() {
@@ -90,6 +94,10 @@ export default function ClassDetailPage() {
   const [sendingMagic, setSendingMagic] = useState(false);
   const [showSongRequest, setShowSongRequest] = useState(false);
   const [songRequestChecked, setSongRequestChecked] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
+  const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null);
+  const [joiningWaitlist, setJoiningWaitlist] = useState(false);
 
   const {
     data: cls,
@@ -103,6 +111,23 @@ export default function ClassDetailPage() {
       return res.json();
     },
     enabled: !!id,
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const res = await fetch(`/api/bookings/${bookingId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Cancel failed");
+    },
+    onSuccess: async () => {
+      setShowCancelConfirm(false);
+      setBookingSuccess(false);
+      setBookedSpotNumber(null);
+      setSelectedSpot(null);
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["classes", id] }),
+        queryClient.invalidateQueries({ queryKey: ["packages", "mine"] }),
+      ]);
+    },
   });
 
   const classTypeId = cls?.classType?.id;
@@ -133,6 +158,13 @@ export default function ClassDetailPage() {
   useEffect(() => {
     if (myBookedSpot) setSelectedSpot(null);
   }, [myBookedSpot]);
+
+  useEffect(() => {
+    if (cls?.myWaitlistEntry) {
+      setWaitlistJoined(true);
+      setWaitlistPosition(cls.myWaitlistEntry.position);
+    }
+  }, [cls?.myWaitlistEntry]);
 
   useEffect(() => {
     if (!bookingSuccess || songRequestChecked || !isAuthenticated) return;
@@ -171,6 +203,32 @@ export default function ClassDetailPage() {
       handleDirectBook();
     } else {
       setSheetOpen(true);
+    }
+  }
+
+  async function handleJoinWaitlist() {
+    setJoiningWaitlist(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          classId: id,
+          packageId: validPackages[0]?.id,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setWaitlistJoined(true);
+        setWaitlistPosition(data.position ?? data.waitlistCount ?? null);
+      } else {
+        setError(data.error || "No se pudo unir a la lista de espera");
+      }
+    } catch {
+      setError("No se pudo unir a la lista de espera");
+    } finally {
+      setJoiningWaitlist(false);
     }
   }
 
@@ -263,6 +321,8 @@ export default function ClassDetailPage() {
   const spotsLeft = cls.spotsLeft;
   const spotMap = cls.spotMap ?? {};
   const needsPackage = !isAuthenticated || !hasCredits;
+  const classFull = spotsLeft <= 0;
+  const waitlistCount = cls._count?.waitlist ?? 0;
 
   return (
     <PageTransition>
@@ -554,10 +614,95 @@ export default function ClassDetailPage() {
 
         <div className="my-6 h-px bg-border/50" />
 
+        {/* Waitlist joined state */}
+        {waitlistJoined && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#C9A96E]">
+                <Clock className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Estas en la lista de espera
+                </p>
+                {waitlistPosition && (
+                  <p className="text-xs text-accent">Posición #{waitlistPosition}</p>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-muted leading-relaxed">
+              Se te descontó un crédito. Si se libera un lugar, entrarás automáticamente y te notificaremos. Si no entras, se te devuelve el crédito.
+            </p>
+            <Button asChild variant="secondary" size="sm" className="rounded-full">
+              <Link href="/my/bookings">Ver mis reservas</Link>
+            </Button>
+          </div>
+        )}
+
         {/* CTA */}
-        {!myBooking && !bookingSuccess && (
+        {!myBooking && !bookingSuccess && !waitlistJoined && (
           <div className="space-y-4">
-            {spotsLeft > 0 ? (
+            {classFull ? (
+              isAuthenticated ? (
+                hasCredits ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+                        <Users className="h-3 w-3" />
+                        Clase llena
+                      </span>
+                      {waitlistCount > 0 && (
+                        <span className="text-xs text-muted">
+                          {waitlistCount} {waitlistCount === 1 ? "persona" : "personas"} en lista de espera
+                        </span>
+                      )}
+                    </div>
+                    <div className="rounded-xl border border-[#C9A96E]/20 bg-[#C9A96E]/5 px-4 py-3">
+                      <p className="text-xs text-muted leading-relaxed">
+                        Se te descontará un crédito al unirte. Si se libera un lugar, entrarás automáticamente. Si no logras entrar, se te devuelve el crédito.
+                      </p>
+                    </div>
+                    <Button
+                      size="lg"
+                      className="w-full min-h-[48px] rounded-full"
+                      onClick={handleJoinWaitlist}
+                      disabled={joiningWaitlist}
+                    >
+                      {joiningWaitlist && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Unirme a la lista de espera
+                      {waitlistCount > 0 && (
+                        <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs">
+                          {waitlistCount}
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3 text-center">
+                    <p className="text-sm text-muted">Clase llena. Necesitas un paquete para unirte a la lista de espera.</p>
+                    <Button asChild size="lg" className="w-full rounded-full">
+                      <Link href="/packages">Ver paquetes</Link>
+                    </Button>
+                  </div>
+                )
+              ) : (
+                <div className="space-y-3 text-center">
+                  <div className="flex items-center justify-center gap-2 text-sm">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+                      <Users className="h-3 w-3" />
+                      Clase llena
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted">Inicia sesión para unirte a la lista de espera.</p>
+                  <Button asChild size="lg" className="w-full rounded-full">
+                    <Link href="/login">
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Iniciar sesión
+                    </Link>
+                  </Button>
+                </div>
+              )
+            ) : (
               <Button
                 size="lg"
                 className="w-full min-h-[48px] rounded-full bg-foreground text-background hover:bg-foreground/90"
@@ -571,10 +716,6 @@ export default function ClassDetailPage() {
                   ? "Selecciona un lugar"
                   : "Reservar clase"}
               </Button>
-            ) : (
-              <Button size="lg" variant="secondary" className="w-full rounded-full">
-                Clase llena
-              </Button>
             )}
           </div>
         )}
@@ -582,18 +723,26 @@ export default function ClassDetailPage() {
         {/* Already booked */}
         {myBooking && !bookingSuccess && (
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent">
-                <Check className="h-3.5 w-3.5 text-white" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent">
+                  <Check className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Reserva confirmada
+                  </p>
+                  {myBookedSpot && (
+                    <p className="text-xs text-muted">Lugar #{myBookedSpot}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Reserva confirmada
-                </p>
-                {myBookedSpot && (
-                  <p className="text-xs text-muted">Lugar #{myBookedSpot}</p>
-                )}
-              </div>
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
+              >
+                Cancelar
+              </button>
             </div>
             <div className="flex gap-2">
               <a
@@ -625,6 +774,105 @@ export default function ClassDetailPage() {
           </p>
         </div>
       </div>
+
+      {/* Cancel confirmation modal */}
+      <AnimatePresence>
+        {showCancelConfirm && myBooking && cls && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-foreground/40 backdrop-blur-sm"
+              onClick={() => !cancelMutation.isPending && setShowCancelConfirm(false)}
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-white pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+            >
+              <div className="flex justify-center pt-3 sm:hidden">
+                <div className="h-1 w-10 rounded-full bg-border" />
+              </div>
+
+              <div className="p-6 text-center">
+                {(() => {
+                  const msUntil = new Date(cls.startsAt).getTime() - Date.now();
+                  const canRefund = msUntil > 12 * 60 * 60 * 1000;
+                  const hoursLeft = Math.max(0, Math.floor(msUntil / 3_600_000));
+                  return (
+                    <>
+                      <div
+                        className={cn(
+                          "mx-auto flex h-14 w-14 items-center justify-center rounded-full",
+                          canRefund ? "bg-orange-50" : "bg-red-50",
+                        )}
+                      >
+                        <AlertTriangle
+                          className={cn(
+                            "h-6 w-6",
+                            canRefund ? "text-orange-500" : "text-red-500",
+                          )}
+                        />
+                      </div>
+
+                      <h3 className="mt-4 font-display text-lg font-bold text-foreground">
+                        Cancelar reserva
+                      </h3>
+                      <p className="mt-1 text-sm text-muted">
+                        {cls.classType.name} · {new Date(cls.startsAt).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" })}
+                      </p>
+
+                      {canRefund ? (
+                        <div className="mt-4 rounded-xl bg-green-50 px-4 py-3">
+                          <p className="text-[13px] font-medium text-green-700">
+                            Tu crédito será devuelto
+                          </p>
+                          <p className="mt-0.5 text-[12px] text-green-600">
+                            Faltan más de 12 horas para la clase
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
+                          <p className="text-[13px] font-medium text-red-700">
+                            Tu crédito NO será devuelto
+                          </p>
+                          <p className="mt-0.5 text-[12px] text-red-600">
+                            Faltan menos de 12 horas ({hoursLeft}h).
+                            Las cancelaciones tardías no reembolsan créditos.
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="mt-6 flex flex-col gap-2">
+                        <Button
+                          variant="destructive"
+                          className="w-full rounded-full"
+                          onClick={() => cancelMutation.mutate(myBooking.id)}
+                          disabled={cancelMutation.isPending}
+                        >
+                          {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          {canRefund ? "Cancelar reserva" : "Cancelar sin reembolso"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full rounded-full"
+                          onClick={() => setShowCancelConfirm(false)}
+                          disabled={cancelMutation.isPending}
+                        >
+                          Volver
+                        </Button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Booking Sheet */}
       <AnimatePresence>
