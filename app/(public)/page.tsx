@@ -8,44 +8,32 @@ import {
   ArrowRight,
   Clock,
   Dumbbell,
-  Sparkles,
-  Wind,
   Star,
   CheckCircle2,
   CalendarCheck,
-  Heart,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import { getIconComponent } from "@/components/admin/icon-picker";
 
-const classTypes = [
-  {
-    icon: Dumbbell,
-    name: "Reformer Pilates",
-    description:
-      "Fortalece y alarga tu cuerpo en nuestros equipos Balanced Body. Trabajo de resistencia con resortes para un core de acero.",
-    level: "Todos los niveles",
-    duration: "50 min",
-  },
-  {
-    icon: Wind,
-    name: "Mat Flow",
-    description:
-      "Pilates clásico en mat con transiciones fluidas. Conecta respiración y movimiento en una práctica meditativa.",
-    level: "Principiante",
-    duration: "45 min",
-  },
-  {
-    icon: Sparkles,
-    name: "Barre Fusion",
-    description:
-      "Lo mejor de ballet, pilates y yoga. Movimientos pequeños y controlados que esculpen y tonifican cada músculo.",
-    level: "Intermedio",
-    duration: "55 min",
-  },
-];
+interface ClassTypeData {
+  id: string;
+  name: string;
+  description: string | null;
+  duration: number;
+  level: string;
+  color: string;
+  icon: string | null;
+}
+
+const LEVEL_LABELS: Record<string, string> = {
+  ALL: "Todos los niveles",
+  BEGINNER: "Principiante",
+  INTERMEDIATE: "Intermedio",
+  ADVANCED: "Avanzado",
+};
 
 const steps = [
   {
@@ -107,6 +95,7 @@ export default function LandingPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [coaches, setCoaches] = useState<CoachData[]>([]);
   const [packages, setPackages] = useState<PackageData[]>([]);
+  const [classTypes, setClassTypes] = useState<ClassTypeData[]>([]);
   const branding = useBranding();
 
   useEffect(() => {
@@ -117,6 +106,10 @@ export default function LandingPage() {
     fetch("/api/packages")
       .then((r) => r.json())
       .then((data) => setPackages(Array.isArray(data) ? data : []))
+      .catch(() => {});
+    fetch("/api/class-types")
+      .then((r) => r.json())
+      .then((data) => setClassTypes(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
 
@@ -215,6 +208,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Class Types ───────────────────────────────────────── */}
+      {classTypes.length > 0 && (
       <section className="bg-[#1C1917] px-4 pb-24 pt-12">
         <div className="mx-auto max-w-7xl">
           <motion.div
@@ -228,45 +222,59 @@ export default function LandingPage() {
               Encuentra tu práctica
             </h2>
             <p className="mt-4 text-white/50">
-              Tres disciplinas, un objetivo: que te sientas increíble.
+              {classTypes.length} disciplina{classTypes.length !== 1 ? "s" : ""}, un objetivo: que te sientas increíble.
             </p>
           </motion.div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            {classTypes.map((cls, i) => (
+          <div className={`grid gap-6 ${classTypes.length >= 3 ? "md:grid-cols-3" : classTypes.length === 2 ? "md:grid-cols-2 max-w-3xl mx-auto" : "max-w-md mx-auto"}`}>
+            {classTypes.map((cls, i) => {
+              const Icon = (cls.icon ? getIconComponent(cls.icon) : null) ?? Dumbbell;
+              return (
               <motion.div
-                key={cls.name}
+                key={cls.id}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-60px" }}
                 custom={i}
                 variants={fadeUp}
               >
+                <Link href={`/schedule?discipline=${encodeURIComponent(cls.name)}`}>
                 <div className="group h-full cursor-pointer rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm transition-all duration-300 hover:border-accent/30 hover:bg-white/[0.08]">
-                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
-                    <cls.icon className="h-7 w-7" />
+                  <div
+                    className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl transition-colors"
+                    style={{ backgroundColor: `${cls.color}20`, color: cls.color }}
+                  >
+                    <Icon className="h-7 w-7" />
                   </div>
                   <h3 className="font-display text-xl font-bold text-white">
                     {cls.name}
                   </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-white/50">
-                    {cls.description}
-                  </p>
+                  {cls.description && (
+                    <p className="mt-3 text-sm leading-relaxed text-white/50">
+                      {cls.description}
+                    </p>
+                  )}
                   <div className="mt-6 flex items-center gap-3">
-                    <span className="inline-flex items-center rounded-full bg-accent/10 px-3 py-0.5 text-xs font-medium text-accent">
-                      {cls.level}
+                    <span
+                      className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium"
+                      style={{ backgroundColor: `${cls.color}20`, color: cls.color }}
+                    >
+                      {LEVEL_LABELS[cls.level] ?? cls.level}
                     </span>
                     <span className="flex items-center gap-1.5 text-xs text-white/40">
                       <Clock className="h-3.5 w-3.5" />
-                      {cls.duration}
+                      {cls.duration} min
                     </span>
                   </div>
                 </div>
+                </Link>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
+      )}
 
       {/* ── How It Works ──────────────────────────────────────── */}
       <section className="bg-surface px-4 py-24">

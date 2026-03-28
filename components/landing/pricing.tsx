@@ -12,6 +12,7 @@ const plans = [
     monthly: 299,
     annual: 249,
     onboarding: 799,
+    platformFee: 1.5,
     popular: false,
     features: [
       "Hasta 200 miembros",
@@ -26,6 +27,7 @@ const plans = [
     monthly: 449,
     annual: 374,
     onboarding: 1499,
+    platformFee: 1.0,
     popular: true,
     features: [
       "Hasta 600 miembros",
@@ -44,6 +46,7 @@ const plans = [
     monthly: 699,
     annual: 499,
     onboarding: 0,
+    platformFee: 0.5,
     popular: false,
     features: [
       "Miembros ilimitados",
@@ -146,6 +149,9 @@ export function Pricing() {
                 </div>
 
                 <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  + {plan.platformFee}% platform fee por transacción
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                   {plan.onboarding > 0
                     ? `Onboarding: €${plan.onboarding.toLocaleString()} EUR (una vez)`
                     : "Onboarding incluido"}
