@@ -20,6 +20,16 @@ async function getAchievementByKey(key: string) {
   return prisma.achievement.findUnique({ where: { key } });
 }
 
+/** Otorga un logro por clave (p. ej. desde admin). Devuelve la clave si se creó, null si ya existía o no aplica. */
+export async function grantAchievementManually(
+  userId: string,
+  tenantId: string,
+  achievementKey: string,
+  metadata?: Record<string, string | number>,
+) {
+  return grantAchievement(userId, tenantId, achievementKey, metadata);
+}
+
 async function grantAchievement(
   userId: string,
   tenantId: string,
