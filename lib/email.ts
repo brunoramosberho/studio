@@ -48,6 +48,7 @@ export async function sendBookingConfirmation({
   date,
   startTime,
   location,
+  timezone,
 }: {
   to: string;
   name: string;
@@ -56,6 +57,7 @@ export async function sendBookingConfirmation({
   date: Date;
   startTime: Date;
   location?: string;
+  timezone?: string;
 }) {
   try {
     const b = await getServerBranding();
@@ -82,7 +84,7 @@ export async function sendBookingConfirmation({
             </tr>
             <tr>
               <td style="padding:3px 0;"><strong>Hora</strong></td>
-              <td style="padding:3px 0 3px 16px;">${formatTime(startTime)}</td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
             </tr>
             <tr>
               <td style="padding:3px 0;"><strong>Coach</strong></td>
@@ -116,11 +118,13 @@ export async function sendClassReminder({
   name,
   className,
   startTime,
+  timezone,
 }: {
   to: string;
   name: string;
   className: string;
   startTime: Date;
+  timezone?: string;
 }) {
   try {
     const b = await getServerBranding();
@@ -141,7 +145,7 @@ export async function sendClassReminder({
         <tr><td style="padding:20px 24px;text-align:center;">
           <h2 style="margin:0 0 4px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
           <p style="margin:0;font-size:15px;color:${b.colorFg};font-weight:600;">
-            ${formatTime(startTime)}
+            ${formatTime(startTime, timezone)}
           </p>
         </td></tr>
       </table>`;
@@ -149,7 +153,7 @@ export async function sendClassReminder({
     await getResend().emails.send({
       from: `${studioFull} <${FROM}>`,
       to,
-      subject: `Recordatorio: ${className} hoy a las ${formatTime(startTime)}`,
+      subject: `Recordatorio: ${className} hoy a las ${formatTime(startTime, timezone)}`,
       html: emailShell(b, content),
     });
   } catch (error) {

@@ -130,10 +130,10 @@ async function main() {
   });
 
   const madrid = await prisma.city.create({
-    data: { name: "Madrid", countryId: spain.id },
+    data: { name: "Madrid", countryId: spain.id, timezone: "Europe/Madrid" },
   });
   const cdmx = await prisma.city.create({
-    data: { name: "Ciudad de México", countryId: mexico.id },
+    data: { name: "Ciudad de México", countryId: mexico.id, timezone: "America/Mexico_City" },
   });
 
   // 2 studios in Madrid

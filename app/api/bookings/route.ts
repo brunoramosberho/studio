@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       where: { id: classId, tenantId: tenant.id },
       include: {
         classType: true,
-        room: { include: { studio: true } },
+        room: { include: { studio: { include: { city: { select: { timezone: true } } } } } },
         coach: { include: { user: { select: { name: true } } } },
         _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
       },
@@ -265,6 +265,7 @@ export async function POST(request: NextRequest) {
         date: classData.startsAt,
         startTime: classData.startsAt,
         location: classData.room.studio.name ?? undefined,
+        timezone: classData.room.studio.city?.timezone,
       });
     }
 

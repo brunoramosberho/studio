@@ -22,8 +22,16 @@ export function formatDate(date: Date | string): string {
   return format(d, "d 'de' MMMM, yyyy", { locale: es });
 }
 
-export function formatTime(date: Date | string): string {
+export function formatTime(date: Date | string, timeZone?: string): string {
   const d = new Date(date);
+  if (timeZone) {
+    return d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone,
+    });
+  }
   return format(d, "h:mm a");
 }
 

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "npx tsx prisma/seed.ts",
-    "seed:shop": "npx tsx prisma/seed-shop.ts"
+    "seed:shop": "npx tsx prisma/seed-shop.ts",
+    "seed:camila": "npx tsx prisma/seed-camila-toro.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

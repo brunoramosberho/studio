@@ -63,6 +63,18 @@ export interface AuthContext {
   membership: Membership;
 }
 
+async function ensureMembership(
+  userId: string,
+  tenantId: string,
+): Promise<Membership> {
+  const existing = await getMembership(userId, tenantId);
+  if (existing) return existing;
+
+  return prisma.membership.create({
+    data: { userId, tenantId, role: "CLIENT" },
+  });
+}
+
 export async function getAuthContext(): Promise<AuthContext | null> {
   const session = await auth() as Session | null;
   if (!session?.user?.id) return null;
@@ -70,8 +82,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   const tenant = await getTenant();
   if (!tenant) return null;
 
-  const membership = await getMembership(session.user.id, tenant.id);
-  if (!membership) return null;
+  const membership = await ensureMembership(session.user.id, tenant.id);
 
   return { session: session as AuthContext["session"], tenant, membership };
 }
@@ -81,11 +92,7 @@ export async function requireAuth(): Promise<AuthContext> {
   if (!session?.user?.id) throw new Error("Unauthorized");
 
   const tenant = await requireTenant();
-  const membership = await getMembership(session.user.id, tenant.id);
-
-  if (!membership) {
-    throw new Error("Not a member of this studio");
-  }
+  const membership = await ensureMembership(session.user.id, tenant.id);
 
   return { session: session as AuthContext["session"], tenant, membership };
 }

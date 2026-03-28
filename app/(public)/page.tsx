@@ -76,35 +76,18 @@ interface CoachData {
   user: { name: string | null; image: string | null };
 }
 
-const packages = [
-  {
-    name: "Primera Vez",
-    price: 150,
-    credits: 1,
-    validity: "7 días",
-    highlight: false,
-    promo: true,
-    description: "Tu primera clase con nosotras",
-  },
-  {
-    name: "Pack 10 Clases",
-    price: 2800,
-    credits: 10,
-    validity: "60 días",
-    highlight: true,
-    promo: false,
-    description: "Más popular",
-  },
-  {
-    name: "Ilimitado Mensual",
-    price: 3900,
-    credits: null,
-    validity: "30 días",
-    highlight: false,
-    promo: false,
-    description: "Experiencia completa",
-  },
-];
+interface PackageData {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  credits: number | null;
+  validDays: number;
+  price: number;
+  currency: string;
+  isPromo: boolean;
+  sortOrder: number;
+}
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -123,12 +106,17 @@ const stagger = {
 export default function LandingPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [coaches, setCoaches] = useState<CoachData[]>([]);
+  const [packages, setPackages] = useState<PackageData[]>([]);
   const branding = useBranding();
 
   useEffect(() => {
     fetch("/api/coaches")
       .then((r) => r.json())
       .then((data) => setCoaches(Array.isArray(data) ? data : []))
+      .catch(() => {});
+    fetch("/api/packages")
+      .then((r) => r.json())
+      .then((data) => setPackages(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
 
@@ -406,6 +394,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Packages ───────────────────────────────────────────── */}
+      {packages.length > 0 && (
       <section className="px-4 py-24">
         <div className="mx-auto max-w-5xl">
           <motion.div
@@ -423,10 +412,18 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            {packages.map((pkg, i) => (
+          <div className={`grid gap-6 ${packages.length >= 3 ? "md:grid-cols-3" : packages.length === 2 ? "md:grid-cols-2 max-w-3xl mx-auto" : "max-w-md mx-auto"}`}>
+            {packages.map((pkg, i) => {
+              const isHighlight = packages.length >= 3 ? i === Math.floor(packages.length / 2) : false;
+              const validity = pkg.validDays >= 365
+                ? `${Math.round(pkg.validDays / 365)} año${Math.round(pkg.validDays / 365) > 1 ? "s" : ""}`
+                : pkg.validDays >= 30
+                  ? `${Math.round(pkg.validDays / 30)} mes${Math.round(pkg.validDays / 30) > 1 ? "es" : ""}`
+                  : `${pkg.validDays} días`;
+
+              return (
               <motion.div
-                key={pkg.name}
+                key={pkg.id}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-60px" }}
@@ -435,24 +432,26 @@ export default function LandingPage() {
               >
                 <div
                   className={`relative h-full rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 ${
-                    pkg.highlight
+                    isHighlight
                       ? "bg-[#1C1917] text-white shadow-[0_8px_32px_rgba(201,169,110,0.15)]"
                       : "border border-border bg-white shadow-[var(--shadow-warm)]"
-                  } ${pkg.promo ? "border-2 border-dashed border-accent/40" : ""}`}
+                  } ${pkg.isPromo ? "border-2 border-dashed border-accent/40" : ""}`}
                 >
-                  {pkg.highlight && (
+                  {isHighlight && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge className="bg-accent text-white shadow-[var(--shadow-warm)]">
                         <Star className="mr-1 h-3 w-3" /> Más popular
                       </Badge>
                     </div>
                   )}
-                  <p className="text-xs font-medium uppercase tracking-wider text-accent">
-                    {pkg.description}
-                  </p>
+                  {pkg.description && (
+                    <p className="text-xs font-medium uppercase tracking-wider text-accent">
+                      {pkg.description}
+                    </p>
+                  )}
                   <h3
                     className={`mt-2 font-display text-2xl font-bold ${
-                      pkg.highlight ? "text-white" : "text-foreground"
+                      isHighlight ? "text-white" : "text-foreground"
                     }`}
                   >
                     {pkg.name}
@@ -460,15 +459,18 @@ export default function LandingPage() {
                   <div className="mt-4">
                     <span
                       className={`font-mono text-4xl font-bold ${
-                        pkg.highlight ? "text-accent" : "text-foreground"
+                        isHighlight ? "text-accent" : "text-foreground"
                       }`}
                     >
                       {formatCurrency(pkg.price)}
                     </span>
+                    <span className={`ml-1 text-sm ${isHighlight ? "text-white/50" : "text-muted"}`}>
+                      {pkg.currency}
+                    </span>
                   </div>
                   <div
                     className={`mt-4 space-y-2 text-sm ${
-                      pkg.highlight ? "text-white/60" : "text-muted"
+                      isHighlight ? "text-white/60" : "text-muted"
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -479,21 +481,22 @@ export default function LandingPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <CalendarCheck className="h-4 w-4 text-accent" />
-                      Vigencia: {pkg.validity}
+                      Vigencia: {validity}
                     </div>
                   </div>
                   <div className="mt-8">
                     <Button
                       asChild
                       className="w-full"
-                      variant={pkg.highlight ? "default" : "secondary"}
+                      variant={isHighlight ? "default" : "secondary"}
                     >
                       <Link href="/packages">Comprar</Link>
                     </Button>
                   </div>
                 </div>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
 
           <motion.div
@@ -512,6 +515,7 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
+      )}
 
       {/* ── CTA Banner ─────────────────────────────────────────── */}
       <section className="bg-[#1C1917] px-4 py-24">

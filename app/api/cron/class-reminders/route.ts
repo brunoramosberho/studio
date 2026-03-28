@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
           include: {
             classType: { select: { name: true } },
             coach: { select: { user: { select: { name: true } } } },
+            room: { select: { studio: { select: { city: { select: { timezone: true } } } } } },
           },
         },
       },
@@ -49,12 +50,13 @@ export async function GET(request: NextRequest) {
       );
       const className = cls.classType.name;
       const coachName = cls.coach.user.name?.split(" ")[0] ?? "tu coach";
+      const tz = cls.room?.studio?.city?.timezone || "America/Mexico_City";
 
       const timeStr = cls.startsAt.toLocaleTimeString("es-MX", {
         hour: "numeric",
         minute: "2-digit",
         hour12: true,
-        timeZone: "America/Mexico_City",
+        timeZone: tz,
       });
 
       const untilLabel =
