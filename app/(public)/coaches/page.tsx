@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/shared/page-transition";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import { getServerBranding } from "@/lib/branding.server";
 import { cn } from "@/lib/utils";
 
@@ -17,16 +18,22 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function CoachesPage() {
-  const coaches = await prisma.coachProfile.findMany({
-    include: {
-      user: { select: { name: true, image: true } },
-    },
-    orderBy: { user: { name: "asc" } },
-  });
+  const [coaches, session] = await Promise.all([
+    prisma.coachProfile.findMany({
+      include: {
+        user: { select: { name: true, image: true } },
+      },
+      orderBy: { user: { name: "asc" } },
+    }),
+    auth(),
+  ]);
+
+  const isAuthenticated = !!session?.user;
 
   return (
     <PageTransition>
       <div className="mx-auto w-full max-w-4xl pb-2 md:max-w-7xl md:pb-0">
+        {isAuthenticated && (
         <div className="mb-5 md:mb-6">
           <Link
             href="/schedule"
@@ -36,10 +43,11 @@ export default async function CoachesPage() {
             <span>Volver a horarios</span>
           </Link>
         </div>
+        )}
 
         {/* Header: compact on mobile (portal style), hero on desktop */}
         <div className="mb-8 text-left md:mb-14 md:text-center">
-          <p className="mb-1 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-accent md:mb-2 md:text-xs">
+          <p className="mb-1 hidden font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-accent md:mb-2 md:block md:text-xs">
             Equipo
           </p>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground md:text-4xl lg:text-5xl">
