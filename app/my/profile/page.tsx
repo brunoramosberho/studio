@@ -27,8 +27,9 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AchievementBadge } from "@/components/feed/achievement-badge";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
+import { LoyaltyTierBadge } from "@/components/profile/loyalty-tier-badge";
+import { LoyaltyLevelAvatarPin } from "@/components/profile/loyalty-level-avatar-pin";
 import { cn } from "@/lib/utils";
 
 interface UserPackageInfo {
@@ -162,15 +163,15 @@ export default function ProfilePage() {
   });
 
   const { data: gamification } = useQuery<{
-    level: { name: string; icon: string; color: string; minClasses: number } | null;
-    nextLevel: { name: string; icon: string; color: string; minClasses: number } | null;
+    level: { name: string; icon: string; color: string; minClasses: number; sortOrder: number } | null;
+    nextLevel: { name: string; icon: string; color: string; minClasses: number; sortOrder: number } | null;
     totalClasses: number;
     classesToNext: number;
     progressPercent: number;
     currentStreak: number;
     longestStreak: number;
     freeClassCredits: number;
-    levels: { name: string; icon: string; color: string; minClasses: number; reached: boolean; isCurrent: boolean; rewardOnUnlock: unknown }[];
+    levels: { name: string; icon: string; color: string; minClasses: number; sortOrder: number; reached: boolean; isCurrent: boolean; rewardOnUnlock: unknown }[];
     achievements: {
       id: string; key: string; name: string; description: string | null;
       icon: string; achievementType: string; earned: boolean; earnedAt: string | null;
@@ -363,18 +364,26 @@ export default function ProfilePage() {
             className="group relative shrink-0"
             disabled={uploadingAvatar}
           >
-            <Avatar className="h-16 w-16">
-              <AvatarImage
-                src={avatarPreview || session?.user?.image || undefined}
-                alt={session?.user?.name ?? ""}
-              />
-              <AvatarFallback className="text-lg">{initials}</AvatarFallback>
-            </Avatar>
-            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/0 transition-colors group-hover:bg-foreground/40">
-              {uploadingAvatar ? (
-                <Loader2 className="h-5 w-5 animate-spin text-white" />
-              ) : (
-                <Camera className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+            <div className="relative h-16 w-16">
+              <Avatar className="h-16 w-16">
+                <AvatarImage
+                  src={avatarPreview || session?.user?.image || undefined}
+                  alt={session?.user?.name ?? ""}
+                />
+                <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-full bg-foreground/0 transition-colors group-hover:bg-foreground/40">
+                {uploadingAvatar ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                ) : (
+                  <Camera className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                )}
+              </div>
+              {gamification?.level && (
+                <LoyaltyLevelAvatarPin
+                  sortOrder={gamification.level.sortOrder}
+                  levelName={gamification.level.name}
+                />
               )}
             </div>
             <input
@@ -438,54 +447,66 @@ export default function ProfilePage() {
           </Card>
         </motion.div>
 
-        {/* Level progress bar */}
+        {/* Level: metallic badge + progress */}
         {gamification?.level && (
           <motion.div custom={2} variants={fadeUp} initial="hidden" animate="show">
-            <div className="rounded-2xl border border-border/50 bg-white p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-2xl">{gamification.level.icon}</span>
-                  <div>
-                    <p className="text-[15px] font-bold text-foreground">
-                      {gamification.level.name}
-                    </p>
-                    <p className="text-[11px] text-muted">
-                      {gamification.totalClasses} clases
-                      {gamification.currentStreak > 0 && (
-                        <> · racha de {gamification.currentStreak}d</>
-                      )}
-                    </p>
-                  </div>
-                </div>
+            <div className="space-y-4 rounded-2xl border border-border/50 bg-gradient-to-b from-white to-surface/80 p-4 shadow-warm-sm">
+              <div className="flex justify-center">
+                <LoyaltyTierBadge
+                  levelName={gamification.level.name}
+                  icon={gamification.level.icon}
+                  sortOrder={gamification.level.sortOrder}
+                  size="lg"
+                  showTierSubtitle={false}
+                  className="max-w-full"
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-[12px] text-muted">
+                <span>
+                  <strong className="text-foreground">{gamification.totalClasses}</strong> clases
+                </span>
+                {gamification.currentStreak > 0 && (
+                  <span>
+                    Racha <strong className="text-foreground">{gamification.currentStreak}</strong>d
+                  </span>
+                )}
                 {gamification.nextLevel && (
-                  <span className="text-[11px] font-medium text-muted">
-                    {gamification.classesToNext} para {gamification.nextLevel.icon} {gamification.nextLevel.name}
+                  <span>
+                    <strong className="text-foreground">{gamification.classesToNext}</strong> para{" "}
+                    {gamification.nextLevel.icon} {gamification.nextLevel.name}
                   </span>
                 )}
               </div>
               {gamification.nextLevel && (
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${gamification.progressPercent}%`,
-                      backgroundColor: gamification.level.color,
-                    }}
-                  />
+                <div className="mx-auto max-w-md">
+                  <div className="h-2 overflow-hidden rounded-full bg-surface">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${gamification.progressPercent}%`,
+                        backgroundColor: gamification.level.color,
+                      }}
+                    />
+                  </div>
                 </div>
               )}
               {gamification.levels.length > 0 && (
-                <div className="mt-3 flex items-center justify-between">
+                <div className="flex items-center justify-between gap-1 border-t border-border/40 pt-3">
                   {gamification.levels.map((l) => (
                     <div
                       key={l.name}
                       className={cn(
-                        "flex flex-col items-center gap-0.5",
-                        l.reached ? "opacity-100" : "opacity-30",
+                        "flex min-w-0 flex-1 flex-col items-center gap-0.5",
+                        l.reached ? "opacity-100" : "opacity-35",
+                        l.isCurrent && "scale-105",
                       )}
                     >
-                      <span className={cn("text-base", l.isCurrent && "text-lg")}>{l.icon}</span>
-                      <span className="text-[9px] font-medium text-muted">{l.name}</span>
+                      <span className={cn("text-base", l.isCurrent && "text-lg drop-shadow-sm")}>
+                        {l.icon}
+                      </span>
+                      <span className="truncate text-center text-[8px] font-semibold uppercase tracking-tight text-muted">
+                        {l.name}
+                      </span>
                     </div>
                   ))}
                 </div>

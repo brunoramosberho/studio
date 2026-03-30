@@ -65,6 +65,7 @@ export async function GET() {
             icon: currentLevel.icon,
             color: currentLevel.color,
             minClasses: currentLevel.minClasses,
+            sortOrder: currentLevel.sortOrder,
           }
         : null,
       nextLevel: nextLevel
@@ -74,6 +75,7 @@ export async function GET() {
             icon: nextLevel.icon,
             color: nextLevel.color,
             minClasses: nextLevel.minClasses,
+            sortOrder: nextLevel.sortOrder,
           }
         : null,
       totalClasses,
@@ -88,6 +90,7 @@ export async function GET() {
         icon: l.icon,
         color: l.color,
         minClasses: l.minClasses,
+        sortOrder: l.sortOrder,
         rewardOnUnlock: l.rewardOnUnlock,
         reached: totalClasses >= l.minClasses,
         isCurrent: l.id === currentLevel?.id,

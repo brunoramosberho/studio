@@ -86,6 +86,34 @@ export async function GET(
   });
   const sharedClassCount = theirBookings.filter((b) => myClassIdSet.has(b.classId)).length;
 
+  let loyaltyLevel: {
+    name: string;
+    icon: string;
+    color: string;
+    minClasses: number;
+    sortOrder: number;
+    totalClasses: number;
+    currentStreak: number;
+  } | null = null;
+
+  if (userRole === "CLIENT") {
+    const mp = await prisma.memberProgress.findUnique({
+      where: { userId_tenantId: { userId: targetId, tenantId } },
+      include: { currentLevel: true },
+    });
+    if (mp?.currentLevel) {
+      loyaltyLevel = {
+        name: mp.currentLevel.name,
+        icon: mp.currentLevel.icon,
+        color: mp.currentLevel.color,
+        minClasses: mp.currentLevel.minClasses,
+        sortOrder: mp.currentLevel.sortOrder,
+        totalClasses: mp.totalClassesAttended,
+        currentStreak: mp.currentStreak,
+      };
+    }
+  }
+
   const showSocials = isFriend || isCoach;
   const base = {
     id: user.id,
@@ -100,6 +128,7 @@ export async function GET(
     pendingFromMe,
     isFriend,
     isCoach,
+    loyaltyLevel,
     instagramUser: showSocials ? user.instagramUser : null,
     stravaUser: showSocials ? user.stravaUser : null,
   };

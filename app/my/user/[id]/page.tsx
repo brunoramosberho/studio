@@ -22,6 +22,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
 import { cn } from "@/lib/utils";
+import { LoyaltyLevelAvatarPin } from "@/components/profile/loyalty-level-avatar-pin";
 
 interface UpcomingClass {
   id: string;
@@ -80,6 +81,15 @@ interface UserProfile {
   upcomingClasses?: UpcomingClass[];
   recentActivity?: ActivityItem[];
   activityFeed?: FeedItem[];
+  loyaltyLevel?: {
+    name: string;
+    icon: string;
+    color: string;
+    minClasses: number;
+    sortOrder: number;
+    totalClasses: number;
+    currentStreak: number;
+  } | null;
 }
 
 const fadeUp = {
@@ -319,20 +329,38 @@ export default function UserProfilePage({
         >
           <button
             onClick={() => profile.image && setPhotoOpen(true)}
-            className={cn("rounded-full", profile.image && "cursor-pointer active:scale-95 transition-transform")}
+            className={cn(
+              "relative inline-flex rounded-full",
+              profile.image && "cursor-pointer active:scale-95 transition-transform",
+            )}
           >
-            <Avatar className="h-20 w-20">
-              {profile.image && <AvatarImage src={profile.image} />}
-              <AvatarFallback className="text-xl">{initials}</AvatarFallback>
-            </Avatar>
+            <div className="relative h-20 w-20">
+              <Avatar className="h-20 w-20">
+                {profile.image && <AvatarImage src={profile.image} />}
+                <AvatarFallback className="text-xl">{initials}</AvatarFallback>
+              </Avatar>
+              {profile.loyaltyLevel && !profile.isCoach && (
+                <LoyaltyLevelAvatarPin
+                  sortOrder={profile.loyaltyLevel.sortOrder}
+                  levelName={profile.loyaltyLevel.name}
+                  size="md"
+                />
+              )}
+            </div>
           </button>
-          <h2 className="mt-3 font-display text-xl font-bold text-foreground">
-            {profile.name}
-          </h2>
+          <h2 className="mt-3 font-display text-xl font-bold text-foreground">{profile.name}</h2>
           {profile.isCoach && (
             <span className="mt-1 rounded-full bg-accent/10 px-3 py-0.5 text-[12px] font-semibold text-accent">
               Coach
             </span>
+          )}
+          {profile.loyaltyLevel && !profile.isCoach && (
+            <p className="mt-2 text-[12px] text-muted">
+              {profile.loyaltyLevel.totalClasses} clases
+              {profile.loyaltyLevel.currentStreak > 0
+                ? ` · racha ${profile.loyaltyLevel.currentStreak} días`
+                : ""}
+            </p>
           )}
           <p className="mt-1.5 text-[13px] text-muted">
             Miembro desde {formatMemberSince(profile.memberSince)}
