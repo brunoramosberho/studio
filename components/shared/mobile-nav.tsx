@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Home, CalendarCheck, User, Mic, ShoppingBag, Plus } from "lucide-react";
+import { Home, CalendarCheck, User, Mic, ShoppingBag, Dumbbell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/tenant-provider";
 
-const RESERVAR_BG = "#D85A30";
+const RESERVA_BG = "#D85A30";
+/** Slightly under old h-14; 40% protrudes above nav top, 60% inside */
+const RESERVA_BTN_PX = 46;
+const RESERVA_PROTRUDE_PX = RESERVA_BTN_PX * 0.4;
 
 const leftTabs = [
   { href: "/my", icon: Home, label: "Feed" },
@@ -47,8 +50,8 @@ export function MobileNav() {
   const scheduleActive = pathname.startsWith("/schedule");
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-background/95 backdrop-blur-xl safe-bottom md:hidden">
-      <div className="flex items-end justify-between gap-1 px-1 pb-1.5 pt-1">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 overflow-visible border-t border-border/50 bg-background/95 backdrop-blur-xl safe-bottom md:hidden">
+      <div className="flex items-end justify-between gap-1 px-1 pb-1.5 pt-3">
         <div className="flex min-w-0 flex-1 justify-around">
           {leftTabs.map((tab) => {
             const isActive = tabIsActive(pathname, tab.href);
@@ -70,18 +73,15 @@ export function MobileNav() {
           })}
         </div>
 
-        <div className="flex shrink-0 items-end justify-center px-0.5 pb-0.5">
-          <Link
-            href="/schedule"
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-[transform,box-shadow,filter]",
-              scheduleActive && "ring-2 ring-white/90 ring-offset-2 ring-offset-background",
-            )}
-            style={{ backgroundColor: RESERVAR_BG }}
-          >
-            <Plus className="h-4 w-4 shrink-0 stroke-[2.5]" aria-hidden />
-            Reservar
-          </Link>
+        <div
+          className={cn(
+            "flex min-h-[48px] w-[68px] shrink-0 flex-col items-center justify-end gap-0.5 rounded-xl px-2 py-1 text-[10px] font-medium",
+            scheduleActive ? "text-accent" : "text-muted",
+          )}
+        >
+          {/* Same slot as tab icons so “Reserva” aligns with other labels */}
+          <span className="h-5 w-5 shrink-0" aria-hidden />
+          <span>Reserva</span>
         </div>
 
         <div className="flex min-w-0 flex-1 justify-around">
@@ -109,6 +109,27 @@ export function MobileNav() {
           })}
         </div>
       </div>
+
+      <Link
+        href="/schedule"
+        aria-label="Reserva"
+        className={cn(
+          "absolute left-1/2 z-[60] flex -translate-x-1/2 items-center justify-center rounded-full text-white shadow-[0_3px_12px_rgba(216,90,48,0.42),0_2px_5px_rgba(0,0,0,0.07)] transition-[transform,box-shadow] active:scale-[0.97]",
+          scheduleActive && "ring-[2.5px] ring-white/95 ring-offset-2 ring-offset-background",
+        )}
+        style={{
+          backgroundColor: RESERVA_BG,
+          width: RESERVA_BTN_PX,
+          height: RESERVA_BTN_PX,
+          top: `calc(-1 * ${RESERVA_PROTRUDE_PX}px)`,
+        }}
+      >
+        <Dumbbell
+          className="stroke-[2.25]"
+          style={{ width: RESERVA_BTN_PX * 0.45, height: RESERVA_BTN_PX * 0.45 }}
+          aria-hidden
+        />
+      </Link>
     </nav>
   );
 }

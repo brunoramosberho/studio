@@ -62,7 +62,7 @@ export default function DashboardPage() {
           <Button asChild size="sm">
             <Link href="/schedule">
               <Calendar className="mr-2 h-4 w-4" />
-              Reservar clase
+              Reserva
             </Link>
           </Button>
           <Button asChild variant="secondary" size="sm">
