@@ -1,11 +1,14 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Home, CalendarCheck, User, Mic, ShoppingBag, Dumbbell } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/tenant-provider";
+import { getIconComponent } from "@/components/admin/icon-picker";
 
 const RESERVA_BG = "#D85A30";
 /** Slightly under old h-14; 40% protrudes above nav top, 60% inside */
@@ -26,6 +29,30 @@ const coachTab = { href: "/coach", icon: Mic, label: "Coach" };
 
 const hiddenOnPaths = ["/login", "/admin", "/coach", "/dev", "/directory"];
 
+interface DisciplineIcon {
+  id: string;
+  icon: string;
+  color: string;
+}
+
+function useRotatingDisciplineIcon(disciplines: DisciplineIcon[]) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (disciplines.length <= 1) return;
+    const interval = setInterval(() => {
+      setIndex((i) => (i + 1) % disciplines.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [disciplines.length]);
+
+  if (disciplines.length === 0) return { Icon: Dumbbell, color: RESERVA_BG };
+
+  const current = disciplines[index % disciplines.length];
+  const Icon = getIconComponent(current.icon);
+  return { Icon: Icon || Dumbbell, color: current.color || RESERVA_BG };
+}
+
 function tabIsActive(pathname: string, href: string) {
   if (href === "/my") return pathname === "/my";
   return pathname.startsWith(href);
@@ -34,8 +61,25 @@ function tabIsActive(pathname: string, href: string) {
 export function MobileNav() {
   const pathname = usePathname();
   const { data: session } = useSession();
-
   const { role } = useTenant();
+  const [disciplines, setDisciplines] = useState<DisciplineIcon[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/class-types")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: { id: string; icon?: string | null; color: string }[]) => {
+        if (cancelled) return;
+        const withIcons = data
+          .filter((d) => d.icon)
+          .map((d) => ({ id: d.id, icon: d.icon!, color: d.color }));
+        setDisciplines(withIcons);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const { Icon: ReservaIcon, color: reservaColor } = useRotatingDisciplineIcon(disciplines);
 
   if (!session?.user) return null;
   if (role === "ADMIN") return null;
@@ -114,21 +158,33 @@ export function MobileNav() {
         href="/schedule"
         aria-label="Reserva"
         className={cn(
-          "absolute left-1/2 z-[60] flex -translate-x-1/2 items-center justify-center rounded-full text-white shadow-[0_3px_12px_rgba(216,90,48,0.42),0_2px_5px_rgba(0,0,0,0.07)] transition-[transform,box-shadow] active:scale-[0.97]",
+          "absolute left-1/2 z-[60] flex -translate-x-1/2 items-center justify-center rounded-full text-white shadow-[0_3px_12px_rgba(216,90,48,0.42),0_2px_5px_rgba(0,0,0,0.07)] active:scale-[0.97]",
+          "transition-[transform,box-shadow,background-color] duration-700",
           scheduleActive && "ring-[2.5px] ring-white/95 ring-offset-2 ring-offset-background",
         )}
         style={{
-          backgroundColor: RESERVA_BG,
+          backgroundColor: disciplines.length > 0 ? reservaColor : RESERVA_BG,
           width: RESERVA_BTN_PX,
           height: RESERVA_BTN_PX,
           top: `calc(-1 * ${RESERVA_PROTRUDE_PX}px)`,
         }}
       >
-        <Dumbbell
-          className="stroke-[2.25]"
-          style={{ width: RESERVA_BTN_PX * 0.45, height: RESERVA_BTN_PX * 0.45 }}
-          aria-hidden
-        />
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={ReservaIcon.displayName || ReservaIcon.name}
+            initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="flex items-center justify-center"
+          >
+            <ReservaIcon
+              className="stroke-[2.25]"
+              style={{ width: RESERVA_BTN_PX * 0.45, height: RESERVA_BTN_PX * 0.45 }}
+              aria-hidden
+            />
+          </motion.span>
+        </AnimatePresence>
       </Link>
     </nav>
   );
