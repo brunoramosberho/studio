@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -30,6 +29,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useBranding } from "@/components/branding-provider";
 
 const navItems = [
@@ -147,18 +147,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ) : null;
 
   return (
-    <div className="min-h-dvh bg-background">
-      {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-admin/10 bg-white/80 backdrop-blur-xl">
-        <div className="h-1 bg-gradient-to-r from-admin/80 to-admin/30" />
-        <div className="flex h-14 items-center justify-between px-4 lg:px-6">
-          <div className="flex items-center gap-3">
-            <button
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-foreground transition-colors hover:bg-admin/5 lg:hidden"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
+    <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+      <div className="min-h-dvh bg-background">
+        {/* Top bar */}
+        <header className="sticky top-0 z-40 border-b border-admin/10 bg-white/80 backdrop-blur-xl">
+          <div className="h-1 bg-gradient-to-r from-admin/80 to-admin/30" />
+          <div className="flex h-14 items-center justify-between px-4 lg:px-6">
+            <div className="flex items-center gap-3">
+              <SheetTrigger asChild>
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-foreground transition-colors hover:bg-admin/5 lg:hidden"
+                  aria-label="Abrir menú"
+                >
+                  {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </button>
+              </SheetTrigger>
             <div className="flex items-center gap-2">
               <span className="font-display text-lg font-bold text-foreground">{studioName}</span>
               <span className="rounded-md bg-admin/10 px-2 py-0.5 text-xs font-semibold text-admin">
@@ -192,23 +195,56 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
-      <div className="flex min-h-[calc(100dvh-3.5rem-4px)]">
-        {/* Desktop sidebar */}
-        <aside className="hidden w-60 shrink-0 border-r border-border/50 bg-white lg:block">
-          <div className="sticky top-[calc(3.5rem+4px)] flex h-[calc(100dvh-3.5rem-4px)] flex-col">
+        <div className="flex min-h-[calc(100dvh-3.5rem-4px)]">
+          {/* Desktop sidebar */}
+          <aside className="hidden w-60 shrink-0 border-r border-border/50 bg-white lg:block">
+            <div className="sticky top-[calc(3.5rem+4px)] flex h-[calc(100dvh-3.5rem-4px)] flex-col">
+              <nav className="flex-1 space-y-0.5 p-3">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                      isActive(item.href)
+                        ? "bg-admin/10 text-admin"
+                        : "text-muted hover:bg-surface hover:text-foreground",
+                    )}
+                  >
+                    <item.icon className="h-4.5 w-4.5" />
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+              {locationPicker && (
+                <div className="border-t border-border/50 p-3">
+                  {locationPicker}
+                </div>
+              )}
+            </div>
+          </aside>
+
+          {/* Main content */}
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        </div>
+
+        {/* Mobile sidebar via shadcn Sheet */}
+        <SheetContent side="left" className="w-72 p-0 lg:hidden">
+          <div className="flex h-full flex-col pt-16">
             <nav className="flex-1 space-y-0.5 p-3">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors",
                     isActive(item.href)
                       ? "bg-admin/10 text-admin"
                       : "text-muted hover:bg-surface hover:text-foreground",
                   )}
                 >
-                  <item.icon className="h-4.5 w-4.5" />
+                  <item.icon className="h-5 w-5" />
                   {item.label}
                 </Link>
               ))}
@@ -218,66 +254,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {locationPicker}
               </div>
             )}
-          </div>
-        </aside>
-
-        {/* Mobile sidebar */}
-        <AnimatePresence>
-          {sidebarOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-30 bg-foreground/20 backdrop-blur-sm lg:hidden"
+            <div className="border-t border-border/50 p-3">
+              <Link
+                href="/"
                 onClick={() => setSidebarOpen(false)}
-              />
-              <motion.aside
-                initial={{ x: -280 }}
-                animate={{ x: 0 }}
-                exit={{ x: -280 }}
-                transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                className="fixed left-0 top-0 z-40 h-dvh w-64 border-r border-border/50 bg-white pt-20 shadow-warm-lg lg:hidden"
+                className="flex items-center gap-3 rounded-xl border border-border/50 px-3 py-3 text-sm text-muted transition-colors hover:bg-surface"
               >
-                <nav className="flex flex-col gap-0.5 p-3">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setSidebarOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors",
-                        isActive(item.href)
-                          ? "bg-admin/10 text-admin"
-                          : "text-muted hover:bg-surface hover:text-foreground",
-                      )}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.label}
-                    </Link>
-                  ))}
-                  {locationPicker && (
-                    <div className="mt-3 border-t border-border/50 pt-3">
-                      {locationPicker}
-                    </div>
-                  )}
-                  <Link
-                    href="/"
-                    onClick={() => setSidebarOpen(false)}
-                    className="mt-4 flex items-center gap-3 rounded-xl border border-border/50 px-3 py-3 text-sm text-muted transition-colors hover:bg-surface"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                    Sitio público
-                  </Link>
-                </nav>
-              </motion.aside>
-            </>
-          )}
-        </AnimatePresence>
-
-        {/* Main content */}
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+                <ArrowLeft className="h-5 w-5" />
+                Sitio público
+              </Link>
+            </div>
+          </div>
+        </SheetContent>
       </div>
-    </div>
+    </Sheet>
   );
 }

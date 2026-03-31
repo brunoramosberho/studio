@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Trophy,
@@ -20,6 +20,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -117,6 +125,12 @@ export default function AdminGamificationPage() {
   const [openSystem, setOpenSystem] = useState(false);
   const [openTenant, setOpenTenant] = useState(true);
   const [memberSearch, setMemberSearch] = useState("");
+  const [membersSort, setMembersSort] = useState<{
+    key: "name" | "levelName" | "totalClasses" | "currentStreak" | "achievementCount";
+    dir: "asc" | "desc";
+  }>({ key: "totalClasses", dir: "desc" });
+  const [membersPage, setMembersPage] = useState(1);
+  const membersPageSize = 10;
   const [grantUserId, setGrantUserId] = useState<string>("");
   const [grantKey, setGrantKey] = useState<string>("");
 
@@ -139,6 +153,36 @@ export default function AdminGamificationPage() {
       return res.json();
     },
   });
+
+  const membersRows = membersData?.members ?? [];
+  const membersSorted = useMemo(() => {
+    const rows = [...membersRows];
+    const { key, dir } = membersSort;
+    rows.sort((a, b) => {
+      const av = a[key] ?? "";
+      const bv = b[key] ?? "";
+      if (typeof av === "number" && typeof bv === "number") return dir === "asc" ? av - bv : bv - av;
+      return dir === "asc"
+        ? String(av).localeCompare(String(bv))
+        : String(bv).localeCompare(String(av));
+    });
+    return rows;
+  }, [membersRows, membersSort]);
+
+  const membersTotalPages = Math.max(1, Math.ceil(membersSorted.length / membersPageSize));
+  const membersPageSafe = Math.min(membersTotalPages, Math.max(1, membersPage));
+  const membersPaged = useMemo(() => {
+    const start = (membersPageSafe - 1) * membersPageSize;
+    return membersSorted.slice(start, start + membersPageSize);
+  }, [membersSorted, membersPageSafe]);
+
+  function toggleMembersSort(key: typeof membersSort.key) {
+    setMembersPage(1);
+    setMembersSort((prev) => {
+      if (prev.key !== key) return { key, dir: "desc" };
+      return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
+    });
+  }
 
   const grantMutation = useMutation({
     mutationFn: async (body: { userId: string; achievementKey: string }) => {
@@ -454,25 +498,81 @@ export default function AdminGamificationPage() {
           {loadingMembers ? (
             <Skeleton className="h-40 rounded-xl" />
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-border/50">
-              <table className="w-full min-w-[640px] text-left text-sm">
-                <thead className="border-b border-border/50 bg-surface/40 text-xs font-semibold uppercase text-muted">
-                  <tr>
-                    <th className="px-3 py-2.5">Miembro</th>
-                    <th className="px-3 py-2.5">Nivel</th>
-                    <th className="px-3 py-2.5 text-right">Clases</th>
-                    <th className="px-3 py-2.5 text-right">Racha</th>
-                    <th className="px-3 py-2.5 text-right">Logros</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(membersData?.members ?? []).map((m) => (
-                    <tr key={m.userId} className="border-b border-border/30 last:border-0">
-                      <td className="px-3 py-2.5">
+            <div className="rounded-xl border border-border/50">
+              <Table className="min-w-[640px]">
+                <TableHeader className="bg-surface/40">
+                  <TableRow>
+                    <TableHead className="text-xs font-semibold uppercase">Miembro</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
+                        onClick={() => toggleMembersSort("levelName")}
+                      >
+                        Nivel
+                        {membersSort.key === "levelName" && (
+                          membersSort.dir === "asc"
+                            ? <ChevronUp className="ml-1 h-3.5 w-3.5" />
+                            : <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
+                        onClick={() => toggleMembersSort("totalClasses")}
+                      >
+                        Clases
+                        {membersSort.key === "totalClasses" && (
+                          membersSort.dir === "asc"
+                            ? <ChevronUp className="ml-1 h-3.5 w-3.5" />
+                            : <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
+                        onClick={() => toggleMembersSort("currentStreak")}
+                      >
+                        Racha
+                        {membersSort.key === "currentStreak" && (
+                          membersSort.dir === "asc"
+                            ? <ChevronUp className="ml-1 h-3.5 w-3.5" />
+                            : <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
+                        onClick={() => toggleMembersSort("achievementCount")}
+                      >
+                        Logros
+                        {membersSort.key === "achievementCount" && (
+                          membersSort.dir === "asc"
+                            ? <ChevronUp className="ml-1 h-3.5 w-3.5" />
+                            : <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {membersPaged.map((m) => (
+                    <TableRow key={m.userId}>
+                      <TableCell className="py-2.5">
                         <div className="font-medium text-foreground">{m.name ?? "—"}</div>
                         <div className="text-xs text-muted">{m.email}</div>
-                      </td>
-                      <td className="px-3 py-2.5">
+                      </TableCell>
+                      <TableCell className="py-2.5">
                         {m.levelName ? (
                           <span className="inline-flex items-center gap-1">
                             <span>{m.levelIcon}</span> {m.levelName}
@@ -480,16 +580,41 @@ export default function AdminGamificationPage() {
                         ) : (
                           <span className="text-muted">—</span>
                         )}
-                      </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{m.totalClasses}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{m.currentStreak}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{m.achievementCount}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="py-2.5 text-right tabular-nums">{m.totalClasses}</TableCell>
+                      <TableCell className="py-2.5 text-right tabular-nums">{m.currentStreak}</TableCell>
+                      <TableCell className="py-2.5 text-right tabular-nums">{m.achievementCount}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-              {(membersData?.members ?? []).length === 0 && (
+                </TableBody>
+              </Table>
+
+              {membersRows.length === 0 ? (
                 <p className="p-6 text-center text-sm text-muted">No hay clientes que coincidan.</p>
+              ) : (
+                <div className="flex items-center justify-between gap-3 border-t border-border/50 px-3 py-2">
+                  <p className="text-sm text-muted">
+                    Página {membersPageSafe} de {membersTotalPages}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMembersPage((p) => Math.max(1, p - 1))}
+                      disabled={membersPageSafe <= 1}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMembersPage((p) => Math.min(membersTotalPages, p + 1))}
+                      disabled={membersPageSafe >= membersTotalPages}
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
           )}

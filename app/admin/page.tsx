@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Calendar,
 } from "lucide-react";
+import { Card as TremorCard, Metric, Text, Flex } from "@tremor/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -112,7 +113,7 @@ export default function AdminDashboard() {
         variants={stagger}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
       >
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -124,50 +125,45 @@ export default function AdminDashboard() {
           <>
             <motion.div variants={fadeUp}>
               <KpiCard
-                icon={CalendarCheck}
-                label="Reservas hoy"
-                value={data?.bookingsToday ?? 0}
-                change={data?.bookingsTodayChange}
-                accentColor="var(--color-admin)"
+                icon={DollarSign}
+                label="MRR"
+                value={formatCurrency(data?.revenueThisMonth ?? 0)}
+                change={data?.revenueMonthChange}
               />
             </motion.div>
             <motion.div variants={fadeUp}>
               <KpiCard
-                icon={DollarSign}
-                label="Ingresos esta semana"
-                value={formatCurrency(data?.revenueThisWeek ?? 0)}
-                change={data?.revenueWeekChange}
-                accentColor="var(--color-accent)"
+                icon={Users}
+                label="Miembros"
+                value={data?.activeMembersCount ?? 0}
               />
             </motion.div>
             <motion.div variants={fadeUp}>
               <KpiCard
                 icon={PieChart}
-                label="Ocupación promedio"
+                label="Ocupación"
                 value={`${data?.avgOccupancy ?? 0}%`}
                 change={data?.occupancyChange}
-                accentColor="#7C6D5D"
               />
             </motion.div>
             <motion.div variants={fadeUp}>
               <KpiCard
                 icon={UserPlus}
-                label="Nuevos clientes"
+                label="Nuevos esta semana"
                 value={data?.newClientsThisWeek ?? 0}
                 change={data?.newClientsChange}
-                accentColor="var(--color-coach)"
               />
             </motion.div>
           </>
         )}
       </motion.div>
 
-      {/* Monthly Metrics */}
+      {/* Secondary metrics */}
       <motion.div
         variants={stagger}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
       >
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -178,79 +174,60 @@ export default function AdminDashboard() {
         ) : (
           <>
             <motion.div variants={fadeUp}>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-muted">
-                    <DollarSign className="h-4 w-4" />
-                    <span className="text-xs">Ingresos del mes</span>
+              <TremorCard className="p-4">
+                <Flex justifyContent="between" alignItems="start">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted/40">
+                      <CalendarCheck className="h-4.5 w-4.5 text-muted" />
+                    </div>
+                    <Text className="text-sm">Reservas hoy</Text>
                   </div>
-                  <p className="mt-1 font-mono text-lg font-bold">
-                    {formatCurrency(data?.revenueThisMonth ?? 0)}
-                  </p>
-                  {data?.revenueMonthChange !== undefined && (
-                    <span
-                      className={cn(
-                        "text-xs font-medium",
-                        data.revenueMonthChange >= 0
-                          ? "text-green-600"
-                          : "text-red-600",
-                      )}
-                    >
-                      {data.revenueMonthChange >= 0 ? "+" : ""}
-                      {data.revenueMonthChange}% vs mes anterior
-                    </span>
-                  )}
-                </CardContent>
-              </Card>
+                </Flex>
+                <Metric className="mt-3">{data?.bookingsToday ?? 0}</Metric>
+              </TremorCard>
             </motion.div>
             <motion.div variants={fadeUp}>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-muted">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-xs">Clases impartidas</span>
+              <TremorCard className="p-4">
+                <Flex justifyContent="between" alignItems="start">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted/40">
+                      <CheckCircle className="h-4.5 w-4.5 text-muted" />
+                    </div>
+                    <Text className="text-sm">Clases impartidas (mes)</Text>
                   </div>
-                  <p className="mt-1 font-mono text-lg font-bold">
-                    {data?.completedClassesMonth ?? 0}
-                  </p>
-                  <span className="text-xs text-muted">este mes</span>
-                </CardContent>
-              </Card>
+                </Flex>
+                <Metric className="mt-3">{data?.completedClassesMonth ?? 0}</Metric>
+              </TremorCard>
             </motion.div>
             <motion.div variants={fadeUp}>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-muted">
-                    <Users className="h-4 w-4" />
-                    <span className="text-xs">Miembros activos</span>
+              <TremorCard className="p-4">
+                <Flex justifyContent="between" alignItems="start">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted/40">
+                      <DollarSign className="h-4.5 w-4.5 text-muted" />
+                    </div>
+                    <Text className="text-sm">Ingresos esta semana</Text>
                   </div>
-                  <p className="mt-1 font-mono text-lg font-bold">
-                    {data?.activeMembersCount ?? 0}
-                  </p>
-                  <span className="text-xs text-muted">
-                    asistieron en 30 días
-                  </span>
-                </CardContent>
-              </Card>
+                </Flex>
+                <Metric className="mt-3">{formatCurrency(data?.revenueThisWeek ?? 0)}</Metric>
+              </TremorCard>
             </motion.div>
             <motion.div variants={fadeUp}>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-muted">
-                    <Calendar className="h-4 w-4" />
-                    <span className="text-xs">Hoy</span>
+              <TremorCard className="p-4">
+                <Flex justifyContent="between" alignItems="start">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted/40">
+                      <Calendar className="h-4.5 w-4.5 text-muted" />
+                    </div>
+                    <Text className="text-sm">Hoy</Text>
                   </div>
-                  <p className="mt-1 font-mono text-lg font-bold">
-                    {data?.classesToday ?? 0}{" "}
-                    <span className="text-sm font-normal text-muted">
-                      clases
-                    </span>
-                  </p>
-                  <span className="text-xs text-muted">
-                    {data?.attendanceToday ?? 0} check-ins
-                  </span>
-                </CardContent>
-              </Card>
+                </Flex>
+                <Metric className="mt-3">
+                  {data?.classesToday ?? 0}{" "}
+                  <span className="text-base font-normal text-muted">clases</span>
+                </Metric>
+                <Text className="mt-1 text-sm">{data?.attendanceToday ?? 0} check-ins</Text>
+              </TremorCard>
             </motion.div>
           </>
         )}
