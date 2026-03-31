@@ -13,7 +13,7 @@ import { FinalCTA, Footer } from "@/components/landing/cta-footer";
 
 export function LandingClient() {
   return (
-    <div className="min-h-dvh bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+    <div className="min-h-dvh overflow-x-hidden scroll-auto bg-gray-50 text-gray-900 antialiased selection:bg-orange-100 selection:text-orange-600">
       <LandingNav />
       <Hero />
       <Studios />

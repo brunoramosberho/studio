@@ -40,10 +40,9 @@ export function FAQ() {
     <section id="faq" className="py-24">
       <div className="mx-auto max-w-3xl px-6">
         <FadeIn className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">FAQ</p>
+          <p className="text-sm font-semibold tracking-tight text-orange-500">FAQ</p>
           <h2
-            className="mt-3 text-3xl font-bold text-gray-900 sm:text-4xl dark:text-white"
-            style={{ fontFamily: "var(--font-jakarta)" }}
+            className="mt-3 text-3xl font-semibold tracking-tighter text-gray-900 sm:text-4xl"
           >
             Preguntas frecuentes
           </h2>

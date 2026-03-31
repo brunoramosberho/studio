@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,6 +21,8 @@ import {
   Bell,
   MapPin,
   Globe,
+  Instagram,
+  Check,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface CityOption {
   id: string;
@@ -54,6 +57,24 @@ interface FeedPage {
   feed: FeedItem[];
   nextCursor: string | null;
 }
+
+type IgStatus = {
+  connected: boolean;
+  igUserId?: string;
+  igUsername?: string | null;
+  expiresAt?: string | null;
+  updatedAt?: string;
+};
+
+type IgMediaItem = {
+  id: string;
+  caption?: string;
+  media_type: "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM";
+  media_url?: string;
+  thumbnail_url?: string;
+  permalink?: string;
+  timestamp?: string;
+};
 
 const categories = [
   { key: "announcement", label: "Anuncio", icon: Megaphone, color: "bg-blue-50 text-blue-600" },
@@ -100,6 +121,8 @@ export default function AdminFeedPage() {
   const { studioName } = useBranding();
   const [composerOpen, setComposerOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "studio_posts">("all");
+  const [igPickerOpen, setIgPickerOpen] = useState(false);
+  const [selectedIg, setSelectedIg] = useState<Record<string, boolean>>({});
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -121,6 +144,59 @@ export default function AdminFeedPage() {
         })),
       );
     },
+  });
+
+  const { data: igStatus } = useQuery<IgStatus>({
+    queryKey: ["ig-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/instagram/status");
+      if (!res.ok) return { connected: false };
+      return res.json();
+    },
+  });
+
+  const { data: igMedia, isLoading: igMediaLoading } = useQuery<{
+    igUsername: string | null;
+    items: IgMediaItem[];
+  }>({
+    queryKey: ["ig-media", igPickerOpen],
+    enabled: !!igStatus?.connected && igPickerOpen,
+    queryFn: async () => {
+      const res = await fetch("/api/admin/instagram/media?limit=24");
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  const igItems = useMemo(() => igMedia?.items ?? [], [igMedia?.items]);
+  const selectedIds = useMemo(
+    () => Object.keys(selectedIg).filter((k) => selectedIg[k]),
+    [selectedIg],
+  );
+
+  useEffect(() => {
+    if (!igPickerOpen) setSelectedIg({});
+  }, [igPickerOpen]);
+
+  const importIgMut = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/instagram/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaIds: selectedIds }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: (data: { createdCount: number; skippedExistingCount: number }) => {
+      toast.success(
+        `Importados ${data.createdCount} post${data.createdCount === 1 ? "" : "s"} de Instagram` +
+          (data.skippedExistingCount > 0 ? ` · ${data.skippedExistingCount} ya existían` : ""),
+      );
+      setIgPickerOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-feed"] });
+    },
+    onError: () => toast.error("No se pudo importar desde Instagram"),
   });
 
   const {
@@ -216,6 +292,45 @@ export default function AdminFeedPage() {
         </Button>
       </div>
 
+      {/* Instagram import */}
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-50">
+              <Instagram className="h-5 w-5 text-pink-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Instagram</p>
+              <p className="text-xs text-muted">
+                {igStatus?.connected
+                  ? `Conectado${igStatus.igUsername ? ` como @${igStatus.igUsername}` : ""}`
+                  : "Conecta tu cuenta para importar posts al feed"}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {!igStatus?.connected ? (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => (window.location.href = "/api/admin/instagram/connect")}
+              >
+                <Instagram className="h-4 w-4" />
+                Conectar
+              </Button>
+            ) : (
+              <Button
+                className="gap-2 bg-admin text-white hover:bg-admin/90"
+                onClick={() => setIgPickerOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Importar posts
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <Card>
@@ -276,6 +391,132 @@ export default function AdminFeedPage() {
 
       {/* Composer modal */}
       <AnimatePresence>
+        {igPickerOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm"
+              onClick={() => setIgPickerOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-x-4 top-[10%] z-50 mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-warm-lg sm:inset-x-auto sm:w-full"
+            >
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="font-display text-lg font-bold text-foreground">
+                    Importar de Instagram
+                  </h2>
+                  <p className="mt-0.5 text-sm text-muted">
+                    Selecciona posts para publicarlos en el feed como {studioName}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIgPickerOpen(false)}
+                  className="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {igMediaLoading ? (
+                <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                  {[...Array(8)].map((_, i) => (
+                    <Skeleton key={i} className="aspect-square rounded-xl" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-muted">
+                      {igMedia?.igUsername ? `@${igMedia.igUsername}` : "Cuenta conectada"}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {selectedIds.length} seleccionados
+                    </p>
+                  </div>
+                  <div className="max-h-[55dvh] overflow-auto pr-1">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {igItems.map((it) => {
+                        const img =
+                          it.media_type === "VIDEO"
+                            ? it.thumbnail_url ?? it.media_url
+                            : it.media_url;
+                        const selected = !!selectedIg[it.id];
+                        return (
+                          <button
+                            type="button"
+                            key={it.id}
+                            onClick={() =>
+                              setSelectedIg((prev) => ({ ...prev, [it.id]: !prev[it.id] }))
+                            }
+                            className={cn(
+                              "group relative overflow-hidden rounded-xl border bg-surface text-left",
+                              selected ? "border-admin ring-2 ring-admin/20" : "border-border",
+                            )}
+                          >
+                            <div className="aspect-square bg-surface">
+                              {img ? (
+                                <img
+                                  src={img}
+                                  alt=""
+                                  className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-xs text-muted">
+                                  Sin media
+                                </div>
+                              )}
+                            </div>
+                            <div className="absolute left-2 top-2 flex items-center gap-1">
+                              {selected && (
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-admin text-white">
+                                  <Check className="h-4 w-4" />
+                                </span>
+                              )}
+                            </div>
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                              <p className="line-clamp-2 text-xs text-white/90">
+                                {(it.caption ?? "").trim() || "Post de Instagram"}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-1">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setIgPickerOpen(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      className="flex-1 gap-2 bg-admin text-white hover:bg-admin/90"
+                      disabled={selectedIds.length === 0 || importIgMut.isPending}
+                      onClick={() => importIgMut.mutate()}
+                    >
+                      {importIgMut.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Instagram className="h-4 w-4" />
+                      )}
+                      Importar
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+
         {composerOpen && (
           <>
             <motion.div

@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -34,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 const stagger = {
@@ -295,7 +297,7 @@ export default function AdminClassTypesPage() {
 
       {/* Create / Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditing(null); saveMutation.reset(); } }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[min(90vh,820px)] overflow-hidden sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar disciplina" : "Nueva disciplina"}</DialogTitle>
             <DialogDescription>
@@ -305,166 +307,217 @@ export default function AdminClassTypesPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-2">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">Nombre</label>
-              <Input
-                placeholder="Ej: Reformer, Mat Flow, Barre..."
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
+          <Tabs defaultValue="basic" className="mt-2">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="basic">Básico</TabsTrigger>
+              <TabsTrigger value="style">Estilo</TabsTrigger>
+              <TabsTrigger value="content">Contenido</TabsTrigger>
+            </TabsList>
+
+            <div className="mt-3 max-h-[min(58vh,520px)] overflow-y-auto pr-1">
+              <TabsContent value="basic" className="m-0">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Nombre</label>
+                    <Input
+                      placeholder="Ej: Reformer, Mat Flow, Barre..."
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-xs font-medium text-muted">
+                      Descripción <span className="font-normal">(opcional)</span>
+                    </label>
+                    <Textarea
+                      placeholder="Breve descripción de la clase"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Duración (min)</label>
+                    <Input
+                      type="number"
+                      min={15}
+                      max={180}
+                      step={5}
+                      value={formData.duration}
+                      onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 50 })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Nivel</label>
+                    <Select value={formData.level} onValueChange={(v) => setFormData({ ...formData, level: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">Todos los niveles</SelectItem>
+                        <SelectItem value="BEGINNER">Principiante</SelectItem>
+                        <SelectItem value="INTERMEDIATE">Intermedio</SelectItem>
+                        <SelectItem value="ADVANCED">Avanzado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="style" className="m-0">
+                <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-muted">Color</label>
+                      <div className="grid grid-cols-10 gap-2">
+                        {PRESET_COLORS.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, color: c })}
+                            className={cn(
+                              "h-7 w-7 rounded-full transition-all",
+                              formData.color === c
+                                ? "ring-2 ring-admin ring-offset-2"
+                                : "hover:scale-105",
+                            )}
+                            style={{ backgroundColor: c }}
+                            aria-label={`Color ${c}`}
+                          />
+                        ))}
+                      </div>
+                      <Input
+                        className="mt-2"
+                        placeholder="#hex color"
+                        value={formData.color}
+                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-muted">Icono</label>
+                      <div className="rounded-md border border-border bg-surface/20 p-3">
+                        <IconPicker
+                          value={formData.icon}
+                          onChange={(icon) => setFormData({ ...formData, icon })}
+                          accentColor={formData.color}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hidden lg:block">
+                    <div className="rounded-md border border-border bg-white p-4 shadow-sm">
+                      <p className="text-xs font-medium text-muted">Preview</p>
+                      <div className="mt-3 flex items-center gap-3">
+                        <div
+                          className="flex h-12 w-12 items-center justify-center rounded-md text-white"
+                          style={{ backgroundColor: formData.color }}
+                        >
+                          {(() => {
+                            const Icon = formData.icon ? getIconComponent(formData.icon) : null;
+                            return Icon ? <Icon className="h-6 w-6" /> : <Dumbbell className="h-6 w-6" />;
+                          })()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-display text-base font-bold">
+                            {formData.name?.trim() ? formData.name : "Nombre de disciplina"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted">
+                            {LEVEL_LABELS[formData.level] ?? formData.level} · {formData.duration} min
+                          </p>
+                        </div>
+                      </div>
+                      {formData.description?.trim() ? (
+                        <p className="mt-3 text-sm text-muted line-clamp-3">{formData.description}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="content" className="m-0">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-xs font-medium text-muted">
+                      Video o imagen <span className="font-normal">(URL, opcional)</span>
+                    </label>
+                    <Input
+                      placeholder="https://cdn.example.com/video.mp4"
+                      value={formData.mediaUrl}
+                      onChange={(e) => setFormData({ ...formData, mediaUrl: e.target.value })}
+                    />
+                    <p className="mt-1 text-[11px] text-muted">Se muestra al tocar la disciplina en el feed</p>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-xs font-medium text-muted">
+                      Tags <span className="font-normal">(Enter para agregar)</span>
+                    </label>
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {formData.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                          style={{ borderColor: `${formData.color}30`, color: formData.color, backgroundColor: `${formData.color}08` }}
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, tags: formData.tags.filter((t) => t !== tag) })}
+                            className="ml-0.5 hover:opacity-60"
+                            aria-label={`Quitar ${tag}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <Input
+                      placeholder="Ej: HIIT, Cardio, Fuerza..."
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const val = tagInput.trim();
+                          if (val && !formData.tags.includes(val)) {
+                            setFormData({ ...formData, tags: [...formData.tags, val] });
+                          }
+                          setTagInput("");
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
             </div>
+          </Tabs>
 
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">
-                Descripción <span className="font-normal">(opcional)</span>
-              </label>
-              <Input
-                placeholder="Breve descripción de la clase"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              />
-            </div>
+          {saveMutation.isError && (
+            <p className="mt-3 text-sm text-destructive">
+              {saveMutation.error?.message || "Error al guardar"}
+            </p>
+          )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted">Duración (min)</label>
-                <Input
-                  type="number"
-                  min={15}
-                  max={180}
-                  step={5}
-                  value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 50 })}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted">Nivel</label>
-                <Select
-                  value={formData.level}
-                  onValueChange={(v) => setFormData({ ...formData, level: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Todos los niveles</SelectItem>
-                    <SelectItem value="BEGINNER">Principiante</SelectItem>
-                    <SelectItem value="INTERMEDIATE">Intermedio</SelectItem>
-                    <SelectItem value="ADVANCED">Avanzado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+          <Separator className="my-3" />
 
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">Color</label>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, color: c })}
-                    className={cn(
-                      "h-8 w-8 rounded-full transition-all",
-                      formData.color === c
-                        ? "ring-2 ring-admin ring-offset-2"
-                        : "hover:scale-110",
-                    )}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
-              <Input
-                className="mt-2"
-                placeholder="#hex color"
-                value={formData.color}
-                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">Icono</label>
-              <IconPicker
-                value={formData.icon}
-                onChange={(icon) => setFormData({ ...formData, icon })}
-                accentColor={formData.color}
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">
-                Video o imagen <span className="font-normal">(URL, opcional)</span>
-              </label>
-              <Input
-                placeholder="https://cdn.example.com/video.mp4"
-                value={formData.mediaUrl}
-                onChange={(e) => setFormData({ ...formData, mediaUrl: e.target.value })}
-              />
-              <p className="mt-1 text-[11px] text-muted">Se muestra al tocar la disciplina en el feed</p>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">
-                Tags <span className="font-normal">(Enter para agregar)</span>
-              </label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {formData.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium"
-                    style={{ borderColor: `${formData.color}30`, color: formData.color, backgroundColor: `${formData.color}08` }}
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, tags: formData.tags.filter((t) => t !== tag) })}
-                      className="ml-0.5 hover:opacity-60"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <Input
-                placeholder="Ej: HIIT, Cardio, Fuerza..."
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const val = tagInput.trim();
-                    if (val && !formData.tags.includes(val)) {
-                      setFormData({ ...formData, tags: [...formData.tags, val] });
-                    }
-                    setTagInput("");
-                  }
-                }}
-              />
-            </div>
-
-            {saveMutation.isError && (
-              <p className="text-sm text-destructive">
-                {saveMutation.error?.message || "Error al guardar"}
-              </p>
-            )}
-
-            <Separator />
-
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => saveMutation.mutate()}
-                disabled={saveMutation.isPending || !isFormValid}
-                className="gap-2 bg-admin hover:bg-admin/90"
-              >
-                {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                {editing ? "Guardar" : "Crear disciplina"}
-              </Button>
-            </div>
-          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || !isFormValid}
+              className="gap-2 bg-admin hover:bg-admin/90"
+            >
+              {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {editing ? "Guardar" : "Crear disciplina"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

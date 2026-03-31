@@ -60,6 +60,28 @@ model Tenant {
   productCategories ProductCategory[]
   products          Product[]
   songRequests      ClassSongRequest[]
+
+  instagramIntegration InstagramIntegration?
+}
+
+model InstagramIntegration {
+  id          String   @id @default(cuid())
+  tenantId    String   @unique
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  pageId      String
+  igUserId    String
+  igUsername  String?
+
+  accessToken String   @db.Text
+  tokenType   String?
+  expiresAt   DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([igUserId])
 }
 
 model Membership {

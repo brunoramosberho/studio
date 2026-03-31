@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -40,6 +40,7 @@ import {
   createEmptyLayout,
   type RoomLayout,
 } from "@/components/admin/room-layout-editor";
+import { toast } from "sonner";
 
 interface City {
   id: string;
@@ -96,6 +97,9 @@ export default function AdminStudiosPage() {
   const [editingStudio, setEditingStudio] = useState<StudioData | null>(null);
   const [studioForm, setStudioForm] = useState({ name: "", address: "", cityId: "" });
 
+  const [cityDialogOpen, setCityDialogOpen] = useState(false);
+  const [cityForm, setCityForm] = useState({ countryId: "", name: "" });
+
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<(RoomData & { studioId: string }) | null>(null);
   const [roomForStudio, setRoomForStudio] = useState<string>("");
@@ -134,6 +138,29 @@ export default function AdminStudiosPage() {
     c.cities.map((city) => ({ ...city, country: c })),
   ) ?? [];
 
+  const createCityMut = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/cities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ countryId: cityForm.countryId, name: cityForm.name }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "No se pudo crear la ciudad");
+      }
+      return res.json() as Promise<City>;
+    },
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
+      setCityDialogOpen(false);
+      setCityForm({ countryId: "", name: "" });
+      setStudioForm((f) => ({ ...f, cityId: created.id }));
+      toast.success(`Ciudad creada: ${created.name}`);
+    },
+    onError: (err: Error) => toast.error(err.message || "No se pudo crear la ciudad"),
+  });
+
   // Studio mutations
   const createStudioMut = useMutation({
     mutationFn: async () => {
@@ -152,7 +179,9 @@ export default function AdminStudiosPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setStudioDialogOpen(false);
       setStudioForm({ name: "", address: "", cityId: "" });
+      toast.success("Estudio creado");
     },
+    onError: (err: Error) => toast.error(err.message || "No se pudo crear el estudio"),
   });
 
   const updateStudioMut = useMutation({
@@ -174,7 +203,9 @@ export default function AdminStudiosPage() {
       setStudioDialogOpen(false);
       setEditingStudio(null);
       setStudioForm({ name: "", address: "", cityId: "" });
+      toast.success("Estudio actualizado");
     },
+    onError: (err: Error) => toast.error(err.message || "No se pudo actualizar el estudio"),
   });
 
   const deleteStudioMut = useMutation({
@@ -187,7 +218,9 @@ export default function AdminStudiosPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
+      toast.success("Estudio eliminado");
     },
+    onError: (err: Error) => toast.error(err.message || "No se pudo eliminar el estudio"),
   });
 
   // Room mutations
@@ -216,7 +249,9 @@ export default function AdminStudiosPage() {
       setRoomDialogOpen(false);
       setRoomForm({ name: "", classTypeIds: [], maxCapacity: "", layout: createEmptyLayout() });
       setRoomForStudio("");
+      toast.success("Sala creada");
     },
+    onError: (err: Error) => toast.error(err.message || "No se pudo crear la sala"),
   });
 
   const updateRoomMut = useMutation({
@@ -244,7 +279,9 @@ export default function AdminStudiosPage() {
       setRoomDialogOpen(false);
       setEditingRoom(null);
       setRoomForm({ name: "", classTypeIds: [], maxCapacity: "", layout: createEmptyLayout() });
+      toast.success("Sala actualizada");
     },
+    onError: (err: Error) => toast.error(err.message || "No se pudo actualizar la sala"),
   });
 
   const deleteRoomMut = useMutation({
@@ -257,8 +294,25 @@ export default function AdminStudiosPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
+      toast.success("Sala eliminada");
     },
+    onError: (err: Error) => toast.error(err.message || "No se pudo eliminar la sala"),
   });
+
+  const studiosByCity = useMemo(() => {
+    const list = studios ?? [];
+    const map = new Map<string, { city: City; studios: StudioData[] }>();
+    for (const s of list) {
+      const existing = map.get(s.cityId);
+      if (existing) existing.studios.push(s);
+      else map.set(s.cityId, { city: s.city, studios: [s] });
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      const c = a.city.country.name.localeCompare(b.city.country.name);
+      if (c !== 0) return c;
+      return a.city.name.localeCompare(b.city.name);
+    });
+  }, [studios]);
 
   function openCreateStudio() {
     setEditingStudio(null);
@@ -351,137 +405,151 @@ export default function AdminStudiosPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {studios.map((studio) => {
-            const isExpanded = expandedStudio === studio.id;
-            const disciplinesForRoom = (room: RoomData) =>
-              room.classTypes.map((ct) => ct.name).join(", ") || "—";
+          {studiosByCity.map(({ city, studios }) => (
+            <div key={city.id} className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <MapPin className="h-4 w-4 text-muted" />
+                <p className="text-sm font-semibold text-foreground">
+                  {countryFlag(city.country.code)} {city.name}
+                </p>
+                <p className="text-sm text-muted">{city.country.name}</p>
+                <Badge variant="secondary" className="ml-auto text-[10px]">
+                  {studios.length} estudio{studios.length !== 1 ? "s" : ""}
+                </Badge>
+              </div>
 
-            return (
-              <motion.div key={studio.id} variants={fadeUp} initial="hidden" animate="show">
-                <Card className="overflow-hidden">
-                  <CardContent className="p-0">
-                    {/* Studio header */}
-                    <div
-                      className="flex cursor-pointer items-center gap-4 p-5 transition-colors hover:bg-surface/50"
-                      onClick={() => setExpandedStudio(isExpanded ? null : studio.id)}
-                    >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-admin/10">
-                        <Building2 className="h-5 w-5 text-admin" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-display text-base font-bold text-foreground">
-                            {studio.name}
-                          </h3>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {studio.rooms.length} {studio.rooms.length === 1 ? "sala" : "salas"}
-                          </Badge>
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
-                          <MapPin className="h-3 w-3" />
-                          <span>
-                            {countryFlag(studio.city.country.code)} {studio.city.name}
-                            {studio.address && ` · ${studio.address}`}
-                          </span>
-                        </div>
-                      </div>
+              {studios.map((studio) => {
+                const isExpanded = expandedStudio === studio.id;
+                const disciplinesForRoom = (room: RoomData) =>
+                  room.classTypes.map((ct) => ct.name).join(", ") || "—";
 
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEditStudio(studio); }}
-                          className="rounded-lg p-2 text-muted transition-colors hover:bg-surface hover:text-foreground"
+                return (
+                  <motion.div key={studio.id} variants={fadeUp} initial="hidden" animate="show">
+                    <Card className="overflow-hidden">
+                      <CardContent className="p-0">
+                        {/* Studio header */}
+                        <div
+                          className="flex cursor-pointer items-center gap-4 p-5 transition-colors hover:bg-surface/50"
+                          onClick={() => setExpandedStudio(isExpanded ? null : studio.id)}
                         >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm("¿Eliminar este estudio?")) deleteStudioMut.mutate(studio.id);
-                          }}
-                          className="rounded-lg p-2 text-muted transition-colors hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                        {isExpanded
-                          ? <ChevronDown className="h-4 w-4 text-muted" />
-                          : <ChevronRight className="h-4 w-4 text-muted" />
-                        }
-                      </div>
-                    </div>
-
-                    {/* Rooms (expanded) */}
-                    {isExpanded && (
-                      <div className="border-t border-border/50 bg-surface/30">
-                        {studio.rooms.length === 0 ? (
-                          <div className="flex flex-col items-center py-8">
-                            <DoorOpen className="h-8 w-8 text-muted/30" />
-                            <p className="mt-2 text-sm text-muted">Sin salas aún</p>
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-admin/10">
+                            <Building2 className="h-5 w-5 text-admin" />
                           </div>
-                        ) : (
-                          <div className="divide-y divide-border/30">
-                            {studio.rooms.map((room) => (
-                              <div
-                                key={room.id}
-                                className="flex items-center gap-4 px-5 py-3"
-                              >
-                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
-                                  <DoorOpen className="h-4 w-4 text-muted" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-sm font-medium text-foreground">{room.name}</p>
-                                    {room.layout && (
-                                      <span className="rounded bg-violet-50 px-1.5 py-0.5 text-[9px] font-semibold text-violet-600">
-                                        Layout
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted">
-                                    {disciplinesForRoom(room)} · {room.maxCapacity} spots
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="secondary" className="text-[10px] gap-1">
-                                    <Users className="h-2.5 w-2.5" />
-                                    {room.maxCapacity}
-                                  </Badge>
-                                  <button
-                                    onClick={() => openEditRoom(room, studio.id)}
-                                    className="rounded-lg p-1.5 text-muted transition-colors hover:bg-white hover:text-foreground"
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (confirm("¿Eliminar esta sala?")) deleteRoomMut.mutate(room.id);
-                                    }}
-                                    className="rounded-lg p-1.5 text-muted transition-colors hover:bg-red-50 hover:text-red-600"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-display text-base font-bold text-foreground">
+                                {studio.name}
+                              </h3>
+                              <Badge variant="secondary" className="text-[10px]">
+                                {studio.rooms.length} {studio.rooms.length === 1 ? "sala" : "salas"}
+                              </Badge>
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
+                              <MapPin className="h-3 w-3" />
+                              <span>
+                                {studio.address ? studio.address : "Sin dirección"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openEditStudio(studio); }}
+                              className="rounded-lg p-2 text-muted transition-colors hover:bg-surface hover:text-foreground"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("¿Eliminar este estudio?")) deleteStudioMut.mutate(studio.id);
+                              }}
+                              className="rounded-lg p-2 text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                            {isExpanded
+                              ? <ChevronDown className="h-4 w-4 text-muted" />
+                              : <ChevronRight className="h-4 w-4 text-muted" />
+                            }
+                          </div>
+                        </div>
+
+                        {/* Rooms (expanded) */}
+                        {isExpanded && (
+                          <div className="border-t border-border/50 bg-surface/30">
+                            {studio.rooms.length === 0 ? (
+                              <div className="flex flex-col items-center py-8">
+                                <DoorOpen className="h-8 w-8 text-muted/30" />
+                                <p className="mt-2 text-sm text-muted">Sin salas aún</p>
                               </div>
-                            ))}
+                            ) : (
+                              <div className="divide-y divide-border/30">
+                                {studio.rooms.map((room) => (
+                                  <div
+                                    key={room.id}
+                                    className="flex items-center gap-4 px-5 py-3"
+                                  >
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
+                                      <DoorOpen className="h-4 w-4 text-muted" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium text-foreground">{room.name}</p>
+                                        {room.layout && (
+                                          <span className="rounded bg-violet-50 px-1.5 py-0.5 text-[9px] font-semibold text-violet-600">
+                                            Layout
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-muted">
+                                        {disciplinesForRoom(room)} · {room.maxCapacity} spots
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="secondary" className="text-[10px] gap-1">
+                                        <Users className="h-2.5 w-2.5" />
+                                        {room.maxCapacity}
+                                      </Badge>
+                                      <button
+                                        onClick={() => openEditRoom(room, studio.id)}
+                                        className="rounded-lg p-1.5 text-muted transition-colors hover:bg-white hover:text-foreground"
+                                      >
+                                        <Pencil className="h-3 w-3" />
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          if (confirm("¿Eliminar esta sala?")) deleteRoomMut.mutate(room.id);
+                                        }}
+                                        className="rounded-lg p-1.5 text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div className="px-5 py-3">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full gap-2 text-xs"
+                                onClick={() => openCreateRoom(studio.id)}
+                              >
+                                <Plus className="h-3 w-3" />
+                                Agregar Sala
+                              </Button>
+                            </div>
                           </div>
                         )}
-                        <div className="px-5 py-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full gap-2 text-xs"
-                            onClick={() => openCreateRoom(studio.id)}
-                          >
-                            <Plus className="h-3 w-3" />
-                            Agregar Sala
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
 
@@ -532,6 +600,23 @@ export default function AdminStudiosPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs text-muted hover:text-foreground"
+                  onClick={() => {
+                    const selected = allCities.find((c) => c.id === studioForm.cityId);
+                    const defaultCountryId = selected?.country.id ?? locations?.[0]?.id ?? "";
+                    setCityForm({ countryId: defaultCountryId, name: "" });
+                    setCityDialogOpen(true);
+                  }}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Dar de alta nueva ciudad
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -558,6 +643,62 @@ export default function AdminStudiosPage() {
               >
                 {studioSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingStudio ? "Guardar" : "Crear"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* City dialog */}
+      <Dialog open={cityDialogOpen} onOpenChange={(open) => { setCityDialogOpen(open); if (!open) createCityMut.reset(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nueva ciudad</DialogTitle>
+            <DialogDescription>
+              Esto se usa para organizar estudios por ubicación. Normalmente se configura una sola vez.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted">País</label>
+              <Select
+                value={cityForm.countryId}
+                onValueChange={(val) => setCityForm((f) => ({ ...f, countryId: val }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar país" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(locations ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {countryFlag(c.code)} {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted">Nombre</label>
+              <Input
+                placeholder="Ej: Monterrey"
+                value={cityForm.name}
+                onChange={(e) => setCityForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setCityDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-admin text-white hover:bg-admin/90"
+                disabled={!cityForm.countryId || !cityForm.name.trim() || createCityMut.isPending}
+                onClick={() => createCityMut.mutate()}
+              >
+                {createCityMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Crear ciudad
               </Button>
             </div>
           </div>

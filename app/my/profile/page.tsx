@@ -450,18 +450,18 @@ export default function ProfilePage() {
         {/* Level: metallic badge + progress */}
         {gamification?.level && (
           <motion.div custom={2} variants={fadeUp} initial="hidden" animate="show">
-            <div className="space-y-4 rounded-2xl border border-border/50 bg-gradient-to-b from-white to-surface/80 p-4 shadow-warm-sm">
+            <div className="space-y-3 rounded-2xl border border-border/50 bg-gradient-to-b from-white to-surface/80 p-3 shadow-warm-sm">
               <div className="flex justify-center">
                 <LoyaltyTierBadge
                   levelName={gamification.level.name}
                   icon={gamification.level.icon}
                   sortOrder={gamification.level.sortOrder}
-                  size="lg"
+                  size="sm"
                   showTierSubtitle={false}
                   className="max-w-full"
                 />
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-[12px] text-muted">
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-[11px] text-muted">
                 <span>
                   <strong className="text-foreground">{gamification.totalClasses}</strong> clases
                 </span>
@@ -479,7 +479,7 @@ export default function ProfilePage() {
               </div>
               {gamification.nextLevel && (
                 <div className="mx-auto max-w-md">
-                  <div className="h-2 overflow-hidden rounded-full bg-surface">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-surface">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{
@@ -491,7 +491,7 @@ export default function ProfilePage() {
                 </div>
               )}
               {gamification.levels.length > 0 && (
-                <div className="flex items-center justify-between gap-1 border-t border-border/40 pt-3">
+                <div className="flex items-center justify-between gap-1 border-t border-border/40 pt-2">
                   {gamification.levels.map((l) => (
                     <div
                       key={l.name}

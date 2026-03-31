@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -542,15 +543,12 @@ export default function AdminPackagesPage() {
               <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-desc">
                 Descripción
               </label>
-              <textarea
+              <Textarea
                 id="pkg-desc"
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="Texto breve para clientes…"
                 rows={3}
-                className={cn(
-                  "flex min-h-[88px] w-full resize-y border-b-2 border-input-border bg-transparent px-0 py-2 text-base font-body text-foreground transition-colors placeholder:text-muted/60 focus:border-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50",
-                )}
               />
             </div>
 
@@ -573,20 +571,18 @@ export default function AdminPackagesPage() {
                 <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-currency">
                   Moneda
                 </label>
-                <select
+                <Input
                   id="pkg-currency"
                   value={form.currency}
                   onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-                  className={cn(
-                    "flex h-11 w-full border-b-2 border-input-border bg-transparent py-2 text-base font-body text-foreground transition-colors focus:border-accent focus:outline-none",
-                  )}
-                >
+                  list="pkg-currency-options"
+                  placeholder="MXN"
+                />
+                <datalist id="pkg-currency-options">
                   {CURRENCIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                    <option key={c} value={c} />
                   ))}
-                </select>
+                </datalist>
               </div>
             </div>
 
@@ -706,22 +702,26 @@ export default function AdminPackagesPage() {
               <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-country">
                 País (opcional)
               </label>
-              <select
-                id="pkg-country"
-                disabled={loadingCountries}
-                value={form.countryId}
-                onChange={(e) => setForm((f) => ({ ...f, countryId: e.target.value }))}
-                className={cn(
-                  "flex h-11 w-full border-b-2 border-input-border bg-transparent py-2 text-base font-body text-foreground transition-colors focus:border-accent focus:outline-none disabled:opacity-50",
-                )}
-              >
-                <option value="">Sin restricción geográfica</option>
-                {countries.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.code})
-                  </option>
-                ))}
-              </select>
+              <div className="rounded-md border border-input-border bg-background shadow-sm">
+                <select
+                  id="pkg-country"
+                  disabled={loadingCountries}
+                  value={form.countryId}
+                  onChange={(e) => setForm((f) => ({ ...f, countryId: e.target.value }))}
+                  className={cn(
+                    "flex h-11 w-full appearance-none rounded-md bg-transparent px-3 py-2 text-base font-body text-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                  )}
+                >
+                  <option value="">Sin restricción geográfica</option>
+                  {countries.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {formError ? (

@@ -78,7 +78,7 @@ export function AIChat() {
             <p className="text-xs font-semibold uppercase tracking-widest text-purple-500">AI Assistant</p>
             <h2
               className="mt-3 text-3xl font-bold text-gray-900 sm:text-4xl dark:text-white"
-              style={{ fontFamily: "var(--font-jakarta)" }}
+              
             >
               Tu analista de datos,
               <br />

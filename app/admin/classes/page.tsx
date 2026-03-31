@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -14,6 +14,8 @@ import {
   Clock,
   MapPin,
   Music,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { format, isPast, addMinutes } from "date-fns";
 import { es } from "date-fns/locale";
@@ -23,6 +25,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +43,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn, formatTime } from "@/lib/utils";
 import type { ClassWithDetails, ClassType, CoachProfileWithUser } from "@/types";
 
@@ -99,6 +112,12 @@ export default function AdminClassesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("upcoming");
   const [searchQuery, setSearchQuery] = useState("");
   const [cancelTarget, setCancelTarget] = useState<ClassWithDetails | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
+  const [sort, setSort] = useState<{ key: "startsAt" | "classType" | "coach" | "studio" | "enrolled"; dir: "asc" | "desc" }>({
+    key: "startsAt",
+    dir: statusFilter === "past" ? "desc" : "asc",
+  });
 
   const { data: classes, isLoading } = useQuery<ClassWithDetails[]>({
     queryKey: ["admin-classes"],
@@ -206,7 +225,9 @@ export default function AdminClassesPage() {
       setDialogOpen(false);
       setEditingClass(null);
       setFormData(emptyForm);
+      toast.success(editingClass ? "Clase actualizada" : "Clase creada");
     },
+    onError: (err: Error) => toast.error(err.message || "No se pudo guardar"),
   });
 
   const cancelMutation = useMutation({
@@ -223,27 +244,55 @@ export default function AdminClassesPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-classes"] });
       queryClient.invalidateQueries({ queryKey: ["classes"] });
       setCancelTarget(null);
+      toast.success("Clase cancelada");
     },
+    onError: (err: Error) => toast.error(err.message || "No se pudo cancelar"),
   });
 
-  const filtered = classes
-    ?.filter((c) => {
-      if (statusFilter === "upcoming") return c.status === "SCHEDULED" && !isPast(new Date(c.endsAt));
-      if (statusFilter === "past") return c.status !== "CANCELLED" && isPast(new Date(c.endsAt));
-      if (statusFilter === "CANCELLED") return c.status === "CANCELLED";
-      return true;
-    })
-    .filter(
-      (c) =>
-        !searchQuery ||
-        c.classType.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.coach.user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.tag?.toLowerCase().includes(searchQuery.toLowerCase()),
-    )
-    .sort((a, b) => {
-      if (statusFilter === "past") return new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime();
-      return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime();
+  const filtered = useMemo(() => {
+    const base = (classes ?? [])
+      .filter((c) => {
+        if (statusFilter === "upcoming") return c.status === "SCHEDULED" && !isPast(new Date(c.endsAt));
+        if (statusFilter === "past") return c.status !== "CANCELLED" && isPast(new Date(c.endsAt));
+        if (statusFilter === "CANCELLED") return c.status === "CANCELLED";
+        return true;
+      })
+      .filter((c) => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          c.classType.name.toLowerCase().includes(q) ||
+          c.coach.user.name?.toLowerCase().includes(q) ||
+          c.tag?.toLowerCase().includes(q) ||
+          c.room?.studio?.name?.toLowerCase().includes(q) ||
+          c.room?.name?.toLowerCase().includes(q)
+        );
+      });
+
+    const sorted = base.slice().sort((a, b) => {
+      const dir = sort.dir === "asc" ? 1 : -1;
+      if (sort.key === "startsAt") return (new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()) * dir;
+      if (sort.key === "classType") return a.classType.name.localeCompare(b.classType.name) * dir;
+      if (sort.key === "coach") return (a.coach.user.name ?? "").localeCompare(b.coach.user.name ?? "") * dir;
+      if (sort.key === "studio") return (a.room?.studio?.name ?? "").localeCompare(b.room?.studio?.name ?? "") * dir;
+      const aEnrolled = a._count?.bookings ?? 0;
+      const bEnrolled = b._count?.bookings ?? 0;
+      return (aEnrolled - bEnrolled) * dir;
     });
+
+    return sorted;
+  }, [classes, searchQuery, sort.dir, sort.key, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageSafe = Math.min(Math.max(1, page), totalPages);
+  const paged = filtered.slice((pageSafe - 1) * pageSize, pageSafe * pageSize);
+
+  function toggleSort(key: typeof sort.key) {
+    setSort((prev) => {
+      if (prev.key === key) return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
+      return { key, dir: "asc" };
+    });
+  }
 
   const upcomingCount = classes?.filter((c) => c.status === "SCHEDULED" && !isPast(new Date(c.endsAt))).length ?? 0;
 
@@ -310,7 +359,168 @@ export default function AdminClassesPage() {
           </CardContent>
         </Card>
       ) : (
-        <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-2">
+        <>
+          {/* Desktop: Table */}
+          <div className="hidden sm:block">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader className="bg-surface/40">
+                    <TableRow>
+                      <TableHead className="text-xs font-semibold uppercase">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
+                          onClick={() => toggleSort("startsAt")}
+                        >
+                          Fecha
+                          {sort.key === "startsAt" && (sort.dir === "asc" ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />)}
+                        </Button>
+                      </TableHead>
+                      <TableHead className="text-xs font-semibold uppercase">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
+                          onClick={() => toggleSort("classType")}
+                        >
+                          Disciplina
+                          {sort.key === "classType" && (sort.dir === "asc" ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />)}
+                        </Button>
+                      </TableHead>
+                      <TableHead className="text-xs font-semibold uppercase">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
+                          onClick={() => toggleSort("coach")}
+                        >
+                          Coach
+                          {sort.key === "coach" && (sort.dir === "asc" ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />)}
+                        </Button>
+                      </TableHead>
+                      <TableHead className="text-xs font-semibold uppercase">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
+                          onClick={() => toggleSort("studio")}
+                        >
+                          Estudio
+                          {sort.key === "studio" && (sort.dir === "asc" ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />)}
+                        </Button>
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold uppercase">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
+                          onClick={() => toggleSort("enrolled")}
+                        >
+                          Lugares
+                          {sort.key === "enrolled" && (sort.dir === "asc" ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />)}
+                        </Button>
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold uppercase">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paged.map((cls) => {
+                      const enrolled = cls._count?.bookings ?? 0;
+                      const maxCap = cls.room?.maxCapacity ?? 0;
+                      const past = isPast(new Date(cls.endsAt));
+                      const isCancelled = cls.status === "CANCELLED";
+                      return (
+                        <TableRow key={cls.id} className={cn((past || isCancelled) && "opacity-60")}>
+                          <TableCell className="py-3">
+                            <div className="text-sm font-medium text-foreground">
+                              {format(new Date(cls.startsAt), "EEE d MMM", { locale: es })}
+                            </div>
+                            <div className="text-xs text-muted font-mono">
+                              {formatTime(cls.startsAt)}–{formatTime(cls.endsAt)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cls.classType.color || "#1A2C4E" }} />
+                              <span className="text-sm font-semibold">{cls.classType.name}</span>
+                              {cls.tag && <Badge variant="outline" className="text-[10px]">{cls.tag}</Badge>}
+                              {isCancelled && <Badge variant="danger">Cancelada</Badge>}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 text-sm">{cls.coach.user.name}</TableCell>
+                          <TableCell className="py-3">
+                            {cls.room?.studio ? (
+                              <div className="text-sm">
+                                <div className="font-medium">{cls.room.studio.name}</div>
+                                <div className="text-xs text-muted">{cls.room.name}</div>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 text-right">
+                            <span className={cn("font-mono text-sm", enrolled >= maxCap ? "text-red-600" : "text-foreground")}>
+                              {enrolled}/{maxCap}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-3 text-right">
+                            <div className="inline-flex items-center justify-end gap-2">
+                              {!isCancelled && (
+                                <Button variant="ghost" size="sm" className="gap-1" onClick={() => openEditDialog(cls)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  Editar
+                                </Button>
+                              )}
+                              {cls.status === "SCHEDULED" && !past && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1 text-destructive hover:text-destructive"
+                                  onClick={() => setCancelTarget(cls)}
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  Cancelar
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                <div className="flex items-center justify-between gap-3 border-t border-border/50 px-4 py-3">
+                  <p className="text-sm text-muted">
+                    Página {pageSafe} de {totalPages}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(parseInt(v, 10) || 12); setPage(1); }}>
+                      <SelectTrigger className="h-9 w-[110px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[8, 12, 20, 40].map((n) => (
+                          <SelectItem key={n} value={String(n)}>{n} / pág</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe <= 1}>
+                      Anterior
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={pageSafe >= totalPages}>
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Mobile: Cards */}
+          <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-2 sm:hidden">
           {filtered.map((cls) => {
             const enrolled = cls._count?.bookings ?? 0;
             const maxCap = cls.room?.maxCapacity ?? 0;
@@ -397,7 +607,8 @@ export default function AdminClassesPage() {
               </motion.div>
             );
           })}
-        </motion.div>
+          </motion.div>
+        </>
       )}
 
       {/* Create / Edit class dialog */}
@@ -508,55 +719,60 @@ export default function AdminClassesPage() {
             </div>
 
             {/* Song request config */}
-            <div className="rounded-xl border border-border/60 bg-surface/30 p-3 space-y-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+            <div className="space-y-3 rounded-md border border-border/50 bg-surface/20 p-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="songRequestsEnabled"
                   checked={formData.songRequestsEnabled}
-                  onChange={(e) => setFormData({ ...formData, songRequestsEnabled: e.target.checked })}
-                  className="rounded border-input-border"
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, songRequestsEnabled: checked === true })
+                  }
                 />
                 <Music className="h-3.5 w-3.5 text-muted" />
-                Permitir sugerencias de canciones
-              </label>
+                <Label htmlFor="songRequestsEnabled" className="text-sm font-normal">
+                  Permitir sugerencias de canciones
+                </Label>
+              </div>
               {formData.songRequestsEnabled && (
                 <div className="space-y-2 pl-6">
                   <p className="text-xs text-muted">¿Quién puede sugerir?</p>
                   {SONG_CRITERIA_OPTIONS.map((opt) => (
-                    <label key={opt.value} className="flex items-center gap-2 text-[13px]">
-                      <input
-                        type="checkbox"
+                    <div key={opt.value} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`songCriteria-${opt.value}`}
                         checked={formData.songRequestCriteria.includes(opt.value)}
-                        onChange={(e) => {
+                        onCheckedChange={(checked) => {
                           const current = new Set(formData.songRequestCriteria);
                           if (opt.value === "ALL") {
-                            setFormData({ ...formData, songRequestCriteria: e.target.checked ? ["ALL"] : [] });
+                            setFormData({ ...formData, songRequestCriteria: checked === true ? ["ALL"] : [] });
                           } else {
                             current.delete("ALL");
-                            if (e.target.checked) current.add(opt.value);
+                            if (checked === true) current.add(opt.value);
                             else current.delete(opt.value);
                             setFormData({ ...formData, songRequestCriteria: Array.from(current) });
                           }
                         }}
-                        className="rounded border-input-border"
                       />
-                      {opt.label}
-                    </label>
+                      <Label htmlFor={`songCriteria-${opt.value}`} className="text-[13px] font-normal text-foreground">
+                        {opt.label}
+                      </Label>
+                    </div>
                   ))}
                 </div>
               )}
             </div>
 
             {!editingClass && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="recurring"
                   checked={formData.recurring}
-                  onChange={(e) => setFormData({ ...formData, recurring: e.target.checked })}
-                  className="rounded border-input-border"
+                  onCheckedChange={(checked) => setFormData({ ...formData, recurring: checked === true })}
                 />
-                Repetir semanalmente
-              </label>
+                <Label htmlFor="recurring" className="text-sm font-normal">
+                  Repetir semanalmente
+                </Label>
+              </div>
             )}
 
             {saveMutation.isError && (
@@ -567,7 +783,7 @@ export default function AdminClassesPage() {
 
             <Separator />
 
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button variant="ghost" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
@@ -579,7 +795,7 @@ export default function AdminClassesPage() {
                 {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 {editingClass ? "Guardar cambios" : "Crear clase"}
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>

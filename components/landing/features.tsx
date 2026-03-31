@@ -22,8 +22,8 @@ const features = [
     icon: CalendarCheck,
     title: "Reservas inteligentes",
     description: "Sistema de reservas con mapa de spots, lista de espera automática y recordatorios push.",
-    color: "text-indigo-500",
-    bg: "bg-indigo-50 dark:bg-indigo-500/10",
+    color: "text-orange-500",
+    bg: "bg-orange-50 dark:bg-orange-500/10",
   },
   {
     icon: CreditCard,
@@ -109,10 +109,9 @@ export function Features() {
     <section id="features" className="py-24">
       <div className="mx-auto max-w-6xl px-6">
         <FadeIn className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">Producto</p>
+          <p className="text-sm font-semibold tracking-tight text-orange-500">Producto</p>
           <h2
-            className="mt-3 text-3xl font-bold text-gray-900 sm:text-4xl dark:text-white"
-            style={{ fontFamily: "var(--font-jakarta)" }}
+            className="mt-3 text-3xl font-semibold tracking-tighter text-gray-900 sm:text-4xl"
           >
             Todo lo que necesitas.
             <br />

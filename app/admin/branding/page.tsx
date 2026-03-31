@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { type StudioBranding, DEFAULTS, FONT_PAIRINGS } from "@/lib/branding";
 import { useBranding, applyTheme } from "@/components/branding-provider";
@@ -187,40 +189,35 @@ export default function BrandingPage() {
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-muted">Nombre del estudio</label>
-                <input
-                  type="text"
+                <Input
                   value={settings.studioName}
                   onChange={(e) => update("studioName", e.target.value)}
-                  className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-admin/20"
+                  className="font-medium"
                 />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-muted">Tagline</label>
-                <input
-                  type="text"
+                <Input
                   value={settings.tagline}
                   onChange={(e) => update("tagline", e.target.value)}
-                  className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-admin/20"
                   placeholder="Pilates & Wellness"
                 />
               </div>
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs font-medium text-muted">Slogan</label>
-                <input
-                  type="text"
+                <Input
                   value={settings.slogan}
                   onChange={(e) => update("slogan", e.target.value)}
-                  className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-admin/20"
                   placeholder="Muévete. Respira. Floréce."
                 />
               </div>
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs font-medium text-muted">Descripción SEO</label>
-                <textarea
+                <Textarea
                   value={settings.metaDescription}
                   onChange={(e) => update("metaDescription", e.target.value)}
                   rows={2}
-                  className="w-full resize-none rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-admin/20"
+                  className="min-h-0 resize-none"
                 />
               </div>
             </div>
@@ -337,12 +334,12 @@ export default function BrandingPage() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-border bg-surface/50 p-4">
+            <div className="mt-4 rounded-md border border-border bg-surface/50 p-4">
               <p className="mb-2 text-xs font-medium text-muted">Vista previa</p>
               <div className="flex items-center gap-4">
                 <div className="text-center">
                   <div
-                    className="mx-auto h-[60px] w-[60px] overflow-hidden rounded-[14px] shadow-md"
+                    className="mx-auto h-[60px] w-[60px] overflow-hidden rounded-md shadow-md"
                     style={{ backgroundColor: settings.colorBg }}
                   >
                     {settings.appIconUrl ? (
@@ -360,7 +357,7 @@ export default function BrandingPage() {
                 </div>
                 <div className="text-center">
                   <div
-                    className="mx-auto h-[48px] w-[48px] overflow-hidden rounded-full shadow-md"
+                    className="mx-auto h-[48px] w-[48px] overflow-hidden rounded-md shadow-md"
                     style={{ backgroundColor: settings.colorBg }}
                   >
                     {settings.appIconUrl ? (
@@ -441,11 +438,11 @@ export default function BrandingPage() {
             </div>
 
             {settings.coachIconSvg && (
-              <div className="mt-4 rounded-xl border border-border bg-surface/50 p-4">
+              <div className="mt-4 rounded-md border border-border bg-surface/50 p-4">
                 <p className="mb-3 text-xs font-medium text-muted">Vista previa en mapa</p>
                 <div className="flex items-center gap-3">
                   <div
-                    className="flex h-[38px] w-[38px] items-center justify-center rounded-full"
+                    className="flex h-[38px] w-[38px] items-center justify-center rounded-md"
                     style={{ backgroundColor: `${settings.colorAccent}20`, color: settings.colorAccent }}
                   >
                     <div
@@ -478,36 +475,31 @@ export default function BrandingPage() {
                     key={fp.id}
                     onClick={() => update("fontPairing", fp.id)}
                     className={cn(
-                      "rounded-xl border-2 p-4 text-left transition-all",
+                      "group relative rounded-md border p-4 text-left shadow-sm transition-colors",
                       selected
-                        ? "border-admin bg-admin/5 shadow-sm"
-                        : "border-border hover:border-admin/30",
+                        ? "border-admin bg-admin/5"
+                        : "border-border hover:bg-surface/60",
                     )}
                   >
-                    <p
-                      className="text-lg font-bold leading-tight"
-                      style={{ fontFamily: fp.displayVar }}
-                    >
-                      {fp.label}
-                    </p>
-                    <p
-                      className="mt-1.5 text-[13px] leading-relaxed text-muted"
-                      style={{ fontFamily: fp.bodyVar }}
-                    >
-                      {fp.description}
-                    </p>
-                    <p
-                      className="mt-2 text-sm"
-                      style={{ fontFamily: fp.bodyVar }}
-                    >
-                      Reserva tu próxima clase hoy
-                    </p>
-                    {selected && (
-                      <div className="mt-2 flex items-center gap-1 text-xs font-medium text-admin">
-                        <Check className="h-3 w-3" />
-                        Seleccionada
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-base font-bold leading-tight" style={{ fontFamily: fp.displayVar }}>
+                          {fp.label}
+                        </p>
+                        <p className="mt-1 text-[13px] leading-relaxed text-muted" style={{ fontFamily: fp.bodyVar }}>
+                          {fp.description}
+                        </p>
                       </div>
-                    )}
+                      <div
+                        className={cn(
+                          "mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md border",
+                          selected ? "border-admin bg-admin text-white" : "border-border bg-white text-muted opacity-0 group-hover:opacity-100",
+                        )}
+                        aria-hidden
+                      >
+                        <Check className="h-4 w-4" />
+                      </div>
+                    </div>
                   </button>
                 );
               })}
@@ -516,10 +508,10 @@ export default function BrandingPage() {
             {(() => {
               const activeFp = FONT_PAIRINGS.find((fp) => fp.id === settings.fontPairing) ?? FONT_PAIRINGS[0];
               return (
-                <div className="mt-6 rounded-xl border border-border p-4">
+                <div className="mt-6 rounded-md border border-border p-4">
                   <p className="mb-3 text-xs font-medium text-muted">Vista previa — {activeFp.label}</p>
                   <div
-                    className="overflow-hidden rounded-lg p-6"
+                    className="overflow-hidden rounded-md p-6"
                     style={{ backgroundColor: settings.colorBg, color: settings.colorFg }}
                   >
                     <h3
@@ -542,13 +534,13 @@ export default function BrandingPage() {
                     </p>
                     <div className="mt-4 flex gap-2">
                       <span
-                        className="rounded-full px-4 py-1.5 text-sm font-semibold text-white"
+                        className="rounded-md px-3 py-1.5 text-sm font-semibold text-white"
                         style={{ backgroundColor: settings.colorAccent, fontFamily: activeFp.displayVar }}
                       >
                         Reservar
                       </span>
                       <span
-                        className="rounded-full px-4 py-1.5 text-sm font-medium"
+                        className="rounded-md px-3 py-1.5 text-sm font-medium"
                         style={{ backgroundColor: settings.colorAccentSoft, color: settings.colorFg, fontFamily: activeFp.bodyVar }}
                       >
                         Ver horarios
@@ -571,33 +563,40 @@ export default function BrandingPage() {
               Colores
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               {colorFields.map(({ key, label }) => (
-                <div key={key} className="flex items-center gap-3">
+                <div key={key} className="flex items-center gap-3 rounded-md border border-border bg-white p-3 shadow-sm">
                   <label className="relative">
                     <input
                       type="color"
                       value={settings[key] as string}
                       onChange={(e) => update(key, e.target.value)}
                       className="absolute inset-0 cursor-pointer opacity-0"
+                      aria-label={label}
                     />
                     <div
-                      className="h-10 w-10 shrink-0 rounded-xl border border-border shadow-sm transition-transform hover:scale-105"
+                      className="h-10 w-10 shrink-0 rounded-md border border-border shadow-sm"
                       style={{ backgroundColor: settings[key] as string }}
                     />
                   </label>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{label}</p>
-                    <p className="font-mono text-xs text-muted">{(settings[key] as string).toUpperCase()}</p>
+                    <p className="text-xs text-muted">Click en el color para cambiarlo</p>
                   </div>
+                  <Input
+                    value={(settings[key] as string).toUpperCase()}
+                    onChange={(e) => update(key, e.target.value)}
+                    className="h-9 w-[140px] font-mono text-xs"
+                    aria-label={`${label} hex`}
+                  />
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 rounded-xl border border-border p-4">
+            <div className="mt-6 rounded-md border border-border p-4">
               <p className="mb-2 text-xs font-medium text-muted">Vista previa</p>
               <div
-                className="overflow-hidden rounded-lg p-6"
+                className="overflow-hidden rounded-md p-6"
                 style={{ backgroundColor: settings.colorBg, color: settings.colorFg }}
               >
                 <h3 className="font-display text-xl font-bold">{settings.studioName} Studio</h3>
@@ -606,19 +605,19 @@ export default function BrandingPage() {
                 </p>
                 <div className="mt-3 flex gap-2">
                   <span
-                    className="rounded-full px-3 py-1 text-xs font-semibold text-white"
+                    className="rounded-md px-3 py-1 text-xs font-semibold text-white"
                     style={{ backgroundColor: settings.colorAccent }}
                   >
                     Acento
                   </span>
                   <span
-                    className="rounded-full px-3 py-1 text-xs font-medium"
+                    className="rounded-md px-3 py-1 text-xs font-medium"
                     style={{ backgroundColor: settings.colorAccentSoft, color: settings.colorFg }}
                   >
                     Acento suave
                   </span>
                   <span
-                    className="rounded-full px-3 py-1 text-xs font-medium"
+                    className="rounded-md px-3 py-1 text-xs font-medium"
                     style={{ backgroundColor: settings.colorSurface, color: settings.colorMuted }}
                   >
                     Superficie
@@ -626,13 +625,13 @@ export default function BrandingPage() {
                 </div>
                 <div className="mt-3 flex gap-2">
                   <span
-                    className="rounded-full px-3 py-1 text-xs font-semibold text-white"
+                    className="rounded-md px-3 py-1 text-xs font-semibold text-white"
                     style={{ backgroundColor: settings.colorCoach }}
                   >
                     Coach
                   </span>
                   <span
-                    className="rounded-full px-3 py-1 text-xs font-semibold text-white"
+                    className="rounded-md px-3 py-1 text-xs font-semibold text-white"
                     style={{ backgroundColor: settings.colorAdmin }}
                   >
                     Admin

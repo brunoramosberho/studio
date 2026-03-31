@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Dumbbell } from "lucide-react";
+import { ArrowRight, Dumbbell, Instagram } from "lucide-react";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AchievementIllustration } from "./achievement-badge";
@@ -487,6 +487,8 @@ function StudioPostCard({ event }: FeedEventCardProps) {
   const title = p.title as string | null;
   const body = p.body as string | null;
   const category = (p.category as string) ?? "announcement";
+  const provider = (p.provider as string | null) ?? null;
+  const permalink = (p.permalink as string | null) ?? null;
 
   const categoryStyles: Record<string, { emoji: string; bg: string }> = {
     announcement: { emoji: "📢", bg: "bg-blue-50" },
@@ -519,7 +521,25 @@ function StudioPostCard({ event }: FeedEventCardProps) {
               "Mensaje del estudio"
             )}
           </p>
-          <p className="text-[12px] text-muted">{timeAgo(event.createdAt)}</p>
+          <p className="flex items-center gap-2 text-[12px] text-muted">
+            <span>{timeAgo(event.createdAt)}</span>
+            {provider === "instagram" && (
+              <span className="inline-flex items-center gap-1 text-muted/70">
+                <Instagram className="h-3.5 w-3.5" />
+                Instagram
+              </span>
+            )}
+            {provider === "instagram" && permalink && (
+              <a
+                href={permalink}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-auto text-[12px] font-medium text-accent hover:underline"
+              >
+                Ver post
+              </a>
+            )}
+          </p>
         </div>
       </div>
 

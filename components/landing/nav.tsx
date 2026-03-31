@@ -13,10 +13,10 @@ const links = [
 
 export function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 15);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -24,75 +24,80 @@ export function LandingNav() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-        scrolled
-          ? "border-b border-white/10 bg-white/70 backdrop-blur-xl dark:bg-gray-950/70"
-          : "bg-transparent",
+        "fixed inset-x-4 top-4 z-50 mx-auto flex max-w-6xl justify-center rounded-lg border border-transparent px-3 py-3 transition duration-300",
+        scrolled || open
+          ? "border-gray-200/50 bg-white/80 shadow-2xl shadow-black/5 backdrop-blur-sm"
+          : "bg-white/0",
       )}
     >
-      <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-        <a href="#" className="flex items-center gap-1.5">
-          <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>
-            reserva<span className="text-indigo-500">.fit</span>
-          </span>
-        </a>
-
-        <div className="hidden items-center gap-8 md:flex">
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-            >
-              {l.label}
-            </a>
-          ))}
-          <a
-            href="#pricing"
-            className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
-          >
-            Empieza gratis
+      <div className="w-full md:my-auto">
+        <div className="relative flex items-center justify-between">
+          <a href="#" className="flex items-center gap-1.5">
+            <span className="text-lg font-bold tracking-tight text-gray-900">
+              reserva<span className="text-orange-500">.fit</span>
+            </span>
           </a>
-        </div>
 
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="rounded-lg p-2 text-gray-600 md:hidden dark:text-gray-300"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-      </nav>
-
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden border-t border-gray-100 bg-white/95 backdrop-blur-xl md:hidden dark:border-gray-800 dark:bg-gray-950/95"
-          >
-            <div className="flex flex-col gap-1 px-6 py-4">
+          <nav className="hidden sm:block md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:transform">
+            <div className="flex items-center gap-10 font-medium">
               {links.map((l) => (
                 <a
                   key={l.href}
                   href={l.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50"
+                  className="px-2 py-1 text-sm text-gray-900"
                 >
                   {l.label}
                 </a>
               ))}
+            </div>
+          </nav>
+
+          <a
+            href="#pricing"
+            className="hidden h-10 items-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-gray-50 sm:inline-flex"
+          >
+            Empieza gratis
+          </a>
+
+          <button
+            onClick={() => setOpen(!open)}
+            className="rounded-lg border border-gray-200 bg-white p-1.5 shadow-sm sm:hidden"
+            aria-label={open ? "Cerrar menú" : "Abrir menú"}
+          >
+            {open ? (
+              <X className="size-6 shrink-0 text-gray-900" />
+            ) : (
+              <Menu className="size-6 shrink-0 text-gray-900" />
+            )}
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {open && (
+            <motion.nav
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-6 flex flex-col gap-6 text-lg ease-in-out will-change-transform sm:hidden"
+            >
+              <ul className="space-y-4 font-medium">
+                {links.map((l) => (
+                  <li key={l.href} onClick={() => setOpen(false)}>
+                    <a href={l.href}>{l.label}</a>
+                  </li>
+                ))}
+              </ul>
               <a
                 href="#pricing"
-                onClick={() => setMobileOpen(false)}
-                className="mt-2 rounded-full bg-gray-900 px-4 py-2.5 text-center text-sm font-semibold text-white dark:bg-white dark:text-gray-900"
+                onClick={() => setOpen(false)}
+                className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-center text-lg font-semibold text-gray-900"
               >
                 Empieza gratis
               </a>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.nav>
+          )}
+        </AnimatePresence>
+      </div>
     </header>
   );
 }
