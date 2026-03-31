@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback, type MouseEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -14,6 +14,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { getIconComponent } from "@/components/admin/icon-picker";
+import { DisciplineSheet, type DisciplineData } from "@/components/feed/discipline-sheet";
 import {
   format,
   addDays,
@@ -86,6 +87,22 @@ export function ScheduleClient({
   const branding = useBranding();
   const queryClient = useQueryClient();
   const [cancelTarget, setCancelTarget] = useState<ClassWithDetails | null>(null);
+  const [disciplineOpen, setDisciplineOpen] = useState(false);
+  const [discipline, setDiscipline] = useState<DisciplineData | null>(null);
+
+  const openDiscipline = useCallback((cls: ClassWithDetails) => {
+    setDiscipline({
+      name: cls.classType.name,
+      description: cls.classType.description,
+      color: cls.classType.color,
+      icon: cls.classType.icon,
+      mediaUrl: cls.classType.mediaUrl,
+      tags: cls.classType.tags,
+      duration: cls.classType.duration,
+      level: cls.classType.level,
+    });
+    setDisciplineOpen(true);
+  }, []);
 
   const cancelMutation = useMutation({
     mutationFn: async (bookingId: string) => {
@@ -527,6 +544,7 @@ export function ScheduleClient({
                   classLinkPrefix={classLinkPrefix}
                   onCancel={handleCancelBooking}
                   cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null}
+                  onTapDiscipline={openDiscipline}
                 />
               </div>
             ))
@@ -816,6 +834,12 @@ export function ScheduleClient({
           </>
         )}
       </AnimatePresence>
+
+      <DisciplineSheet
+        open={disciplineOpen}
+        discipline={discipline}
+        onClose={() => setDisciplineOpen(false)}
+      />
     </div>
   );
 }
@@ -831,7 +855,19 @@ function hoursUntilClass(cls: ClassWithDetails): number {
 }
 
 /* ── Collapsible past classes section ── */
-function CollapsiblePastClasses({ classes, classLinkPrefix, onCancel, cancellingId }: { classes: ClassWithDetails[]; classLinkPrefix: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null }) {
+function CollapsiblePastClasses({
+  classes,
+  classLinkPrefix,
+  onCancel,
+  cancellingId,
+  onTapDiscipline,
+}: {
+  classes: ClassWithDetails[];
+  classLinkPrefix: string;
+  onCancel: (id: string, cls?: ClassWithDetails) => void;
+  cancellingId: string | null;
+  onTapDiscipline: (cls: ClassWithDetails) => void;
+}) {
   const pastClasses = classes.filter((c) => isPast(new Date(c.startsAt)));
   const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startsAt)));
   const [showPast, setShowPast] = useState(false);
@@ -840,7 +876,14 @@ function CollapsiblePastClasses({ classes, classLinkPrefix, onCancel, cancelling
     return (
       <div className="flex flex-col gap-3">
         {classes.map((cls) => (
-          <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
+          <MobileClassCard
+            key={cls.id}
+            cls={cls}
+            classLinkPrefix={classLinkPrefix}
+            onCancel={onCancel}
+            cancellingId={cancellingId}
+            onTapDiscipline={onTapDiscipline}
+          />
         ))}
       </div>
     );
@@ -849,7 +892,14 @@ function CollapsiblePastClasses({ classes, classLinkPrefix, onCancel, cancelling
   return (
     <div className="flex flex-col gap-3">
       {showPast && pastClasses.map((cls) => (
-        <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
+        <MobileClassCard
+          key={cls.id}
+          cls={cls}
+          classLinkPrefix={classLinkPrefix}
+          onCancel={onCancel}
+          cancellingId={cancellingId}
+          onTapDiscipline={onTapDiscipline}
+        />
       ))}
       <button
         onClick={() => setShowPast(!showPast)}
@@ -861,14 +911,59 @@ function CollapsiblePastClasses({ classes, classLinkPrefix, onCancel, cancelling
           : `${pastClasses.length} clase${pastClasses.length > 1 ? "s" : ""} anterior${pastClasses.length > 1 ? "es" : ""}`}
       </button>
       {upcomingClasses.map((cls) => (
-        <MobileClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
+        <MobileClassCard
+          key={cls.id}
+          cls={cls}
+          classLinkPrefix={classLinkPrefix}
+          onCancel={onCancel}
+          cancellingId={cancellingId}
+          onTapDiscipline={onTapDiscipline}
+        />
       ))}
     </div>
   );
 }
 
 /* ── Mobile class card — Siclo-style list item ── */
-function MobileClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellingId }: { cls: ClassWithDetails; classLinkPrefix?: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null }) {
+function DisciplinePill({
+  name,
+  iconId,
+  color,
+  onTap,
+}: {
+  name: string;
+  iconId?: string | null;
+  color?: string | null;
+  onTap?: (e: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const Icon = iconId ? getIconComponent(iconId) : null;
+  const pillColor = color || "#475569";
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      className="inline-flex min-w-0 max-w-[180px] items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-opacity hover:opacity-70"
+      style={{ borderColor: `${pillColor}30`, backgroundColor: `${pillColor}12`, color: pillColor }}
+    >
+      {Icon ? <Icon className="h-2.5 w-2.5 shrink-0" /> : <Dumbbell className="h-2.5 w-2.5 shrink-0" />}
+      <span className="truncate">{name}</span>
+    </button>
+  );
+}
+
+function MobileClassCard({
+  cls,
+  classLinkPrefix = "/class",
+  onCancel,
+  cancellingId,
+  onTapDiscipline,
+}: {
+  cls: ClassWithDetails;
+  classLinkPrefix?: string;
+  onCancel: (id: string, cls?: ClassWithDetails) => void;
+  cancellingId: string | null;
+  onTapDiscipline: (cls: ClassWithDetails) => void;
+}) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.room?.maxCapacity ?? 0;
@@ -933,14 +1028,17 @@ function MobileClassCard({ cls, classLinkPrefix = "/class", onCancel, cancelling
           )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <p
-                className={cn(
-                  "truncate text-[15px] font-bold",
-                  past ? "text-muted" : "text-foreground",
-                )}
-              >
-                {cls.classType.name}
-              </p>
+              <DisciplinePill
+                name={cls.classType.name}
+                iconId={cls.classType.icon}
+                color={cls.classType.color}
+                onTap={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (past) return;
+                  onTapDiscipline(cls);
+                }}
+              />
               {!past && cls.tag && (
                 <span className="flex-shrink-0 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
                   {cls.tag}
