@@ -57,12 +57,19 @@ function getCalendarWeeks(year: number, month: number) {
   return weeks;
 }
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function startOfWeekMonday(d: Date): string {
   const date = new Date(d);
   const day = date.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   date.setDate(date.getDate() + diff);
-  return date.toISOString().slice(0, 10);
+  return toLocalDateStr(date);
 }
 
 function ActivityDot({
@@ -132,8 +139,9 @@ export function ActivityCalendar() {
   const { data, isLoading } = useQuery<CalendarData>({
     queryKey: ["activity-calendar", year, month + 1],
     queryFn: async () => {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const res = await fetch(
-        `/api/profile/activity-calendar?year=${year}&month=${month + 1}`,
+        `/api/profile/activity-calendar?year=${year}&month=${month + 1}&tz=${encodeURIComponent(tz)}`,
       );
       if (!res.ok) throw new Error("Failed");
       return res.json();
@@ -142,7 +150,7 @@ export function ActivityCalendar() {
   });
 
   const weeks = getCalendarWeeks(year, month);
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = toLocalDateStr(now);
 
   const totalActivitiesInMonth = data
     ? Object.values(data.activities).reduce((sum, arr) => sum + arr.length, 0)
@@ -250,7 +258,7 @@ export function ActivityCalendar() {
                 {weeks.map((week, wi) => (
                   <div key={wi} className="grid grid-cols-7">
                     {week.map((cell, di) => {
-                      const dateStr = cell.date.toISOString().slice(0, 10);
+                      const dateStr = toLocalDateStr(cell.date);
                       const activities = data?.activities[dateStr];
                       return (
                         <div

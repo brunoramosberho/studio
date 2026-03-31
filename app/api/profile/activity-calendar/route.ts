@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
 
     const yearParam = request.nextUrl.searchParams.get("year");
     const monthParam = request.nextUrl.searchParams.get("month");
+    const tz = request.nextUrl.searchParams.get("tz") || "UTC";
 
     const now = new Date();
     const year = yearParam ? parseInt(yearParam) : now.getFullYear();
@@ -17,6 +18,14 @@ export async function GET(request: NextRequest) {
 
     const monthStart = new Date(year, month, 1);
     const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    const toDateKey = (d: Date): string => {
+      try {
+        return d.toLocaleDateString("en-CA", { timeZone: tz });
+      } catch {
+        return d.toISOString().slice(0, 10);
+      }
+    };
 
     const bookings = await prisma.booking.findMany({
       where: {
@@ -46,7 +55,7 @@ export async function GET(request: NextRequest) {
     > = {};
 
     for (const b of bookings) {
-      const dateKey = b.class.startsAt.toISOString().slice(0, 10);
+      const dateKey = toDateKey(b.class.startsAt);
       if (!activitiesByDate[dateKey]) activitiesByDate[dateKey] = [];
       activitiesByDate[dateKey].push({
         name: b.class.classType.name,
@@ -65,7 +74,7 @@ export async function GET(request: NextRequest) {
     const attendedWeeks = new Set<string>();
     for (const b of allAttended) {
       const ws = startOfWeek(new Date(b.class.startsAt), { weekStartsOn: 1 });
-      attendedWeeks.add(ws.toISOString().slice(0, 10));
+      attendedWeeks.add(toDateKey(ws));
     }
 
     let weekStreak = 0;
@@ -73,11 +82,11 @@ export async function GET(request: NextRequest) {
     let checkWeek = thisWeekStart;
 
     // Allow current week to not have a class yet
-    if (!attendedWeeks.has(checkWeek.toISOString().slice(0, 10))) {
+    if (!attendedWeeks.has(toDateKey(checkWeek))) {
       checkWeek = subWeeks(checkWeek, 1);
     }
 
-    while (attendedWeeks.has(checkWeek.toISOString().slice(0, 10))) {
+    while (attendedWeeks.has(toDateKey(checkWeek))) {
       weekStreak++;
       checkWeek = subWeeks(checkWeek, 1);
     }
@@ -87,7 +96,7 @@ export async function GET(request: NextRequest) {
     const seen = new Set<string>();
     for (const b of bookings) {
       const ws = startOfWeek(new Date(b.class.startsAt), { weekStartsOn: 1 });
-      const key = ws.toISOString().slice(0, 10);
+      const key = toDateKey(ws);
       if (!seen.has(key)) {
         seen.add(key);
         weeksWithActivity.push(key);
