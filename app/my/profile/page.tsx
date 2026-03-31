@@ -479,19 +479,42 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
-              {gamification.nextLevel && (
-                <div className="mx-auto max-w-md">
-                  <div className="h-1.5 overflow-hidden rounded-full bg-surface">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${gamification.progressPercent}%`,
-                        backgroundColor: gamification.level.color,
-                      }}
-                    />
+              {gamification.levels.length > 1 && (() => {
+                const levels = gamification.levels;
+                const gaps = levels.length - 1;
+                const currentIdx = levels.findIndex((l) => l.isCurrent);
+                const segmentPct = 100 / gaps;
+                const withinSegment =
+                  currentIdx >= 0 && currentIdx < gaps
+                    ? (gamification.totalClasses - levels[currentIdx].minClasses) /
+                      (levels[currentIdx + 1].minClasses - levels[currentIdx].minClasses)
+                    : currentIdx === gaps ? 1 : 0;
+                const overallPct = Math.min(
+                  100,
+                  currentIdx * segmentPct + withinSegment * segmentPct,
+                );
+
+                return (
+                  <div className="mx-auto max-w-md">
+                    <div className="relative h-1.5 rounded-full bg-surface">
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${overallPct}%`,
+                          backgroundColor: gamification.level.color,
+                        }}
+                      />
+                      {levels.slice(1, -1).map((l, i) => (
+                        <div
+                          key={l.name}
+                          className="absolute top-1/2 h-2.5 w-0.5 -translate-y-1/2 rounded-full bg-border/40"
+                          style={{ left: `${(i + 1) * segmentPct}%` }}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               {gamification.levels.length > 0 && (
                 <div className="flex items-center justify-between gap-1 border-t border-border/40 pt-2">
                   {gamification.levels.map((l) => (
