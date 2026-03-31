@@ -24,7 +24,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -102,6 +101,7 @@ export default function AdminCoachesPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -130,12 +130,10 @@ export default function AdminCoachesPage() {
       setEmail("");
       setError("");
       setShowInvite(false);
-      toast.success("Coach invitado");
+      setSuccessMsg("Coach invitado correctamente");
+      setTimeout(() => setSuccessMsg(""), 4000);
     },
-    onError: (err: Error) => {
-      setError(err.message);
-      toast.error(err.message);
-    },
+    onError: (err: Error) => setError(err.message),
   });
 
   const removeMutation = useMutation({
@@ -152,12 +150,8 @@ export default function AdminCoachesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-coaches"] });
       setRemovingId(null);
-      toast.success("Coach removido");
     },
-    onError: (err: Error) => {
-      setRemovingId(null);
-      toast.error(err.message || "Error al remover");
-    },
+    onError: () => setRemovingId(null),
   });
 
   function handleInvite(e: React.FormEvent) {

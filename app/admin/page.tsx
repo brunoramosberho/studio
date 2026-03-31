@@ -17,7 +17,7 @@ import {
   CheckCircle,
   Calendar,
 } from "lucide-react";
-import { Card as TremorCard, Metric, Text, Flex, DonutChart, BarChart } from "@tremor/react";
+import { Card as TremorCard, Metric, Text, Flex } from "@tremor/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,8 +52,6 @@ interface DashboardData {
   revenueMonthChange: number;
   completedClassesMonth: number;
   activeMembersCount: number;
-  revenueBreakdown: { name: string; value: number }[];
-  occupancyByDay: { day: string; occupancyPct: number }[];
   lowOccupancyClasses: {
     id: string;
     name: string;
@@ -236,7 +234,7 @@ export default function AdminDashboard() {
       </motion.div>
 
       {/* Charts + Recent */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         <motion.div
           className="lg:col-span-2"
           initial={{ opacity: 0, y: 16 }}
@@ -259,63 +257,29 @@ export default function AdminDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <TremorCard className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-tremor-content-strong dark:text-dark-tremor-content-strong">
-                  Ingresos por paquete
-                </p>
-                <p className="mt-1 text-sm text-muted">
-                  {isLoading ? "—" : `Más popular: ${data?.popularClassType ?? "—"}`}
-                </p>
+          {/* Popular class */}
+          <Card className="border-accent/20 bg-gradient-to-br from-accent/5 to-transparent">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-accent" />
+                <span className="text-xs font-medium text-accent">Más popular</span>
               </div>
-              <TrendingUp className="h-4 w-4 text-muted" />
-            </div>
-            {isLoading ? (
-              <Skeleton className="mt-4 h-44 rounded-2xl" />
-            ) : (
-              <DonutChart
-                className="mt-4 h-44"
-                data={data?.revenueBreakdown ?? []}
-                category="value"
-                index="name"
-                valueFormatter={(v) => formatCurrency(Number(v))}
-              />
-            )}
-          </TremorCard>
-
-          <TremorCard className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-tremor-content-strong dark:text-dark-tremor-content-strong">
-                  Ocupación (últimos 30 días)
+              {isLoading ? (
+                <Skeleton className="mt-2 h-6 w-32" />
+              ) : (
+                <p className="mt-2 font-display text-lg font-bold">
+                  {data?.popularClassType ?? "—"}
                 </p>
-                <p className="mt-1 text-sm text-muted">Promedio por día</p>
-              </div>
-              <PieChart className="h-4 w-4 text-muted" />
-            </div>
-            {isLoading ? (
-              <Skeleton className="mt-4 h-40 rounded-2xl" />
-            ) : (
-              <BarChart
-                className="mt-4 h-40"
-                data={data?.occupancyByDay ?? []}
-                index="day"
-                categories={["occupancyPct"]}
-                colors={["amber"]}
-                valueFormatter={(v) => `${Number(v)}%`}
-                showLegend={false}
-                yAxisWidth={40}
-              />
-            )}
-          </TremorCard>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Recent bookings */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Reservas recientes</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 p-4 pt-0">
+            <CardContent className="space-y-3">
               {isLoading
                 ? Array.from({ length: 4 }).map((_, i) => (
                     <Skeleton key={i} className="h-10" />
@@ -370,7 +334,7 @@ export default function AdminDashboard() {
             {/* Low occupancy */}
             {data?.lowOccupancyClasses && data.lowOccupancyClasses.length > 0 && (
               <Card className="border-orange-200 bg-orange-50/50">
-                <CardContent className="p-4">
+                <CardContent className="p-5">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-orange-600" />
                     <span className="text-sm font-semibold text-orange-900">
@@ -418,7 +382,7 @@ export default function AdminDashboard() {
             {/* Expiring packages */}
             {data?.expiringPackages && data.expiringPackages.length > 0 && (
               <Card className="border-amber-200 bg-amber-50/50">
-                <CardContent className="p-4">
+                <CardContent className="p-5">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-amber-600" />
                     <span className="text-sm font-semibold text-amber-900">
