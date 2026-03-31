@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Heart } from "lucide-react";
+import { Heart, ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LikeButtonProps {
@@ -55,14 +55,13 @@ export function LikeButton({
       )}
     >
       {isAchievement ? (
-        <span
+        <ThumbsUp
           className={cn(
-            "text-[15px] leading-none transition-transform",
+            "h-[18px] w-[18px] transition-transform",
+            liked && "fill-accent text-accent",
             animating && "scale-125",
           )}
-        >
-          🙌
-        </span>
+        />
       ) : (
         <Heart
           className={cn(
