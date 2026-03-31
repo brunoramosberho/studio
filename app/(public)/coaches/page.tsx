@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/shared/page-transition";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { getTenant } from "@/lib/tenant";
 import { getServerBranding } from "@/lib/branding.server";
 import { cn } from "@/lib/utils";
 
@@ -18,15 +19,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function CoachesPage() {
-  const [coaches, session] = await Promise.all([
-    prisma.coachProfile.findMany({
-      include: {
-        user: { select: { name: true, image: true } },
-      },
-      orderBy: { user: { name: "asc" } },
-    }),
-    auth(),
-  ]);
+  const [tenant, session] = await Promise.all([getTenant(), auth()]);
+
+  const coaches = tenant
+    ? await prisma.coachProfile.findMany({
+        where: { tenantId: tenant.id },
+        include: {
+          user: { select: { name: true, image: true } },
+        },
+        orderBy: { user: { name: "asc" } },
+      })
+    : [];
 
   const isAuthenticated = !!session?.user;
 

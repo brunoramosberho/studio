@@ -56,7 +56,16 @@ export async function GET(request: NextRequest) {
         classType: true,
         room: { include: { studio: true } },
         coach: {
-          include: { user: { select: { name: true, image: true } } },
+          select: {
+            id: true,
+            userId: true,
+            photoUrl: true,
+            color: true,
+            bio: true,
+            specialties: true,
+            tenantId: true,
+            user: { select: { name: true, image: true } },
+          },
         },
         _count: {
           select: {
@@ -165,7 +174,16 @@ export async function POST(request: NextRequest) {
         classType: true,
         room: { include: { studio: true } },
         coach: {
-          include: { user: { select: { name: true, image: true } } },
+          select: {
+            id: true,
+            userId: true,
+            photoUrl: true,
+            color: true,
+            bio: true,
+            specialties: true,
+            tenantId: true,
+            user: { select: { name: true, image: true } },
+          },
         },
       },
     });

@@ -341,7 +341,7 @@ export default function AdminCoachesPage() {
                       <RankBadge rank={rank} />
 
                       <Avatar className="h-11 w-11 ring-2 ring-admin/10">
-                        {coach.user.image && <AvatarImage src={coach.user.image} alt={name} />}
+                        {(coach.photoUrl || coach.user.image) && <AvatarImage src={coach.photoUrl || coach.user.image!} alt={name} />}
                         <AvatarFallback className="bg-admin/10 text-sm text-admin">
                           {initials}
                         </AvatarFallback>

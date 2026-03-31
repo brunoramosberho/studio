@@ -402,9 +402,9 @@ export function ScheduleClient({
                           active ? "border-foreground ring-2 ring-foreground/20" : "border-transparent",
                         )}
                       >
-                        {c.user.image ? (
+                        {(c.photoUrl || c.user.image) ? (
                           <img
-                            src={c.user.image}
+                            src={c.photoUrl || c.user.image!}
                             alt={firstName}
                             className="h-full w-full object-cover"
                           />
@@ -448,9 +448,9 @@ export function ScheduleClient({
                     href={`/my/user/${selectedCoach.userId}`}
                     className="flex items-center gap-2.5 rounded-xl bg-surface/80 px-3 py-2 transition-colors active:bg-surface"
                   >
-                    {selectedCoach.user.image && (
+                    {(selectedCoach.photoUrl || selectedCoach.user.image) && (
                       <img
-                        src={selectedCoach.user.image}
+                        src={selectedCoach.photoUrl || selectedCoach.user.image!}
                         alt=""
                         className="h-7 w-7 rounded-full object-cover"
                       />
@@ -648,9 +648,9 @@ export function ScheduleClient({
                           : "border-transparent hover:border-foreground/20",
                       )}
                     >
-                      {c.user.image ? (
+                      {(c.photoUrl || c.user.image) ? (
                         <img
-                          src={c.user.image}
+                          src={c.photoUrl || c.user.image!}
                           alt={firstName}
                           className="h-full w-full object-cover"
                         />
@@ -693,9 +693,9 @@ export function ScheduleClient({
                     href={`/my/user/${selectedCoach.userId}`}
                     className="inline-flex items-center gap-2.5 rounded-xl bg-surface/80 px-4 py-2 transition-colors hover:bg-surface"
                   >
-                    {selectedCoach.user.image && (
+                    {(selectedCoach.photoUrl || selectedCoach.user.image) && (
                       <img
-                        src={selectedCoach.user.image}
+                        src={selectedCoach.photoUrl || selectedCoach.user.image!}
                         alt=""
                         className="h-7 w-7 rounded-full object-cover"
                       />
@@ -739,7 +739,7 @@ export function ScheduleClient({
           {days.map((day) => {
             const dayClasses = getClassesForDay(day);
             return (
-              <DesktopDayColumn key={day.toISOString()} classes={dayClasses} classLinkPrefix={classLinkPrefix} onCancel={handleCancelBooking} cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null} />
+              <DesktopDayColumn key={day.toISOString()} classes={dayClasses} classLinkPrefix={classLinkPrefix} onCancel={handleCancelBooking} cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null} onTapDiscipline={openDiscipline} />
             );
           })}
         </div>
@@ -1007,9 +1007,9 @@ function MobileClassCard({
 
         {/* Coach photo + info */}
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          {cls.coach.user.image ? (
+          {(cls.coach.photoUrl || cls.coach.user.image) ? (
             <img
-              src={cls.coach.user.image}
+              src={cls.coach.photoUrl || cls.coach.user.image!}
               alt={cls.coach.user.name || "Coach"}
               className={cn(
                 "h-9 w-9 flex-shrink-0 rounded-full object-cover",
@@ -1106,7 +1106,7 @@ function MobileClassCard({
 }
 
 /* ── Desktop class card ── */
-function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId }: { classes: ClassWithDetails[]; classLinkPrefix: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null }) {
+function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId, onTapDiscipline }: { classes: ClassWithDetails[]; classLinkPrefix: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null; onTapDiscipline: (cls: ClassWithDetails) => void }) {
   const pastClasses = classes.filter((c) => isPast(new Date(c.startsAt)));
   const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startsAt)));
   const [showPast, setShowPast] = useState(false);
@@ -1115,7 +1115,7 @@ function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId }: 
     return (
       <div className="space-y-2">
         {classes.map((cls) => (
-          <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
+          <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} onTapDiscipline={onTapDiscipline} />
         ))}
       </div>
     );
@@ -1124,7 +1124,7 @@ function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId }: 
   return (
     <div className="space-y-2">
       {showPast && pastClasses.map((cls) => (
-        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
+        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} onTapDiscipline={onTapDiscipline} />
       ))}
       <button
         onClick={() => setShowPast(!showPast)}
@@ -1134,13 +1134,13 @@ function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId }: 
         {showPast ? "Ocultar" : `${pastClasses.length} anterior${pastClasses.length > 1 ? "es" : ""}`}
       </button>
       {upcomingClasses.map((cls) => (
-        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} />
+        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} onTapDiscipline={onTapDiscipline} />
       ))}
     </div>
   );
 }
 
-function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellingId }: { cls: ClassWithDetails; classLinkPrefix?: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null }) {
+function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellingId, onTapDiscipline }: { cls: ClassWithDetails; classLinkPrefix?: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null; onTapDiscipline: (cls: ClassWithDetails) => void }) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.room?.maxCapacity ?? 0;
@@ -1177,23 +1177,27 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
           >
             {cls.classType.duration} min
           </p>
-          <p
-            className={cn(
-              "mt-1.5 truncate text-[14px] font-bold",
-              past ? "text-muted/50" : "text-foreground",
+          <div className={cn("mt-1.5 flex flex-wrap items-center gap-1", past && "opacity-50")}>
+            <DisciplinePill
+              name={cls.classType.name}
+              iconId={cls.classType.icon}
+              color={cls.classType.color}
+              onTap={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onTapDiscipline(cls);
+              }}
+            />
+            {!past && cls.tag && (
+              <span className="inline-block rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-bold text-white">
+                {cls.tag}
+              </span>
             )}
-          >
-            {cls.classType.name}
-          </p>
-          {!past && cls.tag && (
-            <span className="mt-0.5 inline-block rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-bold text-white">
-              {cls.tag}
-            </span>
-          )}
+          </div>
           <div className="mt-1 flex items-center gap-1.5">
-            {cls.coach.user.image ? (
+            {(cls.coach.photoUrl || cls.coach.user.image) ? (
               <img
-                src={cls.coach.user.image}
+                src={cls.coach.photoUrl || cls.coach.user.image!}
                 alt={cls.coach.user.name || "Coach"}
                 className={cn(
                   "h-5 w-5 rounded-full object-cover",
