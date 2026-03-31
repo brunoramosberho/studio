@@ -38,7 +38,7 @@ export function Footer() {
           <div className="lg:col-span-2">
             <Link href="/" className="inline-block">
               {logoUrl ? (
-                <img src={logoUrl} alt={studioName} className="h-10 object-contain" />
+                <img src={logoUrl} alt={studioName} className="h-7 max-w-[160px] object-contain" />
               ) : (
                 <span className="font-display text-3xl font-bold text-foreground">{studioName}</span>
               )}

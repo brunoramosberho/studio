@@ -52,7 +52,7 @@ export function Navbar() {
 
           <Link href="/" className="flex items-center">
             {logoUrl ? (
-              <img src={logoUrl} alt={studioName} className="h-8 object-contain" />
+              <img src={logoUrl} alt={studioName} className="h-6 max-w-[140px] object-contain" />
             ) : (
               <span className="font-display text-2xl font-bold tracking-tight text-foreground">
                 {studioName}

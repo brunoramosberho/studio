@@ -116,9 +116,18 @@ export default function LandingPage() {
   return (
     <div className="overflow-x-hidden">
       {/* ── Hero ──────────────────────────────────────────────── */}
-      <section className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#1C1917] px-4">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(201,169,110,0.12)_0%,_transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_rgba(201,169,110,0.06)_0%,_transparent_50%)]" />
+      <section
+        className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-4"
+        style={{ backgroundColor: branding.colorFg }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{ background: `radial-gradient(ellipse at top right, ${branding.colorAccent}1F 0%, transparent 50%)` }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{ background: `radial-gradient(ellipse at bottom left, ${branding.colorAccent}0F 0%, transparent 50%)` }}
+        />
 
         <motion.div
           className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2"
@@ -126,8 +135,7 @@ export default function LandingPage() {
           animate={{ scaleX: 1, opacity: 1 }}
           transition={{ duration: 1.5, delay: 0.8, ease: "easeOut" as const }}
           style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, #C9A96E 50%, transparent 100%)",
+            background: `linear-gradient(90deg, transparent 0%, ${branding.colorAccent} 50%, transparent 100%)`,
           }}
         />
 
@@ -148,7 +156,15 @@ export default function LandingPage() {
             >
               {branding.slogan.split(".").filter(Boolean).map((part, i, arr) =>
                 i === arr.length - 1 ? (
-                  <span key={i} className="text-accent">{part.trim()}.</span>
+                  <span
+                    key={i}
+                    style={{
+                      color: branding.colorAccent,
+                      textShadow: `0 0 40px ${branding.colorAccent}88, 0 0 80px ${branding.colorAccent}44`,
+                    }}
+                  >
+                    {part.trim()}.
+                  </span>
                 ) : (
                   <span key={i}>{part.trim()}.<br /></span>
                 ),
@@ -169,7 +185,7 @@ export default function LandingPage() {
               className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
             >
               <Button asChild size="lg" className="px-10 text-base">
-                <Link href="/schedule">Reservar clase</Link>
+                <Link href="/schedule">Reserva tu clase</Link>
               </Button>
               <Button
                 asChild
@@ -177,7 +193,7 @@ export default function LandingPage() {
                 size="lg"
                 className="border-white/20 text-white hover:border-accent hover:bg-accent hover:text-white"
               >
-                <Link href="/packages">Primera clase €9</Link>
+                <Link href="/packages">Ver paquetes</Link>
               </Button>
             </motion.div>
           </motion.div>
@@ -194,14 +210,14 @@ export default function LandingPage() {
               Scroll
             </span>
             <motion.div
-              className="h-10 w-px bg-accent/40"
+              className="h-10 w-px"
               animate={{ scaleY: [0, 1, 0] }}
               transition={{
                 duration: 2,
                 repeat: Infinity,
                 ease: "easeInOut" as const,
               }}
-              style={{ transformOrigin: "top" }}
+              style={{ transformOrigin: "top", backgroundColor: `${branding.colorAccent}66` }}
             />
           </div>
         </motion.div>
@@ -209,7 +225,7 @@ export default function LandingPage() {
 
       {/* ── Class Types ───────────────────────────────────────── */}
       {classTypes.length > 0 && (
-      <section className="bg-[#1C1917] px-4 pb-24 pt-12">
+      <section className="px-4 pb-24 pt-12" style={{ backgroundColor: branding.colorFg }}>
         <div className="mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -321,7 +337,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── Coaches ────────────────────────────────────────────── */}
-      <section className="bg-[#1C1917] px-4 py-24">
+      {coaches.length > 0 && (
+      <section className="px-4 py-24" style={{ backgroundColor: branding.colorFg }}>
         <div className="mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -331,10 +348,10 @@ export default function LandingPage() {
             className="mb-16 text-center"
           >
             <h2 className="font-display text-3xl font-bold text-white sm:text-5xl">
-              Conoce a tu coach
+              Nuestro equipo
             </h2>
             <p className="mt-4 text-white/50">
-              Expertas apasionadas que te guiarán en cada movimiento.
+              Coaches que te inspiran en cada sesión.
             </p>
           </motion.div>
 
@@ -342,7 +359,7 @@ export default function LandingPage() {
             ref={scrollRef}
             className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 md:overflow-visible md:pb-0"
           >
-            {coaches.map((coach, i) => {
+            {coaches.slice(0, 6).map((coach, i) => {
               const photo = coach.photoUrl ?? coach.user.image;
               const name = coach.user.name ?? "Coach";
               const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2);
@@ -398,11 +415,32 @@ export default function LandingPage() {
               );
             })}
           </div>
+
+          {coaches.length > 6 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="mt-10 text-center"
+            >
+              <Link
+                href="/coaches"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-white/70 transition-colors hover:text-accent"
+              >
+                Ver los {coaches.length} coaches <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </motion.div>
+          )}
         </div>
       </section>
+      )}
 
       {/* ── Packages ───────────────────────────────────────────── */}
-      {packages.length > 0 && (
+      {packages.length > 0 && (() => {
+        const displayPkgs = packages.slice(0, 3);
+        const cols = displayPkgs.length >= 3 ? "md:grid-cols-3" : displayPkgs.length === 2 ? "md:grid-cols-2 max-w-3xl mx-auto" : "max-w-md mx-auto";
+        return (
       <section className="px-4 py-24">
         <div className="mx-auto max-w-5xl">
           <motion.div
@@ -420,9 +458,9 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          <div className={`grid gap-6 ${packages.length >= 3 ? "md:grid-cols-3" : packages.length === 2 ? "md:grid-cols-2 max-w-3xl mx-auto" : "max-w-md mx-auto"}`}>
-            {packages.map((pkg, i) => {
-              const isHighlight = packages.length >= 3 ? i === Math.floor(packages.length / 2) : false;
+          <div className={`grid gap-6 ${cols}`}>
+            {displayPkgs.map((pkg, i) => {
+              const isHighlight = displayPkgs.length >= 3 ? i === 1 : false;
               const validity = pkg.validDays >= 365
                 ? `${Math.round(pkg.validDays / 365)} año${Math.round(pkg.validDays / 365) > 1 ? "s" : ""}`
                 : pkg.validDays >= 30
@@ -441,9 +479,10 @@ export default function LandingPage() {
                 <div
                   className={`relative h-full rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 ${
                     isHighlight
-                      ? "bg-[#1C1917] text-white shadow-[0_8px_32px_rgba(201,169,110,0.15)]"
+                      ? "text-white shadow-lg"
                       : "border border-border bg-white shadow-[var(--shadow-warm)]"
                   } ${pkg.isPromo ? "border-2 border-dashed border-accent/40" : ""}`}
+                  style={isHighlight ? { backgroundColor: branding.colorFg } : undefined}
                 >
                   {isHighlight && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -507,26 +546,29 @@ export default function LandingPage() {
             })}
           </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" as const }}
-            className="mt-8 text-center"
-          >
-            <Link
-              href="/packages"
-              className="inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-accent/80"
+          {packages.length > 3 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" as const }}
+              className="mt-10 text-center"
             >
-              Ver todos los paquetes <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </motion.div>
+              <Link
+                href="/packages"
+                className="inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-accent/80"
+              >
+                Ver todos los paquetes <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </motion.div>
+          )}
         </div>
       </section>
-      )}
+        );
+      })()}
 
       {/* ── CTA Banner ─────────────────────────────────────────── */}
-      <section className="bg-[#1C1917] px-4 py-24">
+      <section className="px-4 py-24" style={{ backgroundColor: branding.colorFg }}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -536,15 +578,14 @@ export default function LandingPage() {
         >
           <Zap className="mx-auto mb-6 h-8 w-8 text-accent" />
           <h2 className="font-display text-4xl font-bold text-white sm:text-5xl md:text-6xl">
-            ¿Lista para empezar?
+            ¿Listo para empezar?
           </h2>
           <p className="mx-auto mt-6 max-w-md text-lg text-white/50">
-            Tu primera clase es a solo €9. Reserva hoy y descubre lo que tu
-            cuerpo puede lograr.
+            Reserva hoy y descubre lo que tu cuerpo puede lograr.
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Button asChild size="lg" className="px-10 text-base">
-              <Link href="/schedule">Ver horarios</Link>
+              <Link href="/schedule">Reserva tu clase</Link>
             </Button>
             <Button
               asChild
