@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { type StudioBranding, DEFAULTS, FONT_PAIRINGS } from "@/lib/branding";
 import { useBranding, applyTheme } from "@/components/branding-provider";
@@ -37,7 +38,6 @@ export default function BrandingPage() {
   const brandingCtx = useBranding();
   const [settings, setSettings] = useState<StudioBranding>(DEFAULTS);
   const [loading, setLoading] = useState(true);
-  const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const appIconInputRef = useRef<HTMLInputElement>(null);
   const coachIconInputRef = useRef<HTMLInputElement>(null);
@@ -65,9 +65,11 @@ export default function BrandingPage() {
     },
     onSuccess: (data) => {
       setSettings(data);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
       brandingCtx.update(data);
+      toast.success("Marca guardada");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Error al guardar");
     },
   });
 
@@ -159,21 +161,13 @@ export default function BrandingPage() {
           >
             {saveMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : saved ? (
-              <Check className="h-4 w-4" />
             ) : (
               <Save className="h-4 w-4" />
             )}
-            {saved ? "Guardado" : saveMutation.isError ? "Error al guardar" : "Guardar cambios"}
+            Guardar cambios
           </Button>
         </div>
       </motion.div>
-
-      {saveMutation.isError && (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {saveMutation.error?.message || "No se pudieron guardar los cambios. Verifica que tengas permisos de admin."}
-        </div>
-      )}
 
       {/* Identity */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>

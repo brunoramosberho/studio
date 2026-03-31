@@ -7,18 +7,7 @@ import {
   BarChart3,
   CalendarDays,
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card as TremorCard, BarChart, DonutChart } from "@tremor/react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -30,19 +19,6 @@ interface ReportsData {
   attendanceChart: { name: string; rate: number }[];
   popularClasses: { name: string; count: number; color: string }[];
   retention: { month: string; rate: number; total: number; active: number }[];
-}
-
-const PIE_COLORS = ["#C9A96E", "#1A2C4E", "#2D5016", "#7C3AED", "#DC2626", "#0891B2"];
-
-function ChartTooltip({ active, payload, label }: Record<string, unknown>) {
-  if (!active || !(payload as unknown[])?.length) return null;
-  const entry = (payload as { value: number; name: string }[])[0];
-  return (
-    <div className="rounded-xl border border-border bg-white px-3 py-2 shadow-warm">
-      <p className="text-xs text-muted">{(label as string) || entry.name}</p>
-      <p className="font-mono text-sm font-bold text-foreground">{entry.value}%</p>
-    </div>
-  );
 }
 
 export default function AdminReportsPage() {
@@ -110,43 +86,27 @@ export default function AdminReportsPage() {
           {isLoading ? (
             <Skeleton className="h-96 rounded-2xl" />
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Tasa de asistencia</CardTitle>
-                <CardDescription>Porcentaje de asistencia por período</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={data?.attendanceChart ?? []}
-                      margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
-                    >
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fontSize: 12, fill: "var(--color-muted)" }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 11, fill: "var(--color-muted)" }}
-                        axisLine={false}
-                        tickLine={false}
-                        domain={[0, 100]}
-                        tickFormatter={(v: number) => `${v}%`}
-                      />
-                      <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(26, 44, 78, 0.05)" }} />
-                      <Bar
-                        dataKey="rate"
-                        fill="#1A2C4E"
-                        radius={[6, 6, 0, 0]}
-                        maxBarSize={48}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+            <TremorCard className="p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-tremor-content-strong dark:text-dark-tremor-content-strong">
+                    Tasa de asistencia
+                  </p>
+                  <p className="mt-1 text-sm text-muted">Porcentaje de asistencia por período</p>
                 </div>
-              </CardContent>
-            </Card>
+                <BarChart3 className="h-4 w-4 text-muted" />
+              </div>
+              <BarChart
+                className="mt-4 h-80"
+                data={data?.attendanceChart ?? []}
+                index="name"
+                categories={["rate"]}
+                colors={["blue"]}
+                valueFormatter={(v) => `${Number(v)}%`}
+                showLegend={false}
+                yAxisWidth={44}
+              />
+            </TremorCard>
           )}
         </TabsContent>
 
@@ -155,58 +115,34 @@ export default function AdminReportsPage() {
           {isLoading ? (
             <Skeleton className="h-96 rounded-2xl" />
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Clases más populares</CardTitle>
-                <CardDescription>Distribución de reservas por tipo de clase</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <div className="flex items-center justify-center">
-                    <div className="h-64 w-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={data?.popularClasses ?? []}
-                            dataKey="count"
-                            nameKey="name"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={100}
-                            paddingAngle={3}
-                          >
-                            {data?.popularClasses?.map((_, i) => (
-                              <Cell
-                                key={i}
-                                fill={PIE_COLORS[i % PIE_COLORS.length]}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                  <div className="flex flex-col justify-center space-y-3">
-                    {data?.popularClasses?.map((cls, i) => (
+            <TremorCard className="p-4">
+              <div>
+                <p className="text-sm font-semibold text-tremor-content-strong dark:text-dark-tremor-content-strong">
+                  Clases más populares
+                </p>
+                <p className="mt-1 text-sm text-muted">Distribución de reservas por tipo de clase</p>
+              </div>
+              <div className="mt-4 grid gap-6 sm:grid-cols-2">
+                <DonutChart
+                  className="h-64"
+                  data={data?.popularClasses ?? []}
+                  category="count"
+                  index="name"
+                  valueFormatter={(v) => `${Number(v)}`}
+                />
+                <div className="space-y-3">
+                  {(data?.popularClasses ?? [])
+                    .slice()
+                    .sort((a, b) => b.count - a.count)
+                    .map((cls) => (
                       <div key={cls.name} className="flex items-center gap-3">
-                        <div
-                          className="h-3 w-3 rounded-full"
-                          style={{
-                            backgroundColor: PIE_COLORS[i % PIE_COLORS.length],
-                          }}
-                        />
                         <span className="flex-1 text-sm">{cls.name}</span>
-                        <span className="font-mono text-sm font-semibold">
-                          {cls.count}
-                        </span>
+                        <span className="font-mono text-sm font-semibold">{cls.count}</span>
                       </div>
                     ))}
-                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </TremorCard>
           )}
         </TabsContent>
 
@@ -215,63 +151,31 @@ export default function AdminReportsPage() {
           {isLoading ? (
             <Skeleton className="h-96 rounded-2xl" />
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Retención por cohorte</CardTitle>
-                <CardDescription>
-                  Porcentaje de miembros que siguen activos (asistieron en los últimos 30 días), agrupados por antigüedad
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={data?.retention ?? []}
-                      margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
-                    >
-                      <XAxis
-                        dataKey="month"
-                        tick={{ fontSize: 12, fill: "var(--color-muted)" }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 11, fill: "var(--color-muted)" }}
-                        axisLine={false}
-                        tickLine={false}
-                        domain={[0, 100]}
-                        tickFormatter={(v: number) => `${v}%`}
-                      />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          const d = payload[0].payload as { month: string; rate: number; total: number; active: number };
-                          return (
-                            <div className="rounded-xl border border-border bg-white px-3 py-2 shadow-warm">
-                              <p className="text-xs text-muted">{d.month}</p>
-                              <p className="font-mono text-sm font-bold text-foreground">{d.rate}%</p>
-                              <p className="text-xs text-muted">{d.active} de {d.total} miembros</p>
-                            </div>
-                          );
-                        }}
-                        cursor={{ fill: "rgba(45, 80, 22, 0.05)" }}
-                      />
-                      <Bar
-                        dataKey="rate"
-                        fill="#2D5016"
-                        radius={[6, 6, 0, 0]}
-                        maxBarSize={48}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+            <TremorCard className="p-4">
+              <div>
+                <p className="text-sm font-semibold text-tremor-content-strong dark:text-dark-tremor-content-strong">
+                  Retención por cohorte
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  % de miembros activos (30 días), por antigüedad
+                </p>
+              </div>
+              <BarChart
+                className="mt-4 h-80"
+                data={data?.retention ?? []}
+                index="month"
+                categories={["rate"]}
+                colors={["emerald"]}
+                valueFormatter={(v) => `${Number(v)}%`}
+                showLegend={false}
+                yAxisWidth={44}
+              />
+              {data?.retention && data.retention.some((r) => r.rate < 60) && (
+                <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Algún cohorte está por debajo del 60% de retención. El benchmark saludable es &gt;60% a 90 días.
                 </div>
-                {data?.retention && data.retention.some((r) => r.rate < 60) && (
-                  <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    Algún cohorte está por debajo del 60% de retención. El benchmark saludable es &gt;60% a 90 días.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              )}
+            </TremorCard>
           )}
         </TabsContent>
       </Tabs>

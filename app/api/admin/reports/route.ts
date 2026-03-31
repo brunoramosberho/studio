@@ -108,11 +108,11 @@ export async function GET() {
       }),
       prisma.userPackage.findMany({
         where: { purchasedAt: { gte: weekStart }, tenantId },
-        include: { package: { select: { price: true } } },
+        include: { package: { select: { price: true, name: true } } },
       }),
       prisma.userPackage.findMany({
         where: { purchasedAt: { gte: prevWeekStart, lt: weekStart }, tenantId },
-        include: { package: { select: { price: true } } },
+        include: { package: { select: { price: true, name: true } } },
       }),
       prisma.membership.count({
         where: { createdAt: { gte: weekStart }, tenantId, role: "CLIENT" },
@@ -191,13 +191,13 @@ export async function GET() {
           purchasedAt: { gte: todayStart, lte: todayEnd },
           tenantId,
         },
-        include: { package: { select: { price: true } } },
+        include: { package: { select: { price: true, name: true } } },
       }),
 
       // Revenue this month
       prisma.userPackage.findMany({
         where: { purchasedAt: { gte: monthStart }, tenantId },
-        include: { package: { select: { price: true } } },
+        include: { package: { select: { price: true, name: true } } },
       }),
 
       // Revenue prev month
@@ -206,7 +206,7 @@ export async function GET() {
           purchasedAt: { gte: prevMonthStart, lt: monthStart },
           tenantId,
         },
-        include: { package: { select: { price: true } } },
+        include: { package: { select: { price: true, name: true } } },
       }),
 
       // Classes scheduled today
@@ -425,6 +425,36 @@ export async function GET() {
       birthday: u.birthday.toISOString(),
     }));
 
+    const revenueBreakdown = Object.entries(
+      (monthPurchases as { package: { name: string; price: number } }[]).reduce(
+        (acc, p) => {
+          const key = p.package.name;
+          acc[key] = (acc[key] ?? 0) + (p.package.price ?? 0);
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
+    )
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    const occupancyByDay = Array.from({ length: 7 }, (_, i) => {
+      const dayClasses = (classesLast30d as { startsAt: Date; room?: { maxCapacity?: number | null } | null; _count?: { bookings?: number } }[])
+        .filter((c) => new Date(c.startsAt).getDay() === i);
+      const totals = dayClasses.reduce(
+        (acc, c) => {
+          const cap = c.room?.maxCapacity ?? 0;
+          const enrolled = c._count?.bookings ?? 0;
+          acc.capacity += cap;
+          acc.enrolled += enrolled;
+          return acc;
+        },
+        { capacity: 0, enrolled: 0 },
+      );
+      const pct = totals.capacity > 0 ? Math.round((totals.enrolled / totals.capacity) * 100) : 0;
+      return { day: DAY_NAMES[i], occupancyPct: pct };
+    });
+
     return NextResponse.json({
       // Existing KPIs
       bookingsToday,
@@ -455,6 +485,10 @@ export async function GET() {
       revenueMonthChange: pctChange(revenueThisMonth, revenuePrevMonth),
       completedClassesMonth: completedClassesMonth,
       activeMembersCount,
+
+      // Tremor dashboard breakdowns
+      revenueBreakdown,
+      occupancyByDay,
 
       // Alerts
       lowOccupancyClasses,

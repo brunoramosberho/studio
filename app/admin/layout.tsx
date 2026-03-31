@@ -29,8 +29,17 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useBranding } from "@/components/branding-provider";
+import { toast } from "sonner";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -119,6 +128,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (res.ok) {
         setLocSaved(true);
         setTimeout(() => setLocSaved(false), 2000);
+        toast.success("Ubicación actualizada");
       }
     } catch {}
     setLocSaving(false);
@@ -127,20 +137,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const locationPicker = locations.length > 0 ? (
     <div className="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
       <MapPin className="h-3.5 w-3.5 shrink-0 text-admin/60" />
-      <select
-        value={locValue}
-        onChange={(e) => handleLocChange(e.target.value)}
-        className="min-w-0 flex-1 appearance-none bg-transparent text-xs font-medium text-foreground outline-none"
-      >
-        <option value="">Seleccionar ubicación</option>
-        {locations.map((c) =>
-          c.cities.map((city) => (
-            <option key={city.id} value={`${c.id}|${city.id}`}>
-              {countryFlag(c.code)} {city.name}
-            </option>
-          )),
-        )}
-      </select>
+      <Select value={locValue} onValueChange={handleLocChange}>
+        <SelectTrigger className="h-auto min-w-0 flex-1 border-0 px-0 py-0 text-xs font-medium">
+          <SelectValue placeholder="Seleccionar ubicación" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="">Seleccionar ubicación</SelectItem>
+          {locations.map((c) =>
+            c.cities.map((city) => (
+              <SelectItem key={city.id} value={`${c.id}|${city.id}`}>
+                {countryFlag(c.code)} {city.name}
+              </SelectItem>
+            )),
+          )}
+        </SelectContent>
+      </Select>
       {locSaving && <Loader2 className="h-3 w-3 animate-spin text-muted" />}
       {locSaved && <Check className="h-3 w-3 text-green-500" />}
     </div>
@@ -155,12 +166,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex h-14 items-center justify-between px-4 lg:px-6">
             <div className="flex items-center gap-3">
               <SheetTrigger asChild>
-                <button
-                  className="flex h-10 w-10 items-center justify-center rounded-xl text-foreground transition-colors hover:bg-admin/5 lg:hidden"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-xl text-foreground hover:bg-admin/5 lg:hidden"
                   aria-label="Abrir menú"
                 >
                   {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </button>
+                </Button>
               </SheetTrigger>
             <div className="flex items-center gap-2">
               <span className="font-display text-lg font-bold text-foreground">{studioName}</span>
@@ -184,13 +197,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <button
+            <Button
               onClick={async () => { await signOut({ redirect: false }); window.location.href = window.location.origin; }}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg text-muted hover:bg-red-50 hover:text-red-600"
               title="Cerrar sesión"
             >
               <LogOut className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
         </div>
       </header>

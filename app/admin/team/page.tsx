@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { cn, timeAgo } from "@/lib/utils";
 
 interface AdminUser {
@@ -35,7 +36,6 @@ export default function AdminTeamPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [confirmUser, setConfirmUser] = useState<{ id: string; name: string | null; email: string } | null>(null);
-  const [successMsg, setSuccessMsg] = useState("");
 
   const { data: admins, isLoading } = useQuery<AdminUser[]>({
     queryKey: ["admin-team"],
@@ -68,10 +68,12 @@ export default function AdminTeamPage() {
       setEmail("");
       setError("");
       setConfirmUser(null);
-      setSuccessMsg("Invitación enviada correctamente");
-      setTimeout(() => setSuccessMsg(""), 4000);
+      toast.success("Invitación enviada");
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => {
+      setError(err.message);
+      toast.error(err.message);
+    },
   });
 
   const promoteMutation = useMutation({
@@ -89,8 +91,11 @@ export default function AdminTeamPage() {
       setEmail("");
       setError("");
       setConfirmUser(null);
-      setSuccessMsg("Usuario promovido a administrador");
-      setTimeout(() => setSuccessMsg(""), 4000);
+      toast.success("Usuario promovido a administrador");
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+      toast.error(err.message);
     },
   });
 
@@ -107,8 +112,12 @@ export default function AdminTeamPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-team"] });
+      toast.success("Admin removido");
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => {
+      setError(err.message);
+      toast.error(err.message);
+    },
   });
 
   function handleInvite(e: React.FormEvent) {
@@ -202,16 +211,6 @@ export default function AdminTeamPage() {
                 </motion.div>
               )}
 
-              {successMsg && (
-                <motion.p
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-3 text-sm font-medium text-green-600"
-                >
-                  {successMsg}
-                </motion.p>
-              )}
             </AnimatePresence>
           </CardContent>
         </Card>
