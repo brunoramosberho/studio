@@ -68,10 +68,9 @@ export function Pricing() {
     <section id="pricing" className="py-24">
       <div className="mx-auto max-w-6xl px-6">
         <FadeIn className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">Precios</p>
+          <p className="text-sm font-semibold tracking-tight text-orange-500">Precios</p>
           <h2
-            className="mt-3 text-3xl font-bold text-gray-900 sm:text-4xl dark:text-white"
-            style={{ fontFamily: "var(--font-jakarta)" }}
+            className="mt-3 text-3xl font-semibold tracking-tighter text-gray-900 sm:text-4xl"
           >
             Precios simples. Sin sorpresas.
           </h2>
@@ -89,7 +88,7 @@ export function Pricing() {
             onClick={() => setAnnual(!annual)}
             className={cn(
               "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
-              annual ? "bg-indigo-500" : "bg-gray-200 dark:bg-gray-700",
+              annual ? "bg-orange-500" : "bg-gray-200 dark:bg-gray-700",
             )}
           >
             <motion.span
@@ -120,12 +119,12 @@ export function Pricing() {
                 className={cn(
                   "relative flex flex-col rounded-2xl border p-6 transition-all",
                   plan.popular
-                    ? "border-indigo-200 bg-white shadow-xl ring-1 ring-indigo-500/20 dark:border-indigo-500/30 dark:bg-gray-900"
+                    ? "border-orange-200 bg-white shadow-xl ring-1 ring-orange-500/20 dark:border-orange-500/30 dark:bg-gray-900"
                     : "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
                 )}
               >
                 {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-indigo-500 px-4 py-1 text-xs font-bold text-white">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-orange-500 px-4 py-1 text-xs font-bold text-white">
                     Más popular
                   </div>
                 )}
@@ -140,7 +139,7 @@ export function Pricing() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
                       className="text-4xl font-extrabold text-gray-900 dark:text-white"
-                      style={{ fontFamily: "var(--font-jakarta)" }}
+                      
                     >
                       €{annual ? plan.annual : plan.monthly}
                     </motion.span>
@@ -160,7 +159,7 @@ export function Pricing() {
                 <ul className="mt-6 flex-1 space-y-2.5">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
                       {f}
                     </li>
                   ))}
@@ -185,8 +184,8 @@ export function Pricing() {
 
         {/* Founding studio note */}
         <FadeIn delay={0.3} className="mt-12">
-          <div className="mx-auto max-w-2xl rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6 text-center dark:border-indigo-500/20 dark:bg-indigo-500/5">
-            <Sparkles className="mx-auto h-5 w-5 text-indigo-500" />
+          <div className="mx-auto max-w-2xl rounded-2xl border border-orange-100 bg-orange-50/50 p-6 text-center dark:border-orange-500/20 dark:bg-orange-500/5">
+            <Sparkles className="mx-auto h-5 w-5 text-orange-500" />
             <p className="mt-2 text-sm font-bold text-gray-900 dark:text-white">Founding Studio Program</p>
             <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-300">
               ¿Eres de los primeros estudios en unirse? Accede a pricing especial con lock de por vida.
@@ -194,7 +193,7 @@ export function Pricing() {
             </p>
             <a
               href="mailto:hola@reserva.fit?subject=Founding%20Studio%20Program"
-              className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400"
+              className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-orange-600 transition hover:text-orange-700 dark:text-orange-400"
             >
               Aplica aquí
               <ArrowRight className="h-3.5 w-3.5" />

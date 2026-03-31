@@ -31,10 +31,9 @@ export function Comparison() {
     <section className="bg-gray-50 py-24 dark:bg-gray-900/50">
       <div className="mx-auto max-w-4xl px-6">
         <FadeIn className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">Comparación</p>
+          <p className="text-sm font-semibold tracking-tight text-orange-500">Comparación</p>
           <h2
-            className="mt-3 text-3xl font-bold text-gray-900 sm:text-4xl dark:text-white"
-            style={{ fontFamily: "var(--font-jakarta)" }}
+            className="mt-3 text-3xl font-semibold tracking-tighter text-gray-900 sm:text-4xl"
           >
             ¿Por qué reserva.fit?
           </h2>
@@ -51,7 +50,7 @@ export function Comparison() {
                   <tr className="border-b border-gray-100 dark:border-gray-800">
                     <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Feature</th>
                     <th className="px-4 py-3.5 text-center">
-                      <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                      <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-600 dark:bg-orange-500/10 dark:text-orange-400">
                         reserva.fit
                       </span>
                     </th>

@@ -87,7 +87,7 @@
 }
 
 .loyalty-tier-badge--sm {
-  height: 2.125rem;
+  height: 2.35rem;
   max-width: none;
   width: auto;
   display: inline-flex;
@@ -276,7 +276,9 @@
 }
 
 .loyalty-tier-badge--sm .loyalty-tier-badge__pill {
-  display: none;
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  padding: 0.12rem 0.4rem;
 }
 
 /* Tier palettes */
@@ -455,6 +457,10 @@
   min-width: 1.375rem;
   font-size: 0.625rem;
   transform: translate(20%, 20%);
+}
+
+.mask {
+  mask-image: radial-gradient(rgba(0, 0, 0, 1) 0%, transparent 80%);
 }
 
 @layer base {

@@ -32,10 +32,10 @@ export function Studios() {
     <section className="border-y border-gray-100 bg-gray-50/50 py-16 dark:border-gray-800 dark:bg-gray-900/50">
       <div className="mx-auto max-w-6xl px-6">
         <FadeIn className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">Estudios activos</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-orange-500">Estudios activos</p>
           <h2
             className="mt-3 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white"
-            style={{ fontFamily: "var(--font-jakarta)" }}
+            
           >
             Ya confían en reserva.fit
           </h2>
