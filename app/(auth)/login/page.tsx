@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
-import { Mail, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Mail, ArrowRight, Loader2, CheckCircle2, Lock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageTransition } from "@/components/shared/page-transition";
@@ -22,6 +22,107 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 const SESSION_COOKIE = "authjs.session-token";
+
+function useIsAdminSubdomain() {
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN?.split(":")[0] || "localhost";
+    const hostname = window.location.hostname;
+    setIsAdmin(hostname === `admin.${rootDomain}`);
+  }, []);
+  return isAdmin;
+}
+
+function AdminLoginForm() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Error al iniciar sesión");
+        return;
+      }
+
+      router.replace(callbackUrl);
+    } catch {
+      setError("Error de conexión");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-dvh items-center justify-center px-4 py-16">
+      <div className="w-full max-w-sm">
+        <div className="mb-10 text-center">
+          <ShieldCheck className="mx-auto h-12 w-12 text-foreground" />
+          <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
+            Panel de Administración
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            Ingresa tus credenciales de super admin
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+          <Input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
+          <Input
+            type="password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+          <Button
+            type="submit"
+            variant="secondary"
+            size="lg"
+            className="w-full justify-center"
+            disabled={loading || !email.trim() || !password}
+          >
+            {loading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Lock className="mr-2 h-4 w-4" />
+            )}
+            Iniciar sesión
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -223,11 +324,16 @@ function LoginForm() {
   );
 }
 
+function LoginRouter() {
+  const isAdmin = useIsAdminSubdomain();
+  return isAdmin ? <AdminLoginForm /> : <LoginForm />;
+}
+
 export default function LoginPage() {
   return (
     <PageTransition>
       <Suspense>
-        <LoginForm />
+        <LoginRouter />
       </Suspense>
     </PageTransition>
   );

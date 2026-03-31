@@ -41,6 +41,7 @@ import {
   type RoomLayout,
 } from "@/components/admin/room-layout-editor";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface City {
   id: string;
@@ -104,6 +105,7 @@ export default function AdminStudiosPage() {
   const [editingRoom, setEditingRoom] = useState<(RoomData & { studioId: string }) | null>(null);
   const [roomForStudio, setRoomForStudio] = useState<string>("");
   const [roomForm, setRoomForm] = useState({ name: "", classTypeIds: [] as string[], maxCapacity: "", layout: createEmptyLayout() as RoomLayout });
+  const [useLayout, setUseLayout] = useState(true);
 
   const [expandedStudio, setExpandedStudio] = useState<string | null>(null);
 
@@ -226,7 +228,9 @@ export default function AdminStudiosPage() {
   // Room mutations
   const createRoomMut = useMutation({
     mutationFn: async () => {
-      const capacity = roomForm.layout.spots.length || parseInt(roomForm.maxCapacity, 10) || 0;
+      const capacity = useLayout && roomForm.layout.spots.length > 0
+        ? roomForm.layout.spots.length
+        : parseInt(roomForm.maxCapacity, 10) || 0;
       const res = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -234,7 +238,7 @@ export default function AdminStudiosPage() {
           name: roomForm.name,
           classTypeIds: roomForm.classTypeIds,
           maxCapacity: capacity,
-          layout: roomForm.layout.spots.length > 0 ? roomForm.layout : null,
+          layout: useLayout && roomForm.layout.spots.length > 0 ? roomForm.layout : null,
           studioId: roomForStudio,
         }),
       });
@@ -257,7 +261,9 @@ export default function AdminStudiosPage() {
   const updateRoomMut = useMutation({
     mutationFn: async () => {
       if (!editingRoom) return;
-      const capacity = roomForm.layout.spots.length || parseInt(roomForm.maxCapacity, 10) || 0;
+      const capacity = useLayout && roomForm.layout.spots.length > 0
+        ? roomForm.layout.spots.length
+        : parseInt(roomForm.maxCapacity, 10) || 0;
       const res = await fetch(`/api/rooms/${editingRoom.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -265,7 +271,7 @@ export default function AdminStudiosPage() {
           name: roomForm.name,
           classTypeIds: roomForm.classTypeIds,
           maxCapacity: capacity,
-          layout: roomForm.layout.spots.length > 0 ? roomForm.layout : null,
+          layout: useLayout && roomForm.layout.spots.length > 0 ? roomForm.layout : null,
         }),
       });
       if (!res.ok) {
@@ -330,12 +336,15 @@ export default function AdminStudiosPage() {
     setEditingRoom(null);
     setRoomForStudio(studioId);
     setRoomForm({ name: "", classTypeIds: [], maxCapacity: "", layout: createEmptyLayout() });
+    setUseLayout(true);
     setRoomDialogOpen(true);
   }
 
   function openEditRoom(room: RoomData, studioId: string) {
     setEditingRoom({ ...room, studioId });
     setRoomForStudio(studioId);
+    const hasLayout = room.layout && room.layout.spots.length > 0;
+    setUseLayout(!!hasLayout);
     setRoomForm({
       name: room.name,
       classTypeIds: room.classTypes.map((ct) => ct.id),
@@ -763,32 +772,73 @@ export default function AdminStudiosPage() {
               </div>
             </div>
 
-            {/* Layout editor */}
-            <div className="space-y-2">
+            {/* Layout mode toggle */}
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-muted">
-                  Layout de la sala
+                  Distribución de la sala
                 </label>
-                {roomForm.layout.spots.length > 0 && (
-                  <span className="rounded-full bg-admin/10 px-2.5 py-0.5 text-[11px] font-semibold text-admin tabular-nums">
-                    {roomForm.layout.spots.length} lugares
-                    {!roomForm.layout.coachPosition && " · sin posición de coach"}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUseLayout(false)}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                      !useLayout ? "bg-admin/10 text-admin" : "text-muted hover:text-foreground",
+                    )}
+                  >
+                    Solo capacidad
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUseLayout(true)}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                      useLayout ? "bg-admin/10 text-admin" : "text-muted hover:text-foreground",
+                    )}
+                  >
+                    Con layout
+                  </button>
+                </div>
               </div>
-              <p className="text-[11px] text-muted">
-                Haz clic en las celdas para colocar lugares y la posición del coach. El lugar del coach no se puede reservar.
-              </p>
-              <RoomLayoutEditor
-                value={roomForm.layout}
-                onChange={(layout) =>
-                  setRoomForm((f) => ({
-                    ...f,
-                    layout,
-                    maxCapacity: String(layout.spots.length || f.maxCapacity),
-                  }))
-                }
-              />
+
+              {useLayout ? (
+                <div className="space-y-2">
+                  {roomForm.layout.spots.length > 0 && (
+                    <span className="rounded-full bg-admin/10 px-2.5 py-0.5 text-[11px] font-semibold text-admin tabular-nums">
+                      {roomForm.layout.spots.length} lugares
+                      {!roomForm.layout.coachPosition && " · sin posición de coach"}
+                    </span>
+                  )}
+                  <p className="text-[11px] text-muted">
+                    Haz clic en las celdas para colocar lugares y la posición del coach. El lugar del coach no se puede reservar.
+                  </p>
+                  <RoomLayoutEditor
+                    value={roomForm.layout}
+                    onChange={(layout) =>
+                      setRoomForm((f) => ({
+                        ...f,
+                        layout,
+                        maxCapacity: String(layout.spots.length || f.maxCapacity),
+                      }))
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted">Lugares máximos</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Ej: 20"
+                    value={roomForm.maxCapacity}
+                    onChange={(e) => setRoomForm((f) => ({ ...f, maxCapacity: e.target.value }))}
+                  />
+                  <p className="text-[11px] text-muted">
+                    Sin distribución visual. Los clientes reservan lugar sin seleccionar posición.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -804,7 +854,7 @@ export default function AdminStudiosPage() {
                 disabled={
                   !roomForm.name ||
                   roomForm.classTypeIds.length === 0 ||
-                  (roomForm.layout.spots.length === 0 && !roomForm.maxCapacity) ||
+                  (useLayout ? roomForm.layout.spots.length === 0 : !roomForm.maxCapacity) ||
                   roomSubmitting
                 }
                 onClick={handleRoomSubmit}

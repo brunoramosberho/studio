@@ -4,19 +4,26 @@ import { requireRole } from "@/lib/tenant";
 import { sendRoleInvitation } from "@/lib/email";
 
 export async function GET() {
-  const ctx = await requireRole("ADMIN");
+  try {
+    const ctx = await requireRole("ADMIN");
 
-  const memberships = await prisma.membership.findMany({
-    where: { tenantId: ctx.tenant.id, role: "ADMIN" },
-    include: {
-      user: { select: { id: true, name: true, email: true, image: true, createdAt: true } },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+    const memberships = await prisma.membership.findMany({
+      where: { tenantId: ctx.tenant.id, role: "ADMIN" },
+      include: {
+        user: { select: { id: true, name: true, email: true, image: true, createdAt: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
 
-  const admins = memberships.map((m) => m.user);
+    const admins = memberships.map((m) => m.user);
 
-  return NextResponse.json(admins);
+    return NextResponse.json(admins);
+  } catch (error) {
+    console.error("GET /api/admin/team error:", error);
+    const msg = error instanceof Error ? error.message : "Error";
+    const status = msg === "Unauthorized" ? 401 : msg === "Forbidden" ? 403 : 500;
+    return NextResponse.json({ error: msg }, { status });
+  }
 }
 
 export async function POST(request: NextRequest) {

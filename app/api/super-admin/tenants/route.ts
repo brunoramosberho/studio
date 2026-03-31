@@ -31,7 +31,7 @@ const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export async function POST(req: Request) {
   try {
-    await requireSuperAdmin();
+    const session = await requireSuperAdmin();
 
     const body = await req.json();
     const { slug, name } = body as { slug?: string; name?: string };
@@ -61,6 +61,17 @@ export async function POST(req: Request) {
     const tenant = await prisma.tenant.create({
       data: { slug, name },
     });
+
+    // Auto-create ADMIN membership for the super-admin who created the tenant
+    if (session.user?.id) {
+      await prisma.membership.create({
+        data: {
+          userId: session.user.id,
+          tenantId: tenant.id,
+          role: "ADMIN",
+        },
+      });
+    }
 
     return NextResponse.json(tenant, { status: 201 });
   } catch (e: unknown) {

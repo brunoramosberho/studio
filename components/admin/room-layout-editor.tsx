@@ -25,7 +25,7 @@ interface RoomLayoutEditorProps {
   onChange: (layout: RoomLayout) => void;
 }
 
-const MIN_SIZE = 2;
+const MIN_SIZE = 1;
 const MAX_SIZE = 10;
 
 export function RoomLayoutEditor({ value, onChange }: RoomLayoutEditorProps) {

@@ -68,10 +68,25 @@ async function ensureMembership(
   tenantId: string,
 ): Promise<Membership> {
   const existing = await getMembership(userId, tenantId);
-  if (existing) return existing;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isSuperAdmin: true },
+  });
+  const isSuperAdmin = user?.isSuperAdmin ?? false;
+
+  if (existing) {
+    if (isSuperAdmin && existing.role === "CLIENT") {
+      return prisma.membership.update({
+        where: { userId_tenantId: { userId, tenantId } },
+        data: { role: "ADMIN" },
+      });
+    }
+    return existing;
+  }
 
   return prisma.membership.create({
-    data: { userId, tenantId, role: "CLIENT" },
+    data: { userId, tenantId, role: isSuperAdmin ? "ADMIN" : "CLIENT" },
   });
 }
 
