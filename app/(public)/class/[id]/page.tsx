@@ -60,8 +60,10 @@ interface ClassData {
   };
   coach: {
     id: string;
+    userId: string;
     bio: string | null;
     specialties: string[];
+    photoUrl: string | null;
     user: { name: string | null; image: string | null };
   };
   bookings: { id: string; userId: string | null; spotNumber: number | null; status: string }[];
@@ -359,15 +361,26 @@ export default function ClassDetailPage() {
           </div>
         </div>
 
-        {/* Title + meta */}
-        <h1 className="font-display text-2xl font-bold text-foreground">
-          {cls.classType.name}
-          {cls.coach.user.name && (
-            <span className="font-normal text-muted">
-              {" "}con {cls.coach.user.name}
-            </span>
+        {/* Title + coach */}
+        <div className="flex items-center gap-3">
+          {(cls.coach.photoUrl || cls.coach.user.image) && (
+            <Link href={`/my/user/${cls.coach.userId}`}>
+              <img
+                src={cls.coach.photoUrl || cls.coach.user.image!}
+                alt={cls.coach.user.name || "Coach"}
+                className="h-11 w-11 rounded-full object-cover ring-2 ring-accent/20"
+              />
+            </Link>
           )}
-        </h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">
+            {cls.classType.name}
+            {cls.coach.user.name && (
+              <span className="font-normal text-muted">
+                {" "}con {cls.coach.user.name}
+              </span>
+            )}
+          </h1>
+        </div>
 
         <div className="mt-2 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted">

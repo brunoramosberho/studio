@@ -20,7 +20,10 @@ export async function GET(
         classType: true,
         room: { include: { studio: true } },
         coach: {
-          include: { user: { select: { name: true, image: true } } },
+          select: {
+            id: true, userId: true, bio: true, specialties: true, photoUrl: true, color: true, tenantId: true,
+            user: { select: { name: true, image: true } },
+          },
         },
         bookings: {
           where: { status: { in: ["CONFIRMED", "ATTENDED"] } },
