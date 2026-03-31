@@ -18,14 +18,15 @@ export function Hero() {
         <FadeDiv className="mx-auto">
           <a
             href="#pricing"
-            className="inline-flex max-w-full items-center gap-3 rounded-full bg-white/50 px-2.5 py-0.5 pr-3 pl-0.5 font-medium text-gray-900 ring-1 shadow-lg shadow-orange-400/20 ring-black/10 backdrop-blur-[1px] transition-colors hover:bg-orange-500/5 sm:text-sm"
+            className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/50 px-2 py-0.5 pr-3 pl-0.5 text-xs font-medium text-gray-900 ring-1 shadow-lg shadow-orange-400/20 ring-black/10 backdrop-blur-[1px] transition-colors hover:bg-orange-500/5 sm:gap-3 sm:px-2.5 sm:text-sm"
           >
-            <span className="shrink-0 truncate rounded-full border bg-gray-50 px-2.5 py-1 text-sm text-gray-600 sm:text-xs">
+            <span className="shrink-0 truncate rounded-full border bg-gray-50 px-2 py-0.5 text-[10px] text-gray-600 sm:px-2.5 sm:py-1 sm:text-xs">
               Nuevo
             </span>
             <span className="flex items-center gap-1 truncate">
               <span className="w-full truncate">
-                La plataforma todo-en-uno para estudios fitness
+                <span className="sm:hidden">Plataforma todo-en-uno</span>
+                <span className="hidden sm:inline">La plataforma todo-en-uno para estudios fitness</span>
               </span>
               <ArrowRight className="size-4 shrink-0 text-gray-700" />
             </span>
@@ -42,7 +43,7 @@ export function Hero() {
           <FadeSpan>Tu plataforma.</FadeSpan>
         </h1>
 
-        <p className="mt-5 max-w-xl text-center text-base text-balance text-gray-700 sm:mt-8 sm:text-xl">
+        <p className="mt-5 max-w-md text-center text-sm leading-relaxed text-balance text-gray-700 sm:mt-8 sm:max-w-xl sm:text-xl sm:leading-normal">
           <FadeSpan>Reservas, pagos, comunidad social, analytics con IA</FadeSpan>{" "}
           <FadeSpan>y una app white-label para tus miembros —</FadeSpan>{" "}
           <FadeSpan>todo en un solo lugar.</FadeSpan>

@@ -20,9 +20,9 @@ export function Showcase() {
           </p>
         </FadeIn>
 
-        <div className="mt-16 grid items-center gap-12 lg:grid-cols-3">
+        <div className="mt-16 grid items-center justify-items-center gap-12 lg:grid-cols-3">
           {/* Admin dashboard */}
-          <FadeIn delay={0.1}>
+          <FadeIn delay={0.1} className="max-w-sm mx-auto lg:max-w-none lg:mx-0">
             <div className="text-center lg:text-left">
               <span className="inline-block rounded-md bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-600">
                 Admin
@@ -41,7 +41,7 @@ export function Showcase() {
 
           {/* iPhone member app */}
           <FadeIn delay={0.2} className="flex justify-center">
-            <div>
+            <div className="flex flex-col items-center">
               <div className="mb-6 text-center">
                 <span className="inline-block rounded-md bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-600">
                   Miembros
@@ -65,7 +65,7 @@ export function Showcase() {
           </FadeIn>
 
           {/* Coach view */}
-          <FadeIn delay={0.3}>
+          <FadeIn delay={0.3} className="max-w-sm mx-auto lg:max-w-none lg:mx-0">
             <div className="text-center lg:text-left">
               <span className="inline-block rounded-md bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
                 Coach

@@ -80,35 +80,39 @@ export function Pricing() {
         </FadeIn>
 
         {/* Toggle */}
-        <FadeIn delay={0.1} className="mt-8 flex items-center justify-center gap-3">
-          <span className={cn("text-sm font-medium", !annual ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500")}>
-            Mensual
-          </span>
-          <button
-            onClick={() => setAnnual(!annual)}
-            className={cn(
-              "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
-              annual ? "bg-orange-500" : "bg-gray-200 dark:bg-gray-700",
-            )}
-          >
-            <motion.span
-              layout
-              className="inline-block h-5 w-5 rounded-full bg-white shadow-sm"
-              style={{ marginLeft: annual ? 26 : 2 }}
-            />
-          </button>
-          <span className={cn("text-sm font-medium", annual ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500")}>
-            Anual
-          </span>
-          {annual && (
-            <motion.span
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+        <FadeIn delay={0.1} className="mt-8 flex flex-col items-center gap-2">
+          <div className="flex items-center justify-center gap-3">
+            <span className={cn("text-sm font-medium", !annual ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500")}>
+              Mensual
+            </span>
+            <button
+              onClick={() => setAnnual(!annual)}
+              className={cn(
+                "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                annual ? "bg-orange-500" : "bg-gray-200 dark:bg-gray-700",
+              )}
             >
-              2 meses gratis
-            </motion.span>
-          )}
+              <motion.span
+                layout
+                className="inline-block h-5 w-5 rounded-full bg-white shadow-sm"
+                style={{ marginLeft: annual ? 26 : 2 }}
+              />
+            </button>
+            <span className={cn("text-sm font-medium", annual ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500")}>
+              Anual
+            </span>
+          </div>
+          <div className="h-5">
+            {annual && (
+              <motion.span
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+              >
+                2 meses gratis
+              </motion.span>
+            )}
+          </div>
         </FadeIn>
 
         {/* Cards */}
