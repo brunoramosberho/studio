@@ -93,7 +93,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [locValue, setLocValue] = useState("");
   const [locSaving, setLocSaving] = useState(false);
   const [locSaved, setLocSaved] = useState(false);
-  const LOC_NONE = "__none__";
 
   useEffect(() => {
     let cancelled = false;
@@ -116,9 +115,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [session?.user]);
 
   async function handleLocChange(val: string) {
-    const normalized = val === LOC_NONE ? "" : val;
-    setLocValue(normalized);
-    const [countryId, cityId] = normalized.split("|");
+    setLocValue(val);
+    const [countryId, cityId] = val.split("|");
     setLocSaving(true);
     setLocSaved(false);
     try {
@@ -139,12 +137,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const locationPicker = locations.length > 0 ? (
     <div className="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
       <MapPin className="h-3.5 w-3.5 shrink-0 text-admin/60" />
-      <Select value={locValue || LOC_NONE} onValueChange={handleLocChange}>
+      <Select value={locValue} onValueChange={handleLocChange}>
         <SelectTrigger className="h-auto min-w-0 flex-1 border-0 px-0 py-0 text-xs font-medium">
           <SelectValue placeholder="Seleccionar ubicación" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={LOC_NONE}>Seleccionar ubicación</SelectItem>
+          <SelectItem value="">Seleccionar ubicación</SelectItem>
           {locations.map((c) =>
             c.cities.map((city) => (
               <SelectItem key={city.id} value={`${c.id}|${city.id}`}>
