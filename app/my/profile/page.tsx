@@ -12,7 +12,6 @@ import {
   Ticket,
   Package,
   UserPen,
-  ShieldCheck,
   Music,
   X,
   MapPin,
@@ -30,6 +29,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
 import { LoyaltyTierBadge } from "@/components/profile/loyalty-tier-badge";
 import { LoyaltyLevelAvatarPin } from "@/components/profile/loyalty-level-avatar-pin";
+import { ActivityCalendar } from "@/components/profile/activity-calendar";
 import { cn } from "@/lib/utils";
 
 interface UserPackageInfo {
@@ -404,47 +404,49 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
-        {/* Credits card */}
+        {/* Credits card — taps through to /my/packages */}
         <motion.div custom={1} variants={fadeUp} initial="hidden" animate="show">
-          <Card className="overflow-hidden border-accent/20 bg-gradient-to-br from-accent/5 to-accent/10">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                    Clases disponibles
-                  </p>
-                  <p className="mt-1 font-display text-3xl font-bold text-foreground">
-                    {loadingPkgs ? (
-                      <Loader2 className="h-6 w-6 animate-spin text-muted" />
-                    ) : creditsLeft === -1 ? (
-                      "Ilimitado"
-                    ) : (
-                      creditsLeft
-                    )}
-                  </p>
-                  {soonestPackage && (
-                    <p className="mt-0.5 text-[12px] text-muted">
-                      {activePackages.length === 1
-                        ? `${soonestPackage.package.name} · Expira `
-                        : `${activePackages.length} paquetes · Próx. expira `}
-                      {new Date(soonestPackage.expiresAt).toLocaleDateString(
-                        "es-MX",
-                        { day: "numeric", month: "short" },
+          <Link href="/my/packages" className="block">
+            <Card className="overflow-hidden border-accent/20 bg-gradient-to-br from-accent/5 to-accent/10 transition-shadow active:shadow-none">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted">
+                      Clases disponibles
+                    </p>
+                    <p className="mt-1 font-display text-3xl font-bold text-foreground">
+                      {loadingPkgs ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-muted" />
+                      ) : creditsLeft === -1 ? (
+                        "Ilimitado"
+                      ) : (
+                        creditsLeft
                       )}
                     </p>
-                  )}
-                  {!loadingPkgs && !soonestPackage && (
-                    <p className="mt-0.5 text-[12px] text-muted">
-                      Sin paquete activo
-                    </p>
-                  )}
+                    {soonestPackage && (
+                      <p className="mt-0.5 text-[12px] text-muted">
+                        {activePackages.length === 1
+                          ? `${soonestPackage.package.name} · Expira `
+                          : `${activePackages.length} paquetes · Próx. expira `}
+                        {new Date(soonestPackage.expiresAt).toLocaleDateString(
+                          "es-MX",
+                          { day: "numeric", month: "short" },
+                        )}
+                      </p>
+                    )}
+                    {!loadingPkgs && !soonestPackage && (
+                      <p className="mt-0.5 text-[12px] text-muted">
+                        Sin paquete activo
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/15">
+                    <Ticket className="h-6 w-6 text-accent" />
+                  </div>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/15">
-                  <Ticket className="h-6 w-6 text-accent" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         </motion.div>
 
         {/* Level: metallic badge + progress */}
@@ -514,6 +516,11 @@ export default function ProfilePage() {
             </div>
           </motion.div>
         )}
+
+        {/* Activity calendar — Strava style */}
+        <motion.div custom={2.5} variants={fadeUp} initial="hidden" animate="show">
+          <ActivityCalendar />
+        </motion.div>
 
         {/* Achievements */}
         {gamification && gamification.achievements.length > 0 && (() => {
@@ -874,18 +881,6 @@ export default function ProfilePage() {
             <ChevronRight className="h-4 w-4 text-muted" />
           </Link>
 
-          <Link
-            href="/my/packages"
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 transition-colors active:bg-surface"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
-              <ShieldCheck className="h-4 w-4 text-foreground" />
-            </div>
-            <span className="flex-1 text-[15px] font-medium text-foreground">
-              Mis paquetes
-            </span>
-            <ChevronRight className="h-4 w-4 text-muted" />
-          </Link>
         </motion.div>
 
         <Separator />
