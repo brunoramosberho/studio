@@ -4,13 +4,27 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Calendar, ArrowRight, Users, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { SocialFeed } from "@/components/feed/social-feed";
+import { useBranding } from "@/components/branding-provider";
 import { useQuery } from "@tanstack/react-query";
+
+interface FeedHeaderData {
+  hasActiveMembership: boolean;
+  level: { name: string; icon: string; sortOrder: number } | null;
+}
 
 export default function DashboardPage() {
   const { data: session } = useSession();
+  const { colorFg } = useBranding();
   const firstName = session?.user?.name?.split(" ")[0] ?? "";
+  const initials = (session?.user?.name ?? "")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   const { data: notifData } = useQuery<{ unreadCount: number }>({
     queryKey: ["notifications"],
@@ -23,20 +37,67 @@ export default function DashboardPage() {
   });
   const unreadCount = notifData?.unreadCount ?? 0;
 
+  const { data: headerData } = useQuery<FeedHeaderData>({
+    queryKey: ["feed-header"],
+    queryFn: async () => {
+      const res = await fetch("/api/gamification/me");
+      if (!res.ok) return { hasActiveMembership: false, level: null };
+      const data = await res.json();
+      return {
+        hasActiveMembership: data.hasActiveMembership ?? false,
+        level: data.level ?? null,
+      };
+    },
+    enabled: !!session?.user,
+  });
+
+  const hasRing = headerData?.hasActiveMembership ?? false;
+  const level = headerData?.level ?? null;
+  const showBadge = level && level.sortOrder > 1;
+
   return (
     <PageTransition>
       <div className="mx-auto max-w-xl space-y-5 pb-24">
         {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="font-display text-2xl font-bold text-foreground md:text-3xl">
+        <div className="flex items-center gap-3">
+          {/* Avatar with membership ring + level badge */}
+          <Link href="/my/profile" className="relative shrink-0">
+            <div className="relative h-10 w-10">
+              {hasRing && (
+                <span
+                  className="absolute -inset-[3px] rounded-full"
+                  style={{ border: `2.5px solid ${colorFg}` }}
+                />
+              )}
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={session?.user?.image || undefined} alt={session?.user?.name ?? ""} />
+                <AvatarFallback
+                  className="text-xs font-bold text-white"
+                  style={{ backgroundColor: colorFg }}
+                >
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              {showBadge && (
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] leading-none shadow-sm ring-[1.5px] ring-white">
+                  {level.icon}
+                </span>
+              )}
+            </div>
+          </Link>
+
+          {/* Greeting */}
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate font-display text-lg font-bold text-foreground">
               {firstName ? `Hola, ${firstName}` : "Feed"}
             </h1>
-            <p className="mt-0.5 text-sm text-muted">
+            <p className="text-xs text-muted">
               Actividad de la comunidad
             </p>
           </div>
-          <div className="flex items-center gap-1">
+
+          {/* Icons */}
+          <div className="flex shrink-0 items-center gap-0.5">
             <Link
               href="/my/friends"
               className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors active:bg-surface"

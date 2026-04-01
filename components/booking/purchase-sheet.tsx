@@ -61,6 +61,9 @@ export function PurchaseSheet({
     setStep("processing");
 
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30_000);
+
       const res = await fetch("/api/packages/purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -68,7 +71,10 @@ export function PurchaseSheet({
           packageId: pkg.id,
           ...(!isLoggedIn && { email: guestEmail, name: guestName }),
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       const data = await res.json();
 
@@ -79,11 +85,19 @@ export function PurchaseSheet({
         return;
       }
 
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+
       setStep("done");
       queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
       onSuccess?.();
-    } catch {
-      setError("Error de conexión");
+    } catch (err) {
+      const msg = err instanceof DOMException && err.name === "AbortError"
+        ? "La solicitud tardó demasiado. Intenta de nuevo."
+        : "Error de conexión";
+      setError(msg);
       setStep(isLoggedIn ? "confirm" : "guest");
     } finally {
       setLoading(false);

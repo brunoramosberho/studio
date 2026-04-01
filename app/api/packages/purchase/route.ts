@@ -15,12 +15,10 @@ export async function POST(request: NextRequest) {
     }
 
     const tenant = await requireTenant();
-    let session: Awaited<ReturnType<typeof requireAuth>>["session"] | null = null;
     let userId: string | null = null;
 
     try {
       const ctx = await requireAuth();
-      session = ctx.session;
       userId = ctx.session.user!.id!;
     } catch {
       // Guest purchase allowed
@@ -57,21 +55,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Stripe checkout (if configured)
-    if (userId && process.env.STRIPE_SECRET_KEY) {
-      const { createCheckoutSession } = await import("@/lib/stripe");
-      const origin = request.nextUrl.origin;
-      const checkoutSession = await createCheckoutSession({
-        packageId: pkg.id,
-        packageName: pkg.name,
-        price: pkg.price,
-        userId,
-        tenantId: tenant.id,
-        successUrl: `${origin}/packages/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${origin}/packages`,
-      });
-      return NextResponse.json({ url: checkoutSession.url });
-    }
+    // TODO: Stripe checkout — re-enable when STRIPE_SECRET_KEY is properly configured
+    // const stripeKey = process.env.STRIPE_SECRET_KEY;
+    // if (userId && stripeKey && stripeKey.startsWith("sk_")) {
+    //   const { createCheckoutSession } = await import("@/lib/stripe");
+    //   const origin = request.nextUrl.origin;
+    //   const checkoutSession = await createCheckoutSession({ ... });
+    //   return NextResponse.json({ url: checkoutSession.url });
+    // }
 
     // Resolve user
     let finalUserId = userId;

@@ -9,7 +9,7 @@ export async function GET() {
     const userId = session.user.id;
     const tenantId = tenant.id;
 
-    const [progress, levels, achievements, rewards] = await Promise.all([
+    const [progress, levels, achievements, rewards, activeSub] = await Promise.all([
       prisma.memberProgress.findUnique({
         where: { userId_tenantId: { userId, tenantId } },
         include: { currentLevel: true },
@@ -23,6 +23,15 @@ export async function GET() {
       prisma.memberReward.findMany({
         where: { userId, tenantId, consumedAt: null },
         orderBy: { appliedAt: "desc" },
+      }),
+      prisma.userPackage.findFirst({
+        where: {
+          userId,
+          tenantId,
+          expiresAt: { gt: new Date() },
+          package: { type: "SUBSCRIPTION" },
+        },
+        select: { id: true },
       }),
     ]);
 
@@ -58,6 +67,7 @@ export async function GET() {
           : 0;
 
     return NextResponse.json({
+      hasActiveMembership: !!activeSub,
       level: currentLevel
         ? {
             id: currentLevel.id,
