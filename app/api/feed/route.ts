@@ -205,6 +205,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Check which CLASS_COMPLETED classes have playlists
+    const completedClassIds = items
+      .filter((e) => e.eventType === "CLASS_COMPLETED")
+      .map((e) => (e.payload as Record<string, unknown>)?.classId as string)
+      .filter(Boolean);
+
+    const playlistCounts = new Set<string>();
+    if (completedClassIds.length > 0) {
+      const withPlaylist = await prisma.classPlaylistTrack.groupBy({
+        by: ["classId"],
+        where: { classId: { in: completedClassIds } },
+      });
+      for (const row of withPlaylist) playlistCounts.add(row.classId);
+    }
+
     for (const event of items) {
       const payload = event.payload as Record<string, unknown> | null;
       const classId = payload?.classId as string | undefined;
@@ -220,6 +235,9 @@ export async function GET(request: NextRequest) {
           payload.classTypeDuration = ct.duration;
           payload.classTypeLevel = ct.level;
           payload.classTypeId = ct.classTypeId;
+        }
+        if (event.eventType === "CLASS_COMPLETED") {
+          payload.hasPlaylist = playlistCounts.has(classId);
         }
       }
     }

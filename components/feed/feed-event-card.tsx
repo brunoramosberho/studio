@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Dumbbell, Instagram } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { ArrowRight, Dumbbell, Instagram, ListMusic, Music, ChevronUp } from "lucide-react";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AchievementIllustration } from "./achievement-badge";
@@ -169,12 +170,48 @@ function AttendeesRow({
   );
 }
 
+interface PlaylistTrackItem {
+  id: string;
+  title: string;
+  artist: string;
+  albumArt: string | null;
+}
+
 function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { onOpenDiscipline?: () => void }) {
   const p = event.payload;
   const attendees = (p.attendees as Attendee[]) ?? [];
   const caption = (p.caption as string) ?? null;
   const [media, setMedia] = useState<MediaItem[]>(event.photos ?? []);
   const [showPeople, setShowPeople] = useState(false);
+
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
+  const hasPlaylist = p.hasPlaylist === true;
+  const userAttended = currentUserId ? attendees.some((a) => a.id === currentUserId) : false;
+  const canSeePlaylist = hasPlaylist && userAttended;
+
+  const [playlistOpen, setPlaylistOpen] = useState(false);
+  const [playlistTracks, setPlaylistTracks] = useState<PlaylistTrackItem[]>([]);
+  const [playlistLoading, setPlaylistLoading] = useState(false);
+
+  const handleTogglePlaylist = async () => {
+    if (playlistOpen) {
+      setPlaylistOpen(false);
+      return;
+    }
+    setPlaylistOpen(true);
+    if (playlistTracks.length > 0) return;
+    setPlaylistLoading(true);
+    try {
+      const classId = p.classId as string;
+      const res = await fetch(`/api/classes/${classId}/playlist`);
+      if (res.ok) {
+        const data = await res.json();
+        setPlaylistTracks(data);
+      }
+    } catch { /* ignore */ }
+    setPlaylistLoading(false);
+  };
 
   const peopleList: PersonItem[] = attendees.map((a) => ({
     id: a.id,
@@ -243,6 +280,62 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
           }
         />
       </div>
+
+      {/* Playlist (only for attendees) */}
+      {canSeePlaylist && (
+        <div className="px-4 pb-2">
+          <button
+            onClick={handleTogglePlaylist}
+            className="flex w-full items-center gap-2 rounded-xl bg-green-50 px-3.5 py-2.5 text-left transition-colors hover:bg-green-100/70"
+          >
+            <ListMusic className="h-4 w-4 text-green-600" />
+            <span className="flex-1 text-[13px] font-medium text-green-800">
+              Ver playlist de la clase
+            </span>
+            <ChevronUp className={cn(
+              "h-4 w-4 text-green-600 transition-transform",
+              !playlistOpen && "rotate-180",
+            )} />
+          </button>
+          {playlistOpen && (
+            <div className="mt-2 space-y-1 rounded-xl border border-green-100 bg-white p-2">
+              {playlistLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-300 border-t-green-600" />
+                </div>
+              ) : playlistTracks.length === 0 ? (
+                <p className="py-3 text-center text-xs text-muted">Sin canciones</p>
+              ) : (
+                playlistTracks.map((track, idx) => (
+                  <div
+                    key={track.id}
+                    className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-green-50/50"
+                  >
+                    <span className="w-4 text-center text-[11px] font-medium text-muted/50">
+                      {idx + 1}
+                    </span>
+                    {track.albumArt ? (
+                      <img
+                        src={track.albumArt}
+                        alt={track.title}
+                        className="h-8 w-8 shrink-0 rounded-md object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-green-50">
+                        <Music className="h-3.5 w-3.5 text-green-600" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-medium text-foreground">{track.title}</p>
+                      <p className="truncate text-[11px] text-muted">{track.artist}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Attendees */}
       {attendees.length > 0 && (

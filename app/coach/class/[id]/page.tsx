@@ -13,6 +13,8 @@ import {
   Save,
   Loader2,
   Music,
+  ListMusic,
+  Trash2,
   ChevronDown,
   Star,
   Sparkles,
@@ -37,6 +39,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MediaGallery } from "@/components/feed/media-gallery";
 import { cn, formatDate, formatTime } from "@/lib/utils";
+import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
 import type { ClassWithDetails, BookingStatus } from "@/types";
 
 interface FavoriteSong {
@@ -109,6 +112,15 @@ interface ClassFeedData {
     likeCount: number;
     liked: boolean;
   } | null;
+}
+
+interface PlaylistTrack {
+  id: string;
+  title: string;
+  artist: string;
+  albumArt: string | null;
+  spotifyTrackId: string | null;
+  position: number;
 }
 
 interface CompleteResponse {
@@ -259,6 +271,45 @@ export default function ClassRosterPage() {
       return res.json();
     },
     enabled: !!id && songRequestsEnabled,
+  });
+
+  const { data: playlistTracks = [], refetch: refetchPlaylist } = useQuery<PlaylistTrack[]>({
+    queryKey: ["class-playlist", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/classes/${id}/playlist`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
+  const addTrackMutation = useMutation({
+    mutationFn: async (track: SpotifyTrack) => {
+      const res = await fetch(`/api/classes/${id}/playlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: track.name,
+          artist: track.artist,
+          spotifyTrackId: track.trackId,
+          albumArt: track.albumArt,
+          previewUrl: track.previewUrl,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to add track");
+      return res.json();
+    },
+    onSuccess: () => refetchPlaylist(),
+  });
+
+  const removeTrackMutation = useMutation({
+    mutationFn: async (trackId: string) => {
+      const res = await fetch(`/api/classes/${id}/playlist?trackId=${trackId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed");
+    },
+    onSuccess: () => refetchPlaylist(),
   });
 
   const isPastClass = classData ? new Date(classData.endsAt) < new Date() : false;
@@ -555,6 +606,68 @@ export default function ClassRosterPage() {
                 {capacity - enrolled} lugares disponibles
               </span>
             </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ─── PLAYLIST ─── */}
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+        <Card className="border-green-200/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ListMusic className="h-4 w-4 text-green-600" />
+              Playlist de la clase
+            </CardTitle>
+            <p className="text-xs text-muted">
+              {playlistTracks.length > 0
+                ? `${playlistTracks.length} canción${playlistTracks.length !== 1 ? "es" : ""}`
+                : "Agrega canciones que sonarán en la clase"}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-0">
+            {playlistTracks.length > 0 && (
+              <div className="space-y-1.5">
+                {playlistTracks.map((track, idx) => (
+                  <div
+                    key={track.id}
+                    className="flex items-center gap-2.5 rounded-lg bg-green-50/60 px-3 py-2"
+                  >
+                    <span className="w-5 text-center text-xs font-medium text-muted/60">
+                      {idx + 1}
+                    </span>
+                    {track.albumArt ? (
+                      <img
+                        src={track.albumArt}
+                        alt={track.title}
+                        className="h-9 w-9 shrink-0 rounded-md object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-green-100">
+                        <Music className="h-4 w-4 text-green-600" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{track.title}</p>
+                      <p className="truncate text-xs text-muted">{track.artist}</p>
+                    </div>
+                    <button
+                      onClick={() => removeTrackMutation.mutate(track.id)}
+                      disabled={removeTrackMutation.isPending}
+                      className="shrink-0 rounded-full p-1.5 text-muted/50 transition-colors hover:bg-red-50 hover:text-red-500"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <SpotifyTrackPicker
+              onConfirm={async (track) => { await addTrackMutation.mutateAsync(track); }}
+              isSubmitting={addTrackMutation.isPending}
+              confirmLabel="Agregar a playlist"
+              searchPlaceholder="Buscar canción para la playlist..."
+            />
           </CardContent>
         </Card>
       </motion.div>

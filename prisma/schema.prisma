@@ -281,6 +281,7 @@ model Class {
   songRequests         ClassSongRequest[]
   songRequestsEnabled  Boolean   @default(true)
   songRequestCriteria  String[]  @default(["ALL"])
+  playlistTracks       ClassPlaylistTrack[]
 
   @@index([startsAt])
   @@index([classTypeId])
@@ -314,6 +315,21 @@ model ClassSongRequest {
   @@unique([classId, userId])
   @@index([classId])
   @@index([tenantId])
+}
+
+model ClassPlaylistTrack {
+  id             String   @id @default(cuid())
+  classId        String
+  class          Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  title          String
+  artist         String
+  spotifyTrackId String?
+  albumArt       String?
+  previewUrl     String?
+  position       Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([classId])
 }
 
 model Booking {
