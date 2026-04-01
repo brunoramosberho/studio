@@ -26,26 +26,53 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const cursor = searchParams.get("cursor");
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 50);
-    const filter = searchParams.get("filter");
 
-    // Get user's city to scope feed geographically
+    // Parallel: user city, total attended classes, and tenant disciplines
     let userCityId: string | null = null;
-    if (currentUserId) {
-      const userLoc = await prisma.user.findUnique({
-        where: { id: currentUserId },
-        select: { cityId: true },
-      });
-      userCityId = userLoc?.cityId ?? null;
-    }
+    let totalClasses = 0;
+
+    const [userLoc, memberProgress, disciplines] = await Promise.all([
+      currentUserId
+        ? prisma.user.findUnique({
+            where: { id: currentUserId },
+            select: { cityId: true },
+          })
+        : null,
+      currentUserId
+        ? prisma.memberProgress.findUnique({
+            where: { userId_tenantId: { userId: currentUserId, tenantId: tenant.id } },
+            select: { totalClassesAttended: true },
+          })
+        : null,
+      prisma.classType.findMany({
+        where: { tenantId: tenant.id },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          color: true,
+          icon: true,
+          mediaUrl: true,
+          tags: true,
+          duration: true,
+          level: true,
+        },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+
+    userCityId = userLoc?.cityId ?? null;
+    totalClasses = memberProgress?.totalClassesAttended ?? 0;
 
     let whereClause: Record<string, unknown> = { tenantId: tenant.id, visibility: "STUDIO_WIDE" };
 
-    if (filter === "friends" && currentUserId) {
+    if (currentUserId) {
       const friendIds = await getFriendIds(currentUserId, tenant.id);
       const friendAndSelf = [...friendIds, currentUserId];
       whereClause = {
         tenantId: tenant.id,
         OR: [
+          // Friends + self: show everything
           {
             userId: { in: friendAndSelf },
             OR: [
@@ -53,22 +80,10 @@ export async function GET(request: NextRequest) {
               { visibility: "FRIENDS_ONLY" },
             ],
           },
-          {
-            eventType: "CLASS_COMPLETED",
-            visibility: "STUDIO_WIDE",
-          },
-        ],
-      };
-    } else if (currentUserId) {
-      const friendIds = await getFriendIds(currentUserId, tenant.id);
-      whereClause = {
-        tenantId: tenant.id,
-        OR: [
-          { visibility: "STUDIO_WIDE" },
-          {
-            visibility: "FRIENDS_ONLY",
-            userId: { in: [...friendIds, currentUserId] },
-          },
+          // CLASS_COMPLETED always visible (studio-wide class summaries)
+          { eventType: "CLASS_COMPLETED", visibility: "STUDIO_WIDE" },
+          // STUDIO_POST always visible (studio announcements)
+          { eventType: "STUDIO_POST", visibility: "STUDIO_WIDE" },
         ],
       };
     }
@@ -101,23 +116,6 @@ export async function GET(request: NextRequest) {
       filtered = filtered.filter(
         (e) => !(e.eventType === "CLASS_RESERVED" && e.userId === currentUserId),
       );
-    }
-
-    if (filter === "friends" && currentUserId) {
-      const friendIds = await getFriendIds(currentUserId, tenant.id);
-      const friendAndSelf = new Set([...friendIds, currentUserId]);
-
-      filtered = filtered.filter((event) => {
-        if (friendAndSelf.has(event.userId)) return true;
-
-        if (event.eventType === "CLASS_COMPLETED") {
-          const payload = event.payload as Record<string, unknown> | null;
-          const attendees = (payload?.attendees ?? []) as { id: string }[];
-          return attendees.some((a) => friendAndSelf.has(a.id));
-        }
-
-        return false;
-      });
     }
 
     const hasMore = filtered.length > limit;
@@ -387,7 +385,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ feed, nextCursor });
+    return NextResponse.json({ feed, nextCursor, totalClasses, disciplines });
   } catch (error) {
     console.error("GET /api/feed error:", error);
     return NextResponse.json(

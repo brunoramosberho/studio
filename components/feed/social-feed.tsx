@@ -1,11 +1,11 @@
 "use client";
 
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useCallback, useRef, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { FeedEventCard } from "./feed-event-card";
 import { FeedPwaHint } from "./feed-pwa-hint";
+import { DiscoverDisciplines } from "./discover-disciplines";
 import { Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface FeedItem {
   id: string;
@@ -23,21 +23,32 @@ interface FeedItem {
   studioName?: string;
 }
 
+interface DisciplineItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  color: string;
+  icon?: string | null;
+  mediaUrl?: string | null;
+  tags: string[];
+  duration: number;
+  level: string;
+}
+
 interface FeedPage {
   feed: FeedItem[];
   nextCursor: string | null;
+  totalClasses?: number;
+  disciplines?: DisciplineItem[];
 }
 
 async function fetchFeed({
   pageParam,
-  filter,
 }: {
   pageParam: string | null;
-  filter: string;
 }): Promise<FeedPage> {
   const url = new URL("/api/feed", window.location.origin);
   url.searchParams.set("limit", "20");
-  if (filter !== "all") url.searchParams.set("filter", filter);
   if (pageParam) url.searchParams.set("cursor", pageParam);
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error("Failed to fetch feed");
@@ -72,37 +83,27 @@ function FeedSkeleton() {
   );
 }
 
-function EmptyFeed({ filter }: { filter: string }) {
+function EmptyFeed() {
   return (
     <div className="flex flex-col items-center py-16 text-center">
-      <span className="text-4xl">{filter === "friends" ? "👋" : "🏠"}</span>
+      <span className="text-4xl">👋</span>
       <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
-        {filter === "friends"
-          ? "Sin actividad de amigos"
-          : "El feed está vacío"}
+        El feed está vacío
       </h3>
       <p className="mt-1 max-w-xs text-sm text-muted">
-        {filter === "friends"
-          ? "Agrega amigos para ver sus reservas y logros aquí."
-          : "Aquí aparecerán las actividades del estudio cuando se completen clases y se desbloqueen logros."}
+        Agrega amigos para ver sus reservas y logros aquí. Las clases completadas del estudio también aparecerán.
       </p>
     </div>
   );
 }
 
-const filterTabs = [
-  { key: "all", label: "Todos" },
-  { key: "friends", label: "Amigos" },
-];
-
 export function SocialFeed() {
-  const [filter, setFilter] = useState("all");
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["feed", filter],
-      queryFn: ({ pageParam }) => fetchFeed({ pageParam, filter }),
+      queryKey: ["feed"],
+      queryFn: ({ pageParam }) => fetchFeed({ pageParam }),
       initialPageParam: null as string | null,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       staleTime: 30_000,
@@ -128,33 +129,23 @@ export function SocialFeed() {
   }, [handleIntersect]);
 
   const allEvents = data?.pages.flatMap((p) => p.feed) ?? [];
+  const firstPage = data?.pages[0];
+  const totalClasses = firstPage?.totalClasses ?? 0;
+  const disciplines = firstPage?.disciplines ?? [];
+  const showDiscover = totalClasses < 5 && disciplines.length > 0;
 
   return (
     <div className="space-y-4">
       <FeedPwaHint />
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 rounded-xl bg-surface p-1">
-        {filterTabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setFilter(tab.key)}
-            className={cn(
-              "flex-1 rounded-lg py-2 text-[13px] font-medium transition-all",
-              filter === tab.key
-                ? "bg-white text-foreground shadow-sm"
-                : "text-muted hover:text-foreground",
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {showDiscover && !isLoading && (
+        <DiscoverDisciplines disciplines={disciplines} />
+      )}
 
       {isLoading ? (
         <FeedSkeleton />
       ) : allEvents.length === 0 ? (
-        <EmptyFeed filter={filter} />
+        <EmptyFeed />
       ) : (
         <div className="-mx-4 sm:mx-0">
           <div className="space-y-2 sm:space-y-4">
