@@ -32,6 +32,7 @@ import { LoyaltyTierBadge } from "@/components/profile/loyalty-tier-badge";
 import { LoyaltyLevelAvatarPin } from "@/components/profile/loyalty-level-avatar-pin";
 import { ActivityCalendar } from "@/components/profile/activity-calendar";
 import { cn } from "@/lib/utils";
+import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
 
 interface UserPackageInfo {
   id: string;
@@ -832,13 +833,19 @@ export default function ProfilePage() {
                       <label className="text-xs font-medium uppercase tracking-wider text-muted">
                         Teléfono
                       </label>
-                      <Input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+52 55 1234 5678"
-                        className="mt-1.5"
-                      />
+                      <div className="mt-1.5">
+                        <PhoneInput
+                          value={phone}
+                          onChange={setPhone}
+                          defaultCountry="ES"
+                          placeholder="612 345 678"
+                        />
+                        {phone && !isValidPhoneNumber(phone) && (
+                          <p className="mt-1 text-[11px] text-destructive">
+                            Número de teléfono inválido
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs font-medium uppercase tracking-wider text-muted">
@@ -876,7 +883,7 @@ export default function ProfilePage() {
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={saving || !name.trim()}
+                      disabled={saving || !name.trim() || (!!phone && !isValidPhoneNumber(phone))}
                       className="w-full"
                     >
                       {saving ? (
