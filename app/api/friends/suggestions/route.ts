@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
+import { getUsersAvatarMeta, withAvatarMeta } from "@/lib/user-avatar-meta";
 
 export async function GET() {
   const { session, tenant } = await requireAuth();
@@ -80,5 +81,11 @@ export async function GET() {
     }))
     .sort((a, b) => b.mutualClasses - a.mutualClasses || (a.name ?? "").localeCompare(b.name ?? ""));
 
-  return NextResponse.json(suggestions);
+  const avatarMeta = await getUsersAvatarMeta(
+    suggestions.map((s) => s.id),
+    tenant.id,
+  );
+  const enriched = suggestions.map((s) => withAvatarMeta(s, avatarMeta));
+
+  return NextResponse.json(enriched);
 }

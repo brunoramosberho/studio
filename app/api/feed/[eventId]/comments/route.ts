@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, requireAuth } from "@/lib/tenant";
 import { sendPushToUser } from "@/lib/push";
+import { getUsersAvatarMeta, withAvatarMeta } from "@/lib/user-avatar-meta";
 
 export async function GET(
   _request: NextRequest,
@@ -19,7 +20,14 @@ export async function GET(
       },
     });
 
-    return NextResponse.json(comments);
+    const userIds = comments.map((c) => c.user.id);
+    const avatarMeta = await getUsersAvatarMeta(userIds, tenant.id);
+    const enriched = comments.map((c) => ({
+      ...c,
+      user: withAvatarMeta(c.user, avatarMeta),
+    }));
+
+    return NextResponse.json(enriched);
   } catch (error) {
     console.error("GET /api/feed/[eventId]/comments error:", error);
     return NextResponse.json(

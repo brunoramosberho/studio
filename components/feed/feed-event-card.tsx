@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { ArrowRight, Dumbbell, Instagram, ListMusic, Music, ChevronUp } from "lucide-react";
 import { getIconComponent } from "@/components/admin/icon-picker";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { AchievementIllustration } from "./achievement-badge";
 import { LikeButton } from "./like-button";
 import { CommentsSheet } from "./comments-sheet";
@@ -20,6 +20,8 @@ interface Attendee {
   id: string;
   name: string;
   image: string | null;
+  hasActiveMembership?: boolean;
+  level?: string | null;
 }
 
 interface MediaItem {
@@ -34,14 +36,14 @@ interface FeedItem {
   eventType: string;
   payload: Record<string, unknown>;
   createdAt: string;
-  user: { id: string; name: string | null; image: string | null };
+  user: { id: string; name: string | null; image: string | null; hasActiveMembership?: boolean; level?: string | null };
   photos: MediaItem[];
   likeCount: number;
   commentCount: number;
   liked: boolean;
   isPinned?: boolean;
   currentUserBooked?: boolean;
-  reservedBy?: { id: string; name: string | null; image: string | null }[];
+  reservedBy?: { id: string; name: string | null; image: string | null; hasActiveMembership?: boolean; level?: string | null }[];
   studioName?: string;
 }
 
@@ -92,19 +94,17 @@ function DisciplinePill({
 
 function TappableAvatar({
   user,
-  className,
+  size = 40,
 }: {
-  user: { id: string; name?: string | null; image?: string | null };
-  className?: string;
+  user: { id: string; name?: string | null; image?: string | null; hasActiveMembership?: boolean; level?: string | null };
+  size?: number;
 }) {
   return (
     <Link href={`/my/user/${user.id}`} className="shrink-0">
-      <Avatar className={cn("h-10 w-10", className)}>
-        {user.image && <AvatarImage src={user.image} />}
-        <AvatarFallback className="text-xs font-medium">
-          {user.name?.charAt(0)}
-        </AvatarFallback>
-      </Avatar>
+      <UserAvatar
+        user={user as UserAvatarUser}
+        size={size}
+      />
     </Link>
   );
 }
@@ -112,27 +112,25 @@ function TappableAvatar({
 function TappableGroupAvatars({
   users,
   onTapGroup,
-  avatarSize = "h-9 w-9",
+  size = 36,
 }: {
-  users: { id: string; name?: string | null; image?: string | null }[];
+  users: { id: string; name?: string | null; image?: string | null; hasActiveMembership?: boolean; level?: string | null }[];
   onTapGroup: () => void;
-  avatarSize?: string;
+  size?: number;
 }) {
   if (users.length === 1) {
-    return (
-      <TappableAvatar user={users[0]} className={avatarSize} />
-    );
+    return <TappableAvatar user={users[0]} size={size} />;
   }
 
   return (
     <button className="flex -space-x-2" onClick={onTapGroup}>
       {users.slice(0, 3).map((u) => (
-        <Avatar key={u.id} className={cn(avatarSize, "border-2 border-white")}>
-          {u.image && <AvatarImage src={u.image} />}
-          <AvatarFallback className="text-[9px] font-medium">
-            {u.name?.charAt(0)}
-          </AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          key={u.id}
+          user={u as UserAvatarUser}
+          size={size}
+          showBadge={false}
+        />
       ))}
     </button>
   );
@@ -152,12 +150,12 @@ function AttendeesRow({
     <button className="flex items-center gap-2" onClick={onTap}>
       <div className="flex -space-x-1.5">
         {shown.map((a, idx) => (
-          <Avatar key={`${a.id}-${idx}`} className="h-6 w-6 border-[1.5px] border-white">
-            {a.image && <AvatarImage src={a.image} />}
-            <AvatarFallback className="text-[8px] font-medium">
-              {a.name?.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar
+            key={`${a.id}-${idx}`}
+            user={a as UserAvatarUser}
+            size={24}
+            showBadge={false}
+          />
         ))}
       </div>
       <span className="text-[12px] text-muted">
@@ -342,12 +340,11 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
         <div className="px-4 pb-3">
           {attendees.length === 1 ? (
             <Link href={`/my/user/${attendees[0].id}`} className="inline-flex items-center gap-2">
-              <Avatar className="h-6 w-6 border-[1.5px] border-white">
-                {attendees[0].image && <AvatarImage src={attendees[0].image} />}
-                <AvatarFallback className="text-[8px] font-medium">
-                  {attendees[0].name?.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                user={attendees[0] as UserAvatarUser}
+                size={24}
+                showBadge={false}
+              />
               <span className="text-[12px] text-muted">{attendees[0].name}</span>
             </Link>
           ) : (
@@ -668,12 +665,7 @@ function LevelUpCard({ event }: FeedEventCardProps) {
     <div className="space-y-3 px-4 pb-4 pt-4">
       <div className="flex items-start gap-3">
         <Link href={`/my/user/${event.user.id}`} className="flex-shrink-0">
-          <Avatar className="h-10 w-10 ring-2 ring-white">
-            {event.user.image && <AvatarImage src={event.user.image} />}
-            <AvatarFallback className="text-sm font-bold">
-              {event.user.name?.charAt(0) ?? "?"}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar user={event.user as UserAvatarUser} size={40} />
         </Link>
         <div className="min-w-0 flex-1">
           <p className="text-[14px] leading-snug">

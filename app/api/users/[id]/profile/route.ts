@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { enrichPayloadsWithCurrentClassType } from "@/lib/feed-class-payload-sync";
 import { requireAuth } from "@/lib/tenant";
+import { getUsersAvatarMeta } from "@/lib/user-avatar-meta";
 
 export async function GET(
   _request: NextRequest,
@@ -114,6 +115,9 @@ export async function GET(
     }
   }
 
+  const avatarMeta = await getUsersAvatarMeta([targetId], tenantId);
+  const meta = avatarMeta.get(targetId);
+
   const showSocials = isFriend || isCoach;
   const base = {
     id: user.id,
@@ -129,6 +133,8 @@ export async function GET(
     isFriend,
     isCoach,
     loyaltyLevel,
+    hasActiveMembership: meta?.hasActiveMembership ?? false,
+    level: meta?.level ?? null,
     instagramUser: showSocials ? user.instagramUser : null,
     stravaUser: showSocials ? user.stravaUser : null,
   };

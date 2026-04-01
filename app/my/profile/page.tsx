@@ -23,15 +23,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
 import { LoyaltyTierBadge } from "@/components/profile/loyalty-tier-badge";
-import { LoyaltyLevelAvatarPin } from "@/components/profile/loyalty-level-avatar-pin";
 import { ActivityCalendar } from "@/components/profile/activity-calendar";
 import { cn } from "@/lib/utils";
+import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
 
 interface UserPackageInfo {
@@ -165,6 +165,7 @@ export default function ProfilePage() {
   });
 
   const { data: gamification } = useQuery<{
+    hasActiveMembership?: boolean;
     level: { name: string; icon: string; color: string; minClasses: number; sortOrder: number } | null;
     nextLevel: { name: string; icon: string; color: string; minClasses: number; sortOrder: number } | null;
     totalClasses: number;
@@ -328,12 +329,9 @@ export default function ProfilePage() {
     setSaving(false);
   }
 
-  const initials = (session?.user?.name ?? "")
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const profileLevelTier = gamification?.level
+    ? getLoyaltyTierVisual(gamification.level.name)
+    : null;
 
   const activePackages = packages.filter(
     (p) => new Date(p.expiresAt) > new Date(),
@@ -366,27 +364,26 @@ export default function ProfilePage() {
             className="group relative shrink-0"
             disabled={uploadingAvatar}
           >
-            <div className="relative h-16 w-16">
-              <Avatar className="h-16 w-16">
-                <AvatarImage
-                  src={avatarPreview || session?.user?.image || undefined}
-                  alt={session?.user?.name ?? ""}
-                />
-                <AvatarFallback className="text-lg">{initials}</AvatarFallback>
-              </Avatar>
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-full bg-foreground/0 transition-colors group-hover:bg-foreground/40">
+            <div className="relative h-[72px] w-[72px]">
+              <UserAvatar
+                user={{
+                  image: avatarPreview || session?.user?.image,
+                  name: session?.user?.name,
+                  hasActiveMembership: gamification?.hasActiveMembership,
+                  level: profileLevelTier,
+                }}
+                size={72}
+              />
+              <div
+                className="absolute inset-0 z-10 flex items-center justify-center bg-foreground/0 transition-colors group-hover:bg-foreground/40"
+                style={{ borderRadius: gamification?.hasActiveMembership ? 18 : "50%" }}
+              >
                 {uploadingAvatar ? (
                   <Loader2 className="h-5 w-5 animate-spin text-white" />
                 ) : (
                   <Camera className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
                 )}
               </div>
-              {gamification?.level && (
-                <LoyaltyLevelAvatarPin
-                  sortOrder={gamification.level.sortOrder}
-                  levelName={gamification.level.name}
-                />
-              )}
             </div>
             <input
               ref={fileInputRef}

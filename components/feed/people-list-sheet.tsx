@@ -4,7 +4,7 @@ import { useEffect, useCallback, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { X, UserPlus, Check, Loader2 } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface PersonItem {
@@ -12,6 +12,8 @@ export interface PersonItem {
   name: string | null;
   image: string | null;
   subtitle?: string;
+  hasActiveMembership?: boolean;
+  level?: string | null;
 }
 
 interface PeopleListSheetProps {
@@ -149,12 +151,10 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
                         className="flex items-center gap-3 flex-1 min-w-0 text-left"
                         onClick={() => handlePersonTap(person.id)}
                       >
-                        <Avatar className="h-11 w-11">
-                          {person.image && <AvatarImage src={person.image} />}
-                          <AvatarFallback className="text-sm">
-                            {person.name?.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                          user={person as UserAvatarUser}
+                          size={44}
+                        />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[15px] font-medium text-foreground">
                             {person.name}

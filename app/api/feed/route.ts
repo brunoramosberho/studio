@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext, requireTenant } from "@/lib/tenant";
+import { getUsersAvatarMeta, withAvatarMeta } from "@/lib/user-avatar-meta";
 
 async function getFriendIds(userId: string, tenantId: string): Promise<string[]> {
   const friendships = await prisma.friendship.findMany({
@@ -357,6 +358,34 @@ export async function GET(request: NextRequest) {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+
+    // Enrich all user objects with avatar meta (membership + level)
+    const allUserIds = new Set<string>();
+    for (const entry of feed) {
+      allUserIds.add(entry.user.id);
+      if (entry.reservedBy) {
+        for (const u of entry.reservedBy) allUserIds.add(u.id);
+      }
+      const payload = entry.payload as Record<string, unknown> | null;
+      const attendees = (payload?.attendees ?? []) as { id: string }[];
+      for (const a of attendees) allUserIds.add(a.id);
+    }
+
+    const avatarMeta = await getUsersAvatarMeta([...allUserIds], tenant.id);
+
+    for (const entry of feed) {
+      (entry as Record<string, unknown>).user = withAvatarMeta(entry.user, avatarMeta);
+      if (entry.reservedBy) {
+        (entry as Record<string, unknown>).reservedBy = entry.reservedBy.map((u) =>
+          withAvatarMeta(u, avatarMeta),
+        );
+      }
+      const payload = entry.payload as Record<string, unknown> | null;
+      const attendees = (payload?.attendees ?? []) as { id: string; name: string; image: string | null }[];
+      if (attendees.length > 0 && payload) {
+        payload.attendees = attendees.map((a) => withAvatarMeta(a, avatarMeta));
+      }
+    }
 
     return NextResponse.json({ feed, nextCursor });
   } catch (error) {

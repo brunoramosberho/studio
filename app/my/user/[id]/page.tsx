@@ -18,11 +18,10 @@ import {
 } from "lucide-react";
 import { LikeButton } from "@/components/feed/like-button";
 import { CommentsSheet } from "@/components/feed/comments-sheet";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
 import { cn } from "@/lib/utils";
-import { LoyaltyLevelAvatarPin } from "@/components/profile/loyalty-level-avatar-pin";
 
 interface UpcomingClass {
   id: string;
@@ -90,6 +89,8 @@ interface UserProfile {
     totalClasses: number;
     currentStreak: number;
   } | null;
+  hasActiveMembership?: boolean;
+  level?: string | null;
 }
 
 const fadeUp = {
@@ -294,12 +295,13 @@ export default function UserProfilePage({
     );
   }
 
-  const initials = (profile.name ?? "")
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const profileAvatarUser: UserAvatarUser = {
+    id: profile.id,
+    image: profile.image,
+    name: profile.name,
+    hasActiveMembership: profile.hasActiveMembership,
+    level: profile.level as UserAvatarUser["level"],
+  };
 
   const showAddFriend = !profile.isFriend && !profile.pendingFromMe && profile.friendshipStatus !== "PENDING";
   const showPendingSent = profile.pendingFromMe;
@@ -330,23 +332,11 @@ export default function UserProfilePage({
           <button
             onClick={() => profile.image && setPhotoOpen(true)}
             className={cn(
-              "relative inline-flex rounded-full",
+              "relative inline-flex",
               profile.image && "cursor-pointer active:scale-95 transition-transform",
             )}
           >
-            <div className="relative h-20 w-20">
-              <Avatar className="h-20 w-20">
-                {profile.image && <AvatarImage src={profile.image} />}
-                <AvatarFallback className="text-xl">{initials}</AvatarFallback>
-              </Avatar>
-              {profile.loyaltyLevel && !profile.isCoach && (
-                <LoyaltyLevelAvatarPin
-                  sortOrder={profile.loyaltyLevel.sortOrder}
-                  levelName={profile.loyaltyLevel.name}
-                  size="md"
-                />
-              )}
-            </div>
+            <UserAvatar user={profileAvatarUser} size={72} />
           </button>
           <h2 className="mt-3 font-display text-xl font-bold text-foreground">{profile.name}</h2>
           {profile.isCoach && (

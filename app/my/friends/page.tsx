@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, UserPlus, Check, X, Loader2, Search } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,8 @@ interface Friend {
   image: string | null;
   email: string | null;
   friendshipId: string;
+  hasActiveMembership?: boolean;
+  level?: string | null;
 }
 
 interface PendingRequest {
@@ -23,6 +25,8 @@ interface PendingRequest {
   name: string | null;
   image: string | null;
   sentAt: string;
+  hasActiveMembership?: boolean;
+  level?: string | null;
 }
 
 interface Suggestion {
@@ -30,6 +34,8 @@ interface Suggestion {
   name: string | null;
   image: string | null;
   mutualClasses: number;
+  hasActiveMembership?: boolean;
+  level?: string | null;
 }
 
 export default function FriendsPage() {
@@ -166,12 +172,7 @@ export default function FriendsPage() {
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
                     >
                       <Link href={`/my/user/${req.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                        <Avatar className="h-11 w-11">
-                          {req.image && <AvatarImage src={req.image} />}
-                          <AvatarFallback className="text-sm">
-                            {req.name?.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar user={req as UserAvatarUser} size={44} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[15px] font-semibold text-foreground">
                             {req.name}
@@ -214,12 +215,7 @@ export default function FriendsPage() {
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
                     >
                       <Link href={`/my/user/${req.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                        <Avatar className="h-11 w-11">
-                          {req.image && <AvatarImage src={req.image} />}
-                          <AvatarFallback className="text-sm">
-                            {req.name?.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar user={req as UserAvatarUser} size={44} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[15px] font-semibold text-foreground">
                             {req.name}
@@ -264,12 +260,7 @@ export default function FriendsPage() {
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
                     >
                       <Link href={`/my/user/${f.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                        <Avatar className="h-11 w-11">
-                          {f.image && <AvatarImage src={f.image} />}
-                          <AvatarFallback className="text-sm">
-                            {f.name?.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar user={f as UserAvatarUser} size={44} />
                         <p className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
                           {f.name}
                         </p>
@@ -299,12 +290,7 @@ export default function FriendsPage() {
                       className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
                     >
                       <Link href={`/my/user/${s.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                        <Avatar className="h-11 w-11">
-                          {s.image && <AvatarImage src={s.image} />}
-                          <AvatarFallback className="text-sm">
-                            {s.name?.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar user={s as UserAvatarUser} size={44} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[15px] font-medium text-foreground">
                             {s.name}

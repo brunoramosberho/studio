@@ -36,7 +36,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { MediaGallery } from "@/components/feed/media-gallery";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
@@ -858,14 +858,12 @@ export default function ClassRosterPage() {
                       </p>
                       {feedEvent.comments.map((comment) => (
                         <div key={comment.id} className="flex gap-2">
-                          <Avatar className="mt-0.5 h-6 w-6 shrink-0">
-                            {comment.user.image && (
-                              <AvatarImage src={comment.user.image} />
-                            )}
-                            <AvatarFallback className="text-[9px]">
-                              {(comment.user.name ?? "U").charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <UserAvatar
+                            user={comment.user as UserAvatarUser}
+                            size={24}
+                            showBadge={false}
+                            className="mt-0.5 shrink-0"
+                          />
                           <div className="flex-1 rounded-xl bg-surface px-3 py-2">
                             <p className="text-[11px] font-semibold">
                               {comment.user.name?.split(" ")[0]}
@@ -939,24 +937,16 @@ export default function ClassRosterPage() {
                       {classData.bookings.map((booking) => {
                         const status = getAttendance(booking);
                         const name = booking.user.name ?? booking.user.email;
-                        const initials = (booking.user.name ?? "U")
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .slice(0, 2);
                         return (
                           <div
                             key={booking.id}
                             className="flex items-center gap-3 rounded-xl bg-white p-3"
                           >
-                            <Avatar className="h-8 w-8">
-                              {booking.user.image && (
-                                <AvatarImage src={booking.user.image} alt={name} />
-                              )}
-                              <AvatarFallback className="text-xs">
-                                {initials}
-                              </AvatarFallback>
-                            </Avatar>
+                            <UserAvatar
+                              user={booking.user as UserAvatarUser}
+                              size={32}
+                              showBadge={false}
+                            />
                             <span className="flex-1 truncate text-sm">{name}</span>
                             <span
                               className={cn(
@@ -1015,11 +1005,6 @@ export default function ClassRosterPage() {
                 {classData.bookings.map((booking) => {
                   const status = getAttendance(booking);
                   const name = booking.user.name ?? booking.user.email;
-                  const initials = (booking.user.name ?? "U")
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2);
                   const hasSongs = (booking.user.favoriteSongs?.length ?? 0) > 0;
                   const songsExpanded = expandedSongs[booking.id] ?? false;
 
@@ -1040,14 +1025,11 @@ export default function ClassRosterPage() {
                       >
                         <CardContent className="p-3">
                           <div className="flex items-start gap-3">
-                            <Avatar className="mt-0.5 h-10 w-10">
-                              {booking.user.image && (
-                                <AvatarImage src={booking.user.image} alt={name} />
-                              )}
-                              <AvatarFallback className="text-xs">
-                                {initials}
-                              </AvatarFallback>
-                            </Avatar>
+                            <UserAvatar
+                              user={booking.user as UserAvatarUser}
+                              size={40}
+                              className="mt-0.5"
+                            />
 
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
@@ -1192,12 +1174,11 @@ export default function ClassRosterPage() {
                         <p className="truncate text-xs text-muted">{sr.artist}</p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
-                        <Avatar className="h-5 w-5">
-                          {sr.user.image && <AvatarImage src={sr.user.image} />}
-                          <AvatarFallback className="text-[8px]">
-                            {(sr.user.name ?? "U").charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                          user={sr.user as UserAvatarUser}
+                          size={20}
+                          showBadge={false}
+                        />
                         <span className="text-[11px] text-muted/70">
                           {sr.user.name?.split(" ")[0]}
                         </span>

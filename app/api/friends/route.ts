@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { sendPushToUser } from "@/lib/push";
+import { getUsersAvatarMeta, withAvatarMeta } from "@/lib/user-avatar-meta";
 
 export async function GET() {
   const { session, tenant } = await requireAuth();
@@ -53,7 +54,18 @@ export async function GET() {
     sentAt: f.createdAt,
   }));
 
-  return NextResponse.json({ friends, pendingRequests, sentRequests });
+  const allIds = [
+    ...friends.map((f) => f.id),
+    ...pendingRequests.map((r) => r.id),
+    ...sentRequests.map((r) => r.id),
+  ];
+  const avatarMeta = await getUsersAvatarMeta(allIds, tenant.id);
+
+  return NextResponse.json({
+    friends: friends.map((f) => withAvatarMeta(f, avatarMeta)),
+    pendingRequests: pendingRequests.map((r) => withAvatarMeta(r, avatarMeta)),
+    sentRequests: sentRequests.map((r) => withAvatarMeta(r, avatarMeta)),
+  });
 }
 
 export async function POST(request: NextRequest) {

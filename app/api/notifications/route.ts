@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
+import { getUsersAvatarMeta, withAvatarMeta } from "@/lib/user-avatar-meta";
 
 export async function GET() {
   const { session, tenant } = await requireAuth();
@@ -18,7 +19,16 @@ export async function GET() {
     where: { userId: session.user.id, tenantId: tenant.id, readAt: null },
   });
 
-  return NextResponse.json({ notifications, unreadCount });
+  const actorIds = notifications
+    .map((n) => n.actor?.id)
+    .filter((id): id is string => !!id);
+  const avatarMeta = await getUsersAvatarMeta(actorIds, tenant.id);
+  const enriched = notifications.map((n) => ({
+    ...n,
+    actor: n.actor ? withAvatarMeta(n.actor, avatarMeta) : null,
+  }));
+
+  return NextResponse.json({ notifications: enriched, unreadCount });
 }
 
 export async function POST(request: NextRequest) {

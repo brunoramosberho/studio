@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell, Loader2 } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,7 @@ interface NotificationItem {
   type: string;
   readAt: string | null;
   createdAt: string;
-  actor: { id: string; name: string | null; image: string | null } | null;
+  actor: { id: string; name: string | null; image: string | null; hasActiveMembership?: boolean; level?: string | null } | null;
 }
 
 const typeLabels: Record<string, string> = {
@@ -104,12 +104,11 @@ export default function NotificationsPage() {
                 )}
               >
                 {n.actor ? (
-                  <Avatar className="h-10 w-10 flex-shrink-0">
-                    {n.actor.image && <AvatarImage src={n.actor.image} />}
-                    <AvatarFallback className="text-xs">
-                      {n.actor.name?.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    user={n.actor as UserAvatarUser}
+                    size={40}
+                    className="flex-shrink-0"
+                  />
                 ) : (
                   <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-surface">
                     <Bell className="h-4 w-4 text-muted" />

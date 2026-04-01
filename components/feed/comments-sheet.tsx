@@ -2,14 +2,14 @@
 
 import { useState, useRef, useCallback } from "react";
 import { MessageCircle, Send } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 
 interface CommentData {
   id: string;
   body: string;
   createdAt: string;
-  user: { id: string; name: string | null; image: string | null };
+  user: { id: string; name: string | null; image: string | null; hasActiveMembership?: boolean; level?: string | null };
 }
 
 interface CommentsSheetProps {
@@ -113,12 +113,12 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
             <div className="space-y-2.5">
               {comments.map((c) => (
                 <div key={c.id} className="flex gap-2">
-                  <Avatar className="h-6 w-6 flex-shrink-0">
-                    {c.user.image && <AvatarImage src={c.user.image} />}
-                    <AvatarFallback className="text-[9px]">
-                      {c.user.name?.charAt(0) ?? "?"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    user={c.user as UserAvatarUser}
+                    size={24}
+                    showBadge={false}
+                    className="flex-shrink-0"
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] leading-snug">
                       <span className="font-semibold text-foreground">
