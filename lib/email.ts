@@ -49,6 +49,7 @@ export async function sendBookingConfirmation({
   startTime,
   location,
   timezone,
+  classUrl,
 }: {
   to: string;
   name: string;
@@ -58,6 +59,7 @@ export async function sendBookingConfirmation({
   startTime: Date;
   location?: string;
   timezone?: string;
+  classUrl?: string;
 }) {
   try {
     const b = await getServerBranding();
@@ -98,6 +100,14 @@ export async function sendBookingConfirmation({
         </td></tr>
       </table>
 
+      ${classUrl ? `
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${classUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Ver mi reserva
+        </a>
+      </div>
+      ` : ""}
+
       <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
         Puedes cancelar hasta 12 horas antes de tu clase para recuperar tu crédito.
       </p>`;
@@ -110,6 +120,69 @@ export async function sendBookingConfirmation({
     });
   } catch (error) {
     console.error("Failed to send booking confirmation:", error);
+  }
+}
+
+export function getTenantBaseUrl(tenantSlug: string) {
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
+  const protocol = rootDomain.includes("localhost") ? "http" : "https";
+  return `${protocol}://${tenantSlug}.${rootDomain}`;
+}
+
+export async function sendWelcomeEmail({
+  to,
+  name,
+  appUrl,
+}: {
+  to: string;
+  name: string;
+  appUrl: string;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = name.split(" ")[0];
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:${b.colorAccent}15;line-height:56px;font-size:28px;">&#128075;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ¡Bienvenido/a, ${firstName}!
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          Ya eres parte de <strong style="color:${b.colorFg};">${studioFull}</strong>. Tu primera clase ya está reservada.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:24px;text-align:center;">
+          <p style="margin:0 0 8px;font-size:15px;font-weight:600;color:${b.colorFg};">
+            &#128241; Instala la app en tu celular
+          </p>
+          <p style="margin:0;font-size:13px;color:${b.colorMuted};line-height:1.5;">
+            Abre el enlace de abajo en Safari o Chrome, toca <strong>Compartir</strong> y luego <strong>"Agregar a pantalla de inicio"</strong> para tenerla siempre a la mano.
+          </p>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${appUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Abrir mi espacio
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Inicia sesión con este correo (${to}) usando Google o el enlace mágico.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `¡Bienvenido/a a ${studioFull}! 🎉`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send welcome email:", error);
   }
 }
 

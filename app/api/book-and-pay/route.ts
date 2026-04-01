@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant";
-import { sendBookingConfirmation } from "@/lib/email";
+import { sendBookingConfirmation, sendWelcomeEmail, getTenantBaseUrl } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
     let finalUserId = userId;
     let finalEmail = session?.user?.email ?? email;
     let finalName = session?.user?.name ?? name;
+    let isNewUser = false;
 
     if (!finalUserId) {
       let user = await prisma.user.findUnique({ where: { email } });
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
         user = await prisma.user.create({
           data: { email, name, phone },
         });
+        isNewUser = true;
       } else if (phone && !user.phone) {
         user = await prisma.user.update({
           where: { id: user.id },
@@ -147,6 +149,8 @@ export async function POST(request: NextRequest) {
       return { userPackage: up, booking: bk };
     });
 
+    const baseUrl = getTenantBaseUrl(tenant.slug);
+
     if (finalEmail && finalName) {
       sendBookingConfirmation({
         to: finalEmail,
@@ -157,7 +161,16 @@ export async function POST(request: NextRequest) {
         startTime: classData.startsAt,
         location: classData.room.studio.name ?? undefined,
         timezone: classData.room.studio.city?.timezone,
+        classUrl: `${baseUrl}/class/${classId}`,
       }).catch(() => {});
+
+      if (isNewUser) {
+        sendWelcomeEmail({
+          to: finalEmail,
+          name: finalName,
+          appUrl: `${baseUrl}/my`,
+        }).catch(() => {});
+      }
     }
 
     if (privacy !== "PRIVATE" && finalUserId) {

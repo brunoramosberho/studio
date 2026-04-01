@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { requireAuth, requireTenant } from "@/lib/tenant";
-import { sendBookingConfirmation } from "@/lib/email";
+import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
 
 export async function GET(request: NextRequest) {
   try {
@@ -257,6 +257,7 @@ export async function POST(request: NextRequest) {
     const recipientEmail = session?.user?.email ?? guestEmail;
     const recipientName = session?.user?.name ?? guestName;
     if (recipientEmail && recipientName) {
+      const baseUrl = getTenantBaseUrl(tenant.slug);
       sendBookingConfirmation({
         to: recipientEmail,
         name: recipientName,
@@ -266,6 +267,7 @@ export async function POST(request: NextRequest) {
         startTime: classData.startsAt,
         location: classData.room.studio.name ?? undefined,
         timezone: classData.room.studio.city?.timezone,
+        classUrl: `${baseUrl}/class/${classId}`,
       });
     }
 
