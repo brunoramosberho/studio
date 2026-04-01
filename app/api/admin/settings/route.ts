@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       "name", "tagline", "slogan", "metaDescription", "logoUrl", "appIconUrl",
       "fontPairing", "colorBg", "colorFg", "colorSurface", "colorAccent",
       "colorAccentSoft", "colorMuted", "colorBorder", "colorCoach", "colorAdmin",
-      "coachIconSvg",
+      "coachIconSvg", "landingUrl",
     ];
 
     const data: Record<string, string | null> = {};

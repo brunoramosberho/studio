@@ -14,6 +14,7 @@ import {
   FileText,
   Loader2,
   Smartphone,
+  Globe,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -219,6 +220,20 @@ export default function BrandingPage() {
                   rows={2}
                   className="min-h-0 resize-none"
                 />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-muted">
+                  <Globe className="mr-1 inline h-3 w-3" />
+                  Landing page
+                </label>
+                <Input
+                  value={settings.landingUrl ?? ""}
+                  onChange={(e) => update("landingUrl", e.target.value || null)}
+                  placeholder="https://tusitio.com"
+                />
+                <p className="mt-1.5 text-[11px] text-muted">
+                  Si tienes tu propia página web, ponla aquí. El logo del navbar redirigirá a esa URL. Deja vacío para usar la landing integrada.
+                </p>
               </div>
             </div>
           </CardContent>

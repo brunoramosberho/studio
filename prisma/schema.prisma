@@ -33,6 +33,7 @@ model Tenant {
   colorCoach      String   @default("#2D5016")
   colorAdmin      String   @default("#1A2C4E")
   coachIconSvg    String?  @db.Text
+  landingUrl      String?
 
   stripeCustomerId String?
 
@@ -800,5 +801,6 @@ model StudioSettings {
   colorCoach      String   @default("#2D5016")
   colorAdmin      String   @default("#1A2C4E")
   coachIconSvg    String?  @db.Text
+  landingUrl      String?
   updatedAt       DateTime @updatedAt
 }

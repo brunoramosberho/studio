@@ -22,7 +22,8 @@ export function Navbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { studioName, logoUrl } = useBranding();
+  const { studioName, logoUrl, landingUrl } = useBranding();
+  const homeHref = landingUrl || "/";
   const { role } = useTenant();
 
   const isPortal =
@@ -50,15 +51,27 @@ export function Navbar() {
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
-          <Link href="/" className="flex items-center">
-            {logoUrl ? (
-              <img src={logoUrl} alt={studioName} className="h-6 max-w-[140px] object-contain" />
-            ) : (
-              <span className="font-display text-2xl font-bold tracking-tight text-foreground">
-                {studioName}
-              </span>
-            )}
-          </Link>
+          {landingUrl ? (
+            <a href={landingUrl} className="flex items-center">
+              {logoUrl ? (
+                <img src={logoUrl} alt={studioName} className="h-6 max-w-[140px] object-contain" />
+              ) : (
+                <span className="font-display text-2xl font-bold tracking-tight text-foreground">
+                  {studioName}
+                </span>
+              )}
+            </a>
+          ) : (
+            <Link href="/" className="flex items-center">
+              {logoUrl ? (
+                <img src={logoUrl} alt={studioName} className="h-6 max-w-[140px] object-contain" />
+              ) : (
+                <span className="font-display text-2xl font-bold tracking-tight text-foreground">
+                  {studioName}
+                </span>
+              )}
+            </Link>
+          )}
         </div>
 
         {/* Desktop nav links */}
