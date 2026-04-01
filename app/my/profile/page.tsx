@@ -17,6 +17,7 @@ import {
   MapPin,
   Trophy,
   Camera,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -957,6 +958,18 @@ export default function ProfilePage() {
             Cerrar sesión
           </Button>
         </motion.div>
+
+        {/* Footer */}
+        <motion.p
+          custom={7}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          className="pt-6 text-center text-xs text-muted/60"
+        >
+          Hecho con <Heart className="inline h-3 w-3 fill-current text-red-400" /> para{" "}
+          {session?.user?.name?.split(" ")[0] ?? "ti"}
+        </motion.p>
       </div>
 
       {/* Avatar crop modal */}
