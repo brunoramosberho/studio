@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
 import { cn, formatTime } from "@/lib/utils";
 import type { Package } from "@prisma/client";
 
@@ -121,6 +122,7 @@ export function BookingSheet({
   const [selectedPkg, setSelectedPkg] = useState<Package | null>(null);
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -220,6 +222,7 @@ export function BookingSheet({
       setSelectedPkg(null);
       setGuestName("");
       setGuestEmail("");
+      setGuestPhone("");
       setError(null);
       setResult(null);
       setLoading(false);
@@ -231,8 +234,11 @@ export function BookingSheet({
   function handleInfoContinue(e: React.FormEvent) {
     e.preventDefault();
     if (!guestName.trim() || !guestEmail.trim()) return;
+    if (showPhoneField && guestPhone && !isValidPhoneNumber(guestPhone)) return;
     setStep("package");
   }
+
+  const showPhoneField = !emailCheck?.exists;
 
   function handleSelectPackage(pkg: Package) {
     if (bookingInFlight.current) return;
@@ -259,6 +265,7 @@ export function BookingSheet({
       if (!isLoggedIn) {
         payload.email = guestEmail;
         payload.name = guestName;
+        if (guestPhone) payload.phone = guestPhone;
       }
 
       const res = await fetch("/api/book-and-pay", {
@@ -441,7 +448,7 @@ export function BookingSheet({
                     </motion.div>
                   )}
 
-                  {/* Show name + continue only when NOT showing "you have credits" */}
+                  {/* Show name + phone + continue only when NOT showing "you have credits" */}
                   {!(emailCheck?.exists && emailCheck?.hasCredits) && (
                     <>
                       <div>
@@ -457,10 +464,29 @@ export function BookingSheet({
                         />
                       </div>
 
+                      {showPhoneField && (
+                        <div>
+                          <label htmlFor="guest-phone" className="mb-1.5 block text-xs font-medium text-muted">
+                            Teléfono
+                          </label>
+                          <PhoneInput
+                            value={guestPhone}
+                            onChange={setGuestPhone}
+                            defaultCountry="ES"
+                            placeholder="612 345 678"
+                          />
+                          {guestPhone && !isValidPhoneNumber(guestPhone) && (
+                            <p className="mt-1 text-[11px] text-destructive">
+                              Número inválido
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                       <Button
                         type="submit"
                         size="lg"
-                        disabled={checkingEmail || !guestName.trim() || !guestEmail.trim()}
+                        disabled={checkingEmail || !guestName.trim() || !guestEmail.trim() || (showPhoneField && (!guestPhone || !isValidPhoneNumber(guestPhone)))}
                         className="mt-4 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
                       >
                         Elegir paquete

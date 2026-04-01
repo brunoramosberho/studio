@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
     const { packageId, classId, spotNumber, privacy } = body;
     const email = body.email?.trim().toLowerCase() ?? null;
     const name = body.name?.trim().replace(/\S+/g, (w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) ?? null;
+    const phone = body.phone?.trim() || null;
 
     if (!classId || !packageId) {
       return NextResponse.json(
@@ -81,7 +82,12 @@ export async function POST(request: NextRequest) {
       let user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
         user = await prisma.user.create({
-          data: { email, name },
+          data: { email, name, phone },
+        });
+      } else if (phone && !user.phone) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { phone },
         });
       }
       finalUserId = user.id;
