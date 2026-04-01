@@ -63,7 +63,7 @@ export function DiscoverDisciplines({ disciplines }: DiscoverDisciplinesProps) {
 
       <div
         ref={scrollRef}
-        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scrollbar-none"
+        className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 pr-4 scrollbar-none"
       >
         {disciplines.map((d) => {
           const Icon = d.icon ? getIconComponent(d.icon) : null;
