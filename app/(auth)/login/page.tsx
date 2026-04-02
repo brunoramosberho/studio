@@ -4,7 +4,16 @@ import { Suspense, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
-import { Mail, ArrowRight, Loader2, CheckCircle2, Lock, ShieldCheck } from "lucide-react";
+import {
+  Mail,
+  ArrowRight,
+  ArrowLeft,
+  Loader2,
+  CheckCircle2,
+  Lock,
+  ShieldCheck,
+  Asterisk,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageTransition } from "@/components/shared/page-transition";
@@ -26,12 +35,15 @@ const SESSION_COOKIE = "authjs.session-token";
 function useIsAdminSubdomain() {
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN?.split(":")[0] || "localhost";
+    const rootDomain =
+      process.env.NEXT_PUBLIC_ROOT_DOMAIN?.split(":")[0] || "localhost";
     const hostname = window.location.hostname;
     setIsAdmin(hostname === `admin.${rootDomain}`);
   }, []);
   return isAdmin;
 }
+
+/* ── Admin login (unchanged) ── */
 
 function AdminLoginForm() {
   const [email, setEmail] = useState("");
@@ -124,9 +136,15 @@ function AdminLoginForm() {
   );
 }
 
+/* ── Tenant login / registration ── */
+
+type LoginStep = "email" | "register" | "magic-link-sent";
+
 function LoginForm() {
+  const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const { studioName, logoUrl } = useBranding();
@@ -145,7 +163,7 @@ function LoginForm() {
   }, [session, callbackUrl, router, authenticated]);
 
   useEffect(() => {
-    if (!magicLinkSent || !pendingTokenRef.current) {
+    if (step !== "magic-link-sent" || !pendingTokenRef.current) {
       if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
@@ -167,82 +185,222 @@ function LoginForm() {
       } catch {}
     }, 2500);
 
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [magicLinkSent, callbackUrl, router]);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [step, callbackUrl, router]);
 
   async function handleGoogleSignIn() {
     await signIn("google", { callbackUrl });
   }
 
-  async function handleMagicLink(e: React.FormEvent) {
+  async function sendMagicLink() {
+    const pendingRes = await fetch("/api/auth/pending-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+    });
+    if (pendingRes.ok) {
+      const { token } = await pendingRes.json();
+      pendingTokenRef.current = token;
+    }
+
+    await signIn("resend", {
+      email: email.trim(),
+      callbackUrl,
+      redirect: false,
+    });
+    setStep("magic-link-sent");
+  }
+
+  async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
 
     setLoading(true);
     try {
-      const pendingRes = await fetch("/api/auth/pending-login", {
+      const res = await fetch("/api/check-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       });
-      if (pendingRes.ok) {
-        const { token } = await pendingRes.json();
-        pendingTokenRef.current = token;
-      }
+      const data = await res.json();
 
-      await signIn("resend", {
-        email,
-        callbackUrl,
-        redirect: false,
+      if (data.exists) {
+        if (data.name) setName(data.name);
+        await sendMagicLink();
+      } else {
+        setStep("register");
+      }
+    } catch {
+      await sendMagicLink();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          name: name.trim(),
+          phone: phone.trim(),
+        }),
       });
-      setMagicLinkSent(true);
+      await sendMagicLink();
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4 py-16">
-      <div className="w-full max-w-sm">
-        <div className="mb-10 text-center">
-          <Link href="/">
-            {logoUrl ? (
-              <img src={logoUrl} alt={studioName} className="mx-auto h-12 object-contain" />
-            ) : (
-              <span className="font-display text-4xl font-bold text-foreground">
-                {studioName}
-              </span>
+    <div className="flex min-h-dvh flex-col">
+      <div className="flex flex-1 items-center justify-center px-4 py-16">
+        <div className="w-full max-w-sm">
+          {/* Header */}
+          <div className="mb-10 text-center">
+            <Link href="/">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={studioName}
+                  className="mx-auto h-12 object-contain"
+                />
+              ) : (
+                <span className="font-display text-4xl font-bold text-foreground">
+                  {studioName}
+                </span>
+              )}
+            </Link>
+            {step === "email" && (
+              <>
+                <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
+                  Bienvenida a {studioName}
+                </h1>
+                <p className="mt-2 text-sm text-muted">
+                  Inicia sesión o crea tu cuenta
+                </p>
+              </>
             )}
-          </Link>
-          <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
-            Bienvenida a {studioName}
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            Inicia sesión para reservar tus clases
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <Button
-            variant="surface"
-            size="lg"
-            className="w-full justify-center gap-3 border border-border"
-            onClick={handleGoogleSignIn}
-          >
-            <GoogleIcon className="h-5 w-5" />
-            Continuar con Google
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-4 text-muted">o</span>
-            </div>
+            {step === "register" && (
+              <>
+                <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
+                  Crea tu cuenta
+                </h1>
+                <p className="mt-2 text-sm text-muted">
+                  Completa tus datos para continuar
+                </p>
+              </>
+            )}
           </div>
 
-          {magicLinkSent ? (
+          {/* Step: email entry */}
+          {step === "email" && (
+            <div className="space-y-4">
+              <Button
+                variant="surface"
+                size="lg"
+                className="w-full justify-center gap-3 border border-border"
+                onClick={handleGoogleSignIn}
+              >
+                <GoogleIcon className="h-5 w-5" />
+                Continuar con Google
+              </Button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-4 text-muted">o</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleEmailSubmit} className="space-y-4">
+                <Input
+                  type="email"
+                  inputMode="email"
+                  placeholder="tu@correo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  size="lg"
+                  className="w-full justify-center"
+                  disabled={loading || !email.trim()}
+                >
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="mr-2 h-4 w-4" />
+                  )}
+                  Continuar con correo
+                  {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+                </Button>
+              </form>
+            </div>
+          )}
+
+          {/* Step: registration (new user) */}
+          {step === "register" && (
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="rounded-lg border border-border bg-surface/50 px-3 py-2.5 text-sm text-muted">
+                {email}
+              </div>
+              <Input
+                type="text"
+                placeholder="Tu nombre"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoComplete="name"
+                autoFocus
+              />
+              <Input
+                type="tel"
+                inputMode="tel"
+                placeholder="Teléfono (ej. 55 1234 5678)"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                autoComplete="tel"
+              />
+              <Button
+                type="submit"
+                variant="secondary"
+                size="lg"
+                className="w-full justify-center"
+                disabled={loading || !name.trim() || !phone.trim()}
+              >
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                )}
+                Crear cuenta
+              </Button>
+              <button
+                type="button"
+                onClick={() => setStep("email")}
+                className="flex w-full items-center justify-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                Usar otro correo
+              </button>
+            </form>
+          )}
+
+          {/* Step: magic link sent */}
+          {step === "magic-link-sent" && (
             <div className="rounded-2xl bg-accent/5 p-6 text-center">
               {authenticated ? (
                 <>
@@ -250,9 +408,7 @@ function LoginForm() {
                   <h3 className="mt-4 font-display text-lg font-bold text-foreground">
                     ¡Sesión iniciada!
                   </h3>
-                  <p className="mt-2 text-sm text-muted">
-                    Redirigiendo...
-                  </p>
+                  <p className="mt-2 text-sm text-muted">Redirigiendo...</p>
                 </>
               ) : (
                 <>
@@ -262,15 +418,19 @@ function LoginForm() {
                   </h3>
                   <p className="mt-2 text-sm text-muted">
                     Te enviamos un enlace a{" "}
-                    <span className="font-medium text-foreground">{email}</span>.
-                    Ábrelo desde cualquier dispositivo para aprobar el inicio de sesión.
+                    <span className="font-medium text-foreground">{email}</span>
+                    . Ábrelo desde cualquier dispositivo para aprobar el inicio
+                    de sesión.
                   </p>
                   <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted/60">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     Esperando aprobación...
                   </div>
                   <button
-                    onClick={() => { setMagicLinkSent(false); pendingTokenRef.current = null; }}
+                    onClick={() => {
+                      setStep("email");
+                      pendingTokenRef.current = null;
+                    }}
                     className="mt-4 text-xs text-accent hover:text-accent/80"
                   >
                     Usar otro correo
@@ -278,47 +438,45 @@ function LoginForm() {
                 </>
               )}
             </div>
-          ) : (
-            <form onSubmit={handleMagicLink} className="space-y-4">
-              <div>
-                <Input
-                  type="email"
-                  placeholder="tu@correo.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <Button
-                type="submit"
-                variant="secondary"
-                size="lg"
-                className="w-full justify-center"
-                disabled={loading || !email.trim()}
+          )}
+
+          {/* Terms (hidden on magic-link-sent) */}
+          {step !== "magic-link-sent" && (
+            <p className="mt-8 text-center text-[11px] leading-relaxed text-muted/60">
+              Al continuar, aceptas nuestros{" "}
+              <a
+                href="#"
+                className="underline underline-offset-2 hover:text-muted"
               >
-                {loading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Mail className="mr-2 h-4 w-4" />
-                )}
-                Enviar enlace mágico
-                {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
-            </form>
+                términos de servicio
+              </a>{" "}
+              y{" "}
+              <a
+                href="#"
+                className="underline underline-offset-2 hover:text-muted"
+              >
+                política de privacidad
+              </a>
+              .
+            </p>
           )}
         </div>
+      </div>
 
-        <p className="mt-8 text-center text-[11px] leading-relaxed text-muted/60">
-          Al continuar, aceptas nuestros{" "}
-          <a href="#" className="underline underline-offset-2 hover:text-muted">
-            términos de servicio
-          </a>{" "}
-          y{" "}
-          <a href="#" className="underline underline-offset-2 hover:text-muted">
-            política de privacidad
-          </a>
-          .
-        </p>
+      {/* Footer */}
+      <div className="flex items-center justify-center gap-1 pb-6 text-[10px] text-muted/40">
+        Desarrollado por
+        <a
+          href="https://mgic.app"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 font-medium text-muted/50 transition-colors hover:text-muted"
+        >
+          <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-[3px] bg-current">
+            <Asterisk className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+          </span>
+          Magic Studio
+        </a>
       </div>
     </div>
   );
