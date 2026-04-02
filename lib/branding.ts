@@ -15,6 +15,7 @@ export interface StudioBranding {
   colorAccentSoft: string;
   colorMuted: string;
   colorBorder: string;
+  colorHeroBg: string;
   colorCoach: string;
   colorAdmin: string;
   coachIconSvg: string | null;
@@ -37,6 +38,7 @@ export const DEFAULTS: StudioBranding = {
   colorAccentSoft: "#E0E7FF",
   colorMuted: "#64748B",
   colorBorder: "#E2E8F0",
+  colorHeroBg: "#0F172A",
   colorCoach: "#059669",
   colorAdmin: "#4338CA",
   coachIconSvg: null,
@@ -83,6 +85,7 @@ export function tenantToBranding(tenant: Tenant): StudioBranding {
     colorAccentSoft: tenant.colorAccentSoft,
     colorMuted: tenant.colorMuted,
     colorBorder: tenant.colorBorder,
+    colorHeroBg: tenant.colorHeroBg,
     colorCoach: tenant.colorCoach,
     colorAdmin: tenant.colorAdmin,
     coachIconSvg: tenant.coachIconSvg,

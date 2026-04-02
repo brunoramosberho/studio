@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { MapPin, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 interface DetectLocationResponse {
   countryId: string | null;
@@ -30,9 +30,21 @@ export function CityDetectPrompt() {
   const [detectedCountryId, setDetectedCountryId] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
 
+  const { data: distinctCityCount } = useQuery<number>({
+    queryKey: ["studios", "cityCount"],
+    queryFn: async () => {
+      const res = await fetch("/api/studios");
+      if (!res.ok) return 0;
+      const studios: { cityId: string }[] = await res.json();
+      return new Set(studios.map((s) => s.cityId)).size;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
     if (status !== "authenticated") return;
     if (sessionStorage.getItem(DISMISS_KEY)) return;
+    if (distinctCityCount === undefined || distinctCityCount <= 1) return;
 
     let cancelled = false;
 
@@ -63,7 +75,7 @@ export function CityDetectPrompt() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [status]);
+  }, [status, distinctCityCount]);
 
   function dismiss() {
     setShow(false);

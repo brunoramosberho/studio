@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const allowedFields = [
       "name", "tagline", "slogan", "metaDescription", "logoUrl", "appIconUrl",
       "fontPairing", "colorBg", "colorFg", "colorSurface", "colorAccent",
-      "colorAccentSoft", "colorMuted", "colorBorder", "colorCoach", "colorAdmin",
+      "colorAccentSoft", "colorMuted", "colorBorder", "colorHeroBg", "colorCoach", "colorAdmin",
       "coachIconSvg", "landingUrl", "communityHeadline",
     ];
 

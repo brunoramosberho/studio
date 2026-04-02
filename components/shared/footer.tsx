@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { Asterisk } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
 
 const footerLinks = {
@@ -91,10 +92,24 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-border pt-6">
+        <div className="mt-12 border-t border-border pt-6 space-y-1">
           <p className="text-center text-xs text-muted">
             {studioName} Studio © {new Date().getFullYear()}
           </p>
+          <div className="flex items-center justify-center gap-1 text-[10px] text-muted/40">
+            Desarrollado por
+            <a
+              href="https://mgic.app"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 font-medium text-muted/50 transition-colors hover:text-muted"
+            >
+              <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-[3px] bg-current">
+                <Asterisk className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+              </span>
+              Magic Studio
+            </a>
+          </div>
         </div>
       </div>
     </footer>

@@ -99,6 +99,7 @@ export default async function RootLayout({
     "--color-accent-soft": b.colorAccentSoft,
     "--color-muted": b.colorMuted,
     "--color-border": b.colorBorder,
+    "--color-hero-bg": b.colorHeroBg,
     "--color-ring": b.colorAccent,
     "--color-coach": b.colorCoach,
     "--color-admin": b.colorAdmin,

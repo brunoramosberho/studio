@@ -77,6 +77,14 @@ interface PackageData {
   sortOrder: number;
 }
 
+function isLightColor(hex: string): boolean {
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150;
+}
+
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number) => ({
@@ -98,6 +106,12 @@ export default function LandingPage() {
   const [classTypes, setClassTypes] = useState<ClassTypeData[]>([]);
   const branding = useBranding();
 
+  const heroLight = isLightColor(branding.colorHeroBg || "#1C1917");
+  const heroText = heroLight ? branding.colorFg : "#FFFFFF";
+  const heroTextMuted = heroLight ? `${branding.colorFg}99` : "rgba(255,255,255,0.6)";
+  const heroTextSubtle = heroLight ? `${branding.colorFg}50` : "rgba(255,255,255,0.3)";
+  const heroBorder = heroLight ? `${branding.colorFg}20` : "rgba(255,255,255,0.2)";
+
   useEffect(() => {
     fetch("/api/coaches")
       .then((r) => r.json())
@@ -118,7 +132,7 @@ export default function LandingPage() {
       {/* ── Hero ──────────────────────────────────────────────── */}
       <section
         className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-4"
-        style={{ backgroundColor: branding.colorFg }}
+        style={{ backgroundColor: branding.colorHeroBg }}
       >
         <div
           className="absolute inset-0"
@@ -152,7 +166,8 @@ export default function LandingPage() {
             <motion.h1
               variants={fadeUp}
               custom={1}
-              className="font-display text-6xl font-bold leading-[0.95] tracking-tight text-white sm:text-8xl"
+              className="font-display text-6xl font-bold leading-[0.95] tracking-tight sm:text-8xl"
+              style={{ color: heroText }}
             >
               {branding.slogan.split(".").filter(Boolean).map((part, i, arr) =>
                 i === arr.length - 1 ? (
@@ -160,7 +175,7 @@ export default function LandingPage() {
                     key={i}
                     style={{
                       color: branding.colorAccent,
-                      textShadow: `0 0 40px ${branding.colorAccent}88, 0 0 80px ${branding.colorAccent}44`,
+                      textShadow: heroLight ? "none" : `0 0 40px ${branding.colorAccent}88, 0 0 80px ${branding.colorAccent}44`,
                     }}
                   >
                     {part.trim()}.
@@ -174,7 +189,8 @@ export default function LandingPage() {
             <motion.p
               variants={fadeUp}
               custom={2}
-              className="mx-auto mt-8 max-w-lg text-lg leading-relaxed text-white/60 sm:text-xl"
+              className="mx-auto mt-8 max-w-lg text-lg leading-relaxed sm:text-xl"
+              style={{ color: heroTextMuted }}
             >
               {branding.metaDescription}
             </motion.p>
@@ -191,7 +207,8 @@ export default function LandingPage() {
                 asChild
                 variant="secondary"
                 size="lg"
-                className="border-white/20 text-white hover:border-accent hover:bg-accent hover:text-white"
+                className="hover:border-accent hover:bg-accent hover:text-white"
+                style={{ borderColor: heroBorder, color: heroText }}
               >
                 <Link href="/packages">Ver paquetes</Link>
               </Button>
@@ -206,7 +223,7 @@ export default function LandingPage() {
           className="absolute bottom-10 left-1/2 -translate-x-1/2"
         >
           <div className="flex flex-col items-center gap-2">
-            <span className="text-xs uppercase tracking-[0.2em] text-white/30">
+            <span className="text-xs uppercase tracking-[0.2em]" style={{ color: heroTextSubtle }}>
               Scroll
             </span>
             <motion.div
@@ -225,7 +242,7 @@ export default function LandingPage() {
 
       {/* ── Class Types ───────────────────────────────────────── */}
       {classTypes.length > 0 && (
-      <section className="px-4 pb-24 pt-12" style={{ backgroundColor: branding.colorFg }}>
+      <section className="bg-surface px-4 py-24">
         <div className="mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -234,10 +251,10 @@ export default function LandingPage() {
             transition={{ duration: 0.6, ease: "easeOut" as const }}
             className="mb-16 text-center"
           >
-            <h2 className="font-display text-3xl font-bold text-white sm:text-5xl">
+            <h2 className="font-display text-3xl font-bold text-foreground sm:text-5xl">
               Encuentra tu práctica
             </h2>
-            <p className="mt-4 text-white/50">
+            <p className="mt-4 text-muted">
               {classTypes.length} disciplina{classTypes.length !== 1 ? "s" : ""}, un objetivo: que te sientas increíble.
             </p>
           </motion.div>
@@ -255,29 +272,29 @@ export default function LandingPage() {
                 variants={fadeUp}
               >
                 <Link href={`/schedule?discipline=${encodeURIComponent(cls.name)}`}>
-                <div className="group h-full cursor-pointer rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm transition-all duration-300 hover:border-accent/30 hover:bg-white/[0.08]">
+                <div className="group h-full cursor-pointer rounded-2xl border border-border bg-background p-8 shadow-[var(--shadow-warm)] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
                   <div
                     className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl transition-colors"
-                    style={{ backgroundColor: `${cls.color}20`, color: cls.color }}
+                    style={{ backgroundColor: `${cls.color}18`, color: cls.color }}
                   >
                     <Icon className="h-7 w-7" />
                   </div>
-                  <h3 className="font-display text-xl font-bold text-white">
+                  <h3 className="font-display text-xl font-bold text-foreground">
                     {cls.name}
                   </h3>
                   {cls.description && (
-                    <p className="mt-3 text-sm leading-relaxed text-white/50">
+                    <p className="mt-3 text-sm leading-relaxed text-muted">
                       {cls.description}
                     </p>
                   )}
                   <div className="mt-6 flex items-center gap-3">
                     <span
                       className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium"
-                      style={{ backgroundColor: `${cls.color}20`, color: cls.color }}
+                      style={{ backgroundColor: `${cls.color}15`, color: cls.color }}
                     >
                       {LEVEL_LABELS[cls.level] ?? cls.level}
                     </span>
-                    <span className="flex items-center gap-1.5 text-xs text-white/40">
+                    <span className="flex items-center gap-1.5 text-xs text-muted">
                       <Clock className="h-3.5 w-3.5" />
                       {cls.duration} min
                     </span>
@@ -293,7 +310,7 @@ export default function LandingPage() {
       )}
 
       {/* ── How It Works ──────────────────────────────────────── */}
-      <section className="bg-surface px-4 py-24">
+      <section className="bg-background px-4 py-24">
         <div className="mx-auto max-w-5xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -338,7 +355,7 @@ export default function LandingPage() {
 
       {/* ── Coaches ────────────────────────────────────────────── */}
       {coaches.length > 0 && (
-      <section className="px-4 py-24" style={{ backgroundColor: branding.colorFg }}>
+      <section className="px-4 py-24" style={{ backgroundColor: branding.colorHeroBg }}>
         <div className="mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -347,10 +364,10 @@ export default function LandingPage() {
             transition={{ duration: 0.6, ease: "easeOut" as const }}
             className="mb-16 text-center"
           >
-            <h2 className="font-display text-3xl font-bold text-white sm:text-5xl">
+            <h2 className="font-display text-3xl font-bold sm:text-5xl" style={{ color: heroText }}>
               Nuestro equipo
             </h2>
-            <p className="mt-4 text-white/50">
+            <p className="mt-4" style={{ color: heroTextMuted }}>
               Coaches que te inspiran en cada sesión.
             </p>
           </motion.div>
@@ -375,7 +392,7 @@ export default function LandingPage() {
                   className="min-w-[280px] flex-shrink-0 md:min-w-0"
                 >
                   <div className="group relative h-full overflow-hidden rounded-2xl">
-                    <div className="aspect-[3/4] bg-gradient-to-br from-white/10 via-accent/5 to-white/5">
+                    <div className="aspect-[3/4]" style={{ background: `linear-gradient(135deg, ${heroText}15, ${branding.colorAccent}10, ${heroText}08)` }}>
                       {photo ? (
                         <img
                           src={photo}
@@ -384,7 +401,7 @@ export default function LandingPage() {
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center">
-                          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/10 text-3xl font-bold text-white/40">
+                          <div className="flex h-24 w-24 items-center justify-center rounded-full text-3xl font-bold" style={{ backgroundColor: `${heroText}15`, color: heroTextSubtle }}>
                             {initials}
                           </div>
                         </div>
@@ -426,7 +443,8 @@ export default function LandingPage() {
             >
               <Link
                 href="/coaches"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-white/70 transition-colors hover:text-accent"
+                className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-accent"
+                style={{ color: heroTextMuted }}
               >
                 Ver los {coaches.length} coaches <ArrowRight className="h-3.5 w-3.5" />
               </Link>
@@ -479,10 +497,10 @@ export default function LandingPage() {
                 <div
                   className={`relative h-full rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 ${
                     isHighlight
-                      ? "text-white shadow-lg"
+                      ? "shadow-lg"
                       : "border border-border bg-white shadow-[var(--shadow-warm)]"
                   } ${pkg.isPromo ? "border-2 border-dashed border-accent/40" : ""}`}
-                  style={isHighlight ? { backgroundColor: branding.colorFg } : undefined}
+                  style={isHighlight ? { backgroundColor: branding.colorHeroBg, color: heroText } : undefined}
                 >
                   {isHighlight && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -498,8 +516,9 @@ export default function LandingPage() {
                   )}
                   <h3
                     className={`mt-2 font-display text-2xl font-bold ${
-                      isHighlight ? "text-white" : "text-foreground"
+                      isHighlight ? "" : "text-foreground"
                     }`}
+                    style={isHighlight ? { color: heroText } : undefined}
                   >
                     {pkg.name}
                   </h3>
@@ -511,14 +530,15 @@ export default function LandingPage() {
                     >
                       {formatCurrency(pkg.price)}
                     </span>
-                    <span className={`ml-1 text-sm ${isHighlight ? "text-white/50" : "text-muted"}`}>
+                    <span className={`ml-1 text-sm ${isHighlight ? "" : "text-muted"}`} style={isHighlight ? { color: heroTextMuted } : undefined}>
                       {pkg.currency}
                     </span>
                   </div>
                   <div
                     className={`mt-4 space-y-2 text-sm ${
-                      isHighlight ? "text-white/60" : "text-muted"
+                      isHighlight ? "" : "text-muted"
                     }`}
+                    style={isHighlight ? { color: heroTextMuted } : undefined}
                   >
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-accent" />
@@ -568,7 +588,7 @@ export default function LandingPage() {
       })()}
 
       {/* ── CTA Banner ─────────────────────────────────────────── */}
-      <section className="px-4 py-24" style={{ backgroundColor: branding.colorFg }}>
+      <section className="px-4 py-24" style={{ backgroundColor: branding.colorHeroBg }}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -577,10 +597,10 @@ export default function LandingPage() {
           className="mx-auto max-w-3xl text-center"
         >
           <Zap className="mx-auto mb-6 h-8 w-8 text-accent" />
-          <h2 className="font-display text-4xl font-bold text-white sm:text-5xl md:text-6xl">
+          <h2 className="font-display text-4xl font-bold sm:text-5xl md:text-6xl" style={{ color: heroText }}>
             ¿Listo para empezar?
           </h2>
-          <p className="mx-auto mt-6 max-w-md text-lg text-white/50">
+          <p className="mx-auto mt-6 max-w-md text-lg" style={{ color: heroTextMuted }}>
             Reserva hoy y descubre lo que tu cuerpo puede lograr.
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -591,7 +611,8 @@ export default function LandingPage() {
               asChild
               variant="secondary"
               size="lg"
-              className="border-white/20 text-white hover:border-accent hover:bg-accent hover:text-white"
+              className="hover:border-accent hover:bg-accent hover:text-white"
+              style={{ borderColor: heroBorder, color: heroText }}
             >
               <Link href="/packages">
                 Ver paquetes <ArrowRight className="ml-2 h-4 w-4" />

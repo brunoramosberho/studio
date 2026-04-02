@@ -27,6 +27,7 @@ export function applyTheme(b: StudioBranding) {
   html.style.setProperty("--color-accent-soft", b.colorAccentSoft);
   html.style.setProperty("--color-muted", b.colorMuted);
   html.style.setProperty("--color-border", b.colorBorder);
+  html.style.setProperty("--color-hero-bg", b.colorHeroBg);
   html.style.setProperty("--color-ring", b.colorAccent);
   html.style.setProperty("--color-coach", b.colorCoach);
   html.style.setProperty("--color-admin", b.colorAdmin);
@@ -43,8 +44,9 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     fetch("/api/admin/settings")
       .then((r) => r.json())
       .then((data: StudioBranding) => {
-        setBranding(data);
-        applyTheme(data);
+        const merged = { ...DEFAULTS, ...data };
+        setBranding(merged);
+        applyTheme(merged);
       })
       .catch(() => {});
   }, []);

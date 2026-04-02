@@ -79,6 +79,7 @@ export async function PUT(req: Request, { params }: Params) {
       colorAccentSoft,
       colorMuted,
       colorBorder,
+      colorHeroBg,
       colorCoach,
       colorAdmin,
     } = body;
@@ -119,6 +120,7 @@ export async function PUT(req: Request, { params }: Params) {
     if (colorAccentSoft !== undefined) data.colorAccentSoft = colorAccentSoft;
     if (colorMuted !== undefined) data.colorMuted = colorMuted;
     if (colorBorder !== undefined) data.colorBorder = colorBorder;
+    if (colorHeroBg !== undefined) data.colorHeroBg = colorHeroBg;
     if (colorCoach !== undefined) data.colorCoach = colorCoach;
     if (colorAdmin !== undefined) data.colorAdmin = colorAdmin;
 

@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Dumbbell,
   ArrowRight,
+  Asterisk,
 } from "lucide-react";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { DisciplineSheet, type DisciplineData } from "@/components/feed/discipline-sheet";
@@ -74,7 +75,14 @@ export function ScheduleClient({
       return next;
     });
   }, []);
-  const [filterStudio, setFilterStudio] = useState<string>("all");
+  const [filterStudio, setFilterStudioRaw] = useState<string>(() => {
+    if (typeof window === "undefined") return "all";
+    return localStorage.getItem("schedule-studio") || "all";
+  });
+  function setFilterStudio(studio: string) {
+    setFilterStudioRaw(studio);
+    try { localStorage.setItem("schedule-studio", studio); } catch {}
+  }
   const [filterCity, setFilterCityRaw] = useState<string>(() => {
     if (typeof window === "undefined") return "all";
     return sessionStorage.getItem("schedule-city") || "all";
@@ -174,10 +182,22 @@ export function ScheduleClient({
     },
   });
 
-  // City auto-detection (runs once when cities data arrives)
+  const activeCities = useMemo(() => {
+    if (allStudios.length === 0 || cities.length === 0) return [];
+    const cityIdsWithStudios = new Set(allStudios.map((s) => s.cityId));
+    return cities.filter((c) => cityIdsWithStudios.has(c.id));
+  }, [cities, allStudios]);
+
   const [cityDetected, setCityDetected] = useState(false);
   useEffect(() => {
-    if (cityDetected || cities.length === 0) return;
+    if (cityDetected || activeCities.length === 0) return;
+
+    if (activeCities.length === 1) {
+      setFilterCity(activeCities[0].id);
+      setCityDetected(true);
+      return;
+    }
+
     async function detectCity() {
       let detectedCityId: string | null = null;
 
@@ -186,19 +206,19 @@ export function ScheduleClient({
           const profRes = await fetch("/api/profile");
           if (profRes.ok) {
             const prof = await profRes.json();
-            if (prof.cityId && cities.some((c) => c.id === prof.cityId)) {
+            if (prof.cityId && activeCities.some((c) => c.id === prof.cityId)) {
               detectedCityId = prof.cityId;
             }
           }
         } catch {}
       }
 
-      if (!detectedCityId && cities.length > 1) {
+      if (!detectedCityId) {
         try {
           const detectRes = await fetch("/api/detect-location");
           if (detectRes.ok) {
             const geo = await detectRes.json();
-            if (geo.cityId && cities.some((c) => c.id === geo.cityId)) {
+            if (geo.cityId && activeCities.some((c) => c.id === geo.cityId)) {
               detectedCityId = geo.cityId;
             }
           }
@@ -208,29 +228,32 @@ export function ScheduleClient({
           try {
             const tz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
             const isEurope = tz.startsWith("Europe/");
-            const europeCity = cities.find((c) => c.countryCode === "ES");
-            const americaCity = cities.find((c) => c.countryCode === "MX");
+            const europeCity = activeCities.find((c) => c.countryCode === "ES");
+            const americaCity = activeCities.find((c) => c.countryCode === "MX");
             if (isEurope && europeCity) detectedCityId = europeCity.id;
             else if (!isEurope && americaCity) detectedCityId = americaCity.id;
           } catch {}
         }
       }
 
-      if (!detectedCityId && cities.length === 1) {
-        detectedCityId = cities[0].id;
-      }
-
       if (detectedCityId) setFilterCity(detectedCityId);
       setCityDetected(true);
     }
     detectCity();
-  }, [cities, session?.user, cityDetected]);
+  }, [activeCities, session?.user, cityDetected]);
 
   const studios = filterCity === "all"
     ? allStudios
     : allStudios.filter((s) => s.cityId === filterCity);
-  const showCityFilter = cities.length > 1 && !session?.user;
+  const showCityFilter = activeCities.length > 1 && !session?.user;
   const showStudioFilter = studios.length > 1;
+
+  useEffect(() => {
+    if (filterStudio === "all" || studios.length === 0) return;
+    if (!studios.some((s) => s.id === filterStudio)) {
+      setFilterStudio("all");
+    }
+  }, [studios, filterStudio]);
 
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
@@ -326,7 +349,7 @@ export function ScheduleClient({
                   onChange={(e) => { setFilterCity(e.target.value); setFilterStudio("all"); }}
                   className="appearance-none rounded-full border border-border bg-white py-1.5 pl-3 pr-7 text-[12px] font-medium text-foreground focus:outline-none"
                 >
-                  {cities.map((c) => (
+                  {activeCities.map((c) => (
                     <option key={c.id} value={c.id}>
                       {countryFlag(c.countryCode)} {c.name}
                     </option>
@@ -577,7 +600,7 @@ export function ScheduleClient({
                 onChange={(v) => { setFilterCity(v); setFilterStudio("all"); }}
                 options={[
                   { value: "all", label: "Todas" },
-                  ...cities.map((c) => ({ value: c.id, label: `${countryFlag(c.countryCode)} ${c.name}` })),
+                  ...activeCities.map((c) => ({ value: c.id, label: `${countryFlag(c.countryCode)} ${c.name}` })),
                 ]}
               />
             )}
@@ -840,6 +863,21 @@ export function ScheduleClient({
         discipline={discipline}
         onClose={() => setDisciplineOpen(false)}
       />
+
+      <div className="hidden py-6 md:flex items-center justify-center gap-1 text-[10px] text-muted/40">
+        Desarrollado por
+        <a
+          href="https://mgic.app"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 font-medium text-muted/50 transition-colors hover:text-muted"
+        >
+          <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-[3px] bg-current">
+            <Asterisk className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+          </span>
+          Magic Studio
+        </a>
+      </div>
     </div>
   );
 }

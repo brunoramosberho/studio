@@ -30,6 +30,7 @@ model Tenant {
   colorAccentSoft String   @default("#E8D9BF")
   colorMuted      String   @default("#8C8279")
   colorBorder     String   @default("#E8E2D9")
+  colorHeroBg     String   @default("#1C1917")
   colorCoach      String   @default("#2D5016")
   colorAdmin      String   @default("#1A2C4E")
   coachIconSvg    String?  @db.Text

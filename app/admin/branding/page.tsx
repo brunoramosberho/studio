@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { type StudioBranding, DEFAULTS, FONT_PAIRINGS } from "@/lib/branding";
 import { useBranding, applyTheme } from "@/components/branding-provider";
 
-const colorFields: { key: keyof StudioBranding; label: string }[] = [
+const colorFields: { key: keyof StudioBranding; label: string; hint?: string }[] = [
   { key: "colorBg", label: "Fondo" },
   { key: "colorFg", label: "Texto" },
   { key: "colorSurface", label: "Superficie" },
@@ -32,6 +32,7 @@ const colorFields: { key: keyof StudioBranding; label: string }[] = [
   { key: "colorAccentSoft", label: "Acento suave" },
   { key: "colorMuted", label: "Texto secundario" },
   { key: "colorBorder", label: "Bordes" },
+  { key: "colorHeroBg", label: "Fondo Landing", hint: "Secciones oscuras de tu landing page" },
   { key: "colorCoach", label: "Portal Coach" },
   { key: "colorAdmin", label: "Portal Admin" },
 ];
@@ -48,7 +49,7 @@ export default function BrandingPage() {
   useEffect(() => {
     fetch("/api/admin/settings")
       .then((r) => r.json())
-      .then((data) => setSettings(data))
+      .then((data) => setSettings({ ...DEFAULTS, ...data }))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -590,33 +591,36 @@ export default function BrandingPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              {colorFields.map(({ key, label }) => (
+              {colorFields.map(({ key, label, hint }) => {
+                const hex = (settings[key] as string) ?? (DEFAULTS[key] as string) ?? "#000000";
+                return (
                 <div key={key} className="flex items-center gap-3 rounded-md border border-border bg-white p-3 shadow-sm">
                   <label className="relative">
                     <input
                       type="color"
-                      value={settings[key] as string}
+                      value={hex}
                       onChange={(e) => update(key, e.target.value)}
                       className="absolute inset-0 cursor-pointer opacity-0"
                       aria-label={label}
                     />
                     <div
                       className="h-10 w-10 shrink-0 rounded-md border border-border shadow-sm"
-                      style={{ backgroundColor: settings[key] as string }}
+                      style={{ backgroundColor: hex }}
                     />
                   </label>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{label}</p>
-                    <p className="text-xs text-muted">Click en el color para cambiarlo</p>
+                    <p className="text-xs text-muted">{hint || "Click en el color para cambiarlo"}</p>
                   </div>
                   <Input
-                    value={(settings[key] as string).toUpperCase()}
+                    value={hex.toUpperCase()}
                     onChange={(e) => update(key, e.target.value)}
                     className="h-9 w-[140px] font-mono text-xs"
                     aria-label={`${label} hex`}
                   />
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mt-6 rounded-md border border-border p-4">
