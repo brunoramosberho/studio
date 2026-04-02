@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -29,7 +29,7 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
-import { LoyaltyTierBadge } from "@/components/profile/loyalty-tier-badge";
+import { LevelHexCard } from "@/components/profile/level-hex-card";
 import { ActivityCalendar } from "@/components/profile/activity-calendar";
 import { cn } from "@/lib/utils";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
@@ -144,6 +144,32 @@ export default function ProfilePage() {
       return res.json();
     },
   });
+
+  const { data: studioCityIds = [] } = useQuery<string[]>({
+    queryKey: ["studios", "cityIds"],
+    queryFn: async () => {
+      const res = await fetch("/api/studios");
+      if (!res.ok) return [];
+      const studios: { cityId: string }[] = await res.json();
+      return [...new Set(studios.map((s) => s.cityId))];
+    },
+  });
+
+  const activeLocations = useMemo(() => {
+    if (studioCityIds.length === 0) return [];
+    const ids = new Set(studioCityIds);
+    return locations
+      .map((country) => ({
+        ...country,
+        cities: country.cities.filter((c) => ids.has(c.id)),
+      }))
+      .filter((country) => country.cities.length > 0);
+  }, [locations, studioCityIds]);
+
+  const activeCityCount = useMemo(
+    () => activeLocations.reduce((sum, c) => sum + c.cities.length, 0),
+    [activeLocations],
+  );
 
   const { data: songs = [], isLoading: loadingSongs } = useQuery<FavoriteSong[]>({
     queryKey: ["profile", "songs"],
@@ -272,6 +298,13 @@ export default function ProfilePage() {
     } catch {}
     setSavingLocation(false);
   }
+
+  useEffect(() => {
+    if (!profile || activeCityCount !== 1) return;
+    const singleCity = activeLocations[0]?.cities[0];
+    if (!singleCity || profile.cityId === singleCity.id) return;
+    handleLocationChange(activeLocations[0].id, singleCity.id);
+  }, [profile, activeCityCount, activeLocations]);
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -468,94 +501,16 @@ export default function ProfilePage() {
           </Link>
         </motion.div>
 
-        {/* Level: metallic badge + progress */}
+        {/* Level: hex badge + progress (expandable) */}
         {gamification?.level && (
           <motion.div custom={2} variants={fadeUp} initial="hidden" animate="show">
-            <div className="space-y-3 rounded-2xl border border-border/50 bg-gradient-to-b from-white to-surface/80 p-3 shadow-warm-sm">
-              <div className="flex justify-center">
-                <LoyaltyTierBadge
-                  levelName={gamification.level.name}
-                  icon={gamification.level.icon}
-                  sortOrder={gamification.level.sortOrder}
-                  size="sm"
-                  showTierSubtitle={false}
-                  className="max-w-full"
-                />
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-[11px] text-muted">
-                <span>
-                  <strong className="text-foreground">{gamification.totalClasses}</strong> clases
-                </span>
-                {gamification.currentStreak > 0 && (
-                  <span>
-                    Racha <strong className="text-foreground">{gamification.currentStreak}</strong>d
-                  </span>
-                )}
-                {gamification.nextLevel && (
-                  <span>
-                    <strong className="text-foreground">{gamification.classesToNext}</strong> para{" "}
-                    {gamification.nextLevel.icon} {gamification.nextLevel.name}
-                  </span>
-                )}
-              </div>
-              {gamification.levels.length > 1 && (() => {
-                const levels = gamification.levels;
-                const gaps = levels.length - 1;
-                const currentIdx = levels.findIndex((l) => l.isCurrent);
-                const segmentPct = 100 / gaps;
-                const withinSegment =
-                  currentIdx >= 0 && currentIdx < gaps
-                    ? (gamification.totalClasses - levels[currentIdx].minClasses) /
-                      (levels[currentIdx + 1].minClasses - levels[currentIdx].minClasses)
-                    : currentIdx === gaps ? 1 : 0;
-                const overallPct = Math.min(
-                  100,
-                  currentIdx * segmentPct + withinSegment * segmentPct,
-                );
-
-                return (
-                  <div className="mx-auto max-w-md">
-                    <div className="relative h-1.5 rounded-full bg-surface">
-                      <div
-                        className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
-                        style={{
-                          width: `${overallPct}%`,
-                          backgroundColor: gamification.level.color,
-                        }}
-                      />
-                      {levels.slice(1, -1).map((l, i) => (
-                        <div
-                          key={l.name}
-                          className="absolute top-1/2 h-2.5 w-0.5 -translate-y-1/2 rounded-full bg-border/40"
-                          style={{ left: `${(i + 1) * segmentPct}%` }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-              {gamification.levels.length > 0 && (
-                <div className="flex items-center justify-between gap-1 border-t border-border/40 pt-2">
-                  {gamification.levels.map((l) => (
-                    <div
-                      key={l.name}
-                      className={cn(
-                        "flex min-w-0 flex-1 flex-col items-center gap-0.5",
-                        l.reached ? "opacity-100" : "opacity-35",
-                        l.isCurrent && "scale-105",
-                      )}
-                    >
-                      <span className={cn("text-base", l.isCurrent && "text-lg drop-shadow-sm")}>
-                        {l.icon}
-                      </span>
-                      <span className="truncate text-center text-[8px] font-semibold uppercase tracking-tight text-muted">
-                        {l.name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <LevelHexCard
+              level={gamification.level}
+              nextLevel={gamification.nextLevel}
+              totalClasses={gamification.totalClasses}
+              classesToNext={gamification.classesToNext}
+              levels={gamification.levels}
+            />
           </motion.div>
         )}
 
@@ -933,8 +888,8 @@ export default function ProfilePage() {
 
         <Separator />
 
-        {/* Location — minimal single dropdown */}
-        {locations.length > 0 && (
+        {/* Location — only shown when tenant has studios in multiple cities */}
+        {activeCityCount > 1 && (
           <motion.div custom={5} variants={fadeUp} initial="hidden" animate="show">
             <div className="flex items-center gap-3 px-4 py-2">
               <div className="flex items-center gap-2 text-[13px] text-muted">
@@ -951,7 +906,7 @@ export default function ProfilePage() {
                   className="appearance-none rounded-full border border-border/60 bg-white py-1.5 pl-3 pr-7 text-[13px] font-medium text-foreground focus:border-accent focus:outline-none"
                 >
                   <option value="">Seleccionar</option>
-                  {locations.map((country) =>
+                  {activeLocations.map((country) =>
                     country.cities.map((city) => (
                       <option key={city.id} value={`${country.id}|${city.id}`}>
                         {countryFlag(country.code)} {city.name}
