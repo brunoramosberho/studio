@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { useBranding } from "@/components/branding-provider";
 import type { LoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,10 @@ const LEVEL_BADGES: Record<LoyaltyTierVisual, string | null> = {
   platinum: "💠",
   elite: "👑",
 };
+
+const SHIELD_RATIO = 52 / 44;
+const SHIELD_OUTER = "M4,0 H40 Q44,0 44,4 V28 Q44,44 22,52 Q0,44 0,28 V4 Q0,0 4,0 Z";
+const SHIELD_INNER = "M6.5,2.5 H37.5 Q41.5,2.5 41.5,6.5 V28 Q41.5,42 22,49.5 Q2.5,42 2.5,28 V6.5 Q2.5,2.5 6.5,2.5 Z";
 
 export interface UserAvatarUser {
   id?: string;
@@ -35,10 +40,10 @@ export function UserAvatar({
   onClick,
   className,
 }: UserAvatarProps) {
-  const { colorFg } = useBranding();
+  const { colorFg, colorAccent } = useBranding();
+  const clipId = useId();
 
   const isMember = user.hasActiveMembership === true;
-  const borderRadius = isMember ? size * 0.25 : size / 2;
 
   const initials = (user.name ?? "")
     .split(" ")
@@ -50,10 +55,89 @@ export function UserAvatar({
   const levelBadge =
     showBadge && user.level ? LEVEL_BADGES[user.level] : null;
 
+  const Wrapper = onClick ? "button" : "div";
+
+  if (isMember) {
+    const shieldW = size;
+    const shieldH = Math.round(size * SHIELD_RATIO);
+    const badgeSize = Math.max(14, Math.round(size * 0.38));
+    const badgeFontSize = Math.max(8, Math.round(size * 0.22));
+    const borderColor = colorAccent || colorFg;
+
+    return (
+      <Wrapper
+        onClick={onClick}
+        className={cn("relative inline-flex shrink-0", className)}
+        style={{ width: shieldW, height: shieldH }}
+      >
+        <svg
+          viewBox="0 0 44 52"
+          width={shieldW}
+          height={shieldH}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <clipPath id={clipId}>
+              <path d={SHIELD_INNER} />
+            </clipPath>
+          </defs>
+
+          {/* Border */}
+          <path d={SHIELD_OUTER} fill={borderColor} />
+
+          {/* Image or initials clipped to inner shield */}
+          <g clipPath={`url(#${clipId})`}>
+            {user.image ? (
+              <image
+                href={user.image}
+                x="2.5"
+                y="2.5"
+                width="39"
+                height="47"
+                preserveAspectRatio="xMidYMid slice"
+              />
+            ) : (
+              <>
+                <rect x="2.5" y="2.5" width="39" height="47" fill={colorFg} />
+                <text
+                  x="22"
+                  y="28"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="white"
+                  fontWeight="700"
+                  fontSize={size * 0.36}
+                >
+                  {initials}
+                </text>
+              </>
+            )}
+          </g>
+        </svg>
+
+        {levelBadge && (
+          <span
+            className="absolute flex items-center justify-center rounded-full bg-white shadow-sm ring-[1.5px] ring-white"
+            style={{
+              bottom: -1,
+              right: -1,
+              width: badgeSize,
+              height: badgeSize,
+              fontSize: badgeFontSize,
+              lineHeight: 1,
+            }}
+          >
+            {levelBadge}
+          </span>
+        )}
+      </Wrapper>
+    );
+  }
+
+  // Non-member — circular avatar
   const badgeSize = Math.max(14, Math.round(size * 0.38));
   const badgeFontSize = Math.max(8, Math.round(size * 0.22));
-
-  const Wrapper = onClick ? "button" : "div";
 
   return (
     <Wrapper
@@ -62,14 +146,8 @@ export function UserAvatar({
       style={{ width: size, height: size }}
     >
       <div
-        className="overflow-hidden"
-        style={{
-          width: size,
-          height: size,
-          borderRadius,
-          ...(isMember && { border: `2.5px solid ${colorFg}` }),
-          boxSizing: "border-box",
-        }}
+        className="overflow-hidden rounded-full"
+        style={{ width: size, height: size }}
       >
         {user.image ? (
           <img

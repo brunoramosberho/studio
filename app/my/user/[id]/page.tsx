@@ -19,6 +19,7 @@ import {
 import { LikeButton } from "@/components/feed/like-button";
 import { CommentsSheet } from "@/components/feed/comments-sheet";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
+import { getIconComponent } from "@/components/admin/icon-picker";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ interface UpcomingClass {
   id: string;
   className: string;
   color: string;
+  icon?: string | null;
   duration: number;
   coachName?: string;
   startsAt: string;
@@ -44,6 +46,7 @@ interface ActivityItem {
   id: string;
   className: string;
   color: string;
+  icon?: string | null;
   coachName: string;
   date: string;
 }
@@ -130,6 +133,7 @@ function timeAgo(dateStr: string) {
 }
 
 function ClassCard({ cls, showCoach = true }: { cls: UpcomingClass; showCoach?: boolean }) {
+  const Icon = cls.icon ? getIconComponent(cls.icon) : null;
   return (
     <div className="overflow-hidden rounded-2xl border border-border/50 bg-white">
       <div className="flex items-center gap-3 px-4 py-3">
@@ -138,7 +142,11 @@ function ClassCard({ cls, showCoach = true }: { cls: UpcomingClass; showCoach?: 
           style={{ backgroundColor: cls.color + "20" }}
         >
           <div className="flex h-full items-center justify-center">
-            <Dumbbell className="h-4 w-4" style={{ color: cls.color }} />
+            {Icon ? (
+              <Icon className="h-4 w-4" style={{ color: cls.color }} />
+            ) : (
+              <Dumbbell className="h-4 w-4" style={{ color: cls.color }} />
+            )}
           </div>
         </div>
         <div className="min-w-0 flex-1">
@@ -183,6 +191,9 @@ function ClassCard({ cls, showCoach = true }: { cls: UpcomingClass; showCoach?: 
 function FeedEventMini({ event }: { event: FeedItem }) {
   const p = event.payload;
   const isAchievement = event.eventType === "ACHIEVEMENT_UNLOCKED";
+  const eventIcon = (p.classTypeIcon as string) ?? null;
+  const eventColor = (p.classTypeColor as string) ?? null;
+  const EventIcon = eventIcon ? getIconComponent(eventIcon) : null;
 
   function getDescription() {
     switch (event.eventType) {
@@ -200,9 +211,14 @@ function FeedEventMini({ event }: { event: FeedItem }) {
   return (
     <div className="overflow-hidden rounded-xl bg-white">
       <div className="flex items-start gap-3 px-3 py-2.5">
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface">
+        <div
+          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          style={eventColor ? { backgroundColor: eventColor + "20" } : undefined}
+        >
           {isAchievement ? (
             <span className="text-sm">🏆</span>
+          ) : EventIcon ? (
+            <EventIcon className="h-3.5 w-3.5" style={{ color: eventColor ?? undefined }} />
           ) : (
             <Dumbbell className="h-3.5 w-3.5 text-muted" />
           )}
@@ -553,7 +569,9 @@ export default function UserProfilePage({
                       Clases recientes
                     </h3>
                     <div className="space-y-1">
-                      {profile.recentActivity.map((item) => (
+                      {profile.recentActivity.map((item) => {
+                        const ItemIcon = item.icon ? getIconComponent(item.icon) : null;
+                        return (
                         <div
                           key={item.id}
                           className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5"
@@ -563,7 +581,11 @@ export default function UserProfilePage({
                             style={{ backgroundColor: item.color + "20" }}
                           >
                             <div className="flex h-full items-center justify-center">
-                              <Dumbbell className="h-3.5 w-3.5" style={{ color: item.color }} />
+                              {ItemIcon ? (
+                                <ItemIcon className="h-3.5 w-3.5" style={{ color: item.color }} />
+                              ) : (
+                                <Dumbbell className="h-3.5 w-3.5" style={{ color: item.color }} />
+                              )}
                             </div>
                           </div>
                           <div className="min-w-0 flex-1">
@@ -575,7 +597,8 @@ export default function UserProfilePage({
                             </p>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </section>
                 )}

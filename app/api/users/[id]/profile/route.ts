@@ -151,7 +151,7 @@ export async function GET(
         status: "SCHEDULED",
       },
       include: {
-        classType: { select: { name: true, duration: true, color: true } },
+        classType: { select: { name: true, duration: true, color: true, icon: true } },
         room: {
           select: {
             maxCapacity: true,
@@ -179,6 +179,7 @@ export async function GET(
       id: c.id,
       className: c.classType.name,
       color: c.classType.color,
+      icon: c.classType.icon,
       duration: c.classType.duration,
       startsAt: c.startsAt,
       endsAt: c.endsAt,
@@ -203,17 +204,17 @@ export async function GET(
   // Friends: full view
   const now = new Date();
 
-  // Past classes attended
+  // Past classes attended (scoped to this tenant)
   const pastClasses = await prisma.booking.findMany({
     where: {
       userId: targetId,
       status: "ATTENDED",
-      class: { status: "COMPLETED" },
+      class: { tenantId, status: "COMPLETED" },
     },
     include: {
       class: {
         include: {
-          classType: { select: { name: true, color: true } },
+          classType: { select: { name: true, color: true, icon: true } },
           coach: { select: { user: { select: { name: true } } } },
         },
       },
@@ -222,17 +223,17 @@ export async function GET(
     take: 15,
   });
 
-  // Upcoming classes
+  // Upcoming classes (scoped to this tenant)
   const upcomingBookingsRaw = await prisma.booking.findMany({
     where: {
       userId: targetId,
       status: "CONFIRMED",
-      class: { startsAt: { gt: now }, status: "SCHEDULED" },
+      class: { tenantId, startsAt: { gt: now }, status: "SCHEDULED" },
     },
     include: {
       class: {
         include: {
-          classType: { select: { name: true, duration: true, color: true } },
+          classType: { select: { name: true, duration: true, color: true, icon: true } },
           coach: { select: { user: { select: { name: true } } } },
           room: {
             select: {
@@ -292,6 +293,7 @@ export async function GET(
       id: b.classId,
       className: b.class.classType.name,
       color: b.class.classType.color,
+      icon: b.class.classType.icon,
       duration: b.class.classType.duration,
       coachName: b.class.coach.user.name,
       startsAt: b.class.startsAt,
@@ -310,6 +312,7 @@ export async function GET(
     id: b.id,
     className: b.class.classType.name,
     color: b.class.classType.color,
+    icon: b.class.classType.icon,
     coachName: b.class.coach.user.name,
     date: b.class.startsAt,
   }));

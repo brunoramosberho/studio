@@ -364,7 +364,7 @@ export default function ProfilePage() {
             className="group relative shrink-0"
             disabled={uploadingAvatar}
           >
-            <div className="relative h-[72px] w-[72px]">
+            <div className="relative" style={{ width: 72, height: gamification?.hasActiveMembership ? 85 : 72 }}>
               <UserAvatar
                 user={{
                   image: avatarPreview || session?.user?.image,
@@ -374,16 +374,35 @@ export default function ProfilePage() {
                 }}
                 size={72}
               />
-              <div
-                className="absolute inset-0 z-10 flex items-center justify-center bg-foreground/0 transition-colors group-hover:bg-foreground/40"
-                style={{ borderRadius: gamification?.hasActiveMembership ? 18 : "50%" }}
-              >
-                {uploadingAvatar ? (
+              {gamification?.hasActiveMembership ? (
+                <svg
+                  viewBox="0 0 44 52"
+                  className="pointer-events-none absolute inset-0 z-10 h-full w-full opacity-0 transition-opacity group-hover:opacity-100"
+                >
+                  <path
+                    d="M6.5,2.5 H37.5 Q41.5,2.5 41.5,6.5 V28 Q41.5,42 22,49.5 Q2.5,42 2.5,28 V6.5 Q2.5,2.5 6.5,2.5 Z"
+                    fill="rgba(0,0,0,0.4)"
+                  />
+                  <text x="22" y="26" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="10" opacity="0.9">
+                    📷
+                  </text>
+                </svg>
+              ) : (
+                <div
+                  className="absolute inset-0 z-10 flex items-center justify-center rounded-full bg-foreground/0 transition-colors group-hover:bg-foreground/40"
+                >
+                  {uploadingAvatar ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                  )}
+                </div>
+              )}
+              {uploadingAvatar && gamification?.hasActiveMembership && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center">
                   <Loader2 className="h-5 w-5 animate-spin text-white" />
-                ) : (
-                  <Camera className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
-                )}
-              </div>
+                </div>
+              )}
             </div>
             <input
               ref={fileInputRef}
