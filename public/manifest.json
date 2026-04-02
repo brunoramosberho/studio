@@ -1,6 +1,7 @@
 {
   "name": "Flō Studio",
   "short_name": "Flō",
+  "id": "/?homescreen=1",
   "description": "Pilates & Wellness — Muévete. Respira. Floréce.",
   "start_url": "/my",
   "scope": "/",
@@ -8,6 +9,10 @@
   "background_color": "#FAF9F6",
   "theme_color": "#FAF9F6",
   "orientation": "portrait",
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
   "icons": [
     {
       "src": "/icon-192.png",

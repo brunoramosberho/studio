@@ -267,7 +267,7 @@ export function Pricing() {
                 </ul>
 
                 <a
-                  href="mailto:hola@reserva.fit?subject=Demo%20reserva.fit"
+                  href="mailto:hola@mgic.app?subject=Demo%20Mgic%20Studio"
                   className={cn(
                     "mt-6 flex items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold transition-all",
                     plan.popular
@@ -295,7 +295,7 @@ export function Pricing() {
               vida. Incluye migración de datos gratuita y sesiones 1:1 de onboarding.
             </p>
             <a
-              href="mailto:hola@reserva.fit?subject=Founding%20Studio%20Program"
+              href="mailto:hola@mgic.app?subject=Founding%20Studio%20Program"
               className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-orange-600 transition hover:text-orange-700 dark:text-orange-400"
             >
               Aplica aquí

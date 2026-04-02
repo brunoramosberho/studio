@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 const faqs = [
   {
     q: "¿Mis clientes necesitan descargar una app?",
-    a: "No. reserva.fit es una PWA (Progressive Web App) que se instala desde el navegador como una app nativa. No hay App Store de por medio — tus clientes la agregan a su Home Screen en segundos con tu marca, tu icono y tus colores.",
+    a: "No. Mgic Studio es una PWA (Progressive Web App) que se instala desde el navegador como una app nativa. No hay App Store de por medio — tus clientes la agregan a su Home Screen en segundos con tu marca, tu icono y tus colores.",
   },
   {
     q: "¿Puedo migrar mis datos de otra plataforma?",
@@ -29,7 +29,7 @@ const faqs = [
   },
   {
     q: "¿Puedo usar mi propio dominio?",
-    a: "Sí. En el plan Scale puedes usar tu propio dominio (ej: app.tuestudio.com). En Starter y Growth, tu estudio vive en tuestudio.reserva.fit con tu branding completo.",
+    a: "Sí. En el plan Scale puedes usar tu propio dominio (ej: app.tuestudio.com). En Starter y Growth, tu estudio vive en tuestudio.mgic.app con tu branding completo.",
   },
 ];
 

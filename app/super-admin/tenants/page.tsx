@@ -136,7 +136,7 @@ export default function TenantsPage() {
                   pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
                 />
                 <p className="mt-1 text-xs text-gray-400">
-                  {form.slug && `${form.slug}.reserva.fit`}
+                  {form.slug && `${form.slug}.mgic.app`}
                 </p>
               </div>
               {error && (
@@ -198,7 +198,7 @@ export default function TenantsPage() {
                         {tenant.isActive ? "Activo" : "Inactivo"}
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-500">{tenant.slug}.reserva.fit</p>
+                    <p className="text-sm text-gray-500">{tenant.slug}.mgic.app</p>
                   </div>
                   <div className="hidden items-center gap-6 text-sm text-gray-500 sm:flex">
                     <div className="flex items-center gap-1.5">

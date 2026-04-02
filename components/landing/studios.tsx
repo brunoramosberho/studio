@@ -37,7 +37,7 @@ export function Studios() {
             className="mt-3 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white"
             
           >
-            Ya confían en reserva.fit
+            Ya confían en Mgic Studio
           </h2>
         </FadeIn>
 

@@ -120,7 +120,7 @@ const rows: Row[] = [
 ];
 
 const footnoteText =
-  "* Momence: $199 base + $160 email/SMS + $29 teacher substitutions + $49 referrals ≈ $437/mes sin AI. Con AI Inbox: $836/mes. * bsport: precio estimado plan Premium+ (no publicado). Comparativa basada en features equivalentes al plan Growth de reserva.fit.";
+  "* Momence: $199 base + $160 email/SMS + $29 teacher substitutions + $49 referrals ≈ $437/mes sin AI. Con AI Inbox: $836/mes. * bsport: precio estimado plan Premium+ (no publicado). Comparativa basada en features equivalentes al plan Growth de Mgic Studio.";
 
 function CellContent({ value }: { value: CellValue }) {
   if (value === true) {
@@ -225,7 +225,7 @@ export function Comparison() {
         <FadeIn className="text-center">
           <p className="text-sm font-semibold tracking-tight text-orange-500">Comparación</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tighter text-gray-900 sm:text-4xl">
-            ¿Por qué reserva.fit?
+            ¿Por qué Mgic Studio?
           </h2>
           <p className="mt-4 text-gray-500 dark:text-gray-400">
             Más features, mejor precio, soporte en tu idioma.
@@ -243,7 +243,7 @@ export function Comparison() {
                     </th>
                     <th className="bg-orange-50/50 px-4 py-4 text-center dark:bg-orange-500/5">
                       <span className="rounded-full bg-orange-500 px-3.5 py-1 text-[11px] font-bold text-white">
-                        reserva.fit
+                        Mgic Studio
                       </span>
                     </th>
                     <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">
@@ -312,7 +312,7 @@ export function Comparison() {
             $437/mes sin AI. Con AI Inbox: $836/mes.
             <br />
             * bsport: precio estimado plan Premium+ (no publicado). Comparativa basada en features
-            equivalentes al plan Growth de reserva.fit.
+            equivalentes al plan Growth de Mgic Studio.
           </p>
         </FadeIn>
       </div>

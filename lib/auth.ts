@@ -29,8 +29,19 @@ if (process.env.RESEND_API_KEY) {
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.EMAIL_FROM || "hola@magicpay.mx",
       async sendVerificationRequest({ identifier: email, url, provider }) {
+        const { headers } = await import("next/headers");
         const { getServerBranding } = await import("./branding.server");
         const { Resend: ResendClient } = await import("resend");
+
+        const h = await headers();
+        const host = h.get("host") || process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
+        const protocol = host.includes("localhost") ? "http" : "https";
+
+        const fixedUrl = new URL(url);
+        fixedUrl.protocol = protocol;
+        fixedUrl.host = host;
+        const magicUrl = fixedUrl.toString();
+
         const b = await getServerBranding();
         const studioFull = `${b.studioName} Studio`;
 
@@ -71,7 +82,7 @@ if (process.env.RESEND_API_KEY) {
               </p>
 
               <!-- CTA Button -->
-              <a href="${url}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+              <a href="${magicUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
                 Iniciar sesión
               </a>
 

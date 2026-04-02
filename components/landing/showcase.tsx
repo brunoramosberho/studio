@@ -34,7 +34,7 @@ export function Showcase() {
                 Dashboard con métricas, revenue, alertas del AI assistant y gestión de clases.
               </p>
             </div>
-            <BrowserFrame url="betoro.reserva.fit/admin" className="mt-6">
+            <BrowserFrame url="betoro.mgic.app/admin" className="mt-6">
               <AdminDashboardMockup />
             </BrowserFrame>
           </FadeIn>
@@ -77,7 +77,7 @@ export function Showcase() {
                 Próxima clase, asistentes, check-in y stats de rendimiento.
               </p>
             </div>
-            <BrowserFrame url="betoro.reserva.fit/coach" className="mt-6">
+            <BrowserFrame url="betoro.mgic.app/coach" className="mt-6">
               <CoachViewMockup />
             </BrowserFrame>
           </FadeIn>

@@ -26,7 +26,7 @@ export function IPhoneFrame({
 
 export function BrowserFrame({
   children,
-  url = "app.reserva.fit",
+  url = "app.mgic.app",
   className,
 }: {
   children: React.ReactNode;

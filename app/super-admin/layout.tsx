@@ -30,7 +30,7 @@ export default async function SuperAdminLayout({
         <div className="flex h-16 items-center gap-3 border-b border-gray-800 px-6">
           <Shield className="h-5 w-5 text-indigo-400" />
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-white">reserva.fit</span>
+            <span className="text-sm font-semibold text-white">Mgic Studio</span>
             <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-400">
               Super Admin
             </span>
@@ -59,7 +59,7 @@ export default async function SuperAdminLayout({
       <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 md:hidden">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-indigo-600" />
-          <span className="text-sm font-semibold">reserva.fit</span>
+          <span className="text-sm font-semibold">Mgic Studio</span>
           <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-indigo-700">
             Super Admin
           </span>

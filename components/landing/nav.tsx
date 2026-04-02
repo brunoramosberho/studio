@@ -34,7 +34,7 @@ export function LandingNav() {
         <div className="relative flex items-center justify-between">
           <a href="#" className="flex items-center gap-1.5">
             <span className="text-lg font-bold tracking-tight text-gray-900">
-              reserva<span className="text-orange-500">.fit</span>
+              Mgic<span className="text-orange-500"> Studio</span>
             </span>
           </a>
 

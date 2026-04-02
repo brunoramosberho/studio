@@ -21,7 +21,7 @@ export function middleware(req: NextRequest) {
   const host = req.headers.get("host") || ROOT_DOMAIN;
   const subdomain = getSubdomain(host);
 
-  // Super admin: admin.reserva.fit → rewrite page routes to /super-admin/*
+  // Super admin: admin.mgic.app → rewrite page routes to /super-admin/*
   if (subdomain === "admin") {
     const headers = new Headers(req.headers);
     headers.set("x-tenant-slug", "__super_admin__");
@@ -77,6 +77,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|\\.well-known/.*).*)",
   ],
 };

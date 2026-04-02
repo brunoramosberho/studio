@@ -171,7 +171,7 @@ export default function TenantDetailPage({
               {tenant.isActive ? "Activo" : "Inactivo"}
             </Badge>
           </div>
-          <p className="text-sm text-gray-500">{tenant.slug}.reserva.fit</p>
+          <p className="text-sm text-gray-500">{tenant.slug}.mgic.app</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -242,7 +242,7 @@ export default function TenantDetailPage({
                   pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
                 />
                 <p className="mt-1 text-xs text-gray-400">
-                  {form.slug}.reserva.fit
+                  {form.slug}.mgic.app
                 </p>
               </div>
               <Button
