@@ -18,6 +18,7 @@ import {
   Trophy,
   Camera,
   Heart,
+  Asterisk,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -993,6 +994,26 @@ export default function ProfilePage() {
           Hecho con <Heart className="inline h-3 w-3 fill-current text-red-400" /> para{" "}
           {session?.user?.name?.split(" ")[0] ?? "ti"}
         </motion.p>
+        <motion.div
+          custom={8}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          className="flex items-center justify-center gap-1 pb-2 pt-1 text-[10px] text-muted/40"
+        >
+          Desarrollado por
+          <a
+            href="https://mgic.app"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 font-medium text-muted/50 transition-colors hover:text-muted"
+          >
+            <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-[3px] bg-current">
+              <Asterisk className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+            </span>
+            Magic Studio
+          </a>
+        </motion.div>
       </div>
 
       {/* Avatar crop modal */}
