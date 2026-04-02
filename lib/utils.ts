@@ -76,6 +76,14 @@ export function getSpotColor(status: ReturnType<typeof getSpotStatus>): string {
   }
 }
 
+/** Show "Sofía L." instead of "Sofía López" for privacy. */
+export function maskLastName(name: string | null | undefined): string {
+  if (!name) return "Alguien";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length <= 1) return parts[0];
+  return `${parts[0]} ${parts[1][0]}.`;
+}
+
 export function getLevelLabel(level: string): string {
   const labels: Record<string, string> = {
     BEGINNER: "Principiante",

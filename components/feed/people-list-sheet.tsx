@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { X, UserPlus, Check, Loader2 } from "lucide-react";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { motion, AnimatePresence } from "framer-motion";
+import { maskLastName } from "@/lib/utils";
 
 export interface PersonItem {
   id: string;
@@ -157,7 +158,7 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
                         />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[15px] font-medium text-foreground">
-                            {person.name}
+                            {maskLastName(person.name)}
                           </p>
                           {person.subtitle && (
                             <p className="truncate text-[12px] text-muted">

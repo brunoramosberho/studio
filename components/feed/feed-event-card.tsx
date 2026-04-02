@@ -13,7 +13,7 @@ import { MediaGallery } from "./media-gallery";
 import { PhotoUpload } from "./photo-upload";
 import { PeopleListSheet, type PersonItem } from "./people-list-sheet";
 import { DisciplineSheet, type DisciplineData } from "./discipline-sheet";
-import { cn } from "@/lib/utils";
+import { cn, maskLastName } from "@/lib/utils";
 import { feedAchievementTypeFromKey } from "@/lib/gamification/catalog";
 
 interface Attendee {
@@ -160,7 +160,7 @@ function AttendeesRow({
       </div>
       <span className="text-[12px] text-muted">
         {attendees.length === 1
-          ? attendees[0].name
+          ? maskLastName(attendees[0].name)
           : `${attendees.length} asistentes`}
         {extra > 0 && ` +${extra} más`}
       </span>
@@ -345,7 +345,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
                 size={24}
                 showBadge={false}
               />
-              <span className="text-[12px] text-muted">{attendees[0].name}</span>
+              <span className="text-[12px] text-muted">{maskLastName(attendees[0].name)}</span>
             </Link>
           ) : (
             <AttendeesRow attendees={attendees} onTap={() => setShowPeople(true)} />

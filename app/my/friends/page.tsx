@@ -7,7 +7,7 @@ import { ArrowLeft, UserPlus, Check, X, Loader2, Search } from "lucide-react";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
-import { cn } from "@/lib/utils";
+import { cn, maskLastName } from "@/lib/utils";
 
 interface Friend {
   id: string;
@@ -175,7 +175,7 @@ export default function FriendsPage() {
                         <UserAvatar user={req as UserAvatarUser} size={44} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[15px] font-semibold text-foreground">
-                            {req.name}
+                            {maskLastName(req.name)}
                           </p>
                           <p className="text-[12px] text-muted">
                             Quiere ser tu amigo/a
@@ -218,7 +218,7 @@ export default function FriendsPage() {
                         <UserAvatar user={req as UserAvatarUser} size={44} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[15px] font-semibold text-foreground">
-                            {req.name}
+                            {maskLastName(req.name)}
                           </p>
                           <p className="text-[12px] text-muted">
                             Pendiente
@@ -262,7 +262,7 @@ export default function FriendsPage() {
                       <Link href={`/my/user/${f.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                         <UserAvatar user={f as UserAvatarUser} size={44} />
                         <p className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
-                          {f.name}
+                          {maskLastName(f.name)}
                         </p>
                       </Link>
                       <button
@@ -293,7 +293,7 @@ export default function FriendsPage() {
                         <UserAvatar user={s as UserAvatarUser} size={44} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[15px] font-medium text-foreground">
-                            {s.name}
+                            {maskLastName(s.name)}
                           </p>
                           {s.mutualClasses > 0 && (
                             <p className="text-[12px] text-muted">
