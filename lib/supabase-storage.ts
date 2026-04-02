@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
 
 const BUCKET = "media";
 
@@ -9,32 +11,49 @@ function getClient() {
   return createClient(url, key);
 }
 
+async function uploadLocal(
+  file: Buffer,
+  filename: string,
+): Promise<{ url: string; thumbnailUrl: string | null }> {
+  const dir = path.join(process.cwd(), "public", "uploads");
+  await mkdir(dir, { recursive: true });
+
+  const safeName = `${Date.now()}-${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const filePath = path.join(dir, safeName);
+  await writeFile(filePath, file);
+
+  return { url: `/uploads/${safeName}`, thumbnailUrl: null };
+}
+
 export async function uploadMedia(
   file: Buffer,
   filename: string,
   contentType: string,
 ): Promise<{ url: string; thumbnailUrl: string | null } | null> {
   const supabase = getClient();
-  if (!supabase) return null;
+
+  if (!supabase) {
+    return uploadLocal(file, filename);
+  }
 
   const { data: buckets } = await supabase.storage.listBuckets();
   if (!buckets?.find((b) => b.name === BUCKET)) {
     await supabase.storage.createBucket(BUCKET, { public: true });
   }
 
-  const path = `uploads/${Date.now()}-${filename}`;
+  const uploadPath = `uploads/${Date.now()}-${filename}`;
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file, { contentType, upsert: false });
+    .upload(uploadPath, file, { contentType, upsert: false });
 
   if (error) {
     console.error("Storage upload error:", error);
-    return null;
+    return uploadLocal(file, filename);
   }
 
   const {
     data: { publicUrl },
-  } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  } = supabase.storage.from(BUCKET).getPublicUrl(uploadPath);
 
   return { url: publicUrl, thumbnailUrl: null };
 }

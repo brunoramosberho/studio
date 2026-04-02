@@ -35,6 +35,9 @@ yarn-error.log*
 .env.local
 .env.*.local
 
+# local uploads (dev fallback when Supabase Storage is not configured)
+/public/uploads
+
 # backups
 /backups
 

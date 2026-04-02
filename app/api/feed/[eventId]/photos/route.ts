@@ -3,6 +3,9 @@ import { prisma } from "@/lib/db";
 import { requireTenant, requireAuth } from "@/lib/tenant";
 import { uploadMedia } from "@/lib/supabase-storage";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> },

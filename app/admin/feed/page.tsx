@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Megaphone,
   Trophy,
-  Camera,
   Sparkles,
   Pin,
   PinOff,
@@ -23,6 +22,7 @@ import {
   Globe,
   Instagram,
   Check,
+  Play,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useSession } from "next-auth/react";
 import { useBranding } from "@/components/branding-provider";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -76,17 +77,6 @@ type IgMediaItem = {
   timestamp?: string;
 };
 
-const categories = [
-  { key: "announcement", label: "Anuncio", icon: Megaphone, color: "bg-blue-50 text-blue-600" },
-  { key: "challenge", label: "Reto", icon: Trophy, color: "bg-amber-50 text-amber-600" },
-  { key: "photo", label: "Foto", icon: Camera, color: "bg-pink-50 text-pink-600" },
-  { key: "motivation", label: "Motivación", icon: Sparkles, color: "bg-purple-50 text-purple-600" },
-];
-
-function getCategoryMeta(cat: string) {
-  return categories.find((c) => c.key === cat) ?? categories[0];
-}
-
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -99,12 +89,10 @@ function timeAgo(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 }
 
-function eventLabel(eventType: string, payload: Record<string, unknown>) {
+function eventLabel(eventType: string) {
   switch (eventType) {
-    case "STUDIO_POST": {
-      const cat = getCategoryMeta(payload.category as string);
-      return { label: cat.label, icon: cat.icon, color: cat.color };
-    }
+    case "STUDIO_POST":
+      return { label: "Publicación", icon: Megaphone, color: "bg-admin/10 text-admin" };
     case "CLASS_COMPLETED":
       return { label: "Clase completada", icon: Trophy, color: "bg-green-50 text-green-600" };
     case "CLASS_RESERVED":
@@ -118,7 +106,8 @@ function eventLabel(eventType: string, payload: Record<string, unknown>) {
 
 export default function AdminFeedPage() {
   const queryClient = useQueryClient();
-  const { studioName } = useBranding();
+  const { data: session } = useSession();
+  const { studioName, appIconUrl } = useBranding();
   const [composerOpen, setComposerOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "studio_posts">("all");
   const [igPickerOpen, setIgPickerOpen] = useState(false);
@@ -126,9 +115,33 @@ export default function AdminFeedPage() {
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [category, setCategory] = useState("announcement");
   const [targetCityIds, setTargetCityIds] = useState<string[]>([]);
   const [sendPush, setSendPush] = useState(false);
+  const [postAsAdmin, setPostAsAdmin] = useState(false);
+  const [pinPost, setPinPost] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+
+  const addMediaFiles = (files: FileList | null) => {
+    if (!files) return;
+    const newFiles = Array.from(files);
+    setMediaFiles((prev) => [...prev, ...newFiles]);
+    const newPreviews = newFiles.map((f) => URL.createObjectURL(f));
+    setMediaPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removeMediaFile = (index: number) => {
+    URL.revokeObjectURL(mediaPreviews[index]);
+    setMediaFiles((prev) => prev.filter((_, i) => i !== index));
+    setMediaPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearMedia = () => {
+    mediaPreviews.forEach((url) => URL.revokeObjectURL(url));
+    setMediaFiles([]);
+    setMediaPreviews([]);
+  };
 
   const { data: cities } = useQuery<CityOption[]>({
     queryKey: ["feed-cities"],
@@ -228,23 +241,63 @@ export default function AdminFeedPage() {
         body: JSON.stringify({
           title,
           body,
-          category,
           targetCityIds: targetCityIds.length > 0 ? targetCityIds : null,
           sendPush,
+          postAsAdmin,
+          isPinned: pinPost,
         }),
       });
       if (!res.ok) throw new Error("Failed");
-      return res.json();
+      const event = await res.json();
+
+      let uploadedCount = 0;
+      let failedCount = 0;
+
+      if (mediaFiles.length > 0) {
+        for (const file of mediaFiles) {
+          try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const uploadRes = await fetch(`/api/feed/${event.id}/photos`, {
+              method: "POST",
+              body: fd,
+            });
+            if (uploadRes.ok) {
+              uploadedCount++;
+            } else {
+              const err = await uploadRes.json().catch(() => ({}));
+              console.error("Upload failed:", file.name, err);
+              failedCount++;
+            }
+          } catch (err) {
+            console.error("Upload error:", file.name, err);
+            failedCount++;
+          }
+        }
+      }
+
+      return { event, uploadedCount, failedCount };
     },
-    onSuccess: () => {
+    onSuccess: ({ uploadedCount, failedCount }) => {
       queryClient.invalidateQueries({ queryKey: ["admin-feed"] });
       setTitle("");
       setBody("");
-      setCategory("announcement");
       setTargetCityIds([]);
       setSendPush(false);
+      setPostAsAdmin(false);
+      setPinPost(false);
+      clearMedia();
       setComposerOpen(false);
+
+      if (failedCount > 0 && uploadedCount > 0) {
+        toast.warning(`Publicación creada · ${failedCount} archivo${failedCount > 1 ? "s" : ""} no se pudo subir`);
+      } else if (failedCount > 0) {
+        toast.warning(`Publicación creada pero los archivos no se pudieron subir`);
+      } else {
+        toast.success("Publicación creada");
+      }
     },
+    onError: () => toast.error("No se pudo crear la publicación"),
   });
 
   const pinMut = useMutation({
@@ -530,162 +583,271 @@ export default function AdminFeedPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-x-4 top-[15%] z-50 mx-auto max-w-lg rounded-2xl bg-white p-6 shadow-warm-lg sm:inset-x-auto sm:w-full"
+              className="fixed inset-x-4 top-[5%] z-50 mx-auto max-w-lg rounded-2xl bg-white shadow-warm-lg sm:inset-x-auto sm:w-full"
             >
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="font-display text-lg font-bold text-foreground">
-                  Publicar como {studioName}
-                </h2>
-                <button
-                  onClick={() => setComposerOpen(false)}
-                  className="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+              <div className="max-h-[90dvh] overflow-y-auto p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="font-display text-lg font-bold text-foreground">
+                    Nueva publicación
+                  </h2>
+                  <button
+                    onClick={() => setComposerOpen(false)}
+                    className="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
 
-              <div className="space-y-4">
-                {/* Category pills */}
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-muted">Categoría</label>
-                  <div className="flex flex-wrap gap-2">
-                    {categories.map((cat) => (
-                      <button
-                        key={cat.key}
-                        onClick={() => setCategory(cat.key)}
-                        className={cn(
-                          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all",
-                          category === cat.key
-                            ? "ring-2 ring-admin/30 " + cat.color
-                            : "bg-surface text-muted hover:text-foreground",
-                        )}
-                      >
-                        <cat.icon className="h-3.5 w-3.5" />
-                        {cat.label}
-                      </button>
-                    ))}
+                <div className="space-y-4">
+                  {/* Post-as selector — compact inline */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setPostAsAdmin(false)}
+                      className={cn(
+                        "flex flex-1 items-center gap-2.5 rounded-xl border p-2.5 transition-all",
+                        !postAsAdmin
+                          ? "border-admin bg-admin/5 ring-2 ring-admin/20"
+                          : "border-border hover:border-admin/30",
+                      )}
+                    >
+                      <Avatar className="h-8 w-8 shrink-0">
+                        {appIconUrl ? <AvatarImage src={appIconUrl} /> : null}
+                        <AvatarFallback className="bg-admin/10 text-xs font-bold text-admin">
+                          {studioName?.charAt(0) ?? "S"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 text-left">
+                        <p className={cn("text-sm font-semibold truncate", !postAsAdmin ? "text-admin" : "text-foreground")}>
+                          {studioName}
+                        </p>
+                        <p className="text-[11px] text-muted">Estudio</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setPostAsAdmin(true)}
+                      className={cn(
+                        "flex flex-1 items-center gap-2.5 rounded-xl border p-2.5 transition-all",
+                        postAsAdmin
+                          ? "border-admin bg-admin/5 ring-2 ring-admin/20"
+                          : "border-border hover:border-admin/30",
+                      )}
+                    >
+                      <Avatar className="h-8 w-8 shrink-0">
+                        {session?.user?.image ? <AvatarImage src={session.user.image} /> : null}
+                        <AvatarFallback className="bg-surface text-xs font-bold text-foreground">
+                          {session?.user?.name?.charAt(0) ?? "A"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 text-left">
+                        <p className={cn("text-sm font-semibold truncate", postAsAdmin ? "text-admin" : "text-foreground")}>
+                          {session?.user?.name ?? "Admin"}
+                        </p>
+                        <p className="text-[11px] text-muted">Admin</p>
+                      </div>
+                    </button>
                   </div>
-                </div>
 
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted">
-                    Título (opcional)
-                  </label>
-                  <Input
-                    placeholder="Ej: Nuevo reto de enero"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted">
-                    Contenido
-                  </label>
+                  {/* Content textarea — primary input */}
                   <textarea
                     placeholder="Escribe tu mensaje para la comunidad..."
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
                     rows={4}
-                    className="flex w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted/50 focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30"
+                    className="flex w-full rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-foreground transition-colors placeholder:text-muted/50 focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30 resize-none"
                   />
-                </div>
 
-                {/* Audience selector */}
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-muted">
-                    <MapPin className="mr-1 inline h-3.5 w-3.5" />
-                    Audiencia
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setTargetCityIds([])}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all",
-                        targetCityIds.length === 0
-                          ? "bg-admin/10 text-admin ring-2 ring-admin/20"
-                          : "bg-surface text-muted hover:text-foreground",
-                      )}
-                    >
-                      <Globe className="h-3.5 w-3.5" />
-                      Todas las ciudades
-                    </button>
-                    {cities?.map((city) => (
-                      <button
-                        key={city.id}
-                        onClick={() => {
-                          setTargetCityIds((prev) =>
-                            prev.includes(city.id)
-                              ? prev.filter((id) => id !== city.id)
-                              : [...prev, city.id],
-                          );
-                        }}
-                        className={cn(
-                          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all",
-                          targetCityIds.includes(city.id)
-                            ? "bg-admin/10 text-admin ring-2 ring-admin/20"
-                            : "bg-surface text-muted hover:text-foreground",
-                        )}
-                      >
-                        {city.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                  {/* Title (optional) */}
+                  <Input
+                    placeholder="Título (opcional)"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
 
-                {/* Push notification toggle */}
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-surface/50">
-                  <div className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-lg",
-                    sendPush ? "bg-admin/10" : "bg-surface",
-                  )}>
-                    <Bell className={cn("h-4.5 w-4.5", sendPush ? "text-admin" : "text-muted")} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Enviar push notification</p>
-                    <p className="text-[11px] text-muted">
-                      {targetCityIds.length === 0
-                        ? "Se enviará a todos los miembros"
-                        : `Se enviará a miembros en ${targetCityIds.length} ciudad${targetCityIds.length !== 1 ? "es" : ""}`}
-                    </p>
-                  </div>
-                  <div className={cn(
-                    "relative h-6 w-11 rounded-full transition-colors",
-                    sendPush ? "bg-admin" : "bg-border",
-                  )}>
-                    <div className={cn(
-                      "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
-                      sendPush ? "translate-x-5" : "translate-x-0.5",
-                    )} />
-                  </div>
+                  {/* Media section */}
                   <input
-                    type="checkbox"
-                    checked={sendPush}
-                    onChange={(e) => setSendPush(e.target.checked)}
-                    className="sr-only"
+                    ref={mediaInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      addMediaFiles(e.target.files);
+                      if (mediaInputRef.current) mediaInputRef.current.value = "";
+                    }}
                   />
-                </label>
 
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setComposerOpen(false)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    className="flex-1 gap-2 bg-admin text-white hover:bg-admin/90"
-                    disabled={!body.trim() || createMut.isPending}
-                    onClick={() => createMut.mutate()}
-                  >
-                    {createMut.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                    Publicar
-                  </Button>
+                  {mediaPreviews.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        {mediaPreviews.map((src, i) => (
+                          <div key={i} className="group relative aspect-square overflow-hidden rounded-xl bg-surface">
+                            {mediaFiles[i]?.type.startsWith("video/") ? (
+                              <video src={src} className="h-full w-full object-cover" muted />
+                            ) : (
+                              <img src={src} alt="" className="h-full w-full object-cover" />
+                            )}
+                            <button
+                              onClick={() => removeMediaFile(i)}
+                              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => mediaInputRef.current?.click()}
+                          className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-border text-muted transition-colors hover:border-admin/40 hover:text-admin"
+                        >
+                          <Plus className="h-6 w-6" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => mediaInputRef.current?.click()}
+                      className="flex w-full items-center gap-3 rounded-xl border border-dashed border-border p-3 text-left transition-colors hover:border-admin/40 hover:bg-admin/5"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface">
+                        <ImageIcon className="h-4.5 w-4.5 text-muted" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Agregar fotos o videos</p>
+                        <p className="text-[11px] text-muted">JPG, PNG, MP4...</p>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Audience selector */}
+                  {(cities?.length ?? 0) > 0 && (
+                    <div>
+                      <label className="mb-2 block text-xs font-medium text-muted">
+                        <MapPin className="mr-1 inline h-3.5 w-3.5" />
+                        Audiencia
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => setTargetCityIds([])}
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all",
+                            targetCityIds.length === 0
+                              ? "bg-admin/10 text-admin ring-2 ring-admin/20"
+                              : "bg-surface text-muted hover:text-foreground",
+                          )}
+                        >
+                          <Globe className="h-3.5 w-3.5" />
+                          Todas las ciudades
+                        </button>
+                        {cities?.map((city) => (
+                          <button
+                            key={city.id}
+                            onClick={() => {
+                              setTargetCityIds((prev) =>
+                                prev.includes(city.id)
+                                  ? prev.filter((id) => id !== city.id)
+                                  : [...prev, city.id],
+                              );
+                            }}
+                            className={cn(
+                              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all",
+                              targetCityIds.includes(city.id)
+                                ? "bg-admin/10 text-admin ring-2 ring-admin/20"
+                                : "bg-surface text-muted hover:text-foreground",
+                            )}
+                          >
+                            {city.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Push notification toggle */}
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-surface/50">
+                    <div className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg",
+                      sendPush ? "bg-admin/10" : "bg-surface",
+                    )}>
+                      <Bell className={cn("h-4.5 w-4.5", sendPush ? "text-admin" : "text-muted")} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Enviar push notification</p>
+                      <p className="text-[11px] text-muted">
+                        {targetCityIds.length === 0
+                          ? "Se enviará a todos los miembros"
+                          : `Se enviará a miembros en ${targetCityIds.length} ciudad${targetCityIds.length !== 1 ? "es" : ""}`}
+                      </p>
+                    </div>
+                    <div className={cn(
+                      "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                      sendPush ? "bg-admin" : "bg-border",
+                    )}>
+                      <div className={cn(
+                        "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                        sendPush ? "translate-x-5" : "translate-x-0.5",
+                      )} />
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={sendPush}
+                      onChange={(e) => setSendPush(e.target.checked)}
+                      className="sr-only"
+                    />
+                  </label>
+
+                  {/* Pin toggle */}
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-surface/50">
+                    <div className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg",
+                      pinPost ? "bg-admin/10" : "bg-surface",
+                    )}>
+                      <Pin className={cn("h-4.5 w-4.5", pinPost ? "text-admin" : "text-muted")} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Fijar publicación</p>
+                      <p className="text-[11px] text-muted">
+                        Aparecerá siempre arriba del feed
+                      </p>
+                    </div>
+                    <div className={cn(
+                      "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                      pinPost ? "bg-admin" : "bg-border",
+                    )}>
+                      <div className={cn(
+                        "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                        pinPost ? "translate-x-5" : "translate-x-0.5",
+                      )} />
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={pinPost}
+                      onChange={(e) => setPinPost(e.target.checked)}
+                      className="sr-only"
+                    />
+                  </label>
+
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-1">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setComposerOpen(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      className="flex-1 gap-2 bg-admin text-white hover:bg-admin/90"
+                      disabled={(!body.trim() && mediaFiles.length === 0) || createMut.isPending}
+                      onClick={() => createMut.mutate()}
+                    >
+                      {createMut.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                      Publicar
+                    </Button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -724,11 +886,13 @@ export default function AdminFeedPage() {
       ) : (
         <div className="space-y-3">
           {allEvents.map((event) => {
-            const meta = eventLabel(event.eventType, event.payload);
+            const meta = eventLabel(event.eventType);
             const payload = event.payload;
             const isStudioPost = event.eventType === "STUDIO_POST";
             const postTitle = payload.title as string | null;
             const postBody = payload.body as string | null;
+            const authorName = (payload.authorName as string) ?? studioName;
+            const authorImage = (payload.authorImage as string | null) ?? appIconUrl;
 
             return (
               <motion.div
@@ -743,9 +907,12 @@ export default function AdminFeedPage() {
                       {/* Avatar */}
                       <Avatar className="h-10 w-10 shrink-0">
                         {isStudioPost ? (
-                          <AvatarFallback className="bg-admin/10 text-xs font-bold text-admin">
-                            {studioName?.charAt(0) ?? "S"}
-                          </AvatarFallback>
+                          <>
+                            {authorImage && <AvatarImage src={authorImage} />}
+                            <AvatarFallback className="bg-admin/10 text-xs font-bold text-admin">
+                              {authorName?.charAt(0) ?? "S"}
+                            </AvatarFallback>
+                          </>
                         ) : (
                           <>
                             {event.user.image && <AvatarImage src={event.user.image as string} />}
@@ -760,7 +927,7 @@ export default function AdminFeedPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-foreground">
-                            {isStudioPost ? studioName : event.user.name}
+                            {isStudioPost ? authorName : event.user.name}
                           </span>
                           <Badge className={cn("text-[10px]", meta.color)}>
                             <meta.icon className="mr-1 h-3 w-3" />
@@ -809,7 +976,7 @@ export default function AdminFeedPage() {
                           </p>
                         )}
 
-                        {/* Photos thumbnail */}
+                        {/* Media thumbnails */}
                         {event.photos.length > 0 && (
                           <div className="mt-2 flex gap-1.5">
                             {event.photos.slice(0, 4).map((photo) => (
@@ -817,11 +984,25 @@ export default function AdminFeedPage() {
                                 key={photo.id}
                                 className="relative h-16 w-16 overflow-hidden rounded-lg bg-surface"
                               >
-                                <img
-                                  src={photo.thumbnailUrl ?? photo.url}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
+                                {photo.mimeType?.startsWith("video/") ? (
+                                  <>
+                                    <video
+                                      src={photo.url}
+                                      className="h-full w-full object-cover"
+                                      muted
+                                      playsInline
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                      <Play className="h-5 w-5 text-white drop-shadow" />
+                                    </div>
+                                  </>
+                                ) : (
+                                  <img
+                                    src={photo.thumbnailUrl ?? photo.url}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                )}
                               </div>
                             ))}
                             {event.photos.length > 4 && (

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X, ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MediaItem {
@@ -14,6 +14,41 @@ interface MediaItem {
 interface MediaGalleryProps {
   media: MediaItem[];
   className?: string;
+}
+
+function InlineVideo({ src, className, onClick }: { src: string; className?: string; onClick: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.5 },
+    );
+
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      className={className}
+      muted
+      loop
+      playsInline
+      onClick={onClick}
+    />
+  );
 }
 
 export function MediaGallery({ media, className }: MediaGalleryProps) {
@@ -40,26 +75,26 @@ export function MediaGallery({ media, className }: MediaGalleryProps) {
           const tall = media.length === 3 && i === 0;
 
           return (
-            <button
+            <div
               key={item.id}
-              onClick={() => setLightboxIdx(i)}
               className={cn(
-                "relative block overflow-hidden bg-surface",
+                "relative block overflow-hidden bg-surface cursor-pointer",
                 tall && "row-span-2",
               )}
+              onClick={() => setLightboxIdx(i)}
             >
               {isVideo(item.mimeType) ? (
-                <div className="relative aspect-[4/3]">
-                  <video
-                    src={item.url}
-                    className="h-full w-full object-cover"
-                    muted
-                    playsInline
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Play className="h-10 w-10 text-white drop-shadow-lg" />
-                  </div>
-                </div>
+                <InlineVideo
+                  src={item.url}
+                  className={cn(
+                    "h-full w-full object-cover",
+                    media.length === 1 && "aspect-[4/3]",
+                    media.length === 2 && "aspect-square",
+                    media.length >= 3 && !tall && "aspect-square",
+                    tall && "h-full",
+                  )}
+                  onClick={() => setLightboxIdx(i)}
+                />
               ) : (
                 <img
                   src={item.url}
@@ -82,7 +117,7 @@ export function MediaGallery({ media, className }: MediaGalleryProps) {
                   </span>
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>

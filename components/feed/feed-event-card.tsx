@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { ArrowRight, Dumbbell, Instagram, ListMusic, Music, ChevronUp } from "lucide-react";
+import { useBranding } from "@/components/branding-provider";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { AchievementIllustration } from "./achievement-badge";
@@ -574,19 +575,13 @@ function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { o
 
 function StudioPostCard({ event }: FeedEventCardProps) {
   const p = event.payload;
+  const { studioName, appIconUrl } = useBranding();
   const title = p.title as string | null;
   const body = p.body as string | null;
-  const category = (p.category as string) ?? "announcement";
   const provider = (p.provider as string | null) ?? null;
   const permalink = (p.permalink as string | null) ?? null;
-
-  const categoryStyles: Record<string, { emoji: string; bg: string }> = {
-    announcement: { emoji: "📢", bg: "bg-blue-50" },
-    challenge: { emoji: "🏆", bg: "bg-amber-50" },
-    photo: { emoji: "📸", bg: "bg-pink-50" },
-    motivation: { emoji: "✨", bg: "bg-purple-50" },
-  };
-  const style = categoryStyles[category] ?? categoryStyles.announcement;
+  const authorName = (p.authorName as string) ?? studioName;
+  const authorImage = (p.authorImage as string | null) ?? appIconUrl;
 
   return (
     <div>
@@ -599,19 +594,26 @@ function StudioPostCard({ event }: FeedEventCardProps) {
         </div>
       )}
       <div className="flex items-center gap-3 px-4 py-3">
-        <div className={cn("flex h-10 w-10 items-center justify-center rounded-full", style.bg)}>
-          <span className="text-lg">{style.emoji}</span>
+        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full">
+          {authorImage ? (
+            <img src={authorImage} alt={authorName} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-accent/10">
+              <span className="text-sm font-bold text-accent">{authorName?.charAt(0) ?? "S"}</span>
+            </div>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold leading-tight text-foreground">
-            {title ?? (
-              category === "announcement" ? "Anuncio del estudio" :
-              category === "challenge" ? "Reto del estudio" :
-              category === "photo" ? "Foto del estudio" :
-              "Mensaje del estudio"
-            )}
+            {authorName}
           </p>
           <p className="flex items-center gap-2 text-[12px] text-muted">
+            {title && (
+              <>
+                <span>{title}</span>
+                <span className="text-muted/40">·</span>
+              </>
+            )}
             <span>{timeAgo(event.createdAt)}</span>
             {provider === "instagram" && (
               <span className="inline-flex items-center gap-1 text-muted/70">

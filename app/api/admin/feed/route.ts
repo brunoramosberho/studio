@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
   try {
     const { tenant, session } = await requireRole("ADMIN");
     const body = await request.json();
-    const { title, body: postBody, category, targetCityIds, sendPush } = body;
+    const { title, body: postBody, category, targetCityIds, sendPush, postAsAdmin, isPinned } = body;
 
-    if (!postBody) {
+    if (!postBody?.trim()) {
       return NextResponse.json({ error: "El contenido es requerido" }, { status: 400 });
     }
 
@@ -78,12 +78,35 @@ export async function POST(request: NextRequest) {
       ? targetCityIds
       : null;
 
+    let authorName: string;
+    let authorImage: string | null;
+
+    if (postAsAdmin) {
+      const adminUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { name: true, image: true },
+      });
+      authorName = adminUser?.name ?? "Admin";
+      authorImage = adminUser?.image ?? null;
+    } else {
+      authorName = tenant.name;
+      authorImage = tenant.appIconUrl;
+    }
+
+    if (isPinned) {
+      await prisma.feedEvent.updateMany({
+        where: { tenantId: tenant.id, isPinned: true },
+        data: { isPinned: false },
+      });
+    }
+
     const event = await prisma.feedEvent.create({
       data: {
         userId: session.user.id,
         tenantId: tenant.id,
         eventType: "STUDIO_POST",
         visibility: "STUDIO_WIDE",
+        isPinned: !!isPinned,
         payload: {
           isStudioPost: true,
           title: title || null,
@@ -91,6 +114,9 @@ export async function POST(request: NextRequest) {
           category: cat,
           targetCityIds: cityIds,
           sentPush: !!sendPush,
+          postAsAdmin: !!postAsAdmin,
+          authorName,
+          authorImage,
         },
       },
       include: {
