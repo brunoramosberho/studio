@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect, useCallback } from "react";
-import { X, Share, Plus, Download } from "lucide-react";
+import { X, Share, Plus, Download, Ellipsis, ChevronDown } from "lucide-react";
 import {
   getMobileInstallPlatform,
   isStandalonePWA,
@@ -118,16 +118,23 @@ export function FeedPwaHint() {
           {platform === "ios" ? (
             <div className="space-y-1.5 rounded-xl bg-white/60 px-2.5 py-2 dark:bg-black/10">
               <div className="flex items-center gap-2">
+                <Ellipsis className="h-3.5 w-3.5 shrink-0 text-accent" />
+                <p className="text-[12px] text-foreground">
+                  Toca <strong>⋯</strong>{" "}
+                  <span className="text-muted">abajo a la derecha</span>
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
                 <Share className="h-3.5 w-3.5 shrink-0 text-accent" />
                 <p className="text-[12px] text-foreground">
-                  Toca <strong>Compartir</strong>{" "}
-                  <span className="text-muted">(cuadrado con flecha)</span>
+                  Toca <strong>Compartir</strong>
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <Plus className="h-3.5 w-3.5 shrink-0 text-accent" />
                 <p className="text-[12px] text-foreground">
-                  <strong>Agregar a inicio</strong> o <strong>Add to Home Screen</strong>
+                  <strong>Agregar a inicio</strong>{" "}
+                  <ChevronDown className="mb-0.5 inline h-3 w-3 text-muted" />
                 </p>
               </div>
             </div>

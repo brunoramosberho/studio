@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect, useCallback } from "react";
-import { X, Share, Plus, Download } from "lucide-react";
+import { X, Share, Plus, Download, Ellipsis, ChevronDown } from "lucide-react";
 import { getMobileInstallPlatform, isStandalonePWA } from "@/lib/pwa-install";
 import { cn } from "@/lib/utils";
 
@@ -133,23 +133,36 @@ export function InstallPrompt() {
           {platform === "ios" ? (
             <div className="space-y-3">
               <p className="text-[13px] leading-relaxed text-muted">
-                Agrégala a tu pantalla de inicio para una mejor experiencia:
+                Agrégala a tu pantalla de inicio en 3 pasos:
               </p>
-              <div className="space-y-2.5 rounded-xl bg-surface/80 p-3">
-                <div className="flex items-center gap-3">
+              <div className="space-y-0 rounded-xl bg-surface/80 p-3">
+                <div className="flex items-center gap-3 pb-2.5">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                    <Ellipsis className="h-4 w-4" />
+                  </div>
+                  <p className="text-[13px] text-foreground">
+                    Toca <strong>⋯</strong>{" "}
+                    <span className="text-muted">abajo a la derecha</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 border-t border-border/40 py-2.5">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
                     <Share className="h-3.5 w-3.5" />
                   </div>
                   <p className="text-[13px] text-foreground">
-                    Toca el botón <strong>Compartir</strong>
+                    Toca <strong>Compartir</strong>
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 border-t border-border/40 pt-2.5">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
                     <Plus className="h-3.5 w-3.5" />
                   </div>
                   <p className="text-[13px] text-foreground">
-                    Selecciona <strong>Agregar a Inicio</strong>
+                    Toca <strong>Agregar a Inicio</strong>{" "}
+                    <span className="text-muted">
+                      <ChevronDown className="mb-0.5 inline h-3 w-3" /> desliza
+                      abajo
+                    </span>
                   </p>
                 </div>
               </div>
