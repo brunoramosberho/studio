@@ -58,8 +58,8 @@ export function UserAvatar({
   const Wrapper = onClick ? "button" : "div";
 
   if (isMember) {
-    const shieldW = size;
-    const shieldH = Math.round(size * SHIELD_RATIO);
+    const shieldH = size;
+    const shieldW = Math.round(size / SHIELD_RATIO);
     const badgeSize = Math.max(14, Math.round(size * 0.38));
     const badgeFontSize = Math.max(8, Math.round(size * 0.22));
     const borderColor = colorAccent || colorFg;

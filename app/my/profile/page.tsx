@@ -364,7 +364,7 @@ export default function ProfilePage() {
             className="group relative shrink-0"
             disabled={uploadingAvatar}
           >
-            <div className="relative" style={{ width: 72, height: gamification?.hasActiveMembership ? 85 : 72 }}>
+            <div className="relative" style={{ width: gamification?.hasActiveMembership ? 61 : 72, height: 72 }}>
               <UserAvatar
                 user={{
                   image: avatarPreview || session?.user?.image,
