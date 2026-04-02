@@ -119,7 +119,6 @@ export default function DashboardPage() {
         <UpcomingClasses />
 
         {/* Social feed with filter tabs */}
-        <h2 className="mb-3 font-display text-[17px] font-bold text-foreground">Actividad de la comunidad</h2>
         <SocialFeed />
       </div>
     </PageTransition>

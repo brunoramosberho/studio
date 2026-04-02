@@ -142,6 +142,12 @@ export function SocialFeed() {
         <DiscoverDisciplines disciplines={disciplines} />
       )}
 
+      {!isLoading && allEvents.length > 0 && (
+        <h2 className="font-display text-[17px] font-bold text-foreground">
+          Actividad de la comunidad
+        </h2>
+      )}
+
       {isLoading ? (
         <FeedSkeleton />
       ) : allEvents.length === 0 ? (
