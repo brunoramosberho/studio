@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { SocialFeed } from "@/components/feed/social-feed";
+import { UpcomingClasses } from "@/components/feed/upcoming-classes";
 import { useQuery } from "@tanstack/react-query";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
+import { useBranding } from "@/components/branding-provider";
 
 interface FeedHeaderData {
   hasActiveMembership: boolean;
@@ -17,6 +19,7 @@ interface FeedHeaderData {
 
 export default function DashboardPage() {
   const { data: session } = useSession();
+  const { communityHeadline } = useBranding();
   const firstName = session?.user?.name?.split(" ")[0] ?? "";
 
   const { data: notifData } = useQuery<{ unreadCount: number }>({
@@ -70,7 +73,7 @@ export default function DashboardPage() {
               {firstName ? `Hola, ${firstName}` : "Feed"}
             </h1>
             <p className="text-xs text-muted">
-              Actividad de la comunidad
+              {communityHeadline}
             </p>
           </div>
 
@@ -112,7 +115,11 @@ export default function DashboardPage() {
           </Button>
         </div>
 
+        {/* Upcoming booked classes */}
+        <UpcomingClasses />
+
         {/* Social feed with filter tabs */}
+        <h2 className="mb-3 font-display text-[17px] font-bold text-foreground">Actividad de la comunidad</h2>
         <SocialFeed />
       </div>
     </PageTransition>

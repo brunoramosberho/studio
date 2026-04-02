@@ -34,6 +34,7 @@ model Tenant {
   colorAdmin      String   @default("#1A2C4E")
   coachIconSvg    String?  @db.Text
   landingUrl      String?
+  communityHeadline String @default("Tu comunidad en movimiento")
 
   stripeCustomerId String?
 

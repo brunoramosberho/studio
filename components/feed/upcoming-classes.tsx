@@ -1,0 +1,286 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Share, Check, AlertTriangle, Loader2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils";
+
+interface FriendInfo {
+  id: string;
+  name: string | null;
+  image: string | null;
+}
+
+interface UpcomingBooking {
+  id: string;
+  classId: string;
+  spotNumber: number | null;
+  status: string;
+  friendsGoing: FriendInfo[];
+  class: {
+    startsAt: string;
+    endsAt: string;
+    classType: { name: string; color: string; duration: number; icon?: string | null };
+    coach: { user: { name: string | null; image: string | null } };
+    room?: { studio?: { name?: string } };
+  };
+}
+
+const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
+
+function canCancelFreely(startsAt: string | Date) {
+  return new Date(startsAt).getTime() - Date.now() > CANCELLATION_WINDOW_MS;
+}
+
+function hoursUntilClass(startsAt: string | Date) {
+  return Math.max(0, Math.round((new Date(startsAt).getTime() - Date.now()) / 3_600_000));
+}
+
+export function UpcomingClasses() {
+  const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<UpcomingBooking | null>(null);
+
+  const { data: bookings = [] } = useQuery<UpcomingBooking[]>({
+    queryKey: ["bookings", "upcoming"],
+    queryFn: async () => {
+      const res = await fetch("/api/bookings?status=upcoming");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!session?.user,
+    staleTime: 30_000,
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const res = await fetch(`/api/bookings/${bookingId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Cancel failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
+      setCancelTarget(null);
+    },
+  });
+
+  const handleShare = useCallback(async (b: UpcomingBooking) => {
+    const classUrl = `${window.location.origin}/class/${b.classId}`;
+    const date = new Date(b.class.startsAt);
+    const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+    const timeStr = formatTimeRange(b.class.startsAt, b.class.endsAt);
+    const text = `${b.class.classType.name} con ${b.class.coach.user.name}\n${dayStr}, ${timeStr}\n¡Reserva tu lugar!`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: b.class.classType.name, text, url: classUrl });
+      } catch {}
+    } else {
+      await navigator.clipboard.writeText(`${text}\n${classUrl}`);
+      setCopiedId(b.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  }, []);
+
+  if (bookings.length === 0) return null;
+
+  return (
+    <section>
+      <h2 className="mb-3 font-display text-[17px] font-bold text-foreground">
+        Próximamente para ti
+      </h2>
+
+      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scrollbar-none">
+        {bookings.map((b) => {
+          const studioName = (b.class as unknown as { room?: { studio?: { name?: string } } }).room?.studio?.name;
+
+          return (
+            <Link
+              key={b.id}
+              href={`/class/${b.classId}`}
+              className="w-[82vw] max-w-[320px] shrink-0 snap-start rounded-2xl border border-border/50 bg-white active:scale-[0.98]"
+            >
+              {/* Main content row */}
+              <div className="flex gap-3 px-4 py-3.5">
+                <div className="w-12 flex-shrink-0 pt-0.5 text-center">
+                  <p className="text-[14px] font-bold leading-tight text-foreground">
+                    {formatTime(b.class.startsAt)}
+                  </p>
+                  <p className="text-[10px] text-muted">
+                    {b.class.classType.duration} min
+                  </p>
+                </div>
+
+                <div
+                  className="mt-0.5 h-10 w-0.5 flex-shrink-0 rounded-full"
+                  style={{ backgroundColor: (b.class.classType.color || "#6366f1") + "40" }}
+                />
+
+                <div className="flex min-w-0 flex-1 items-start gap-2">
+                  {b.class.coach.user.image ? (
+                    <img
+                      src={b.class.coach.user.image}
+                      alt={b.class.coach.user.name || "Coach"}
+                      className="mt-0.5 h-8 w-8 flex-shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[12px] font-bold text-accent">
+                      {b.class.coach.user.name?.charAt(0) || "C"}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-[14px] font-bold text-foreground">
+                        {b.class.classType.name}
+                      </p>
+                      {b.spotNumber && (
+                        <span className="flex-shrink-0 rounded bg-surface px-1.5 py-0.5 text-[9px] font-semibold text-muted">
+                          #{b.spotNumber}
+                        </span>
+                      )}
+                    </div>
+                    <p className="truncate text-[12px] text-muted">
+                      con {b.class.coach.user.name?.split(" ")[0]}
+                      {studioName && <span className="text-muted/50"> · {studioName}</span>}
+                    </p>
+                    <p className="text-[10px] capitalize text-muted/70">
+                      {formatRelativeDay(b.class.startsAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={(e) => { e.preventDefault(); handleShare(b); }}
+                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-surface text-muted transition-colors active:scale-95"
+                >
+                  {copiedId === b.id ? (
+                    <Check className="h-3 w-3 text-green-600" />
+                  ) : (
+                    <Share className="h-3 w-3" />
+                  )}
+                </button>
+              </div>
+
+              {/* Bottom row: friends + cancel */}
+              <div className="flex items-center justify-between border-t border-border/30 px-4 py-2">
+                <div className="flex items-center gap-2">
+                  {b.friendsGoing?.length > 0 && (
+                    <>
+                      <div className="flex -space-x-1.5">
+                        {b.friendsGoing.slice(0, 4).map((f) => (
+                          <Avatar key={f.id} className="h-5 w-5 ring-2 ring-white">
+                            {f.image && <AvatarImage src={f.image} />}
+                            <AvatarFallback className="text-[8px] font-semibold">
+                              {(f.name ?? "?")[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                        ))}
+                      </div>
+                      <span className="text-[10px] font-medium text-accent">
+                        {b.friendsGoing.length === 1
+                          ? `${b.friendsGoing[0].name?.split(" ")[0]} va`
+                          : `${b.friendsGoing.length} amigos van`}
+                      </span>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => { e.preventDefault(); setCancelTarget(b); }}
+                  className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Cancel confirmation sheet */}
+      <AnimatePresence>
+        {cancelTarget && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-foreground/40 backdrop-blur-sm"
+              onClick={() => !cancelMutation.isPending && setCancelTarget(null)}
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-white pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+            >
+              <div className="flex justify-center pt-3 sm:hidden">
+                <div className="h-1 w-10 rounded-full bg-border" />
+              </div>
+              <div className="p-6 text-center">
+                <div
+                  className={cn(
+                    "mx-auto flex h-14 w-14 items-center justify-center rounded-full",
+                    canCancelFreely(cancelTarget.class.startsAt) ? "bg-orange-50" : "bg-red-50",
+                  )}
+                >
+                  <AlertTriangle
+                    className={cn(
+                      "h-6 w-6",
+                      canCancelFreely(cancelTarget.class.startsAt) ? "text-orange-500" : "text-red-500",
+                    )}
+                  />
+                </div>
+                <h3 className="mt-4 font-display text-lg font-bold text-foreground">
+                  Cancelar reserva
+                </h3>
+                <p className="mt-1 text-sm text-muted">
+                  {cancelTarget.class.classType.name} · {formatRelativeDay(cancelTarget.class.startsAt)}
+                </p>
+                {canCancelFreely(cancelTarget.class.startsAt) ? (
+                  <div className="mt-4 rounded-xl bg-green-50 px-4 py-3">
+                    <p className="text-[13px] font-medium text-green-700">Tu crédito será devuelto</p>
+                    <p className="mt-0.5 text-[12px] text-green-600">Faltan más de 12 horas para la clase</p>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
+                    <p className="text-[13px] font-medium text-red-700">Tu crédito NO será devuelto</p>
+                    <p className="mt-0.5 text-[12px] text-red-600">
+                      Faltan menos de 12 horas ({hoursUntilClass(cancelTarget.class.startsAt)}h).
+                      Las cancelaciones tardías no reembolsan créditos.
+                    </p>
+                  </div>
+                )}
+                <div className="mt-6 flex flex-col gap-2">
+                  <Button
+                    variant="destructive"
+                    className="w-full rounded-full"
+                    onClick={() => cancelMutation.mutate(cancelTarget.id)}
+                    disabled={cancelMutation.isPending}
+                  >
+                    {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {canCancelFreely(cancelTarget.class.startsAt) ? "Cancelar reserva" : "Cancelar sin reembolso"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full rounded-full"
+                    onClick={() => setCancelTarget(null)}
+                    disabled={cancelMutation.isPending}
+                  >
+                    Volver
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </section>
+  );
+}

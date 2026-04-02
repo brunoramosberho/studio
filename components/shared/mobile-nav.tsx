@@ -16,7 +16,7 @@ const RESERVA_BTN_PX = 46;
 const RESERVA_PROTRUDE_PX = RESERVA_BTN_PX * 0.4;
 
 const leftTabs = [
-  { href: "/my", icon: Home, label: "Feed" },
+  { href: "/my", icon: Home, label: "Home" },
   { href: "/my/bookings", icon: CalendarCheck, label: "Mis clases" },
 ];
 

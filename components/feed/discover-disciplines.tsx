@@ -77,7 +77,7 @@ export function DiscoverDisciplines({ disciplines }: DiscoverDisciplinesProps) {
               className="flex w-[72vw] max-w-[280px] shrink-0 snap-start flex-col"
             >
               <div
-                className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl"
+                className="relative aspect-[3/2] w-full overflow-hidden rounded-2xl"
                 style={!d.mediaUrl ? { backgroundColor: d.color } : undefined}
               >
                 {d.mediaUrl && isVideo(d.mediaUrl) ? (

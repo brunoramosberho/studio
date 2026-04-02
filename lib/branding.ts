@@ -19,6 +19,7 @@ export interface StudioBranding {
   colorAdmin: string;
   coachIconSvg: string | null;
   landingUrl: string | null;
+  communityHeadline: string;
 }
 
 export const DEFAULTS: StudioBranding = {
@@ -40,6 +41,7 @@ export const DEFAULTS: StudioBranding = {
   colorAdmin: "#4338CA",
   coachIconSvg: null,
   landingUrl: null,
+  communityHeadline: "Tu comunidad en movimiento",
 };
 
 export interface FontPairing {
@@ -85,6 +87,7 @@ export function tenantToBranding(tenant: Tenant): StudioBranding {
     colorAdmin: tenant.colorAdmin,
     coachIconSvg: tenant.coachIconSvg,
     landingUrl: tenant.landingUrl,
+    communityHeadline: tenant.communityHeadline,
   };
 }
 

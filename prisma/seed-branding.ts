@@ -31,6 +31,7 @@ export type TenantBrandingSeed = {
   colorBorder: string;
   colorCoach: string;
   colorAdmin: string;
+  communityHeadline: string;
 };
 
 export function getTenantBrandingFromEnv(): TenantBrandingSeed {
@@ -55,6 +56,7 @@ export function getTenantBrandingFromEnv(): TenantBrandingSeed {
     colorBorder: envStr("SEED_COLOR_BORDER", "#E8E2D9"),
     colorCoach: envStr("SEED_COLOR_COACH", "#2D5016"),
     colorAdmin: envStr("SEED_COLOR_ADMIN", "#1A2C4E"),
+    communityHeadline: envStr("SEED_COMMUNITY_HEADLINE", "Tu comunidad en movimiento"),
   };
 }
 
@@ -78,6 +80,7 @@ export function tenantCreateData(b: TenantBrandingSeed) {
     colorBorder: b.colorBorder,
     colorCoach: b.colorCoach,
     colorAdmin: b.colorAdmin,
+    communityHeadline: b.communityHeadline,
   };
 }
 

@@ -222,6 +222,17 @@ export default function BrandingPage() {
                 />
               </div>
               <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-muted">Home Headline</label>
+                <Input
+                  value={settings.communityHeadline}
+                  onChange={(e) => update("communityHeadline", e.target.value)}
+                  placeholder="Tu comunidad en movimiento"
+                />
+                <p className="mt-1.5 text-[11px] text-muted">
+                  Aparece debajo del "Hola, nombre" en el home de tus miembros.
+                </p>
+              </div>
+              <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs font-medium text-muted">
                   <Globe className="mr-1 inline h-3 w-3" />
                   Landing page
