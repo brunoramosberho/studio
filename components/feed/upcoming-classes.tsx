@@ -8,6 +8,8 @@ import { Share, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils";
 
 interface FriendInfo {
@@ -99,105 +101,98 @@ export function UpcomingClasses() {
       <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scrollbar-none">
         {bookings.map((b) => {
           const studioName = (b.class as unknown as { room?: { studio?: { name?: string } } }).room?.studio?.name;
+          const startDate = new Date(b.class.startsAt);
+          const dayLabel = format(startDate, "EEE d 'de' MMM", { locale: es });
 
           return (
-            <Link
+            <div
               key={b.id}
-              href={`/class/${b.classId}`}
-              className="w-[82vw] max-w-[320px] shrink-0 snap-start rounded-2xl border border-border/50 bg-white active:scale-[0.98]"
+              className="w-[82vw] max-w-[320px] shrink-0 snap-start"
             >
-              {/* Main content row */}
-              <div className="flex gap-3 px-4 py-3.5">
-                <div className="w-12 flex-shrink-0 pt-0.5 text-center">
-                  <p className="text-[14px] font-bold leading-tight text-foreground">
-                    {formatTime(b.class.startsAt)}
-                  </p>
-                  <p className="text-[10px] text-muted">
-                    {b.class.classType.duration} min
-                  </p>
-                </div>
+              {/* Time / day header outside the card */}
+              <div className="mb-1.5 flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
+                <span className="text-[13px] font-semibold capitalize text-foreground">
+                  {formatTime(b.class.startsAt)} / {dayLabel}
+                  <span className="font-normal text-muted"> · {b.class.classType.duration} min</span>
+                </span>
+              </div>
 
-                <div
-                  className="mt-0.5 h-10 w-0.5 flex-shrink-0 rounded-full"
-                  style={{ backgroundColor: (b.class.classType.color || "#6366f1") + "40" }}
-                />
-
-                <div className="flex min-w-0 flex-1 items-start gap-2">
-                  {b.class.coach.user.image ? (
-                    <img
-                      src={b.class.coach.user.image}
-                      alt={b.class.coach.user.name || "Coach"}
-                      className="mt-0.5 h-8 w-8 flex-shrink-0 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[12px] font-bold text-accent">
-                      {b.class.coach.user.name?.charAt(0) || "C"}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="truncate text-[14px] font-bold text-foreground">
-                        {b.class.classType.name}
+              <Link href={`/class/${b.classId}`} className="block">
+                <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
+                  <div className="flex items-center gap-3">
+                    {b.class.coach.user.image ? (
+                      <img
+                        src={b.class.coach.user.image}
+                        alt={b.class.coach.user.name || "Coach"}
+                        className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent">
+                        {b.class.coach.user.name?.charAt(0) || "C"}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-[15px] font-bold text-foreground">
+                          {b.class.classType.name}
+                        </p>
+                        {b.spotNumber && (
+                          <span className="flex-shrink-0 rounded bg-surface px-1.5 py-0.5 text-[9px] font-semibold text-muted">
+                            #{b.spotNumber}
+                          </span>
+                        )}
+                      </div>
+                      <p className="truncate text-[13px] text-muted">
+                        con {b.class.coach.user.name?.split(" ")[0]}
+                        {studioName && <span className="text-muted/50"> · {studioName}</span>}
                       </p>
-                      {b.spotNumber && (
-                        <span className="flex-shrink-0 rounded bg-surface px-1.5 py-0.5 text-[9px] font-semibold text-muted">
-                          #{b.spotNumber}
-                        </span>
+                    </div>
+                    <button
+                      onClick={(e) => { e.preventDefault(); handleShare(b); }}
+                      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-surface text-muted transition-colors active:scale-95"
+                    >
+                      {copiedId === b.id ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <Share className="h-3 w-3" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Friends + Cancel — same row */}
+                  <div className="mt-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {b.friendsGoing?.length > 0 && (
+                        <>
+                          <div className="flex -space-x-1.5">
+                            {b.friendsGoing.slice(0, 4).map((f) => (
+                              <Avatar key={f.id} className="h-5 w-5 ring-2 ring-white">
+                                {f.image && <AvatarImage src={f.image} />}
+                                <AvatarFallback className="text-[8px] font-semibold">
+                                  {(f.name ?? "?")[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                            ))}
+                          </div>
+                          <span className="text-[10px] font-medium text-accent">
+                            {b.friendsGoing.length === 1
+                              ? `${b.friendsGoing[0].name?.split(" ")[0]} va`
+                              : `${b.friendsGoing.length} amigos van`}
+                          </span>
+                        </>
                       )}
                     </div>
-                    <p className="truncate text-[12px] text-muted">
-                      con {b.class.coach.user.name?.split(" ")[0]}
-                      {studioName && <span className="text-muted/50"> · {studioName}</span>}
-                    </p>
-                    <p className="text-[10px] capitalize text-muted/70">
-                      {formatRelativeDay(b.class.startsAt)}
-                    </p>
+                    <button
+                      onClick={(e) => { e.preventDefault(); setCancelTarget(b); }}
+                      className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 </div>
-
-                <button
-                  onClick={(e) => { e.preventDefault(); handleShare(b); }}
-                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-surface text-muted transition-colors active:scale-95"
-                >
-                  {copiedId === b.id ? (
-                    <Check className="h-3 w-3 text-green-600" />
-                  ) : (
-                    <Share className="h-3 w-3" />
-                  )}
-                </button>
-              </div>
-
-              {/* Bottom row: friends + cancel */}
-              <div className="flex items-center justify-between border-t border-border/30 px-4 py-2">
-                <div className="flex items-center gap-2">
-                  {b.friendsGoing?.length > 0 && (
-                    <>
-                      <div className="flex -space-x-1.5">
-                        {b.friendsGoing.slice(0, 4).map((f) => (
-                          <Avatar key={f.id} className="h-5 w-5 ring-2 ring-white">
-                            {f.image && <AvatarImage src={f.image} />}
-                            <AvatarFallback className="text-[8px] font-semibold">
-                              {(f.name ?? "?")[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                        ))}
-                      </div>
-                      <span className="text-[10px] font-medium text-accent">
-                        {b.friendsGoing.length === 1
-                          ? `${b.friendsGoing[0].name?.split(" ")[0]} va`
-                          : `${b.friendsGoing.length} amigos van`}
-                      </span>
-                    </>
-                  )}
-                </div>
-                <button
-                  onClick={(e) => { e.preventDefault(); setCancelTarget(b); }}
-                  className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </Link>
+              </Link>
+            </div>
           );
         })}
       </div>

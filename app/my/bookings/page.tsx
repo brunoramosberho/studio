@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PageTransition } from "@/components/shared/page-transition";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { BookingWithDetails } from "@/types";
@@ -261,56 +263,54 @@ export default function BookingsPage() {
             animate="show"
             key="past"
           >
-            {past.map((booking) => (
-              <motion.div key={booking.id} variants={fadeUp}>
-                <Link
-                  href={`/class/${booking.classId}`}
-                  className="block rounded-2xl border border-border/50 bg-white opacity-60 transition-shadow active:scale-[0.99]"
-                >
-                  <div className="flex items-center gap-3 px-4 py-3.5">
-                    <div className="w-14 flex-shrink-0 text-center">
-                      <p className="text-[15px] font-bold text-foreground">
-                        {formatTime(booking.class.startsAt)}
-                      </p>
-                      <p className="text-[11px] text-muted">
-                        {booking.class.classType.duration} min
-                      </p>
-                    </div>
-                    <div
-                      className="h-10 w-0.5 flex-shrink-0 rounded-full"
-                      style={{ backgroundColor: (booking.class.classType.color || "#6366f1") + "40" }}
-                    />
-                    <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                      {booking.class.coach.user.image ? (
-                        <img
-                          src={booking.class.coach.user.image}
-                          alt={booking.class.coach.user.name || "Coach"}
-                          className="h-9 w-9 flex-shrink-0 rounded-full object-cover grayscale"
-                        />
-                      ) : (
-                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent">
-                          {booking.class.coach.user.name?.charAt(0) || "C"}
+            {past.map((booking) => {
+              const studioName = (booking.class as unknown as { room?: { studio?: { name?: string } } }).room?.studio?.name;
+              const startDate = new Date(booking.class.startsAt);
+              const dayLabel = format(startDate, "EEE d 'de' MMM", { locale: es });
+
+              return (
+                <motion.div key={booking.id} variants={fadeUp}>
+                  <div className="mb-1.5 flex items-center gap-2 opacity-50">
+                    <div className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
+                    <span className="text-[13px] font-semibold capitalize text-foreground">
+                      {formatTime(booking.class.startsAt)} / {dayLabel}
+                      <span className="font-normal text-muted"> · {booking.class.classType.duration} min</span>
+                    </span>
+                  </div>
+
+                  <Link
+                    href={`/class/${booking.classId}`}
+                    className="block opacity-50"
+                  >
+                    <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        {booking.class.coach.user.image ? (
+                          <img
+                            src={booking.class.coach.user.image}
+                            alt={booking.class.coach.user.name || "Coach"}
+                            className="h-10 w-10 flex-shrink-0 rounded-full object-cover grayscale"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent opacity-50">
+                            {booking.class.coach.user.name?.charAt(0) || "C"}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-bold text-foreground">
+                            {booking.class.classType.name}
+                          </p>
+                          <p className="truncate text-[13px] text-muted">
+                            con {booking.class.coach.user.name?.split(" ")[0]}
+                            {studioName && <span className="text-muted/50"> · {studioName}</span>}
+                          </p>
                         </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[15px] font-bold text-foreground">
-                          {booking.class.classType.name}
-                        </p>
-                        <p className="truncate text-[13px] text-muted">
-                          con {booking.class.coach.user.name?.split(" ")[0]}
-                        </p>
-                        <p className="text-[11px] capitalize text-muted/70">
-                          {formatRelativeDay(booking.class.startsAt)}
-                        </p>
+                        <StatusBadge status={booking.status} />
                       </div>
                     </div>
-                    <div className="flex flex-shrink-0 flex-col items-end gap-1">
-                      <StatusBadge status={booking.status} />
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+                  </Link>
+                </motion.div>
+              );
+            })}
           </motion.div>
         )}
 
@@ -491,36 +491,34 @@ function BookingCard({
 }) {
   const studioName = (booking.class as unknown as { room?: { studio?: { name?: string } } }).room?.studio?.name;
 
+  const startDate = new Date(booking.class.startsAt);
+  const dayLabel = format(startDate, "EEE d 'de' MMM", { locale: es });
+
   return (
     <motion.div variants={fadeUp}>
+      {/* Time / day header outside the card */}
+      <div className="mb-1.5 flex items-center gap-2">
+        <div className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
+        <span className="text-[13px] font-semibold capitalize text-foreground">
+          {formatTime(booking.class.startsAt)} / {dayLabel}
+          <span className="font-normal text-muted"> · {booking.class.classType.duration} min</span>
+        </span>
+      </div>
+
       <Link
         href={`/class/${booking.classId}`}
-        className="block rounded-2xl border border-border/50 bg-white transition-shadow active:scale-[0.99]"
+        className="block"
       >
-        <div className="flex items-center gap-3 px-4 py-3.5">
-          <div className="w-14 flex-shrink-0 text-center">
-            <p className="text-[15px] font-bold text-foreground">
-              {formatTime(booking.class.startsAt)}
-            </p>
-            <p className="text-[11px] text-muted">
-              {booking.class.classType.duration} min
-            </p>
-          </div>
-
-          <div
-            className="h-10 w-0.5 flex-shrink-0 rounded-full"
-            style={{ backgroundColor: (booking.class.classType.color || "#6366f1") + "40" }}
-          />
-
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
+          <div className="flex items-center gap-3">
             {booking.class.coach.user.image ? (
               <img
                 src={booking.class.coach.user.image}
                 alt={booking.class.coach.user.name || "Coach"}
-                className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
+                className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
               />
             ) : (
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent">
                 {booking.class.coach.user.name?.charAt(0) || "C"}
               </div>
             )}
@@ -530,66 +528,63 @@ function BookingCard({
                   {booking.class.classType.name}
                 </p>
                 {booking.spotNumber && (
-                  <span className="flex-shrink-0 rounded bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+                  <span className="flex-shrink-0 rounded bg-surface px-1.5 py-0.5 text-[9px] font-semibold text-muted">
                     #{booking.spotNumber}
                   </span>
                 )}
               </div>
               <p className="truncate text-[13px] text-muted">
                 con {booking.class.coach.user.name?.split(" ")[0]}
-                {studioName && (
-                  <span className="text-muted/50"> · {studioName}</span>
-                )}
-              </p>
-              <p className="text-[11px] capitalize text-muted/70">
-                {formatRelativeDay(booking.class.startsAt)}
+                {studioName && <span className="text-muted/50"> · {studioName}</span>}
               </p>
             </div>
+            {booking.status === "CONFIRMED" && (
+              <button
+                onClick={(e) => { e.preventDefault(); onShare(booking); }}
+                className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-surface text-muted transition-colors active:scale-95"
+              >
+                {copiedId === booking.id ? (
+                  <Check className="h-3 w-3 text-green-600" />
+                ) : (
+                  <Share className="h-3 w-3" />
+                )}
+              </button>
+            )}
           </div>
 
-          <div className="flex flex-shrink-0 flex-col items-end gap-1">
+          {/* Friends + Cancel — same row */}
+          <div className="mt-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {booking.friendsGoing?.length > 0 && (
+                <>
+                  <div className="flex -space-x-1.5">
+                    {booking.friendsGoing.slice(0, 4).map((f) => (
+                      <Avatar key={f.id} className="h-5 w-5 ring-2 ring-white">
+                        {f.image && <AvatarImage src={f.image} />}
+                        <AvatarFallback className="text-[8px] font-semibold">
+                          {(f.name ?? "?")[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                  </div>
+                  <span className="text-[10px] font-medium text-accent">
+                    {booking.friendsGoing.length === 1
+                      ? `${booking.friendsGoing[0].name?.split(" ")[0]} va`
+                      : `${booking.friendsGoing.length} amigos van`}
+                  </span>
+                </>
+              )}
+            </div>
             {booking.status === "CONFIRMED" && (
-              <div className="flex items-center gap-1.5" onClick={(e) => e.preventDefault()}>
-                <button
-                  onClick={(e) => { e.preventDefault(); onShare(booking); }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-muted transition-colors active:scale-95"
-                >
-                  {copiedId === booking.id ? (
-                    <Check className="h-3.5 w-3.5 text-green-600" />
-                  ) : (
-                    <Share className="h-3.5 w-3.5" />
-                  )}
-                </button>
-                <button
-                  onClick={(e) => { e.preventDefault(); onCancel(booking); }}
-                  className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
-                >
-                  Cancelar
-                </button>
-              </div>
+              <button
+                onClick={(e) => { e.preventDefault(); onCancel(booking); }}
+                className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
+              >
+                Cancelar
+              </button>
             )}
           </div>
         </div>
-
-        {booking.friendsGoing?.length > 0 && (
-          <div className="flex items-center gap-2 border-t border-border/30 px-4 py-2">
-            <div className="flex -space-x-1.5">
-              {booking.friendsGoing.slice(0, 4).map((f) => (
-                <Avatar key={f.id} className="h-5 w-5 ring-2 ring-white">
-                  {f.image && <AvatarImage src={f.image} />}
-                  <AvatarFallback className="text-[8px] font-semibold">
-                    {(f.name ?? "?")[0]}
-                  </AvatarFallback>
-                </Avatar>
-              ))}
-            </div>
-            <span className="text-[11px] font-medium text-accent">
-              {booking.friendsGoing.length === 1
-                ? `${booking.friendsGoing[0].name?.split(" ")[0]} va`
-                : `${booking.friendsGoing.length} amigos van`}
-            </span>
-          </div>
-        )}
       </Link>
     </motion.div>
   );

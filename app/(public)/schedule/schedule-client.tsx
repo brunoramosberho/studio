@@ -1025,16 +1025,19 @@ function MobileClassCard({
         )}
       >
         {/* Time column */}
-        <div className="w-14 flex-shrink-0 text-center">
+        <div className="w-[4.5rem] flex-shrink-0 text-center">
+          <p className="text-[9px] font-semibold uppercase tracking-wide text-muted/60">
+            {format(new Date(cls.startsAt), "EEE d", { locale: es })}
+          </p>
           <p
             className={cn(
-              "text-[15px] font-bold",
+              "text-[13px] font-bold leading-tight",
               past ? "text-muted" : "text-foreground",
             )}
           >
             {formatTime(cls.startsAt)}
           </p>
-          <p className="text-[11px] text-muted">{cls.classType.duration} min</p>
+          <p className="text-[10px] text-muted">{cls.classType.duration} min</p>
         </div>
 
         {/* Divider */}
