@@ -1,21 +1,30 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { MessageCircle, Send } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { MessageCircle, Send, X } from "lucide-react";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
-import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import { useSession } from "next-auth/react";
 
 interface CommentData {
   id: string;
   body: string;
   createdAt: string;
-  user: { id: string; name: string | null; image: string | null; hasActiveMembership?: boolean; level?: string | null };
+  user: {
+    id: string;
+    name: string | null;
+    image: string | null;
+    hasActiveMembership?: boolean;
+    level?: string | null;
+  };
 }
 
 interface CommentsSheetProps {
   eventId: string;
   commentCount: number;
 }
+
+const QUICK_EMOJIS = ["❤️", "🙌", "🔥", "👏", "😢", "😍", "😮", "😂"];
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -28,7 +37,7 @@ function timeAgo(dateStr: string) {
 }
 
 export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
   const [comments, setComments] = useState<CommentData[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
@@ -36,6 +45,8 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
   const [submitting, setSubmitting] = useState(false);
   const [displayCount, setDisplayCount] = useState(commentCount);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const { data: session } = useSession();
 
   const fetchComments = useCallback(async () => {
     if (fetched) return;
@@ -53,110 +64,213 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
     }
   }, [eventId, fetched]);
 
-  const toggle = () => {
-    if (!expanded) fetchComments();
-    setExpanded(!expanded);
-    if (!expanded) setTimeout(() => inputRef.current?.focus(), 200);
+  const handleOpen = () => {
+    setOpen(true);
+    fetchComments();
   };
 
-  const submit = async () => {
-    if (!text.trim() || submitting) return;
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      setTimeout(() => inputRef.current?.focus(), 300);
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!loading && comments.length > 0 && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [comments.length, loading]);
+
+  const submit = async (body?: string) => {
+    const value = (body ?? text).trim();
+    if (!value || submitting) return;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/feed/${eventId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text.trim() }),
+        body: JSON.stringify({ body: value }),
       });
       if (res.ok) {
         const comment = await res.json();
         setComments((prev) => [...prev, comment]);
         setDisplayCount((c) => c + 1);
         setText("");
+        setTimeout(() => {
+          listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+        }, 50);
       }
     } finally {
       setSubmitting(false);
     }
   };
 
+  const currentUser = session?.user;
+
   return (
-    <div className="w-full">
-      {/* Toggle button */}
+    <>
       <button
-        onClick={toggle}
+        onClick={handleOpen}
         className="flex items-center gap-1 py-1.5 pr-2 text-[13px] text-muted transition-colors"
       >
         <MessageCircle className="h-[18px] w-[18px]" />
-        {displayCount > 0 && <span className="text-[12px]">{displayCount}</span>}
+        {displayCount > 0 && (
+          <span className="text-[12px]">{displayCount}</span>
+        )}
       </button>
 
-      {/* Inline comments */}
-      {expanded && (
-        <div className="mt-2 space-y-3 rounded-xl bg-surface/50 px-3 py-3">
-          {loading ? (
-            <div className="space-y-2">
-              {[1, 2].map((i) => (
-                <div key={i} className="flex gap-2">
-                  <div className="h-6 w-6 animate-pulse rounded-full bg-border/40" />
-                  <div className="flex-1 space-y-1">
-                    <div className="h-3 w-24 animate-pulse rounded bg-border/40" />
-                    <div className="h-3 w-full animate-pulse rounded bg-border/40" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : comments.length === 0 ? (
-            <p className="py-2 text-center text-[12px] text-muted">
-              Sé el primero en comentar
-            </p>
-          ) : (
-            <div className="space-y-2.5">
-              {comments.map((c) => (
-                <div key={c.id} className="flex gap-2">
-                  <UserAvatar
-                    user={c.user as UserAvatarUser}
-                    size={24}
-                    showBadge={false}
-                    className="flex-shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] leading-snug">
-                      <span className="font-semibold text-foreground">
-                        {c.user.name?.split(" ")[0]}{" "}
-                      </span>
-                      <span className="text-foreground/80">{c.body}</span>
-                    </p>
-                    <span className="text-[10px] text-muted">
-                      {timeAgo(c.createdAt)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Input */}
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              ref={inputRef}
-              type="text"
-              className="flex-1 rounded-full bg-white px-3.5 py-2 text-[14px] text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/30"
-              style={{ fontSize: "16px" }}
-              placeholder="Comentar..."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submit()}
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[60] bg-foreground/40 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
             />
-            <button
-              onClick={submit}
-              disabled={!text.trim() || submitting}
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent text-white transition-opacity disabled:opacity-30"
+
+            <motion.div
+              className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-[var(--shadow-warm-lg)]"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 350 }}
             >
-              <Send className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="h-1 w-10 rounded-full bg-border/60" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pb-3 pt-1">
+                <div className="w-8" />
+                <h2 className="font-display text-[15px] font-bold text-foreground">
+                  Comentarios
+                </h2>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-muted active:bg-surface"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="h-px bg-border/30" />
+
+              {/* Comments list */}
+              <div
+                ref={listRef}
+                className="flex-1 overflow-y-auto overscroll-contain px-4 py-3"
+                style={{ minHeight: "200px" }}
+              >
+                {loading ? (
+                  <div className="space-y-4 py-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex gap-3">
+                        <div className="h-8 w-8 animate-pulse rounded-full bg-border/40" />
+                        <div className="flex-1 space-y-1.5 pt-0.5">
+                          <div className="h-3 w-24 animate-pulse rounded bg-border/40" />
+                          <div className="h-3 w-full animate-pulse rounded bg-border/40" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : comments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <p className="text-[15px] font-semibold text-foreground">
+                      Sin comentarios aún
+                    </p>
+                    <p className="mt-1 text-[13px] text-muted">
+                      Sé el primero en comentar
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {comments.map((c) => (
+                      <div key={c.id} className="flex gap-3">
+                        <UserAvatar
+                          user={c.user as UserAvatarUser}
+                          size={32}
+                          showBadge={false}
+                          className="flex-shrink-0 mt-0.5"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[14px] leading-snug">
+                            <span className="font-semibold text-foreground">
+                              {c.user.name?.split(" ")[0]}{" "}
+                            </span>
+                            <span className="text-foreground/80">{c.body}</span>
+                          </p>
+                          <div className="mt-1 flex items-center gap-3">
+                            <span className="text-[11px] text-muted">
+                              {timeAgo(c.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Emoji quick-reactions */}
+              <div className="border-t border-border/30 px-4 pt-2.5 pb-1">
+                <div className="flex items-center justify-between">
+                  {QUICK_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => submit(emoji)}
+                      disabled={submitting}
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-[22px] transition-transform active:scale-125 disabled:opacity-40"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Input composer */}
+              <div className="flex items-center gap-3 border-t border-border/30 px-4 pb-[max(env(safe-area-inset-bottom),20px)] pt-3">
+                {currentUser?.image ? (
+                  <img
+                    src={currentUser.image}
+                    alt=""
+                    className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-surface text-[12px] font-bold text-muted">
+                    {currentUser?.name?.charAt(0) ?? "?"}
+                  </div>
+                )}
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground placeholder:text-muted/50 focus:outline-none"
+                  style={{ fontSize: "16px" }}
+                  placeholder="Añade un comentario..."
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submit()}
+                />
+                <button
+                  onClick={() => submit()}
+                  disabled={!text.trim() || submitting}
+                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent text-white transition-opacity disabled:opacity-30"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
