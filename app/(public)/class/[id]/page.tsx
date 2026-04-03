@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Info,
   Check,
+  CheckCircle2,
   Eye,
   EyeOff,
   Ticket,
@@ -23,16 +24,27 @@ import {
   CalendarPlus,
   Clock,
   Users,
+  ListMusic,
+  Music,
+  ChevronUp,
+  ArrowRight,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/shared/page-transition";
 import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
-import { cn, formatTime } from "@/lib/utils";
+import { cn, formatTime, maskLastName } from "@/lib/utils";
 import { useBooking } from "@/hooks/useBooking";
 import { usePackages } from "@/hooks/usePackages";
 import { BookingSheet } from "@/components/booking/booking-sheet";
 import { SongRequest } from "@/components/booking/song-request";
+import { MediaGallery } from "@/components/feed/media-gallery";
+import { LikeButton } from "@/components/feed/like-button";
+import { CommentsSheet } from "@/components/feed/comments-sheet";
+import { PhotoUpload } from "@/components/feed/photo-upload";
+import { PeopleListSheet, type PersonItem } from "@/components/feed/people-list-sheet";
+import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 
 interface ClassData {
   id: string;
@@ -75,6 +87,38 @@ interface ClassData {
   myWaitlistEntry?: { id: string; position: number } | null;
 }
 
+interface FeedAttendee {
+  id: string;
+  name: string;
+  image: string | null;
+  hasActiveMembership?: boolean;
+  level?: string | null;
+}
+
+interface FeedMediaItem {
+  id: string;
+  url: string;
+  thumbnailUrl?: string | null;
+  mimeType: string;
+}
+
+interface PlaylistTrack {
+  id: string;
+  title: string;
+  artist: string;
+  albumArt: string | null;
+}
+
+interface ClassFeedEvent {
+  id: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+  photos: FeedMediaItem[];
+  comments: unknown[];
+  likeCount: number;
+  liked: boolean;
+}
+
 export default function ClassDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -101,6 +145,12 @@ export default function ClassDetailPage() {
   const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null);
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
 
+  const [showPeople, setShowPeople] = useState(false);
+  const [feedMedia, setFeedMedia] = useState<FeedMediaItem[]>([]);
+  const [playlistOpen, setPlaylistOpen] = useState(false);
+  const [playlistTracks, setPlaylistTracks] = useState<PlaylistTrack[]>([]);
+  const [playlistLoading, setPlaylistLoading] = useState(false);
+
   const {
     data: cls,
     isLoading: loading,
@@ -114,6 +164,47 @@ export default function ClassDetailPage() {
     },
     enabled: !!id,
   });
+
+  const isPast = cls ? new Date(cls.endsAt) < new Date() : false;
+
+  const { data: feedData } = useQuery<{ feedEvent: ClassFeedEvent | null }>({
+    queryKey: ["class-feed", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/classes/${id}/feed`);
+      if (!res.ok) throw new Error("Failed to fetch feed");
+      return res.json();
+    },
+    enabled: !!id && isPast,
+  });
+
+  const feedEvent = feedData?.feedEvent ?? null;
+  const feedAttendees = (feedEvent?.payload?.attendees as FeedAttendee[]) ?? [];
+  const feedCaption = (feedEvent?.payload?.caption as string) ?? null;
+  const hasPlaylist = feedEvent?.payload?.hasPlaylist === true;
+  const currentUserId = session?.user?.id;
+  const userAttended = currentUserId
+    ? feedAttendees.some((a) => a.id === currentUserId)
+    : false;
+  const canSeePlaylist = hasPlaylist && userAttended;
+
+  useEffect(() => {
+    if (feedEvent?.photos) setFeedMedia(feedEvent.photos);
+  }, [feedEvent?.photos]);
+
+  const handleTogglePlaylist = async () => {
+    if (playlistOpen) {
+      setPlaylistOpen(false);
+      return;
+    }
+    setPlaylistOpen(true);
+    if (playlistTracks.length > 0) return;
+    setPlaylistLoading(true);
+    try {
+      const res = await fetch(`/api/classes/${id}/playlist`);
+      if (res.ok) setPlaylistTracks(await res.json());
+    } catch { /* ignore */ }
+    setPlaylistLoading(false);
+  };
 
   const cancelMutation = useMutation({
     mutationFn: async (bookingId: string) => {
@@ -339,7 +430,7 @@ export default function ClassDetailPage() {
             Volver
           </button>
           <div className="flex items-center gap-2">
-            {isAuthenticated && creditsRemaining !== null && (
+            {!isPast && isAuthenticated && creditsRemaining !== null && (
               <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
                 <Ticket className="h-3.5 w-3.5 text-accent" />
                 <span className="text-[12px] font-semibold text-accent">
@@ -384,11 +475,11 @@ export default function ClassDetailPage() {
 
         <div className="mt-2 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted">
-            {(bookedSpotNumber ?? myBookedSpot) ? (
+            {!isPast && (bookedSpotNumber ?? myBookedSpot) ? (
               <span className="font-semibold text-foreground">
                 Lugar: {bookedSpotNumber ?? myBookedSpot}
               </span>
-            ) : selectedSpot ? (
+            ) : !isPast && selectedSpot ? (
               <span className="font-semibold text-foreground">
                 Lugar: {selectedSpot}
               </span>
@@ -421,376 +512,568 @@ export default function ClassDetailPage() {
 
         <div className="my-6 h-px bg-border/50" />
 
-        {/* Studio Map — always interactive */}
-        <div className="py-4">
-          <StudioMap
-            maxCapacity={cls.room.maxCapacity}
-            spotMap={spotMap}
-            selectedSpot={selectedSpot}
-            onSelectSpot={(spot) => {
-              setSelectedSpot(spot === selectedSpot ? null : spot);
-              setError(null);
-            }}
-            myBookedSpot={myBookedSpot}
-            disabled={!!myBooking || bookingSuccess}
-            layout={cls.room.layout}
-            coachName={cls.coach.user.name}
-          />
-        </div>
-
-        {/* Privacy toggle */}
-        {!myBooking && !bookingSuccess && selectedSpot && (
-          <div className="mt-1 flex flex-col items-center gap-1.5">
-            <div className="flex w-fit items-center rounded-full bg-surface p-0.5 text-xs">
-              <button
-                onClick={() => setPrivacy("PUBLIC")}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all ${
-                  privacy === "PUBLIC"
-                    ? "bg-foreground text-background shadow-sm"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                <Eye className="h-3 w-3" />
-                <span>Visible</span>
-              </button>
-              <button
-                onClick={() => setPrivacy("PRIVATE")}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all ${
-                  privacy === "PRIVATE"
-                    ? "bg-foreground text-background shadow-sm"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                <EyeOff className="h-3 w-3" />
-                <span>Privada</span>
-              </button>
+        {isPast ? (
+          /* ═══════ POST-CLASS EXPERIENCE ═══════ */
+          <div className="space-y-5">
+            {/* Clase terminada badge */}
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-green-700">Clase terminada</span>
+              {feedAttendees.length > 0 && (
+                <span className="text-xs text-muted">
+                  · {feedAttendees.length} asistente{feedAttendees.length !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
-            <p className="text-[11px] text-muted/60">
-              {privacy === "PUBLIC"
-                ? "Tus amigos podrán ver que asistirás a esta clase"
-                : "Nadie verá que reservaste esta clase"}
-            </p>
-          </div>
-        )}
 
-        {/* Error */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-4 overflow-hidden"
-            >
-              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
+            {/* Caption */}
+            {feedCaption && (
+              <p className="whitespace-pre-line text-[14px] leading-relaxed text-foreground/90">
+                {feedCaption}
               </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
 
-        {/* Booking success */}
-        <AnimatePresence>
-          {bookingSuccess && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-6"
-            >
-              <div className="rounded-xl bg-green-50 px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-500">
-                    <Check className="h-3.5 w-3.5 text-white" />
+            {/* Photos / video gallery */}
+            {feedMedia.length > 0 && (
+              <div className="-mx-4">
+                <MediaGallery media={feedMedia} className="rounded-none" />
+              </div>
+            )}
+
+            {/* Action bar: like, comments, upload */}
+            {feedEvent && (
+              <div className="flex items-center gap-1">
+                <LikeButton
+                  eventId={feedEvent.id}
+                  initialLiked={feedEvent.liked}
+                  initialCount={feedEvent.likeCount}
+                />
+                <CommentsSheet
+                  eventId={feedEvent.id}
+                  commentCount={feedEvent.comments.length}
+                />
+                <PhotoUpload
+                  eventId={feedEvent.id}
+                  onUploaded={(photo) =>
+                    setFeedMedia((prev) => [...prev, { ...photo, thumbnailUrl: null }])
+                  }
+                />
+              </div>
+            )}
+
+            {/* Playlist (only for attendees) */}
+            {canSeePlaylist && (
+              <div>
+                <button
+                  onClick={handleTogglePlaylist}
+                  className="flex w-full items-center gap-2 rounded-xl bg-green-50 px-3.5 py-2.5 text-left transition-colors hover:bg-green-100/70"
+                >
+                  <ListMusic className="h-4 w-4 text-green-600" />
+                  <span className="flex-1 text-[13px] font-medium text-green-800">
+                    Ver playlist de la clase
+                  </span>
+                  <ChevronUp className={cn(
+                    "h-4 w-4 text-green-600 transition-transform",
+                    !playlistOpen && "rotate-180",
+                  )} />
+                </button>
+                {playlistOpen && (
+                  <div className="mt-2 space-y-1 rounded-xl border border-green-100 bg-white p-2">
+                    {playlistLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-300 border-t-green-600" />
+                      </div>
+                    ) : playlistTracks.length === 0 ? (
+                      <p className="py-3 text-center text-xs text-muted">Sin canciones</p>
+                    ) : (
+                      playlistTracks.map((track, idx) => (
+                        <div
+                          key={track.id}
+                          className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-green-50/50"
+                        >
+                          <span className="w-4 text-center text-[11px] font-medium text-muted/50">
+                            {idx + 1}
+                          </span>
+                          {track.albumArt ? (
+                            <img
+                              src={track.albumArt}
+                              alt={track.title}
+                              className="h-8 w-8 shrink-0 rounded-md object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-green-50">
+                              <Music className="h-3.5 w-3.5 text-green-600" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13px] font-medium text-foreground">{track.title}</p>
+                            <p className="truncate text-[11px] text-muted">{track.artist}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-green-800">
-                      Reserva confirmada
+                )}
+              </div>
+            )}
+
+            {/* Attendees */}
+            {feedAttendees.length > 0 && (
+              <div>
+                {feedAttendees.length === 1 ? (
+                  <Link href={`/my/user/${feedAttendees[0].id}`} className="inline-flex items-center gap-2">
+                    <UserAvatar
+                      user={feedAttendees[0] as UserAvatarUser}
+                      size={24}
+                      showBadge={false}
+                    />
+                    <span className="text-[12px] text-muted">{maskLastName(feedAttendees[0].name)}</span>
+                  </Link>
+                ) : (
+                  <button className="flex items-center gap-2" onClick={() => setShowPeople(true)}>
+                    <div className="flex -space-x-1.5">
+                      {feedAttendees.slice(0, 8).map((a, idx) => (
+                        <UserAvatar
+                          key={`${a.id}-${idx}`}
+                          user={a as UserAvatarUser}
+                          size={24}
+                          showBadge={false}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[12px] text-muted">
+                      {feedAttendees.length} asistentes
+                      {feedAttendees.length > 8 && ` +${feedAttendees.length - 8} más`}
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            <PeopleListSheet
+              open={showPeople}
+              onClose={() => setShowPeople(false)}
+              title="Asistentes"
+              people={feedAttendees.map((a): PersonItem => ({
+                id: a.id,
+                name: a.name,
+                image: a.image,
+              }))}
+            />
+
+            {/* ── Book Again CTA ── */}
+            <div className="mt-2 space-y-2.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted/60">
+                Reservar de nuevo
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full gap-2 rounded-full"
+                >
+                  <Link href={`/my/user/${cls.coach.userId}`}>
+                    {(cls.coach.photoUrl || cls.coach.user.image) && (
+                      <img
+                        src={cls.coach.photoUrl || cls.coach.user.image!}
+                        alt=""
+                        className="h-5 w-5 rounded-full object-cover"
+                      />
+                    )}
+                    <span className="truncate">
+                      Clases con {cls.coach.user.name?.split(" ")[0] ?? "coach"}
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  className="w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                >
+                  <Link href={`/schedule?discipline=${encodeURIComponent(cls.classType.name)}`}>
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    <span className="truncate">Más {cls.classType.name}</span>
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ═══════ BOOKING EXPERIENCE (upcoming class) ═══════ */
+          <>
+            {/* Studio Map */}
+            <div className="py-4">
+              <StudioMap
+                maxCapacity={cls.room.maxCapacity}
+                spotMap={spotMap}
+                selectedSpot={selectedSpot}
+                onSelectSpot={(spot) => {
+                  setSelectedSpot(spot === selectedSpot ? null : spot);
+                  setError(null);
+                }}
+                myBookedSpot={myBookedSpot}
+                disabled={!!myBooking || bookingSuccess}
+                layout={cls.room.layout}
+                coachName={cls.coach.user.name}
+              />
+            </div>
+
+            {/* Privacy toggle */}
+            {!myBooking && !bookingSuccess && selectedSpot && (
+              <div className="mt-1 flex flex-col items-center gap-1.5">
+                <div className="flex w-fit items-center rounded-full bg-surface p-0.5 text-xs">
+                  <button
+                    onClick={() => setPrivacy("PUBLIC")}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all ${
+                      privacy === "PUBLIC"
+                        ? "bg-foreground text-background shadow-sm"
+                        : "text-muted hover:text-foreground"
+                    }`}
+                  >
+                    <Eye className="h-3 w-3" />
+                    <span>Visible</span>
+                  </button>
+                  <button
+                    onClick={() => setPrivacy("PRIVATE")}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all ${
+                      privacy === "PRIVATE"
+                        ? "bg-foreground text-background shadow-sm"
+                        : "text-muted hover:text-foreground"
+                    }`}
+                  >
+                    <EyeOff className="h-3 w-3" />
+                    <span>Privada</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted/60">
+                  {privacy === "PUBLIC"
+                    ? "Tus amigos podrán ver que asistirás a esta clase"
+                    : "Nadie verá que reservaste esta clase"}
+                </p>
+              </div>
+            )}
+
+            {/* Error */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 overflow-hidden"
+                >
+                  <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Booking success */}
+            <AnimatePresence>
+              {bookingSuccess && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6"
+                >
+                  <div className="rounded-xl bg-green-50 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-500">
+                        <Check className="h-3.5 w-3.5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-green-800">
+                          Reserva confirmada
+                        </p>
+                        <p className="text-xs text-green-600">
+                          Lugar #{bookedSpotNumber} · {formatTime(cls.startsAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <a
+                        href={calendarUrls?.google}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                      >
+                        <CalendarPlus className="h-3.5 w-3.5" />
+                        Google
+                      </a>
+                      <button
+                        onClick={handleDownloadIcs}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                      >
+                        <CalendarPlus className="h-3.5 w-3.5" />
+                        Apple
+                      </button>
+                      <button
+                        onClick={handleShare}
+                        className="flex items-center justify-center rounded-lg bg-green-100 px-3 py-2 text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                      >
+                        {copied ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : (
+                          <Share className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mobile install hint */}
+                  {!isAuthenticated && guestEmail && typeof window !== "undefined" && /iPad|iPhone|iPod|android/i.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches && (
+                    <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface/80 p-3 sm:hidden">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+                        <Share className="h-3.5 w-3.5 text-accent" />
+                      </div>
+                      <p className="text-xs text-muted">
+                        <strong className="text-foreground">Tip:</strong> Agrega esta app a tu pantalla de inicio para reservar más rápido.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Song request prompt */}
+                  <AnimatePresence>
+                    {showSongRequest && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 overflow-hidden rounded-xl border border-border/50 bg-white"
+                      >
+                        <SongRequest
+                          classId={id}
+                          onComplete={() => setShowSongRequest(false)}
+                          onSkip={() => setShowSongRequest(false)}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Guest login prompt */}
+                  {!isAuthenticated && guestEmail && (
+                    <div className="mt-4 rounded-xl border border-border/50 bg-white p-4">
+                      {magicSent ? (
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                            <Mail className="h-4 w-4 text-accent" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Revisa tu correo</p>
+                            <p className="text-xs text-muted">Enviamos un enlace a {guestEmail}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm font-medium text-foreground">
+                            Accede a tu cuenta
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted">
+                            Gestiona reservas, acumula logros y conecta con tu comunidad.
+                          </p>
+                          <div className="mt-3 flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => signIn("google", { callbackUrl: `/class/${id}` })}
+                              className="flex-1 gap-1.5 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                            >
+                              <LogIn className="h-3.5 w-3.5" />
+                              Google
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={sendingMagic}
+                              onClick={async () => {
+                                setSendingMagic(true);
+                                await signIn("resend", { email: guestEmail, callbackUrl: "/my/bookings", redirect: false });
+                                setMagicSent(true);
+                                setSendingMagic(false);
+                              }}
+                              className="flex-1 gap-1.5 rounded-full"
+                            >
+                              {sendingMagic ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                              Email
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="my-6 h-px bg-border/50" />
+
+            {/* Waitlist joined state */}
+            {waitlistJoined && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#C9A96E]">
+                    <Clock className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Estas en la lista de espera
                     </p>
-                    <p className="text-xs text-green-600">
-                      Lugar #{bookedSpotNumber} · {formatTime(cls.startsAt)}
-                    </p>
+                    {waitlistPosition && (
+                      <p className="text-xs text-accent">Posición #{waitlistPosition}</p>
+                    )}
                   </div>
                 </div>
-                <div className="mt-3 flex gap-2">
+                <p className="text-xs text-muted leading-relaxed">
+                  Se te descontó un crédito. Si se libera un lugar, entrarás automáticamente y te notificaremos. Si no entras, se te devuelve el crédito.
+                </p>
+                <Button asChild variant="secondary" size="sm" className="rounded-full">
+                  <Link href="/my/bookings">Ver mis reservas</Link>
+                </Button>
+              </div>
+            )}
+
+            {/* CTA */}
+            {!myBooking && !bookingSuccess && !waitlistJoined && (
+              <div className="space-y-4">
+                {classFull ? (
+                  isAuthenticated ? (
+                    hasCredits ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+                            <Users className="h-3 w-3" />
+                            Clase llena
+                          </span>
+                          {waitlistCount > 0 && (
+                            <span className="text-xs text-muted">
+                              {waitlistCount} {waitlistCount === 1 ? "persona" : "personas"} en lista de espera
+                            </span>
+                          )}
+                        </div>
+                        <div className="rounded-xl border border-[#C9A96E]/20 bg-[#C9A96E]/5 px-4 py-3">
+                          <p className="text-xs text-muted leading-relaxed">
+                            Se te descontará un crédito al unirte. Si se libera un lugar, entrarás automáticamente. Si no logras entrar, se te devuelve el crédito.
+                          </p>
+                        </div>
+                        <Button
+                          size="lg"
+                          className="w-full min-h-[48px] rounded-full"
+                          onClick={handleJoinWaitlist}
+                          disabled={joiningWaitlist}
+                        >
+                          {joiningWaitlist && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Unirme a la lista de espera
+                          {waitlistCount > 0 && (
+                            <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs">
+                              {waitlistCount}
+                            </span>
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 text-center">
+                        <p className="text-sm text-muted">Clase llena. Necesitas un paquete para unirte a la lista de espera.</p>
+                        <Button asChild size="lg" className="w-full rounded-full">
+                          <Link href="/packages">Ver paquetes</Link>
+                        </Button>
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-3 text-center">
+                      <div className="flex items-center justify-center gap-2 text-sm">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+                          <Users className="h-3 w-3" />
+                          Clase llena
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted">Inicia sesión para unirte a la lista de espera.</p>
+                      <Button asChild size="lg" className="w-full rounded-full">
+                        <Link href="/login">
+                          <LogIn className="mr-2 h-4 w-4" />
+                          Iniciar sesión
+                        </Link>
+                      </Button>
+                    </div>
+                  )
+                ) : (
+                  <Button
+                    size="lg"
+                    className="w-full min-h-[48px] rounded-full bg-foreground text-background hover:bg-foreground/90"
+                    onClick={handleReserveClick}
+                    disabled={isBooking || !selectedSpot || (isAuthenticated && packagesLoading)}
+                  >
+                    {isBooking ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    {!selectedSpot
+                      ? "Selecciona un lugar"
+                      : "Reservar clase"}
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Already booked */}
+            {myBooking && !bookingSuccess && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent">
+                      <Check className="h-3.5 w-3.5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Reserva confirmada
+                      </p>
+                      {myBookedSpot && (
+                        <p className="text-xs text-muted">Lugar #{myBookedSpot}</p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+                <div className="flex gap-2">
                   <a
                     href={calendarUrls?.google}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent/10 py-2 text-[13px] font-medium text-accent transition-colors hover:bg-accent/15 active:scale-[0.98]"
                   >
                     <CalendarPlus className="h-3.5 w-3.5" />
                     Google
                   </a>
                   <button
                     onClick={handleDownloadIcs}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent/10 py-2 text-[13px] font-medium text-accent transition-colors hover:bg-accent/15 active:scale-[0.98]"
                   >
                     <CalendarPlus className="h-3.5 w-3.5" />
                     Apple
                   </button>
-                  <button
-                    onClick={handleShare}
-                    className="flex items-center justify-center rounded-lg bg-green-100 px-3 py-2 text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
-                  >
-                    {copied ? (
-                      <Check className="h-3.5 w-3.5" />
-                    ) : (
-                      <Share className="h-3.5 w-3.5" />
-                    )}
-                  </button>
                 </div>
               </div>
-
-              {/* Mobile install hint */}
-              {!isAuthenticated && guestEmail && typeof window !== "undefined" && /iPad|iPhone|iPod|android/i.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches && (
-                <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface/80 p-3 sm:hidden">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10">
-                    <Share className="h-3.5 w-3.5 text-accent" />
-                  </div>
-                  <p className="text-xs text-muted">
-                    <strong className="text-foreground">Tip:</strong> Agrega esta app a tu pantalla de inicio para reservar más rápido.
-                  </p>
-                </div>
-              )}
-
-              {/* Song request prompt */}
-              <AnimatePresence>
-                {showSongRequest && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-4 overflow-hidden rounded-xl border border-border/50 bg-white"
-                  >
-                    <SongRequest
-                      classId={id}
-                      onComplete={() => setShowSongRequest(false)}
-                      onSkip={() => setShowSongRequest(false)}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Guest login prompt */}
-              {!isAuthenticated && guestEmail && (
-                <div className="mt-4 rounded-xl border border-border/50 bg-white p-4">
-                  {magicSent ? (
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10">
-                        <Mail className="h-4 w-4 text-accent" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Revisa tu correo</p>
-                        <p className="text-xs text-muted">Enviamos un enlace a {guestEmail}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-sm font-medium text-foreground">
-                        Accede a tu cuenta
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted">
-                        Gestiona reservas, acumula logros y conecta con tu comunidad.
-                      </p>
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => signIn("google", { callbackUrl: `/class/${id}` })}
-                          className="flex-1 gap-1.5 rounded-full bg-foreground text-background hover:bg-foreground/90"
-                        >
-                          <LogIn className="h-3.5 w-3.5" />
-                          Google
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={sendingMagic}
-                          onClick={async () => {
-                            setSendingMagic(true);
-                            await signIn("resend", { email: guestEmail, callbackUrl: "/my/bookings", redirect: false });
-                            setMagicSent(true);
-                            setSendingMagic(false);
-                          }}
-                          className="flex-1 gap-1.5 rounded-full"
-                        >
-                          {sendingMagic ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                          Email
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="my-6 h-px bg-border/50" />
-
-        {/* Waitlist joined state */}
-        {waitlistJoined && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#C9A96E]">
-                <Clock className="h-3.5 w-3.5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Estas en la lista de espera
-                </p>
-                {waitlistPosition && (
-                  <p className="text-xs text-accent">Posición #{waitlistPosition}</p>
-                )}
-              </div>
-            </div>
-            <p className="text-xs text-muted leading-relaxed">
-              Se te descontó un crédito. Si se libera un lugar, entrarás automáticamente y te notificaremos. Si no entras, se te devuelve el crédito.
-            </p>
-            <Button asChild variant="secondary" size="sm" className="rounded-full">
-              <Link href="/my/bookings">Ver mis reservas</Link>
-            </Button>
-          </div>
-        )}
-
-        {/* CTA */}
-        {!myBooking && !bookingSuccess && !waitlistJoined && (
-          <div className="space-y-4">
-            {classFull ? (
-              isAuthenticated ? (
-                hasCredits ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
-                        <Users className="h-3 w-3" />
-                        Clase llena
-                      </span>
-                      {waitlistCount > 0 && (
-                        <span className="text-xs text-muted">
-                          {waitlistCount} {waitlistCount === 1 ? "persona" : "personas"} en lista de espera
-                        </span>
-                      )}
-                    </div>
-                    <div className="rounded-xl border border-[#C9A96E]/20 bg-[#C9A96E]/5 px-4 py-3">
-                      <p className="text-xs text-muted leading-relaxed">
-                        Se te descontará un crédito al unirte. Si se libera un lugar, entrarás automáticamente. Si no logras entrar, se te devuelve el crédito.
-                      </p>
-                    </div>
-                    <Button
-                      size="lg"
-                      className="w-full min-h-[48px] rounded-full"
-                      onClick={handleJoinWaitlist}
-                      disabled={joiningWaitlist}
-                    >
-                      {joiningWaitlist && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Unirme a la lista de espera
-                      {waitlistCount > 0 && (
-                        <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs">
-                          {waitlistCount}
-                        </span>
-                      )}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3 text-center">
-                    <p className="text-sm text-muted">Clase llena. Necesitas un paquete para unirte a la lista de espera.</p>
-                    <Button asChild size="lg" className="w-full rounded-full">
-                      <Link href="/packages">Ver paquetes</Link>
-                    </Button>
-                  </div>
-                )
-              ) : (
-                <div className="space-y-3 text-center">
-                  <div className="flex items-center justify-center gap-2 text-sm">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
-                      <Users className="h-3 w-3" />
-                      Clase llena
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted">Inicia sesión para unirte a la lista de espera.</p>
-                  <Button asChild size="lg" className="w-full rounded-full">
-                    <Link href="/login">
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Iniciar sesión
-                    </Link>
-                  </Button>
-                </div>
-              )
-            ) : (
-              <Button
-                size="lg"
-                className="w-full min-h-[48px] rounded-full bg-foreground text-background hover:bg-foreground/90"
-                onClick={handleReserveClick}
-                disabled={isBooking || !selectedSpot || (isAuthenticated && packagesLoading)}
-              >
-                {isBooking ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                {!selectedSpot
-                  ? "Selecciona un lugar"
-                  : "Reservar clase"}
-              </Button>
             )}
-          </div>
-        )}
 
-        {/* Already booked */}
-        {myBooking && !bookingSuccess && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent">
-                  <Check className="h-3.5 w-3.5 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    Reserva confirmada
-                  </p>
-                  {myBookedSpot && (
-                    <p className="text-xs text-muted">Lugar #{myBookedSpot}</p>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => setShowCancelConfirm(true)}
-                className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
-              >
-                Cancelar
-              </button>
+            {/* Policy */}
+            <div className="mt-10 flex items-start gap-2.5">
+              <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted/40" />
+              <p className="text-[11px] leading-relaxed text-muted/60">
+                Puedes cancelar hasta 12 horas antes del inicio sin perder tu
+                crédito. Cancelaciones tardías o no-shows consumen el crédito.
+              </p>
             </div>
-            <div className="flex gap-2">
-              <a
-                href={calendarUrls?.google}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent/10 py-2 text-[13px] font-medium text-accent transition-colors hover:bg-accent/15 active:scale-[0.98]"
-              >
-                <CalendarPlus className="h-3.5 w-3.5" />
-                Google
-              </a>
-              <button
-                onClick={handleDownloadIcs}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent/10 py-2 text-[13px] font-medium text-accent transition-colors hover:bg-accent/15 active:scale-[0.98]"
-              >
-                <CalendarPlus className="h-3.5 w-3.5" />
-                Apple
-              </button>
-            </div>
-          </div>
+          </>
         )}
-
-        {/* Policy */}
-        <div className="mt-10 flex items-start gap-2.5">
-          <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted/40" />
-          <p className="text-[11px] leading-relaxed text-muted/60">
-            Puedes cancelar hasta 12 horas antes del inicio sin perder tu
-            crédito. Cancelaciones tardías o no-shows consumen el crédito.
-          </p>
-        </div>
       </div>
 
       {/* Cancel confirmation modal */}
       <AnimatePresence>
-        {showCancelConfirm && myBooking && cls && (
+        {!isPast && showCancelConfirm && myBooking && cls && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -889,7 +1172,7 @@ export default function ClassDetailPage() {
 
       {/* Booking Sheet */}
       <AnimatePresence>
-        {sheetOpen && selectedSpot && (
+        {!isPast && sheetOpen && selectedSpot && (
           <BookingSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}
