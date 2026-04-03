@@ -573,6 +573,89 @@ function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { o
   );
 }
 
+function ClassPromoBlock({ payload }: { payload: Record<string, unknown> }) {
+  const classId = payload.linkedClassId as string;
+  const className = (payload.className as string) ?? "Clase";
+  const classTypeIcon = payload.classTypeIcon as string | null;
+  const classTypeColor = (payload.classTypeColor as string) ?? "#6366f1";
+  const coachName = payload.coachName as string | null;
+  const coachImage = payload.coachImage as string | null;
+  const coachUserId = payload.coachUserId as string | null;
+  const classStartsAt = payload.classStartsAt ? new Date(payload.classStartsAt as string) : null;
+  const roomName = payload.roomName as string | null;
+  const studioName = payload.studioName as string | null;
+
+  const isFuture = classStartsAt ? classStartsAt.getTime() > Date.now() : false;
+  const Icon = classTypeIcon ? getIconComponent(classTypeIcon) : null;
+
+  if (!isFuture) return null;
+
+  const dateStr = classStartsAt
+    ? classStartsAt.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })
+    : "";
+  const timeStr = classStartsAt
+    ? classStartsAt.toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true })
+    : "";
+
+  return (
+    <div className="mx-4 mb-3">
+      <div
+        className="overflow-hidden rounded-2xl border"
+        style={{ borderColor: `${classTypeColor}25`, backgroundColor: `${classTypeColor}06` }}
+      >
+        <div className="flex items-center gap-3 p-3.5">
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            style={{ backgroundColor: `${classTypeColor}15` }}
+          >
+            {Icon ? (
+              <Icon className="h-6 w-6" style={{ color: classTypeColor }} />
+            ) : (
+              <Dumbbell className="h-6 w-6" style={{ color: classTypeColor }} />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-bold text-foreground">{className}</p>
+            {coachName && (
+              <p className="text-[12px] text-muted">
+                con{" "}
+                {coachUserId ? (
+                  <Link href={`/my/user/${coachUserId}`} className="font-medium text-foreground/70 hover:underline">
+                    {coachName}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-foreground/70">{coachName}</span>
+                )}
+              </p>
+            )}
+            <p className="mt-0.5 text-[11px] text-muted/70">
+              {dateStr}{timeStr ? ` · ${timeStr}` : ""}
+              {roomName && <span> · {roomName}</span>}
+              {studioName && <span className="text-muted/50"> · {studioName}</span>}
+            </p>
+          </div>
+          {coachImage && (
+            <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full">
+              <img src={coachImage} alt={coachName ?? ""} className="h-full w-full object-cover" />
+            </div>
+          )}
+        </div>
+
+        <Link
+          href={`/class/${classId}`}
+          className="group flex items-center justify-center gap-2 border-t px-4 py-2.5 transition-colors hover:brightness-105"
+          style={{ borderColor: `${classTypeColor}20`, backgroundColor: classTypeColor }}
+        >
+          <span className="text-[13px] font-bold text-white">
+            Reservar clase
+          </span>
+          <ArrowRight className="h-3.5 w-3.5 text-white transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function StudioPostCard({ event }: FeedEventCardProps) {
   const p = event.payload;
   const { studioName, appIconUrl } = useBranding();
@@ -582,6 +665,7 @@ function StudioPostCard({ event }: FeedEventCardProps) {
   const permalink = (p.permalink as string | null) ?? null;
   const authorName = (p.authorName as string) ?? studioName;
   const authorImage = (p.authorImage as string | null) ?? appIconUrl;
+  const hasLinkedClass = !!p.linkedClassId;
 
   return (
     <div>
@@ -644,6 +728,8 @@ function StudioPostCard({ event }: FeedEventCardProps) {
       {event.photos.length > 0 && (
         <MediaGallery media={event.photos} className="rounded-none" />
       )}
+
+      {hasLinkedClass && <ClassPromoBlock payload={p} />}
 
       <div className="flex items-center gap-1 px-2 py-1.5">
         <LikeButton

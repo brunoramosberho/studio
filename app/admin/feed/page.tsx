@@ -23,6 +23,11 @@ import {
   Instagram,
   Check,
   Play,
+  Calendar,
+  Search,
+  ArrowRight,
+  Clock,
+  Dumbbell,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,8 +37,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
 import { useBranding } from "@/components/branding-provider";
+import { getIconComponent } from "@/components/admin/icon-picker";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+interface LinkedClassOption {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  classType: {
+    name: string;
+    color: string;
+    icon: string | null;
+  };
+  coach: {
+    id: string;
+    userId: string;
+    user: { name: string | null; image: string | null };
+  };
+  room: {
+    name: string;
+    studio: { name: string };
+  };
+}
 
 interface CityOption {
   id: string;
@@ -122,6 +148,9 @@ export default function AdminFeedPage() {
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
   const mediaInputRef = useRef<HTMLInputElement>(null);
+  const [linkedClass, setLinkedClass] = useState<LinkedClassOption | null>(null);
+  const [classPickerOpen, setClassPickerOpen] = useState(false);
+  const [classSearch, setClassSearch] = useState("");
 
   const addMediaFiles = (files: FileList | null) => {
     if (!files) return;
@@ -180,6 +209,29 @@ export default function AdminFeedPage() {
       return res.json();
     },
   });
+
+  const { data: upcomingClasses, isLoading: classesLoading } = useQuery<LinkedClassOption[]>({
+    queryKey: ["upcoming-classes-picker", classPickerOpen],
+    enabled: classPickerOpen,
+    queryFn: async () => {
+      const from = new Date().toISOString();
+      const res = await fetch(`/api/classes?from=${encodeURIComponent(from)}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const filteredClasses = useMemo(() => {
+    if (!upcomingClasses) return [];
+    if (!classSearch.trim()) return upcomingClasses;
+    const q = classSearch.toLowerCase();
+    return upcomingClasses.filter(
+      (c) =>
+        c.classType.name.toLowerCase().includes(q) ||
+        c.coach.user.name?.toLowerCase().includes(q) ||
+        c.room.studio.name.toLowerCase().includes(q),
+    );
+  }, [upcomingClasses, classSearch]);
 
   const igItems = useMemo(() => igMedia?.items ?? [], [igMedia?.items]);
   const selectedIds = useMemo(
@@ -245,6 +297,7 @@ export default function AdminFeedPage() {
           sendPush,
           postAsAdmin,
           isPinned: pinPost,
+          linkedClassId: linkedClass?.id ?? null,
         }),
       });
       if (!res.ok) throw new Error("Failed");
@@ -286,6 +339,7 @@ export default function AdminFeedPage() {
       setSendPush(false);
       setPostAsAdmin(false);
       setPinPost(false);
+      setLinkedClass(null);
       clearMedia();
       setComposerOpen(false);
 
@@ -826,6 +880,55 @@ export default function AdminFeedPage() {
                     />
                   </label>
 
+                  {/* Link class */}
+                  {linkedClass ? (
+                    <div className="rounded-xl border p-3" style={{ borderColor: `${linkedClass.classType.color}30`, backgroundColor: `${linkedClass.classType.color}08` }}>
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                          style={{ backgroundColor: `${linkedClass.classType.color}18` }}
+                        >
+                          {(() => {
+                            const Icon = linkedClass.classType.icon ? getIconComponent(linkedClass.classType.icon) : null;
+                            return Icon ? (
+                              <Icon className="h-5 w-5" style={{ color: linkedClass.classType.color }} />
+                            ) : (
+                              <Dumbbell className="h-5 w-5" style={{ color: linkedClass.classType.color }} />
+                            );
+                          })()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-foreground">{linkedClass.classType.name}</p>
+                          <p className="text-[11px] text-muted">
+                            con {linkedClass.coach.user.name} · {new Date(linkedClass.startsAt).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })} · {new Date(linkedClass.startsAt).toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true })}
+                          </p>
+                          <p className="text-[11px] text-muted/70">
+                            {linkedClass.room.name} · {linkedClass.room.studio.name}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setLinkedClass(null)}
+                          className="rounded-lg p-1 text-muted transition-colors hover:bg-surface hover:text-foreground"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setClassPickerOpen(true)}
+                      className="flex w-full items-center gap-3 rounded-xl border border-dashed border-border p-3 text-left transition-colors hover:border-admin/40 hover:bg-admin/5"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface">
+                        <Calendar className="h-4.5 w-4.5 text-muted" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Vincular una clase</p>
+                        <p className="text-[11px] text-muted">Agrega un CTA para reservar directamente</p>
+                      </div>
+                    </button>
+                  )}
+
                   {/* Actions */}
                   <div className="flex gap-3 pt-1">
                     <Button
@@ -837,7 +940,7 @@ export default function AdminFeedPage() {
                     </Button>
                     <Button
                       className="flex-1 gap-2 bg-admin text-white hover:bg-admin/90"
-                      disabled={(!body.trim() && mediaFiles.length === 0) || createMut.isPending}
+                      disabled={(!body.trim() && mediaFiles.length === 0 && !linkedClass) || createMut.isPending}
                       onClick={() => createMut.mutate()}
                     >
                       {createMut.isPending ? (
@@ -849,6 +952,101 @@ export default function AdminFeedPage() {
                     </Button>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+        {classPickerOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-foreground/20 backdrop-blur-sm"
+              onClick={() => { setClassPickerOpen(false); setClassSearch(""); }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-x-4 top-[8%] z-[60] mx-auto max-w-lg rounded-2xl bg-white p-5 shadow-warm-lg sm:inset-x-auto sm:w-full"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="font-display text-lg font-bold text-foreground">Seleccionar clase</h3>
+                <button
+                  onClick={() => { setClassPickerOpen(false); setClassSearch(""); }}
+                  className="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <input
+                  type="text"
+                  placeholder="Buscar por disciplina, coach o estudio..."
+                  value={classSearch}
+                  onChange={(e) => setClassSearch(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted/50 focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30"
+                  autoFocus
+                />
+              </div>
+
+              <div className="max-h-[60dvh] space-y-1 overflow-y-auto">
+                {classesLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted" />
+                  </div>
+                ) : filteredClasses.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <Calendar className="mx-auto h-8 w-8 text-muted/30" />
+                    <p className="mt-2 text-sm text-muted">
+                      {classSearch ? "Sin resultados" : "No hay clases próximas"}
+                    </p>
+                  </div>
+                ) : (
+                  filteredClasses.map((cls) => {
+                    const clsDate = new Date(cls.startsAt);
+                    const Icon = cls.classType.icon ? getIconComponent(cls.classType.icon) : null;
+                    return (
+                      <button
+                        key={cls.id}
+                        onClick={() => {
+                          setLinkedClass(cls);
+                          setClassPickerOpen(false);
+                          setClassSearch("");
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-colors hover:bg-surface"
+                      >
+                        <div
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                          style={{ backgroundColor: `${cls.classType.color}18` }}
+                        >
+                          {Icon ? (
+                            <Icon className="h-5 w-5" style={{ color: cls.classType.color }} />
+                          ) : (
+                            <Dumbbell className="h-5 w-5" style={{ color: cls.classType.color }} />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-foreground">{cls.classType.name}</p>
+                          <p className="text-[11px] text-muted">
+                            con {cls.coach.user.name} · {cls.room.studio.name}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-xs font-medium text-foreground">
+                            {clsDate.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })}
+                          </p>
+                          <p className="text-[11px] text-muted">
+                            {clsDate.toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true })}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
               </div>
             </motion.div>
           </>
@@ -1009,6 +1207,23 @@ export default function AdminFeedPage() {
                               <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-surface text-xs font-medium text-muted">
                                 +{event.photos.length - 4}
                               </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Linked class indicator */}
+                        {isStudioPost && payload.linkedClassId && (
+                          <div className="mt-2 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px]" style={{ backgroundColor: `${(payload.classTypeColor as string) ?? "#6366f1"}12` }}>
+                            <Calendar className="h-3 w-3" style={{ color: (payload.classTypeColor as string) ?? "#6366f1" }} />
+                            <span className="font-medium" style={{ color: (payload.classTypeColor as string) ?? "#6366f1" }}>
+                              {payload.className as string}
+                            </span>
+                            <span className="text-muted/60">·</span>
+                            <span className="text-muted/70">
+                              {payload.classStartsAt ? new Date(payload.classStartsAt as string).toLocaleDateString("es-ES", { day: "numeric", month: "short" }) : ""}
+                            </span>
+                            {payload.classStartsAt && new Date(payload.classStartsAt as string).getTime() < Date.now() && (
+                              <span className="ml-auto text-[10px] text-muted/50">Pasada</span>
                             )}
                           </div>
                         )}

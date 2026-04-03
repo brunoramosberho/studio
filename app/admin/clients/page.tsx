@@ -18,6 +18,7 @@ import {
   Star,
   Heart,
   Clock,
+  UserPlus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { cn, formatDate, timeAgo } from "@/lib/utils";
+import { CreateClientDialog } from "@/components/admin/create-client-dialog";
 
 interface ClientData {
   id: string;
@@ -137,6 +139,7 @@ export default function AdminClientsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const [showInsights, setShowInsights] = useState(true);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const { data: clients, isLoading } = useQuery<ClientData[]>({
     queryKey: ["admin-clients", activeFilter],
@@ -200,7 +203,20 @@ export default function AdminClientsPage() {
             {clients?.length ?? 0} clientes del estudio
           </p>
         </motion.div>
+        <Button
+          className="bg-admin text-white hover:bg-admin/90"
+          size="sm"
+          onClick={() => setShowCreateDialog(true)}
+        >
+          <UserPlus className="mr-2 h-4 w-4" />
+          Crear cliente
+        </Button>
       </div>
+
+      <CreateClientDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+      />
 
       {/* Insights panels */}
       {showInsights && !insightsLoading && insights && (

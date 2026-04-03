@@ -357,6 +357,24 @@ export async function GET(request: NextRequest) {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
+    // Auto-unpin expired class promo posts (fire-and-forget)
+    const now = Date.now();
+    const expiredPinnedIds: string[] = [];
+    for (const entry of feed) {
+      if (!entry.isPinned) continue;
+      const pl = entry.payload as Record<string, unknown> | null;
+      if (!pl?.linkedClassId || !pl.classStartsAt) continue;
+      if (new Date(pl.classStartsAt as string).getTime() <= now) {
+        entry.isPinned = false;
+        expiredPinnedIds.push(entry.id);
+      }
+    }
+    if (expiredPinnedIds.length > 0) {
+      prisma.feedEvent
+        .updateMany({ where: { id: { in: expiredPinnedIds } }, data: { isPinned: false } })
+        .catch(() => {});
+    }
+
     // Enrich all user objects with avatar meta (membership + level)
     const allUserIds = new Set<string>();
     for (const entry of feed) {

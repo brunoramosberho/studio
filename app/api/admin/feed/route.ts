@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
   try {
     const { tenant, session } = await requireRole("ADMIN");
     const body = await request.json();
-    const { title, body: postBody, category, targetCityIds, sendPush, postAsAdmin, isPinned } = body;
+    const { title, body: postBody, category, targetCityIds, sendPush, postAsAdmin, isPinned, linkedClassId } = body;
 
-    if (!postBody?.trim()) {
+    if (!postBody?.trim() && !linkedClassId) {
       return NextResponse.json({ error: "El contenido es requerido" }, { status: 400 });
     }
 
@@ -93,6 +93,42 @@ export async function POST(request: NextRequest) {
       authorImage = tenant.appIconUrl;
     }
 
+    // Fetch linked class details if provided
+    let classPayload: Record<string, unknown> = {};
+    if (linkedClassId) {
+      const cls = await prisma.class.findUnique({
+        where: { id: linkedClassId },
+        include: {
+          classType: true,
+          coach: {
+            include: { user: { select: { id: true, name: true, image: true } } },
+          },
+          room: { include: { studio: { select: { name: true } } } },
+        },
+      });
+
+      if (!cls || cls.tenantId !== tenant.id) {
+        return NextResponse.json({ error: "Clase no encontrada" }, { status: 404 });
+      }
+      if (cls.status !== "SCHEDULED" || new Date(cls.startsAt).getTime() <= Date.now()) {
+        return NextResponse.json({ error: "La clase ya pasó o fue cancelada" }, { status: 400 });
+      }
+
+      classPayload = {
+        linkedClassId: cls.id,
+        className: cls.classType.name,
+        classTypeIcon: cls.classType.icon,
+        classTypeColor: cls.classType.color,
+        coachName: cls.coach.user.name,
+        coachImage: cls.coach.user.image,
+        coachUserId: cls.coach.user.id,
+        classStartsAt: cls.startsAt.toISOString(),
+        classEndsAt: cls.endsAt.toISOString(),
+        roomName: cls.room.name,
+        studioName: cls.room.studio.name,
+      };
+    }
+
     if (isPinned) {
       await prisma.feedEvent.updateMany({
         where: { tenantId: tenant.id, isPinned: true },
@@ -110,13 +146,14 @@ export async function POST(request: NextRequest) {
         payload: {
           isStudioPost: true,
           title: title || null,
-          body: postBody,
+          body: postBody || null,
           category: cat,
           targetCityIds: cityIds,
           sentPush: !!sendPush,
           postAsAdmin: !!postAsAdmin,
           authorName,
           authorImage,
+          ...classPayload,
         },
       },
       include: {
@@ -126,8 +163,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (sendPush) {
-      const pushTitle = title || "Nuevo mensaje del estudio";
-      const pushBody = postBody.length > 120 ? postBody.slice(0, 117) + "..." : postBody;
+      const pushTitle = title || (linkedClassId ? `Nueva clase: ${classPayload.className}` : "Nuevo mensaje del estudio");
+      const rawPushBody = postBody || (linkedClassId ? `Reserva tu lugar en ${classPayload.className}` : "");
+      const pushBody = rawPushBody.length > 120 ? rawPushBody.slice(0, 117) + "..." : rawPushBody;
 
       const userWhere: Record<string, unknown> = {};
       if (cityIds) {

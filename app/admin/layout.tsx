@@ -27,10 +27,12 @@ import {
   Loader2,
   Check,
   LogOut,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
+import { CreateClientDialog } from "@/components/admin/create-client-dialog";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -68,6 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { data: session } = useSession();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showCreateClient, setShowCreateClient] = useState(false);
   const { studioName } = useBranding();
 
   const userName = session?.user?.name ?? "Admin";
@@ -89,15 +92,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     let cancelled = false;
     async function load() {
       try {
-        const [locRes, profRes] = await Promise.all([
+        const [locRes, profRes, studiosRes] = await Promise.all([
           fetch("/api/locations"),
           fetch("/api/profile"),
+          fetch("/api/studios"),
         ]);
         if (cancelled) return;
-        if (locRes.ok) setLocations(await locRes.json());
+
+        const allLocations: LocCountry[] = locRes.ok ? await locRes.json() : [];
+        const studios: { cityId: string }[] = studiosRes.ok ? await studiosRes.json() : [];
+        const studioCityIds = new Set(studios.map((s) => s.cityId));
+
+        const filtered = allLocations
+          .map((c) => ({ ...c, cities: c.cities.filter((city) => studioCityIds.has(city.id)) }))
+          .filter((c) => c.cities.length > 0);
+        setLocations(filtered);
+
         if (profRes.ok) {
           const p = await profRes.json();
-          if (p.countryId && p.cityId) setLocValue(`${p.countryId}|${p.cityId}`);
+          if (p.countryId && p.cityId) {
+            setLocValue(`${p.countryId}|${p.cityId}`);
+          } else if (filtered.length === 1 && filtered[0].cities.length === 1) {
+            const only = filtered[0];
+            const val = `${only.id}|${only.cities[0].id}`;
+            setLocValue(val);
+            fetch("/api/profile", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ countryId: only.id, cityId: only.cities[0].id }),
+            }).catch(() => {});
+          }
         }
       } catch {}
     }
@@ -124,7 +148,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setLocSaving(false);
   }
 
-  const locationPicker = locations.length > 0 ? (
+  const totalCities = locations.reduce((sum, c) => sum + c.cities.length, 0);
+
+  const locationPicker = totalCities > 1 ? (
     <div className="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
       <MapPin className="h-3.5 w-3.5 shrink-0 text-admin/60" />
       <select
@@ -175,6 +201,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <ArrowLeft className="h-3.5 w-3.5" />
               Sitio público
             </Link>
+            <button
+              onClick={() => setShowCreateClient(true)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-admin transition-colors hover:bg-admin/10"
+              title="Crear cliente"
+            >
+              <UserPlus className="h-4 w-4" />
+            </button>
             <Avatar className="h-8 w-8 ring-2 ring-admin/20">
               <AvatarImage src={session?.user?.image || undefined} />
               <AvatarFallback className="bg-admin/10 text-xs text-admin">
@@ -278,6 +311,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Main content */}
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
+
+      <CreateClientDialog
+        open={showCreateClient}
+        onOpenChange={setShowCreateClient}
+      />
     </div>
   );
 }
