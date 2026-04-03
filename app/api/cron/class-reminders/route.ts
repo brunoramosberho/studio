@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
 import { refundAndClearWaitlist } from "@/lib/waitlist";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
+import { formatTime } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -54,12 +55,7 @@ export async function GET(request: NextRequest) {
       const coachName = cls.coach.user.name?.split(" ")[0] ?? "tu coach";
       const tz = cls.room?.studio?.city?.timezone || "America/Mexico_City";
 
-      const timeStr = cls.startsAt.toLocaleTimeString("es-MX", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: tz,
-      });
+      const timeStr = formatTime(cls.startsAt, tz);
 
       const untilLabel =
         minUntil >= 60
