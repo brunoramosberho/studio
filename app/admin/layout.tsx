@@ -193,21 +193,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="hidden items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground sm:flex"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Sitio público
-            </Link>
+          <div className="flex items-center gap-1.5">
+            {/* Quick actions -- hidden on mobile */}
+            <span className="hidden text-xs text-muted/70 sm:inline">Add:</span>
             <button
               onClick={() => setShowCreateClient(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-admin transition-colors hover:bg-admin/10"
-              title="Crear cliente"
+              className="hidden items-center gap-1.5 rounded-lg border border-border/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface sm:flex"
             >
-              <UserPlus className="h-4 w-4" />
+              <UserPlus className="h-3.5 w-3.5 text-admin" />
+              Customer
             </button>
+
+            <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block" />
+
+            <Link
+              href="/admin/shop"
+              className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground sm:flex"
+            >
+              <ShoppingBag className="h-3.5 w-3.5" />
+              POS
+            </Link>
+            <Link
+              href="/admin/schedule"
+              className={cn(
+                "hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors sm:flex",
+                pathname.startsWith("/admin/schedule")
+                  ? "border border-admin/20 bg-admin/5 text-admin"
+                  : "text-muted hover:bg-surface hover:text-foreground",
+              )}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              Schedule
+            </Link>
+
+            <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block" />
+
             <Avatar className="h-8 w-8 ring-2 ring-admin/20">
               <AvatarImage src={session?.user?.image || undefined} />
               <AvatarFallback className="bg-admin/10 text-xs text-admin">
