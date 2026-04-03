@@ -1212,7 +1212,7 @@ export default function AdminFeedPage() {
                         )}
 
                         {/* Linked class indicator */}
-                        {isStudioPost && payload.linkedClassId && (
+                        {isStudioPost && !!payload.linkedClassId && (
                           <div className="mt-2 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px]" style={{ backgroundColor: `${(payload.classTypeColor as string) ?? "#6366f1"}12` }}>
                             <Calendar className="h-3 w-3" style={{ color: (payload.classTypeColor as string) ?? "#6366f1" }} />
                             <span className="font-medium" style={{ color: (payload.classTypeColor as string) ?? "#6366f1" }}>
@@ -1222,7 +1222,7 @@ export default function AdminFeedPage() {
                             <span className="text-muted/70">
                               {payload.classStartsAt ? new Date(payload.classStartsAt as string).toLocaleDateString("es-ES", { day: "numeric", month: "short" }) : ""}
                             </span>
-                            {payload.classStartsAt && new Date(payload.classStartsAt as string).getTime() < Date.now() && (
+                            {!!payload.classStartsAt && new Date(payload.classStartsAt as string).getTime() < Date.now() && (
                               <span className="ml-auto text-[10px] text-muted/50">Pasada</span>
                             )}
                           </div>
