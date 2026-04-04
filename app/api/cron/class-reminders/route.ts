@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
         },
       },
       include: {
-        user: { select: { city: { select: { timezone: true } } } },
         class: {
           include: {
             classType: { select: { name: true } },
@@ -54,7 +53,7 @@ export async function GET(request: NextRequest) {
       );
       const className = cls.classType.name;
       const coachName = cls.coach.user.name?.split(" ")[0] ?? "tu coach";
-      const tz = booking.user?.city?.timezone || cls.room?.studio?.city?.timezone || "America/Mexico_City";
+      const tz = cls.room?.studio?.city?.timezone || "America/Mexico_City";
 
       const timeStr = formatTime(cls.startsAt, tz);
 

@@ -257,14 +257,6 @@ export async function POST(request: NextRequest) {
     const recipientEmail = session?.user?.email ?? guestEmail;
     const recipientName = session?.user?.name ?? guestName;
     if (recipientEmail && recipientName) {
-      let userTimezone: string | undefined;
-      if (session?.user?.id) {
-        const userWithCity = await prisma.user.findUnique({
-          where: { id: session.user.id },
-          select: { city: { select: { timezone: true } } },
-        });
-        userTimezone = userWithCity?.city?.timezone ?? undefined;
-      }
       const baseUrl = getTenantBaseUrl(tenant.slug);
       sendBookingConfirmation({
         to: recipientEmail,
@@ -274,7 +266,7 @@ export async function POST(request: NextRequest) {
         date: classData.startsAt,
         startTime: classData.startsAt,
         location: classData.room.studio.name ?? undefined,
-        timezone: userTimezone || classData.room.studio.city?.timezone,
+        timezone: classData.room.studio.city?.timezone,
         classUrl: `${baseUrl}/class/${classId}`,
       });
     }

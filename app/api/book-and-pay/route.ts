@@ -151,11 +151,6 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = getTenantBaseUrl(tenant.slug);
 
-    const userWithCity = await prisma.user.findUnique({
-      where: { id: finalUserId! },
-      select: { city: { select: { timezone: true } } },
-    });
-
     if (finalEmail && finalName) {
       sendBookingConfirmation({
         to: finalEmail,
@@ -165,7 +160,7 @@ export async function POST(request: NextRequest) {
         date: classData.startsAt,
         startTime: classData.startsAt,
         location: classData.room.studio.name ?? undefined,
-        timezone: userWithCity?.city?.timezone || classData.room.studio.city?.timezone,
+        timezone: classData.room.studio.city?.timezone,
         classUrl: `${baseUrl}/class/${classId}`,
       }).catch(() => {});
 

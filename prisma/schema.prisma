@@ -453,7 +453,7 @@ model City {
   name      String
   countryId String
   country   Country  @relation(fields: [countryId], references: [id])
-  timezone  String   @default("America/Mexico_City")
+  timezone  String
   studios   Studio[]
   users     User[]
 

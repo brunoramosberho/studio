@@ -63,7 +63,7 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
     where: { classId, tenantId },
     orderBy: { position: "asc" },
     include: {
-      user: { select: { id: true, name: true, email: true, city: { select: { timezone: true } } } },
+      user: { select: { id: true, name: true, email: true } },
       class: {
         include: {
           classType: true,
@@ -114,7 +114,7 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
       date: cls.startsAt,
       startTime: cls.startsAt,
       location: cls.room?.studio?.name ?? undefined,
-      timezone: first.user.city?.timezone || cls.room?.studio?.city?.timezone,
+      timezone: cls.room?.studio?.city?.timezone,
     }).catch(() => {});
   }
 
