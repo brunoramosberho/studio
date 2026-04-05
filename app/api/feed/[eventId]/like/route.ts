@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
-import { sendPushToUser } from "@/lib/push";
+import { sendPushToUser, sendPushToMany, getClassPostRecipients } from "@/lib/push";
 
 export async function POST(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function POST(
 
     const feedEvent = await prisma.feedEvent.findFirst({
       where: { id: eventId, tenantId: tenant.id },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, eventType: true, payload: true },
     });
     if (!feedEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -39,8 +39,23 @@ export async function POST(
       },
     });
 
-    if (feedEvent.userId !== session.user.id) {
-      const likerName = session.user.name?.split(" ")[0] ?? "Alguien";
+    const likerName = session.user.name?.split(" ")[0] ?? "Alguien";
+
+    if (feedEvent.eventType === "CLASS_COMPLETED") {
+      const payload = feedEvent.payload as Record<string, unknown>;
+      const className = (payload.className as string) ?? "la clase";
+      const recipients = getClassPostRecipients(payload, session.user.id);
+      sendPushToMany(
+        recipients,
+        {
+          title: className,
+          body: `A ${likerName} le gustó el post`,
+          url: "/my",
+          tag: `like-${eventId}`,
+        },
+        tenant.id,
+      );
+    } else if (feedEvent.userId !== session.user.id) {
       const label = type === "kudos" ? "te dio kudos" : "le dio like a tu actividad";
       sendPushToUser(feedEvent.userId, {
         title: type === "kudos" ? "Kudos" : "Nuevo like",

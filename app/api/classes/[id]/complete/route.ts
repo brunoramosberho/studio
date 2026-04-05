@@ -6,6 +6,7 @@ import {
   createGroupedAchievementEvents,
   type GrantedAchievement,
 } from "@/lib/achievements";
+import { sendPushToMany } from "@/lib/push";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -125,6 +126,20 @@ export async function POST(
 
     if (allGrants.length > 0) {
       await createGroupedAchievementEvents(allGrants, ctx.tenant.id);
+    }
+
+    if (!existingEvent) {
+      const coachFirst = cls.coach.user.name?.split(" ")[0] ?? "Tu coach";
+      sendPushToMany(
+        idsToMark,
+        {
+          title: `${cls.classType.name} completada`,
+          body: `${coachFirst} finalizó la clase. ¡Mira el post y comparte fotos!`,
+          url: "/my",
+          tag: `class-completed-${id}`,
+        },
+        ctx.tenant.id,
+      );
     }
 
     return NextResponse.json({

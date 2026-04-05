@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, requireAuth } from "@/lib/tenant";
 import { uploadMedia, deleteMedia } from "@/lib/supabase-storage";
+import { sendPushToMany, getClassPostRecipients } from "@/lib/push";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -78,6 +79,23 @@ export async function POST(
       },
       include: { user: { select: { id: true, name: true, image: true } } },
     });
+
+    if (feedEvent.eventType === "CLASS_COMPLETED") {
+      const payload = feedEvent.payload as Record<string, unknown>;
+      const uploaderName = session.user.name?.split(" ")[0] ?? "Alguien";
+      const className = (payload.className as string) ?? "la clase";
+      const recipients = getClassPostRecipients(payload, session.user.id);
+      sendPushToMany(
+        recipients,
+        {
+          title: "Nueva foto",
+          body: `${uploaderName} subió una foto a ${className}`,
+          url: "/my",
+          tag: `photo-${eventId}`,
+        },
+        tenant.id,
+      );
+    }
 
     return NextResponse.json(photo, { status: 201 });
   } catch (error) {

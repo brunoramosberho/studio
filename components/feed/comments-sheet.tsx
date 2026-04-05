@@ -130,7 +130,7 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
         {open && (
           <>
             <motion.div
-              className="fixed inset-0 z-[60] bg-foreground/40 backdrop-blur-sm"
+              className="fixed inset-0 -bottom-[50vh] z-[60] bg-white sm:bottom-0 sm:bg-foreground/40 sm:backdrop-blur-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, requireAuth } from "@/lib/tenant";
-import { sendPushToUser } from "@/lib/push";
+import { sendPushToUser, sendPushToMany, getClassPostRecipients } from "@/lib/push";
 import { getUsersAvatarMeta, withAvatarMeta } from "@/lib/user-avatar-meta";
 
 export async function GET(
@@ -60,7 +60,7 @@ export async function POST(
 
     const feedEvent = await prisma.feedEvent.findFirst({
       where: { id: eventId, tenantId: tenant.id },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, eventType: true, payload: true },
     });
 
     if (!feedEvent) {
@@ -79,9 +79,24 @@ export async function POST(
       },
     });
 
-    if (feedEvent.userId !== session.user.id) {
-      const commenterName = session.user.name?.split(" ")[0] ?? "Alguien";
-      const preview = commentBody.trim().slice(0, 60);
+    const commenterName = session.user.name?.split(" ")[0] ?? "Alguien";
+    const preview = commentBody.trim().slice(0, 60);
+
+    if (feedEvent.eventType === "CLASS_COMPLETED") {
+      const payload = feedEvent.payload as Record<string, unknown>;
+      const className = (payload.className as string) ?? "la clase";
+      const recipients = getClassPostRecipients(payload, session.user.id);
+      sendPushToMany(
+        recipients,
+        {
+          title: `Comentario en ${className}`,
+          body: `${commenterName}: ${preview}`,
+          url: "/my",
+          tag: `comment-${eventId}`,
+        },
+        tenant.id,
+      );
+    } else if (feedEvent.userId !== session.user.id) {
       sendPushToUser(feedEvent.userId, {
         title: "Nuevo comentario",
         body: `${commenterName}: ${preview}`,

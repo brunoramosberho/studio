@@ -25,6 +25,21 @@ export interface PushPayload {
 }
 
 /**
+ * Extract attendee + coach user IDs from a CLASS_COMPLETED feed event payload.
+ */
+export function getClassPostRecipients(
+  payload: Record<string, unknown>,
+  excludeUserId?: string,
+): string[] {
+  const attendees = (payload.attendees as { id: string }[]) ?? [];
+  const coachUserId = payload.coachUserId as string | undefined;
+  const ids = new Set(attendees.map((a) => a.id));
+  if (coachUserId) ids.add(coachUserId);
+  if (excludeUserId) ids.delete(excludeUserId);
+  return Array.from(ids);
+}
+
+/**
  * Send a push notification to all devices registered by a user.
  * Automatically cleans up stale subscriptions (410/404).
  */
@@ -64,5 +79,18 @@ export async function sendPushToUser(userId: string, payload: PushPayload, tenan
     await prisma.pushSubscription.deleteMany({
       where: { id: { in: staleIds } },
     });
+  }
+}
+
+/**
+ * Send a push notification to multiple users (fire-and-forget).
+ */
+export function sendPushToMany(
+  userIds: string[],
+  payload: PushPayload,
+  tenantId?: string,
+) {
+  for (const uid of userIds) {
+    sendPushToUser(uid, payload, tenantId).catch(() => {});
   }
 }
