@@ -13,7 +13,7 @@ interface InputBarProps {
 export function InputBar({ onSend, disabled }: InputBarProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { colorAccent } = useBranding();
+  const { colorAdmin } = useBranding();
 
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current;
@@ -42,8 +42,8 @@ export function InputBar({ onSend, disabled }: InputBarProps) {
   const canSend = value.trim().length > 0 && !disabled;
 
   return (
-    <div className="shrink-0 border-t border-zinc-800 px-3 py-3">
-      <div className="flex items-end gap-2 rounded-xl bg-zinc-800 px-3 py-2">
+    <div className="shrink-0 border-t border-border/50 bg-white px-4 py-3">
+      <div className="flex items-end gap-2 rounded-2xl border border-border bg-surface px-4 py-2.5">
         <textarea
           ref={textareaRef}
           value={value}
@@ -52,29 +52,26 @@ export function InputBar({ onSend, disabled }: InputBarProps) {
             adjustHeight();
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Pregunta algo..."
+          placeholder="Pregunta algo sobre tu studio..."
           disabled={disabled}
           rows={1}
-          className="flex-1 resize-none bg-transparent text-sm leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:outline-none disabled:opacity-50"
+          className="flex-1 resize-none bg-transparent text-[14px] leading-relaxed text-foreground placeholder:text-muted/60 focus:outline-none disabled:opacity-50"
         />
         <button
           onClick={handleSend}
           disabled={!canSend}
           className={cn(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all",
             canSend
               ? "text-white shadow-sm active:scale-95"
-              : "bg-zinc-700 text-zinc-500",
+              : "bg-border/50 text-muted/40",
           )}
-          style={canSend ? { backgroundColor: colorAccent } : undefined}
+          style={canSend ? { backgroundColor: colorAdmin } : undefined}
           aria-label="Enviar mensaje"
         >
-          <ArrowUp className="h-3.5 w-3.5" />
+          <ArrowUp className="h-4 w-4" />
         </button>
       </div>
-      <p className="mt-1.5 text-center text-[10px] text-zinc-700">
-        AI puede cometer errores. Verifica información importante.
-      </p>
     </div>
   );
 }

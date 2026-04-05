@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { getAuthContext, requireTenant } from "@/lib/tenant";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { tools, WRITE_TOOLS } from "@/lib/ai/tools/definitions";
 import { executeTool } from "@/lib/ai/tools/executor";
@@ -59,8 +59,21 @@ function encodeSSE(event: StreamEvent): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
-    const tenantId = ctx.tenant.id;
+    const tenant = await requireTenant();
+    const ctx = await getAuthContext();
+    if (!ctx || !ctx.session?.user?.id) {
+      return new Response(JSON.stringify({ error: "Inicia sesión para usar Mgic AI" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (ctx.membership.role !== "ADMIN") {
+      return new Response(JSON.stringify({ error: "Solo administradores pueden usar Mgic AI" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const tenantId = tenant.id;
     const body: ChatRequest = await request.json();
 
     if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {

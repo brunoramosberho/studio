@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: [
+    "http://betoro.localhost:3000",
+    "http://sandbox-revive.localhost:3000",
+    "http://*.localhost:3000",
+  ],
   images: {
     remotePatterns: [
       {

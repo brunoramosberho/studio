@@ -56,8 +56,8 @@ const STORAGE_KEY_PREFIX = "mgic-ai-chat-";
 const DAILY_PROMPT =
   "Dame un resumen rápido del estado del studio hoy — ocupación, algo destacable y si hay algo que debería revisar.";
 
-function getStorageKey(tenantSlug: string) {
-  return `${STORAGE_KEY_PREFIX}${tenantSlug}`;
+function getStorageKey() {
+  return `${STORAGE_KEY_PREFIX}current`;
 }
 
 export function MgicAIProvider({ children }: { children: React.ReactNode }) {
@@ -71,18 +71,15 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(getStorageKey("current"));
-      if (raw) {
-        const parsed = JSON.parse(raw) as AiMessage[];
-        setMessages(parsed);
-      }
+      const raw = localStorage.getItem(getStorageKey());
+      if (raw) setMessages(JSON.parse(raw));
     } catch {}
   }, []);
 
   useEffect(() => {
     try {
       if (messages.length > 0) {
-        localStorage.setItem(getStorageKey("current"), JSON.stringify(messages));
+        localStorage.setItem(getStorageKey(), JSON.stringify(messages));
       }
     } catch {}
   }, [messages]);
@@ -175,7 +172,7 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
             m.id === assistantMsgId
               ? {
                   ...m,
-                  content: `Lo siento, hubo un error: ${err instanceof Error ? err.message : "Error desconocido"}`,
+                  content: `⚠ ${err instanceof Error ? err.message : "Error desconocido"}`,
                 }
               : m,
           ),
@@ -224,7 +221,7 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
     setMessages([]);
     setIsStreaming(false);
     setActiveTools([]);
-    localStorage.removeItem(getStorageKey("current"));
+    localStorage.removeItem(getStorageKey());
   }, []);
 
   const open = useCallback(() => {
@@ -261,11 +258,8 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
 
   const close = useCallback(() => setIsOpen(false), []);
   const toggle = useCallback(() => {
-    if (isOpen) {
-      close();
-    } else {
-      open();
-    }
+    if (isOpen) close();
+    else open();
   }, [isOpen, close, open]);
 
   return (
@@ -291,7 +285,7 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
 
 function MgicAIButton({ studioName }: { studioName: string }) {
   const { toggle, isOpen } = useMgicAI();
-  const { colorAccent } = useBranding();
+  const { colorAdmin } = useBranding();
 
   return (
     <AnimatePresence>
@@ -303,11 +297,11 @@ function MgicAIButton({ studioName }: { studioName: string }) {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={toggle}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium text-white shadow-2xl transition-shadow hover:shadow-xl"
-          style={{ backgroundColor: colorAccent }}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl"
+          style={{ backgroundColor: colorAdmin }}
           aria-label={`Abrir ${studioName} AI`}
         >
-          <span className="text-base">✦</span>
+          <Sparkles className="h-4 w-4" />
           <span className="hidden sm:inline">Mgic AI</span>
         </motion.button>
       )}
@@ -318,7 +312,7 @@ function MgicAIButton({ studioName }: { studioName: string }) {
 function MgicAIPanel({ studioName }: { studioName: string }) {
   const { isOpen, close, messages, sendMessage, isStreaming, activeTools, clearChat } =
     useMgicAI();
-  const { colorAccent } = useBranding();
+  const { colorAdmin } = useBranding();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -335,7 +329,7 @@ function MgicAIPanel({ studioName }: { studioName: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
+            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[3px]"
             onClick={close}
           />
 
@@ -344,31 +338,27 @@ function MgicAIPanel({ studioName }: { studioName: string }) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="fixed right-0 top-0 z-50 flex h-dvh w-full flex-col bg-zinc-900 sm:w-[420px]"
+            className="fixed right-0 top-0 z-50 flex h-dvh w-full flex-col border-l border-border/50 bg-white shadow-2xl sm:w-[440px]"
           >
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-3">
-              <div className="flex items-center gap-2.5">
-                <div
-                  className="flex h-7 w-7 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: `${colorAccent}20` }}
-                >
-                  <span className="text-sm" style={{ color: colorAccent }}>
-                    ✦
-                  </span>
+            <div
+              className="flex shrink-0 items-center justify-between px-5 py-4"
+              style={{ backgroundColor: colorAdmin }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
+                  <Sparkles className="h-4 w-4 text-white" />
                 </div>
-                <h3 className="text-sm font-semibold text-zinc-100">
-                  Mgic AI
-                </h3>
-                <span className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
-                  {studioName}
-                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Mgic AI</h3>
+                  <p className="text-[11px] text-white/70">{studioName}</p>
+                </div>
               </div>
               <div className="flex items-center gap-1">
                 {messages.length > 0 && (
                   <button
                     onClick={clearChat}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl text-white/60 transition-colors hover:bg-white/10 hover:text-white"
                     title="Nueva conversación"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
@@ -376,7 +366,7 @@ function MgicAIPanel({ studioName }: { studioName: string }) {
                 )}
                 <button
                   onClick={close}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-white/60 transition-colors hover:bg-white/10 hover:text-white"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -386,7 +376,7 @@ function MgicAIPanel({ studioName }: { studioName: string }) {
             {/* Messages */}
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto overscroll-contain"
+              className="flex-1 overflow-y-auto overscroll-contain bg-gradient-to-b from-slate-50 to-white"
             >
               {messages.length === 0 ? (
                 <EmptyState onSend={sendMessage} />
@@ -409,7 +399,7 @@ function MgicAIPanel({ studioName }: { studioName: string }) {
 }
 
 function EmptyState({ onSend }: { onSend: (msg: string) => void }) {
-  const { colorAccent } = useBranding();
+  const { colorAdmin } = useBranding();
 
   const suggestions = [
     "¿Cómo va la ocupación esta semana?",
@@ -419,25 +409,29 @@ function EmptyState({ onSend }: { onSend: (msg: string) => void }) {
   ];
 
   return (
-    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+    <div className="flex h-full flex-col items-center justify-center px-8 text-center">
       <div
-        className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl"
-        style={{ backgroundColor: `${colorAccent}15` }}
+        className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
+        style={{ backgroundColor: `${colorAdmin}15` }}
       >
-        <Sparkles className="h-6 w-6" style={{ color: colorAccent }} />
+        <Sparkles className="h-7 w-7" style={{ color: colorAdmin }} />
       </div>
-      <h3 className="mb-1 text-base font-semibold text-zinc-100">
+      <h3 className="mb-2 text-lg font-bold text-foreground">
         Mgic AI
       </h3>
-      <p className="mb-6 text-sm text-zinc-500">
+      <p className="mb-8 text-sm leading-relaxed text-muted">
         Tu COO inteligente. Analizo datos, detecto oportunidades y ejecuto acciones.
       </p>
-      <div className="flex flex-wrap justify-center gap-2">
+      <div className="flex flex-wrap justify-center gap-2.5">
         {suggestions.map((s) => (
           <button
             key={s}
             onClick={() => onSend(s)}
-            className="rounded-full border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800"
+            className={cn(
+              "rounded-xl border border-border bg-white px-4 py-2.5",
+              "text-[13px] font-medium text-foreground",
+              "shadow-sm transition-all hover:border-admin/30 hover:shadow-md",
+            )}
           >
             {s}
           </button>
