@@ -8,6 +8,7 @@ import { useBranding } from "@/components/branding-provider";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { AchievementIllustration } from "./achievement-badge";
+import { LoyaltyTierBadge } from "@/components/profile/loyalty-tier-badge";
 import { LikeButton } from "./like-button";
 import { CommentsSheet } from "./comments-sheet";
 import { MediaGallery } from "./media-gallery";
@@ -815,7 +816,6 @@ function LevelUpCard({ event }: FeedEventCardProps) {
   const p = event.payload;
   const levelName = (p.levelName as string) ?? "Nuevo nivel";
   const icon = (p.icon as string) ?? "⭐";
-  const color = (p.color as string) ?? "#6366F1";
 
   return (
     <div className="space-y-3 px-4 pb-4 pt-4">
@@ -833,13 +833,13 @@ function LevelUpCard({ event }: FeedEventCardProps) {
           <span className="text-[11px] text-muted/70">{timeAgo(event.createdAt)}</span>
         </div>
       </div>
-      <div
-        className="rounded-2xl border p-4 text-center"
-        style={{ borderColor: `${color}40`, backgroundColor: `${color}12` }}
-      >
-        <p className="text-3xl">{icon}</p>
-        <p className="mt-2 font-display text-lg font-bold text-foreground">{levelName}</p>
-        <p className="mt-1 text-xs text-muted">Nivel de lealtad desbloqueado</p>
+      <div className="flex flex-col items-center gap-3 py-2">
+        <LoyaltyTierBadge
+          levelName={levelName}
+          icon={icon}
+          size="lg"
+          subtitle="Nivel de lealtad desbloqueado"
+        />
       </div>
       <div className="flex items-center gap-1 border-t border-border/30 px-2 pt-1 pb-1">
         <LikeButton eventId={event.id} initialLiked={event.liked} initialCount={event.likeCount} />
