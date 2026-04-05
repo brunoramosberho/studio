@@ -87,7 +87,7 @@ export async function POST(
         body: `${commenterName}: ${preview}`,
         url: "/my",
         tag: `comment-${eventId}`,
-      }).catch(() => {});
+      }, tenant.id).catch(() => {});
     }
 
     return NextResponse.json(comment, { status: 201 });

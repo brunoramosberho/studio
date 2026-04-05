@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         body: `Tu clase con ${coachName} es a las ${timeStr}`,
         url: "/my/bookings",
         tag: `reminder-${booking.classId}`,
-      });
+      }, tenant.id);
 
       await prisma.booking.update({
         where: { id: booking.id },

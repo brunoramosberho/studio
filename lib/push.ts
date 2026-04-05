@@ -28,12 +28,12 @@ export interface PushPayload {
  * Send a push notification to all devices registered by a user.
  * Automatically cleans up stale subscriptions (410/404).
  */
-export async function sendPushToUser(userId: string, payload: PushPayload) {
+export async function sendPushToUser(userId: string, payload: PushPayload, tenantId?: string) {
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
   ensureVapid();
 
   const subscriptions = await prisma.pushSubscription.findMany({
-    where: { userId },
+    where: { userId, ...(tenantId ? { tenantId } : {}) },
   });
 
   if (subscriptions.length === 0) return;

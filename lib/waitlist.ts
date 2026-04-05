@@ -103,7 +103,7 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
     body: `Se liberó un lugar en ${cls.classType.name} y ya tienes tu reserva.`,
     url: `/class/${classId}`,
     tag: `waitlist-promoted-${classId}`,
-  }).catch(() => {});
+  }, tenantId).catch(() => {});
 
   if (first.user.email) {
     sendWaitlistPromotion({

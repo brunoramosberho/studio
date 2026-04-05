@@ -144,7 +144,7 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={{ top: 0, bottom: 0.8 }}
               onDragEnd={(_, info) => {
-                if (info.offset.y > 150 || info.velocity.y > 500) {
+                if (info.offset.y > 80 || info.velocity.y > 300) {
                   setOpen(false);
                 }
               }}
@@ -152,28 +152,29 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 350 }}
+              transition={{ type: "spring", damping: 28, stiffness: 400 }}
             >
-              {/* Drag handle */}
+              {/* Drag handle + header (entire area is draggable) */}
               <div
-                className="flex justify-center pt-3 pb-1 touch-none cursor-grab active:cursor-grabbing"
+                className="touch-none cursor-grab active:cursor-grabbing"
                 onPointerDown={(e) => dragControls.start(e)}
               >
-                <div className="h-1 w-10 rounded-full bg-border/60" />
-              </div>
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="h-1 w-10 rounded-full bg-border/60" />
+                </div>
 
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 pb-3 pt-1">
-                <div className="w-8" />
-                <h2 className="font-display text-[15px] font-bold text-foreground">
-                  Comentarios
-                </h2>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-muted active:bg-surface"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <div className="flex items-center justify-between px-5 pb-3 pt-1">
+                  <div className="w-8" />
+                  <h2 className="font-display text-[15px] font-bold text-foreground">
+                    Comentarios
+                  </h2>
+                  <button
+                    onClick={() => setOpen(false)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted active:bg-surface"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="h-px bg-border/30" />

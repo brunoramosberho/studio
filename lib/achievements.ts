@@ -73,7 +73,7 @@ async function grantAchievement(
     });
   }
 
-  notifyAchievement(userId, achievement).catch(() => {});
+  notifyAchievement(userId, tenantId, achievement).catch(() => {});
 
   return achievementKey;
 }
@@ -90,6 +90,7 @@ function rewardText(rewardType: string, rewardValue: unknown): string | null {
 
 async function notifyAchievement(
   userId: string,
+  tenantId: string,
   achievement: { name: string; icon: string; description: string | null; rewardType: string; rewardValue: unknown },
 ) {
   const rText = rewardText(achievement.rewardType, achievement.rewardValue);
@@ -99,7 +100,7 @@ async function notifyAchievement(
     body: `Conseguiste "${achievement.name}"${rText ? ` — ${rText}` : ""}`,
     url: "/my/profile",
     tag: `achievement-${achievement.name}`,
-  }).catch(() => {});
+  }, tenantId).catch(() => {});
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -350,11 +351,12 @@ async function checkLevelUp(
     }
   }
 
-  notifyLevelUp(userId, target, raw).catch(() => {});
+  notifyLevelUp(userId, tenantId, target, raw).catch(() => {});
 }
 
 async function notifyLevelUp(
   userId: string,
+  tenantId: string,
   level: { name: string; icon: string; sortOrder: number },
   rawReward: unknown,
 ) {
@@ -370,7 +372,7 @@ async function notifyLevelUp(
     body: rText ? `Nuevo nivel desbloqueado — ${rText}` : "Nuevo nivel desbloqueado",
     url: "/my/profile",
     tag: `level-up-${level.sortOrder}`,
-  }).catch(() => {});
+  }, tenantId).catch(() => {});
 
   const user = await prisma.user.findUnique({
     where: { id: userId },

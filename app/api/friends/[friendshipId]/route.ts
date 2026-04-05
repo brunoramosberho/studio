@@ -49,7 +49,7 @@ export async function PATCH(
       body: `${acceptorName} aceptó tu solicitud de amistad`,
       url: `/my/user/${session.user.id}`,
       tag: `friend-accepted-${session.user.id}`,
-    }).catch(() => {});
+    }, tenant.id).catch(() => {});
   }
 
   return NextResponse.json(updated);

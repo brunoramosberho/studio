@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < uniqueUserIds.length; i += BATCH) {
         const batch = uniqueUserIds.slice(i, i + BATCH);
         await Promise.allSettled(
-          batch.map((uid) => sendPushToUser(uid, payload)),
+          batch.map((uid) => sendPushToUser(uid, payload, tenant.id)),
         );
       }
     }

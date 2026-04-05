@@ -47,7 +47,7 @@ export async function POST(
         body: `${likerName} ${label}`,
         url: "/my",
         tag: `like-${eventId}-${session.user.id}`,
-      }).catch(() => {});
+      }, tenant.id).catch(() => {});
     }
 
     return NextResponse.json({ liked: true, type });

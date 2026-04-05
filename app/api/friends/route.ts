@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     body: `${senderName} quiere ser tu amigo/a`,
     url: "/my/friends",
     tag: `friend-request-${session.user.id}`,
-  }).catch(() => {});
+  }, tenant.id).catch(() => {});
 
   return NextResponse.json(friendship, { status: 201 });
 }
