@@ -64,25 +64,32 @@ function Lightbox({
 }) {
   const [idx, setIdx] = useState(initialIdx);
   const [dragX, setDragX] = useState(0);
-  const [transitioning, setTransitioning] = useState(false);
-  const touchRef = useRef({ startX: 0, startY: 0, startTime: 0, locked: false });
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [dragY, setDragY] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
+  const touchRef = useRef<{
+    startX: number;
+    startY: number;
+    startTime: number;
+    direction: "h" | "v" | null;
+    tracking: boolean;
+  }>({ startX: 0, startY: 0, startTime: 0, direction: null, tracking: false });
 
-  const go = useCallback(
-    (dir: 1 | -1) => {
-      setTransitioning(true);
-      setDragX(dir * -window.innerWidth * 0.4);
-      setTimeout(() => {
-        setIdx((p) => (p + dir + media.length) % media.length);
-        setDragX(0);
-        setTransitioning(false);
-      }, 200);
+  const clampIdx = (i: number) => Math.max(0, Math.min(media.length - 1, i));
+
+  const goTo = useCallback(
+    (target: number) => {
+      const clamped = clampIdx(target);
+      if (clamped === idx && dragX === 0) return;
+      setAnimating(true);
+      setDragX(0);
+      setIdx(clamped);
     },
-    [media.length],
+    [idx, dragX, media.length],
   );
 
-  const prev = useCallback(() => go(-1), [go]);
-  const next = useCallback(() => go(1), [go]);
+  const prev = useCallback(() => goTo(idx - 1), [goTo, idx]);
+  const next = useCallback(() => goTo(idx + 1), [goTo, idx]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -99,50 +106,97 @@ function Lightbox({
   }, [onClose, prev, next]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (animating || dismissing) return;
     const t = e.touches[0];
-    touchRef.current = { startX: t.clientX, startY: t.clientY, startTime: Date.now(), locked: false };
+    touchRef.current = { startX: t.clientX, startY: t.clientY, startTime: Date.now(), direction: null, tracking: true };
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    const t = e.touches[0];
     const ref = touchRef.current;
+    if (!ref.tracking) return;
+    const t = e.touches[0];
     const dx = t.clientX - ref.startX;
     const dy = t.clientY - ref.startY;
 
-    if (!ref.locked) {
-      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-        ref.locked = true;
-        if (Math.abs(dy) > Math.abs(dx)) return;
+    if (!ref.direction) {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        ref.direction = Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
       } else {
         return;
       }
     }
 
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      setDragX(dx);
+    if (ref.direction === "v") {
+      const down = Math.max(0, dy);
+      setDragY(down);
+      return;
     }
+
+    const atStart = idx === 0 && dx > 0;
+    const atEnd = idx === media.length - 1 && dx < 0;
+    const dampened = (atStart || atEnd) ? dx * 0.3 : dx;
+    setDragX(dampened);
   };
 
   const handleTouchEnd = () => {
     const ref = touchRef.current;
-    const elapsed = Date.now() - ref.startTime;
-    const velocity = Math.abs(dragX) / Math.max(elapsed, 1);
-    const threshold = window.innerWidth * 0.2;
+    if (!ref.tracking) return;
+    ref.tracking = false;
 
-    if ((Math.abs(dragX) > threshold || velocity > 0.5) && media.length > 1) {
-      if (dragX < 0) next();
-      else prev();
+    if (ref.direction === "v") {
+      const elapsed = Date.now() - ref.startTime;
+      const velocity = dragY / Math.max(elapsed, 1);
+      if (dragY > 120 || velocity > 0.6) {
+        setDismissing(true);
+        setDragY(window.innerHeight);
+        setTimeout(onClose, 250);
+      } else {
+        setDragY(0);
+      }
+      return;
+    }
+
+    if (ref.direction !== "h") return;
+
+    const elapsed = Date.now() - ref.startTime;
+    const velocity = dragX / Math.max(elapsed, 1);
+    const threshold = window.innerWidth * 0.25;
+    const flick = Math.abs(velocity) > 0.4;
+
+    if ((dragX < -threshold || (flick && velocity < 0)) && idx < media.length - 1) {
+      goTo(idx + 1);
+    } else if ((dragX > threshold || (flick && velocity > 0)) && idx > 0) {
+      goTo(idx - 1);
     } else {
+      setAnimating(true);
       setDragX(0);
     }
   };
 
-  const item = media[idx];
+  const handleTransitionEnd = () => setAnimating(false);
+
+  const stripOffset = -(idx * 100);
+  const dismissProgress = typeof window !== "undefined" && window.innerHeight > 0
+    ? Math.min(dragY / (window.innerHeight * 0.4), 1)
+    : 0;
+  const bgOpacity = 1 - dismissProgress * 0.8;
+  const contentScale = 1 - dismissProgress * 0.08;
+
+  const isDraggingDown = dragY > 0;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black">
-      {/* Top bar */}
-      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),12px)] pb-3">
+    <div
+      className="fixed inset-0 z-[100]"
+      style={{
+        backgroundColor: `rgba(0,0,0,${bgOpacity})`,
+        transition: isDraggingDown ? "none" : "background-color 250ms ease-out",
+      }}
+    >
+      {/* Top bar — fade out on vertical drag */}
+      <div
+        className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),12px)] pb-3"
+        style={{ opacity: 1 - dismissProgress, transition: isDraggingDown ? "none" : "opacity 250ms" }}
+      >
         <button
           onClick={onClose}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md active:bg-white/20"
@@ -175,48 +229,61 @@ function Lightbox({
         </>
       )}
 
-      {/* Swipeable media area */}
+      {/* Swipeable media strip */}
       <div
-        ref={containerRef}
-        className="absolute inset-0 flex items-center justify-center"
+        className="absolute inset-0 overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={onClose}
       >
         <div
-          className="flex h-full w-full items-center justify-center"
+          className="flex h-full will-change-transform"
           style={{
-            transform: `translateX(${dragX}px)`,
-            transition: transitioning ? "transform 200ms ease-out" : dragX === 0 ? "transform 300ms ease-out" : "none",
-            opacity: 1 - Math.min(Math.abs(dragX) / window.innerWidth, 0.3),
+            width: `${media.length * 100}%`,
+            transform: `translateX(calc(${stripOffset}% / ${media.length} + ${dragX}px)) translateY(${dragY}px) scale(${contentScale})`,
+            transition: (animating || (!isDraggingDown && dragY === 0 && !dismissing))
+              ? "transform 280ms cubic-bezier(.25,.46,.45,.94)"
+              : dismissing
+                ? "transform 250ms ease-out"
+                : "none",
           }}
-          onClick={(e) => e.stopPropagation()}
+          onTransitionEnd={handleTransitionEnd}
         >
-          {isVideo(item.mimeType) ? (
-            <video
+          {media.map((item) => (
+            <div
               key={item.id}
-              src={item.url}
-              className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
-              controls
-              autoPlay
-              playsInline
-            />
-          ) : (
-            <img
-              key={item.id}
-              src={item.url}
-              alt=""
-              className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
-              draggable={false}
-            />
-          )}
+              className="flex h-full items-center justify-center"
+              style={{ width: `${100 / media.length}%` }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {isVideo(item.mimeType) ? (
+                <video
+                  src={item.url}
+                  className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
+                  controls
+                  autoPlay={item.id === media[idx].id}
+                  playsInline
+                />
+              ) : (
+                <img
+                  src={item.url}
+                  alt=""
+                  className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
+                  draggable={false}
+                />
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Bottom dots */}
       {media.length > 1 && media.length <= 10 && (
-        <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center gap-1.5 pb-[max(env(safe-area-inset-bottom),20px)] sm:hidden">
+        <div
+          className="absolute inset-x-0 bottom-0 z-20 flex justify-center gap-1.5 pb-[max(env(safe-area-inset-bottom),20px)] sm:hidden"
+          style={{ opacity: 1 - dismissProgress, transition: isDraggingDown ? "none" : "opacity 250ms" }}
+        >
           {media.map((_, i) => (
             <div
               key={i}
