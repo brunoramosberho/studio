@@ -66,7 +66,7 @@ const TIER_PALETTE: Record<
 
 const HEX_POINTS = "50,8 93,33 93,83 50,108 7,83 7,33";
 
-function HexBadge({
+export function HexBadge({
   tier,
   size,
   coachIconSvg,

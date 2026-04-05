@@ -8,7 +8,7 @@ import { useBranding } from "@/components/branding-provider";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { AchievementIllustration } from "./achievement-badge";
-import { LoyaltyTierBadge } from "@/components/profile/loyalty-tier-badge";
+import { HexBadge } from "@/components/profile/level-hex-card";
 import { LikeButton } from "./like-button";
 import { CommentsSheet } from "./comments-sheet";
 import { MediaGallery } from "./media-gallery";
@@ -17,6 +17,7 @@ import { PeopleListSheet, type PersonItem } from "./people-list-sheet";
 import { DisciplineSheet, type DisciplineData } from "./discipline-sheet";
 import { cn, maskLastName } from "@/lib/utils";
 import { feedAchievementTypeFromKey } from "@/lib/gamification/catalog";
+import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 
 interface Attendee {
   id: string;
@@ -815,7 +816,8 @@ function StudioPostCard({ event }: FeedEventCardProps) {
 function LevelUpCard({ event }: FeedEventCardProps) {
   const p = event.payload;
   const levelName = (p.levelName as string) ?? "Nuevo nivel";
-  const icon = (p.icon as string) ?? "⭐";
+  const { coachIconSvg } = useBranding();
+  const tier = getLoyaltyTierVisual(levelName);
 
   return (
     <div className="space-y-3 px-4 pb-4 pt-4">
@@ -833,13 +835,10 @@ function LevelUpCard({ event }: FeedEventCardProps) {
           <span className="text-[11px] text-muted/70">{timeAgo(event.createdAt)}</span>
         </div>
       </div>
-      <div className="flex flex-col items-center gap-3 py-2">
-        <LoyaltyTierBadge
-          levelName={levelName}
-          icon={icon}
-          size="lg"
-          subtitle="Nivel de lealtad desbloqueado"
-        />
+      <div className="flex flex-col items-center gap-1 py-3">
+        <HexBadge tier={tier} size={64} coachIconSvg={coachIconSvg} active />
+        <p className="mt-1 font-display text-lg font-bold text-foreground">{levelName}</p>
+        <p className="text-xs text-muted">Nivel de lealtad desbloqueado</p>
       </div>
       <div className="flex items-center gap-1 border-t border-border/30 px-2 pt-1 pb-1">
         <LikeButton eventId={event.id} initialLiked={event.liked} initialCount={event.likeCount} />
