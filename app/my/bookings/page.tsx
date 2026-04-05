@@ -286,7 +286,7 @@ export default function BookingsPage() {
                       <div className="flex items-center gap-3">
                         {(booking.class.coach.photoUrl || booking.class.coach.user.image) ? (
                           <img
-                            src={(booking.class.coach.photoUrl || booking.class.coach.user.image)}
+                            src={(booking.class.coach.photoUrl || booking.class.coach.user.image)!}
                             alt={booking.class.coach.user.name || "Coach"}
                             className="h-10 w-10 flex-shrink-0 rounded-full object-cover grayscale"
                           />
@@ -513,7 +513,7 @@ function BookingCard({
           <div className="flex items-center gap-3">
             {(booking.class.coach.photoUrl || booking.class.coach.user.image) ? (
               <img
-                src={(booking.class.coach.photoUrl || booking.class.coach.user.image)}
+                src={(booking.class.coach.photoUrl || booking.class.coach.user.image)!}
                 alt={booking.class.coach.user.name || "Coach"}
                 className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
               />
