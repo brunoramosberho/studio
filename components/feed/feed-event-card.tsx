@@ -285,48 +285,58 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
         <div className="px-4 pb-2">
           <button
             onClick={handleTogglePlaylist}
-            className="flex w-full items-center gap-2 rounded-xl bg-green-50 px-3.5 py-2.5 text-left transition-colors hover:bg-green-100/70"
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-[10px] border px-3 py-2 text-left transition-all active:scale-[0.98]",
+              playlistOpen
+                ? "border-neutral-200 bg-neutral-50"
+                : "border-neutral-200/70 bg-neutral-50/60 hover:bg-neutral-100/60",
+            )}
           >
-            <ListMusic className="h-4 w-4 text-green-600" />
-            <span className="flex-1 text-[13px] font-medium text-green-800">
-              Ver playlist de la clase
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-500">
+              <ListMusic className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="flex-1 text-[13px] font-semibold text-foreground/85">
+              Playlist de la clase
             </span>
             <ChevronUp className={cn(
-              "h-4 w-4 text-green-600 transition-transform",
+              "h-4 w-4 text-neutral-400 transition-transform duration-200",
               !playlistOpen && "rotate-180",
             )} />
           </button>
           {playlistOpen && (
-            <div className="mt-2 space-y-1 rounded-xl border border-green-100 bg-white p-2">
+            <div className="mt-1.5 overflow-hidden rounded-[10px] border border-neutral-200/80 bg-white">
               {playlistLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-300 border-t-green-600" />
+                <div className="flex items-center justify-center py-6">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-200 border-t-emerald-500" />
                 </div>
               ) : playlistTracks.length === 0 ? (
-                <p className="py-3 text-center text-xs text-muted">Sin canciones</p>
+                <p className="py-4 text-center text-xs text-muted">Sin canciones</p>
               ) : (
                 playlistTracks.map((track, idx) => (
                   <div
                     key={track.id}
-                    className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-green-50/50"
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 transition-colors hover:bg-neutral-50/80",
+                      idx > 0 && "border-t border-neutral-100/70",
+                    )}
                   >
-                    <span className="w-4 text-center text-[11px] font-medium text-muted/50">
+                    <span className="w-4 text-right text-[12px] tabular-nums text-neutral-400">
                       {idx + 1}
                     </span>
                     {track.albumArt ? (
                       <img
                         src={track.albumArt}
                         alt={track.title}
-                        className="h-8 w-8 shrink-0 rounded-md object-cover"
+                        className="h-10 w-10 shrink-0 rounded-[5px] object-cover shadow-sm"
                       />
                     ) : (
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-green-50">
-                        <Music className="h-3.5 w-3.5 text-green-600" />
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[5px] bg-neutral-100">
+                        <Music className="h-4 w-4 text-neutral-400" />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium text-foreground">{track.title}</p>
-                      <p className="truncate text-[11px] text-muted">{track.artist}</p>
+                      <p className="truncate text-[13px] font-semibold leading-tight text-foreground/90">{track.title}</p>
+                      <p className="truncate text-[12px] leading-tight text-neutral-500">{track.artist}</p>
                     </div>
                   </div>
                 ))
