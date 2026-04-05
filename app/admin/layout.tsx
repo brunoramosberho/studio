@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
 import { CreateClientDialog } from "@/components/admin/create-client-dialog";
+import { MgicAIProvider } from "@/components/admin/MgicAI";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -173,6 +174,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ) : null;
 
   return (
+    <MgicAIProvider>
     <div className="min-h-dvh bg-background">
       {/* Top bar */}
       <header className="sticky top-0 z-40 border-b border-admin/10 bg-white/80 backdrop-blur-xl">
@@ -337,5 +339,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         onOpenChange={setShowCreateClient}
       />
     </div>
+    </MgicAIProvider>
   );
 }

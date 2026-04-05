@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { KpiCard } from "@/components/admin/kpi-card";
 import { useBranding } from "@/components/branding-provider";
 import { RevenueChart } from "@/components/admin/revenue-chart";
+import { MgicAIBriefing } from "@/components/admin/MgicAI/BriefingCard";
 import { cn, formatCurrency, timeAgo, formatDate } from "@/lib/utils";
 
 interface DashboardData {
@@ -106,6 +107,8 @@ export default function AdminDashboard() {
         <h1 className="font-display text-2xl font-bold sm:text-3xl">Dashboard</h1>
         <p className="mt-1 text-muted">Resumen general de {studioName} Studio</p>
       </motion.div>
+
+      <MgicAIBriefing />
 
       {/* KPI Cards */}
       <motion.div
