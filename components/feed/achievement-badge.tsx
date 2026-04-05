@@ -193,11 +193,13 @@ export function AchievementBadge({
 
 interface AchievementIllustrationProps {
   type: string;
+  compact?: boolean;
   className?: string;
 }
 
 export function AchievementIllustration({
   type,
+  compact,
   className,
 }: AchievementIllustrationProps) {
   const def = ACHIEVEMENT_DEFS[type] ?? {
@@ -207,6 +209,44 @@ export function AchievementIllustration({
   };
   const style = achievementStyles[type] ?? defaultStyle;
 
+  if (compact) {
+    return (
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-xl p-3",
+          style.bg,
+          className,
+        )}
+      >
+        <div
+          className={cn(
+            "absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gradient-to-br opacity-20 blur-lg",
+            style.gradient,
+          )}
+        />
+        <div className="relative flex items-center gap-2.5">
+          <div
+            className={cn(
+              "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-base text-white shadow-md",
+              style.gradient,
+              style.glow,
+            )}
+          >
+            {def.icon}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={cn("truncate text-[13px] font-bold leading-tight", style.text)}>
+              {def.label}
+            </p>
+            <p className="mt-0.5 truncate text-[11px] leading-tight text-muted">
+              {def.description}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -215,7 +255,6 @@ export function AchievementIllustration({
         className,
       )}
     >
-      {/* Decorative gradient circle */}
       <div
         className={cn(
           "absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br opacity-20 blur-xl",
@@ -230,7 +269,6 @@ export function AchievementIllustration({
       />
 
       <div className="relative flex items-center gap-4">
-        {/* Icon circle */}
         <div
           className={cn(
             "flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-2xl text-white shadow-lg",
@@ -241,7 +279,6 @@ export function AchievementIllustration({
           {def.icon}
         </div>
 
-        {/* Text */}
         <div>
           <p className={cn("text-[15px] font-bold", style.text)}>
             {def.label}

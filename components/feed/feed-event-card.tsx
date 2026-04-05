@@ -396,17 +396,40 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
   );
 }
 
+interface AchievementEntry {
+  achievementKey: string;
+  achievementType: string;
+  label: string;
+  description: string;
+  icon: string;
+}
+
 function AchievementCard({ event }: FeedEventCardProps) {
   const p = event.payload;
-  const illustrationType =
-    (p.achievementType as string) ??
-    (typeof p.achievementKey === "string"
-      ? feedAchievementTypeFromKey(p.achievementKey)
-      : "FIRST_CLASS");
+  const rawAchievements = p.achievements as AchievementEntry[] | undefined;
+
+  const achievements: AchievementEntry[] =
+    rawAchievements && rawAchievements.length > 0
+      ? rawAchievements
+      : [
+          {
+            achievementKey: (p.achievementKey as string) ?? "",
+            achievementType:
+              (p.achievementType as string) ??
+              (typeof p.achievementKey === "string"
+                ? feedAchievementTypeFromKey(p.achievementKey)
+                : "FIRST_CLASS"),
+            label: (p.label as string) ?? "",
+            description: (p.description as string) ?? "",
+            icon: (p.icon as string) ?? "🏆",
+          },
+        ];
+
   const users = (p.users as Attendee[]) ?? [
     { id: event.user.id, name: event.user.name ?? "Miembro", image: event.user.image },
   ];
-  const isSingle = users.length === 1;
+  const isSingleUser = users.length === 1;
+  const isMultiAchievement = achievements.length > 1;
   const [showPeople, setShowPeople] = useState(false);
 
   function formatNames(list: Attendee[]) {
@@ -424,7 +447,6 @@ function AchievementCard({ event }: FeedEventCardProps) {
 
   return (
     <div className="space-y-3">
-      {/* Header with avatars */}
       <div className="flex items-start gap-3 px-4 pt-4">
         <TappableGroupAvatars
           users={users}
@@ -432,7 +454,7 @@ function AchievementCard({ event }: FeedEventCardProps) {
         />
         <div className="min-w-0 flex-1">
           <p className="text-[14px] leading-snug">
-            {isSingle ? (
+            {isSingleUser ? (
               <Link href={`/my/user/${users[0].id}`} className="font-bold text-foreground hover:underline">
                 {formatNames(users)}
               </Link>
@@ -442,7 +464,11 @@ function AchievementCard({ event }: FeedEventCardProps) {
               </button>
             )}
             <span className="text-muted">
-              {isSingle ? " desbloqueó un logro" : " desbloquearon un logro"}
+              {isMultiAchievement
+                ? ` desbloqueó ${achievements.length} logros`
+                : isSingleUser
+                  ? " desbloqueó un logro"
+                  : " desbloquearon un logro"}
             </span>
           </p>
           <span className="text-[11px] text-muted/70">
@@ -451,12 +477,22 @@ function AchievementCard({ event }: FeedEventCardProps) {
         </div>
       </div>
 
-      {/* Achievement illustration */}
-      <div className="px-4">
-        <AchievementIllustration type={illustrationType} />
-      </div>
+      {isMultiAchievement ? (
+        <div className="grid grid-cols-2 gap-2 px-4">
+          {achievements.map((ach) => (
+            <AchievementIllustration
+              key={ach.achievementKey}
+              type={ach.achievementType}
+              compact
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="px-4">
+          <AchievementIllustration type={achievements[0].achievementType} />
+        </div>
+      )}
 
-      {/* Actions bar */}
       <div className="flex items-center gap-1 border-t border-border/30 px-2 pt-1 pb-1">
         <LikeButton
           eventId={event.id}

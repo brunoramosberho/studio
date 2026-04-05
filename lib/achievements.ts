@@ -119,73 +119,89 @@ async function notifyAchievement(
 }
 
 /**
- * Crea eventos de feed agrupados por tipo de logro (misma UX que antes).
+ * Creates feed events grouped by user so that a single person unlocking
+ * multiple achievements only produces ONE feed post (instead of N).
  */
 export async function createGroupedAchievementEvents(
   grants: GrantedAchievement[],
   tenantId: string,
 ) {
-  const byKey = new Map<string, string[]>();
+  const byUser = new Map<string, string[]>();
   for (const g of grants) {
-    const list = byKey.get(g.achievementKey) ?? [];
-    list.push(g.userId);
-    byKey.set(g.achievementKey, list);
+    const list = byUser.get(g.userId) ?? [];
+    list.push(g.achievementKey);
+    byUser.set(g.userId, list);
   }
 
-  for (const [achievementKey, userIds] of byKey) {
-    const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
+  for (const [userId, keys] of byUser) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
       select: { id: true, name: true, image: true },
     });
+    if (!user) continue;
 
-    const achievement = await getAchievementByKey(achievementKey);
-    const label =
-      achievement?.name ??
-      ACHIEVEMENT_DEFS[feedAchievementTypeFromKey(achievementKey)]?.label ??
-      achievementKey;
-    const description =
-      achievement?.description ??
-      ACHIEVEMENT_DEFS[feedAchievementTypeFromKey(achievementKey)]?.description ??
-      "";
-    const icon =
-      achievement?.icon ??
-      ACHIEVEMENT_DEFS[feedAchievementTypeFromKey(achievementKey)]?.icon ??
-      "🏆";
+    const achievements: {
+      achievementKey: string;
+      achievementType: string;
+      label: string;
+      description: string;
+      icon: string;
+    }[] = [];
 
-    const achievementType = feedAchievementTypeFromKey(achievementKey);
+    for (const key of keys) {
+      const row = await getAchievementByKey(key);
+      const type = feedAchievementTypeFromKey(key);
+      achievements.push({
+        achievementKey: key,
+        achievementType: type,
+        label:
+          row?.name ??
+          ACHIEVEMENT_DEFS[type]?.label ??
+          key,
+        description:
+          row?.description ??
+          ACHIEVEMENT_DEFS[type]?.description ??
+          "",
+        icon:
+          row?.icon ??
+          ACHIEVEMENT_DEFS[type]?.icon ??
+          "🏆",
+      });
+    }
+
+    const first = achievements[0];
 
     const feedEvent = await prisma.feedEvent.create({
       data: {
-        userId: users[0].id,
+        userId,
         tenantId,
         eventType: "ACHIEVEMENT_UNLOCKED",
         visibility: "STUDIO_WIDE",
         payload: {
-          achievementKey,
-          achievementType,
-          label,
-          description,
-          icon,
-          users: users.map((u) => ({
-            id: u.id,
-            name: u.name ?? "Miembro",
-            image: u.image,
-          })),
+          achievementKey: first.achievementKey,
+          achievementType: first.achievementType,
+          label: first.label,
+          description: first.description,
+          icon: first.icon,
+          users: [{ id: user.id, name: user.name ?? "Miembro", image: user.image }],
+          achievements,
         },
       },
     });
 
-    const achRow = await getAchievementByKey(achievementKey);
-    if (achRow) {
-      await prisma.memberAchievement.updateMany({
-        where: {
-          tenantId,
-          achievementId: achRow.id,
-          userId: { in: userIds },
-          feedEventId: null,
-        },
-        data: { feedEventId: feedEvent.id },
-      });
+    for (const key of keys) {
+      const achRow = await getAchievementByKey(key);
+      if (achRow) {
+        await prisma.memberAchievement.updateMany({
+          where: {
+            tenantId,
+            achievementId: achRow.id,
+            userId,
+            feedEventId: null,
+          },
+          data: { feedEventId: feedEvent.id },
+        });
+      }
     }
   }
 }
