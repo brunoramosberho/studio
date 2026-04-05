@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       );
       const className = cls.classType.name;
       const coachName = cls.coach.user.name?.split(" ")[0] ?? "tu coach";
-      const tz = cls.room?.studio?.city?.timezone || "America/Mexico_City";
+      const tz = cls.room?.studio?.city?.timezone || "Europe/Madrid";
 
       const timeStr = formatTime(cls.startsAt, tz);
 

@@ -35,15 +35,21 @@ async function main() {
       id: "___dummy___",
     },
     update: {},
-    create: { countryId: spain.id, name: "Madrid" },
+    create: { countryId: spain.id, name: "Madrid", timezone: "Europe/Madrid" },
   }).catch(async () => {
     const existing = await prisma.city.findFirst({
       where: { countryId: spain.id, name: { equals: "Madrid", mode: "insensitive" } },
       select: { id: true },
     });
-    if (existing) return existing as any;
+    if (existing) {
+      await prisma.city.update({
+        where: { id: existing.id },
+        data: { timezone: "Europe/Madrid" },
+      });
+      return existing as any;
+    }
     const created = await prisma.city.create({
-      data: { countryId: spain.id, name: "Madrid" },
+      data: { countryId: spain.id, name: "Madrid", timezone: "Europe/Madrid" },
       select: { id: true },
     });
     return created as any;
