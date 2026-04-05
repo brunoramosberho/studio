@@ -36,10 +36,19 @@ export async function POST(
 
     const feedEvent = await prisma.feedEvent.findFirst({
       where: { id: eventId, tenantId: tenant.id },
-      select: { id: true },
+      select: { id: true, eventType: true, payload: true },
     });
     if (!feedEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    if (feedEvent.eventType === "CLASS_COMPLETED") {
+      const payload = feedEvent.payload as Record<string, unknown>;
+      const attendees = (payload.attendees as { id: string }[]) ?? [];
+      const isAttendee = attendees.some((a) => a.id === session.user.id);
+      if (!isAttendee) {
+        return NextResponse.json({ error: "Only attendees can upload photos" }, { status: 403 });
+      }
     }
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

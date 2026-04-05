@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowRight, Dumbbell, Instagram, ListMusic, Music, ChevronUp } from "lucide-react";
+import { ArrowRight, Dumbbell, Instagram, ListMusic, Lock, Music, ChevronUp } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
@@ -272,15 +272,29 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
           initialCount={event.likeCount}
         />
         <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
-        <PhotoUpload
-          eventId={event.id}
-          onUploaded={(photo) =>
-            setMedia((prev) => [...prev, { ...photo, thumbnailUrl: null }])
-          }
-        />
+        {userAttended && (
+          <PhotoUpload
+            eventId={event.id}
+            onUploaded={(photo) =>
+              setMedia((prev) => [...prev, { ...photo, thumbnailUrl: null }])
+            }
+          />
+        )}
       </div>
 
-      {/* Playlist (only for attendees) */}
+      {/* Playlist — locked hint for non-attendees, full for attendees */}
+      {hasPlaylist && !userAttended && (
+        <div className="px-4 pb-2">
+          <div className="flex items-center gap-2.5 rounded-[10px] border border-neutral-200/50 bg-neutral-50/40 px-3 py-2 opacity-70">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-300">
+              <Lock className="h-3 w-3 text-white" />
+            </div>
+            <span className="flex-1 text-[13px] font-medium text-neutral-400">
+              Playlist disponible para asistentes
+            </span>
+          </div>
+        </div>
+      )}
       {canSeePlaylist && (
         <div className="px-4 pb-2">
           <button

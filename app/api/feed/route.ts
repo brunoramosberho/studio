@@ -110,17 +110,17 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    let filtered = events;
+    const hasMore = events.length > limit;
+    const dbPage = hasMore ? events.slice(0, limit) : events;
+    const nextCursor = hasMore ? dbPage[dbPage.length - 1].id : null;
+
+    let items = dbPage;
 
     if (currentUserId) {
-      filtered = filtered.filter(
+      items = items.filter(
         (e) => !(e.eventType === "CLASS_RESERVED" && e.userId === currentUserId),
       );
     }
-
-    const hasMore = filtered.length > limit;
-    let items = hasMore ? filtered.slice(0, limit) : filtered;
-    const nextCursor = hasMore ? items[items.length - 1].id : null;
 
     let bookedClassIds = new Set<string>();
     if (currentUserId) {

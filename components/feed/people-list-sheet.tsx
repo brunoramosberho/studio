@@ -116,6 +116,7 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
             onClick={onClose}
           />
 
+          <div className="fixed inset-0 z-[60] flex items-end justify-center pointer-events-none sm:items-center sm:p-6">
           <motion.div
             drag="y"
             dragControls={dragControls}
@@ -127,27 +128,27 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
                 onClose();
               }
             }}
-            className="fixed inset-x-0 bottom-0 z-[60] max-h-[80dvh] overflow-hidden rounded-t-3xl bg-white shadow-[var(--shadow-warm-lg)]"
+            className="pointer-events-auto w-full max-h-[80dvh] overflow-hidden rounded-t-2xl bg-white shadow-[var(--shadow-warm-lg)] sm:max-w-md sm:rounded-2xl sm:max-h-[min(560px,80dvh)] sm:shadow-xl"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 400 }}
           >
             <div
-              className="touch-none cursor-grab active:cursor-grabbing"
+              className="touch-none cursor-grab active:cursor-grabbing sm:cursor-default"
               onPointerDown={(e) => dragControls.start(e)}
             >
-              <div className="flex justify-center pt-3 pb-1">
+              <div className="flex justify-center pt-3 pb-1 sm:hidden">
                 <div className="h-1 w-10 rounded-full bg-border/60" />
               </div>
 
-              <div className="flex items-center justify-between px-5 pb-3 pt-1">
+              <div className="flex items-center justify-between px-5 pb-3 pt-1 sm:pt-4">
                 <h2 className="font-display text-lg font-bold text-foreground">{title}</h2>
                 <div className="flex items-center gap-2">
                   <span className="text-[13px] text-muted">{people.length}</span>
                   <button
                     onClick={onClose}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted active:bg-surface"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface active:bg-surface"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -155,7 +156,7 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
               </div>
             </div>
 
-            <div className="overflow-y-auto overscroll-contain px-5 pb-24" style={{ maxHeight: "calc(80dvh - 80px)" }}>
+            <div className="overflow-y-auto overscroll-contain px-5 pb-24 sm:pb-6" style={{ maxHeight: "calc(80dvh - 80px)" }}>
               <div className="space-y-0.5">
                 {people.map((person) => {
                   const state = getState(person.id);
@@ -214,6 +215,7 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
               </div>
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

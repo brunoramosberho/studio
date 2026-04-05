@@ -137,6 +137,7 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
               onClick={() => setOpen(false)}
             />
 
+            <div className="fixed inset-0 z-[60] flex items-end justify-center pointer-events-none sm:items-center sm:p-6">
             <motion.div
               drag="y"
               dragControls={dragControls}
@@ -148,29 +149,29 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
                   setOpen(false);
                 }
               }}
-              className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-[var(--shadow-warm-lg)]"
+              className="pointer-events-auto flex w-full max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-[var(--shadow-warm-lg)] sm:max-w-md sm:rounded-2xl sm:max-h-[min(620px,85dvh)] sm:shadow-xl"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 400 }}
             >
-              {/* Drag handle + header (entire area is draggable) */}
+              {/* Drag handle + header */}
               <div
-                className="touch-none cursor-grab active:cursor-grabbing"
+                className="touch-none cursor-grab active:cursor-grabbing sm:cursor-default"
                 onPointerDown={(e) => dragControls.start(e)}
               >
-                <div className="flex justify-center pt-3 pb-1">
+                <div className="flex justify-center pt-3 pb-1 sm:hidden">
                   <div className="h-1 w-10 rounded-full bg-border/60" />
                 </div>
 
-                <div className="flex items-center justify-between px-5 pb-3 pt-1">
+                <div className="flex items-center justify-between px-5 pb-3 pt-1 sm:pt-4">
                   <div className="w-8" />
                   <h2 className="font-display text-[15px] font-bold text-foreground">
                     Comentarios
                   </h2>
                   <button
                     onClick={() => setOpen(false)}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted active:bg-surface"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface active:bg-surface"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -286,6 +287,7 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
                 </button>
               </div>
             </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
