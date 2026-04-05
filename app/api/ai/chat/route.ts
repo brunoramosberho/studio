@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
       });
     }
     const tenantId = tenant.id;
+    const adminUserId = ctx.session.user.id;
     const body: ChatRequest = await request.json();
 
     if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
@@ -87,6 +88,8 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildSystemPrompt(studioCtx);
     const anthropic = getAnthropic();
 
+    const confirmedTools = body.confirmed_tools;
+
     const stream = new ReadableStream({
       async start(controller) {
         try {
@@ -94,6 +97,40 @@ export async function POST(request: NextRequest) {
             role: m.role,
             content: m.content,
           }));
+
+          if (confirmedTools && confirmedTools.length > 0) {
+            const results = await Promise.all(
+              confirmedTools.map(async (ct) => {
+                try {
+                  const result = await executeTool(ct.name, ct.input, tenantId, adminUserId);
+                  return { name: ct.name, result, error: false };
+                } catch (err) {
+                  return {
+                    name: ct.name,
+                    result: { error: err instanceof Error ? err.message : "Execution failed" },
+                    error: true,
+                  };
+                }
+              }),
+            );
+
+            controller.enqueue(
+              new TextEncoder().encode(
+                encodeSSE({ type: "tool_call", tools: confirmedTools.map((t) => t.name) }),
+              ),
+            );
+
+            const toolContext = results
+              .map((r) =>
+                `[Tool ${r.name} ${r.error ? "FAILED" : "OK"}]: ${JSON.stringify(r.result)}`,
+              )
+              .join("\n");
+
+            messages.push({
+              role: "user" as const,
+              content: `El admin confirmó la ejecución. Resultados:\n${toolContext}\n\nResume al admin qué se hizo y el resultado.`,
+            });
+          }
 
           let iteration = 0;
           const MAX_ITERATIONS = 10;
@@ -121,36 +158,82 @@ export async function POST(request: NextRequest) {
               );
 
               const toolNames = toolUseBlocks.map((b) => b.name);
-              const hasWriteTool = toolNames.some((n) => WRITE_TOOLS.has(n));
+              const writeTools = toolUseBlocks.filter((b) => WRITE_TOOLS.has(b.name));
+              const readTools = toolUseBlocks.filter((b) => !WRITE_TOOLS.has(b.name));
 
-              if (hasWriteTool) {
+              if (writeTools.length > 0) {
                 const textBlocks = response.content.filter(
                   (b): b is Anthropic.TextBlock => b.type === "text",
                 );
                 if (textBlocks.length > 0) {
+                  const text = textBlocks.map((b) => b.text).join("");
                   controller.enqueue(
-                    new TextEncoder().encode(encodeSSE({ type: "text_delta", text: textBlocks.map(b => b.text).join("") })),
+                    new TextEncoder().encode(encodeSSE({ type: "text_delta", text })),
                   );
                 }
+
+                if (readTools.length > 0) {
+                  controller.enqueue(
+                    new TextEncoder().encode(
+                      encodeSSE({ type: "tool_call", tools: readTools.map((b) => b.name) }),
+                    ),
+                  );
+
+                  const readResults = await Promise.all(
+                    readTools.map(async (block) => {
+                      try {
+                        const result = await executeTool(block.name, block.input, tenantId, adminUserId);
+                        return {
+                          type: "tool_result" as const,
+                          tool_use_id: block.id,
+                          content: JSON.stringify(result),
+                        };
+                      } catch (err) {
+                        return {
+                          type: "tool_result" as const,
+                          tool_use_id: block.id,
+                          content: JSON.stringify({ error: err instanceof Error ? err.message : "Failed" }),
+                          is_error: true,
+                        };
+                      }
+                    }),
+                  );
+
+                  const writeResults = writeTools.map((block) => ({
+                    type: "tool_result" as const,
+                    tool_use_id: block.id,
+                    content: JSON.stringify({ status: "awaiting_admin_confirmation" }),
+                  }));
+
+                  messages.push({ role: "assistant", content: response.content });
+                  messages.push({ role: "user", content: [...readResults, ...writeResults] });
+                }
+
                 controller.enqueue(
-                  new TextEncoder().encode(encodeSSE({
-                    type: "tool_call",
-                    tools: toolNames,
-                  })),
+                  new TextEncoder().encode(
+                    encodeSSE({
+                      type: "confirmation_required",
+                      pendingTools: writeTools.map((b) => ({
+                        name: b.name,
+                        input: b.input as Record<string, unknown>,
+                      })),
+                    }),
+                  ),
                 );
-              } else {
-                controller.enqueue(
-                  new TextEncoder().encode(encodeSSE({
-                    type: "tool_call",
-                    tools: toolNames,
-                  })),
-                );
+                controller.enqueue(new TextEncoder().encode(encodeSSE({ type: "done" })));
+                break;
               }
+
+              controller.enqueue(
+                new TextEncoder().encode(
+                  encodeSSE({ type: "tool_call", tools: toolNames }),
+                ),
+              );
 
               const toolResults = await Promise.all(
                 toolUseBlocks.map(async (block) => {
                   try {
-                    const result = await executeTool(block.name, block.input, tenantId);
+                    const result = await executeTool(block.name, block.input, tenantId, adminUserId);
                     return {
                       type: "tool_result" as const,
                       tool_use_id: block.id,
@@ -172,13 +255,11 @@ export async function POST(request: NextRequest) {
               continue;
             }
 
-            // Final text response — stream it
             const textBlocks = response.content.filter(
               (b): b is Anthropic.TextBlock => b.type === "text",
             );
             const fullText = textBlocks.map((b) => b.text).join("");
 
-            // Send in chunks to simulate streaming feel
             const CHUNK_SIZE = 20;
             for (let i = 0; i < fullText.length; i += CHUNK_SIZE) {
               const chunk = fullText.slice(i, i + CHUNK_SIZE);

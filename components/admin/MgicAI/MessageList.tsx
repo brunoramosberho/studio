@@ -25,6 +25,12 @@ const TOOL_LABELS: Record<string, string> = {
   create_class: "Creando clase",
   cancel_class: "Cancelando clase",
   send_announcement: "Enviando anuncio",
+  create_studio: "Creando estudio",
+  create_room: "Creando sala",
+  invite_coach: "Invitando coach",
+  create_client: "Registrando cliente",
+  create_class_type: "Creando disciplina",
+  create_post: "Publicando post",
 };
 
 export function MessageList({ messages, isStreaming, activeTools }: MessageListProps) {

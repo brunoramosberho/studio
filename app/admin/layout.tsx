@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
 import { CreateClientDialog } from "@/components/admin/create-client-dialog";
-import { MgicAIProvider } from "@/components/admin/MgicAI";
+import { MgicAIProvider, useMgicAI } from "@/components/admin/MgicAI";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -65,6 +65,22 @@ function countryFlag(code: string) {
     .split("")
     .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
     .join("");
+}
+
+function AdminMain({ children }: { children: React.ReactNode }) {
+  const { isOpen, mode, panelWidth } = useMgicAI();
+  const isSidebarPush = isOpen && mode === "sidebar";
+
+  return (
+    <main
+      className="flex-1 px-4 py-6 transition-[margin] duration-300 ease-in-out sm:px-6 lg:px-8"
+      style={{
+        marginRight: isSidebarPush ? `${panelWidth}px` : undefined,
+      }}
+    >
+      {children}
+    </main>
+  );
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -331,7 +347,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </AnimatePresence>
 
         {/* Main content */}
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <AdminMain>{children}</AdminMain>
       </div>
 
       <CreateClientDialog

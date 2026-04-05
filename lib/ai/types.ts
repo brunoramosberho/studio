@@ -5,8 +5,14 @@ export interface ChatMessage {
   content: string | Anthropic.ContentBlock[];
 }
 
+export interface ConfirmedTool {
+  name: string;
+  input: Record<string, unknown>;
+}
+
 export interface ChatRequest {
   messages: { role: "user" | "assistant"; content: string }[];
+  confirmed_tools?: ConfirmedTool[];
 }
 
 export interface ToolCallEvent {
@@ -28,4 +34,17 @@ export interface ErrorEvent {
   message: string;
 }
 
-export type StreamEvent = ToolCallEvent | TextDeltaEvent | DoneEvent | ErrorEvent;
+export interface ConfirmationRequiredEvent {
+  type: "confirmation_required";
+  pendingTools: {
+    name: string;
+    input: Record<string, unknown>;
+  }[];
+}
+
+export type StreamEvent =
+  | ToolCallEvent
+  | TextDeltaEvent
+  | DoneEvent
+  | ErrorEvent
+  | ConfirmationRequiredEvent;

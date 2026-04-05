@@ -219,10 +219,126 @@ export const tools: Anthropic.Tool[] = [
       required: ["title", "message", "segment"],
     },
   },
+
+  {
+    name: "create_studio",
+    description:
+      "Crea un nuevo estudio (ubicación física). Requiere confirmación del admin. Pregunta el nombre y la ciudad antes de llamar este tool.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string", description: "Nombre del estudio" },
+        city_id: { type: "string", description: "ID de la ciudad" },
+        address: { type: "string", description: "Dirección (opcional)" },
+        latitude: { type: "number", description: "Latitud (opcional)" },
+        longitude: { type: "number", description: "Longitud (opcional)" },
+      },
+      required: ["name", "city_id"],
+    },
+  },
+
+  {
+    name: "create_room",
+    description:
+      "Crea una nueva sala dentro de un estudio existente. Requiere confirmación del admin. Pregunta nombre, estudio, capacidad y disciplinas antes de llamar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string", description: "Nombre de la sala" },
+        studio_id: { type: "string", description: "ID del estudio" },
+        max_capacity: { type: "number", description: "Capacidad máxima" },
+        class_type_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "IDs de disciplinas que se pueden dar en esta sala",
+        },
+      },
+      required: ["name", "studio_id", "max_capacity", "class_type_ids"],
+    },
+  },
+
+  {
+    name: "invite_coach",
+    description:
+      "Invita a un nuevo coach por email. Si el usuario no existe, lo crea. Crea CoachProfile y Membership con rol COACH. Requiere confirmación.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        email: { type: "string", description: "Email del coach" },
+        name: { type: "string", description: "Nombre del coach (opcional)" },
+      },
+      required: ["email"],
+    },
+  },
+
+  {
+    name: "create_client",
+    description:
+      "Registra un nuevo cliente. Crea el usuario y le asigna membresía CLIENT. Requiere confirmación. Pregunta al menos el email.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        email: { type: "string", description: "Email del cliente" },
+        name: { type: "string", description: "Nombre completo (opcional)" },
+        phone: { type: "string", description: "Teléfono (opcional)" },
+      },
+      required: ["email"],
+    },
+  },
+
+  {
+    name: "create_class_type",
+    description:
+      "Crea una nueva disciplina (tipo de clase). Requiere confirmación. Pregunta nombre, duración en minutos y color antes de llamar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string", description: "Nombre de la disciplina" },
+        duration: { type: "number", description: "Duración en minutos" },
+        color: { type: "string", description: "Color hex (ej: #FF5733)" },
+        description: { type: "string", description: "Descripción (opcional)" },
+        level: {
+          type: "string",
+          enum: ["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL"],
+          description: "Nivel (default: ALL)",
+        },
+        icon: { type: "string", description: "Nombre de icono (opcional)" },
+        tags: {
+          type: "array",
+          items: { type: "string" },
+          description: "Tags/etiquetas (opcional)",
+        },
+      },
+      required: ["name", "duration", "color"],
+    },
+  },
+
+  {
+    name: "create_post",
+    description:
+      "Publica un post en el feed del studio. Requiere confirmación. Pregunta título y contenido antes de llamar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        title: { type: "string", description: "Título del post" },
+        body: { type: "string", description: "Contenido del post" },
+        category: { type: "string", description: "Categoría (opcional)" },
+        send_push: { type: "boolean", description: "Enviar push notification (default: false)" },
+        is_pinned: { type: "boolean", description: "Fijar post (default: false)" },
+      },
+      required: ["title", "body"],
+    },
+  },
 ];
 
 export const WRITE_TOOLS = new Set([
   "create_class",
   "cancel_class",
   "send_announcement",
+  "create_studio",
+  "create_room",
+  "invite_coach",
+  "create_client",
+  "create_class_type",
+  "create_post",
 ]);

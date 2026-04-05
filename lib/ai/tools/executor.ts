@@ -5,7 +5,7 @@ import type { BookingStatus } from "@prisma/client";
 const CONFIRMED_OR_ATTENDED: BookingStatus[] = ["CONFIRMED", "ATTENDED"];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function executeTool(name: string, input: any, tenantId: string): Promise<unknown> {
+export async function executeTool(name: string, input: any, tenantId: string, adminUserId?: string): Promise<unknown> {
   switch (name) {
     case "get_studio_overview":
       return getStudioOverview(input, tenantId);
@@ -29,6 +29,18 @@ export async function executeTool(name: string, input: any, tenantId: string): P
       return cancelClass(input, tenantId);
     case "send_announcement":
       return sendAnnouncement(input, tenantId);
+    case "create_studio":
+      return createStudio(input, tenantId);
+    case "create_room":
+      return createRoom(input, tenantId);
+    case "invite_coach":
+      return inviteCoach(input, tenantId);
+    case "create_client":
+      return createClient(input, tenantId);
+    case "create_class_type":
+      return createClassType(input, tenantId);
+    case "create_post":
+      return createPost(input, tenantId, adminUserId);
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -786,5 +798,295 @@ async function sendAnnouncement(
   return {
     success: true,
     summary: `Anuncio "${input.title}" enviado a ${sentCount} miembros (segmento: ${input.segment}).`,
+  };
+}
+
+// ─── NEW WRITE TOOLS ────────────────────────────────────────
+
+async function createStudio(
+  input: { name: string; city_id: string; address?: string; latitude?: number; longitude?: number },
+  tenantId: string,
+) {
+  const city = await prisma.city.findUnique({ where: { id: input.city_id } });
+  if (!city) return { error: "Ciudad no encontrada con ese ID" };
+
+  const studio = await prisma.studio.create({
+    data: {
+      name: input.name,
+      address: input.address || null,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      cityId: input.city_id,
+      tenantId,
+    },
+    include: {
+      city: { include: { country: true } },
+    },
+  });
+
+  return {
+    success: true,
+    studio_id: studio.id,
+    summary: `Estudio "${studio.name}" creado en ${studio.city.name}, ${studio.city.country.name}.`,
+  };
+}
+
+async function createRoom(
+  input: { name: string; studio_id: string; max_capacity: number; class_type_ids: string[] },
+  tenantId: string,
+) {
+  const studio = await prisma.studio.findFirst({
+    where: { id: input.studio_id, tenantId },
+  });
+  if (!studio) return { error: "Estudio no encontrado" };
+
+  if (!input.class_type_ids?.length) {
+    return { error: "Se requiere al menos una disciplina" };
+  }
+
+  const room = await prisma.room.create({
+    data: {
+      name: input.name,
+      studioId: input.studio_id,
+      tenantId,
+      maxCapacity: input.max_capacity,
+      classTypes: { connect: input.class_type_ids.map((id) => ({ id })) },
+    },
+    include: {
+      classTypes: { select: { name: true } },
+      studio: { select: { name: true } },
+    },
+  });
+
+  return {
+    success: true,
+    room_id: room.id,
+    summary: `Sala "${room.name}" creada en ${room.studio.name} (capacidad: ${room.maxCapacity}, disciplinas: ${room.classTypes.map((ct) => ct.name).join(", ")}).`,
+  };
+}
+
+async function inviteCoach(
+  input: { email: string; name?: string },
+  tenantId: string,
+) {
+  const normalizedEmail = input.email.toLowerCase().trim();
+
+  const existing = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    include: {
+      coachProfiles: { where: { tenantId } },
+      memberships: { where: { tenantId } },
+    },
+  });
+
+  if (existing?.coachProfiles?.length && existing.memberships.some((m) => m.role === "COACH")) {
+    return { error: "Este usuario ya es coach en este studio" };
+  }
+
+  if (existing) {
+    await prisma.$transaction(async (tx) => {
+      if (!existing.coachProfiles?.length) {
+        await tx.coachProfile.create({
+          data: { userId: existing.id, tenantId },
+        });
+      }
+      const existingMembership = existing.memberships[0];
+      if (existingMembership) {
+        await tx.membership.update({
+          where: { id: existingMembership.id },
+          data: { role: "COACH" },
+        });
+      } else {
+        await tx.membership.create({
+          data: { userId: existing.id, tenantId, role: "COACH" },
+        });
+      }
+    });
+
+    return {
+      success: true,
+      summary: `Coach existente "${existing.name || normalizedEmail}" vinculado al studio.`,
+    };
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      email: normalizedEmail,
+      name: input.name || null,
+    },
+  });
+
+  await prisma.$transaction([
+    prisma.coachProfile.create({
+      data: { userId: user.id, tenantId },
+    }),
+    prisma.membership.create({
+      data: { userId: user.id, tenantId, role: "COACH" },
+    }),
+  ]);
+
+  return {
+    success: true,
+    summary: `Coach "${input.name || normalizedEmail}" creado e invitado.`,
+  };
+}
+
+async function createClient(
+  input: { email: string; name?: string; phone?: string },
+  tenantId: string,
+) {
+  const normalizedEmail = input.email.toLowerCase().trim();
+
+  const existing = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    include: { memberships: { where: { tenantId } } },
+  });
+
+  if (existing?.memberships?.length) {
+    return { error: `El usuario "${normalizedEmail}" ya es miembro de este studio` };
+  }
+
+  if (existing) {
+    await prisma.membership.create({
+      data: { userId: existing.id, tenantId, role: "CLIENT" },
+    });
+    return {
+      success: true,
+      summary: `Usuario existente "${existing.name || normalizedEmail}" agregado como cliente.`,
+    };
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      email: normalizedEmail,
+      name: input.name || null,
+      phone: input.phone || null,
+    },
+  });
+
+  await prisma.membership.create({
+    data: { userId: user.id, tenantId, role: "CLIENT" },
+  });
+
+  return {
+    success: true,
+    summary: `Cliente "${input.name || normalizedEmail}" registrado exitosamente.`,
+  };
+}
+
+async function createClassType(
+  input: {
+    name: string;
+    duration: number;
+    color: string;
+    description?: string;
+    level?: string;
+    icon?: string;
+    tags?: string[];
+  },
+  tenantId: string,
+) {
+  const validLevels = ["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL"] as const;
+  const level = validLevels.includes(input.level as (typeof validLevels)[number])
+    ? (input.level as (typeof validLevels)[number])
+    : "ALL";
+
+  const classType = await prisma.classType.create({
+    data: {
+      name: input.name,
+      duration: input.duration,
+      color: input.color,
+      description: input.description || null,
+      level,
+      icon: input.icon || null,
+      tags: input.tags || [],
+      tenantId,
+    },
+  });
+
+  return {
+    success: true,
+    class_type_id: classType.id,
+    summary: `Disciplina "${classType.name}" creada (${classType.duration} min, nivel: ${classType.level}).`,
+  };
+}
+
+async function createPost(
+  input: {
+    title: string;
+    body: string;
+    category?: string;
+    send_push?: boolean;
+    is_pinned?: boolean;
+  },
+  tenantId: string,
+  adminUserId?: string,
+) {
+  if (!adminUserId) {
+    const admin = await prisma.membership.findFirst({
+      where: { tenantId, role: "ADMIN" },
+      select: { userId: true },
+    });
+    adminUserId = admin?.userId;
+  }
+
+  if (!adminUserId) return { error: "No se encontró un admin para publicar" };
+
+  const validCategories = ["announcement", "challenge", "photo", "motivation"];
+  const category = validCategories.includes(input.category || "")
+    ? input.category!
+    : "announcement";
+
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { name: true, appIconUrl: true },
+  });
+
+  if (input.is_pinned) {
+    await prisma.feedEvent.updateMany({
+      where: { tenantId, isPinned: true },
+      data: { isPinned: false },
+    });
+  }
+
+  const event = await prisma.feedEvent.create({
+    data: {
+      userId: adminUserId,
+      tenantId,
+      eventType: "STUDIO_POST",
+      visibility: "STUDIO_WIDE",
+      isPinned: !!input.is_pinned,
+      payload: {
+        isStudioPost: true,
+        title: input.title || null,
+        body: input.body || null,
+        category,
+        sentPush: !!input.send_push,
+        postAsAdmin: false,
+        authorName: tenant?.name ?? "Studio",
+        authorImage: tenant?.appIconUrl ?? null,
+      },
+    },
+  });
+
+  if (input.send_push) {
+    const subs = await prisma.pushSubscription.findMany({
+      where: { tenantId },
+      select: { userId: true },
+      distinct: ["userId"],
+    });
+    for (const sub of subs) {
+      sendPushToUser(sub.userId, {
+        title: input.title || "Nuevo post del studio",
+        body: input.body.length > 120 ? input.body.slice(0, 117) + "..." : input.body,
+        url: "/my",
+      }, tenantId).catch(() => {});
+    }
+  }
+
+  return {
+    success: true,
+    post_id: event.id,
+    summary: `Post "${input.title}" publicado en el feed${input.is_pinned ? " (fijado)" : ""}${input.send_push ? " con push" : ""}.`,
   };
 }
