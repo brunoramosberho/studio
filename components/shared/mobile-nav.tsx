@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -81,6 +81,30 @@ export function MobileNav() {
 
   const { Icon: ReservaIcon, color: reservaColor } = useRotatingDisciplineIcon(disciplines);
 
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    let prevHeight = vv.height;
+
+    const onResize = () => {
+      const grew = vv.height > prevHeight;
+      prevHeight = vv.height;
+      if (!grew || !navRef.current) return;
+
+      // Keyboard just closed — force Safari to recalculate fixed positioning
+      // by nudging the scroll position, which resets the layout viewport.
+      requestAnimationFrame(() => {
+        window.scrollBy(0, 1);
+        requestAnimationFrame(() => window.scrollBy(0, -1));
+      });
+    };
+
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
+
   if (!session?.user) return null;
   if (role === "ADMIN") return null;
 
@@ -94,7 +118,7 @@ export function MobileNav() {
   const scheduleActive = pathname.startsWith("/schedule");
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 overflow-visible border-t border-border/50 bg-background/95 backdrop-blur-xl safe-bottom md:hidden">
+    <nav ref={navRef} className="fixed bottom-0 left-0 right-0 z-50 overflow-visible border-t border-border/50 bg-background/95 backdrop-blur-xl will-change-transform safe-bottom md:hidden">
       <div className="flex items-end justify-between gap-1 px-1 pb-1.5 pt-3">
         <div className="flex min-w-0 flex-1 justify-around">
           {leftTabs.map((tab) => {
