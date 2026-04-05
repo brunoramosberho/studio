@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
             iteration++;
 
             const response = await anthropic.messages.create({
-              model: "claude-sonnet-4-5-20250514",
+              model: "claude-sonnet-4-20250514",
               max_tokens: 4096,
               system: [
                 {
@@ -192,12 +192,15 @@ export async function POST(request: NextRequest) {
           }
         } catch (err) {
           console.error("AI chat stream error:", err);
+          const rawMsg = err instanceof Error ? err.message : "Internal error";
+          const friendlyMsg = rawMsg.includes("model:")
+            ? "Error de configuración del modelo AI. Contacta al administrador."
+            : rawMsg.length > 200
+              ? "Ocurrió un error procesando tu solicitud. Intenta de nuevo."
+              : rawMsg;
           controller.enqueue(
             new TextEncoder().encode(
-              encodeSSE({
-                type: "error",
-                message: err instanceof Error ? err.message : "Internal error",
-              }),
+              encodeSSE({ type: "error", message: friendlyMsg }),
             ),
           );
         } finally {
