@@ -58,13 +58,14 @@ export async function POST(
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await uploadMedia(buffer, file.name, file.type);
 
-    if (!result) {
-      return NextResponse.json(
-        { error: "Storage not configured. Set SUPABASE_SERVICE_ROLE_KEY." },
-        { status: 503 },
-      );
+    let result: { url: string; thumbnailUrl: string | null };
+    try {
+      result = await uploadMedia(buffer, file.name, file.type);
+    } catch (uploadErr) {
+      const msg = uploadErr instanceof Error ? uploadErr.message : "Unknown storage error";
+      console.error("Upload media error:", msg);
+      return NextResponse.json({ error: msg }, { status: 503 });
     }
 
     const photo = await prisma.photo.create({
@@ -80,8 +81,9 @@ export async function POST(
 
     return NextResponse.json(photo, { status: 201 });
   } catch (error) {
-    console.error("POST photos error:", error);
-    return NextResponse.json({ error: "Failed to upload photo" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    console.error("POST photos error:", msg);
+    return NextResponse.json({ error: `Failed to upload photo: ${msg}` }, { status: 500 });
   }
 }
 

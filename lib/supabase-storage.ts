@@ -25,29 +25,34 @@ async function uploadLocal(
   return { url: `/uploads/${safeName}`, thumbnailUrl: null };
 }
 
+const isVercel = !!process.env.VERCEL;
+
 export async function uploadMedia(
   file: Buffer,
   filename: string,
   contentType: string,
-): Promise<{ url: string; thumbnailUrl: string | null } | null> {
+): Promise<{ url: string; thumbnailUrl: string | null }> {
   const supabase = getClient();
 
   if (!supabase) {
+    if (isVercel) {
+      throw new Error("Storage not configured: SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL missing");
+    }
     return uploadLocal(file, filename);
   }
 
-  const { data: buckets } = await supabase.storage.listBuckets();
-  if (!buckets?.find((b) => b.name === BUCKET)) {
-    await supabase.storage.createBucket(BUCKET, { public: true });
-  }
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const uploadPath = `uploads/${Date.now()}-${safeName}`;
 
-  const uploadPath = `uploads/${Date.now()}-${filename}`;
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(uploadPath, file, { contentType, upsert: false });
 
   if (error) {
-    console.error("Storage upload error:", error);
+    console.error("Supabase storage upload error:", error.message, error);
+    if (isVercel) {
+      throw new Error(`Storage upload failed: ${error.message}`);
+    }
     return uploadLocal(file, filename);
   }
 
