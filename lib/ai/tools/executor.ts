@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
+import type { BookingStatus } from "@prisma/client";
+
+const CONFIRMED_OR_ATTENDED: BookingStatus[] = ["CONFIRMED", "ATTENDED"];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function executeTool(name: string, input: any, tenantId: string): Promise<unknown> {
@@ -57,7 +60,7 @@ async function getStudioOverview(
   const days = periodToDays(input.period);
   const since = daysAgo(days);
   const prevSince = daysAgo(days * 2);
-  const confirmedOrAttended = { in: ["CONFIRMED", "ATTENDED"] as const };
+  const confirmedOrAttended = { in: CONFIRMED_OR_ATTENDED };
 
   const [
     classes,
@@ -141,7 +144,7 @@ async function getClassStats(
   tenantId: string,
 ) {
   const since = daysAgo(input.period_days);
-  const confirmedOrAttended = { in: ["CONFIRMED", "ATTENDED"] as const };
+  const confirmedOrAttended = { in: CONFIRMED_OR_ATTENDED };
 
   const where: Record<string, unknown> = {
     tenantId,
@@ -228,7 +231,7 @@ async function getCoachPerformance(
   tenantId: string,
 ) {
   const since = daysAgo(input.period_days);
-  const confirmedOrAttended = { in: ["CONFIRMED", "ATTENDED"] as const };
+  const confirmedOrAttended = { in: CONFIRMED_OR_ATTENDED };
 
   const where: Record<string, unknown> = { tenantId };
   if (input.coach_id) where.id = input.coach_id;
@@ -273,7 +276,7 @@ async function getRetentionMetrics(
   input: { at_risk_days: number; include_cohorts?: boolean },
   tenantId: string,
 ) {
-  const confirmedOrAttended = { in: ["CONFIRMED", "ATTENDED"] as const };
+  const confirmedOrAttended = { in: CONFIRMED_OR_ATTENDED };
   const atRiskDate = daysAgo(input.at_risk_days);
 
   const memberships = await prisma.membership.findMany({
@@ -353,7 +356,7 @@ async function getMemberActivity(
   tenantId: string,
 ) {
   const since = daysAgo(input.period_days);
-  const confirmedOrAttended = { in: ["CONFIRMED", "ATTENDED"] as const };
+  const confirmedOrAttended = { in: CONFIRMED_OR_ATTENDED };
 
   if (input.member_id || input.member_name) {
     const userWhere: Record<string, unknown> = {};
@@ -425,7 +428,7 @@ async function getMemberActivity(
   }
 
   // Segment-based query
-  const memberFilter: Record<string, unknown> = { tenantId, role: "CLIENT" as const };
+  const memberFilter: Record<string, unknown> = { tenantId, role: "CLIENT" };
   const memberships = await prisma.membership.findMany({
     where: memberFilter,
     include: {
@@ -603,7 +606,7 @@ async function getSchedule(
       room: { select: { name: true, maxCapacity: true, studio: { select: { name: true } } } },
       _count: {
         select: {
-          bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
+          bookings: { where: { status: { in: CONFIRMED_OR_ATTENDED } } },
           waitlist: true,
         },
       },
@@ -713,7 +716,7 @@ async function sendAnnouncement(
   input: { title: string; message: string; segment: string },
   tenantId: string,
 ) {
-  const confirmedOrAttended = { in: ["CONFIRMED", "ATTENDED"] as const };
+  const confirmedOrAttended = { in: CONFIRMED_OR_ATTENDED };
 
   let userIds: string[] = [];
   switch (input.segment) {
