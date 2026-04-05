@@ -122,7 +122,7 @@ export async function GET(
   const base = {
     id: user.id,
     name: user.name,
-    image: user.image,
+    image: coachProfile?.photoUrl || user.image,
     role: userRole,
     memberSince: user.createdAt,
     friendCount,

@@ -37,14 +37,19 @@ export async function POST(request: NextRequest) {
     const { tenant } = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { name, address, cityId } = body;
+    const { name, address, cityId, latitude, longitude } = body;
 
     if (!name || !cityId) {
       return NextResponse.json({ error: "Name and city are required" }, { status: 400 });
     }
 
     const studio = await prisma.studio.create({
-      data: { name, address: address || null, cityId, tenantId: tenant.id },
+      data: {
+        name, address: address || null,
+        city: { connect: { id: cityId } },
+        tenant: { connect: { id: tenant.id } },
+        latitude: latitude ?? null, longitude: longitude ?? null,
+      },
       include: {
         city: { include: { country: true } },
         rooms: {

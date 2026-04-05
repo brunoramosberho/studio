@@ -24,7 +24,7 @@ export async function POST(
       where: { id, tenantId: ctx.tenant.id },
       include: {
         classType: true,
-        coach: { include: { user: { select: { name: true } } } },
+        coach: { include: { user: { select: { name: true, image: true } } } },
         bookings: {
           where: { status: { not: "CANCELLED" } },
           include: { user: { select: { id: true, name: true, image: true } } },
@@ -104,6 +104,7 @@ export async function POST(
             classTypeColor: cls.classType.color,
             classTypeIcon: cls.classType.icon,
             coachName: cls.coach.user.name,
+            coachImage: cls.coach.photoUrl || cls.coach.user.image,
             coachUserId: cls.coach.userId,
             date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),
             time: format(cls.startsAt, "h:mm a"),

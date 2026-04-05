@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 
-/** Overwrites class discipline fields on feed payloads from current ClassType (names can change after the event was stored). */
+/** Overwrites class discipline + coach fields on feed payloads from current DB state. */
 export async function enrichPayloadsWithCurrentClassType(
   db: PrismaClient,
   payloads: Array<Record<string, unknown> | null | undefined>,
@@ -29,17 +29,25 @@ export async function enrichPayloadsWithCurrentClassType(
           level: true,
         },
       },
+      coach: {
+        select: {
+          userId: true,
+          photoUrl: true,
+          user: { select: { name: true, image: true } },
+        },
+      },
     },
   });
 
-  const map = new Map(rows.map((r) => [r.id, r.classType]));
+  const map = new Map(rows.map((r) => [r.id, r]));
 
   for (const payload of payloads) {
     if (!payload) continue;
     const classId = payload.classId;
     if (typeof classId !== "string") continue;
-    const ct = map.get(classId);
-    if (!ct) continue;
+    const row = map.get(classId);
+    if (!row) continue;
+    const ct = row.classType;
     payload.className = ct.name;
     payload.classTypeId = ct.id;
     payload.classTypeColor = ct.color;
@@ -49,5 +57,8 @@ export async function enrichPayloadsWithCurrentClassType(
     payload.classTypeDescription = ct.description;
     payload.classTypeDuration = ct.duration;
     payload.classTypeLevel = ct.level;
+    payload.coachName = row.coach.user.name;
+    payload.coachUserId = row.coach.userId;
+    payload.coachImage = row.coach.photoUrl || row.coach.user.image;
   }
 }

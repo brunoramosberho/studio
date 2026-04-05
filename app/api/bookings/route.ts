@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       include: {
         classType: true,
         room: { include: { studio: { include: { city: { select: { timezone: true } } } } } },
-        coach: { include: { user: { select: { name: true } } } },
+        coach: { include: { user: { select: { name: true, image: true } } } },
         _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
       },
     });
@@ -296,6 +296,7 @@ export async function POST(request: NextRequest) {
                 classTypeColor: classData.classType.color,
                 classTypeIcon: classData.classType.icon,
                 coachName: classData.coach.user.name,
+                coachImage: classData.coach.photoUrl || classData.coach.user.image,
                 coachUserId: classData.coach.userId,
                 date: classData.startsAt.toISOString(),
                 duration: classData.classType.duration,

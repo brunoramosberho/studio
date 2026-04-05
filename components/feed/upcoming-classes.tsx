@@ -121,9 +121,9 @@ export function UpcomingClasses() {
               <Link href={`/class/${b.classId}`} className="block">
                 <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
                   <div className="flex items-center gap-3">
-                    {b.class.coach.user.image ? (
+                    {(b.class.coach.photoUrl || b.class.coach.user.image) ? (
                       <img
-                        src={b.class.coach.user.image}
+                        src={(b.class.coach.photoUrl || b.class.coach.user.image)!}
                         alt={b.class.coach.user.name || "Coach"}
                         className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
                       />

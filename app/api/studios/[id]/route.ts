@@ -11,14 +11,16 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, address, cityId } = body;
+    const { name, address, cityId, latitude, longitude } = body;
 
     const studio = await prisma.studio.update({
       where: { id, tenantId: tenant.id },
       data: {
         ...(name !== undefined && { name }),
         ...(address !== undefined && { address: address || null }),
-        ...(cityId !== undefined && { cityId }),
+        ...(cityId !== undefined && { city: { connect: { id: cityId } } }),
+        ...(latitude !== undefined && { latitude: latitude ?? null }),
+        ...(longitude !== undefined && { longitude: longitude ?? null }),
       },
       include: {
         city: { include: { country: true } },

@@ -464,6 +464,8 @@ model Studio {
   id        String  @id @default(cuid())
   name      String
   address   String?
+  latitude  Float?
+  longitude Float?
   cityId    String
   city      City    @relation(fields: [cityId], references: [id])
   tenantId  String

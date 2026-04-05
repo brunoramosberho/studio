@@ -162,6 +162,9 @@ export async function GET(request: NextRequest) {
         duration: number;
         level: string;
         classTypeId: string;
+        coachName: string | null;
+        coachUserId: string;
+        coachImage: string | null;
       }
     >();
     if (allClassIds.size > 0) {
@@ -183,6 +186,7 @@ export async function GET(request: NextRequest) {
             },
           },
           room: { select: { studio: { select: { name: true, cityId: true } } } },
+          coach: { select: { userId: true, photoUrl: true, user: { select: { name: true, image: true } } } },
         },
       });
       for (const c of classRooms) {
@@ -200,6 +204,9 @@ export async function GET(request: NextRequest) {
           description: c.classType.description,
           duration: c.classType.duration,
           level: c.classType.level,
+          coachName: c.coach.user.name,
+          coachUserId: c.coach.userId,
+          coachImage: c.coach.photoUrl || c.coach.user.image,
         });
       }
     }
@@ -234,6 +241,9 @@ export async function GET(request: NextRequest) {
           payload.classTypeDuration = ct.duration;
           payload.classTypeLevel = ct.level;
           payload.classTypeId = ct.classTypeId;
+          payload.coachName = ct.coachName;
+          payload.coachUserId = ct.coachUserId;
+          payload.coachImage = ct.coachImage;
         }
         if (event.eventType === "CLASS_COMPLETED") {
           payload.hasPlaylist = playlistCounts.has(classId);

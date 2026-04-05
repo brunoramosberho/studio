@@ -77,9 +77,9 @@ export function ClassCard({
           {/* Coach */}
           <div className="mt-2 flex items-center gap-2">
             <Avatar className="h-6 w-6">
-              {classData.coach.user.image && (
+              {(classData.coach.photoUrl || classData.coach.user.image) && (
                 <AvatarImage
-                  src={classData.coach.user.image}
+                  src={(classData.coach.photoUrl || classData.coach.user.image)!}
                   alt={coachName}
                 />
               )}

@@ -222,7 +222,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
     <div>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3">
-        <TappableAvatar user={event.user} />
+        <TappableAvatar user={{ ...event.user, image: (p.coachImage as string) || event.user.image }} />
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-1.5 text-[14px] leading-snug">
             <DisciplinePill

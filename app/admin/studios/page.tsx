@@ -40,6 +40,7 @@ import {
   createEmptyLayout,
   type RoomLayout,
 } from "@/components/admin/room-layout-editor";
+import { PlacesAutocomplete, type PlaceResult } from "@/components/admin/places-autocomplete";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +62,8 @@ interface StudioData {
   id: string;
   name: string;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   cityId: string;
   city: City;
   rooms: RoomData[];
@@ -96,7 +99,10 @@ export default function AdminStudiosPage() {
 
   const [studioDialogOpen, setStudioDialogOpen] = useState(false);
   const [editingStudio, setEditingStudio] = useState<StudioData | null>(null);
-  const [studioForm, setStudioForm] = useState({ name: "", address: "", cityId: "" });
+  const [studioForm, setStudioForm] = useState({
+    name: "", address: "", cityId: "",
+    latitude: null as number | null, longitude: null as number | null,
+  });
 
   const [cityDialogOpen, setCityDialogOpen] = useState(false);
   const [cityForm, setCityForm] = useState({ countryId: "", name: "" });
@@ -180,7 +186,7 @@ export default function AdminStudiosPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setStudioDialogOpen(false);
-      setStudioForm({ name: "", address: "", cityId: "" });
+      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
       toast.success("Estudio creado");
     },
     onError: (err: Error) => toast.error(err.message || "No se pudo crear el estudio"),
@@ -204,7 +210,7 @@ export default function AdminStudiosPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setStudioDialogOpen(false);
       setEditingStudio(null);
-      setStudioForm({ name: "", address: "", cityId: "" });
+      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
       toast.success("Estudio actualizado");
     },
     onError: (err: Error) => toast.error(err.message || "No se pudo actualizar el estudio"),
@@ -322,13 +328,16 @@ export default function AdminStudiosPage() {
 
   function openCreateStudio() {
     setEditingStudio(null);
-    setStudioForm({ name: "", address: "", cityId: "" });
+    setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
     setStudioDialogOpen(true);
   }
 
   function openEditStudio(studio: StudioData) {
     setEditingStudio(studio);
-    setStudioForm({ name: studio.name, address: studio.address ?? "", cityId: studio.cityId });
+    setStudioForm({
+      name: studio.name, address: studio.address ?? "", cityId: studio.cityId,
+      latitude: studio.latitude ?? null, longitude: studio.longitude ?? null,
+    });
     setStudioDialogOpen(true);
   }
 
@@ -630,11 +639,27 @@ export default function AdminStudiosPage() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted">Dirección (opcional)</label>
-              <Input
-                placeholder="Ej: Av. Presidente Masaryk 123"
+              <PlacesAutocomplete
                 value={studioForm.address}
-                onChange={(e) => setStudioForm((f) => ({ ...f, address: e.target.value }))}
+                onChange={(val) => setStudioForm((f) => ({ ...f, address: val }))}
+                onSelect={(r: PlaceResult) =>
+                  setStudioForm((f) => ({
+                    ...f,
+                    address: r.address,
+                    latitude: r.latitude,
+                    longitude: r.longitude,
+                  }))
+                }
+                onClear={() =>
+                  setStudioForm((f) => ({ ...f, address: "", latitude: null, longitude: null }))
+                }
+                placeholder="Buscar dirección..."
               />
+              {studioForm.latitude != null && (
+                <p className="text-[10px] text-muted/60">
+                  {studioForm.latitude.toFixed(5)}, {studioForm.longitude?.toFixed(5)}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3 pt-2">

@@ -284,9 +284,9 @@ export default function BookingsPage() {
                   >
                     <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm">
                       <div className="flex items-center gap-3">
-                        {booking.class.coach.user.image ? (
+                        {(booking.class.coach.photoUrl || booking.class.coach.user.image) ? (
                           <img
-                            src={booking.class.coach.user.image}
+                            src={(booking.class.coach.photoUrl || booking.class.coach.user.image)}
                             alt={booking.class.coach.user.name || "Coach"}
                             className="h-10 w-10 flex-shrink-0 rounded-full object-cover grayscale"
                           />
@@ -511,9 +511,9 @@ function BookingCard({
       >
         <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
           <div className="flex items-center gap-3">
-            {booking.class.coach.user.image ? (
+            {(booking.class.coach.photoUrl || booking.class.coach.user.image) ? (
               <img
-                src={booking.class.coach.user.image}
+                src={(booking.class.coach.photoUrl || booking.class.coach.user.image)}
                 alt={booking.class.coach.user.name || "Coach"}
                 className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
               />
@@ -621,9 +621,9 @@ function WaitlistCard({
           />
 
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            {entry.class.coach.user.image ? (
+            {(entry.class.coach.photoUrl || entry.class.coach.user.image) ? (
               <img
-                src={entry.class.coach.user.image}
+                src={entry.class.coach.photoUrl || entry.class.coach.user.image!}
                 alt={entry.class.coach.user.name || "Coach"}
                 className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
               />

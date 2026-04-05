@@ -45,6 +45,7 @@ import { CommentsSheet } from "@/components/feed/comments-sheet";
 import { PhotoUpload } from "@/components/feed/photo-upload";
 import { PeopleListSheet, type PersonItem } from "@/components/feed/people-list-sheet";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
+import { StudioLocationMap } from "@/components/shared/studio-location-map";
 
 interface ClassData {
   id: string;
@@ -68,7 +69,7 @@ interface ClassData {
     name: string;
     maxCapacity: number;
     layout: RoomLayoutData | null;
-    studio: { id: string; name: string; address: string | null };
+    studio: { id: string; name: string; address: string | null; latitude: number | null; longitude: number | null };
   };
   coach: {
     id: string;
@@ -1068,6 +1069,18 @@ export default function ClassDetailPage() {
               </p>
             </div>
           </>
+        )}
+
+        {/* Studio location map -- at the bottom as secondary info */}
+        {cls.room?.studio?.latitude != null && cls.room.studio.longitude != null && cls.room.studio.address && (
+          <div className="mt-10">
+            <StudioLocationMap
+              name={cls.room.studio.name}
+              address={cls.room.studio.address}
+              latitude={cls.room.studio.latitude}
+              longitude={cls.room.studio.longitude}
+            />
+          </div>
         )}
       </div>
 
