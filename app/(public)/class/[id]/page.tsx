@@ -80,7 +80,7 @@ interface ClassData {
     user: { name: string | null; image: string | null };
   };
   bookings: { id: string; userId: string | null; spotNumber: number | null; status: string }[];
-  _count: { bookings: number; waitlist: number; songRequests?: number };
+  _count: { bookings: number; blockedSpots?: number; waitlist: number; songRequests?: number };
   spotsLeft: number;
   spotMap: Record<number, SpotInfo>;
   songRequestsEnabled?: boolean;
@@ -416,7 +416,8 @@ export default function ClassDetailPage() {
   const waitlistCount = cls._count?.waitlist ?? 0;
   const hasLayout = cls.room.layout && cls.room.layout.spots?.length > 0;
   const totalSpots = cls.room.maxCapacity;
-  const bookedCount = cls._count.bookings;
+  const blockedCount = cls._count.blockedSpots ?? 0;
+  const bookedCount = cls._count.bookings + blockedCount;
 
   return (
     <PageTransition>

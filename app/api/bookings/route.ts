@@ -141,7 +141,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const spotsLeft = classData.room.maxCapacity - classData._count.bookings;
+    const blockedCount = await prisma.blockedSpot.count({ where: { classId } });
+    const spotsLeft = classData.room.maxCapacity - classData._count.bookings - blockedCount;
     if (spotsLeft <= 0) {
       return NextResponse.json(
         { error: "Class is full. Consider joining the waitlist.", full: true },
@@ -156,6 +157,17 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
+
+      const spotBlocked = await prisma.blockedSpot.findFirst({
+        where: { classId, spotNumber },
+      });
+      if (spotBlocked) {
+        return NextResponse.json(
+          { error: "Ese lugar está bloqueado. Selecciona otro." },
+          { status: 409 },
+        );
+      }
+
       const spotTaken = await prisma.booking.findFirst({
         where: { classId, tenantId: tenant.id, spotNumber, status: "CONFIRMED" },
       });

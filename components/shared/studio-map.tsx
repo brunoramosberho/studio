@@ -10,11 +10,11 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { User } from "lucide-react";
+import { User, Lock } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
 
 export interface SpotInfo {
-  status: "self" | "friend" | "occupied";
+  status: "self" | "friend" | "occupied" | "blocked";
   userName?: string | null;
   userImage?: string | null;
 }
@@ -35,6 +35,8 @@ interface StudioMapProps {
   disabled?: boolean;
   layout?: RoomLayoutData | null;
   coachName?: string | null;
+  adminMode?: boolean;
+  onToggleBlock?: (spot: number) => void;
 }
 
 /* ─── Zoom / Pan container ─── */
@@ -264,6 +266,8 @@ export function StudioMap({
   disabled,
   layout,
   coachName,
+  adminMode,
+  onToggleBlock,
 }: StudioMapProps) {
   const [tapped, setTapped] = useState<number | null>(null);
   const [coachTapped, setCoachTapped] = useState(false);
@@ -296,11 +300,12 @@ export function StudioMap({
 
   function renderSpotButton(num: number, key: string) {
     const info = spotMap[num];
-    const isOccupied = !!info;
+    const isBlocked = info?.status === "blocked";
+    const isOccupied = !!info && !isBlocked;
     const isSelf = info?.status === "self";
     const isFriend = info?.status === "friend";
     const isSelected = selectedSpot === num;
-    const isAvailable = !isOccupied;
+    const isAvailable = !isOccupied && !isBlocked;
     const showTooltip = tapped === num && isFriend;
 
     const initials = info?.userName
@@ -311,12 +316,16 @@ export function StudioMap({
       <div key={key} className="relative flex flex-col items-center">
         <button
           onClick={() => {
+            if (adminMode && onToggleBlock) {
+              onToggleBlock(num);
+              return;
+            }
             if (isAvailable && !disabled) onSelectSpot(num);
             if (isFriend) setTapped(tapped === num ? null : num);
           }}
           onMouseEnter={() => isFriend && setTapped(num)}
           onMouseLeave={() => isFriend && setTapped(null)}
-          disabled={(!isFriend && isOccupied) || (disabled && isAvailable)}
+          disabled={!adminMode && ((!isFriend && (isOccupied || isBlocked)) || (disabled && isAvailable))}
           className={cn(
             "relative flex h-[38px] w-[38px] items-center justify-center rounded-full transition-all overflow-hidden",
             isAvailable && !isSelected &&
@@ -327,12 +336,20 @@ export function StudioMap({
               "bg-accent text-white ring-2 ring-accent/30",
             isFriend &&
               "ring-0 border-0",
+            isBlocked &&
+              "bg-red-100 text-red-400 border border-red-300",
+            adminMode && isBlocked &&
+              "cursor-pointer hover:bg-red-200",
+            adminMode && isAvailable &&
+              "cursor-pointer hover:border-red-400 hover:bg-red-50",
             !isSelf && !isFriend && isOccupied &&
               "bg-neutral-100 text-neutral-300",
-            disabled && isAvailable && "opacity-40 pointer-events-none",
+            !adminMode && disabled && isAvailable && "opacity-40 pointer-events-none",
           )}
         >
-          {isFriend ? (
+          {isBlocked ? (
+            <Lock className="h-4 w-4" />
+          ) : isFriend ? (
             <Avatar className="h-full w-full">
               {info.userImage && <AvatarImage src={info.userImage} className="object-cover" />}
               <AvatarFallback className="text-[11px] font-semibold bg-blue-100 text-blue-600">

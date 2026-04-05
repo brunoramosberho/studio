@@ -15,7 +15,9 @@ import {
   MapPin,
   ChevronDown,
   ChevronUp,
+  Eye,
 } from "lucide-react";
+import Link from "next/link";
 import { format, isPast } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -329,6 +331,12 @@ export default function AdminClassesPage() {
                           </TableCell>
                           <TableCell className="py-3 text-right">
                             <div className="inline-flex items-center justify-end gap-2">
+                              <Link href={`/admin/class/${cls.id}`}>
+                                <Button variant="ghost" size="sm" className="gap-1">
+                                  <Eye className="h-3.5 w-3.5" />
+                                  Ver
+                                </Button>
+                              </Link>
                               {!isCancelled && (
                                 <Button variant="ghost" size="sm" className="gap-1" onClick={() => openEditDialog(cls)}>
                                   <Pencil className="h-3.5 w-3.5" />
@@ -441,6 +449,11 @@ export default function AdminClassesPage() {
                           {enrolled}/{maxCap}
                         </span>
                       </div>
+                      <Link href={`/admin/class/${cls.id}`}>
+                        <Button variant="ghost" size="sm" className="gap-1">
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
                       {!isCancelled && (
                         <Button
                           variant="ghost"

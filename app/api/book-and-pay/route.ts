@@ -54,7 +54,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Esta clase fue cancelada" }, { status: 400 });
     }
 
-    const spotsLeft = classData.room.maxCapacity - classData._count.bookings;
+    const blockedCount = await prisma.blockedSpot.count({ where: { classId } });
+    const spotsLeft = classData.room.maxCapacity - classData._count.bookings - blockedCount;
     if (spotsLeft <= 0) {
       return NextResponse.json({ error: "Clase llena", full: true }, { status: 409 });
     }
@@ -63,6 +64,17 @@ export async function POST(request: NextRequest) {
       if (spotNumber < 1 || spotNumber > classData.room.maxCapacity) {
         return NextResponse.json({ error: "Número de lugar inválido" }, { status: 400 });
       }
+
+      const spotBlocked = await prisma.blockedSpot.findFirst({
+        where: { classId, spotNumber },
+      });
+      if (spotBlocked) {
+        return NextResponse.json(
+          { error: "Ese lugar está bloqueado. Selecciona otro." },
+          { status: 409 },
+        );
+      }
+
       const spotTaken = await prisma.booking.findFirst({
         where: { classId, tenantId: tenant.id, spotNumber, status: "CONFIRMED" },
       });

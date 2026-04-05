@@ -58,6 +58,7 @@ model Tenant {
   memberProgress     MemberProgress[]
   memberRewards      MemberReward[]
   memberAchievements MemberAchievement[]
+  blockedSpots      BlockedSpot[]
   friendships       Friendship[]
   pushSubscriptions PushSubscription[]
   productCategories ProductCategory[]
@@ -191,6 +192,7 @@ model User {
   friendshipsReceived  Friendship[]     @relation("FriendshipAddressee")
   favoriteSongs        FavoriteSong[]   @relation("UserFavoriteSongs")
   songRequests         ClassSongRequest[] @relation("UserSongRequests")
+  blockedSpots         BlockedSpot[]      @relation("UserBlockedSpots")
   pushSubscriptions    PushSubscription[] @relation("UserPushSubscriptions")
 
   @@index([countryId])
@@ -280,10 +282,12 @@ model Class {
   tag         String?
   bookings             Booking[]
   waitlist             Waitlist[]
+  blockedSpots         BlockedSpot[]
   songRequests         ClassSongRequest[]
   songRequestsEnabled  Boolean   @default(true)
   songRequestCriteria  String[]  @default(["ALL"])
   playlistTracks       ClassPlaylistTrack[]
+  blockingNotes        String?
 
   @@index([startsAt])
   @@index([classTypeId])
@@ -368,6 +372,22 @@ enum BookingStatus {
   CANCELLED
   ATTENDED
   NO_SHOW
+}
+
+model BlockedSpot {
+  id          String   @id @default(cuid())
+  classId     String
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  spotNumber  Int?
+  blockedById String
+  blockedBy   User     @relation("UserBlockedSpots", fields: [blockedById], references: [id])
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([classId, spotNumber])
+  @@index([classId])
+  @@index([tenantId])
 }
 
 model Waitlist {

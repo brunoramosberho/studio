@@ -45,9 +45,13 @@ export async function GET(
             },
           },
         },
+        blockedSpots: {
+          select: { id: true, spotNumber: true, createdAt: true },
+        },
         _count: {
           select: {
             bookings: { where: { status: "CONFIRMED" } },
+            blockedSpots: true,
             waitlist: true,
             songRequests: true,
           },
@@ -59,12 +63,12 @@ export async function GET(
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    const spotsLeft = classData.room.maxCapacity - classData._count.bookings;
+    const blockedCount = classData._count.blockedSpots;
+    const spotsLeft = classData.room.maxCapacity - classData._count.bookings - blockedCount;
 
     const isCoachOrAdmin =
       authCtx?.membership?.role === "COACH" || authCtx?.membership?.role === "ADMIN";
 
-    // Build friend set for the current user (used for spot map)
     let friendIds = new Set<string>();
     if (currentUserId) {
       const friendships = await prisma.friendship.findMany({
@@ -83,12 +87,18 @@ export async function GET(
       }
     }
 
-    // Build spot map: spotNumber -> { status, friend info }
     const spotMap: Record<number, {
-      status: "self" | "friend" | "occupied";
+      status: "self" | "friend" | "occupied" | "blocked";
       userName?: string | null;
       userImage?: string | null;
     }> = {};
+
+    for (const bs of classData.blockedSpots) {
+      if (bs.spotNumber != null) {
+        spotMap[bs.spotNumber] = { status: isCoachOrAdmin ? "blocked" : "occupied" };
+      }
+    }
+
     for (const b of classData.bookings) {
       if (b.spotNumber == null) continue;
       if (b.userId === currentUserId) {
@@ -239,7 +249,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag, songRequestsEnabled, songRequestCriteria } = body;
+    const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag, songRequestsEnabled, songRequestCriteria, blockingNotes } = body;
 
     const updated = await prisma.class.update({
       where: { id },
@@ -254,6 +264,7 @@ export async function PUT(
         ...(tag !== undefined && { tag: tag || null }),
         ...(songRequestsEnabled !== undefined && { songRequestsEnabled }),
         ...(songRequestCriteria !== undefined && { songRequestCriteria: Array.isArray(songRequestCriteria) ? songRequestCriteria : [] }),
+        ...(blockingNotes !== undefined && { blockingNotes: blockingNotes || null }),
       },
       include: {
         classType: true,
