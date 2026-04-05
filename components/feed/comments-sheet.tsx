@@ -130,7 +130,7 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
         {open && (
           <>
             <motion.div
-              className="fixed inset-0 -bottom-[50vh] z-[60] bg-white sm:bottom-0 sm:bg-foreground/40 sm:backdrop-blur-sm"
+              className="fixed inset-0 z-[60] bg-foreground/40 backdrop-blur-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -149,12 +149,13 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
                   setOpen(false);
                 }
               }}
-              className="pointer-events-auto flex w-full max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-[var(--shadow-warm-lg)] sm:max-w-md sm:rounded-2xl sm:max-h-[min(620px,85dvh)] sm:shadow-xl"
+              className="pointer-events-auto w-full sm:max-w-md"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 400 }}
             >
+              <div className="flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-[var(--shadow-warm-lg)] sm:rounded-2xl sm:max-h-[min(620px,85dvh)] sm:shadow-xl">
               {/* Drag handle + header */}
               <div
                 className="touch-none cursor-grab active:cursor-grabbing sm:cursor-default"
@@ -286,6 +287,9 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
                   <Send className="h-4 w-4" />
                 </button>
               </div>
+              </div>
+              {/* Extends white background below sheet to cover iOS keyboard gap */}
+              <div className="h-[50vh] -mb-[50vh] bg-white sm:hidden" />
             </motion.div>
             </div>
           </>
