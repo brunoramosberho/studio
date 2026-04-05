@@ -30,6 +30,7 @@ interface MediaItem {
   url: string;
   thumbnailUrl?: string | null;
   mimeType: string;
+  userId?: string;
 }
 
 interface FeedItem {
@@ -261,7 +262,14 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
 
       {/* Media — full width, edge-to-edge */}
       {media.length > 0 && (
-        <MediaGallery media={media} className="rounded-none" />
+        <MediaGallery
+          media={media}
+          className="rounded-none"
+          eventId={event.id}
+          currentUserId={currentUserId}
+          coachUserId={p.coachUserId as string | undefined}
+          onPhotoDeleted={(photoId) => setMedia((prev) => prev.filter((m) => m.id !== photoId))}
+        />
       )}
 
       {/* Actions bar */}

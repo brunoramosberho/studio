@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MediaItem {
@@ -9,11 +9,16 @@ interface MediaItem {
   url: string;
   thumbnailUrl?: string | null;
   mimeType: string;
+  userId?: string;
 }
 
 interface MediaGalleryProps {
   media: MediaItem[];
   className?: string;
+  eventId?: string;
+  currentUserId?: string;
+  coachUserId?: string;
+  onPhotoDeleted?: (photoId: string) => void;
 }
 
 const isVideo = (mime: string) => mime.startsWith("video/");
@@ -57,10 +62,18 @@ function Lightbox({
   media,
   initialIdx,
   onClose,
+  eventId,
+  currentUserId,
+  coachUserId,
+  onDelete,
 }: {
   media: MediaItem[];
   initialIdx: number;
   onClose: () => void;
+  eventId?: string;
+  currentUserId?: string;
+  coachUserId?: string;
+  onDelete?: (photoId: string) => void;
 }) {
   const [idx, setIdx] = useState(initialIdx);
   const [dragX, setDragX] = useState(0);
@@ -175,6 +188,32 @@ function Lightbox({
 
   const handleTransitionEnd = () => setAnimating(false);
 
+  const [deleting, setDeleting] = useState(false);
+
+  const canDelete = (() => {
+    const item = media[idx];
+    if (!item?.userId || !currentUserId || !eventId) return false;
+    return item.userId === currentUserId || coachUserId === currentUserId;
+  })();
+
+  const handleDelete = async () => {
+    const item = media[idx];
+    if (!eventId || !item || deleting) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/feed/${eventId}/photos?photoId=${item.id}`, { method: "DELETE" });
+      if (res.ok) {
+        onDelete?.(item.id);
+        if (media.length <= 1) {
+          onClose();
+        } else if (idx >= media.length - 1) {
+          setIdx(idx - 1);
+        }
+      }
+    } catch { /* ignore */ }
+    setDeleting(false);
+  };
+
   const stripOffset = -(idx * 100);
   const dismissProgress = typeof window !== "undefined" && window.innerHeight > 0
     ? Math.min(dragY / (window.innerHeight * 0.4), 1)
@@ -208,7 +247,17 @@ function Lightbox({
             {idx + 1} / {media.length}
           </span>
         )}
-        <div className="w-10" />
+        {canDelete ? (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md active:bg-red-500/40 disabled:opacity-50"
+          >
+            <Trash2 className="h-4.5 w-4.5" />
+          </button>
+        ) : (
+          <div className="w-10" />
+        )}
       </div>
 
       {/* Desktop arrows */}
@@ -299,7 +348,7 @@ function Lightbox({
   );
 }
 
-export function MediaGallery({ media, className }: MediaGalleryProps) {
+export function MediaGallery({ media, className, eventId, currentUserId, coachUserId, onPhotoDeleted }: MediaGalleryProps) {
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   if (media.length === 0) return null;
@@ -373,6 +422,10 @@ export function MediaGallery({ media, className }: MediaGalleryProps) {
           media={media}
           initialIdx={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
+          eventId={eventId}
+          currentUserId={currentUserId}
+          coachUserId={coachUserId}
+          onDelete={onPhotoDeleted}
         />
       )}
     </>

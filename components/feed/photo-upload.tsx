@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Camera, Loader2, Check } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Camera, Loader2, X, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MAX_DIMENSION = 1920;
 const JPEG_QUALITY = 0.80;
-const SIZE_THRESHOLD = 2 * 1024 * 1024; // 2 MB
+const SIZE_THRESHOLD = 2 * 1024 * 1024;
 
 function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) return Promise.resolve(file);
@@ -56,23 +56,49 @@ function compressImage(file: File): Promise<File> {
   });
 }
 
+interface PendingFile {
+  file: File;
+  previewUrl: string;
+  isVideo: boolean;
+}
+
 interface PhotoUploadProps {
   eventId: string;
-  onUploaded?: (photo: { id: string; url: string; mimeType: string }) => void;
+  onUploaded?: (photo: { id: string; url: string; mimeType: string; userId?: string }) => void;
 }
 
 export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
+  const [pending, setPending] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [done, setDone] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    setUploading(true);
-    setDone(false);
+  useEffect(() => {
+    return () => {
+      pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    };
+  }, []);
 
-    for (const file of Array.from(files)) {
-      const processed = await compressImage(file);
+  const handleFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const items: PendingFile[] = Array.from(files).map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      isVideo: file.type.startsWith("video/"),
+    }));
+    setPending(items);
+  };
+
+  const cancel = () => {
+    pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    setPending([]);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const confirm = async () => {
+    setUploading(true);
+
+    for (const item of pending) {
+      const processed = await compressImage(item.file);
       const formData = new FormData();
       formData.append("file", processed);
 
@@ -84,16 +110,16 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
 
         if (res.ok) {
           const photo = await res.json();
-          onUploaded?.(photo);
+          onUploaded?.({ ...photo, userId: photo.userId ?? photo.user?.id });
         }
       } catch {
-        console.error("Upload failed");
+        /* ignore */
       }
     }
 
+    pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    setPending([]);
     setUploading(false);
-    setDone(true);
-    setTimeout(() => setDone(false), 2000);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -117,12 +143,76 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
       >
         {uploading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
-        ) : done ? (
-          <Check className="h-4 w-4 text-emerald-500" />
         ) : (
           <Camera className="h-4 w-4" />
         )}
       </button>
+
+      {/* Preview overlay */}
+      {pending.length > 0 && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-6">
+          <div className="w-full max-w-md overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl">
+            {/* Preview grid */}
+            <div className="p-3">
+              <div
+                className={cn(
+                  "overflow-hidden rounded-xl",
+                  pending.length === 1 && "",
+                  pending.length >= 2 && "grid grid-cols-2 gap-1",
+                )}
+              >
+                {pending.map((item, i) => (
+                  <div key={i} className="relative overflow-hidden rounded-lg bg-surface">
+                    {item.isVideo ? (
+                      <video
+                        src={item.previewUrl}
+                        className="aspect-square w-full object-cover"
+                        playsInline
+                        muted
+                        autoPlay
+                        loop
+                      />
+                    ) : (
+                      <img
+                        src={item.previewUrl}
+                        alt=""
+                        className={cn(
+                          "w-full object-cover",
+                          pending.length === 1 ? "aspect-[4/3]" : "aspect-square",
+                        )}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 border-t border-border/30 px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-3">
+              <button
+                onClick={cancel}
+                disabled={uploading}
+                className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-100 text-[14px] font-medium text-foreground/70 transition-colors active:bg-neutral-200"
+              >
+                <X className="h-4 w-4" />
+                Cancelar
+              </button>
+              <button
+                onClick={confirm}
+                disabled={uploading}
+                className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-[14px] font-medium text-white transition-colors active:brightness-90 disabled:opacity-60"
+              >
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {uploading ? "Subiendo…" : "Publicar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

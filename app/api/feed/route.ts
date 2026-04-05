@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
       include: {
         user: { select: { id: true, name: true, image: true } },
         photos: {
-          select: { id: true, url: true, thumbnailUrl: true, mimeType: true },
+          select: { id: true, url: true, thumbnailUrl: true, mimeType: true, userId: true },
           orderBy: { createdAt: "asc" as const },
         },
         _count: { select: { likes: true, comments: true } },
@@ -307,7 +307,7 @@ export async function GET(request: NextRequest) {
       visibility: string;
       createdAt: Date;
       user: { id: string; name: string | null; image: string | null };
-      photos: { id: string; url: string; thumbnailUrl: string | null; mimeType: string }[];
+      photos: { id: string; url: string; thumbnailUrl: string | null; mimeType: string; userId: string }[];
       likeCount: number;
       commentCount: number;
       liked: boolean;

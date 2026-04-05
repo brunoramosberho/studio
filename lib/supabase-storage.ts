@@ -57,3 +57,25 @@ export async function uploadMedia(
 
   return { url: publicUrl, thumbnailUrl: null };
 }
+
+export async function deleteMedia(url: string): Promise<void> {
+  const supabase = getClient();
+  if (!supabase) {
+    if (url.startsWith("/uploads/")) {
+      const { unlink } = await import("fs/promises");
+      const filePath = path.join(process.cwd(), "public", url);
+      await unlink(filePath).catch(() => {});
+    }
+    return;
+  }
+
+  try {
+    const prefix = supabase.storage.from(BUCKET).getPublicUrl("").data.publicUrl;
+    if (url.startsWith(prefix)) {
+      const storagePath = decodeURIComponent(url.slice(prefix.length));
+      await supabase.storage.from(BUCKET).remove([storagePath]);
+    }
+  } catch {
+    /* best-effort */
+  }
+}

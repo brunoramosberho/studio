@@ -13,7 +13,7 @@ interface FeedItem {
   payload: Record<string, unknown>;
   createdAt: string;
   user: { id: string; name: string | null; image: string | null };
-  photos: { id: string; url: string; thumbnailUrl?: string | null; mimeType: string }[];
+  photos: { id: string; url: string; thumbnailUrl?: string | null; mimeType: string; userId?: string }[];
   likeCount: number;
   commentCount: number;
   liked: boolean;

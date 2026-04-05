@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, requireAuth } from "@/lib/tenant";
-import { uploadMedia } from "@/lib/supabase-storage";
+import { uploadMedia, deleteMedia } from "@/lib/supabase-storage";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -82,5 +82,52 @@ export async function POST(
   } catch (error) {
     console.error("POST photos error:", error);
     return NextResponse.json({ error: "Failed to upload photo" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ eventId: string }> },
+) {
+  try {
+    const { session, tenant } = await requireAuth();
+    const { eventId } = await params;
+    const { searchParams } = request.nextUrl;
+    const photoId = searchParams.get("photoId");
+
+    if (!photoId) {
+      return NextResponse.json({ error: "photoId required" }, { status: 400 });
+    }
+
+    const photo = await prisma.photo.findFirst({
+      where: { id: photoId, feedEventId: eventId, feedEvent: { tenantId: tenant.id } },
+      include: {
+        feedEvent: { select: { eventType: true, payload: true } },
+      },
+    });
+
+    if (!photo) {
+      return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+    }
+
+    const isOwner = photo.userId === session.user.id;
+
+    let isCoach = false;
+    if (photo.feedEvent.eventType === "CLASS_COMPLETED") {
+      const payload = photo.feedEvent.payload as Record<string, unknown>;
+      isCoach = payload.coachUserId === session.user.id;
+    }
+
+    if (!isOwner && !isCoach) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    await deleteMedia(photo.url);
+    await prisma.photo.delete({ where: { id: photoId } });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("DELETE photo error:", error);
+    return NextResponse.json({ error: "Failed to delete photo" }, { status: 500 });
   }
 }
