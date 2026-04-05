@@ -94,8 +94,12 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
     if (inputRef.current) inputRef.current.value = "";
   };
 
+  const [error, setError] = useState<string | null>(null);
+
   const confirm = async () => {
     setUploading(true);
+    setError(null);
+    let succeeded = 0;
 
     for (const item of pending) {
       const processed = await compressImage(item.file);
@@ -111,16 +115,23 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
         if (res.ok) {
           const photo = await res.json();
           onUploaded?.({ ...photo, userId: photo.userId ?? photo.user?.id });
+          succeeded++;
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setError(data.error || `Error ${res.status}`);
         }
       } catch {
-        /* ignore */
+        setError("No se pudo conectar al servidor");
       }
     }
 
-    pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
-    setPending([]);
     setUploading(false);
-    if (inputRef.current) inputRef.current.value = "";
+
+    if (succeeded > 0) {
+      pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      setPending([]);
+      if (inputRef.current) inputRef.current.value = "";
+    }
   };
 
   return (
@@ -152,40 +163,59 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
       {pending.length > 0 && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-6">
           <div className="w-full max-w-md overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl">
-            {/* Preview grid */}
-            <div className="p-3">
-              <div
-                className={cn(
-                  "overflow-hidden rounded-xl",
-                  pending.length === 1 && "",
-                  pending.length >= 2 && "grid grid-cols-2 gap-1",
-                )}
-              >
-                {pending.map((item, i) => (
-                  <div key={i} className="relative overflow-hidden rounded-lg bg-surface">
-                    {item.isVideo ? (
-                      <video
-                        src={item.previewUrl}
-                        className="aspect-square w-full object-cover"
-                        playsInline
-                        muted
-                        autoPlay
-                        loop
-                      />
-                    ) : (
-                      <img
-                        src={item.previewUrl}
-                        alt=""
-                        className={cn(
-                          "w-full object-cover",
-                          pending.length === 1 ? "aspect-[4/3]" : "aspect-square",
-                        )}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
+            {/* Preview */}
+            <div className="max-h-[60dvh] overflow-y-auto p-3">
+              {pending.length === 1 ? (
+                <div className="overflow-hidden rounded-xl bg-surface">
+                  {pending[0].isVideo ? (
+                    <video
+                      src={pending[0].previewUrl}
+                      className="w-full rounded-xl"
+                      playsInline
+                      muted
+                      autoPlay
+                      loop
+                    />
+                  ) : (
+                    <img
+                      src={pending[0].previewUrl}
+                      alt=""
+                      className="w-full rounded-xl"
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {pending.map((item, i) => (
+                    <div key={i} className="relative overflow-hidden rounded-lg bg-surface">
+                      {item.isVideo ? (
+                        <video
+                          src={item.previewUrl}
+                          className="aspect-[3/4] w-full object-cover"
+                          playsInline
+                          muted
+                          autoPlay
+                          loop
+                        />
+                      ) : (
+                        <img
+                          src={item.previewUrl}
+                          alt=""
+                          className="aspect-[3/4] w-full object-cover"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Error message */}
+            {error && (
+              <div className="mx-3 mb-2 rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-600">
+                {error}
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex items-center gap-2 border-t border-border/30 px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-3">
