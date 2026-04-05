@@ -62,6 +62,7 @@ interface MgicAIContextValue {
   mode: PanelMode;
   setMode: (mode: PanelMode) => void;
   panelWidth: number;
+  setPanelWidth: (w: number) => void;
   conversations: Conversation[];
   newConversation: () => void;
   loadConversation: (id: string) => void;
@@ -84,6 +85,7 @@ const MgicAIContext = createContext<MgicAIContextValue>({
   mode: "sidebar",
   setMode: () => {},
   panelWidth: 440,
+  setPanelWidth: () => {},
   conversations: [],
   newConversation: () => {},
   loadConversation: () => {},
@@ -97,10 +99,13 @@ export function useMgicAI() {
   return useContext(MgicAIContext);
 }
 
-const PANEL_WIDTH = 440;
+const DEFAULT_PANEL_WIDTH = 440;
+const MIN_PANEL_WIDTH = 360;
+const MAX_PANEL_WIDTH = 700;
 const CONVERSATIONS_KEY = "mgic-ai-conversations";
 const CURRENT_CONV_KEY = "mgic-ai-current-conv";
 const MODE_KEY = "mgic-ai-mode";
+const WIDTH_KEY = "mgic-ai-width";
 const MAX_CONVERSATIONS = 50;
 
 const DAILY_PROMPT =
@@ -159,6 +164,7 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConvId, setCurrentConvId] = useState<string>(crypto.randomUUID());
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
   const hasAutoSent = useRef(false);
   const { studioName } = useBranding();
   const abortRef = useRef<AbortController | null>(null);
@@ -167,6 +173,11 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
     try {
       const savedMode = localStorage.getItem(MODE_KEY) as PanelMode | null;
       if (savedMode === "sidebar" || savedMode === "floating") setModeState(savedMode);
+      const savedWidth = localStorage.getItem(WIDTH_KEY);
+      if (savedWidth) {
+        const w = parseInt(savedWidth, 10);
+        if (w >= MIN_PANEL_WIDTH && w <= MAX_PANEL_WIDTH) setPanelWidth(w);
+      }
     } catch {}
     setConversations(loadConversations());
     const saved = loadCurrentConv();
@@ -185,6 +196,12 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
   const setMode = useCallback((m: PanelMode) => {
     setModeState(m);
     try { localStorage.setItem(MODE_KEY, m); } catch {}
+  }, []);
+
+  const handleSetPanelWidth = useCallback((w: number) => {
+    const clamped = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, w));
+    setPanelWidth(clamped);
+    try { localStorage.setItem(WIDTH_KEY, String(clamped)); } catch {}
   }, []);
 
   const saveCurrentToHistory = useCallback(() => {
@@ -487,7 +504,8 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
         clearChat,
         mode,
         setMode,
-        panelWidth: PANEL_WIDTH,
+        panelWidth,
+        setPanelWidth: handleSetPanelWidth,
         conversations,
         newConversation,
         loadConversation,
@@ -530,6 +548,52 @@ function MgicAIButton() {
   );
 }
 
+function ResizeHandle({ onResize }: { onResize: (delta: number) => void }) {
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      isDragging.current = true;
+      startX.current = e.clientX;
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging.current) return;
+      const delta = startX.current - e.clientX;
+      startX.current = e.clientX;
+      onResize(delta);
+    },
+    [onResize],
+  );
+
+  const handlePointerUp = useCallback(() => {
+    isDragging.current = false;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  }, []);
+
+  return (
+    <div
+      className="absolute left-0 top-0 z-10 flex h-full w-2 cursor-col-resize items-center justify-center hover:bg-admin/10 active:bg-admin/20"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      <div className="h-8 w-0.5 rounded-full bg-border/60" />
+    </div>
+  );
+}
+
+const HEADER_HEIGHT = "calc(3.5rem + 4px)";
+
 function MgicAIPanel() {
   const {
     isOpen,
@@ -540,6 +604,8 @@ function MgicAIPanel() {
     activeTools,
     mode,
     setMode,
+    panelWidth,
+    setPanelWidth,
     newConversation,
     pendingConfirmation,
     confirmTools,
@@ -564,8 +630,22 @@ function MgicAIPanel() {
 
   const isSidebar = mode === "sidebar";
 
+  const handleResize = useCallback(
+    (delta: number) => {
+      setPanelWidth(panelWidth + delta);
+    },
+    [panelWidth, setPanelWidth],
+  );
+
   const panelContent = (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
+      {/* Resize handle — sidebar mode only, desktop */}
+      {isSidebar && (
+        <div className="hidden sm:block">
+          <ResizeHandle onResize={handleResize} />
+        </div>
+      )}
+
       {/* Header */}
       <div
         className="flex shrink-0 items-center justify-between px-4 py-3"
@@ -686,9 +766,17 @@ function MgicAIPanel() {
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             className={cn(
-              "fixed right-0 top-0 flex h-dvh w-full flex-col border-l border-border/50 bg-white shadow-2xl",
-              isSidebar ? "z-30 sm:w-[440px]" : "z-50 sm:w-[440px]",
+              "fixed right-0 flex max-w-full flex-col border-l border-border/50 bg-white",
+              isSidebar
+                ? "z-30 shadow-sm"
+                : "top-0 z-50 h-dvh shadow-2xl",
             )}
+            style={{
+              width: `${panelWidth}px`,
+              ...(isSidebar
+                ? { top: HEADER_HEIGHT, height: `calc(100dvh - ${HEADER_HEIGHT})` }
+                : {}),
+            }}
           >
             {panelContent}
           </motion.div>
