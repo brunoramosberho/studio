@@ -11,9 +11,12 @@ import type { StreamEvent } from "@/lib/ai/types";
 const BRIEFING_PROMPT =
   "Dame 2-3 bullets de lo más importante que debo saber del studio esta semana. Sé muy conciso.";
 
-function getDismissKey() {
-  return `mgic-ai-briefing-dismissed-${new Date().toISOString().slice(0, 10)}`;
+function todayKey(prefix: string) {
+  return `${prefix}-${new Date().toISOString().slice(0, 10)}`;
 }
+
+const DISMISS_KEY_PREFIX = "mgic-ai-briefing-dismissed";
+const CACHE_KEY_PREFIX = "mgic-ai-briefing-cache";
 
 export function MgicAIBriefing() {
   const [content, setContent] = useState("");
@@ -25,14 +28,23 @@ export function MgicAIBriefing() {
   const hasFetched = useRef(false);
 
   useEffect(() => {
-    if (localStorage.getItem(getDismissKey())) {
+    if (localStorage.getItem(todayKey(DISMISS_KEY_PREFIX))) {
       setDismissed(true);
+      setLoading(false);
+      return;
+    }
+
+    const cached = localStorage.getItem(todayKey(CACHE_KEY_PREFIX));
+    if (cached) {
+      setContent(cached);
       setLoading(false);
     }
   }, []);
 
   const fetchBriefing = useCallback(async () => {
     if (hasFetched.current || dismissed) return;
+    // Skip fetch if we already have cached content
+    if (content) return;
     hasFetched.current = true;
 
     try {
@@ -76,19 +88,23 @@ export function MgicAIBriefing() {
         }
       }
 
+      if (fullText) {
+        try { localStorage.setItem(todayKey(CACHE_KEY_PREFIX), fullText); } catch {}
+      }
+
       setLoading(false);
     } catch {
       setError(true);
       setLoading(false);
     }
-  }, [dismissed]);
+  }, [dismissed, content]);
 
   useEffect(() => {
     fetchBriefing();
   }, [fetchBriefing]);
 
   const dismiss = () => {
-    localStorage.setItem(getDismissKey(), "1");
+    localStorage.setItem(todayKey(DISMISS_KEY_PREFIX), "1");
     setDismissed(true);
   };
 
