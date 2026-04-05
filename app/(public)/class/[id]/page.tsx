@@ -272,12 +272,11 @@ export default function ClassDetailPage() {
   }, [bookingSuccess, id, isAuthenticated, songRequestChecked]);
 
   async function handleDirectBook() {
-    if (!selectedSpot) return;
     setError(null);
     try {
       await bookAsync({
         classId: id,
-        spotNumber: selectedSpot,
+        spotNumber: selectedSpot ?? undefined,
         packageId: validPackages[0]?.id,
         privacy,
       });
@@ -291,8 +290,6 @@ export default function ClassDetailPage() {
   }
 
   function handleReserveClick() {
-    if (!selectedSpot) return;
-
     if (isAuthenticated && hasCredits) {
       handleDirectBook();
     } else {
@@ -417,6 +414,9 @@ export default function ClassDetailPage() {
   const needsPackage = !isAuthenticated || !hasCredits;
   const classFull = spotsLeft <= 0;
   const waitlistCount = cls._count?.waitlist ?? 0;
+  const hasLayout = cls.room.layout && cls.room.layout.spots?.length > 0;
+  const totalSpots = cls.room.maxCapacity;
+  const bookedCount = cls._count.bookings;
 
   return (
     <PageTransition>
@@ -503,13 +503,28 @@ export default function ClassDetailPage() {
           </p>
         </div>
 
-        {/* Studio */}
-        {cls.room?.studio && (
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted/70">
-            <MapPin className="h-3 w-3" />
-            {cls.room.studio.name} · {cls.room.name}
-          </div>
-        )}
+        {/* Studio + availability */}
+        <div className="mt-2 flex items-center justify-between">
+          {cls.room?.studio && (
+            <div className="flex items-center gap-1.5 text-xs text-muted/70">
+              <MapPin className="h-3 w-3" />
+              {cls.room.studio.name} · {cls.room.name}
+            </div>
+          )}
+          {!isPast && (
+            <div className={cn(
+              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+              classFull
+                ? "bg-red-50 text-red-600"
+                : spotsLeft <= 3
+                  ? "bg-orange-50 text-orange-600"
+                  : "bg-surface text-muted",
+            )}>
+              <Users className="h-3 w-3" />
+              {classFull ? "Llena" : `${bookedCount}/${totalSpots}`}
+            </div>
+          )}
+        </div>
 
         <div className="my-6 h-px bg-border/50" />
 
@@ -703,25 +718,27 @@ export default function ClassDetailPage() {
         ) : (
           /* ═══════ BOOKING EXPERIENCE (upcoming class) ═══════ */
           <>
-            {/* Studio Map */}
-            <div className="py-4">
-              <StudioMap
-                maxCapacity={cls.room.maxCapacity}
-                spotMap={spotMap}
-                selectedSpot={selectedSpot}
-                onSelectSpot={(spot) => {
-                  setSelectedSpot(spot === selectedSpot ? null : spot);
-                  setError(null);
-                }}
-                myBookedSpot={myBookedSpot}
-                disabled={!!myBooking || bookingSuccess}
-                layout={cls.room.layout}
-                coachName={cls.coach.user.name}
-              />
-            </div>
+            {/* Studio Map (only for rooms with layout) */}
+            {hasLayout && (
+              <div className="py-4">
+                <StudioMap
+                  maxCapacity={cls.room.maxCapacity}
+                  spotMap={spotMap}
+                  selectedSpot={selectedSpot}
+                  onSelectSpot={(spot) => {
+                    setSelectedSpot(spot === selectedSpot ? null : spot);
+                    setError(null);
+                  }}
+                  myBookedSpot={myBookedSpot}
+                  disabled={!!myBooking || bookingSuccess}
+                  layout={cls.room.layout}
+                  coachName={cls.coach.user.name}
+                />
+              </div>
+            )}
 
             {/* Privacy toggle */}
-            {!myBooking && !bookingSuccess && selectedSpot && (
+            {!myBooking && !bookingSuccess && (selectedSpot || !hasLayout) && !classFull && (
               <div className="mt-1 flex flex-col items-center gap-1.5">
                 <div className="flex w-fit items-center rounded-full bg-surface p-0.5 text-xs">
                   <button
@@ -789,7 +806,7 @@ export default function ClassDetailPage() {
                           Reserva confirmada
                         </p>
                         <p className="text-xs text-green-600">
-                          Lugar #{bookedSpotNumber} · {formatTime(cls.startsAt)}
+                          {bookedSpotNumber ? `Lugar #${bookedSpotNumber} · ` : ""}{formatTime(cls.startsAt)}
                         </p>
                       </div>
                     </div>
@@ -1002,12 +1019,12 @@ export default function ClassDetailPage() {
                     size="lg"
                     className="w-full min-h-[48px] rounded-full bg-foreground text-background hover:bg-foreground/90"
                     onClick={handleReserveClick}
-                    disabled={isBooking || !selectedSpot || (isAuthenticated && packagesLoading)}
+                    disabled={isBooking || (hasLayout && !selectedSpot) || (isAuthenticated && packagesLoading)}
                   >
                     {isBooking ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
-                    {!selectedSpot
+                    {hasLayout && !selectedSpot
                       ? "Selecciona un lugar"
                       : "Reservar clase"}
                   </Button>
@@ -1185,7 +1202,7 @@ export default function ClassDetailPage() {
 
       {/* Booking Sheet */}
       <AnimatePresence>
-        {!isPast && sheetOpen && selectedSpot && (
+        {!isPast && sheetOpen && (selectedSpot || !hasLayout) && (
           <BookingSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}

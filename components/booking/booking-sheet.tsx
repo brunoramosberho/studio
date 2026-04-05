@@ -85,7 +85,7 @@ interface BookingSheetProps {
   open: boolean;
   onClose: () => void;
   classId: string;
-  spotNumber: number;
+  spotNumber?: number | null;
   className: string;
   classTime: string;
   privacy: "PUBLIC" | "PRIVATE";
@@ -258,8 +258,8 @@ export function BookingSheet({
       const payload: Record<string, unknown> = {
         classId,
         packageId: pkg.id,
-        spotNumber,
         privacy,
+        ...(spotNumber != null && { spotNumber }),
       };
 
       if (!isLoggedIn) {
@@ -345,7 +345,7 @@ export function BookingSheet({
             )}
             <div className={cn(!canGoBack && "flex-1")}>
               <p className="text-center text-xs text-muted">
-                {className} · {formatTime(classTime)} · Lugar #{spotNumber}
+                {className} · {formatTime(classTime)}{spotNumber ? ` · Lugar #${spotNumber}` : ""}
               </p>
             </div>
             {!canGoBack && <div className="w-12" />}
@@ -642,7 +642,7 @@ export function BookingSheet({
                   ¡Lugar reservado!
                 </h2>
                 <p className="mt-1 text-sm text-muted">
-                  Lugar #{result.spotNumber} · {className}
+                  {result.spotNumber ? `Lugar #${result.spotNumber} · ` : ""}{className}
                 </p>
                 <p className="mt-0.5 text-xs text-muted">
                   {formatTime(classTime)}
