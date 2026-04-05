@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from "framer-motion";
 import { X, Clock, BarChart3, ArrowRight } from "lucide-react";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { Dumbbell } from "lucide-react";
@@ -38,6 +38,8 @@ function isVideo(url: string) {
 
 export function DisciplineSheet({ open, onClose, discipline }: DisciplineSheetProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const dragY = useMotionValue(0);
+  const backdropOpacity = useTransform(dragY, [0, 300], [1, 0]);
 
   useEffect(() => {
     if (open && videoRef.current) {
@@ -50,12 +52,26 @@ export function DisciplineSheet({ open, onClose, discipline }: DisciplineSheetPr
 
   useEffect(() => {
     if (!open) return;
+    document.body.style.overflow = "hidden";
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open, onClose]);
+
+  const handleDragEnd = useCallback(
+    (_: unknown, info: PanInfo) => {
+      if (info.offset.y > 150 || info.velocity.y > 500) {
+        onClose();
+      }
+      dragY.set(0);
+    },
+    [onClose, dragY],
+  );
 
   const d = discipline;
   if (!d) return null;
@@ -73,6 +89,7 @@ export function DisciplineSheet({ open, onClose, discipline }: DisciplineSheetPr
         <>
           {/* Backdrop */}
           <motion.div
+            style={{ opacity: backdropOpacity }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -83,6 +100,11 @@ export function DisciplineSheet({ open, onClose, discipline }: DisciplineSheetPr
 
           {/* Mobile: bottom sheet, Desktop: centered modal */}
           <motion.div
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.8 }}
+            onDrag={(_, info) => dragY.set(Math.max(0, info.offset.y))}
+            onDragEnd={handleDragEnd}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -93,6 +115,11 @@ export function DisciplineSheet({ open, onClose, discipline }: DisciplineSheetPr
               "lg:h-auto lg:max-h-[90vh] lg:w-full lg:max-w-lg lg:rounded-3xl",
             )}
           >
+            {/* Drag handle (mobile) */}
+            <div className="absolute left-0 right-0 top-0 z-20 flex justify-center pt-2 lg:hidden">
+              <div className="h-1 w-10 rounded-full bg-white/40" />
+            </div>
+
             {/* Media area — fills available space, content always visible */}
             <div className="relative w-full flex-1 overflow-hidden rounded-t-3xl bg-black lg:flex-none lg:aspect-video">
               {hasVideo && (

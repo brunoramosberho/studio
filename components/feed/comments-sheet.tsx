@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { MessageCircle, Send, X } from "lucide-react";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { useSession } from "next-auth/react";
 
 interface CommentData {
@@ -46,6 +46,7 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
   const [displayCount, setDisplayCount] = useState(commentCount);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const dragControls = useDragControls();
   const { data: session } = useSession();
 
   const fetchComments = useCallback(async () => {
@@ -137,6 +138,16 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
             />
 
             <motion.div
+              drag="y"
+              dragControls={dragControls}
+              dragListener={false}
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.8 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 150 || info.velocity.y > 500) {
+                  setOpen(false);
+                }
+              }}
               className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-[var(--shadow-warm-lg)]"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
@@ -144,7 +155,10 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
               transition={{ type: "spring", damping: 30, stiffness: 350 }}
             >
               {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1">
+              <div
+                className="flex justify-center pt-3 pb-1 touch-none cursor-grab active:cursor-grabbing"
+                onPointerDown={(e) => dragControls.start(e)}
+              >
                 <div className="h-1 w-10 rounded-full bg-border/60" />
               </div>
 
@@ -226,7 +240,10 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
                   {QUICK_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}
-                      onClick={() => submit(emoji)}
+                      onClick={() => {
+                        setText((prev) => prev + emoji);
+                        inputRef.current?.focus();
+                      }}
                       disabled={submitting}
                       className="flex h-9 w-9 items-center justify-center rounded-full text-[22px] transition-transform active:scale-125 disabled:opacity-40"
                     >

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { X, UserPlus, Check, Loader2 } from "lucide-react";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { maskLastName } from "@/lib/utils";
 
 export interface PersonItem {
@@ -29,6 +29,7 @@ type FriendState = "friend" | "pending" | "idle" | "sending" | "sent" | "self";
 export function PeopleListSheet({ open, onClose, title, people: rawPeople }: PeopleListSheetProps) {
   const router = useRouter();
   const { data: session } = useSession();
+  const dragControls = useDragControls();
   const currentUserId = session?.user?.id;
 
   const people = useMemo(() => {
@@ -116,13 +117,26 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
           />
 
           <motion.div
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.8 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 150 || info.velocity.y > 500) {
+                onClose();
+              }
+            }}
             className="fixed inset-x-0 bottom-0 z-[60] max-h-[80dvh] overflow-hidden rounded-t-3xl bg-white shadow-[var(--shadow-warm-lg)]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 350 }}
           >
-            <div className="flex justify-center pt-3 pb-1">
+            <div
+              className="flex justify-center pt-3 pb-1 touch-none cursor-grab active:cursor-grabbing"
+              onPointerDown={(e) => dragControls.start(e)}
+            >
               <div className="h-1 w-10 rounded-full bg-border/60" />
             </div>
 
