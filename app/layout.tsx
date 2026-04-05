@@ -16,6 +16,7 @@ import { GeistSans } from "geist/font/sans";
 import { Providers } from "./providers";
 import { MobileNav } from "@/components/shared/mobile-nav";
 import { InstallPrompt } from "@/components/shared/install-prompt";
+import { SplashScreen } from "@/components/shared/splash-screen";
 import "./globals.css";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dmsans", display: "swap" });
@@ -111,6 +112,7 @@ export default async function RootLayout({
     <html lang="es" className={fontVars} style={themeStyle}>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <Providers>
+          <SplashScreen />
           {children}
           <MobileNav />
           <InstallPrompt />
