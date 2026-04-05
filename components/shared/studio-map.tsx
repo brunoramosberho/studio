@@ -203,7 +203,7 @@ function ZoomPanContainer({
   return (
     <div
       ref={wrapRef}
-      className="relative w-full overflow-hidden rounded-xl bg-neutral-50/60 dark:bg-neutral-900/40"
+      className="relative w-full overflow-hidden rounded-xl bg-neutral-50/60"
       style={{ height: containerH, touchAction: "none" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -225,7 +225,7 @@ function ZoomPanContainer({
 
       {/* Gesture hints */}
       {showHint && needsZoom && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/60 dark:bg-black/40 transition-opacity duration-500">
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/60 transition-opacity duration-500">
           <div className="flex items-center gap-6">
             {/* Pinch icon */}
             <div className="flex flex-col items-center gap-1">
@@ -328,14 +328,14 @@ export function StudioMap({
             isFriend &&
               "ring-0 border-0",
             !isSelf && !isFriend && isOccupied &&
-              "bg-neutral-100 text-neutral-300 dark:bg-neutral-800 dark:text-neutral-600",
+              "bg-neutral-100 text-neutral-300",
             disabled && isAvailable && "opacity-40 pointer-events-none",
           )}
         >
           {isFriend ? (
             <Avatar className="h-full w-full">
               {info.userImage && <AvatarImage src={info.userImage} className="object-cover" />}
-              <AvatarFallback className="text-[11px] font-semibold bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+              <AvatarFallback className="text-[11px] font-semibold bg-blue-100 text-blue-600">
                 {initials}
               </AvatarFallback>
             </Avatar>

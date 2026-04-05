@@ -258,6 +258,24 @@ export function ScheduleClient({
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
 
+  const autoAdvancedRef = useRef(false);
+  useEffect(() => {
+    if (autoAdvancedRef.current || loadingClasses || classes.length === 0) return;
+    autoAdvancedRef.current = true;
+
+    const todayClasses = classes.filter((c) => isSameDay(new Date(c.startsAt), today));
+    const hasUpcoming = todayClasses.some((c) => !isPast(new Date(c.startsAt)));
+    if (hasUpcoming) return;
+
+    for (let i = 1; i < 7; i++) {
+      const next = addDays(today, i);
+      if (classes.some((c) => isSameDay(new Date(c.startsAt), next))) {
+        setSelectedDay(next);
+        break;
+      }
+    }
+  }, [loadingClasses, classes, today]);
+
   const classTypes = Array.from(
     new Map(classes.map((c) => [c.classType.id, c.classType])).values(),
   );
