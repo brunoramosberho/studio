@@ -28,7 +28,7 @@ interface UpcomingBooking {
     startsAt: string;
     endsAt: string;
     classType: { name: string; color: string; duration: number; icon?: string | null };
-    coach: { user: { name: string | null; image: string | null } };
+    coach: { photoUrl?: string | null; user: { name: string | null; image: string | null } };
     room?: { studio?: { name?: string } };
   };
 }
