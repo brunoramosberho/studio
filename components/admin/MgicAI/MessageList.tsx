@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { motion } from "framer-motion";
+import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 import type { AiMessage } from "./index";
