@@ -309,18 +309,38 @@ export default function AdminFeedPage() {
       if (mediaFiles.length > 0) {
         for (const file of mediaFiles) {
           try {
-            const fd = new FormData();
-            fd.append("file", file);
-            const uploadRes = await fetch(`/api/feed/${event.id}/photos`, {
-              method: "POST",
-              body: fd,
-            });
-            if (uploadRes.ok) {
-              uploadedCount++;
+            if (file.type.startsWith("video/")) {
+              const urlRes = await fetch(`/api/feed/${event.id}/photos/upload-url`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ filename: file.name, contentType: file.type }),
+              });
+              if (!urlRes.ok) { failedCount++; continue; }
+              const { signedUrl, publicUrl } = await urlRes.json();
+
+              const putRes = await fetch(signedUrl, {
+                method: "PUT",
+                headers: { "Content-Type": file.type },
+                body: file,
+              });
+              if (!putRes.ok) { failedCount++; continue; }
+
+              const regRes = await fetch(`/api/feed/${event.id}/photos`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: publicUrl, mimeType: file.type }),
+              });
+              if (regRes.ok) uploadedCount++;
+              else failedCount++;
             } else {
-              const err = await uploadRes.json().catch(() => ({}));
-              console.error("Upload failed:", file.name, err);
-              failedCount++;
+              const fd = new FormData();
+              fd.append("file", file);
+              const uploadRes = await fetch(`/api/feed/${event.id}/photos`, {
+                method: "POST",
+                body: fd,
+              });
+              if (uploadRes.ok) uploadedCount++;
+              else failedCount++;
             }
           } catch (err) {
             console.error("Upload error:", file.name, err);

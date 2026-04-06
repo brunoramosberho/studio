@@ -63,6 +63,34 @@ export async function uploadMedia(
   return { url: publicUrl, thumbnailUrl: null };
 }
 
+export async function createSignedUploadUrl(
+  filename: string,
+): Promise<{ signedUrl: string; path: string; publicUrl: string }> {
+  const supabase = getClient();
+  if (!supabase) {
+    throw new Error("Storage not configured");
+  }
+
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const uploadPath = `uploads/${Date.now()}-${safeName}`;
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUploadUrl(uploadPath);
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to create upload URL: ${error?.message ?? "Unknown error"}`,
+    );
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(BUCKET).getPublicUrl(uploadPath);
+
+  return { signedUrl: data.signedUrl, path: uploadPath, publicUrl };
+}
+
 export async function deleteMedia(url: string): Promise<void> {
   const supabase = getClient();
   if (!supabase) {

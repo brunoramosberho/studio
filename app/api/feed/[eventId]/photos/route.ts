@@ -51,31 +51,64 @@ export async function POST(
         return NextResponse.json({ error: "Only attendees can upload photos" }, { status: 403 });
       }
     }
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
+    const reqContentType = request.headers.get("content-type") ?? "";
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    let photoUrl: string;
+    let thumbnailUrl: string | null = null;
+    let mimeType: string;
 
-    let result: { url: string; thumbnailUrl: string | null };
-    try {
-      result = await uploadMedia(buffer, file.name, file.type);
-    } catch (uploadErr) {
-      const msg = uploadErr instanceof Error ? uploadErr.message : "Unknown storage error";
-      console.error("Upload media error:", msg);
-      return NextResponse.json({ error: msg }, { status: 503 });
+    if (reqContentType.includes("application/json")) {
+      const body = await request.json();
+      const { url, mimeType: bodyMime } = body as {
+        url?: string;
+        mimeType?: string;
+      };
+      if (!url || !bodyMime) {
+        return NextResponse.json(
+          { error: "url and mimeType required" },
+          { status: 400 },
+        );
+      }
+      photoUrl = url;
+      mimeType = bodyMime;
+    } else {
+      const formData = await request.formData();
+      const file = formData.get("file") as File | null;
+
+      if (!file) {
+        return NextResponse.json(
+          { error: "No file provided" },
+          { status: 400 },
+        );
+      }
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+
+      let result: { url: string; thumbnailUrl: string | null };
+      try {
+        result = await uploadMedia(buffer, file.name, file.type);
+      } catch (uploadErr) {
+        const msg =
+          uploadErr instanceof Error
+            ? uploadErr.message
+            : "Unknown storage error";
+        console.error("Upload media error:", msg);
+        return NextResponse.json({ error: msg }, { status: 503 });
+      }
+
+      photoUrl = result.url;
+      thumbnailUrl = result.thumbnailUrl;
+      mimeType = file.type;
     }
 
     const photo = await prisma.photo.create({
       data: {
         userId: session.user.id,
         feedEventId: eventId,
-        url: result.url,
-        thumbnailUrl: result.thumbnailUrl,
-        mimeType: file.type,
+        url: photoUrl,
+        thumbnailUrl,
+        mimeType,
       },
       include: { user: { select: { id: true, name: true, image: true } } },
     });
@@ -85,11 +118,12 @@ export async function POST(
       const uploaderName = session.user.name?.split(" ")[0] ?? "Alguien";
       const className = (payload.className as string) ?? "la clase";
       const recipients = getClassPostRecipients(payload, session.user.id);
+      const isVideoUpload = mimeType.startsWith("video/");
       sendPushToMany(
         recipients,
         {
-          title: "Nueva foto",
-          body: `${uploaderName} subió una foto a ${className}`,
+          title: isVideoUpload ? "Nuevo video" : "Nueva foto",
+          body: `${uploaderName} subió ${isVideoUpload ? "un video" : "una foto"} a ${className}`,
           url: "/my",
           tag: `photo-${eventId}`,
         },
