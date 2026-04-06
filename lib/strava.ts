@@ -32,15 +32,17 @@ interface StravaTokenResponse {
 }
 
 export async function exchangeStravaCode(code: string): Promise<StravaTokenResponse> {
+  const body = new URLSearchParams({
+    client_id: getStravaClientId(),
+    client_secret: getStravaClientSecret(),
+    code,
+    grant_type: "authorization_code",
+  });
+
   const res = await fetch(`${STRAVA_OAUTH}/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: getStravaClientId(),
-      client_secret: getStravaClientSecret(),
-      code,
-      grant_type: "authorization_code",
-    }),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
   });
 
   if (!res.ok) {
@@ -58,15 +60,17 @@ export async function refreshStravaToken(refreshTokenEnc: string): Promise<{
 }> {
   const refreshToken = decrypt(refreshTokenEnc);
 
+  const body = new URLSearchParams({
+    client_id: getStravaClientId(),
+    client_secret: getStravaClientSecret(),
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+
   const res = await fetch(`${STRAVA_OAUTH}/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: getStravaClientId(),
-      client_secret: getStravaClientSecret(),
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-    }),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
   });
 
   if (!res.ok) {
