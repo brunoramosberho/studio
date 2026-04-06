@@ -12,6 +12,7 @@ import {
   Nunito_Sans,
 } from "next/font/google";
 import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 
 import { Providers } from "./providers";
 import { MobileNav } from "@/components/shared/mobile-nav";
@@ -20,7 +21,7 @@ import { SplashScreen } from "@/components/shared/splash-screen";
 import "./globals.css";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dmsans", display: "swap" });
-const dmMono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono", display: "swap" });
+const dmMono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-dmmono", display: "swap" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 const raleway = Raleway({ subsets: ["latin"], variable: "--font-raleway", display: "swap" });
 const openSans = Open_Sans({ subsets: ["latin"], variable: "--font-opensans", display: "swap" });
@@ -32,7 +33,7 @@ const nunitoSans = Nunito_Sans({ subsets: ["latin"], variable: "--font-nunitosan
 
 const fontVars = [
   dmSans, dmMono, inter, raleway, openSans, montserrat, roboto,
-  jakarta, outfit, nunitoSans, GeistSans,
+  jakarta, outfit, nunitoSans, GeistSans, GeistMono,
 ].map((f) => f.variable).join(" ");
 
 import { headers } from "next/headers";
