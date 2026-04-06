@@ -245,7 +245,7 @@ export default function ClassDetailPage() {
         );
 
   const myBooking = cls?.bookings.find(
-    (b) => b.userId === session?.user?.id && b.status === "CONFIRMED",
+    (b) => b.userId === session?.user?.id && (b.status === "CONFIRMED" || b.status === "ATTENDED"),
   );
   const myBookedSpot = myBooking?.spotNumber ?? null;
 

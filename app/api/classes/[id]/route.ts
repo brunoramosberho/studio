@@ -50,7 +50,7 @@ export async function GET(
         },
         _count: {
           select: {
-            bookings: { where: { status: "CONFIRMED" } },
+            bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
             blockedSpots: true,
             waitlist: true,
             songRequests: true,

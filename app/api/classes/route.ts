@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         },
         _count: {
           select: {
-            bookings: { where: { status: "CONFIRMED" } },
+            bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
             waitlist: true,
           },
         },
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       const fBookings = await prisma.booking.findMany({
         where: {
           classId: { in: classIds },
-          status: "CONFIRMED",
+          status: { in: ["CONFIRMED", "ATTENDED"] },
           privacy: "PUBLIC",
           userId: { in: friendIds },
         },
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
       const myBookings = await prisma.booking.findMany({
         where: {
           classId: { in: classIds },
-          status: "CONFIRMED",
+          status: { in: ["CONFIRMED", "ATTENDED"] },
           userId: currentUserId,
         },
         select: { id: true, classId: true },
