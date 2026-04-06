@@ -31,6 +31,10 @@ const TOOL_LABELS: Record<string, string> = {
   create_client: "Registrando cliente",
   create_class_type: "Creando disciplina",
   create_post: "Publicando post",
+  get_availability_coverage: "Consultando cobertura del equipo",
+  get_availability_pending: "Revisando solicitudes pendientes",
+  get_substitute_suggestions: "Buscando coaches sustitutos",
+  review_availability_request: "Procesando solicitud de disponibilidad",
 };
 
 export function MessageList({ messages, isStreaming, activeTools }: MessageListProps) {

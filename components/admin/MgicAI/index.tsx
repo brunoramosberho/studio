@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -867,17 +868,129 @@ function ConversationListView({
   );
 }
 
+const DEFAULT_SUGGESTIONS = [
+  "¿Cómo va la ocupación esta semana?",
+  "¿Quiénes son mis clientes en riesgo?",
+  "¿Cuál es mi clase más rentable?",
+  "Resumen de ingresos del mes",
+  "Crea un nuevo post para el feed",
+  "Da de alta un nuevo cliente",
+];
+
+const PAGE_SUGGESTIONS: Record<string, string[]> = {
+  "/admin/availability": [
+    "¿Quién puede cubrir Pilates el martes a las 9am si Valentina cancela?",
+    "Muéstrame los gaps de cobertura de esta semana",
+    "¿Hay solicitudes de ausencia pendientes? ¿Cuál es el impacto?",
+    "¿Cuántos coaches están disponibles la semana que viene?",
+    "Aprueba las solicitudes pendientes si no dejan clases sin coach",
+    "¿Qué coach tiene menos carga esta semana para cubrir un hueco?",
+  ],
+  "/admin/schedule": [
+    "¿Qué clases tienen más lista de espera esta semana?",
+    "¿Hay huecos sin clase en el horario de esta semana?",
+    "¿Cuál es el mejor horario para añadir una clase nueva?",
+    "Crea una clase de Pilates Reformer para el lunes a las 10am",
+    "¿Qué coach está disponible el viernes en la mañana?",
+    "Muéstrame el horario de la próxima semana",
+  ],
+  "/admin/coaches": [
+    "¿Cuál es el coach con mejor fill rate este mes?",
+    "Compara el rendimiento de todos los coaches",
+    "¿Qué coach tiene más cancelaciones?",
+    "Invita a un nuevo coach al studio",
+    "¿Quién tiene menos clases asignadas esta semana?",
+    "¿Qué disciplinas cubre cada coach?",
+  ],
+  "/admin/clients": [
+    "¿Quiénes son mis clientes en riesgo de abandono?",
+    "¿Cuántos clientes nuevos tenemos este mes?",
+    "¿Quiénes son mis clientes VIP?",
+    "Da de alta un nuevo cliente",
+    "¿Cuál es la tasa de retención este trimestre?",
+    "Envía un anuncio a los clientes inactivos",
+  ],
+  "/admin/classes": [
+    "¿Cuál es la clase con mejor ocupación?",
+    "¿Qué clases tienen baja asistencia y deberíamos considerar cancelar?",
+    "¿Cuál es el fill rate promedio por disciplina?",
+    "¿Qué día de la semana tiene mejor asistencia?",
+    "Crea una nueva disciplina",
+    "¿Hay clases con lista de espera recurrente?",
+  ],
+  "/admin/packages": [
+    "¿Cuál es el paquete más vendido este mes?",
+    "Resumen de ingresos por tipo de paquete",
+    "¿Cuántos créditos sin usar hay activos?",
+    "¿Qué paquetes están por vencer esta semana?",
+    "Compara ventas de paquetes vs. mes anterior",
+    "¿Cuál es el ticket promedio?",
+  ],
+  "/admin/feed": [
+    "Publica un post motivacional en el feed",
+    "Crea un anuncio sobre el horario de esta semana",
+    "Publica un post felicitando al coach del mes",
+    "Envía un push a todos los miembros activos",
+    "Crea un post sobre una clase especial",
+    "¿Cuántos likes tiene el último post?",
+  ],
+  "/admin/analytics": [
+    "¿Cómo va el studio comparado con el mes pasado?",
+    "¿Cuál es la tendencia de ocupación este trimestre?",
+    "¿Qué horarios tienen mejor rendimiento?",
+    "Analiza la retención por cohortes",
+    "¿Cuál es la proyección de ingresos del mes?",
+    "¿Qué día de la semana genera más ingresos?",
+  ],
+  "/admin/reports": [
+    "Dame un resumen ejecutivo del mes",
+    "¿Cuáles son los KPIs principales del studio?",
+    "Comparativa de este mes vs. el anterior",
+    "¿Cuál es la ocupación promedio del trimestre?",
+    "Top 5 clases más populares del mes",
+    "Resumen de ingresos del trimestre",
+  ],
+  "/admin/gamification": [
+    "¿Cuántos miembros han subido de nivel este mes?",
+    "¿Cuál es el logro más desbloqueado?",
+    "¿Cuántos miembros tienen nivel avanzado?",
+    "Resumen de actividad de gamificación",
+    "¿Qué impacto tiene la gamificación en la retención?",
+    "¿Cuántos miembros activos participan en logros?",
+  ],
+  "/admin/shop": [
+    "¿Cuál es el producto más vendido?",
+    "Resumen de ventas de la tienda este mes",
+    "¿Qué productos tienen bajo stock?",
+    "¿Cuál es el ticket promedio de la tienda?",
+    "Comparativa de ventas vs. mes anterior",
+    "¿Qué productos deberíamos destacar?",
+  ],
+  "/admin/branding": [
+    "¿Qué colores usa actualmente el studio?",
+    "Dame ideas para mejorar el tagline",
+    "¿Cómo se ve la configuración de marca actual?",
+    "Sugiere un slogan para una campaña de verano",
+    "¿Qué elementos de marca tenemos configurados?",
+    "¿Cómo puedo mejorar la presencia del studio?",
+  ],
+};
+
+function getSuggestionsForPath(pathname: string): string[] {
+  const exact = PAGE_SUGGESTIONS[pathname];
+  if (exact) return exact;
+
+  for (const [prefix, suggestions] of Object.entries(PAGE_SUGGESTIONS)) {
+    if (pathname.startsWith(prefix + "/")) return suggestions;
+  }
+
+  return DEFAULT_SUGGESTIONS;
+}
+
 function EmptyState({ onSend }: { onSend: (msg: string) => void }) {
   const { colorAdmin } = useBranding();
-
-  const suggestions = [
-    "¿Cómo va la ocupación esta semana?",
-    "¿Quiénes son mis clientes en riesgo?",
-    "¿Cuál es mi clase más rentable?",
-    "Resumen de ingresos del mes",
-    "Crea un nuevo post para el feed",
-    "Da de alta un nuevo cliente",
-  ];
+  const pathname = usePathname();
+  const suggestions = getSuggestionsForPath(pathname);
 
   return (
     <div className="flex h-full flex-col items-center justify-center px-8 text-center">

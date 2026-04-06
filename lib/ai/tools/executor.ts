@@ -1,6 +1,15 @@
 import { prisma } from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
+import { getCoverageStatus, getSubstituteSuggestions, getZone } from "@/lib/availability";
 import type { BookingStatus } from "@prisma/client";
+import {
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  format,
+  isToday,
+} from "date-fns";
+import { es } from "date-fns/locale";
 
 const CONFIRMED_OR_ATTENDED: BookingStatus[] = ["CONFIRMED", "ATTENDED"];
 
@@ -41,6 +50,14 @@ export async function executeTool(name: string, input: any, tenantId: string, ad
       return createClassType(input, tenantId);
     case "create_post":
       return createPost(input, tenantId, adminUserId);
+    case "get_availability_coverage":
+      return getAvailabilityCoverage(input, tenantId);
+    case "get_availability_pending":
+      return getAvailabilityPending(tenantId);
+    case "get_substitute_suggestions":
+      return getSubstituteSuggestionsAI(input, tenantId);
+    case "review_availability_request":
+      return reviewAvailabilityRequest(input, tenantId, adminUserId);
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -1089,4 +1106,278 @@ async function createPost(
     post_id: event.id,
     summary: `Post "${input.title}" publicado en el feed${input.is_pinned ? " (fijado)" : ""}${input.send_push ? " con push" : ""}.`,
   };
+}
+
+// ─── AVAILABILITY TOOLS ──────────────────────────────────────
+
+async function getAvailabilityCoverage(
+  input: { week_start?: string },
+  tenantId: string,
+) {
+  const baseDate = input.week_start ? new Date(input.week_start) : new Date();
+  const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(baseDate, { weekStartsOn: 1 });
+  const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  const coachProfiles = await prisma.coachProfile.findMany({
+    where: { tenantId },
+    include: {
+      user: { select: { id: true, name: true } },
+    },
+  });
+
+  const allBlocks = await prisma.coachAvailabilityBlock.findMany({
+    where: {
+      tenantId,
+      coachId: { in: coachProfiles.map((p) => p.userId) },
+      status: { in: ["active", "pending_approval"] },
+    },
+  });
+
+  const scheduledClasses = await prisma.class.findMany({
+    where: {
+      tenantId,
+      startsAt: { gte: weekStart, lte: weekEnd },
+      status: "SCHEDULED",
+    },
+    select: { coachId: true, startsAt: true },
+  });
+
+  const classesByCoachDay: Record<string, boolean> = {};
+  for (const c of scheduledClasses) {
+    classesByCoachDay[`${c.coachId}_${format(c.startsAt, "yyyy-MM-dd")}`] = true;
+  }
+
+  const coaches = coachProfiles.map((profile) => {
+    const coachBlocks = allBlocks.filter((b) => b.coachId === profile.userId);
+
+    const dayCoverage = days.map((day) => {
+      const dateStr = format(day, "yyyy-MM-dd");
+      const hasClass = classesByCoachDay[`${profile.id}_${dateStr}`] ?? false;
+      let status = getCoverageStatus(coachBlocks, day);
+      if (status === "available" && !hasClass) status = "empty";
+
+      return {
+        date: dateStr,
+        day_name: format(day, "EEE d MMM", { locale: es }),
+        status,
+        has_class: hasClass,
+      };
+    });
+
+    return {
+      coach_name: profile.user.name || "Coach",
+      coach_profile_id: profile.id,
+      specialties: profile.specialties,
+      days: dayCoverage,
+    };
+  });
+
+  return {
+    week: `${format(weekStart, "d MMM", { locale: es })} – ${format(weekEnd, "d MMM yyyy", { locale: es })}`,
+    coaches,
+    summary: {
+      total_coaches: coaches.length,
+      fully_available_days: coaches.reduce(
+        (s, c) => s + c.days.filter((d) => d.status === "available").length,
+        0,
+      ),
+      blocked_days: coaches.reduce(
+        (s, c) => s + c.days.filter((d) => d.status === "blocked").length,
+        0,
+      ),
+      pending_days: coaches.reduce(
+        (s, c) => s + c.days.filter((d) => d.status === "pending").length,
+        0,
+      ),
+    },
+  };
+}
+
+async function getAvailabilityPending(tenantId: string) {
+  const blocks = await prisma.coachAvailabilityBlock.findMany({
+    where: { tenantId, status: "pending_approval" },
+    include: {
+      coach: { select: { id: true, name: true, email: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const enriched = await Promise.all(
+    blocks.map(async (block) => {
+      const coachProfile = await prisma.coachProfile.findFirst({
+        where: { userId: block.coachId, tenantId },
+        select: { id: true },
+      });
+
+      let affectedClasses: {
+        class_id: string;
+        date: string;
+        time: string;
+        class_type: string;
+        enrolled: number;
+        capacity: number;
+        has_substitute: boolean;
+        substitute_name: string | null;
+      }[] = [];
+
+      if (block.type === "one_time" && block.startDate && block.endDate) {
+        const classes = await prisma.class.findMany({
+          where: {
+            tenantId,
+            coachId: coachProfile?.id ?? "__none__",
+            status: "SCHEDULED",
+            startsAt: { gte: block.startDate, lte: block.endDate },
+          },
+          include: {
+            classType: { select: { name: true } },
+            room: { select: { maxCapacity: true } },
+            _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
+          },
+          orderBy: { startsAt: "asc" },
+        });
+
+        affectedClasses = await Promise.all(
+          classes.map(async (c) => {
+            const subs = await getSubstituteSuggestions(c.id, c.startsAt, tenantId);
+            const best = subs.find((s) => s.available) ?? null;
+            return {
+              class_id: c.id,
+              date: format(c.startsAt, "EEE d MMM", { locale: es }),
+              time: format(c.startsAt, "HH:mm"),
+              class_type: c.classType.name,
+              enrolled: c._count.bookings,
+              capacity: c.room.maxCapacity,
+              has_substitute: !!best,
+              substitute_name: best?.name ?? null,
+            };
+          }),
+        );
+      }
+
+      const zone = block.startDate ? getZone(block.startDate) : "green";
+      const reasonLabels: Record<string, string> = {
+        vacation: "Vacaciones",
+        personal: "Personal",
+        training: "Formación",
+        other: "Otro",
+      };
+
+      return {
+        block_id: block.id,
+        coach_name: block.coach.name,
+        coach_email: block.coach.email,
+        type: block.type,
+        start_date: block.startDate
+          ? format(block.startDate, "d MMM yyyy", { locale: es })
+          : null,
+        end_date: block.endDate
+          ? format(block.endDate, "d MMM yyyy", { locale: es })
+          : null,
+        reason: reasonLabels[block.reasonType] || block.reasonType,
+        reason_note: block.reasonNote,
+        zone,
+        affected_classes: affectedClasses,
+        uncovered_classes: affectedClasses.filter((c) => !c.has_substitute).length,
+      };
+    }),
+  );
+
+  return {
+    pending_count: enriched.length,
+    total_uncovered_classes: enriched.reduce((s, b) => s + b.uncovered_classes, 0),
+    requests: enriched,
+  };
+}
+
+async function getSubstituteSuggestionsAI(
+  input: { class_id: string; date: string },
+  tenantId: string,
+) {
+  const suggestions = await getSubstituteSuggestions(
+    input.class_id,
+    new Date(input.date),
+    tenantId,
+  );
+
+  return {
+    class_id: input.class_id,
+    date: input.date,
+    suggestions: suggestions.map((s) => ({
+      coach_name: s.name,
+      coach_profile_id: s.coachProfileId,
+      available: s.available,
+      has_discipline: s.hasDiscipline,
+      week_load: s.weekLoad,
+    })),
+  };
+}
+
+async function reviewAvailabilityRequest(
+  input: { block_id: string; action: "approve" | "reject"; rejection_note?: string },
+  tenantId: string,
+  adminUserId?: string,
+) {
+  const block = await prisma.coachAvailabilityBlock.findFirst({
+    where: { id: input.block_id, tenantId, status: "pending_approval" },
+    include: { coach: { select: { name: true } } },
+  });
+
+  if (!block) return { error: "Solicitud no encontrada o ya fue revisada" };
+
+  const dateRange =
+    block.startDate && block.endDate
+      ? `${format(block.startDate, "d MMM", { locale: es })} – ${format(block.endDate, "d MMM", { locale: es })}`
+      : "fechas indicadas";
+
+  if (input.action === "approve") {
+    await prisma.coachAvailabilityBlock.update({
+      where: { id: input.block_id },
+      data: {
+        status: "active",
+        approvedBy: adminUserId || null,
+        approvedAt: new Date(),
+      },
+    });
+
+    if (adminUserId) {
+      await prisma.notification.create({
+        data: {
+          userId: block.coachId,
+          tenantId,
+          type: "availability_approved",
+          actorId: adminUserId,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      summary: `Solicitud de ${block.coach.name} aprobada (${dateRange}). El coach ha sido notificado.`,
+    };
+  } else {
+    await prisma.coachAvailabilityBlock.update({
+      where: { id: input.block_id },
+      data: {
+        status: "rejected",
+        rejectionNote: input.rejection_note || null,
+      },
+    });
+
+    if (adminUserId) {
+      await prisma.notification.create({
+        data: {
+          userId: block.coachId,
+          tenantId,
+          type: "availability_rejected",
+          actorId: adminUserId,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      summary: `Solicitud de ${block.coach.name} rechazada (${dateRange}).${input.rejection_note ? ` Motivo: ${input.rejection_note}` : ""} El coach ha sido notificado.`,
+    };
+  }
 }

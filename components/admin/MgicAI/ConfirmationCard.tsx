@@ -14,6 +14,7 @@ const TOOL_LABELS: Record<string, string> = {
   create_client: "Crear cliente",
   create_class_type: "Crear disciplina",
   create_post: "Crear post",
+  review_availability_request: "Revisar solicitud de disponibilidad",
 };
 
 function formatParamValue(value: unknown): string {

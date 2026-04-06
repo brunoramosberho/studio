@@ -163,6 +163,55 @@ export const tools: Anthropic.Tool[] = [
     },
   },
 
+  // ─── AVAILABILITY TOOLS ──────────────────────────────────────
+
+  {
+    name: "get_availability_coverage",
+    description:
+      "Obtiene el mapa de disponibilidad de todos los coaches para una semana. Muestra quién está disponible, bloqueado, parcialmente bloqueado o con solicitud pendiente, día a día. Útil para planificar horarios, detectar gaps de cobertura y buscar sustitutos.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        week_start: {
+          type: "string",
+          description: "Fecha de inicio de semana (ISO: YYYY-MM-DD). Si no se provee, usa la semana actual.",
+        },
+      },
+      required: [],
+    },
+  },
+
+  {
+    name: "get_availability_pending",
+    description:
+      "Lista todas las solicitudes de ausencia/bloqueo pendientes de aprobación. Incluye datos del coach, fechas, motivo, clases afectadas con número de alumnos, y sustitutos sugeridos. Útil para decidir si aprobar o rechazar solicitudes.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [],
+    },
+  },
+
+  {
+    name: "get_substitute_suggestions",
+    description:
+      "Busca coaches sustitutos para una clase específica en una fecha dada. Los ordena por: disponibilidad, si tienen la disciplina, y menor carga semanal. Útil para encontrar reemplazos cuando un coach no puede dar una clase.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        class_id: {
+          type: "string",
+          description: "ID de la clase que necesita sustituto",
+        },
+        date: {
+          type: "string",
+          description: "Fecha ISO para buscar disponibilidad (YYYY-MM-DD)",
+        },
+      },
+      required: ["class_id", "date"],
+    },
+  },
+
   // ─── WRITE TOOLS ──────────────────────────────────────────────
 
   {
@@ -329,6 +378,31 @@ export const tools: Anthropic.Tool[] = [
       required: ["title", "body"],
     },
   },
+
+  {
+    name: "review_availability_request",
+    description:
+      "Aprueba o rechaza una solicitud de ausencia/bloqueo de un coach. Al aprobar, el bloque se activa y el coach es notificado. Al rechazar, se puede incluir un motivo. Requiere confirmación del admin.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        block_id: {
+          type: "string",
+          description: "ID del bloque de disponibilidad a revisar",
+        },
+        action: {
+          type: "string",
+          enum: ["approve", "reject"],
+          description: "Acción a tomar",
+        },
+        rejection_note: {
+          type: "string",
+          description: "Motivo de rechazo (solo si action=reject, opcional)",
+        },
+      },
+      required: ["block_id", "action"],
+    },
+  },
 ];
 
 export const WRITE_TOOLS = new Set([
@@ -341,4 +415,5 @@ export const WRITE_TOOLS = new Set([
   "create_client",
   "create_class_type",
   "create_post",
+  "review_availability_request",
 ]);
