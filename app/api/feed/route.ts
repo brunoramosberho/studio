@@ -88,33 +88,43 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const events = await prisma.feedEvent.findMany({
-      where: whereClause,
-      take: limit + 1,
-      ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: { select: { id: true, name: true, image: true } },
-        photos: {
-          select: { id: true, url: true, thumbnailUrl: true, mimeType: true, userId: true },
-          orderBy: { createdAt: "asc" as const },
-        },
-        _count: { select: { likes: true, comments: true } },
-        ...(currentUserId && {
-          likes: {
-            where: { userId: currentUserId },
-            select: { id: true, type: true },
-            take: 1,
-          },
-        }),
+    const feedInclude = {
+      user: { select: { id: true, name: true, image: true } },
+      photos: {
+        select: { id: true, url: true, thumbnailUrl: true, mimeType: true, userId: true },
+        orderBy: { createdAt: "asc" as const },
       },
-    });
+      _count: { select: { likes: true, comments: true } },
+      ...(currentUserId && {
+        likes: {
+          where: { userId: currentUserId },
+          select: { id: true, type: true },
+          take: 1,
+        },
+      }),
+    };
 
-    const hasMore = events.length > limit;
-    const dbPage = hasMore ? events.slice(0, limit) : events;
+    const [pinnedEvents, paginatedEvents] = await Promise.all([
+      !cursor
+        ? prisma.feedEvent.findMany({
+            where: { ...whereClause, isPinned: true },
+            orderBy: { createdAt: "desc" },
+            include: feedInclude,
+          })
+        : Promise.resolve([]),
+      prisma.feedEvent.findMany({
+        where: { ...whereClause, isPinned: false },
+        take: limit + 1,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+        orderBy: { createdAt: "desc" },
+        include: feedInclude,
+      }),
+    ]);
+
+    const hasMore = paginatedEvents.length > limit;
+    const dbPage = hasMore ? paginatedEvents.slice(0, limit) : paginatedEvents;
     const nextCursor = hasMore ? dbPage[dbPage.length - 1].id : null;
-
-    let items = dbPage;
+    let items = [...pinnedEvents, ...dbPage];
 
     if (currentUserId) {
       items = items.filter(
@@ -289,11 +299,71 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Group CLASS_RESERVED events by classId into a single post
-    const reservedByClass = new Map<string, typeof items>();
-    const nonReserved: typeof items = [];
+    // Group ACHIEVEMENT_UNLOCKED events by userId + same calendar day
+    const achievementByUserDay = new Map<string, typeof items>();
+    const nonAchievement: typeof items = [];
 
     for (const event of items) {
+      if (event.eventType === "ACHIEVEMENT_UNLOCKED") {
+        const day = new Date(event.createdAt).toDateString();
+        const key = `${event.userId}::${day}`;
+        const group = achievementByUserDay.get(key) ?? [];
+        group.push(event);
+        achievementByUserDay.set(key, group);
+        continue;
+      }
+      nonAchievement.push(event);
+    }
+
+    // Merge grouped achievements back — one merged event per user-day
+    const mergedItems: typeof items = [...nonAchievement];
+    for (const group of achievementByUserDay.values()) {
+      if (group.length === 1) {
+        mergedItems.push(group[0]);
+        continue;
+      }
+      // Merge all achievements into the newest event's payload
+      const newest = group[0]; // already sorted desc by createdAt
+      const allAchievements: { achievementKey: string; achievementType: string; label: string; description: string; icon: string }[] = [];
+      const seenKeys = new Set<string>();
+      for (const ev of group) {
+        const p = ev.payload as Record<string, unknown>;
+        const list = (p.achievements as typeof allAchievements) ?? [{
+          achievementKey: p.achievementKey as string,
+          achievementType: p.achievementType as string,
+          label: p.label as string,
+          description: p.description as string,
+          icon: p.icon as string,
+        }];
+        for (const a of list) {
+          if (!seenKeys.has(a.achievementKey)) {
+            seenKeys.add(a.achievementKey);
+            allAchievements.push(a);
+          }
+        }
+      }
+      const mergedPayload = {
+        ...(newest.payload as object),
+        achievements: allAchievements,
+        achievementKey: allAchievements[0]?.achievementKey,
+        achievementType: allAchievements[0]?.achievementType,
+        label: allAchievements[0]?.label,
+        description: allAchievements[0]?.description,
+        icon: allAchievements[0]?.icon,
+      };
+      (newest as unknown as { payload: unknown }).payload = mergedPayload;
+      (newest as unknown as { _count: { likes: number; comments: number } })._count = {
+        likes: group.reduce((s, e) => s + e._count.likes, 0),
+        comments: group.reduce((s, e) => s + e._count.comments, 0),
+      };
+      mergedItems.push(newest);
+    }
+
+    // Group CLASS_RESERVED events by classId into a single post
+    const reservedByClass = new Map<string, typeof mergedItems>();
+    const nonReserved: typeof mergedItems = [];
+
+    for (const event of mergedItems) {
       if (event.eventType === "CLASS_RESERVED") {
         const classId = (event.payload as Record<string, unknown>)?.classId as string;
         if (classId) {

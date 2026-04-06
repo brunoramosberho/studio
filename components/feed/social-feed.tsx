@@ -128,7 +128,10 @@ export function SocialFeed() {
     return () => observer.disconnect();
   }, [handleIntersect]);
 
-  const allEvents = data?.pages.flatMap((p) => p.feed) ?? [];
+  const rawEvents = data?.pages.flatMap((p) => p.feed) ?? [];
+  const pinned = rawEvents.filter((e) => e.isPinned);
+  const unpinned = rawEvents.filter((e) => !e.isPinned);
+  const allEvents = [...pinned, ...unpinned];
   const firstPage = data?.pages[0];
   const totalClasses = firstPage?.totalClasses ?? 0;
   const disciplines = firstPage?.disciplines ?? [];

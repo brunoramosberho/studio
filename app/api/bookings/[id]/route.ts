@@ -56,6 +56,7 @@ async function syncCompletedClassFeedEvent(classId: string, tenantId: string) {
         userId: cls.coach.userId,
         eventType: "CLASS_COMPLETED",
         visibility: "STUDIO_WIDE",
+        createdAt: cls.endsAt,
         payload: {
           classId: cls.id,
           className: cls.classType.name,
