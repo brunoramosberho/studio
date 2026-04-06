@@ -454,13 +454,13 @@ export async function GET(request: NextRequest) {
     });
 
     // Auto-unpin expired class promo posts (fire-and-forget)
-    const now = Date.now();
+    const nowMs = now.getTime();
     const expiredPinnedIds: string[] = [];
     for (const entry of feed) {
       if (!entry.isPinned) continue;
       const pl = entry.payload as Record<string, unknown> | null;
       if (!pl?.linkedClassId || !pl.classStartsAt) continue;
-      if (new Date(pl.classStartsAt as string).getTime() <= now) {
+      if (new Date(pl.classStartsAt as string).getTime() <= nowMs) {
         entry.isPinned = false;
         expiredPinnedIds.push(entry.id);
       }
