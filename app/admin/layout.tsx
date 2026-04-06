@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   CalendarDays,
+  CalendarOff,
   Dumbbell,
   ClipboardList,
   Users,
@@ -60,6 +61,7 @@ const navSections: NavSection[] = [
       { href: "/admin/schedule", label: "Horario", icon: CalendarDays, badgeKey: "pendingWaitlist" },
       { href: "/admin/classes", label: "Clases", icon: ClipboardList, contextKey: "activeClasses" },
       { href: "/admin/coaches", label: "Coaches", icon: UserCog },
+      { href: "/admin/availability", label: "Disponibilidad", icon: CalendarOff },
       { href: "/admin/class-types", label: "Disciplinas", icon: Dumbbell },
     ],
   },
