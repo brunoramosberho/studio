@@ -21,20 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { type StudioBranding, DEFAULTS, FONT_PAIRINGS } from "@/lib/branding";
+import { type StudioBranding, DEFAULTS, FONT_PAIRINGS, deriveAccentSoft, withDerivedColors } from "@/lib/branding";
 import { useBranding, applyTheme } from "@/components/branding-provider";
 
-const colorFields: { key: keyof StudioBranding; label: string; hint?: string }[] = [
-  { key: "colorBg", label: "Fondo" },
-  { key: "colorFg", label: "Texto" },
-  { key: "colorSurface", label: "Superficie" },
-  { key: "colorAccent", label: "Acento" },
-  { key: "colorAccentSoft", label: "Acento suave" },
-  { key: "colorMuted", label: "Texto secundario" },
-  { key: "colorBorder", label: "Bordes" },
+const colorFields: { key: keyof StudioBranding; label: string; hint: string }[] = [
+  { key: "colorAccent", label: "Color de marca", hint: "Botones, links y elementos destacados" },
   { key: "colorHeroBg", label: "Fondo Landing", hint: "Secciones oscuras de tu landing page" },
-  { key: "colorCoach", label: "Portal Coach" },
-  { key: "colorAdmin", label: "Portal Admin" },
 ];
 
 export default function BrandingPage() {
@@ -49,17 +41,18 @@ export default function BrandingPage() {
   useEffect(() => {
     fetch("/api/admin/settings")
       .then((r) => r.json())
-      .then((data) => setSettings({ ...DEFAULTS, ...data }))
+      .then((data) => setSettings(withDerivedColors({ ...DEFAULTS, ...data })))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   const saveMutation = useMutation({
     mutationFn: async (data: StudioBranding) => {
+      const derived = withDerivedColors(data);
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(derived),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -76,7 +69,13 @@ export default function BrandingPage() {
   });
 
   function update(key: keyof StudioBranding, value: string | null) {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    setSettings((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === "colorAccent" && typeof value === "string") {
+        next.colorAccentSoft = deriveAccentSoft(value);
+      }
+      return next;
+    });
   }
 
   function readAsDataUrl(file: File, key: keyof StudioBranding) {
@@ -624,47 +623,46 @@ export default function BrandingPage() {
             </div>
 
             <div className="mt-6 rounded-md border border-border p-4">
-              <p className="mb-2 text-xs font-medium text-muted">Vista previa</p>
-              <div
-                className="overflow-hidden rounded-md p-6"
-                style={{ backgroundColor: settings.colorBg, color: settings.colorFg }}
-              >
-                <h3 className="font-display text-xl font-bold">{settings.studioName} Studio</h3>
-                <p className="mt-1 text-sm" style={{ color: settings.colorMuted }}>
-                  {settings.tagline}
-                </p>
-                <div className="mt-3 flex gap-2">
+              <p className="mb-3 text-xs font-medium text-muted">Vista previa</p>
+              <div className="overflow-hidden rounded-md">
+                <div className="p-6" style={{ backgroundColor: settings.colorBg, color: settings.colorFg }}>
+                  <h3 className="font-display text-xl font-bold">{settings.studioName}</h3>
+                  <p className="mt-1 text-sm" style={{ color: settings.colorMuted }}>
+                    {settings.tagline || "Tu estudio"}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span
+                      className="rounded-md px-3 py-1.5 text-xs font-semibold text-white"
+                      style={{ backgroundColor: settings.colorAccent }}
+                    >
+                      Reservar clase
+                    </span>
+                    <span
+                      className="rounded-md px-3 py-1.5 text-xs font-medium"
+                      style={{ backgroundColor: settings.colorAccentSoft, color: settings.colorFg }}
+                    >
+                      Ver horarios
+                    </span>
+                  </div>
+                  <div
+                    className="mt-3 rounded-md border p-3"
+                    style={{ borderColor: settings.colorBorder, backgroundColor: settings.colorSurface }}
+                  >
+                    <p className="text-xs" style={{ color: settings.colorMuted }}>
+                      Los colores de fondo, texto, bordes y superficie se ajustan automáticamente.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-6" style={{ backgroundColor: settings.colorHeroBg, color: "#FFFFFF" }}>
+                  <h3 className="font-display text-lg font-bold">Tu Landing Page</h3>
+                  <p className="mt-1 text-sm opacity-70">
+                    Así se ven las secciones oscuras
+                  </p>
                   <span
-                    className="rounded-md px-3 py-1 text-xs font-semibold text-white"
+                    className="mt-3 inline-block rounded-md px-3 py-1.5 text-xs font-semibold text-white"
                     style={{ backgroundColor: settings.colorAccent }}
                   >
-                    Acento
-                  </span>
-                  <span
-                    className="rounded-md px-3 py-1 text-xs font-medium"
-                    style={{ backgroundColor: settings.colorAccentSoft, color: settings.colorFg }}
-                  >
-                    Acento suave
-                  </span>
-                  <span
-                    className="rounded-md px-3 py-1 text-xs font-medium"
-                    style={{ backgroundColor: settings.colorSurface, color: settings.colorMuted }}
-                  >
-                    Superficie
-                  </span>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <span
-                    className="rounded-md px-3 py-1 text-xs font-semibold text-white"
-                    style={{ backgroundColor: settings.colorCoach }}
-                  >
-                    Coach
-                  </span>
-                  <span
-                    className="rounded-md px-3 py-1 text-xs font-semibold text-white"
-                    style={{ backgroundColor: settings.colorAdmin }}
-                  >
-                    Admin
+                    Empieza hoy
                   </span>
                 </div>
               </div>

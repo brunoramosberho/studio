@@ -69,6 +69,65 @@ export function getFontPairing(id: string): FontPairing {
   return FONT_PAIRINGS.find((p) => p.id === id) ?? FONT_PAIRINGS[0];
 }
 
+/* ── Platform-level fixed colors (not customizable by tenant admins) ── */
+
+export const PLATFORM_COLORS = {
+  colorBg: "#FAF9F6",
+  colorFg: "#1C1917",
+  colorSurface: "#F5F2ED",
+  colorMuted: "#8C8279",
+  colorBorder: "#E8E2D9",
+  colorCoach: "#2D5016",
+  colorAdmin: "#1A2C4E",
+} as const;
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  if (h.length !== 6) return [0, 0, 0];
+  return [
+    parseInt(h.substring(0, 2), 16),
+    parseInt(h.substring(2, 4), 16),
+    parseInt(h.substring(4, 6), 16),
+  ];
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return (
+    "#" +
+    [r, g, b]
+      .map((c) =>
+        Math.round(Math.min(255, Math.max(0, c)))
+          .toString(16)
+          .padStart(2, "0"),
+      )
+      .join("")
+  );
+}
+
+/** Generate a soft/light tint of the given accent color */
+export function deriveAccentSoft(accent: string): string {
+  const [r, g, b] = hexToRgb(accent);
+  const mix = 0.82;
+  return rgbToHex(
+    r + (255 - r) * mix,
+    g + (255 - g) * mix,
+    b + (255 - b) * mix,
+  );
+}
+
+/**
+ * Apply platform defaults + derived colors on top of client-chosen values.
+ * Only colorAccent and colorHeroBg are preserved from the input;
+ * everything else is fixed or derived.
+ */
+export function withDerivedColors(branding: StudioBranding): StudioBranding {
+  return {
+    ...branding,
+    ...PLATFORM_COLORS,
+    colorAccentSoft: deriveAccentSoft(branding.colorAccent),
+  };
+}
+
 export function tenantToBranding(tenant: Tenant): StudioBranding {
   return {
     studioName: tenant.name,
