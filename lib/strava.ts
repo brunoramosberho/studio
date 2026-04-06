@@ -5,11 +5,11 @@ const STRAVA_API = "https://www.strava.com/api/v3";
 const STRAVA_OAUTH = "https://www.strava.com/oauth";
 
 export function getStravaClientId() {
-  return process.env.STRAVA_CLIENT_ID!;
+  return (process.env.STRAVA_CLIENT_ID || "").trim();
 }
 
 function getStravaClientSecret() {
-  return process.env.STRAVA_CLIENT_SECRET!;
+  return (process.env.STRAVA_CLIENT_SECRET || "").trim();
 }
 
 export function buildStravaAuthUrl(userId: string, redirectUri: string, state?: string): string {
