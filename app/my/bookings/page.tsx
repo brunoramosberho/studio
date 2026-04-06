@@ -273,7 +273,7 @@ export default function BookingsPage() {
 
               return (
                 <motion.div key={booking.id} variants={fadeUp}>
-                  <div className="mb-1.5 flex items-center gap-2 opacity-50">
+                  <div className="mb-1.5 flex items-center gap-2">
                     <div className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
                     <span className="text-[13px] font-semibold capitalize text-foreground">
                       {formatTime(booking.class.startsAt)} / {dayLabel}
@@ -284,7 +284,7 @@ export default function BookingsPage() {
                   <div className="rounded-2xl border border-border/40 bg-white shadow-sm overflow-hidden">
                     <Link
                       href={`/class/${booking.classId}`}
-                      className="block opacity-50"
+                      className="block"
                     >
                       <div className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
@@ -292,10 +292,10 @@ export default function BookingsPage() {
                             <img
                               src={(booking.class.coach.photoUrl || booking.class.coach.user.image)!}
                               alt={booking.class.coach.user.name || "Coach"}
-                              className="h-10 w-10 flex-shrink-0 rounded-full object-cover grayscale"
+                              className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent opacity-50">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent">
                               {booking.class.coach.user.name?.charAt(0) || "C"}
                             </div>
                           )}
