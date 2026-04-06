@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Heart, ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +20,12 @@ export function LikeButton({
   const [liked, setLiked] = useState(initialLiked);
   const [count, setCount] = useState(initialCount);
   const [animating, setAnimating] = useState(false);
+  const busyRef = useRef(false);
 
   const toggle = useCallback(async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+
     const newLiked = !liked;
     setLiked(newLiked);
     setCount((c) => c + (newLiked ? 1 : -1));
@@ -31,14 +35,20 @@ export function LikeButton({
     }
 
     try {
-      await fetch(`/api/feed/${eventId}/like`, {
+      const res = await fetch(`/api/feed/${eventId}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: isAchievement ? "kudos" : "like" }),
       });
+      if (!res.ok) {
+        setLiked(!newLiked);
+        setCount((c) => c + (newLiked ? -1 : 1));
+      }
     } catch {
       setLiked(!newLiked);
       setCount((c) => c + (newLiked ? -1 : 1));
+    } finally {
+      busyRef.current = false;
     }
   }, [liked, eventId, isAchievement]);
 
