@@ -12,14 +12,14 @@ function getStravaClientSecret() {
   return process.env.STRAVA_CLIENT_SECRET!;
 }
 
-export function buildStravaAuthUrl(userId: string, redirectUri: string): string {
+export function buildStravaAuthUrl(userId: string, redirectUri: string, state?: string): string {
   const params = new URLSearchParams({
     client_id: getStravaClientId(),
     redirect_uri: redirectUri,
     response_type: "code",
     approval_prompt: "auto",
     scope: "read,activity:read",
-    state: userId,
+    state: state || userId,
   });
   return `${STRAVA_OAUTH}/authorize?${params}`;
 }
