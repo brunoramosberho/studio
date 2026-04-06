@@ -78,7 +78,11 @@ export async function GET(request: NextRequest) {
     console.log("[strava-callback] saved connection, redirecting to", originHost);
     return NextResponse.redirect(buildRedirectUrl(originHost, profilePath, { strava: "connected" }));
   } catch (err) {
-    console.error("[strava-callback] FULL ERROR:", String(err), err instanceof Error ? err.stack : "");
-    return NextResponse.redirect(buildRedirectUrl(originHost, profilePath, { strava: "error" }));
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error("[strava-callback] FULL ERROR:", errMsg, err instanceof Error ? err.stack : "");
+    return NextResponse.redirect(buildRedirectUrl(originHost, profilePath, {
+      strava: "error",
+      strava_debug: errMsg.slice(0, 200),
+    }));
   }
 }
