@@ -3,8 +3,77 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
 import { promoteFromWaitlist } from "@/lib/waitlist";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
+
+async function syncCompletedClassFeedEvent(classId: string, tenantId: string) {
+  const cls = await prisma.class.findFirst({
+    where: { id: classId, tenantId },
+    include: {
+      classType: true,
+      coach: { include: { user: { select: { name: true, image: true } } } },
+      bookings: {
+        where: { status: "ATTENDED" },
+        include: { user: { select: { id: true, name: true, image: true } } },
+      },
+    },
+  });
+  if (!cls) return;
+
+  const attendees = cls.bookings
+    .filter((b) => b.userId)
+    .map((b) => ({
+      id: b.userId!,
+      name: b.user?.name ?? "Miembro",
+      image: b.user?.image ?? null,
+    }));
+
+  const existingEvent = await prisma.feedEvent.findFirst({
+    where: {
+      tenantId,
+      eventType: "CLASS_COMPLETED",
+      payload: { path: ["classId"], equals: classId },
+    },
+  });
+
+  if (existingEvent) {
+    await prisma.feedEvent.update({
+      where: { id: existingEvent.id },
+      data: {
+        payload: {
+          ...(existingEvent.payload as object),
+          attendees,
+          attendeeCount: attendees.length,
+        },
+      },
+    });
+  } else if (attendees.length > 0) {
+    await prisma.feedEvent.create({
+      data: {
+        tenantId,
+        userId: cls.coach.userId,
+        eventType: "CLASS_COMPLETED",
+        visibility: "STUDIO_WIDE",
+        payload: {
+          classId: cls.id,
+          className: cls.classType.name,
+          classTypeColor: cls.classType.color,
+          classTypeIcon: cls.classType.icon,
+          coachName: cls.coach.user.name,
+          coachImage: cls.coach.photoUrl || cls.coach.user.image,
+          coachUserId: cls.coach.userId,
+          date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),
+          time: format(cls.startsAt, "h:mm a"),
+          duration: cls.classType.duration,
+          attendees,
+          attendeeCount: attendees.length,
+        },
+      },
+    });
+  }
+}
 
 /** Returns true if credit was restored, false if it was lost */
 async function restoreCreditIfEligible(booking: {
@@ -95,6 +164,12 @@ export async function PUT(
           if (grants.length > 0) return createGroupedAchievementEvents(grants, tenant.id);
         })
         .catch((err) => console.error("Achievement check failed:", err));
+    }
+
+    if ((status === "ATTENDED" || status === "NO_SHOW") && booking.class.status === "COMPLETED") {
+      syncCompletedClassFeedEvent(booking.classId, tenant.id).catch((err) =>
+        console.error("Feed event sync failed:", err),
+      );
     }
 
     return NextResponse.json(updated);

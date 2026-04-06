@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { sendPushToUser } from "@/lib/push";
+import { sendPushToUser, sendPushToMany } from "@/lib/push";
 import { refundAndClearWaitlist } from "@/lib/waitlist";
-import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
+import {
+  checkAchievements,
+  createGroupedAchievementEvents,
+  type GrantedAchievement,
+} from "@/lib/achievements";
 import { formatTime } from "@/lib/utils";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -75,6 +81,101 @@ export async function GET(request: NextRequest) {
       });
 
       sent++;
+    }
+  }
+
+  // Auto-complete classes past their scheduled end time
+  let classesAutoCompleted = 0;
+  for (const tenant of tenants) {
+    const overdueClasses = await prisma.class.findMany({
+      where: {
+        tenantId: tenant.id,
+        status: "SCHEDULED",
+        endsAt: { lte: now },
+      },
+      include: {
+        classType: true,
+        coach: { include: { user: { select: { name: true, image: true } } } },
+        bookings: {
+          where: { status: { not: "CANCELLED" } },
+          include: { user: { select: { id: true, name: true, image: true } } },
+        },
+      },
+    });
+
+    for (const cls of overdueClasses) {
+      const confirmedBookingIds = cls.bookings
+        .filter((b) => b.status === "CONFIRMED")
+        .map((b) => b.id);
+
+      if (confirmedBookingIds.length > 0) {
+        await prisma.booking.updateMany({
+          where: { id: { in: confirmedBookingIds } },
+          data: { status: "NO_SHOW" },
+        });
+      }
+
+      await prisma.class.update({
+        where: { id: cls.id },
+        data: { status: "COMPLETED" },
+      });
+
+      const attendees = cls.bookings
+        .filter((b) => b.userId && b.status === "ATTENDED")
+        .map((b) => ({
+          id: b.userId!,
+          name: b.user?.name ?? "Miembro",
+          image: b.user?.image ?? null,
+        }));
+
+      if (attendees.length > 0) {
+        await prisma.feedEvent.create({
+          data: {
+            tenantId: tenant.id,
+            userId: cls.coach.userId,
+            eventType: "CLASS_COMPLETED",
+            visibility: "STUDIO_WIDE",
+            payload: {
+              classId: cls.id,
+              className: cls.classType.name,
+              classTypeColor: cls.classType.color,
+              classTypeIcon: cls.classType.icon,
+              coachName: cls.coach.user.name,
+              coachImage: cls.coach.photoUrl || cls.coach.user.image,
+              coachUserId: cls.coach.userId,
+              date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),
+              time: format(cls.startsAt, "h:mm a"),
+              duration: cls.classType.duration,
+              attendees,
+              attendeeCount: attendees.length,
+            },
+          },
+        });
+
+        const attendedUserIds = attendees.map((a) => a.id);
+        const allGrants: GrantedAchievement[] = [];
+        for (const userId of attendedUserIds) {
+          const granted = await checkAchievements(userId, tenant.id);
+          allGrants.push(...granted);
+        }
+        if (allGrants.length > 0) {
+          await createGroupedAchievementEvents(allGrants, tenant.id);
+        }
+
+        const coachFirst = cls.coach.user.name?.split(" ")[0] ?? "Tu coach";
+        sendPushToMany(
+          attendedUserIds,
+          {
+            title: `${cls.classType.name} completada`,
+            body: `${coachFirst} finalizó la clase. ¡Mira el post y comparte fotos!`,
+            url: "/my",
+            tag: `class-completed-${cls.id}`,
+          },
+          tenant.id,
+        );
+      }
+
+      classesAutoCompleted++;
     }
   }
 
@@ -165,6 +266,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     sent,
+    classesAutoCompleted,
     waitlistRefunded,
     birthdayChecked,
     streaksReset,

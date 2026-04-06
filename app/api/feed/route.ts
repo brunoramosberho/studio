@@ -122,6 +122,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    items = items.filter((e) => {
+      if (e.eventType !== "CLASS_COMPLETED") return true;
+      const payload = e.payload as Record<string, unknown>;
+      return ((payload?.attendeeCount as number) ?? 0) > 0;
+    });
+
     let bookedClassIds = new Set<string>();
     if (currentUserId) {
       const reservedClassIds = items

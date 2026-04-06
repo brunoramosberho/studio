@@ -46,7 +46,7 @@ export async function POST(
       select: { id: true, payload: true },
     });
 
-    if (cls.status === "COMPLETED" && existingEvent) {
+    if (cls.status === "COMPLETED" && existingEvent && !attendedUserIds) {
       const payload = existingEvent.payload as Record<string, unknown>;
       return NextResponse.json({
         completed: true,
@@ -59,7 +59,7 @@ export async function POST(
 
     const idsToMark =
       attendedUserIds ??
-      cls.bookings.filter((b) => b.userId).map((b) => b.userId!);
+      cls.bookings.filter((b) => b.userId && b.status === "ATTENDED").map((b) => b.userId!);
 
     for (const booking of cls.bookings) {
       if (!booking.userId) continue;
@@ -88,11 +88,21 @@ export async function POST(
         image: b.user?.image ?? null,
       }));
 
-    let feedEventId: string;
+    let feedEventId: string | null = null;
 
     if (existingEvent) {
       feedEventId = existingEvent.id;
-    } else {
+      await prisma.feedEvent.update({
+        where: { id: existingEvent.id },
+        data: {
+          payload: {
+            ...(existingEvent.payload as object),
+            attendees,
+            attendeeCount: attendees.length,
+          },
+        },
+      });
+    } else if (attendees.length > 0) {
       const event = await prisma.feedEvent.create({
         data: {
           tenantId: ctx.tenant.id,
@@ -128,7 +138,7 @@ export async function POST(
       await createGroupedAchievementEvents(allGrants, ctx.tenant.id);
     }
 
-    if (!existingEvent) {
+    if (!existingEvent && feedEventId && idsToMark.length > 0) {
       const coachFirst = cls.coach.user.name?.split(" ")[0] ?? "Tu coach";
       sendPushToMany(
         idsToMark,
