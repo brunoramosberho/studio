@@ -269,6 +269,8 @@ export default function BookingsPage() {
               const startDate = new Date(booking.class.startsAt);
               const dayLabel = format(startDate, "EEE d 'de' MMM", { locale: es });
 
+              const hasBiometrics = booking.status === "ATTENDED" || booking.status === "CONFIRMED";
+
               return (
                 <motion.div key={booking.id} variants={fadeUp}>
                   <div className="mb-1.5 flex items-center gap-2 opacity-50">
@@ -279,41 +281,39 @@ export default function BookingsPage() {
                     </span>
                   </div>
 
-                  <Link
-                    href={`/class/${booking.classId}`}
-                    className="block opacity-50"
-                  >
-                    <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm">
-                      <div className="flex items-center gap-3">
-                        {(booking.class.coach.photoUrl || booking.class.coach.user.image) ? (
-                          <img
-                            src={(booking.class.coach.photoUrl || booking.class.coach.user.image)!}
-                            alt={booking.class.coach.user.name || "Coach"}
-                            className="h-10 w-10 flex-shrink-0 rounded-full object-cover grayscale"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent opacity-50">
-                            {booking.class.coach.user.name?.charAt(0) || "C"}
+                  <div className="rounded-2xl border border-border/40 bg-white shadow-sm overflow-hidden">
+                    <Link
+                      href={`/class/${booking.classId}`}
+                      className="block opacity-50"
+                    >
+                      <div className="px-4 py-3.5">
+                        <div className="flex items-center gap-3">
+                          {(booking.class.coach.photoUrl || booking.class.coach.user.image) ? (
+                            <img
+                              src={(booking.class.coach.photoUrl || booking.class.coach.user.image)!}
+                              alt={booking.class.coach.user.name || "Coach"}
+                              className="h-10 w-10 flex-shrink-0 rounded-full object-cover grayscale"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent opacity-50">
+                              {booking.class.coach.user.name?.charAt(0) || "C"}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[15px] font-bold text-foreground">
+                              {booking.class.classType.name}
+                            </p>
+                            <p className="truncate text-[13px] text-muted">
+                              con {booking.class.coach.user.name?.split(" ")[0]}
+                              {studioName && <span className="text-muted/50"> · {studioName}</span>}
+                            </p>
                           </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[15px] font-bold text-foreground">
-                            {booking.class.classType.name}
-                          </p>
-                          <p className="truncate text-[13px] text-muted">
-                            con {booking.class.coach.user.name?.split(" ")[0]}
-                            {studioName && <span className="text-muted/50"> · {studioName}</span>}
-                          </p>
+                          <StatusBadge status={booking.status} />
                         </div>
-                        <StatusBadge status={booking.status} />
                       </div>
-                    </div>
-                  </Link>
-                  {(booking.status === "ATTENDED" || booking.status === "CONFIRMED") && (
-                    <div className="mt-1.5">
-                      <BiometricsCard bookingId={booking.id} />
-                    </div>
-                  )}
+                    </Link>
+                    {hasBiometrics && <BiometricsCard bookingId={booking.id} variant="inline" />}
+                  </div>
                 </motion.div>
               );
             })}

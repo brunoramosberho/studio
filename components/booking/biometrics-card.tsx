@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Flame, Heart, Activity } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface BiometricsData {
   id: string;
@@ -12,10 +13,6 @@ interface BiometricsData {
   createdAt: string;
 }
 
-const PROVIDER_LABELS: Record<string, string> = {
-  STRAVA: "Strava",
-};
-
 function StravaIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -24,7 +21,12 @@ function StravaIcon({ className }: { className?: string }) {
   );
 }
 
-export function BiometricsCard({ bookingId }: { bookingId: string }) {
+interface BiometricsCardProps {
+  bookingId: string;
+  variant?: "standalone" | "inline";
+}
+
+export function BiometricsCard({ bookingId, variant = "standalone" }: BiometricsCardProps) {
   const { data: biometrics } = useQuery<BiometricsData | null>({
     queryKey: ["biometrics", bookingId],
     queryFn: async () => {
@@ -40,50 +42,69 @@ export function BiometricsCard({ bookingId }: { bookingId: string }) {
   const hasAnyData = biometrics.calories || biometrics.hrAvg || biometrics.hrMax;
   if (!hasAnyData) return null;
 
-  const providerLabel = PROVIDER_LABELS[biometrics.provider] ?? biometrics.provider;
+  const stats = [
+    biometrics.calories != null && biometrics.calories > 0 && {
+      icon: <Flame className="h-3.5 w-3.5 text-orange-500" />,
+      value: Math.round(biometrics.calories),
+      unit: "kcal",
+    },
+    biometrics.hrAvg != null && biometrics.hrAvg > 0 && {
+      icon: <Heart className="h-3.5 w-3.5 text-rose-400" />,
+      value: Math.round(biometrics.hrAvg),
+      unit: "avg",
+    },
+    biometrics.hrMax != null && biometrics.hrMax > 0 && {
+      icon: <Heart className="h-3.5 w-3.5 text-rose-600" />,
+      value: Math.round(biometrics.hrMax),
+      unit: "max",
+    },
+  ].filter(Boolean) as { icon: React.ReactNode; value: number; unit: string }[];
+
+  if (variant === "inline") {
+    return (
+      <div className="flex items-center gap-3 border-t border-border/30 px-4 pb-3 pt-2.5">
+        <div className="flex items-center gap-3 flex-1">
+          {stats.map((s, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              {s.icon}
+              <span className="text-[13px] font-semibold tabular-nums text-foreground">
+                {s.value}
+              </span>
+              <span className="text-[10px] text-muted">{s.unit}</span>
+            </div>
+          ))}
+        </div>
+        <span className="flex items-center gap-1 text-[10px] text-muted/70">
+          <StravaIcon className="h-2.5 w-2.5 text-[#FC4C02]" />
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded-xl border border-orange-200/60 bg-gradient-to-br from-orange-50/80 to-amber-50/60 p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <Activity className="h-4 w-4 text-orange-600" />
-        <span className="text-[13px] font-semibold text-foreground">
-          Tu actividad
-        </span>
-        <span className="ml-auto flex items-center gap-1 text-[10px] text-muted">
-          vía <StravaIcon className="inline h-3 w-3 text-[#FC4C02]" /> {providerLabel}
+    <div className="rounded-2xl border border-border/40 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-orange-600" />
+          <span className="text-[13px] font-semibold text-foreground">
+            Tu actividad
+          </span>
+        </div>
+        <span className="flex items-center gap-1 text-[10px] text-muted">
+          vía <StravaIcon className="inline h-3 w-3 text-[#FC4C02]" /> Strava
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {biometrics.calories != null && biometrics.calories > 0 && (
-          <div className="flex flex-col items-center gap-1 rounded-lg bg-white/70 px-2 py-2.5">
-            <Flame className="h-4 w-4 text-orange-500" />
-            <span className="font-mono text-lg font-bold text-foreground">
-              {Math.round(biometrics.calories)}
+      <div className={cn("grid gap-2", stats.length === 3 ? "grid-cols-3" : stats.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
+        {stats.map((s, i) => (
+          <div key={i} className="flex flex-col items-center gap-0.5 rounded-xl bg-surface/60 px-3 py-3">
+            {s.icon}
+            <span className="mt-0.5 font-mono text-[20px] font-bold leading-tight text-foreground">
+              {s.value}
             </span>
-            <span className="text-[10px] text-muted">kcal</span>
+            <span className="text-[10px] font-medium text-muted">{s.unit}</span>
           </div>
-        )}
-
-        {biometrics.hrAvg != null && biometrics.hrAvg > 0 && (
-          <div className="flex flex-col items-center gap-1 rounded-lg bg-white/70 px-2 py-2.5">
-            <Heart className="h-4 w-4 text-red-400" />
-            <span className="font-mono text-lg font-bold text-foreground">
-              {Math.round(biometrics.hrAvg)}
-            </span>
-            <span className="text-[10px] text-muted">bpm avg</span>
-          </div>
-        )}
-
-        {biometrics.hrMax != null && biometrics.hrMax > 0 && (
-          <div className="flex flex-col items-center gap-1 rounded-lg bg-white/70 px-2 py-2.5">
-            <Heart className="h-4 w-4 text-red-600" />
-            <span className="font-mono text-lg font-bold text-foreground">
-              {Math.round(biometrics.hrMax)}
-            </span>
-            <span className="text-[10px] text-muted">bpm max</span>
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );
