@@ -21,6 +21,7 @@ import { es } from "date-fns/locale";
 import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { BookingWithDetails } from "@/types";
+import { BiometricsCard } from "@/components/booking/biometrics-card";
 
 interface FriendInfo {
   id: string;
@@ -308,6 +309,11 @@ export default function BookingsPage() {
                       </div>
                     </div>
                   </Link>
+                  {(booking.status === "ATTENDED" || booking.status === "CONFIRMED") && (
+                    <div className="mt-1.5">
+                      <BiometricsCard bookingId={booking.id} />
+                    </div>
+                  )}
                 </motion.div>
               );
             })}

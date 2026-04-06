@@ -11,7 +11,6 @@ import { formatTime, cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { BookingWithDetails } from "@/types";
-import { BiometricsCard } from "@/components/booking/biometrics-card";
 
 const stagger = {
   hidden: {},
@@ -219,7 +218,6 @@ export default function HistoryPage() {
                             </Badge>
                           </CardContent>
                         </Card>
-                        {isAttended && <BiometricsCard bookingId={booking.id} />}
                       </motion.div>
                     );
                   })}
