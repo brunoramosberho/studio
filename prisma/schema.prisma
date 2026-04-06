@@ -65,6 +65,7 @@ model Tenant {
   products          Product[]
   songRequests      ClassSongRequest[]
   coachPayRates     CoachPayRate[]
+  coachAvailabilityBlocks CoachAvailabilityBlock[]
 
   instagramIntegration InstagramIntegration?
 }
@@ -197,6 +198,7 @@ model User {
   blockedSpots         BlockedSpot[]      @relation("UserBlockedSpots")
   pushSubscriptions    PushSubscription[] @relation("UserPushSubscriptions")
   wearableConnections  UserWearableConnection[] @relation("UserWearableConnections")
+  coachAvailabilityBlocks CoachAvailabilityBlock[] @relation("CoachAvailabilityBlocks")
 
   @@index([countryId])
   @@index([cityId])
@@ -938,6 +940,52 @@ model ClassBiometrics {
   @@unique([bookingId, provider])
   @@unique([provider, providerActivityId])
   @@index([bookingId])
+}
+
+// ── Coach Availability ──
+
+enum AvailabilityBlockType {
+  recurring
+  one_time
+}
+
+enum AvailabilityReasonType {
+  vacation
+  personal
+  training
+  other
+}
+
+enum AvailabilityStatus {
+  active
+  pending_approval
+  rejected
+}
+
+model CoachAvailabilityBlock {
+  id            String                  @id @default(cuid())
+  tenantId      String
+  coachId       String
+  type          AvailabilityBlockType
+  dayOfWeek     Int[]                   // 0=Lu, 1=Ma, ... 6=Do
+  startTime     String?                 // "14:00"
+  endTime       String?                 // "21:00"
+  startDate     DateTime?               @db.Date
+  endDate       DateTime?               @db.Date
+  isAllDay      Boolean                 @default(true)
+  reasonType    AvailabilityReasonType
+  reasonNote    String?
+  status        AvailabilityStatus      @default(active)
+  rejectionNote String?
+  approvedBy    String?
+  approvedAt    DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id])
+  coach         User                    @relation("CoachAvailabilityBlocks", fields: [coachId], references: [id])
+
+  @@index([tenantId, coachId])
 }
 
 // ── Studio Branding (deprecated: kept for migration, use Tenant) ──

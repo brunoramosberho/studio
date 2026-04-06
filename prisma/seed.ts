@@ -54,6 +54,7 @@ async function main() {
   await prisma.classType.deleteMany();
   await prisma.userPackage.deleteMany();
   await prisma.package.deleteMany();
+  await prisma.coachAvailabilityBlock.deleteMany();
   await prisma.coachProfile.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.session.deleteMany();
@@ -334,6 +335,38 @@ async function main() {
     coachProfiles.push(profile);
   }
   console.log(`✓ Created ${coachProfiles.length} coaches`);
+
+  // --- Coach Availability Blocks ---
+  const firstCoachUser = await prisma.user.findFirst({ where: { email: "valentina@flostudio.es" } });
+  if (firstCoachUser) {
+    await prisma.coachAvailabilityBlock.create({
+      data: {
+        tenantId,
+        coachId: firstCoachUser.id,
+        type: "recurring",
+        dayOfWeek: [0, 1, 2, 3, 4],
+        startTime: "15:00",
+        endTime: "21:00",
+        reasonType: "personal",
+        reasonNote: "Universidad",
+        status: "active",
+      },
+    });
+    await prisma.coachAvailabilityBlock.create({
+      data: {
+        tenantId,
+        coachId: firstCoachUser.id,
+        type: "one_time",
+        startDate: new Date("2026-04-22"),
+        endDate: new Date("2026-04-25"),
+        isAllDay: true,
+        reasonType: "vacation",
+        reasonNote: "Semana Santa",
+        status: "pending_approval",
+      },
+    });
+    console.log("✓ Created coach availability blocks");
+  }
 
   // --- Packages (EUR for Spain, MXN for Mexico) ---
   const packages = await Promise.all([

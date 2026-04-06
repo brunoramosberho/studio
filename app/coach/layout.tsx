@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   CalendarDays,
+  CalendarOff,
   UserCircle,
   BarChart3,
   ArrowLeft,
@@ -23,6 +24,7 @@ import { useBranding } from "@/components/branding-provider";
 const navItems = [
   { href: "/coach", label: "Dashboard", icon: LayoutDashboard },
   { href: "/coach/schedule", label: "Mi Horario", icon: CalendarDays },
+  { href: "/coach/availability", label: "Disponibilidad", icon: CalendarOff },
   { href: "/coach/fans", label: "Mis Fans", icon: UserCircle },
   { href: "/coach/stats", label: "Mi Historial", icon: BarChart3 },
 ];
