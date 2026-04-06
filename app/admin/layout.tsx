@@ -68,7 +68,7 @@ const navSections: NavSection[] = [
     items: [
       { href: "/admin/clients", label: "Clientes", icon: Users, badgeKey: "newClients" },
       { href: "/admin/feed", label: "Feed", icon: Megaphone, badgeKey: "recentFeed" },
-      { href: "/admin/gamification", label: "Gamificación", icon: Trophy },
+      { href: "/admin/gamification", label: "Logros", icon: Trophy },
     ],
   },
   {
