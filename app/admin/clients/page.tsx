@@ -1,23 +1,18 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   Search,
   Users,
-  ChevronDown,
-  ChevronUp,
-  Package,
+  ChevronRight,
   CalendarDays,
-  Plus,
-  Minus,
-  Loader2,
   AlertTriangle,
   Trophy,
   Star,
   Heart,
-  Clock,
   UserPlus,
   Smartphone,
 } from "lucide-react";
@@ -26,8 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
-import { cn, formatDate, timeAgo } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
 import { CreateClientDialog } from "@/components/admin/create-client-dialog";
 
 interface ClientData {
@@ -137,9 +131,8 @@ function MemberAvatar({
 }
 
 export default function AdminClientsPage() {
-  const queryClient = useQueryClient();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const [showInsights, setShowInsights] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -164,26 +157,6 @@ export default function AdminClientsPage() {
         return res.json();
       },
     });
-
-  const creditMutation = useMutation({
-    mutationFn: async ({
-      userPackageId,
-      delta,
-    }: {
-      userPackageId: string;
-      delta: number;
-    }) => {
-      const res = await fetch(`/api/admin/credits`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userPackageId, delta }),
-      });
-      if (!res.ok) throw new Error("Failed to update");
-      return res.json();
-    },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["admin-clients"] }),
-  });
 
   const filtered = clients?.filter(
     (c) =>
@@ -259,9 +232,10 @@ export default function AdminClientsPage() {
               <CardContent>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {insights.atRisk.slice(0, 6).map((m) => (
-                    <div
+                    <button
                       key={m.id}
-                      className="flex items-center gap-3 rounded-xl bg-white/60 px-3 py-2.5"
+                      onClick={() => router.push(`/admin/clients/${m.id}`)}
+                      className="flex items-center gap-3 rounded-xl bg-white/60 px-3 py-2.5 text-left transition-colors hover:bg-white/80"
                     >
                       <MemberAvatar name={m.name} image={m.image} size="sm" />
                       <div className="min-w-0 flex-1">
@@ -278,7 +252,7 @@ export default function AdminClientsPage() {
                       >
                         {m.daysSinceLastVisit}d
                       </Badge>
-                    </div>
+                    </button>
                   ))}
                 </div>
                 {insights.atRisk.length > 6 && (
@@ -467,23 +441,13 @@ export default function AdminClientsPage() {
           animate="show"
           className="space-y-2"
         >
-          {filtered.map((client) => {
-            const expanded = expandedId === client.id;
-
-            return (
+          {filtered.map((client) => (
               <motion.div key={client.id} variants={fadeUp}>
-                <Card
-                  className={cn(
-                    "transition-shadow",
-                    expanded && "shadow-warm-md",
-                  )}
-                >
+                <Card className="transition-shadow hover:shadow-warm-sm">
                   {/* Main row */}
                   <button
-                    className="flex w-full items-center gap-3 p-4 text-left"
-                    onClick={() =>
-                      setExpandedId(expanded ? null : client.id)
-                    }
+                    className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-surface/50"
+                    onClick={() => router.push(`/admin/clients/${client.id}`)}
                   >
                     <MemberAvatar
                       name={client.name}
@@ -530,143 +494,12 @@ export default function AdminClientsPage() {
                         </p>
                       </div>
                     </div>
-                    {expanded ? (
-                      <ChevronUp className="h-4 w-4 shrink-0 text-muted" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 shrink-0 text-muted" />
-                    )}
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
                   </button>
 
-                  {/* Expanded details */}
-                  <AnimatePresence>
-                    {expanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <Separator />
-                        <div className="grid gap-4 p-4 sm:grid-cols-2">
-                          {/* Active package */}
-                          <div>
-                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-                              Paquete activo
-                            </h4>
-                            {client.activePackage ? (
-                              <div className="rounded-xl bg-surface p-3">
-                                <p className="font-medium">
-                                  {client.activePackage.packageName}
-                                </p>
-                                <div className="mt-1 flex items-center justify-between">
-                                  <span className="font-mono text-sm">
-                                    {client.activePackage.creditsRemaining ===
-                                    -1
-                                      ? "Ilimitado"
-                                      : `${client.activePackage.creditsRemaining} créditos`}
-                                  </span>
-                                  <div className="flex gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() =>
-                                        creditMutation.mutate({
-                                          userPackageId:
-                                            client.activePackage!.id,
-                                          delta: -1,
-                                        })
-                                      }
-                                      disabled={creditMutation.isPending}
-                                    >
-                                      <Minus className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() =>
-                                        creditMutation.mutate({
-                                          userPackageId:
-                                            client.activePackage!.id,
-                                          delta: 1,
-                                        })
-                                      }
-                                      disabled={creditMutation.isPending}
-                                    >
-                                      <Plus className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-                                <p className="mt-1 text-xs text-muted">
-                                  Expira:{" "}
-                                  {formatDate(
-                                    client.activePackage.expiresAt,
-                                  )}
-                                </p>
-                              </div>
-                            ) : (
-                              <p className="text-sm text-muted/60">
-                                Sin paquete activo
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Recent bookings + info */}
-                          <div>
-                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-                              Últimas reservas
-                            </h4>
-                            {client.bookingHistory?.length ? (
-                              <div className="space-y-1.5">
-                                {client.bookingHistory
-                                  .slice(0, 4)
-                                  .map((b) => (
-                                    <div
-                                      key={b.id}
-                                      className="flex items-center justify-between rounded-lg bg-surface px-3 py-1.5"
-                                    >
-                                      <span className="truncate text-sm">
-                                        {b.className}
-                                      </span>
-                                      <span className="shrink-0 text-xs text-muted">
-                                        {formatDate(b.date)}
-                                      </span>
-                                    </div>
-                                  ))}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-muted/60">
-                                Sin reservas recientes
-                              </p>
-                            )}
-                            <div className="mt-3 space-y-1.5">
-                              <div className="flex items-center gap-2 text-xs text-muted">
-                                <Clock className="h-3 w-3" />
-                                Miembro desde{" "}
-                                {new Date(
-                                  client.memberSince,
-                                ).toLocaleDateString("es", {
-                                  month: "long",
-                                  year: "numeric",
-                                })}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-muted">
-                                <Smartphone className="h-3 w-3" />
-                                {client.pwaInstalledAt
-                                  ? `App instalada el ${new Date(client.pwaInstalledAt).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" })}`
-                                  : "App no instalada"}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </Card>
               </motion.div>
-            );
-          })}
+          ))}
         </motion.div>
       )}
     </div>
