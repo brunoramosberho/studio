@@ -29,12 +29,13 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const ctx = await requireRole("ADMIN");
 
-  const { email } = await request.json();
+  const { email, name } = await request.json();
   if (!email || typeof email !== "string") {
     return NextResponse.json({ error: "Email requerido" }, { status: 400 });
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+  const trimmedName = typeof name === "string" ? name.trim() : null;
 
   const existing = await prisma.user.findUnique({
     where: { email: normalizedEmail },
@@ -79,6 +80,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (trimmedName && !existing.name) {
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { name: trimmedName },
+      });
+    }
+
     const origin = request.nextUrl.origin;
     await sendRoleInvitation({
       to: normalizedEmail,
@@ -88,13 +96,13 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { id: existing.id, name: existing.name, email: existing.email, image: existing.image, createdAt: existing.createdAt },
+      { id: existing.id, name: trimmedName || existing.name, email: existing.email, image: existing.image, createdAt: existing.createdAt },
       { status: 200 },
     );
   }
 
   const user = await prisma.user.create({
-    data: { email: normalizedEmail },
+    data: { email: normalizedEmail, ...(trimmedName && { name: trimmedName }) },
     select: { id: true, name: true, email: true, image: true, createdAt: true },
   });
 

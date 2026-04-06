@@ -33,6 +33,7 @@ export default function AdminTeamPage() {
   const { data: session } = useSession();
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [confirmUser, setConfirmUser] = useState<{ id: string; name: string | null; email: string } | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
@@ -47,11 +48,11 @@ export default function AdminTeamPage() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: async (emailToInvite: string) => {
+    mutationFn: async ({ email: emailToInvite, name: nameToSet }: { email: string; name: string }) => {
       const res = await fetch("/api/admin/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailToInvite }),
+        body: JSON.stringify({ email: emailToInvite, name: nameToSet }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -66,6 +67,7 @@ export default function AdminTeamPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-team"] });
       setEmail("");
+      setName("");
       setError("");
       setConfirmUser(null);
       setSuccessMsg("Invitación enviada correctamente");
@@ -115,8 +117,8 @@ export default function AdminTeamPage() {
     e.preventDefault();
     setError("");
     setConfirmUser(null);
-    if (!email.trim()) return;
-    inviteMutation.mutate(email.trim());
+    if (!email.trim() || !name.trim()) return;
+    inviteMutation.mutate({ email: email.trim(), name: name.trim() });
   }
 
   return (
@@ -134,27 +136,37 @@ export default function AdminTeamPage() {
               <Plus className="h-4 w-4 text-admin" />
               Invitar administrador
             </div>
-            <form onSubmit={handleInvite} className="flex gap-2">
-              <Input
-                type="email"
-                placeholder="correo@ejemplo.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(""); setConfirmUser(null); }}
-                className="flex-1"
-                required
-              />
-              <Button
-                type="submit"
-                disabled={inviteMutation.isPending}
-                className="gap-2 bg-admin text-white hover:bg-admin/90"
-              >
-                {inviteMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Mail className="h-4 w-4" />
-                )}
-                Invitar
-              </Button>
+            <form onSubmit={handleInvite} className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Nombre completo"
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setError(""); setConfirmUser(null); }}
+                  className="flex-1"
+                  required
+                />
+                <Input
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setError(""); setConfirmUser(null); }}
+                  className="flex-1"
+                  required
+                />
+                <Button
+                  type="submit"
+                  disabled={inviteMutation.isPending || !name.trim() || !email.trim()}
+                  className="gap-2 bg-admin text-white hover:bg-admin/90"
+                >
+                  {inviteMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4" />
+                  )}
+                  Invitar
+                </Button>
+              </div>
             </form>
 
             <AnimatePresence>

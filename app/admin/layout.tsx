@@ -29,6 +29,7 @@ import {
   Check,
   LogOut,
   UserPlus,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -248,12 +249,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block" />
 
-            <Avatar className="h-8 w-8 ring-2 ring-admin/20">
-              <AvatarImage src={session?.user?.image || undefined} />
-              <AvatarFallback className="bg-admin/10 text-xs text-admin">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <Link href="/admin/profile" title="Mi perfil">
+              <Avatar className="h-8 w-8 ring-2 ring-admin/20 transition-shadow hover:ring-admin/40">
+                <AvatarImage src={session?.user?.image || undefined} />
+                <AvatarFallback className="bg-admin/10 text-xs text-admin">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
             <button
               onClick={async () => { await signOut({ redirect: false }); window.location.href = window.location.origin; }}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-red-50 hover:text-red-600"
@@ -286,11 +289,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </Link>
               ))}
             </nav>
-            {locationPicker && (
-              <div className="border-t border-border/50 p-3">
-                {locationPicker}
-              </div>
-            )}
+            <div className="border-t border-border/50 p-3 space-y-1">
+              <Link
+                href="/admin/profile"
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                  pathname === "/admin/profile"
+                    ? "bg-admin/10 text-admin"
+                    : "text-muted hover:bg-surface hover:text-foreground",
+                )}
+              >
+                <UserCircle className="h-4.5 w-4.5" />
+                Mi perfil
+              </Link>
+              {locationPicker}
+            </div>
           </div>
         </aside>
 
@@ -329,11 +342,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       {item.label}
                     </Link>
                   ))}
-                  {locationPicker && (
-                    <div className="mt-3 border-t border-border/50 pt-3">
-                      {locationPicker}
-                    </div>
-                  )}
+                  <div className="mt-3 border-t border-border/50 pt-3 space-y-1">
+                    <Link
+                      href="/admin/profile"
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors",
+                        pathname === "/admin/profile"
+                          ? "bg-admin/10 text-admin"
+                          : "text-muted hover:bg-surface hover:text-foreground",
+                      )}
+                    >
+                      <UserCircle className="h-5 w-5" />
+                      Mi perfil
+                    </Link>
+                    {locationPicker}
+                  </div>
                   <Link
                     href="/"
                     onClick={() => setSidebarOpen(false)}
