@@ -46,6 +46,7 @@ import { PhotoUpload } from "@/components/feed/photo-upload";
 import { PeopleListSheet, type PersonItem } from "@/components/feed/people-list-sheet";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { StudioLocationMap } from "@/components/shared/studio-location-map";
+import { BiometricsCard } from "@/components/booking/biometrics-card";
 
 interface ClassData {
   id: string;
@@ -542,6 +543,9 @@ export default function ClassDetailPage() {
                 </span>
               )}
             </div>
+
+            {/* Biometrics from wearable */}
+            {myBooking && <BiometricsCard bookingId={myBooking.id} />}
 
             {/* Caption */}
             {feedCaption && (

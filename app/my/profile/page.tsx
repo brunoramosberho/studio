@@ -31,6 +31,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
 import { LevelHexCard } from "@/components/profile/level-hex-card";
 import { ActivityCalendar } from "@/components/profile/activity-calendar";
+import { WearableConnections } from "@/components/profile/wearable-connections";
 import { cn } from "@/lib/utils";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
@@ -751,6 +752,16 @@ export default function ProfilePage() {
               </div>
             </motion.div>
           )}
+        </motion.div>
+
+        {/* Connected apps / Wearables */}
+        <motion.div
+          custom={3.5}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+        >
+          <WearableConnections />
         </motion.div>
 
         {/* Quick actions */}

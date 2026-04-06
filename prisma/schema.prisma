@@ -195,6 +195,7 @@ model User {
   songRequests         ClassSongRequest[] @relation("UserSongRequests")
   blockedSpots         BlockedSpot[]      @relation("UserBlockedSpots")
   pushSubscriptions    PushSubscription[] @relation("UserPushSubscriptions")
+  wearableConnections  UserWearableConnection[] @relation("UserWearableConnections")
 
   @@index([countryId])
   @@index([cityId])
@@ -356,6 +357,8 @@ model Booking {
   creditLost     Boolean        @default(false)
   createdAt      DateTime       @default(now())
   reminderSentAt DateTime?
+
+  biometrics     ClassBiometrics[]
 
   @@unique([classId, spotNumber])
   @@index([classId])
@@ -819,6 +822,48 @@ model Product {
 
   @@index([tenantId])
   @@index([categoryId])
+}
+
+// ── Wearable Integrations ──
+
+enum WearableProvider {
+  STRAVA
+}
+
+model UserWearableConnection {
+  id                 String           @id @default(cuid())
+  userId             String
+  user               User             @relation("UserWearableConnections", fields: [userId], references: [id], onDelete: Cascade)
+  provider           WearableProvider
+  providerUserId     String
+  accessTokenEnc     String           @db.Text
+  refreshTokenEnc    String           @db.Text
+  tokenExpiresAt     DateTime?
+  scope              String?
+  disconnectedAt     DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([userId, provider])
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+model ClassBiometrics {
+  id                  String           @id @default(cuid())
+  bookingId           String
+  booking             Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  provider            WearableProvider
+  providerActivityId  String
+  calories            Float?
+  hrAvg               Float?
+  hrMax               Float?
+  rawPayload          Json?
+  createdAt           DateTime         @default(now())
+
+  @@unique([bookingId, provider])
+  @@unique([provider, providerActivityId])
+  @@index([bookingId])
 }
 
 // ── Studio Branding (deprecated: kept for migration, use Tenant) ──
