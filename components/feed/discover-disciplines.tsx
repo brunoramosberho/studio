@@ -63,11 +63,13 @@ export function DiscoverDisciplines({ disciplines }: DiscoverDisciplinesProps) {
 
       <div
         ref={scrollRef}
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 pr-4 scrollbar-none"
+        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-4 pb-2 scrollbar-none sm:-mx-6 sm:scroll-pl-6"
       >
-        {disciplines.map((d) => {
+        {disciplines.map((d, i) => {
           const Icon = d.icon ? getIconComponent(d.icon) : null;
           const flames = LEVEL_FLAMES[d.level] ?? 3;
+          const isFirst = i === 0;
+          const isLast = i === disciplines.length - 1;
 
           return (
             <button
@@ -75,6 +77,10 @@ export function DiscoverDisciplines({ disciplines }: DiscoverDisciplinesProps) {
               type="button"
               onClick={() => openDetail(d)}
               className="flex w-[72vw] max-w-[280px] shrink-0 snap-start flex-col"
+              style={{
+                marginLeft: isFirst ? "1rem" : undefined,
+                marginRight: isLast ? "1rem" : undefined,
+              }}
             >
               <div
                 className="relative aspect-[3/2] w-full overflow-hidden rounded-2xl"
