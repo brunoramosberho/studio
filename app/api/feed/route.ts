@@ -165,6 +165,8 @@ export async function GET(request: NextRequest) {
       if (classId) allClassIds.add(classId);
     }
 
+    const now = new Date();
+    const endedClassIds = new Set<string>();
     const classStudioMap = new Map<string, { studioName: string; cityId: string }>();
     const classTypeMap = new Map<
       string,
@@ -188,6 +190,7 @@ export async function GET(request: NextRequest) {
         where: { id: { in: [...allClassIds] } },
         select: {
           id: true,
+          endsAt: true,
           classType: {
             select: {
               id: true,
@@ -206,6 +209,7 @@ export async function GET(request: NextRequest) {
         },
       });
       for (const c of classRooms) {
+        if (c.endsAt <= now) endedClassIds.add(c.id);
         classStudioMap.set(c.id, {
           studioName: c.room.studio.name,
           cityId: c.room.studio.cityId,
@@ -226,6 +230,12 @@ export async function GET(request: NextRequest) {
         });
       }
     }
+
+    items = items.filter((e) => {
+      if (e.eventType !== "CLASS_RESERVED") return true;
+      const classId = (e.payload as Record<string, unknown>)?.classId as string;
+      return !classId || !endedClassIds.has(classId);
+    });
 
     // Check which CLASS_COMPLETED classes have playlists
     const completedClassIds = items
