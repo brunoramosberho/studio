@@ -495,7 +495,9 @@ export default function AdminClientsPage() {
                           {client.name ?? "Sin nombre"}
                         </p>
                         {client.pwaInstalledAt && (
-                          <Smartphone className="h-3.5 w-3.5 shrink-0 text-accent" title="PWA instalada" />
+                          <span title="PWA instalada">
+                            <Smartphone className="h-3.5 w-3.5 shrink-0 text-accent" />
+                          </span>
                         )}
                       </div>
                       <p className="truncate text-xs text-muted">
