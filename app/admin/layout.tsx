@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { useState, useEffect, useCallback, type LucideIcon } from "react";
+import { useState, useEffect, useCallback } from "react";
+import type { LucideIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -161,7 +162,7 @@ function Badge({ count, variant = "red" }: { count: number; variant?: "red" | "g
 
 function ContextTag({ label }: { label: string }) {
   return (
-    <span className="ml-auto rounded-[3px] border border-border/60 px-1.5 py-px text-[10px] font-medium text-muted">
+    <span className="ml-auto rounded-sm border border-border/60 px-1.5 py-px text-[10px] font-medium text-muted">
       {label}
     </span>
   );
@@ -175,7 +176,7 @@ function MgicAIButton() {
     <button
       onClick={toggle}
       className={cn(
-        "group flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 text-left text-[13px] font-semibold transition-all",
+        "group flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-[13px] font-semibold transition-all",
         isOpen
           ? "bg-admin/10 text-admin ring-1 ring-admin/20"
           : "text-white hover:brightness-110",
@@ -184,7 +185,7 @@ function MgicAIButton() {
     >
       <span
         className={cn(
-          "flex h-6 w-6 shrink-0 items-center justify-center rounded-[3px]",
+          "flex h-6 w-6 shrink-0 items-center justify-center rounded-sm",
           isOpen ? "bg-admin/10" : "bg-white/15",
         )}
       >
@@ -193,7 +194,7 @@ function MgicAIButton() {
       <span className="flex-1">Mgic AI</span>
       <span
         className={cn(
-          "rounded-[3px] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+          "rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
           isOpen ? "bg-admin/10 text-admin" : "bg-white/20 text-white/90",
         )}
       >
@@ -239,7 +240,7 @@ function SidebarNav({ sections, stats, pathname, onNavigate, mobile }: SidebarNa
                   href={item.href}
                   onClick={onNavigate}
                   className={cn(
-                    "group flex items-center gap-2.5 rounded-[3px] px-2.5 text-[13px] font-medium transition-colors",
+                    "group flex items-center gap-2.5 rounded-sm px-2.5 text-[13px] font-medium transition-colors",
                     py,
                     active
                       ? "bg-admin/8 font-semibold text-admin"
@@ -355,7 +356,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const totalCities = locations.reduce((sum, c) => sum + c.cities.length, 0);
 
   const locationPicker = totalCities > 1 ? (
-    <div className="flex items-center gap-2 rounded-[3px] bg-surface px-3 py-2">
+    <div className="flex items-center gap-2 rounded-sm bg-surface px-3 py-2">
       <MapPin className="h-3.5 w-3.5 shrink-0 text-admin/60" />
       <select
         value={locValue}
@@ -385,14 +386,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="flex h-14 items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <button
-              className="flex h-10 w-10 items-center justify-center rounded-[3px] text-foreground transition-colors hover:bg-admin/5 lg:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-sm text-foreground transition-colors hover:bg-admin/5 lg:hidden"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
             <div className="flex items-center gap-2">
               <span className="font-display text-lg font-bold text-foreground">{studioName}</span>
-              <span className="rounded-[3px] bg-admin/10 px-2 py-0.5 text-xs font-semibold text-admin">
+              <span className="rounded-sm bg-admin/10 px-2 py-0.5 text-xs font-semibold text-admin">
                 Admin Portal
               </span>
             </div>
@@ -403,7 +404,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="hidden text-xs text-muted/70 sm:inline">Add:</span>
             <button
               onClick={() => setShowCreateClient(true)}
-              className="hidden items-center gap-1.5 rounded-[3px] border border-border/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface sm:flex"
+              className="hidden items-center gap-1.5 rounded-sm border border-border/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface sm:flex"
             >
               <UserPlus className="h-3.5 w-3.5 text-admin" />
               Customer
@@ -413,7 +414,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <Link
               href="/admin/shop"
-              className="hidden items-center gap-1.5 rounded-[3px] px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground sm:flex"
+              className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground sm:flex"
             >
               <ShoppingBag className="h-3.5 w-3.5" />
               POS
@@ -421,7 +422,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               href="/admin/schedule"
               className={cn(
-                "hidden items-center gap-1.5 rounded-[3px] px-2.5 py-1.5 text-xs font-medium transition-colors sm:flex",
+                "hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-medium transition-colors sm:flex",
                 pathname.startsWith("/admin/schedule")
                   ? "border border-admin/20 bg-admin/5 text-admin"
                   : "text-muted hover:bg-surface hover:text-foreground",
@@ -443,7 +444,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
             <button
               onClick={async () => { await signOut({ redirect: false }); window.location.href = window.location.origin; }}
-              className="flex h-8 w-8 items-center justify-center rounded-[3px] text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+              className="flex h-8 w-8 items-center justify-center rounded-sm text-muted transition-colors hover:bg-red-50 hover:text-red-600"
               title="Cerrar sesión"
             >
               <LogOut className="h-4 w-4" />
@@ -471,7 +472,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 href="/admin/profile"
                 className={cn(
-                  "flex items-center gap-2.5 rounded-[3px] px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                  "flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-[13px] font-medium transition-colors",
                   pathname === "/admin/profile"
                     ? "bg-admin/8 font-semibold text-admin"
                     : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
@@ -526,7 +527,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     href="/admin/profile"
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
-                      "flex items-center gap-2.5 rounded-[3px] px-2.5 py-2 text-[13px] font-medium transition-colors",
+                      "flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] font-medium transition-colors",
                       pathname === "/admin/profile"
                         ? "bg-admin/8 font-semibold text-admin"
                         : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
@@ -542,7 +543,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Link
                     href="/"
                     onClick={() => setSidebarOpen(false)}
-                    className="mt-2 flex items-center gap-2.5 rounded-[3px] border border-border/50 px-2.5 py-2 text-[13px] text-muted transition-colors hover:bg-foreground/[0.03]"
+                    className="mt-2 flex items-center gap-2.5 rounded-sm border border-border/50 px-2.5 py-2 text-[13px] text-muted transition-colors hover:bg-foreground/[0.03]"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Sitio público
