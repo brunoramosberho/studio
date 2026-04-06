@@ -34,21 +34,15 @@ export async function GET(request: NextRequest) {
 
   try {
     const session = await auth();
-    console.log("[strava-callback] session userId:", session?.user?.id, "stateUserId:", stateUserId, "originHost:", originHost);
-
     if (!session?.user?.id) {
-      console.error("[strava-callback] no session");
       return NextResponse.redirect(buildRedirectUrl(originHost, "/login"));
     }
 
     if (stateUserId !== session.user.id) {
-      console.error("[strava-callback] state mismatch:", stateUserId, "!==", session.user.id);
       return NextResponse.redirect(buildRedirectUrl(originHost, profilePath, { strava: "error" }));
     }
 
-    console.log("[strava-callback] exchanging code...");
     const tokens = await exchangeStravaCode(code);
-    console.log("[strava-callback] got tokens, athlete:", tokens.athlete?.id);
     const providerUserId = String(tokens.athlete.id);
 
     await prisma.userWearableConnection.upsert({
@@ -75,14 +69,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log("[strava-callback] saved connection, redirecting to", originHost);
     return NextResponse.redirect(buildRedirectUrl(originHost, profilePath, { strava: "connected" }));
   } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    console.error("[strava-callback] FULL ERROR:", errMsg, err instanceof Error ? err.stack : "");
-    return NextResponse.redirect(buildRedirectUrl(originHost, profilePath, {
-      strava: "error",
-      strava_debug: errMsg.slice(0, 200),
-    }));
+    console.error("Strava callback error:", err);
+    return NextResponse.redirect(buildRedirectUrl(originHost, profilePath, { strava: "error" }));
   }
 }

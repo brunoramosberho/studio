@@ -64,8 +64,7 @@ export function WearableConnections() {
     } else if (stravaParam === "denied") {
       toast.error("Conexión con Strava cancelada");
     } else if (stravaParam === "error") {
-      const debug = searchParams.get("strava_debug");
-      toast.error(debug ? `Strava: ${debug}` : "Error al conectar con Strava");
+      toast.error("Error al conectar con Strava");
     }
   }, [searchParams, queryClient]);
 
