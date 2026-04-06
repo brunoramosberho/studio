@@ -28,6 +28,7 @@ import {
   ArrowRight,
   Clock,
   Dumbbell,
+  BarChart3,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,20 @@ interface CityOption {
   countryCode: string;
 }
 
+interface AdminPollOption {
+  id: string;
+  text: string;
+  position: number;
+  voteCount: number;
+}
+
+interface AdminPoll {
+  id: string;
+  title: string | null;
+  totalVotes: number;
+  options: AdminPollOption[];
+}
+
 interface FeedItem {
   id: string;
   eventType: string;
@@ -76,6 +91,7 @@ interface FeedItem {
   createdAt: string;
   user: { id: true; name: string | null; image: string | null };
   photos: { id: string; url: string; thumbnailUrl?: string | null; mimeType: string }[];
+  polls?: AdminPoll[];
   likeCount: number;
   commentCount: number;
 }
@@ -151,6 +167,42 @@ export default function AdminFeedPage() {
   const [linkedClass, setLinkedClass] = useState<LinkedClassOption | null>(null);
   const [classPickerOpen, setClassPickerOpen] = useState(false);
   const [classSearch, setClassSearch] = useState("");
+  const [polls, setPolls] = useState<{ title: string; options: string[] }[]>([]);
+
+  const addPoll = () => {
+    setPolls((prev) => [...prev, { title: "", options: ["", ""] }]);
+  };
+  const removePoll = (idx: number) => {
+    setPolls((prev) => prev.filter((_, i) => i !== idx));
+  };
+  const updatePollTitle = (idx: number, title: string) => {
+    setPolls((prev) => prev.map((p, i) => (i === idx ? { ...p, title } : p)));
+  };
+  const updatePollOption = (pollIdx: number, optIdx: number, text: string) => {
+    setPolls((prev) =>
+      prev.map((p, i) =>
+        i === pollIdx
+          ? { ...p, options: p.options.map((o, j) => (j === optIdx ? text : o)) }
+          : p,
+      ),
+    );
+  };
+  const addPollOption = (pollIdx: number) => {
+    setPolls((prev) =>
+      prev.map((p, i) =>
+        i === pollIdx ? { ...p, options: [...p.options, ""] } : p,
+      ),
+    );
+  };
+  const removePollOption = (pollIdx: number, optIdx: number) => {
+    setPolls((prev) =>
+      prev.map((p, i) =>
+        i === pollIdx && p.options.length > 2
+          ? { ...p, options: p.options.filter((_, j) => j !== optIdx) }
+          : p,
+      ),
+    );
+  };
 
   const addMediaFiles = (files: FileList | null) => {
     if (!files) return;
@@ -298,6 +350,14 @@ export default function AdminFeedPage() {
           postAsAdmin,
           isPinned: pinPost,
           linkedClassId: linkedClass?.id ?? null,
+          polls: polls
+            .filter((p) => p.options.filter((o) => o.trim()).length >= 2)
+            .map((p) => ({
+              title: p.title.trim() || null,
+              options: p.options
+                .filter((o) => o.trim())
+                .map((o) => ({ text: o.trim() })),
+            })),
         }),
       });
       if (!res.ok) throw new Error("Failed");
@@ -360,6 +420,7 @@ export default function AdminFeedPage() {
       setPostAsAdmin(false);
       setPinPost(false);
       setLinkedClass(null);
+      setPolls([]);
       clearMedia();
       setComposerOpen(false);
 
@@ -900,6 +961,91 @@ export default function AdminFeedPage() {
                     />
                   </label>
 
+                  {/* Polls */}
+                  {polls.length > 0 && (
+                    <div className="space-y-3">
+                      {polls.map((poll, pollIdx) => (
+                        <div
+                          key={pollIdx}
+                          className="rounded-xl border border-border bg-surface/30 p-3.5 space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <BarChart3 className="h-4 w-4 text-admin" />
+                              <span className="text-xs font-semibold text-foreground">
+                                Encuesta {polls.length > 1 ? pollIdx + 1 : ""}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => removePoll(pollIdx)}
+                              className="rounded-lg p-1 text-muted transition-colors hover:bg-surface hover:text-foreground"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <Input
+                            placeholder="Pregunta (opcional)"
+                            value={poll.title}
+                            onChange={(e) =>
+                              updatePollTitle(pollIdx, e.target.value)
+                            }
+                          />
+                          <div className="space-y-2">
+                            {poll.options.map((opt, optIdx) => (
+                              <div key={optIdx} className="flex items-center gap-2">
+                                <span className="w-5 text-center text-xs font-medium text-muted">
+                                  {optIdx + 1}.
+                                </span>
+                                <Input
+                                  placeholder={`Opción ${optIdx + 1}`}
+                                  value={opt}
+                                  onChange={(e) =>
+                                    updatePollOption(
+                                      pollIdx,
+                                      optIdx,
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="flex-1"
+                                />
+                                {poll.options.length > 2 && (
+                                  <button
+                                    onClick={() =>
+                                      removePollOption(pollIdx, optIdx)
+                                    }
+                                    className="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface hover:text-red-500"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            <button
+                              onClick={() => addPollOption(pollIdx)}
+                              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-admin transition-colors hover:bg-admin/5"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Agregar opción
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={addPoll}
+                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-border p-3 text-left transition-colors hover:border-admin/40 hover:bg-admin/5"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface">
+                      <BarChart3 className="h-4.5 w-4.5 text-muted" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Agregar encuesta</p>
+                      <p className="text-[11px] text-muted">Pregunta con opciones para votar</p>
+                    </div>
+                  </button>
+
                   {/* Link class */}
                   {linkedClass ? (
                     <div className="rounded-xl border p-3" style={{ borderColor: `${linkedClass.classType.color}30`, backgroundColor: `${linkedClass.classType.color}08` }}>
@@ -960,7 +1106,7 @@ export default function AdminFeedPage() {
                     </Button>
                     <Button
                       className="flex-1 gap-2 bg-admin text-white hover:bg-admin/90"
-                      disabled={(!body.trim() && mediaFiles.length === 0 && !linkedClass) || createMut.isPending}
+                      disabled={(!body.trim() && mediaFiles.length === 0 && !linkedClass && polls.filter((p) => p.options.filter((o) => o.trim()).length >= 2).length === 0) || createMut.isPending}
                       onClick={() => createMut.mutate()}
                     >
                       {createMut.isPending ? (
@@ -1228,6 +1374,47 @@ export default function AdminFeedPage() {
                                 +{event.photos.length - 4}
                               </div>
                             )}
+                          </div>
+                        )}
+
+                        {/* Polls summary */}
+                        {isStudioPost && event.polls && event.polls.length > 0 && (
+                          <div className="mt-2 space-y-1.5">
+                            {event.polls.map((poll) => (
+                              <div
+                                key={poll.id}
+                                className="rounded-lg border border-border/60 bg-surface/30 px-3 py-2"
+                              >
+                                <div className="flex items-center gap-1.5 text-[11px] font-medium text-admin">
+                                  <BarChart3 className="h-3 w-3" />
+                                  {poll.title || "Encuesta"}
+                                  <span className="ml-auto text-[10px] text-muted">
+                                    {poll.totalVotes} {poll.totalVotes === 1 ? "voto" : "votos"}
+                                  </span>
+                                </div>
+                                <div className="mt-1.5 space-y-1">
+                                  {poll.options.map((opt) => {
+                                    const pct = poll.totalVotes > 0 ? Math.round((opt.voteCount / poll.totalVotes) * 100) : 0;
+                                    return (
+                                      <div key={opt.id} className="flex items-center gap-2">
+                                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border/40">
+                                          <div
+                                            className="h-full rounded-full bg-admin/40"
+                                            style={{ width: `${pct}%` }}
+                                          />
+                                        </div>
+                                        <span className="min-w-[80px] text-[10px] text-muted truncate">
+                                          {opt.text}
+                                        </span>
+                                        <span className="w-8 text-right text-[10px] tabular-nums text-muted/70">
+                                          {pct}%
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
 

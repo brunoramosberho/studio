@@ -94,6 +94,22 @@ export async function GET(request: NextRequest) {
         select: { id: true, url: true, thumbnailUrl: true, mimeType: true, userId: true },
         orderBy: { createdAt: "asc" as const },
       },
+      polls: {
+        include: {
+          options: {
+            orderBy: { position: "asc" as const },
+            include: { _count: { select: { votes: true } } },
+          },
+          _count: { select: { votes: true } },
+          ...(currentUserId && {
+            votes: {
+              where: { userId: currentUserId },
+              select: { pollOptionId: true },
+              take: 1,
+            },
+          }),
+        },
+      },
       _count: { select: { likes: true, comments: true } },
       ...(currentUserId && {
         likes: {
@@ -386,6 +402,14 @@ export async function GET(request: NextRequest) {
       nonReserved.push(event);
     }
 
+    type PollEntry = {
+      id: string;
+      title: string | null;
+      totalVotes: number;
+      myVote: string | null;
+      options: { id: string; text: string; position: number; voteCount: number }[];
+    };
+
     type FeedEntry = {
       id: string;
       eventType: string;
@@ -394,6 +418,7 @@ export async function GET(request: NextRequest) {
       createdAt: Date;
       user: { id: string; name: string | null; image: string | null };
       photos: { id: string; url: string; thumbnailUrl: string | null; mimeType: string; userId: string }[];
+      polls: PollEntry[];
       likeCount: number;
       commentCount: number;
       liked: boolean;
@@ -403,6 +428,21 @@ export async function GET(request: NextRequest) {
       reservedBy?: { id: string; name: string | null; image: string | null }[];
       studioName?: string;
     };
+
+    function mapPolls(event: (typeof nonReserved)[number]): PollEntry[] {
+      return event.polls.map((poll) => ({
+        id: poll.id,
+        title: poll.title,
+        totalVotes: poll._count.votes,
+        myVote: currentUserId && "votes" in poll ? ((poll as unknown as { votes: { pollOptionId: string }[] }).votes[0]?.pollOptionId ?? null) : null,
+        options: poll.options.map((opt) => ({
+          id: opt.id,
+          text: opt.text,
+          position: opt.position,
+          voteCount: opt._count.votes,
+        })),
+      }));
+    }
 
     const feed: FeedEntry[] = nonReserved.map((event) => {
       const classId = (event.payload as Record<string, unknown>)?.classId as string;
@@ -414,6 +454,7 @@ export async function GET(request: NextRequest) {
         createdAt: event.createdAt,
         user: event.user,
         photos: event.photos,
+        polls: mapPolls(event),
         likeCount: event._count.likes,
         commentCount: event._count.comments,
         liked: currentUserId ? event.likes.length > 0 : false,
@@ -437,6 +478,7 @@ export async function GET(request: NextRequest) {
         createdAt: newest.createdAt,
         user: newest.user,
         photos: [],
+        polls: [],
         likeCount: totalLikes,
         commentCount: totalComments,
         liked: anyLiked,

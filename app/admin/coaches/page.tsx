@@ -41,6 +41,7 @@ interface UpcomingClass {
 interface CoachStats {
   classesThisMonth: number;
   avgOccupancy: number;
+  disciplines: { name: string; color: string }[];
   upcomingClasses: UpcomingClass[];
 }
 
@@ -76,11 +77,13 @@ function OccupancyBar({ value }: { value: number }) {
 }
 
 function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) return <span className="text-lg" title="1er lugar">🥇</span>;
-  if (rank === 2) return <span className="text-lg" title="2do lugar">🥈</span>;
-  if (rank === 3) return <span className="text-lg" title="3er lugar">🥉</span>;
   return (
-    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface text-[11px] font-bold text-muted">
+    <span className={cn(
+      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+      rank <= 3
+        ? "bg-admin/10 text-admin"
+        : "bg-surface text-muted",
+    )}>
       {rank}
     </span>
   );
@@ -373,6 +376,20 @@ export default function AdminCoachesPage() {
                           )}
                         </div>
                         <p className="truncate text-xs text-muted">{coach.user.email}</p>
+                        {s.disciplines.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {s.disciplines.map((d) => (
+                              <span
+                                key={d.name}
+                                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ backgroundColor: `${d.color}15`, color: d.color }}
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: d.color }} />
+                                {d.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Quick stats */}

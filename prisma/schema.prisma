@@ -609,12 +609,49 @@ model FeedEvent {
   likes      Like[]
   comments   Comment[]
   photos            Photo[]
+  polls             Poll[]
   memberAchievement MemberAchievement?
 
   @@index([createdAt])
   @@index([userId])
   @@index([eventType])
   @@index([tenantId])
+}
+
+model Poll {
+  id          String       @id @default(cuid())
+  feedEventId String
+  feedEvent   FeedEvent    @relation(fields: [feedEventId], references: [id], onDelete: Cascade)
+  title       String?
+  createdAt   DateTime     @default(now())
+  options     PollOption[]
+  votes       PollVote[]
+
+  @@index([feedEventId])
+}
+
+model PollOption {
+  id       String     @id @default(cuid())
+  pollId   String
+  poll     Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  text     String
+  position Int        @default(0)
+  votes    PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id           String     @id @default(cuid())
+  pollId       String
+  poll         Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  pollOptionId String
+  pollOption   PollOption @relation(fields: [pollOptionId], references: [id], onDelete: Cascade)
+  userId       String
+  createdAt    DateTime   @default(now())
+
+  @@unique([pollId, userId])
+  @@index([pollOptionId])
 }
 
 model Like {

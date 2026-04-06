@@ -28,6 +28,15 @@ export async function GET(request: NextRequest) {
           select: { id: true, url: true, thumbnailUrl: true, mimeType: true },
           orderBy: { createdAt: "asc" as const },
         },
+        polls: {
+          include: {
+            options: {
+              orderBy: { position: "asc" },
+              include: { _count: { select: { votes: true } } },
+            },
+            _count: { select: { votes: true } },
+          },
+        },
         _count: { select: { likes: true, comments: true } },
       },
     });
@@ -50,6 +59,17 @@ export async function GET(request: NextRequest) {
       createdAt: e.createdAt,
       user: e.user,
       photos: e.photos,
+      polls: e.polls.map((poll) => ({
+        id: poll.id,
+        title: poll.title,
+        totalVotes: poll._count.votes,
+        options: poll.options.map((opt) => ({
+          id: opt.id,
+          text: opt.text,
+          position: opt.position,
+          voteCount: opt._count.votes,
+        })),
+      })),
       likeCount: e._count.likes,
       commentCount: e._count.comments,
     }));
@@ -65,9 +85,10 @@ export async function POST(request: NextRequest) {
   try {
     const { tenant, session } = await requireRole("ADMIN");
     const body = await request.json();
-    const { title, body: postBody, category, targetCityIds, sendPush, postAsAdmin, isPinned, linkedClassId } = body;
+    const { title, body: postBody, category, targetCityIds, sendPush, postAsAdmin, isPinned, linkedClassId, polls } = body;
 
-    if (!postBody?.trim() && !linkedClassId) {
+    const hasPolls = Array.isArray(polls) && polls.length > 0;
+    if (!postBody?.trim() && !linkedClassId && !hasPolls) {
       return NextResponse.json({ error: "El contenido es requerido" }, { status: 400 });
     }
 
@@ -161,6 +182,25 @@ export async function POST(request: NextRequest) {
         _count: { select: { likes: true, comments: true } },
       },
     });
+
+    if (hasPolls) {
+      for (const poll of polls) {
+        const options = Array.isArray(poll.options) ? poll.options : [];
+        if (options.length < 2) continue;
+        await prisma.poll.create({
+          data: {
+            feedEventId: event.id,
+            title: poll.title || null,
+            options: {
+              create: options.map((opt: { text: string }, idx: number) => ({
+                text: opt.text,
+                position: idx,
+              })),
+            },
+          },
+        });
+      }
+    }
 
     if (sendPush) {
       const pushTitle = title || (linkedClassId ? `Nueva clase: ${classPayload.className}` : "Nuevo mensaje del estudio");

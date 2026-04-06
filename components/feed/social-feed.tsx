@@ -14,6 +14,13 @@ interface FeedItem {
   createdAt: string;
   user: { id: string; name: string | null; image: string | null };
   photos: { id: string; url: string; thumbnailUrl?: string | null; mimeType: string; userId?: string }[];
+  polls?: {
+    id: string;
+    title: string | null;
+    totalVotes: number;
+    myVote: string | null;
+    options: { id: string; text: string; position: number; voteCount: number }[];
+  }[];
   likeCount: number;
   commentCount: number;
   liked: boolean;

@@ -13,6 +13,7 @@ import { LikeButton } from "./like-button";
 import { CommentsSheet } from "./comments-sheet";
 import { MediaGallery } from "./media-gallery";
 import { PhotoUpload } from "./photo-upload";
+import { PollCard, type PollData } from "./poll-card";
 import { PeopleListSheet, type PersonItem } from "./people-list-sheet";
 import { DisciplineSheet, type DisciplineData } from "./discipline-sheet";
 import { cn, maskLastName } from "@/lib/utils";
@@ -42,6 +43,7 @@ interface FeedItem {
   createdAt: string;
   user: { id: string; name: string | null; image: string | null; hasActiveMembership?: boolean; level?: string | null };
   photos: MediaItem[];
+  polls?: PollData[];
   likeCount: number;
   commentCount: number;
   liked: boolean;
@@ -797,6 +799,14 @@ function StudioPostCard({ event }: FeedEventCardProps) {
 
       {event.photos.length > 0 && (
         <MediaGallery media={event.photos} className="rounded-none" />
+      )}
+
+      {event.polls && event.polls.length > 0 && (
+        <div className={cn(event.photos.length > 0 ? "mt-3" : "")}>
+          {event.polls.map((poll) => (
+            <PollCard key={poll.id} poll={poll} eventId={event.id} />
+          ))}
+        </div>
       )}
 
       {hasLinkedClass && <ClassPromoBlock payload={p} />}

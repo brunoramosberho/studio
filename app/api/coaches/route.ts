@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         coachId: true,
         startsAt: true,
         status: true,
+        classType: { select: { name: true, color: true } },
         room: { select: { maxCapacity: true } },
         _count: {
           select: {
@@ -79,6 +80,7 @@ export async function GET(request: NextRequest) {
     const statsMap = new Map<string, {
       classesThisMonth: number;
       avgOccupancy: number;
+      disciplines: { name: string; color: string }[];
       upcomingClasses: {
         id: string;
         startsAt: Date;
@@ -107,8 +109,17 @@ export async function GET(request: NextRequest) {
         ? Math.round((totalOccupancy / classesWithCapacity) * 100)
         : 0;
 
-      const coachUpcoming = upcomingClasses
-        .filter((c) => c.coachId === cId)
+      const disciplineMap = new Map<string, string>();
+      for (const cls of coachClasses) {
+        disciplineMap.set(cls.classType.name, cls.classType.color);
+      }
+      const upcomingForCoach = upcomingClasses.filter((c) => c.coachId === cId);
+      for (const cls of upcomingForCoach) {
+        disciplineMap.set(cls.classType.name, cls.classType.color);
+      }
+      const disciplines = Array.from(disciplineMap.entries()).map(([name, color]) => ({ name, color }));
+
+      const coachUpcoming = upcomingForCoach
         .slice(0, 5)
         .map((c) => ({
           id: c.id,
@@ -124,6 +135,7 @@ export async function GET(request: NextRequest) {
       statsMap.set(cId, {
         classesThisMonth: classCount,
         avgOccupancy,
+        disciplines,
         upcomingClasses: coachUpcoming,
       });
     }
@@ -133,6 +145,7 @@ export async function GET(request: NextRequest) {
       stats: statsMap.get(coach.id) ?? {
         classesThisMonth: 0,
         avgOccupancy: 0,
+        disciplines: [],
         upcomingClasses: [],
       },
     }));
