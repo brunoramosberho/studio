@@ -73,7 +73,6 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
-      setTimeout(() => inputRef.current?.focus(), 300);
     } else {
       document.body.style.overflow = "";
     }
@@ -245,7 +244,6 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
                       key={emoji}
                       onClick={() => {
                         setText((prev) => prev + emoji);
-                        inputRef.current?.focus();
                       }}
                       disabled={submitting}
                       className="flex h-9 w-9 items-center justify-center rounded-full text-[22px] transition-transform active:scale-125 disabled:opacity-40"
