@@ -8,6 +8,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { SocialFeed } from "@/components/feed/social-feed";
 import { UpcomingClasses } from "@/components/feed/upcoming-classes";
+import { FriendsClasses } from "@/components/feed/friends-classes";
 import { useQuery } from "@tanstack/react-query";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { useBranding } from "@/components/branding-provider";
@@ -115,8 +116,9 @@ export default function DashboardPage() {
           </Button>
         </div>
 
-        {/* Upcoming booked classes */}
+        {/* Upcoming booked classes — or friends' classes as fallback */}
         <UpcomingClasses />
+        <FriendsClasses />
 
         {/* Social feed with filter tabs */}
         <SocialFeed />
