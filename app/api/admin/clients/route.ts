@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
       email: c.email,
       image: c.image,
       memberSince: m.createdAt.toISOString(),
+      pwaInstalledAt: m.pwaInstalledAt?.toISOString() ?? null,
       classesThisMonth,
       daysSinceLastVisit,
       activePackage: activePkg
@@ -135,6 +136,8 @@ export async function GET(request: NextRequest) {
         );
       case "new":
         return new Date(client.memberSince) >= thirtyDaysAgo;
+      case "pwa":
+        return client.pwaInstalledAt !== null;
       default:
         return true;
     }

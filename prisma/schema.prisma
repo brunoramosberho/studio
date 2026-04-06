@@ -89,13 +89,14 @@ model InstagramIntegration {
 }
 
 model Membership {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  role      Role     @default(CLIENT)
-  createdAt DateTime @default(now())
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role            Role      @default(CLIENT)
+  pwaInstalledAt  DateTime?
+  createdAt       DateTime  @default(now())
 
   @@unique([userId, tenantId])
   @@index([tenantId])

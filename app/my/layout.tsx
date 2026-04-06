@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
 import { PushManager } from "@/components/shared/push-manager";
+import { PwaTracker } from "@/components/shared/pwa-tracker";
 import { CityDetectPrompt } from "@/components/shared/city-detect-prompt";
 import { useTenant } from "@/components/tenant-provider";
 
@@ -36,6 +37,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         </div>
       </main>
       <PushManager />
+      <PwaTracker />
     </div>
   );
 }

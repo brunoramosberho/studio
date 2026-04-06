@@ -19,6 +19,7 @@ import {
   Heart,
   Clock,
   UserPlus,
+  Smartphone,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ interface ClientData {
   email: string;
   image: string | null;
   memberSince: string;
+  pwaInstalledAt: string | null;
   classesThisMonth: number;
   daysSinceLastVisit: number | null;
   activePackage?: {
@@ -78,7 +80,7 @@ interface InsightsData {
   };
 }
 
-type Filter = "all" | "active" | "expiring" | "inactive" | "new";
+type Filter = "all" | "active" | "expiring" | "inactive" | "new" | "pwa";
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "Todos" },
@@ -86,6 +88,7 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "expiring", label: "Por vencer" },
   { key: "inactive", label: "Inactivos" },
   { key: "new", label: "Nuevos" },
+  { key: "pwa", label: "Con PWA" },
 ];
 
 const stagger = {
@@ -487,9 +490,14 @@ export default function AdminClientsPage() {
                       image={client.image}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">
-                        {client.name ?? "Sin nombre"}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-sm font-semibold">
+                          {client.name ?? "Sin nombre"}
+                        </p>
+                        {client.pwaInstalledAt && (
+                          <Smartphone className="h-3.5 w-3.5 shrink-0 text-accent" title="PWA instalada" />
+                        )}
+                      </div>
                       <p className="truncate text-xs text-muted">
                         {client.email}
                       </p>
@@ -630,15 +638,23 @@ export default function AdminClientsPage() {
                                 Sin reservas recientes
                               </p>
                             )}
-                            <div className="mt-3 flex items-center gap-2 text-xs text-muted">
-                              <Clock className="h-3 w-3" />
-                              Miembro desde{" "}
-                              {new Date(
-                                client.memberSince,
-                              ).toLocaleDateString("es", {
-                                month: "long",
-                                year: "numeric",
-                              })}
+                            <div className="mt-3 space-y-1.5">
+                              <div className="flex items-center gap-2 text-xs text-muted">
+                                <Clock className="h-3 w-3" />
+                                Miembro desde{" "}
+                                {new Date(
+                                  client.memberSince,
+                                ).toLocaleDateString("es", {
+                                  month: "long",
+                                  year: "numeric",
+                                })}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted">
+                                <Smartphone className="h-3 w-3" />
+                                {client.pwaInstalledAt
+                                  ? `App instalada el ${new Date(client.pwaInstalledAt).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" })}`
+                                  : "App no instalada"}
+                              </div>
                             </div>
                           </div>
                         </div>
