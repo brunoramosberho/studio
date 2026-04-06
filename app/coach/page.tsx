@@ -11,6 +11,7 @@ import {
   Clock,
   ChevronRight,
   TrendingUp,
+  Banknote,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +87,18 @@ export default function CoachDashboard() {
     enabled: !!session?.user?.id,
   });
 
+  const { data: statsData } = useQuery<{
+    earnings?: { total: number; currency: string; hasRates: boolean };
+    weekEarnings?: { total: number; currency: string; hasRates: boolean };
+  }>({
+    queryKey: ["coach-stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/coach/stats");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
   const classes = todayClasses;
   const upcoming = classes
     ?.filter((c) => new Date(c.startsAt) > now)
@@ -158,6 +171,44 @@ export default function CoachDashboard() {
           </Link>
         </motion.div>
       </motion.div>
+
+      {/* Earnings preview */}
+      {statsData?.earnings?.hasRates && (
+        <motion.div variants={fadeUp} initial="hidden" animate="show">
+          <Link href="/coach/stats">
+            <Card className="border-green-100 bg-gradient-to-br from-green-50/30 to-transparent transition-shadow hover:shadow-warm-md">
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100/60">
+                  <Banknote className="h-5 w-5 text-green-700" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-green-600">Ganancias este mes</p>
+                  <p className="font-display text-xl font-bold text-green-700">
+                    {new Intl.NumberFormat("es-MX", {
+                      style: "currency",
+                      currency: statsData.earnings.currency,
+                      minimumFractionDigits: 0,
+                    }).format(statsData.earnings.total)}
+                  </p>
+                </div>
+                {statsData.weekEarnings && statsData.weekEarnings.total > 0 && (
+                  <div className="shrink-0 rounded-lg bg-green-50 px-3 py-1.5 text-center">
+                    <p className="text-[10px] font-medium text-green-600">Semana</p>
+                    <p className="font-mono text-sm font-bold text-green-700">
+                      {new Intl.NumberFormat("es-MX", {
+                        style: "currency",
+                        currency: statsData.weekEarnings.currency,
+                        minimumFractionDigits: 0,
+                      }).format(statsData.weekEarnings.total)}
+                    </p>
+                  </div>
+                )}
+                <ChevronRight className="h-4 w-4 text-green-600/50" />
+              </CardContent>
+            </Card>
+          </Link>
+        </motion.div>
+      )}
 
       {/* Next class highlight */}
       {nextClass && (

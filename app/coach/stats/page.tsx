@@ -13,6 +13,8 @@ import {
   ChevronDown,
   Clock,
   BarChart3,
+  Banknote,
+  Coins,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,11 +38,32 @@ interface HistoryEntry {
   isPast: boolean;
 }
 
+interface EarningsData {
+  total: number;
+  breakdown: { type: string; label: string; amount: number }[];
+  currency: string;
+  hasRates: boolean;
+}
+
+interface ClassEarning {
+  id: string;
+  startsAt: string;
+  className: string;
+  classColor: string;
+  students: number;
+  capacity: number;
+  occupancy: number;
+  earned: number;
+}
+
 interface CoachStatsData {
   week: PeriodStats;
   month: PeriodStats;
   year: PeriodStats;
   allTime: { given: number; students: number };
+  earnings?: EarningsData;
+  weekEarnings?: EarningsData;
+  classEarnings?: ClassEarning[];
   history: HistoryEntry[];
 }
 
@@ -69,6 +92,14 @@ const stagger = {
   hidden: {},
   show: { transition: { staggerChildren: 0.04 } },
 };
+
+function fmt(amount: number, currency: string = "MXN") {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+  }).format(amount);
+}
 
 function groupByMonth(classes: HistoryEntry[]): MonthGroup[] {
   const map = new Map<string, HistoryEntry[]>();
@@ -111,6 +142,8 @@ function groupByMonth(classes: HistoryEntry[]): MonthGroup[] {
 export default function CoachStatsPage() {
   const [period, setPeriod] = useState<Period>("month");
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  const [showAllClasses, setShowAllClasses] = useState(false);
+  const [earningsView, setEarningsView] = useState<"week" | "month">("month");
 
   const { data, isLoading } = useQuery<CoachStatsData>({
     queryKey: ["coach-stats"],
@@ -124,6 +157,8 @@ export default function CoachStatsPage() {
   const current = data?.[period];
   const pastClasses = useMemo(() => data?.history.filter((c) => c.isPast) ?? [], [data]);
   const monthGroups = useMemo(() => groupByMonth(pastClasses), [pastClasses]);
+  const earnings = earningsView === "week" ? data?.weekEarnings : data?.earnings;
+  const classEarnings = data?.classEarnings ?? [];
 
   const currentMonthKey = useMemo(() => {
     const d = new Date();
@@ -152,7 +187,7 @@ export default function CoachStatsPage() {
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="font-display text-2xl font-bold">Mi Historial</h1>
         <p className="mt-1 text-sm text-muted">
-          Resumen de tus clases y estadísticas
+          Resumen de clases, estadísticas y ganancias
         </p>
       </motion.div>
 
@@ -185,15 +220,146 @@ export default function CoachStatsPage() {
         </Card>
       </motion.div>
 
+      {/* ── Earnings section ── */}
+      {!isLoading && earnings?.hasRates && (
+        <motion.div variants={fadeUp} initial="hidden" animate="show" className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-2 font-display text-lg font-bold">
+              <Banknote className="h-5 w-5 text-green-600" />
+              Mis ganancias
+            </h2>
+            <div className="inline-flex items-center gap-0.5 rounded-lg bg-surface p-0.5">
+              <button
+                onClick={() => setEarningsView("week")}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  earningsView === "week"
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted hover:text-foreground",
+                )}
+              >
+                Semana
+              </button>
+              <button
+                onClick={() => setEarningsView("month")}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  earningsView === "month"
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted hover:text-foreground",
+                )}
+              >
+                Mes
+              </button>
+            </div>
+          </div>
+
+          <Card className="border-green-100 bg-gradient-to-br from-green-50/40 to-transparent">
+            <CardContent className="p-5">
+              <motion.div
+                key={earningsView}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <p className="font-display text-3xl font-bold text-green-700">
+                  {fmt(earnings.total, earnings.currency)}
+                </p>
+                <p className="mt-0.5 text-xs text-green-600/70">
+                  {earningsView === "week" ? "Esta semana" : "Este mes"}
+                </p>
+                {earnings.breakdown.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {earnings.breakdown.map((b, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <span className="text-sm text-green-700/80">{b.label}</span>
+                        <span className="font-mono text-sm font-semibold text-green-800">
+                          {fmt(b.amount, earnings.currency)}
+                        </span>
+                      </div>
+                    ))}
+                    {earnings.breakdown.length > 1 && (
+                      <div className="border-t border-green-200/50 pt-2 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-green-700">Total</span>
+                        <span className="font-mono text-sm font-bold text-green-800">
+                          {fmt(earnings.total, earnings.currency)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            </CardContent>
+          </Card>
+
+          {/* Per-class earnings */}
+          {classEarnings.length > 0 && earningsView === "month" && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-semibold">Ganancia por clase</span>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {classEarnings.length}
+                    </Badge>
+                  </div>
+                  {classEarnings.length > 8 && (
+                    <button
+                      onClick={() => setShowAllClasses(!showAllClasses)}
+                      className="text-xs font-medium text-coach hover:underline"
+                    >
+                      {showAllClasses ? "Ver menos" : `Ver todas (${classEarnings.length})`}
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {(showAllClasses ? classEarnings : classEarnings.slice(0, 8)).map((cls) => (
+                    <Link
+                      key={cls.id}
+                      href={`/coach/class/${cls.id}`}
+                      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-surface/50"
+                    >
+                      <span
+                        className="h-6 w-0.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: cls.classColor }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{cls.className}</p>
+                        <p className="text-[11px] text-muted">
+                          {formatClassDate(cls.startsAt)} · {formatTime(cls.startsAt)} · {cls.students}/{cls.capacity}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className={cn(
+                          "font-mono text-sm font-bold",
+                          cls.earned > 0 ? "text-green-700" : "text-muted",
+                        )}>
+                          {cls.earned > 0 ? fmt(cls.earned, earnings.currency) : "—"}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </motion.div>
+      )}
+
       {/* Period selector */}
       <div>
-        <div className="flex gap-1 rounded-xl bg-surface p-1">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-bold">
+          <BarChart3 className="h-5 w-5 text-coach" />
+          Actividad
+        </h2>
+
+        <div className="flex gap-1 rounded-lg bg-surface p-1">
           {(["week", "month", "year"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               className={cn(
-                "flex-1 rounded-lg py-2 text-xs font-semibold transition-all",
+                "flex-1 rounded-md py-2 text-xs font-semibold transition-all",
                 period === p
                   ? "bg-white text-foreground shadow-sm"
                   : "text-muted hover:text-foreground",
@@ -255,7 +421,7 @@ export default function CoachStatsPage() {
       {/* Monthly breakdown */}
       <div>
         <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-bold">
-          <BarChart3 className="h-5 w-5 text-coach" />
+          <Clock className="h-5 w-5 text-muted" />
           Resumen mensual
         </h2>
 
@@ -287,7 +453,6 @@ export default function CoachStatsPage() {
                 <motion.div key={group.key} variants={fadeUp}>
                   <Card className={cn(isCurrent && "border-coach/20")}>
                     <CardContent className="p-0">
-                      {/* Month header — clickable */}
                       <button
                         onClick={() => setExpandedMonth(isExpanded ? null : group.key)}
                         className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-surface/50"
@@ -315,7 +480,6 @@ export default function CoachStatsPage() {
                           </div>
                         </div>
 
-                        {/* Type pills */}
                         <div className="hidden flex-wrap justify-end gap-1 sm:flex">
                           {group.byType.slice(0, 3).map((t) => (
                             <span
@@ -343,7 +507,6 @@ export default function CoachStatsPage() {
                         />
                       </button>
 
-                      {/* Expanded detail */}
                       <AnimatePresence>
                         {isExpanded && (
                           <motion.div
@@ -352,7 +515,6 @@ export default function CoachStatsPage() {
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden"
                           >
-                            {/* Type breakdown */}
                             <div className="border-t border-border/50 px-4 py-3">
                               <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
                                 Desglose por tipo
@@ -381,7 +543,6 @@ export default function CoachStatsPage() {
                               </div>
                             </div>
 
-                            {/* Class list */}
                             <div className="border-t border-border/50 px-4 py-3">
                               <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
                                 Detalle de clases

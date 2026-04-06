@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,8 +16,8 @@ import {
   Clock,
   Users,
   Trophy,
-  ChevronDown,
-  ChevronUp,
+  ChevronRight,
+  Search,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,8 +26,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 
 interface UpcomingClass {
   id: string;
@@ -97,13 +96,14 @@ const fadeUp = {
 };
 
 export default function AdminCoachesPage() {
+  const router = useRouter();
   const qc = useQueryClient();
   const [showInvite, setShowInvite] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: coaches, isLoading } = useQuery<CoachData[]>({
     queryKey: ["admin-coaches"],
@@ -190,7 +190,7 @@ export default function AdminCoachesPage() {
         <div className="grid grid-cols-3 gap-3">
           <Card>
             <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-admin/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-admin/10">
                 <UserCog className="h-5 w-5 text-admin" />
               </div>
               <div>
@@ -201,7 +201,7 @@ export default function AdminCoachesPage() {
           </Card>
           <Card>
             <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
                 <CalendarDays className="h-5 w-5 text-blue-500" />
               </div>
               <div>
@@ -212,7 +212,7 @@ export default function AdminCoachesPage() {
           </Card>
           <Card>
             <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50">
                 <TrendingUp className="h-5 w-5 text-green-500" />
               </div>
               <div>
@@ -221,6 +221,19 @@ export default function AdminCoachesPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Search */}
+      {!isLoading && coaches && coaches.length > 1 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <Input
+            className="pl-10"
+            placeholder="Buscar por nombre o email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       )}
 
@@ -316,7 +329,11 @@ export default function AdminCoachesPage() {
         </Card>
       ) : (
         <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-3">
-          {coaches.map((coach, idx) => {
+          {coaches.filter((c) =>
+            !searchQuery ||
+            c.user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.user.email.toLowerCase().includes(searchQuery.toLowerCase())
+          ).map((coach, idx) => {
             const name = coach.user.name ?? "Coach";
             const initials = (coach.user.name || coach.user.email)
               .split(" ")
@@ -325,7 +342,6 @@ export default function AdminCoachesPage() {
               .slice(0, 2)
               .toUpperCase();
             const isRemoving = removingId === coach.id;
-            const isExpanded = expandedId === coach.id;
             const s = coach.stats;
             const rank = idx + 1;
 
@@ -336,7 +352,7 @@ export default function AdminCoachesPage() {
                     {/* Main row */}
                     <div
                       className="flex cursor-pointer items-center gap-4 p-4"
-                      onClick={() => setExpandedId(isExpanded ? null : coach.id)}
+                      onClick={() => router.push(`/admin/coaches/${coach.id}`)}
                     >
                       <RankBadge rank={rank} />
 
@@ -375,7 +391,7 @@ export default function AdminCoachesPage() {
                         </div>
                       </div>
 
-                      {/* Remove / expand */}
+                      {/* Remove / navigate */}
                       <div className="flex items-center gap-1">
                         {isRemoving ? (
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -410,11 +426,7 @@ export default function AdminCoachesPage() {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
-                        {isExpanded ? (
-                          <ChevronUp className="h-4 w-4 text-muted" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 text-muted" />
-                        )}
+                        <ChevronRight className="h-4 w-4 text-muted" />
                       </div>
                     </div>
 
@@ -433,89 +445,6 @@ export default function AdminCoachesPage() {
                         <span className="font-semibold text-foreground">{s.upcomingClasses.length}</span> próximas
                       </div>
                     </div>
-
-                    {/* Expanded: upcoming classes + specialties */}
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="border-t border-border/30 bg-surface/30 px-4 py-4 space-y-4">
-                            {/* Specialties */}
-                            {coach.specialties && coach.specialties.length > 0 && (
-                              <div>
-                                <p className="mb-1.5 text-xs font-medium text-muted">Especialidades</p>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {coach.specialties.map((sp) => (
-                                    <Badge key={sp} variant="secondary" className="text-xs">
-                                      {sp}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Upcoming classes */}
-                            <div>
-                              <p className="mb-2 text-xs font-medium text-muted">
-                                Próximas clases asignadas
-                              </p>
-                              {s.upcomingClasses.length === 0 ? (
-                                <p className="text-xs text-muted/60">Sin clases próximas</p>
-                              ) : (
-                                <div className="space-y-1.5">
-                                  {s.upcomingClasses.map((cls) => {
-                                    const d = new Date(cls.startsAt);
-                                    const occPct = cls.capacity > 0
-                                      ? Math.round((cls.booked / cls.capacity) * 100)
-                                      : 0;
-                                    return (
-                                      <div
-                                        key={cls.id}
-                                        className="flex items-center gap-3 rounded-lg bg-white px-3 py-2"
-                                      >
-                                        <div
-                                          className="h-2 w-2 rounded-full shrink-0"
-                                          style={{ backgroundColor: cls.classTypeColor }}
-                                        />
-                                        <div className="min-w-0 flex-1">
-                                          <p className="text-xs font-medium text-foreground truncate">
-                                            {cls.classTypeName}
-                                            <span className="font-normal text-muted">
-                                              {" "}· {cls.roomName} · {cls.studioName}
-                                            </span>
-                                          </p>
-                                          <p className="text-[11px] text-muted">
-                                            {format(d, "EEE d MMM · HH:mm", { locale: es })}
-                                          </p>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                          <p className="text-xs font-semibold tabular-nums">
-                                            {cls.booked}/{cls.capacity}
-                                          </p>
-                                          <p className={cn(
-                                            "text-[10px] font-medium",
-                                            occPct >= 70 ? "text-green-600" :
-                                            occPct >= 30 ? "text-amber-500" :
-                                            "text-red-400",
-                                          )}>
-                                            {occPct}%
-                                          </p>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </CardContent>
                 </Card>
               </motion.div>

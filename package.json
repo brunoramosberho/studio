@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:clean": "rm -rf .next node_modules/.cache && next dev",
+    "clean": "rm -rf .next node_modules/.cache .turbo tsconfig.tsbuildinfo",
+    "dev": "next dev --webpack",
+    "dev:clean": "npm run clean && next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
