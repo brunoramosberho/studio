@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Home, CalendarCheck, User, Mic, ShoppingBag, Dumbbell } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -58,8 +58,24 @@ function tabIsActive(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
+function scrollToTop() {
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    ("standalone" in navigator && (navigator as any).standalone);
+
+  if (isStandalone) {
+    // iOS PWA: smooth scrollTo is unreliable in standalone mode.
+    // Use instant scroll on documentElement + body for maximum compat.
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  } else {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
 export function MobileNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const { role } = useTenant();
   const [disciplines, setDisciplines] = useState<DisciplineIcon[]>([]);
@@ -127,6 +143,13 @@ export function MobileNav() {
               <Link
                 key={tab.href}
                 href={tab.href}
+                onClick={(e) => {
+                  if (isActive) {
+                    e.preventDefault();
+                    scrollToTop();
+                    router.refresh();
+                  }
+                }}
                 className={cn(
                   "flex min-h-[48px] min-w-[44px] flex-col items-center justify-end gap-0.5 rounded-xl px-2 py-1 text-[10px] font-medium transition-colors",
                   isActive ? "text-accent" : "text-muted",
@@ -159,6 +182,13 @@ export function MobileNav() {
               <Link
                 key={tab.href}
                 href={tab.href}
+                onClick={(e) => {
+                  if (isActive) {
+                    e.preventDefault();
+                    scrollToTop();
+                    router.refresh();
+                  }
+                }}
                 className={cn(
                   "flex min-h-[48px] min-w-[44px] flex-col items-center justify-end gap-0.5 rounded-xl px-2 py-1 text-[10px] font-medium transition-colors",
                   isActive
