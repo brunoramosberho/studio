@@ -9,14 +9,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const host = request.headers.get("host") || process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const origin = `${protocol}://${host}`;
+    // Always use root domain for callback (Strava validates against registered domain)
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
+    const protocol = rootDomain.includes("localhost") ? "http" : "https";
+    const redirectUri = `${protocol}://${rootDomain}/api/auth/strava/callback`;
 
-    const redirectUri = `${origin}/api/auth/strava/callback`;
-    const state = `${session.user.id}:${host}`;
+    // Encode the origin host in state so callback redirects back to the right subdomain
+    const originHost = request.headers.get("host") || rootDomain;
+    const state = `${session.user.id}:${originHost}`;
+
     const url = buildStravaAuthUrl(session.user.id, redirectUri, state);
-
     return NextResponse.redirect(url);
   } catch (error) {
     console.error("GET /api/auth/strava error:", error);
