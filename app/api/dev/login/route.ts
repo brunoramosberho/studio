@@ -13,9 +13,12 @@ function fillerUserWhere() {
   };
 }
 
-function devLoginEmailForRole(role: string): string | undefined {
-  const coach = process.env.DEV_LOGIN_COACH_EMAIL?.trim();
-  const client = process.env.DEV_LOGIN_CLIENT_EMAIL?.trim();
+function devLoginEmailForRole(role: string, tenantSlug?: string): string | undefined {
+  const suffix = tenantSlug?.toUpperCase().replace(/-/g, "_");
+  const coachPerTenant = suffix ? process.env[`DEV_LOGIN_COACH_EMAIL__${suffix}`]?.trim() : undefined;
+  const clientPerTenant = suffix ? process.env[`DEV_LOGIN_CLIENT_EMAIL__${suffix}`]?.trim() : undefined;
+  const coach = coachPerTenant || process.env.DEV_LOGIN_COACH_EMAIL?.trim();
+  const client = clientPerTenant || process.env.DEV_LOGIN_CLIENT_EMAIL?.trim();
   if (role === "COACH" && coach) return coach;
   if (role === "CLIENT" && client) return client;
   return undefined;
@@ -61,7 +64,7 @@ export async function GET(request: NextRequest) {
       }
     } else if (tenant) {
       const tenantRole = role as "ADMIN" | "COACH" | "CLIENT";
-      const preferEmail = devLoginEmailForRole(role);
+      const preferEmail = devLoginEmailForRole(role, tenant.slug);
 
       if (preferEmail) {
         const byEmail = await prisma.membership.findFirst({
