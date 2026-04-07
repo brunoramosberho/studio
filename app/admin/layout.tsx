@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import type { LucideIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -282,24 +282,24 @@ function SidebarNav({ sections, stats, pathname, onNavigate, mobile }: SidebarNa
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
   const { studioName } = useBranding();
   const stats = useSidebarStats();
 
-  const userName = session?.user?.name ?? "Admin";
-  const initials = userName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2);
-
   const [locations, setLocations] = useState<LocCountry[]>([]);
   const [locValue, setLocValue] = useState("");
   const [locSaving, setLocSaving] = useState(false);
   const [locSaved, setLocSaved] = useState(false);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/login");
+    }
+  }, [status, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -341,6 +341,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (session?.user) load();
     return () => { cancelled = true; };
   }, [session?.user]);
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-admin" />
+          <p className="text-sm text-muted">Cargando sesión…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return null;
+  }
+
+  const userName = session?.user?.name ?? "Admin";
+  const initials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2);
 
   async function handleLocChange(val: string) {
     setLocValue(val);
