@@ -56,11 +56,11 @@ export async function POST(request: NextRequest) {
       }
 
       case "invoice.paid": {
-        const invoice = event.data.object;
+        const inv = event.data.object as unknown as Record<string, unknown>;
         const subId =
-          typeof invoice.subscription === "string"
-            ? invoice.subscription
-            : invoice.subscription?.id;
+          typeof inv.subscription === "string"
+            ? inv.subscription
+            : (inv.subscription as Record<string, string> | null)?.id;
         if (!subId) break;
 
         const memberSub = await prisma.memberSubscription.findUnique({
@@ -69,20 +69,19 @@ export async function POST(request: NextRequest) {
         });
         if (!memberSub) break;
 
+        const lines = inv.lines as { data?: { period?: { start?: number; end?: number } }[] } | undefined;
+        const periodStart = lines?.data?.[0]?.period?.start;
+        const periodEnd = lines?.data?.[0]?.period?.end;
+
         await prisma.memberSubscription.update({
           where: { id: memberSub.id },
           data: {
             status: "active",
-            currentPeriodStart: new Date(
-              (invoice.lines?.data?.[0]?.period?.start ?? Date.now() / 1000) * 1000,
-            ),
-            currentPeriodEnd: new Date(
-              (invoice.lines?.data?.[0]?.period?.end ?? Date.now() / 1000) * 1000,
-            ),
+            currentPeriodStart: new Date((periodStart ?? Date.now() / 1000) * 1000),
+            currentPeriodEnd: new Date((periodEnd ?? Date.now() / 1000) * 1000),
           },
         });
 
-        const periodEnd = invoice.lines?.data?.[0]?.period?.end;
         if (periodEnd) {
           await prisma.userPackage.create({
             data: {
@@ -92,7 +91,7 @@ export async function POST(request: NextRequest) {
               creditsTotal: memberSub.package.credits,
               creditsUsed: 0,
               expiresAt: new Date(periodEnd * 1000),
-              stripePaymentId: invoice.payment_intent as string ?? invoice.id,
+              stripePaymentId: (inv.payment_intent as string) ?? (inv.id as string),
             },
           });
         }
@@ -100,11 +99,11 @@ export async function POST(request: NextRequest) {
       }
 
       case "invoice.payment_failed": {
-        const invoice = event.data.object;
+        const inv = event.data.object as unknown as Record<string, unknown>;
         const subId =
-          typeof invoice.subscription === "string"
-            ? invoice.subscription
-            : invoice.subscription?.id;
+          typeof inv.subscription === "string"
+            ? inv.subscription
+            : (inv.subscription as Record<string, string> | null)?.id;
         if (!subId) break;
 
         await prisma.memberSubscription.updateMany({
@@ -115,21 +114,24 @@ export async function POST(request: NextRequest) {
       }
 
       case "customer.subscription.updated": {
-        const sub = event.data.object;
+        const sub = event.data.object as unknown as Record<string, unknown>;
+        const subId = sub.id as string;
         const memberSub = await prisma.memberSubscription.findUnique({
-          where: { stripeSubscriptionId: sub.id },
+          where: { stripeSubscriptionId: subId },
         });
         if (!memberSub) break;
 
         const isPaused = !!sub.pause_collection;
+        const periodStart = sub.current_period_start as number | undefined;
+        const periodEnd = sub.current_period_end as number | undefined;
 
         await prisma.memberSubscription.update({
           where: { id: memberSub.id },
           data: {
-            status: isPaused ? "paused" : sub.status,
-            cancelAtPeriodEnd: sub.cancel_at_period_end,
-            currentPeriodStart: new Date(sub.current_period_start * 1000),
-            currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            status: isPaused ? "paused" : (sub.status as string),
+            cancelAtPeriodEnd: (sub.cancel_at_period_end as boolean) ?? false,
+            ...(periodStart && { currentPeriodStart: new Date(periodStart * 1000) }),
+            ...(periodEnd && { currentPeriodEnd: new Date(periodEnd * 1000) }),
             ...(isPaused && !memberSub.pausedAt && { pausedAt: new Date() }),
             ...(!isPaused && memberSub.pausedAt && {
               pausedAt: null,
