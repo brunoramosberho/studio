@@ -24,12 +24,22 @@ export function BookingFlowOptions({
   const [selected, setSelected] = useState<string | null>(null);
   const [activating, setActivating] = useState(false);
 
+  function trackEvent(event: string, extra?: Record<string, unknown>) {
+    fetch("/api/conversion/nudge/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nudgeType: "booking_flow", event, ...extra }),
+    }).catch(() => {});
+  }
+
   async function handleActivate() {
     if (!selected || selected === "single") {
+      trackEvent("dismissed");
       onSelect("single");
       return;
     }
 
+    trackEvent("interacted", { membershipId: selected });
     setActivating(true);
     try {
       const res = await fetch("/api/conversion/activate", {
@@ -41,15 +51,7 @@ export function BookingFlowOptions({
         }),
       });
       if (res.ok) {
-        await fetch("/api/conversion/nudge/event", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nudgeType: "booking_flow",
-            event: "converted",
-            membershipId: selected,
-          }),
-        });
+        trackEvent("converted", { membershipId: selected });
         onSelect(selected);
       }
     } finally {

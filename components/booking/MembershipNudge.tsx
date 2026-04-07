@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type {
   NudgeDecision,
   BookingFlowData,
@@ -9,6 +10,19 @@ import type {
 import { BookingFlowOptions } from "./BookingFlowOptions";
 import { IntroOfferCard } from "./IntroOfferCard";
 import { PackageUpgradeCard } from "./PackageUpgradeCard";
+
+function useTrackNudgeShown(nudgeType: string | null) {
+  const tracked = useRef(false);
+  useEffect(() => {
+    if (!nudgeType || tracked.current) return;
+    tracked.current = true;
+    fetch("/api/conversion/nudge/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nudgeType, event: "shown" }),
+    }).catch(() => {});
+  }, [nudgeType]);
+}
 
 interface MembershipNudgeProps {
   decision: NudgeDecision;
@@ -23,6 +37,10 @@ export function MembershipNudge({
   onMembershipActivated,
   onSingleClass,
 }: MembershipNudgeProps) {
+  useTrackNudgeShown(
+    decision.type === "none" ? null : decision.type,
+  );
+
   if (decision.type === "none") return null;
 
   if (decision.type === "booking_flow") {
