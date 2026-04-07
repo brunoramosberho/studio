@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       prisma.nudgeEvent.findMany({
         where: { tenantId, shownAt: { gte: since } },
         select: {
+          userId: true,
           type: true,
           shown: true,
           interacted: true,
@@ -58,7 +59,11 @@ export async function GET(request: NextRequest) {
     const interacted = currentEvents.filter((e) => e.interacted).length;
     const conversions = currentEvents.filter((e) => e.converted).length;
     const mrr = currentEvents.reduce((s, e) => s + (e.revenue ?? 0), 0);
-    const conversionRate = nudgesShown > 0 ? conversions / nudgesShown : 0;
+
+    const uniqueShown = new Set(currentEvents.filter((e) => e.shown).map((e) => e.userId)).size;
+    const uniqueInteracted = new Set(currentEvents.filter((e) => e.interacted).map((e) => e.userId)).size;
+    const uniqueConverted = new Set(currentEvents.filter((e) => e.converted).map((e) => e.userId)).size;
+    const conversionRate = uniqueShown > 0 ? uniqueConverted / uniqueShown : 0;
 
     const prevNudges = prevEvents.filter((e) => e.shown).length;
     const prevConversions = prevEvents.filter((e) => e.converted).length;
@@ -74,8 +79,8 @@ export async function GET(request: NextRequest) {
 
     const byAutomation = nudgeTypes.map((type) => {
       const ofType = currentEvents.filter((e) => e.type === type);
-      const shown = ofType.filter((e) => e.shown).length;
-      const converted = ofType.filter((e) => e.converted).length;
+      const shown = new Set(ofType.filter((e) => e.shown).map((e) => e.userId)).size;
+      const converted = new Set(ofType.filter((e) => e.converted).map((e) => e.userId)).size;
       const typeMrr = ofType.reduce((s, e) => s + (e.revenue ?? 0), 0);
       return {
         type,
@@ -124,16 +129,21 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       totals: {
-        nudgesShown,
-        conversions,
+        nudgesShown: uniqueShown,
+        nudgesShownTotal: nudgesShown,
+        conversions: uniqueConverted,
+        conversionsTotal: conversions,
         conversionRate,
         mrr,
       },
       funnel: {
         reservasWithoutMembership: bookingsWithoutSub,
-        nudgesShown,
-        interacted,
-        converted: conversions,
+        nudgesShown: uniqueShown,
+        nudgesShownTotal: nudgesShown,
+        interacted: uniqueInteracted,
+        interactedTotal: interacted,
+        converted: uniqueConverted,
+        convertedTotal: conversions,
       },
       byAutomation,
       recentConversions,

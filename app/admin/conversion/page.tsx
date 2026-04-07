@@ -38,15 +38,20 @@ import { cn, formatCurrency } from "@/lib/utils";
 interface ConversionStats {
   totals: {
     nudgesShown: number;
+    nudgesShownTotal: number;
     conversions: number;
+    conversionsTotal: number;
     conversionRate: number;
     mrr: number;
   };
   funnel: {
     reservasWithoutMembership: number;
     nudgesShown: number;
+    nudgesShownTotal: number;
     interacted: number;
+    interactedTotal: number;
     converted: number;
+    convertedTotal: number;
   };
   byAutomation: Array<{
     type: string;
@@ -235,14 +240,16 @@ function ResultsTab({
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
-          label="Nudges mostrados"
+          label="Usuarios alcanzados"
           value={totals.nudgesShown.toLocaleString()}
+          subtitle={totals.nudgesShownTotal > totals.nudgesShown ? `${totals.nudgesShownTotal} impresiones` : undefined}
           icon={<Eye className="h-5 w-5 text-stone-400" />}
           trend={trendIndicator(trends.vsLastPeriod.nudges)}
         />
         <StatCard
           label="Conversiones"
           value={totals.conversions.toLocaleString()}
+          subtitle={totals.conversionsTotal > totals.conversions ? `${totals.conversionsTotal} totales` : undefined}
           icon={<ArrowRightLeft className="h-5 w-5 text-stone-400" />}
           trend={trendIndicator(trends.vsLastPeriod.conversions)}
         />
@@ -399,12 +406,14 @@ function ResultsTab({
 function StatCard({
   label,
   value,
+  subtitle,
   icon,
   trend,
   valueClassName,
 }: {
   label: string;
   value: string;
+  subtitle?: string;
   icon: React.ReactNode;
   trend?: React.ReactNode;
   valueClassName?: string;
@@ -419,6 +428,9 @@ function StatCard({
         {value}
       </p>
       <p className="mt-0.5 text-xs text-stone-400">{label}</p>
+      {subtitle && (
+        <p className="mt-0.5 text-[10px] text-stone-300">{subtitle}</p>
+      )}
     </div>
   );
 }
@@ -432,9 +444,9 @@ function FunnelRow({
 }) {
   const steps = [
     { label: "Reservas sin membresía", value: funnel.reservasWithoutMembership },
-    { label: "Nudge mostrado", value: funnel.nudgesShown },
-    { label: "Interactuaron", value: funnel.interacted },
-    { label: "Compraron", value: funnel.converted },
+    { label: "Nudge mostrado", value: funnel.nudgesShown, total: funnel.nudgesShownTotal },
+    { label: "Interactuaron", value: funnel.interacted, total: funnel.interactedTotal },
+    { label: "Compraron", value: funnel.converted, total: funnel.convertedTotal },
   ];
 
   return (
