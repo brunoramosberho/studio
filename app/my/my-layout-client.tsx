@@ -7,24 +7,17 @@ import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
 import { PushManager } from "@/components/shared/push-manager";
 import { PwaTracker } from "@/components/shared/pwa-tracker";
 import { CityDetectPrompt } from "@/components/shared/city-detect-prompt";
-import { useTenant } from "@/components/tenant-provider";
-
 export function MyLayoutClient({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { status } = useSession();
-  const { role, loading } = useTenant();
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/login");
-      return;
     }
-    if (!loading && role === "ADMIN") {
-      router.replace("/admin");
-    }
-  }, [status, role, loading, router]);
+  }, [status, router]);
 
-  if (status === "loading" || status === "unauthenticated" || loading || role === "ADMIN") return null;
+  if (status === "loading" || status === "unauthenticated") return null;
 
   return (
     <div className="min-h-dvh bg-background">
