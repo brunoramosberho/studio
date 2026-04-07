@@ -87,6 +87,9 @@ model Tenant {
   platformQuotas        SchedulePlatformQuota[]
   platformBookings      PlatformBooking[]
   platformAlerts        PlatformAlert[]
+
+  waivers               Waiver[]
+  waiverSignatures      WaiverSignature[]
 }
 
 model InstagramIntegration {
@@ -220,6 +223,7 @@ model User {
   coachAvailabilityBlocks CoachAvailabilityBlock[] @relation("CoachAvailabilityBlocks")
   memberCheckIns          CheckIn[]                @relation("MemberCheckIns")
   staffCheckIns           CheckIn[]                @relation("StaffCheckIns")
+  waiverSignatures        WaiverSignature[]        @relation("MemberWaiverSignatures")
 
   @@index([countryId])
   @@index([cityId])
@@ -1141,6 +1145,79 @@ model PlatformAlert {
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId, isResolved])
+}
+
+// ── Waiver (digital liability waiver per tenant) ──
+
+enum WaiverStatus {
+  draft
+  active
+}
+
+enum WaiverSignatureMethod {
+  drawn
+  typed
+}
+
+model Waiver {
+  id              String       @id @default(cuid())
+  tenantId        String
+  version         Int          @default(1)
+  title           String       @default("Acuerdo de responsabilidad")
+  content         String       @db.Text
+  isPdf           Boolean      @default(false)
+  pdfStorageKey   String?
+  status          WaiverStatus @default(draft)
+
+  requirePhone      Boolean @default(false)
+  requireBirthDate  Boolean @default(false)
+  requireScrollRead Boolean @default(true)
+
+  triggerOnFirstOpen    Boolean @default(true)
+  triggerOnFirstBooking Boolean @default(true)
+  triggerReminder24h    Boolean @default(true)
+
+  blockCheckinWithoutSignature Boolean @default(true)
+
+  publishedAt     DateTime?
+  publishedBy     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant     Tenant             @relation(fields: [tenantId], references: [id])
+  signatures WaiverSignature[]
+
+  @@index([tenantId, status])
+}
+
+model WaiverSignature {
+  id              String                @id @default(cuid())
+  tenantId        String
+  waiverId        String
+  memberId        String
+  waiverVersion   Int
+
+  participantName      String
+  participantPhone     String?
+  participantBirthDate DateTime? @db.Date
+
+  method        WaiverSignatureMethod @default(drawn)
+  signatureData String                @db.Text
+  signatureHash String
+
+  ipAddress   String?
+  userAgent   String?
+  signedAt    DateTime @default(now())
+  emailSentAt DateTime?
+
+  pdfStorageKey String?
+
+  waiver Waiver @relation(fields: [waiverId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  member User   @relation("MemberWaiverSignatures", fields: [memberId], references: [id])
+
+  @@unique([waiverId, memberId])
+  @@index([tenantId, memberId])
 }
 
 // ── Studio Branding (deprecated: kept for migration, use Tenant) ──

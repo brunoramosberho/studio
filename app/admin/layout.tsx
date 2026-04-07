@@ -25,6 +25,7 @@ import {
   ShoppingBag,
   Globe2,
   Trophy,
+  FileSignature,
   Sparkles,
   ArrowLeft,
   Menu,
@@ -89,6 +90,7 @@ const navSections: NavSection[] = [
   {
     title: "Configuración",
     items: [
+      { href: "/admin/waiver", label: "Waiver", icon: FileSignature },
       { href: "/admin/branding", label: "Marca", icon: Palette },
       { href: "/admin/team", label: "Equipo", icon: ShieldCheck },
       { href: "/admin/studios", label: "Estudios", icon: Building2 },
