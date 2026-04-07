@@ -70,9 +70,12 @@ async function resolveSession(): Promise<Session | null> {
   const portal = h.get("x-auth-portal");
 
   if (portal === "admin") return adminAuth() as Promise<Session | null>;
-  if (portal === "client") return auth() as Promise<Session | null>;
+  if (portal === "client") {
+    const clientSession = (await auth()) as (Session & { user?: { id?: string } }) | null;
+    if (clientSession?.user?.id) return clientSession as Session;
+    return adminAuth() as Promise<Session | null>;
+  }
 
-  // Fallback for routes without explicit portal: try client first, then admin
   const clientSession = (await auth()) as (Session & { user?: { id?: string } }) | null;
   if (clientSession?.user?.id) return clientSession as Session;
   return adminAuth() as Promise<Session | null>;
