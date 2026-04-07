@@ -32,15 +32,13 @@ export async function GET(
       f.requesterId === session.user.id ? f.addresseeId : f.requesterId,
     );
 
-    if (friendIds.length === 0) {
-      return NextResponse.json([]);
-    }
+    const allowedUserIds = [session.user.id, ...friendIds];
 
-    const friendBookings = await prisma.booking.findMany({
+    const bookingsWithBiometrics = await prisma.booking.findMany({
       where: {
         classId,
         tenantId: tenant.id,
-        userId: { in: friendIds },
+        userId: { in: allowedUserIds },
         status: { in: ["ATTENDED", "CONFIRMED"] },
         biometrics: { some: {} },
       },
@@ -59,10 +57,11 @@ export async function GET(
       },
     });
 
-    const results = friendBookings
+    const results = bookingsWithBiometrics
       .filter((b) => b.user && b.biometrics.length > 0)
       .map((b) => ({
         user: { id: b.user!.id, name: b.user!.name, image: b.user!.image },
+        isMe: b.userId === session.user.id,
         ...b.biometrics[0],
       }));
 

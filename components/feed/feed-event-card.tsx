@@ -19,6 +19,7 @@ import { DisciplineSheet, type DisciplineData } from "./discipline-sheet";
 import { cn, maskLastName } from "@/lib/utils";
 import { feedAchievementTypeFromKey } from "@/lib/gamification/catalog";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
+import { FriendBiometrics } from "@/components/booking/friend-biometrics";
 
 interface Attendee {
   id: string;
@@ -369,6 +370,13 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Biometrics (self + friends) */}
+      {(p.classId as string) && (
+        <div className="px-4 pb-2">
+          <FriendBiometrics classId={p.classId as string} />
         </div>
       )}
 

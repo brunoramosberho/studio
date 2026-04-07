@@ -26,6 +26,7 @@ export async function POST(
       include: {
         classType: true,
         coach: { include: { user: { select: { name: true, image: true } } } },
+        room: { include: { studio: { include: { city: { select: { timezone: true } } } } } },
         bookings: {
           where: { status: { not: "CANCELLED" } },
           include: { user: { select: { id: true, name: true, image: true } } },
@@ -103,6 +104,14 @@ export async function POST(
         },
       });
     } else if (attendees.length > 0) {
+      const tz = cls.room?.studio?.city?.timezone ?? undefined;
+      const localDate = tz
+        ? new Date(cls.startsAt.toLocaleString("en-US", { timeZone: tz }))
+        : cls.startsAt;
+      const timeStr = tz
+        ? cls.startsAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: tz })
+        : format(cls.startsAt, "h:mm a");
+
       const event = await prisma.feedEvent.create({
         data: {
           tenantId: ctx.tenant.id,
@@ -117,8 +126,9 @@ export async function POST(
             coachName: cls.coach.user.name,
             coachImage: cls.coach.photoUrl || cls.coach.user.image,
             coachUserId: cls.coach.userId,
-            date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),
-            time: format(cls.startsAt, "h:mm a"),
+            date: format(localDate, "EEEE d 'de' MMMM", { locale: es }),
+            time: timeStr,
+            startsAt: cls.startsAt.toISOString(),
             duration: cls.classType.duration,
             attendees,
             attendeeCount: attendees.length,
