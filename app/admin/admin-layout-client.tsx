@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { LucideIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -38,6 +38,13 @@ import {
   LogOut,
   UserPlus,
   UserCircle,
+  ChevronRight,
+  ChevronDown,
+  Settings,
+  Briefcase,
+  TrendingUp,
+  Target,
+  Scan,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -53,46 +60,61 @@ interface NavItem {
   contextKey?: "activeClasses";
 }
 
-interface NavSection {
-  title: string;
+interface FlyoutGroup {
+  label: string;
+  icon: LucideIcon;
   items: NavItem[];
 }
 
-const navSections: NavSection[] = [
+const directItems: NavItem[] = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/schedule", label: "Horario", icon: CalendarDays, badgeKey: "pendingWaitlist" },
+  { href: "/admin/classes", label: "Clases", icon: ClipboardList, contextKey: "activeClasses" },
+  { href: "/admin/check-in", label: "Check-in", icon: ClipboardCheck },
+  { href: "/admin/clients", label: "Clientes", icon: Users, badgeKey: "newClients" },
+  { href: "/admin/feed", label: "Feed", icon: Megaphone, badgeKey: "recentFeed" },
+  { href: "/admin/gamification", label: "Logros", icon: Trophy },
+];
+
+const flyoutGroups: FlyoutGroup[] = [
   {
-    title: "Operaciones",
+    label: "Equipo",
+    icon: Users,
     items: [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/admin/schedule", label: "Horario", icon: CalendarDays, badgeKey: "pendingWaitlist" },
-      { href: "/admin/classes", label: "Clases", icon: ClipboardList, contextKey: "activeClasses" },
-      { href: "/admin/check-in", label: "Check-in", icon: ClipboardCheck },
       { href: "/admin/coaches", label: "Coaches", icon: UserCog },
       { href: "/admin/availability", label: "Disponibilidad", icon: CalendarOff },
       { href: "/admin/class-types", label: "Disciplinas", icon: Dumbbell },
     ],
   },
   {
-    title: "Comunidad",
-    items: [
-      { href: "/admin/clients", label: "Clientes", icon: Users, badgeKey: "newClients" },
-      { href: "/admin/feed", label: "Feed", icon: Megaphone, badgeKey: "recentFeed" },
-      { href: "/admin/gamification", label: "Logros", icon: Trophy },
-    ],
-  },
-  {
-    title: "Negocio",
+    label: "Negocio",
+    icon: Briefcase,
     items: [
       { href: "/admin/packages", label: "Paquetes", icon: Package },
       { href: "/admin/shop", label: "Tienda", icon: ShoppingBag },
-      { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
-      { href: "/admin/analytics", label: "Rendimiento", icon: Activity },
-      { href: "/admin/marketing", label: "Marketing", icon: Link2 },
-      { href: "/admin/conversion", label: "Conversión", icon: ArrowRightLeft },
       { href: "/admin/platforms", label: "Plataformas", icon: Globe2 },
     ],
   },
   {
-    title: "Configuración",
+    label: "Métricas",
+    icon: TrendingUp,
+    items: [
+      { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
+      { href: "/admin/analytics", label: "Rendimiento", icon: Activity },
+      { href: "/admin/conversion", label: "Conversión", icon: ArrowRightLeft },
+    ],
+  },
+  {
+    label: "Marketing",
+    icon: Target,
+    items: [
+      { href: "/admin/marketing", label: "Links & UTM", icon: Link2 },
+      { href: "/admin/marketing/pixels", label: "Pixels", icon: Scan },
+    ],
+  },
+  {
+    label: "Configuración",
+    icon: Settings,
     items: [
       { href: "/admin/waiver", label: "Waiver", icon: FileSignature },
       { href: "/admin/branding", label: "Marca", icon: Palette },
@@ -180,6 +202,236 @@ function ContextTag({ label }: { label: string }) {
   );
 }
 
+function SidebarFlyoutGroup({
+  group,
+  stats,
+  pathname,
+}: {
+  group: FlyoutGroup;
+  stats: SidebarStats | null;
+  pathname: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  const isActive = (href: string) =>
+    href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+
+  const hasActiveChild = group.items.some((item) => isActive(item.href));
+
+  const show = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPos({ top: rect.top, left: rect.right + 4 });
+    }
+    setOpen(true);
+  };
+
+  const hide = () => {
+    timeoutRef.current = setTimeout(() => setOpen(false), 150);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return (
+    <div ref={triggerRef} onMouseEnter={show} onMouseLeave={hide}>
+      <div
+        className={cn(
+          "group flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-[13px] font-medium transition-colors cursor-default select-none",
+          hasActiveChild || open
+            ? "bg-admin/8 font-semibold text-admin"
+            : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+        )}
+      >
+        <group.icon
+          className={cn(
+            "h-4 w-4 shrink-0",
+            hasActiveChild || open
+              ? "text-admin"
+              : "text-foreground/40 group-hover:text-foreground/60",
+          )}
+          strokeWidth={hasActiveChild ? 2.25 : 1.75}
+        />
+        <span className="flex-1 truncate">{group.label}</span>
+        <ChevronRight
+          className={cn(
+            "h-3 w-3 shrink-0 transition-transform",
+            open && "translate-x-0.5",
+            hasActiveChild || open ? "text-admin/50" : "text-foreground/25",
+          )}
+        />
+      </div>
+
+      {open && (
+        <div
+          className="fixed z-50 min-w-[200px] rounded-md border border-border/50 bg-white py-1.5 shadow-lg"
+          style={{ top: pos.top, left: pos.left }}
+          onMouseEnter={show}
+          onMouseLeave={hide}
+        >
+          <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-muted/50">
+            {group.label}
+          </p>
+          {group.items.map((item) => {
+            const active = isActive(item.href);
+            const badgeVal = item.badgeKey && stats ? stats[item.badgeKey] : 0;
+            const contextVal =
+              item.contextKey === "activeClasses" && stats?.activeClasses
+                ? `${stats.activeClasses} activas`
+                : null;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "group flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium transition-colors",
+                  active
+                    ? "bg-admin/8 font-semibold text-admin"
+                    : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+                )}
+              >
+                <item.icon
+                  className={cn(
+                    "h-4 w-4 shrink-0",
+                    active ? "text-admin" : "text-foreground/40 group-hover:text-foreground/60",
+                  )}
+                  strokeWidth={active ? 2.25 : 1.75}
+                />
+                <span className="flex-1 truncate">{item.label}</span>
+                {badgeVal ? (
+                  <Badge
+                    count={badgeVal}
+                    variant={item.badgeKey === "newClients" ? "green" : "red"}
+                  />
+                ) : contextVal ? (
+                  <ContextTag label={contextVal} />
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileAccordionGroup({
+  group,
+  stats,
+  pathname,
+  onNavigate,
+  py,
+}: {
+  group: FlyoutGroup;
+  stats: SidebarStats | null;
+  pathname: string;
+  onNavigate?: () => void;
+  py: string;
+}) {
+  const isActive = (href: string) =>
+    href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+
+  const hasActiveChild = group.items.some((item) => isActive(item.href));
+  const [expanded, setExpanded] = useState(hasActiveChild);
+
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={cn(
+          "group flex w-full items-center gap-2.5 rounded-sm px-2.5 text-left text-[13px] font-medium transition-colors",
+          py,
+          hasActiveChild
+            ? "bg-admin/8 font-semibold text-admin"
+            : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+        )}
+      >
+        <group.icon
+          className={cn(
+            "h-4 w-4 shrink-0",
+            hasActiveChild ? "text-admin" : "text-foreground/40 group-hover:text-foreground/60",
+          )}
+          strokeWidth={hasActiveChild ? 2.25 : 1.75}
+        />
+        <span className="flex-1 truncate">{group.label}</span>
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 shrink-0 transition-transform duration-200",
+            expanded && "rotate-180",
+            hasActiveChild ? "text-admin/50" : "text-foreground/25",
+          )}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="ml-4 space-y-px py-0.5">
+              {group.items.map((item) => {
+                const active = isActive(item.href);
+                const badgeVal = item.badgeKey && stats ? stats[item.badgeKey] : 0;
+                const contextVal =
+                  item.contextKey === "activeClasses" && stats?.activeClasses
+                    ? `${stats.activeClasses} activas`
+                    : null;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={cn(
+                      "group flex items-center gap-2.5 rounded-sm px-2.5 text-[13px] font-medium transition-colors",
+                      py,
+                      active
+                        ? "bg-admin/8 font-semibold text-admin"
+                        : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        active ? "text-admin" : "text-foreground/40 group-hover:text-foreground/60",
+                      )}
+                      strokeWidth={active ? 2.25 : 1.75}
+                    />
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {badgeVal ? (
+                      <Badge
+                        count={badgeVal}
+                        variant={item.badgeKey === "newClients" ? "green" : "red"}
+                      />
+                    ) : contextVal ? (
+                      <ContextTag label={contextVal} />
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function MgicAIButton() {
   const { toggle, isOpen } = useMgicAI();
   const { colorAdmin } = useBranding();
@@ -216,15 +468,17 @@ function MgicAIButton() {
   );
 }
 
-interface SidebarNavProps {
-  sections: NavSection[];
+function SidebarNav({
+  stats,
+  pathname,
+  onNavigate,
+  mobile,
+}: {
   stats: SidebarStats | null;
   pathname: string;
   onNavigate?: () => void;
   mobile?: boolean;
-}
-
-function SidebarNav({ sections, stats, pathname, onNavigate, mobile }: SidebarNavProps) {
+}) {
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
@@ -232,55 +486,70 @@ function SidebarNav({ sections, stats, pathname, onNavigate, mobile }: SidebarNa
 
   return (
     <>
-      {sections.map((section, sIdx) => (
-        <div key={section.title} className={sIdx > 0 ? "mt-5" : ""}>
-          <p className="mb-1 px-2.5 text-[11px] font-medium uppercase tracking-wider text-muted/60">
-            {section.title}
-          </p>
-          <div className="space-y-px">
-            {section.items.map((item) => {
-              const active = isActive(item.href);
-              const badgeVal = item.badgeKey && stats ? stats[item.badgeKey] : 0;
-              const contextVal =
-                item.contextKey === "activeClasses" && stats?.activeClasses
-                  ? `${stats.activeClasses} activas`
-                  : null;
+      <div className="space-y-px">
+        {directItems.map((item) => {
+          const active = isActive(item.href);
+          const badgeVal = item.badgeKey && stats ? stats[item.badgeKey] : 0;
+          const contextVal =
+            item.contextKey === "activeClasses" && stats?.activeClasses
+              ? `${stats.activeClasses} activas`
+              : null;
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
-                  className={cn(
-                    "group flex items-center gap-2.5 rounded-sm px-2.5 text-[13px] font-medium transition-colors",
-                    py,
-                    active
-                      ? "bg-admin/8 font-semibold text-admin"
-                      : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
-                  )}
-                >
-                  <item.icon
-                    className={cn(
-                      "h-4 w-4 shrink-0",
-                      active ? "text-admin" : "text-foreground/40 group-hover:text-foreground/60",
-                    )}
-                    strokeWidth={active ? 2.25 : 1.75}
-                  />
-                  <span className="flex-1 truncate">{item.label}</span>
-                  {badgeVal ? (
-                    <Badge
-                      count={badgeVal}
-                      variant={item.badgeKey === "newClients" ? "green" : "red"}
-                    />
-                  ) : contextVal ? (
-                    <ContextTag label={contextVal} />
-                  ) : null}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={cn(
+                "group flex items-center gap-2.5 rounded-sm px-2.5 text-[13px] font-medium transition-colors",
+                py,
+                active
+                  ? "bg-admin/8 font-semibold text-admin"
+                  : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+              )}
+            >
+              <item.icon
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  active ? "text-admin" : "text-foreground/40 group-hover:text-foreground/60",
+                )}
+                strokeWidth={active ? 2.25 : 1.75}
+              />
+              <span className="flex-1 truncate">{item.label}</span>
+              {badgeVal ? (
+                <Badge
+                  count={badgeVal}
+                  variant={item.badgeKey === "newClients" ? "green" : "red"}
+                />
+              ) : contextVal ? (
+                <ContextTag label={contextVal} />
+              ) : null}
+            </Link>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 space-y-px">
+        {flyoutGroups.map((group) =>
+          mobile ? (
+            <MobileAccordionGroup
+              key={group.label}
+              group={group}
+              stats={stats}
+              pathname={pathname}
+              onNavigate={onNavigate}
+              py={py}
+            />
+          ) : (
+            <SidebarFlyoutGroup
+              key={group.label}
+              group={group}
+              stats={stats}
+              pathname={pathname}
+            />
+          ),
+        )}
+      </div>
     </>
   );
 }
@@ -498,7 +767,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
             {/* Scrollable nav sections */}
             <nav className="flex-1 overflow-y-auto p-3 pt-4">
-              <SidebarNav sections={navSections} stats={stats} pathname={pathname} />
+              <SidebarNav stats={stats} pathname={pathname} />
             </nav>
 
             {/* Bottom: profile + location */}
@@ -548,7 +817,6 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
                 <nav className="flex-1 overflow-y-auto p-3">
                   <SidebarNav
-                    sections={navSections}
                     stats={stats}
                     pathname={pathname}
                     onNavigate={() => setSidebarOpen(false)}
