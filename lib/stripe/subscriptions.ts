@@ -104,7 +104,7 @@ export async function createMemberSubscription({
     stripeAccount: tenant.stripeAccountId,
   });
 
-  const invoice = subscription.latest_invoice as Stripe.Invoice | null;
+  const invoice = subscription.latest_invoice as unknown as Record<string, unknown> | null;
   const pi = invoice?.payment_intent as Stripe.PaymentIntent | null;
 
   await prisma.memberSubscription.create({
@@ -115,8 +115,8 @@ export async function createMemberSubscription({
       stripeSubscriptionId: subscription.id,
       stripePriceId,
       status: subscription.status,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodStart: new Date(((subscription as unknown as Record<string, number>).current_period_start ?? Date.now() / 1000) * 1000),
+      currentPeriodEnd: new Date(((subscription as unknown as Record<string, number>).current_period_end ?? Date.now() / 1000) * 1000),
     },
   });
 
