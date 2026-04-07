@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Loader2, MapPin } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MapPin } from "lucide-react";
 import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -72,6 +72,19 @@ export default function CheckInPage() {
     [allClasses, filterStudioId],
   );
 
+  // Split into active (live + upcoming) and finished
+  const { activeClasses, finishedClasses } = useMemo(() => {
+    const active: ClassItem[] = [];
+    const finished: ClassItem[] = [];
+    for (const c of classes) {
+      if (c.isFinished) finished.push(c);
+      else active.push(c);
+    }
+    return { activeClasses: active, finishedClasses: finished };
+  }, [classes]);
+
+  const [showFinished, setShowFinished] = useState(false);
+
   // Auto-select: live class first, then next upcoming, then first class
   useEffect(() => {
     if (classes.length === 0) {
@@ -84,7 +97,13 @@ export default function CheckInPage() {
       return;
     }
     const upcoming = classes.find((c) => !c.isFinished);
-    setSelectedClassId(upcoming?.id ?? classes[0].id);
+    if (upcoming) {
+      setSelectedClassId(upcoming.id);
+      return;
+    }
+    // All finished (past day) — select the most recent one
+    setSelectedClassId(classes[classes.length - 1].id);
+    setShowFinished(true);
   }, [classes]);
 
   const selectedClass = useMemo(
@@ -162,7 +181,9 @@ export default function CheckInPage() {
         {/* Left: class list */}
         <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col">
           <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-stone-100">
-            <span className="text-xs font-medium text-stone-900">Clases de hoy</span>
+            <span className="text-xs font-medium text-stone-900">
+              {isPastDate ? "Clases del día" : "Clases de hoy"}
+            </span>
             <span className="text-xs text-stone-400">
               {format(selectedDate, "EEE d MMM", { locale: es })}
             </span>
@@ -177,56 +198,54 @@ export default function CheckInPage() {
                 No hay clases programadas
               </div>
             ) : (
-              classes.map((c) => {
-                const isSelected = c.id === selectedClassId;
-                const pill = occupancyPill(c);
-                return (
-                  <button
+              <>
+                {/* Finished classes — collapsible, on top (chronological order) */}
+                {finishedClasses.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => setShowFinished((v) => !v)}
+                      className="flex w-full items-center gap-2 border-b border-stone-100 bg-stone-50/60 px-3.5 py-2 text-left"
+                    >
+                      <ChevronDown
+                        size={14}
+                        className={cn(
+                          "text-stone-400 transition-transform",
+                          !showFinished && "-rotate-90",
+                        )}
+                      />
+                      <span className="flex-1 text-[11px] font-medium text-stone-500">
+                        Terminadas ({finishedClasses.length})
+                      </span>
+                      {!showFinished && finishedClasses.some((c) => c.enrolledCount > c.checkedInCount) && (
+                        <span className="text-[10px] rounded-full bg-amber-50 px-1.5 py-0.5 text-amber-600">
+                          Sin check-in
+                        </span>
+                      )}
+                    </button>
+                    {showFinished &&
+                      finishedClasses.map((c) => (
+                        <ClassListItem
+                          key={c.id}
+                          item={c}
+                          isSelected={c.id === selectedClassId}
+                          occupancy={occupancyPill(c)}
+                          onSelect={() => setSelectedClassId(c.id)}
+                        />
+                      ))}
+                  </>
+                )}
+
+                {/* Active / upcoming classes */}
+                {activeClasses.map((c) => (
+                  <ClassListItem
                     key={c.id}
-                    onClick={() => setSelectedClassId(c.id)}
-                    className={cn(
-                      "w-full text-left px-3.5 py-2.5 border-b border-stone-50 transition-colors",
-                      isSelected
-                        ? "border-l-[3px] border-l-[#3730B8] bg-[#EEEDFE]"
-                        : "border-l-[3px] border-l-transparent hover:bg-stone-50",
-                    )}
-                  >
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[11px] text-stone-500">
-                        {format(new Date(c.startTime), "HH:mm")} – {format(new Date(c.endTime), "HH:mm")}
-                      </span>
-                      {c.isLive && (
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-red-500">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                          EN CURSO
-                        </span>
-                      )}
-                      {c.isFinished && (
-                        <span className="text-[10px] text-stone-400">Terminada</span>
-                      )}
-                    </div>
-                    <p className="text-[13px] font-medium text-stone-900 truncate">
-                      {c.className}
-                    </p>
-                    <p className="text-xs text-stone-500 truncate">{c.coachName}</p>
-                    <div className="flex gap-1.5 mt-1">
-                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", pill.className)}>
-                        {pill.label}
-                      </span>
-                      {c.checkedInCount > 0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-                          ✓ {c.checkedInCount}
-                        </span>
-                      )}
-                      {c.waitlistCount > 0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">
-                          {c.waitlistCount} en espera
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })
+                    item={c}
+                    isSelected={c.id === selectedClassId}
+                    occupancy={occupancyPill(c)}
+                    onSelect={() => setSelectedClassId(c.id)}
+                  />
+                ))}
+              </>
             )}
           </div>
         </div>
@@ -259,5 +278,70 @@ export default function CheckInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ClassListItem({
+  item: c,
+  isSelected,
+  occupancy: pill,
+  onSelect,
+}: {
+  item: ClassItem;
+  isSelected: boolean;
+  occupancy: { label: string; className: string };
+  onSelect: () => void;
+}) {
+  const unchecked = c.isFinished && c.enrolledCount > c.checkedInCount;
+  return (
+    <button
+      onClick={onSelect}
+      className={cn(
+        "w-full text-left px-3.5 py-2.5 border-b border-stone-50 transition-colors",
+        isSelected
+          ? "border-l-[3px] border-l-[#3730B8] bg-[#EEEDFE]"
+          : "border-l-[3px] border-l-transparent hover:bg-stone-50",
+        c.isFinished && !isSelected && "opacity-70",
+      )}
+    >
+      <div className="flex items-center gap-1.5 mb-0.5">
+        <span className="text-[11px] text-stone-500">
+          {format(new Date(c.startTime), "HH:mm")} – {format(new Date(c.endTime), "HH:mm")}
+        </span>
+        {c.isLive && (
+          <span className="flex items-center gap-1 text-[10px] font-medium text-red-500">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            EN CURSO
+          </span>
+        )}
+        {c.isFinished && (
+          <span className="text-[10px] text-stone-400">Terminada</span>
+        )}
+      </div>
+      <p className="text-[13px] font-medium text-stone-900 truncate">
+        {c.className}
+      </p>
+      <p className="text-xs text-stone-500 truncate">{c.coachName}</p>
+      <div className="flex gap-1.5 mt-1">
+        <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", pill.className)}>
+          {pill.label}
+        </span>
+        {c.checkedInCount > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+            ✓ {c.checkedInCount}
+          </span>
+        )}
+        {unchecked && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">
+            {c.enrolledCount - c.checkedInCount} sin check-in
+          </span>
+        )}
+        {c.waitlistCount > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">
+            {c.waitlistCount} en espera
+          </span>
+        )}
+      </div>
+    </button>
   );
 }

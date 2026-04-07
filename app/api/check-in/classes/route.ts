@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const classes = await prisma.class.findMany({
       where: {
         tenantId: ctx.tenant.id,
-        status: "SCHEDULED",
+        status: { in: ["SCHEDULED", "COMPLETED"] },
         startsAt: { gte: dayStart, lte: dayEnd },
       },
       include: {
