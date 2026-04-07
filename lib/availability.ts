@@ -8,12 +8,25 @@ import {
 
 export type Zone = "green" | "yellow" | "red";
 
-export function getZone(startDate: Date): Zone {
+export interface ZoneThresholds {
+  zoneRedDays?: number;
+  zoneYellowDays?: number;
+}
+
+const DEFAULT_RED = 14;
+const DEFAULT_YELLOW = 30;
+
+export function getZone(
+  startDate: Date,
+  thresholds?: ZoneThresholds,
+): Zone {
+  const redDays = thresholds?.zoneRedDays ?? DEFAULT_RED;
+  const yellowDays = thresholds?.zoneYellowDays ?? DEFAULT_YELLOW;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diffDays = (startDate.getTime() - today.getTime()) / 86_400_000;
-  if (diffDays < 14) return "red";
-  if (diffDays < 30) return "yellow";
+  if (diffDays < redDays) return "red";
+  if (diffDays < yellowDays) return "yellow";
   return "green";
 }
 

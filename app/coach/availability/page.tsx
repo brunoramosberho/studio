@@ -27,7 +27,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { getZone, type Zone } from "@/lib/availability";
+import { getZone, type Zone, type ZoneThresholds } from "@/lib/availability";
 import {
   Dialog,
   DialogContent,
@@ -103,7 +103,13 @@ function getJsDow(date: Date): number {
 
 // ── Data fetching ──
 
-async function fetchBlocks(): Promise<AvailabilityBlock[]> {
+type AvailabilityResponse = {
+  blocks: AvailabilityBlock[];
+  zoneRedDays: number;
+  zoneYellowDays: number;
+};
+
+async function fetchAvailability(): Promise<AvailabilityResponse> {
   const res = await fetch("/api/coaches/availability");
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
@@ -146,10 +152,16 @@ export default function CoachAvailabilityPage() {
     time?: string;
   }>({});
 
-  const { data: blocks = [], isLoading } = useQuery({
+  const { data: availData, isLoading } = useQuery({
     queryKey: ["coach-availability"],
-    queryFn: fetchBlocks,
+    queryFn: fetchAvailability,
   });
+
+  const blocks = availData?.blocks ?? [];
+  const zoneThresholds: ZoneThresholds = {
+    zoneRedDays: availData?.zoneRedDays,
+    zoneYellowDays: availData?.zoneYellowDays,
+  };
 
   const createMut = useMutation({
     mutationFn: createBlock,
@@ -299,6 +311,7 @@ export default function CoachAvailabilityPage() {
                   key={b.id}
                   block={b}
                   onDelete={() => deleteMut.mutate(b.id)}
+                  zoneThresholds={zoneThresholds}
                 />
               ))}
             </SidebarSection>
@@ -322,6 +335,7 @@ export default function CoachAvailabilityPage() {
         onSubmit={(data) => createMut.mutate(data)}
         isSubmitting={createMut.isPending}
         error={createMut.error?.message}
+        zoneThresholds={zoneThresholds}
       />
     </div>
   );
@@ -557,6 +571,7 @@ function NewBlockModal({
   onSubmit,
   isSubmitting,
   error,
+  zoneThresholds,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -564,6 +579,7 @@ function NewBlockModal({
   onSubmit: (data: Record<string, unknown>) => void;
   isSubmitting: boolean;
   error?: string;
+  zoneThresholds?: ZoneThresholds;
 }) {
   const [type, setType] = useState<"one_time" | "recurring">("one_time");
   const [startDate, setStartDate] = useState("");
@@ -608,8 +624,8 @@ function NewBlockModal({
 
   const zone: Zone | null = useMemo(() => {
     if (type !== "one_time" || !startDate) return null;
-    return getZone(new Date(startDate));
-  }, [type, startDate]);
+    return getZone(new Date(startDate), zoneThresholds);
+  }, [type, startDate, zoneThresholds]);
 
   const canSubmit =
     !isSubmitting &&
@@ -919,12 +935,14 @@ function PendingCard({ block }: { block: AvailabilityBlock }) {
 function ConfirmedCard({
   block,
   onDelete,
+  zoneThresholds,
 }: {
   block: AvailabilityBlock;
   onDelete: () => void;
+  zoneThresholds?: ZoneThresholds;
 }) {
   const zone: Zone | null =
-    block.startDate ? getZone(new Date(block.startDate)) : null;
+    block.startDate ? getZone(new Date(block.startDate), zoneThresholds) : null;
 
   return (
     <div className="group relative rounded-xl border border-stone-100 bg-stone-50 p-3">

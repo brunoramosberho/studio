@@ -96,7 +96,7 @@ export async function GET() {
           );
         }
 
-        const zone = block.startDate ? getZone(block.startDate) : "green";
+        const zone = block.startDate ? getZone(block.startDate, tenant) : "green";
 
         return {
           ...block,

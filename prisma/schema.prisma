@@ -39,6 +39,19 @@ model Tenant {
 
   stripeCustomerId String?
 
+  zoneRedDays     Int      @default(14)
+  zoneYellowDays  Int      @default(30)
+
+  studioOpenTime  String   @default("07:00")
+  studioCloseTime String   @default("21:00")
+  operatingDays   Int[]    @default([0, 1, 2, 3, 4])
+
+  notifyEmailOnRequest       Boolean @default(true)
+  notifyPushOnRequest        Boolean @default(true)
+  notifyGapDetected          Boolean @default(true)
+  notifyWeeklySummary        Boolean @default(false)
+  notifyAutoRejectTimeout    Boolean @default(false)
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -66,6 +79,7 @@ model Tenant {
   songRequests      ClassSongRequest[]
   coachPayRates     CoachPayRate[]
   coachAvailabilityBlocks CoachAvailabilityBlock[]
+  checkIns              CheckIn[]
 
   instagramIntegration InstagramIntegration?
 }
@@ -199,6 +213,8 @@ model User {
   pushSubscriptions    PushSubscription[] @relation("UserPushSubscriptions")
   wearableConnections  UserWearableConnection[] @relation("UserWearableConnections")
   coachAvailabilityBlocks CoachAvailabilityBlock[] @relation("CoachAvailabilityBlocks")
+  memberCheckIns          CheckIn[]                @relation("MemberCheckIns")
+  staffCheckIns           CheckIn[]                @relation("StaffCheckIns")
 
   @@index([countryId])
   @@index([cityId])
@@ -329,6 +345,7 @@ model Class {
   songRequestCriteria  String[]  @default(["ALL"])
   playlistTracks       ClassPlaylistTrack[]
   blockingNotes        String?
+  checkIns             CheckIn[]
 
   @@index([startsAt])
   @@index([classTypeId])
@@ -986,6 +1003,39 @@ model CoachAvailabilityBlock {
   coach         User                    @relation("CoachAvailabilityBlocks", fields: [coachId], references: [id])
 
   @@index([tenantId, coachId])
+}
+
+// ── Check-in ──
+
+enum CheckInMethod {
+  manual
+  qr
+  name
+}
+
+enum CheckInStatus {
+  present
+  late
+  absent
+}
+
+model CheckIn {
+  id          String        @id @default(cuid())
+  tenantId    String
+  classId     String
+  memberId    String
+  checkedInBy String?
+  method      CheckInMethod
+  status      CheckInStatus @default(present)
+  createdAt   DateTime      @default(now())
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id])
+  class       Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  member      User          @relation("MemberCheckIns", fields: [memberId], references: [id])
+  checkedBy   User?         @relation("StaffCheckIns", fields: [checkedInBy], references: [id])
+
+  @@unique([classId, memberId])
+  @@index([tenantId, classId])
 }
 
 // ── Studio Branding (deprecated: kept for migration, use Tenant) ──

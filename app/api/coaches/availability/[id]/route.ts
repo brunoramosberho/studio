@@ -20,10 +20,10 @@ export async function DELETE(
     }
 
     if (block.type === "one_time" && block.startDate) {
-      const zone = getZone(block.startDate);
+      const zone = getZone(block.startDate, tenant);
       if (zone !== "green") {
         return NextResponse.json(
-          { error: "Solo puedes eliminar bloques en zona verde (>30 días)" },
+          { error: `Solo puedes eliminar bloques en zona verde (>${tenant.zoneYellowDays} días)` },
           { status: 403 },
         );
       }

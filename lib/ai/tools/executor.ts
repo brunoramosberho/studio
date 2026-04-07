@@ -1195,6 +1195,11 @@ async function getAvailabilityCoverage(
 }
 
 async function getAvailabilityPending(tenantId: string) {
+  const tenantConfig = await prisma.tenant.findUniqueOrThrow({
+    where: { id: tenantId },
+    select: { zoneRedDays: true, zoneYellowDays: true },
+  });
+
   const blocks = await prisma.coachAvailabilityBlock.findMany({
     where: { tenantId, status: "pending_approval" },
     include: {
@@ -1255,7 +1260,7 @@ async function getAvailabilityPending(tenantId: string) {
         );
       }
 
-      const zone = block.startDate ? getZone(block.startDate) : "green";
+      const zone = block.startDate ? getZone(block.startDate, tenantConfig) : "green";
       const reasonLabels: Record<string, string> = {
         vacation: "Vacaciones",
         personal: "Personal",

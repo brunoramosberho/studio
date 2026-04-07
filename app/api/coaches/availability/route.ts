@@ -12,7 +12,11 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(blocks);
+    return NextResponse.json({
+      blocks,
+      zoneRedDays: tenant.zoneRedDays,
+      zoneYellowDays: tenant.zoneYellowDays,
+    });
   } catch (error) {
     console.error("GET /api/coaches/availability error:", error);
     return NextResponse.json(
@@ -42,7 +46,7 @@ export async function POST(request: NextRequest) {
     let status: "active" | "pending_approval" = "active";
 
     if (type === "one_time" && startDate) {
-      const zone = getZone(new Date(startDate));
+      const zone = getZone(new Date(startDate), tenant);
       status = getStatusForZone(zone);
     }
 
