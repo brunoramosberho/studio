@@ -19,6 +19,7 @@ import {
   Info,
   Save,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -26,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -117,7 +117,7 @@ const NUDGE_BADGE_STYLES: Record<string, string> = {
   intro_offer: "bg-purple-50 text-purple-700",
   savings_email: "bg-amber-50 text-amber-700",
   package_upgrade: "bg-emerald-50 text-emerald-700",
-  post_class: "bg-surface text-foreground",
+  post_class: "bg-stone-50 text-stone-700",
 };
 
 function rateColor(rate: number): string {
@@ -143,53 +143,41 @@ function trendIndicator(value: number) {
       </span>
     );
   }
-  return <span className="text-xs text-muted">—</span>;
+  return <span className="text-xs text-stone-400">—</span>;
 }
 
 // ── Main Page ──
 
 export default function ConversionPage() {
   const [range, setRange] = useState("30d");
-  const [tab, setTab] = useState<"resultados" | "configuracion">("resultados");
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">
+    <div className="min-h-screen bg-stone-50">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-stone-900">
             Conversión a membresía
           </h1>
-          <p className="mt-1 text-muted">
+          <p className="mt-1 text-sm text-stone-500">
             Automatizaciones para convertir clientes a membresías mensuales.
           </p>
-        </motion.div>
-      </div>
+        </div>
 
-      <div className="flex items-center gap-1">
-        {(["resultados", "configuracion"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
-              tab === t
-                ? "bg-admin text-white"
-                : "bg-surface text-muted hover:text-foreground",
-            )}
-          >
-            {t === "resultados" ? "Resultados" : "Configuración"}
-          </button>
-        ))}
-      </div>
+        <Tabs defaultValue="resultados" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="resultados">Resultados</TabsTrigger>
+            <TabsTrigger value="configuracion">Configuración</TabsTrigger>
+          </TabsList>
 
-      {tab === "resultados" ? (
-        <ResultsTab range={range} onRangeChange={setRange} />
-      ) : (
-        <ConfigTab />
-      )}
+          <TabsContent value="resultados">
+            <ResultsTab range={range} onRangeChange={setRange} />
+          </TabsContent>
+
+          <TabsContent value="configuracion">
+            <ConfigTab />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
@@ -249,58 +237,55 @@ function ResultsTab({
         <StatCard
           label="Nudges mostrados"
           value={totals.nudgesShown.toLocaleString()}
-          icon={<Eye className="h-5 w-5 text-muted" />}
+          icon={<Eye className="h-5 w-5 text-stone-400" />}
           trend={trendIndicator(trends.vsLastPeriod.nudges)}
         />
         <StatCard
           label="Conversiones"
           value={totals.conversions.toLocaleString()}
-          icon={<ArrowRightLeft className="h-5 w-5 text-muted" />}
+          icon={<ArrowRightLeft className="h-5 w-5 text-stone-400" />}
           trend={trendIndicator(trends.vsLastPeriod.conversions)}
         />
         <StatCard
           label="Tasa conversión"
           value={`${(totals.conversionRate * 100).toFixed(1)}%`}
-          icon={<Target className="h-5 w-5 text-muted" />}
+          icon={<Target className="h-5 w-5 text-stone-400" />}
           valueClassName={rateColor(totals.conversionRate)}
         />
         <StatCard
           label="MRR generado"
           value={formatCurrency(totals.mrr)}
-          icon={<DollarSign className="h-5 w-5 text-muted" />}
+          icon={<DollarSign className="h-5 w-5 text-stone-400" />}
           valueClassName="text-emerald-700"
           trend={trendIndicator(trends.vsLastPeriod.mrr)}
         />
       </div>
 
       {/* Funnel */}
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-sm">Funnel de conversión</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+        <h3 className="mb-4 text-sm font-semibold text-stone-900">
+          Funnel de conversión
+        </h3>
         <FunnelRow funnel={funnel} />
-        </CardContent>
-      </Card>
+      </div>
 
       {/* By Automation */}
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-sm">Por automatización</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+        <h3 className="mb-4 text-sm font-semibold text-stone-900">
+          Por automatización
+        </h3>
         <div className="space-y-3">
           {byAutomation
             .filter((a) => a.shown > 0)
             .map((a) => (
               <div
                 key={a.type}
-                className="flex items-center gap-4 rounded-xl border border-border/50 px-4 py-3"
+                className="flex items-center gap-4 rounded-xl border border-stone-100 px-4 py-3"
               >
                 <span
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-                    NUDGE_BADGE_STYLES[a.type] ?? "bg-surface text-foreground",
+                    NUDGE_BADGE_STYLES[a.type] ?? "bg-stone-50 text-stone-700",
                   )}
                 >
                   {NUDGE_ICONS[a.type]}
@@ -308,21 +293,21 @@ function ResultsTab({
                 </span>
                 <div className="flex flex-1 items-center justify-end gap-6 text-sm">
                   <div className="text-center">
-                    <p className="text-xs text-muted">Mostrado</p>
+                    <p className="text-xs text-stone-400">Mostrado</p>
                     <p className="font-medium">{a.shown}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-muted">Conversiones</p>
+                    <p className="text-xs text-stone-400">Conversiones</p>
                     <p className="font-medium">{a.converted}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-muted">Tasa</p>
+                    <p className="text-xs text-stone-400">Tasa</p>
                     <p className={cn("font-medium", rateColor(a.conversionRate))}>
                       {(a.conversionRate * 100).toFixed(1)}%
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-muted">MRR</p>
+                    <p className="text-xs text-stone-400">MRR</p>
                     <p className="font-medium text-emerald-700">
                       {formatCurrency(a.mrr)}
                     </p>
@@ -331,50 +316,48 @@ function ResultsTab({
               </div>
             ))}
           {byAutomation.every((a) => a.shown === 0) && (
-            <p className="text-sm text-muted text-center py-4">
+            <p className="text-sm text-stone-400 text-center py-4">
               Aún no hay datos para este período.
             </p>
           )}
         </div>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Recent Conversions */}
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-sm">Conversiones recientes</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+        <h3 className="mb-4 text-sm font-semibold text-stone-900">
+          Conversiones recientes
+        </h3>
         {recentConversions.length === 0 ? (
-          <p className="text-sm text-muted text-center py-4">
+          <p className="text-sm text-stone-400 text-center py-4">
             Aún no hay conversiones.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="pb-2 text-left font-medium text-muted">
+                <tr className="border-b border-stone-100">
+                  <th className="pb-2 text-left font-medium text-stone-400">
                     Miembro
                   </th>
-                  <th className="pb-2 text-left font-medium text-muted">
+                  <th className="pb-2 text-left font-medium text-stone-400">
                     Automatización
                   </th>
-                  <th className="pb-2 text-left font-medium text-muted">
+                  <th className="pb-2 text-left font-medium text-stone-400">
                     Membresía
                   </th>
-                  <th className="pb-2 text-right font-medium text-muted">
+                  <th className="pb-2 text-right font-medium text-stone-400">
                     Revenue
                   </th>
-                  <th className="pb-2 text-right font-medium text-muted">
+                  <th className="pb-2 text-right font-medium text-stone-400">
                     Fecha
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {recentConversions.map((c, i) => (
-                  <tr key={i} className="border-b border-border/50 last:border-0">
-                    <td className="py-2.5 font-medium text-foreground">
+                  <tr key={i} className="border-b border-stone-50 last:border-0">
+                    <td className="py-2.5 font-medium text-stone-900">
                       {c.memberName}
                     </td>
                     <td className="py-2.5">
@@ -382,19 +365,19 @@ function ResultsTab({
                         className={cn(
                           "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
                           NUDGE_BADGE_STYLES[c.nudgeType] ??
-                            "bg-surface text-foreground",
+                            "bg-stone-50 text-stone-700",
                         )}
                       >
                         {NUDGE_LABELS[c.nudgeType] ?? c.nudgeType}
                       </span>
                     </td>
-                    <td className="py-2.5 text-muted">
+                    <td className="py-2.5 text-stone-600">
                       {c.membershipName}
                     </td>
                     <td className="py-2.5 text-right font-medium text-emerald-700">
                       {formatCurrency(c.revenue)}
                     </td>
-                    <td className="py-2.5 text-right text-muted">
+                    <td className="py-2.5 text-right text-stone-400">
                       {new Date(c.convertedAt).toLocaleDateString("es-ES", {
                         day: "numeric",
                         month: "short",
@@ -406,8 +389,7 @@ function ResultsTab({
             </table>
           </div>
         )}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -428,18 +410,16 @@ function StatCard({
   valueClassName?: string;
 }) {
   return (
-    <Card className="rounded-2xl">
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          {icon}
-          {trend}
-        </div>
-        <p className={cn("mt-3 text-2xl font-bold", valueClassName ?? "text-foreground")}>
-          {value}
-        </p>
-        <p className="mt-0.5 text-xs text-muted">{label}</p>
-      </CardContent>
-    </Card>
+    <div className="rounded-2xl border border-stone-200 bg-white p-5">
+      <div className="flex items-center justify-between">
+        {icon}
+        {trend}
+      </div>
+      <p className={cn("mt-3 text-2xl font-bold", valueClassName ?? "text-stone-900")}>
+        {value}
+      </p>
+      <p className="mt-0.5 text-xs text-stone-400">{label}</p>
+    </div>
   );
 }
 
@@ -467,15 +447,15 @@ function FunnelRow({
         return (
           <div key={step.label} className="flex items-center gap-2">
             {i > 0 && (
-              <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted/40" />
+              <ChevronRight className="h-4 w-4 flex-shrink-0 text-stone-300" />
             )}
             <div className="flex flex-col items-center text-center min-w-[100px]">
-              <p className="text-2xl font-bold text-foreground">
+              <p className="text-2xl font-bold text-stone-900">
                 {step.value.toLocaleString()}
               </p>
-              <p className="text-xs text-muted">{step.label}</p>
+              <p className="text-xs text-stone-400">{step.label}</p>
               {i > 0 && (
-                <p className="mt-0.5 text-xs font-medium text-muted">
+                <p className="mt-0.5 text-xs font-medium text-stone-500">
                   {pct}%
                 </p>
               )}
@@ -560,19 +540,19 @@ function ConfigCard({
   onSave: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-white">
+    <div className="rounded-2xl border border-stone-200 bg-white">
       <div className="flex items-center gap-4 px-6 py-5">
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-surface">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-stone-100">
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-          <p className="text-xs text-muted">{description}</p>
+          <h3 className="text-sm font-semibold text-stone-900">{title}</h3>
+          <p className="text-xs text-stone-400">{description}</p>
         </div>
         <Switch
           checked={enabled}
           onCheckedChange={onToggle}
-          className="data-[state=checked]:bg-[#3730B8] data-[state=unchecked]:bg-border"
+          className="data-[state=checked]:bg-[#3730B8] data-[state=unchecked]:bg-stone-300"
         />
       </div>
       {enabled && (
@@ -580,7 +560,7 @@ function ConfigCard({
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: "auto", opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
-          className="border-t border-border/50"
+          className="border-t border-stone-100"
         >
           <div className="px-6 py-5 space-y-4">
             {children}
@@ -659,7 +639,7 @@ function BookingFlowConfig({
     >
       <div className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
+          <label className="mb-1.5 block text-xs font-medium text-stone-600">
             Membresía destacada como &quot;Recomendada&quot;
           </label>
           <Select value={featured} onValueChange={setFeatured}>
@@ -677,7 +657,7 @@ function BookingFlowConfig({
           </Select>
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
+          <label className="mb-1.5 block text-xs font-medium text-stone-600">
             Mostrar banner de ahorro
           </label>
           <Select value={savingsBanner} onValueChange={setSavingsBanner}>
@@ -760,7 +740,7 @@ function IntroOfferConfig({
     >
       <div className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
+          <label className="mb-1.5 block text-xs font-medium text-stone-600">
             Precio primer mes (€)
           </label>
           <Input
@@ -772,7 +752,7 @@ function IntroOfferConfig({
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
+          <label className="mb-1.5 block text-xs font-medium text-stone-600">
             Membresía a la que aplica
           </label>
           <Select value={membershipId} onValueChange={setMembershipId}>
@@ -789,7 +769,7 @@ function IntroOfferConfig({
           </Select>
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
+          <label className="mb-1.5 block text-xs font-medium text-stone-600">
             Duración del timer
           </label>
           <Select
@@ -865,7 +845,7 @@ function SavingsEmailConfig({ config }: { config: ConversionConfig }) {
     >
       <div className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
+          <label className="mb-1.5 block text-xs font-medium text-stone-600">
             Trigger: clases sueltas este mes
           </label>
           <Select
@@ -885,7 +865,7 @@ function SavingsEmailConfig({ config }: { config: ConversionConfig }) {
           </Select>
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
+          <label className="mb-1.5 block text-xs font-medium text-stone-600">
             Delay de envío
           </label>
           <Select
@@ -963,7 +943,7 @@ function PackageUpgradeConfig({ config }: { config: ConversionConfig }) {
     >
       <div className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
+          <label className="mb-1.5 block text-xs font-medium text-stone-600">
             Clases restantes que activan el nudge
           </label>
           <Select
@@ -983,7 +963,7 @@ function PackageUpgradeConfig({ config }: { config: ConversionConfig }) {
           </Select>
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
+          <label className="mb-1.5 block text-xs font-medium text-stone-600">
             Timing
           </label>
           <Select value={timing} onValueChange={setTiming}>
@@ -1000,9 +980,9 @@ function PackageUpgradeConfig({ config }: { config: ConversionConfig }) {
           <Switch
             checked={credit}
             onCheckedChange={setCredit}
-            className="data-[state=checked]:bg-[#3730B8] data-[state=unchecked]:bg-border"
+            className="data-[state=checked]:bg-[#3730B8] data-[state=unchecked]:bg-stone-300"
           />
-          <label className="text-sm text-foreground">
+          <label className="text-sm text-stone-700">
             Aplicar crédito proporcional del paquete restante
           </label>
         </div>
