@@ -1042,12 +1042,13 @@ export default function ClassDetailPage() {
                       </Button>
                     </div>
                   )
-                ) : isAuthenticated && !hasCredits && hasNudge ? (
+                ) : isAuthenticated && !hasCredits && hasNudge && (!hasLayout || selectedSpot) ? (
                   <MembershipNudge
                     decision={nudgeDecision!}
                     onMembershipActivated={() => {
                       setNudgeConverted(true);
                       queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
+                      handleDirectBook();
                     }}
                     onSingleClass={() => setSheetOpen(true)}
                   />
