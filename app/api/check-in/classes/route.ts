@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
           select: { id: true, user: { select: { name: true, image: true } } },
         },
         room: {
-          select: { id: true, name: true, maxCapacity: true, studio: { select: { name: true } } },
+          select: { id: true, name: true, maxCapacity: true, studio: { select: { id: true, name: true } } },
         },
         _count: {
           select: {
@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
       coachName: c.coach.user.name,
       coachImage: c.coach.user.image,
       room: c.room.name,
+      studioId: c.room.studio.id,
       studioName: c.room.studio.name,
       capacity: c.room.maxCapacity,
       enrolledCount: c._count.bookings,

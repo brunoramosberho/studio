@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, MapPin } from "lucide-react";
 import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ interface ClassItem {
   coachName: string | null;
   coachImage: string | null;
   room: string;
+  studioId: string;
   studioName: string;
   capacity: number;
   enrolledCount: number;
@@ -46,14 +47,30 @@ function formatHeaderDate(date: Date): string {
 export default function CheckInPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [filterStudioId, setFilterStudioId] = useState<string>("all");
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const isPastDate = !isToday(selectedDate) && selectedDate < new Date();
 
-  const { data: classes = [], isLoading } = useQuery<ClassItem[]>({
+  const { data: allClasses = [], isLoading } = useQuery<ClassItem[]>({
     queryKey: ["check-in-classes", dateStr],
     queryFn: () => fetch(`/api/check-in/classes?date=${dateStr}`).then((r) => r.json()),
   });
+
+  // Derive unique studios from classes
+  const studios = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of allClasses) map.set(c.studioId, c.studioName);
+    return Array.from(map, ([id, name]) => ({ id, name }));
+  }, [allClasses]);
+
+  const hasMultipleStudios = studios.length > 1;
+
+  // Filter classes by studio
+  const classes = useMemo(
+    () => filterStudioId === "all" ? allClasses : allClasses.filter((c) => c.studioId === filterStudioId),
+    [allClasses, filterStudioId],
+  );
 
   // Auto-select: live class first, then next upcoming, then first class
   useEffect(() => {
@@ -92,34 +109,52 @@ export default function CheckInPage() {
         </p>
       </div>
 
-      {/* Date nav */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setSelectedDate((d) => subDays(d, 1))}
-          className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-500"
-        >
-          <ChevronLeft size={16} />
-        </button>
-        <button
-          onClick={() => setSelectedDate(new Date())}
-          className={cn(
-            "px-3 py-1 text-xs font-medium rounded-lg border transition-colors",
-            isToday(selectedDate)
-              ? "bg-[#3730B8] text-white border-[#3730B8]"
-              : "border-stone-200 text-stone-600 hover:bg-stone-50",
-          )}
-        >
-          Hoy
-        </button>
-        <span className="text-sm font-medium text-stone-700">
-          {formatHeaderDate(selectedDate)}
-        </span>
-        <button
-          onClick={() => setSelectedDate((d) => addDays(d, 1))}
-          className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-500"
-        >
-          <ChevronRight size={16} />
-        </button>
+      {/* Date nav + studio filter */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSelectedDate((d) => subDays(d, 1))}
+            className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-500"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            onClick={() => setSelectedDate(new Date())}
+            className={cn(
+              "px-3 py-1 text-xs font-medium rounded-lg border transition-colors",
+              isToday(selectedDate)
+                ? "bg-[#3730B8] text-white border-[#3730B8]"
+                : "border-stone-200 text-stone-600 hover:bg-stone-50",
+            )}
+          >
+            Hoy
+          </button>
+          <span className="text-sm font-medium text-stone-700">
+            {formatHeaderDate(selectedDate)}
+          </span>
+          <button
+            onClick={() => setSelectedDate((d) => addDays(d, 1))}
+            className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-500"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
+        {hasMultipleStudios && (
+          <div className="flex items-center gap-1.5">
+            <MapPin size={14} className="text-stone-400" />
+            <select
+              value={filterStudioId}
+              onChange={(e) => setFilterStudioId(e.target.value)}
+              className="appearance-none bg-white border border-stone-200 rounded-lg px-2.5 py-1 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-[#3730B8] focus:border-[#3730B8] cursor-pointer"
+            >
+              <option value="all">Todos los estudios</option>
+              {studios.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Main grid */}
