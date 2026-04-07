@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
+import { useTenant } from "@/components/tenant-provider";
 
 const sidebarLinks = [
   { href: "/my", icon: Home, label: "Feed" },
@@ -49,7 +50,7 @@ export function DesktopSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { studioName, logoUrl } = useBranding();
-  const role = (session?.user as Record<string, unknown> | undefined)?.role;
+  const { hasCoachProfile } = useTenant();
 
   const [locations, setLocations] = useState<LocCountry[]>([]);
   const [locValue, setLocValue] = useState("");
@@ -168,7 +169,7 @@ export function DesktopSidebar() {
           </div>
         )}
 
-        {role === "COACH" && (
+        {hasCoachProfile && (
           <div className="border-t border-border/50 px-3 py-3">
             <Link
               href="/coach"

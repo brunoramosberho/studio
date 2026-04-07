@@ -29,6 +29,14 @@ export const requireTenant = cache(async (): Promise<Tenant> => {
   return tenant;
 });
 
+// ── Role hierarchy ──
+
+const ROLE_RANK: Record<Role, number> = { CLIENT: 0, COACH: 1, ADMIN: 2 };
+
+export function roleAtLeast(userRole: Role, minimumRole: Role): boolean {
+  return ROLE_RANK[userRole] >= ROLE_RANK[minimumRole];
+}
+
 // ── Membership helpers ──
 
 export async function getMembership(
@@ -49,7 +57,7 @@ export async function requireMembership(
   if (!membership) {
     throw new Error("Not a member of this studio");
   }
-  if (allowedRoles && !allowedRoles.includes(membership.role)) {
+  if (allowedRoles && !allowedRoles.some((r) => roleAtLeast(membership.role, r))) {
     throw new Error("Insufficient role");
   }
   return membership;
@@ -114,9 +122,8 @@ export async function requireAuth(): Promise<AuthContext> {
 
 export async function requireRole(...roles: Role[]): Promise<AuthContext> {
   const ctx = await requireAuth();
-  if (!roles.includes(ctx.membership.role)) {
-    throw new Error("Forbidden");
-  }
+  const hasRole = roles.some((r) => roleAtLeast(ctx.membership.role, r));
+  if (!hasRole) throw new Error("Forbidden");
   return ctx;
 }
 

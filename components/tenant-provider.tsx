@@ -8,6 +8,7 @@ interface TenantContextValue {
   tenantId: string | null;
   tenantSlug: string | null;
   isSuperAdmin: boolean;
+  hasCoachProfile: boolean;
   loading: boolean;
   refresh: () => void;
 }
@@ -17,6 +18,7 @@ const TenantContext = createContext<TenantContextValue>({
   tenantId: null,
   tenantSlug: null,
   isSuperAdmin: false,
+  hasCoachProfile: false,
   loading: true,
   refresh: () => {},
 });
@@ -32,13 +34,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     tenantId: null,
     tenantSlug: null,
     isSuperAdmin: false,
+    hasCoachProfile: false,
   });
   const [loading, setLoading] = useState(true);
 
   const fetchMembership = useCallback(() => {
     if (status === "loading") return;
     if (!session?.user) {
-      setState({ role: null, tenantId: null, tenantSlug: null, isSuperAdmin: false });
+      setState({ role: null, tenantId: null, tenantSlug: null, isSuperAdmin: false, hasCoachProfile: false });
       setLoading(false);
       return;
     }
@@ -51,6 +54,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           tenantId: data.tenantId ?? null,
           tenantSlug: data.tenantSlug ?? null,
           isSuperAdmin: data.isSuperAdmin ?? false,
+          hasCoachProfile: data.hasCoachProfile ?? false,
         });
       })
       .catch(() => {})
