@@ -269,8 +269,6 @@ export default function BookingsPage() {
               const startDate = new Date(booking.class.startsAt);
               const dayLabel = format(startDate, "EEE d 'de' MMM", { locale: es });
 
-              const hasBiometrics = booking.status === "ATTENDED" || booking.status === "CONFIRMED";
-
               return (
                 <motion.div key={booking.id} variants={fadeUp}>
                   <div className="mb-1.5 flex items-center gap-2">
@@ -312,7 +310,7 @@ export default function BookingsPage() {
                         </div>
                       </div>
                     </Link>
-                    {hasBiometrics && <BiometricsCard bookingId={booking.id} variant="inline" />}
+                    <BiometricsCard bookingId={booking.id} variant="inline" />
                   </div>
                 </motion.div>
               );

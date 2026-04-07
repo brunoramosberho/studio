@@ -47,6 +47,7 @@ import { PeopleListSheet, type PersonItem } from "@/components/feed/people-list-
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { StudioLocationMap } from "@/components/shared/studio-location-map";
 import { BiometricsCard } from "@/components/booking/biometrics-card";
+import { FriendBiometrics } from "@/components/booking/friend-biometrics";
 
 interface ClassData {
   id: string;
@@ -681,6 +682,9 @@ export default function ClassDetailPage() {
                 image: a.image,
               }))}
             />
+
+            {/* Friend biometrics */}
+            <FriendBiometrics classId={id} />
 
             {/* ── Book Again CTA ── */}
             <div className="mt-2 space-y-2.5">
