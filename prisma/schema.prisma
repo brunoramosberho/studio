@@ -82,6 +82,11 @@ model Tenant {
   checkIns              CheckIn[]
 
   instagramIntegration InstagramIntegration?
+
+  platformConfigs       StudioPlatformConfig[]
+  platformQuotas        SchedulePlatformQuota[]
+  platformBookings      PlatformBooking[]
+  platformAlerts        PlatformAlert[]
 }
 
 model InstagramIntegration {
@@ -346,6 +351,8 @@ model Class {
   playlistTracks       ClassPlaylistTrack[]
   blockingNotes        String?
   checkIns             CheckIn[]
+  platformQuotas       SchedulePlatformQuota[]
+  platformBookings     PlatformBooking[]
 
   @@index([startsAt])
   @@index([classTypeId])
@@ -1036,6 +1043,104 @@ model CheckIn {
 
   @@unique([classId, memberId])
   @@index([tenantId, classId])
+}
+
+// ── External Platforms (ClassPass / Gympass) ──
+
+enum PlatformType {
+  classpass
+  gympass
+}
+
+enum PlatformBookingStatus {
+  confirmed
+  cancelled
+  checked_in
+  absent
+}
+
+model StudioPlatformConfig {
+  id                String       @id @default(cuid())
+  tenantId          String
+  platform          PlatformType
+
+  platformPartnerId String?
+  locationMappings  Json?
+
+  inboundEmail      String       @unique
+  portalUrl         String?
+  ratePerVisit      Float?
+  isActive          Boolean      @default(false)
+  activatedAt       DateTime?
+  lastExportedAt    DateTime?
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  tenant            Tenant       @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, platform])
+  @@index([tenantId])
+}
+
+model SchedulePlatformQuota {
+  id               String       @id @default(cuid())
+  tenantId         String
+  classId          String
+  platform         PlatformType
+  quotaSpots       Int          @default(0)
+  bookedSpots      Int          @default(0)
+  isClosedManually Boolean      @default(false)
+  closedAt         DateTime?
+  closedBy         String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  tenant           Tenant       @relation(fields: [tenantId], references: [id])
+  class            Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, platform])
+  @@index([tenantId])
+}
+
+model PlatformBooking {
+  id                String                @id @default(cuid())
+  tenantId          String
+  classId           String
+  platform          PlatformType
+  platformBookingId String?
+  memberName        String?
+  status            PlatformBookingStatus @default(confirmed)
+  rawEmail          String?               @db.Text
+  parsedAt          DateTime?
+  checkedInAt       DateTime?
+  checkedInBy       String?
+  notes             String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  tenant            Tenant                @relation(fields: [tenantId], references: [id])
+  class             Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, classId])
+  @@index([tenantId, platform])
+}
+
+model PlatformAlert {
+  id           String       @id @default(cuid())
+  tenantId     String
+  classId      String?
+  platform     PlatformType
+  type         String
+  message      String
+  isResolved   Boolean      @default(false)
+  resolvedAt   DateTime?
+  resolvedBy   String?
+  createdAt    DateTime     @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, isResolved])
 }
 
 // ── Studio Branding (deprecated: kept for migration, use Tenant) ──

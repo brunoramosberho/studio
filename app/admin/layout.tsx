@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Megaphone,
   ShoppingBag,
+  Globe2,
   Trophy,
   Sparkles,
   ArrowLeft,
@@ -82,6 +83,7 @@ const navSections: NavSection[] = [
       { href: "/admin/shop", label: "Tienda", icon: ShoppingBag },
       { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
       { href: "/admin/analytics", label: "Rendimiento", icon: Activity },
+      { href: "/admin/platforms", label: "Plataformas", icon: Globe2 },
     ],
   },
   {
