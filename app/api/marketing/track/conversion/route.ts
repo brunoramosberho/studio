@@ -16,23 +16,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Read the last click cookie for attribution
-    const clickCookie = req.cookies.get("_mgic_click")?.value;
-    let linkClickId: string | null = null;
-
-    if (clickCookie) {
-      // Find most recent click for this tenant + entity (last-click attribution)
-      const recentClick = await prisma.linkClick.findFirst({
-        where: {
-          tenantId: tenant.id,
-          entityType,
-          entityId,
-        },
-        orderBy: { createdAt: "desc" },
-        select: { id: true },
-      });
-      linkClickId = recentClick?.id || null;
-    }
+    // Last-click attribution: find the most recent click for this entity (within 30 days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentClick = await prisma.linkClick.findFirst({
+      where: {
+        tenantId: tenant.id,
+        entityType,
+        entityId,
+        createdAt: { gte: thirtyDaysAgo },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    const linkClickId = recentClick?.id || null;
 
     await prisma.linkConversion.create({
       data: {

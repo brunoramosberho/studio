@@ -284,6 +284,31 @@ export function BookingSheet({
         return;
       }
 
+      // Fire conversion tracking immediately, before state updates
+      try {
+        const conversionBody = JSON.stringify({
+          entityType: "class-instance",
+          entityId: classId,
+          conversionType: "booking",
+          revenue: pkg.price || 0,
+        });
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(
+            "/api/marketing/track/conversion",
+            new Blob([conversionBody], { type: "application/json" }),
+          );
+        } else {
+          fetch("/api/marketing/track/conversion", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: conversionBody,
+            keepalive: true,
+          }).catch(() => {});
+        }
+      } catch {
+        // never block the booking flow
+      }
+
       setResult({
         bookingId: data.bookingId,
         spotNumber: data.spotNumber,
@@ -293,18 +318,6 @@ export function BookingSheet({
       queryClient.invalidateQueries({ queryKey: ["classes"] });
       queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
       onSuccess(isLoggedIn ? undefined : guestEmail);
-
-      // Fire-and-forget conversion tracking for marketing attribution
-      fetch("/api/marketing/track/conversion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entityType: "class-instance",
-          entityId: classId,
-          conversionType: "booking",
-          revenue: pkg.price || 0,
-        }),
-      }).catch(() => {});
     } catch {
       setError("Error de conexión");
       setStep("package");
