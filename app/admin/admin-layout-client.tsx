@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -285,7 +285,7 @@ function SidebarNav({ sections, stats, pathname, onNavigate, mobile }: SidebarNa
   );
 }
 
-export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
+function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const router = useRouter();
@@ -598,5 +598,13 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
       />
     </div>
     </MgicAIProvider>
+  );
+}
+
+export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider basePath="/api/auth-admin">
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </SessionProvider>
   );
 }

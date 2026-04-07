@@ -16,6 +16,31 @@ function getSubdomain(host: string): string | null {
   return null;
 }
 
+function isAdminPortalPath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/admin") ||
+    (pathname.startsWith("/coach") && !pathname.startsWith("/coaches")) ||
+    pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/api/check-in") ||
+    pathname.startsWith("/api/platforms") ||
+    pathname.startsWith("/api/coaches/availability")
+  );
+}
+
+function hasClientCookie(req: NextRequest): boolean {
+  return !!(
+    req.cookies.get("authjs.session-token")?.value ||
+    req.cookies.get("__Secure-authjs.session-token")?.value
+  );
+}
+
+function hasAdminCookie(req: NextRequest): boolean {
+  return !!(
+    req.cookies.get("authjs.session-token.admin")?.value ||
+    req.cookies.get("__Secure-authjs.session-token.admin")?.value
+  );
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const host = req.headers.get("host") || ROOT_DOMAIN;
@@ -25,8 +50,8 @@ export function middleware(req: NextRequest) {
   if (subdomain === "admin") {
     const headers = new Headers(req.headers);
     headers.set("x-tenant-slug", "__super_admin__");
+    headers.set("x-auth-portal", "client");
 
-    // Don't rewrite API routes, auth pages, or dev login — let them resolve normally
     if (pathname.startsWith("/api/") || pathname === "/login" || pathname === "/dev") {
       return NextResponse.next({ request: { headers } });
     }
@@ -45,30 +70,35 @@ export function middleware(req: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // Inject tenant slug header for all requests
+  // Inject tenant slug + auth portal header
   const headers = new Headers(req.headers);
   if (subdomain) {
     headers.set("x-tenant-slug", subdomain);
   }
+  headers.set("x-auth-portal", isAdminPortalPath(pathname) ? "admin" : "client");
 
   // Skip auth check for API routes (handled inside each route)
   if (pathname.startsWith("/api/")) {
     return NextResponse.next({ request: { headers } });
   }
 
-  // Auth guard for protected areas
-  const sessionToken =
-    req.cookies.get("authjs.session-token")?.value ||
-    req.cookies.get("__Secure-authjs.session-token")?.value;
-  const isLoggedIn = !!sessionToken;
+  // Auth guard: check the portal-specific cookie
+  const needsAdminAuth =
+    pathname.startsWith("/admin") ||
+    (pathname.startsWith("/coach") && !pathname.startsWith("/coaches"));
 
-  if (
-    pathname.startsWith("/my") ||
-    (pathname.startsWith("/coach") && !pathname.startsWith("/coaches")) ||
-    pathname.startsWith("/admin")
-  ) {
-    if (!isLoggedIn) {
-      return NextResponse.redirect(new URL("/login", req.url));
+  if (needsAdminAuth) {
+    if (!hasAdminCookie(req)) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("portal", "admin");
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+  } else if (pathname.startsWith("/my")) {
+    if (!hasClientCookie(req)) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 

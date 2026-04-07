@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,7 +29,7 @@ const navItems = [
   { href: "/coach/stats", label: "Mi Historial", icon: BarChart3 },
 ];
 
-export function CoachLayoutClient({ children }: { children: React.ReactNode }) {
+function CoachLayoutInner({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const { studioName } = useBranding();
@@ -175,5 +175,13 @@ export function CoachLayoutClient({ children }: { children: React.ReactNode }) {
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
+  );
+}
+
+export function CoachLayoutClient({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider basePath="/api/auth-admin">
+      <CoachLayoutInner>{children}</CoachLayoutInner>
+    </SessionProvider>
   );
 }

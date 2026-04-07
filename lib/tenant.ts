@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { cache } from "react";
 import { prisma } from "./db";
-import { auth } from "./auth";
+import { auth, adminAuth } from "./auth";
 import type { Session } from "next-auth";
 import type { Tenant, Membership, Role } from "@prisma/client";
 
@@ -63,6 +63,21 @@ export async function requireMembership(
   return membership;
 }
 
+// ── Portal-aware session resolution ──
+
+async function resolveSession(): Promise<Session | null> {
+  const h = await headers();
+  const portal = h.get("x-auth-portal");
+
+  if (portal === "admin") return adminAuth() as Promise<Session | null>;
+  if (portal === "client") return auth() as Promise<Session | null>;
+
+  // Fallback for routes without explicit portal: try client first, then admin
+  const clientSession = (await auth()) as (Session & { user?: { id?: string } }) | null;
+  if (clientSession?.user?.id) return clientSession as Session;
+  return adminAuth() as Promise<Session | null>;
+}
+
 // ── Combined auth + tenant context ──
 
 export interface AuthContext {
@@ -99,7 +114,7 @@ async function ensureMembership(
 }
 
 export async function getAuthContext(): Promise<AuthContext | null> {
-  const session = await auth() as Session | null;
+  const session = await resolveSession();
   if (!session?.user?.id) return null;
 
   const tenant = await getTenant();
@@ -111,7 +126,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 }
 
 export async function requireAuth(): Promise<AuthContext> {
-  const session = await auth() as Session | null;
+  const session = await resolveSession();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
   const tenant = await requireTenant();
@@ -128,7 +143,7 @@ export async function requireRole(...roles: Role[]): Promise<AuthContext> {
 }
 
 export async function requireSuperAdmin() {
-  const session = await auth() as Session | null;
+  const session = await resolveSession();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
   const user = await prisma.user.findUnique({

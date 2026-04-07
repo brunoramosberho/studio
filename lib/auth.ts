@@ -127,71 +127,113 @@ providers.push(
   }),
 );
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+// ── Shared config ──
+
+const sessionCallback = {
+  async session({ session, user }: { session: any; user: any }) {
+    if (session.user) {
+      session.user.id = user.id;
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { isSuperAdmin: true },
+      });
+      (session.user as unknown as Record<string, unknown>).isSuperAdmin =
+        dbUser?.isSuperAdmin ?? false;
+    }
+    return session;
+  },
+};
+
+const signInEvent = {
+  async signIn({ user }: { user: any }) {
+    if (!user?.email) return;
+    try {
+      const pending = await prisma.pendingLogin.findFirst({
+        where: {
+          email: user.email.toLowerCase(),
+          approved: false,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (!pending) return;
+
+      const sessionToken = crypto.randomUUID();
+      const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      await prisma.session.create({
+        data: { sessionToken, userId: user.id!, expires },
+      });
+
+      await prisma.pendingLogin.update({
+        where: { id: pending.id },
+        data: { approved: true, sessionToken },
+      });
+    } catch (e) {
+      console.error("Failed to approve pending login:", e);
+    }
+  },
+};
+
+function cookieOptions(domain: boolean) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path: "/",
+    secure: isProduction,
+    domain: domain && isProduction ? `.${rootHostname}` : undefined,
+  };
+}
+
+function makeCookies(suffix?: string) {
+  const sfx = suffix ? `.${suffix}` : "";
+  return {
+    sessionToken: {
+      name: isProduction ? `__Secure-authjs.session-token${sfx}` : `authjs.session-token${sfx}`,
+      options: cookieOptions(true),
+    },
+    csrfToken: {
+      name: isProduction ? `__Host-authjs.csrf-token${sfx}` : `authjs.csrf-token${sfx}`,
+      options: cookieOptions(false),
+    },
+    callbackUrl: {
+      name: isProduction ? `__Secure-authjs.callback-url${sfx}` : `authjs.callback-url${sfx}`,
+      options: cookieOptions(true),
+    },
+  };
+}
+
+const shared = {
   trustHost: true,
   adapter: PrismaAdapter(prisma),
   providers,
-  pages: {
-    signIn: "/login",
-    verifyRequest: "/login?verify=true",
-  },
-  cookies: {
-    sessionToken: {
-      name: isProduction ? "__Secure-authjs.session-token" : "authjs.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: isProduction,
-        domain: isProduction ? `.${rootHostname}` : undefined,
-      },
-    },
-  },
-  callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { isSuperAdmin: true },
-        });
-        (session.user as unknown as Record<string, unknown>).isSuperAdmin =
-          dbUser?.isSuperAdmin ?? false;
-      }
-      return session;
-    },
-  },
-  events: {
-    async signIn({ user }) {
-      if (!user?.email) return;
-      try {
-        const pending = await prisma.pendingLogin.findFirst({
-          where: {
-            email: user.email.toLowerCase(),
-            approved: false,
-            expiresAt: { gt: new Date() },
-          },
-          orderBy: { createdAt: "desc" },
-        });
-        if (!pending) return;
+  callbacks: sessionCallback,
+  events: signInEvent,
+  session: { strategy: "database" as const },
+};
 
-        const sessionToken = crypto.randomUUID();
-        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+// ── Client auth (for /my, public pages, super-admin) ──
 
-        await prisma.session.create({
-          data: { sessionToken, userId: user.id!, expires },
-        });
-
-        await prisma.pendingLogin.update({
-          where: { id: pending.id },
-          data: { approved: true, sessionToken },
-        });
-      } catch (e) {
-        console.error("Failed to approve pending login:", e);
-      }
-    },
-  },
-  session: {
-    strategy: "database",
-  },
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...shared,
+  pages: { signIn: "/login", verifyRequest: "/login?verify=true" },
+  cookies: makeCookies(),
 });
+
+// ── Staff auth (for /admin, /coach) ──
+
+export const {
+  handlers: adminHandlers,
+  auth: adminAuth,
+  signIn: adminSignIn,
+  signOut: adminSignOut,
+} = NextAuth({
+  ...shared,
+  basePath: "/api/auth-admin",
+  pages: { signIn: "/login?portal=admin", verifyRequest: "/login?portal=admin&verify=true" },
+  cookies: makeCookies("admin"),
+});
+
+// Cookie name constants for client-side / middleware use
+export const CLIENT_SESSION_COOKIE = makeCookies().sessionToken.name;
+export const ADMIN_SESSION_COOKIE = makeCookies("admin").sessionToken.name;

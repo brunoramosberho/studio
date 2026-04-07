@@ -293,6 +293,18 @@ export function BookingSheet({
       queryClient.invalidateQueries({ queryKey: ["classes"] });
       queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
       onSuccess(isLoggedIn ? undefined : guestEmail);
+
+      // Fire-and-forget conversion tracking for marketing attribution
+      fetch("/api/marketing/track/conversion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entityType: "class-instance",
+          entityId: classId,
+          conversionType: "booking",
+          revenue: pkg.price || 0,
+        }),
+      }).catch(() => {});
     } catch {
       setError("Error de conexión");
       setStep("package");

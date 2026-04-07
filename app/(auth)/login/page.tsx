@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { SessionProvider, signIn, useSession } from "next-auth/react";
 import {
   Mail,
   ArrowRight,
@@ -30,7 +30,8 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-const SESSION_COOKIE = "authjs.session-token";
+const COOKIE_CLIENT = "authjs.session-token";
+const COOKIE_ADMIN = "authjs.session-token.admin";
 
 function useIsAdminSubdomain() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -43,9 +44,9 @@ function useIsAdminSubdomain() {
   return isAdmin;
 }
 
-/* ── Admin login (unchanged) ── */
+/* ── Super-admin login (admin.mgic.app subdomain) ── */
 
-function AdminLoginForm() {
+function SuperAdminLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -140,7 +141,7 @@ function AdminLoginForm() {
 
 type LoginStep = "email" | "register" | "magic-link-sent";
 
-function LoginForm() {
+function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -151,7 +152,10 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session } = useSession();
-  const callbackUrl = searchParams.get("callbackUrl") || "/my";
+
+  const defaultCallback = isAdminPortal ? "/admin" : "/my";
+  const callbackUrl = searchParams.get("callbackUrl") || defaultCallback;
+  const sessionCookie = isAdminPortal ? COOKIE_ADMIN : COOKIE_CLIENT;
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingTokenRef = useRef<string | null>(null);
 
@@ -178,7 +182,7 @@ function LoginForm() {
 
         if (data.approved && data.sessionToken) {
           if (pollRef.current) clearInterval(pollRef.current);
-          document.cookie = `${SESSION_COOKIE}=${data.sessionToken}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
+          document.cookie = `${sessionCookie}=${data.sessionToken}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
           setAuthenticated(true);
           setTimeout(() => router.replace(callbackUrl), 500);
         }
@@ -188,7 +192,7 @@ function LoginForm() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [step, callbackUrl, router]);
+  }, [step, callbackUrl, router, sessionCookie]);
 
   async function handleGoogleSignIn() {
     await signIn("google", { callbackUrl });
@@ -258,6 +262,11 @@ function LoginForm() {
     }
   }
 
+  const heading = isAdminPortal ? "Acceso Admin" : `Bienvenida a ${studioName}`;
+  const subheading = isAdminPortal
+    ? "Inicia sesión con tu cuenta de administrador"
+    : "Inicia sesión o crea tu cuenta";
+
   return (
     <div className="flex min-h-dvh flex-col">
       <div className="flex flex-1 items-center justify-center px-4 py-16">
@@ -277,14 +286,17 @@ function LoginForm() {
                 </span>
               )}
             </Link>
+            {isAdminPortal && (
+              <span className="mt-3 inline-block rounded-md bg-admin/10 px-2.5 py-1 text-xs font-semibold text-admin">
+                Admin Portal
+              </span>
+            )}
             {step === "email" && (
               <>
                 <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
-                  Bienvenida a {studioName}
+                  {heading}
                 </h1>
-                <p className="mt-2 text-sm text-muted">
-                  Inicia sesión o crea tu cuenta
-                </p>
+                <p className="mt-2 text-sm text-muted">{subheading}</p>
               </>
             )}
             {step === "register" && (
@@ -483,8 +495,21 @@ function LoginForm() {
 }
 
 function LoginRouter() {
-  const isAdmin = useIsAdminSubdomain();
-  return isAdmin ? <AdminLoginForm /> : <LoginForm />;
+  const isSuperAdminSubdomain = useIsAdminSubdomain();
+  const searchParams = useSearchParams();
+  const isAdminPortal = searchParams.get("portal") === "admin";
+
+  if (isSuperAdminSubdomain) return <SuperAdminLoginForm />;
+
+  if (isAdminPortal) {
+    return (
+      <SessionProvider basePath="/api/auth-admin">
+        <LoginForm isAdminPortal />
+      </SessionProvider>
+    );
+  }
+
+  return <LoginForm />;
 }
 
 export default function LoginPage() {

@@ -102,11 +102,28 @@ async function scenarioReset() {
     data: ORIGINAL.pack25,
   });
 
+  // Delete packages created by conversion testing
+  await deleteExtraPackages(userId, tenantId);
+
   // Clean up nudge events and intro offers created during testing
   await prisma.nudgeEvent.deleteMany({ where: { userId, tenantId } });
   await prisma.introOfferClaim.deleteMany({ where: { userId, tenantId } });
 
   console.log("✅ Reset complete — subscription + pack activos");
+}
+
+async function deleteExtraPackages(userId: string, tenantId: string) {
+  const originals = [SUBSCRIPTION_PKG_ID, PACK_25_PKG_ID, PRIMERA_VEZ_PKG_ID];
+  const extras = await prisma.userPackage.findMany({
+    where: { userId, tenantId, id: { notIn: originals } },
+    select: { id: true },
+  });
+  if (extras.length > 0) {
+    await prisma.userPackage.deleteMany({
+      where: { id: { in: extras.map((e) => e.id) } },
+    });
+    console.log(`  🗑️  Deleted ${extras.length} extra package(s) from testing`);
+  }
 }
 
 async function scenarioBookingFlow() {
@@ -126,6 +143,9 @@ async function scenarioBookingFlow() {
     where: { id: PACK_25_PKG_ID },
     data: { expiresAt: past },
   });
+
+  // Delete packages created by conversion testing
+  await deleteExtraPackages(userId, tenantId);
 
   // Clear anti-spam nudges
   await prisma.nudgeEvent.deleteMany({ where: { userId, tenantId } });

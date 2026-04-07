@@ -142,12 +142,15 @@ export async function GET(request: NextRequest) {
       CLIENT: "/my",
     };
 
+    const isStaffRole = role === "ADMIN" || role === "COACH";
     const redirectPath = role === "SUPER_ADMIN" ? "/" : (redirectMap[role] || "/");
     const redirectUrl = new URL(redirectPath, `${protocol}://${host}`);
     const response = NextResponse.redirect(redirectUrl);
+
+    const cookieSuffix = isStaffRole ? ".admin" : "";
     const cookieName = isSecure
-      ? "__Secure-authjs.session-token"
-      : "authjs.session-token";
+      ? `__Secure-authjs.session-token${cookieSuffix}`
+      : `authjs.session-token${cookieSuffix}`;
 
     response.cookies.set(cookieName, sessionToken, {
       expires,
