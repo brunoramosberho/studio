@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,6 +25,7 @@ import {
   CheckCircle2,
   Mail,
   Phone,
+  Camera,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AvatarCrop } from "@/components/shared/avatar-crop";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -557,12 +559,237 @@ function AddPayRateForm({
   );
 }
 
+function EditProfileForm({
+  coach,
+  onDone,
+}: {
+  coach: CoachDetail;
+  onDone: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [bio, setBio] = useState(coach.bio || "");
+  const [specialties, setSpecialties] = useState<string[]>(coach.specialties || []);
+  const [newSpecialty, setNewSpecialty] = useState("");
+  const [color, setColor] = useState(coach.color || "#C9A96E");
+  const [avatarPreview, setAvatarPreview] = useState(coach.photoUrl || coach.user.image || "");
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/admin/coaches/${coach.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bio, specialties, color }),
+      });
+      if (!res.ok) throw new Error("Error al guardar");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-coach", coach.id] });
+      toast.success("Perfil actualizado");
+      onDone();
+    },
+    onError: () => toast.error("Error al guardar perfil"),
+  });
+
+  const addSpecialty = () => {
+    const trimmed = newSpecialty.trim();
+    if (trimmed && !specialties.includes(trimmed)) {
+      setSpecialties([...specialties, trimmed]);
+      setNewSpecialty("");
+    }
+  };
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", new File([blob], "avatar.jpg", { type: "image/jpeg" }));
+
+      const res = await fetch(`/api/admin/coaches/${coach.id}/avatar`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAvatarPreview(data.photoUrl);
+        queryClient.invalidateQueries({ queryKey: ["admin-coach", coach.id] });
+        toast.success("Foto actualizada");
+      } else {
+        toast.error("Error al subir la foto");
+      }
+    } catch {
+      toast.error("Error al subir la foto");
+    } finally {
+      setUploadingAvatar(false);
+      setCropSrc(null);
+    }
+  }
+
+  const displayName = coach.user.name || coach.user.email;
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      className="overflow-hidden"
+    >
+      <Separator className="my-4" />
+      <div className="space-y-4">
+        {/* Photo upload */}
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted">Foto</label>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="group relative shrink-0"
+              disabled={uploadingAvatar}
+            >
+              <Avatar className="h-14 w-14 ring-2 ring-admin/10 transition-all group-hover:ring-admin/30">
+                {avatarPreview ? (
+                  <AvatarImage src={avatarPreview} />
+                ) : null}
+                <AvatarFallback
+                  className="text-sm font-bold text-white"
+                  style={{ backgroundColor: color }}
+                >
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                {uploadingAvatar ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
+                ) : (
+                  <Camera className="h-4 w-4 text-white" />
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </button>
+            <div className="text-xs text-muted">
+              <p>Clic para cambiar foto</p>
+              <p className="text-[10px] text-muted/60">JPG, PNG. Máx 5 MB.</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted">Color</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              className="h-8 w-8 cursor-pointer rounded-lg border border-border/50"
+            />
+            <Input
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              className="h-8 w-24 font-mono text-xs"
+              placeholder="#C9A96E"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted">Biografía</label>
+          <textarea
+            className="w-full rounded-lg border border-input-border bg-white p-3 text-sm transition-colors focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30"
+            rows={4}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Biografía del coach..."
+          />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted">Especialidades</label>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {specialties.map((sp) => (
+              <Badge key={sp} variant="secondary" className="gap-1 pr-1 text-xs">
+                {sp}
+                <button
+                  onClick={() => setSpecialties(specialties.filter((s) => s !== sp))}
+                  className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/10"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            <Input
+              value={newSpecialty}
+              onChange={(e) => setNewSpecialty(e.target.value)}
+              placeholder="Nueva especialidad..."
+              className="h-8 text-xs"
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSpecialty(); } }}
+            />
+            <Button type="button" variant="outline" size="sm" className="h-8 shrink-0" onClick={addSpecialty}>
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="ghost" size="sm" onClick={onDone}>
+            Cancelar
+          </Button>
+          <Button
+            size="sm"
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate()}
+            className="gap-1.5 bg-admin text-white hover:bg-admin/90"
+          >
+            {mutation.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+            Guardar
+          </Button>
+        </div>
+      </div>
+
+      <AvatarCrop
+        open={!!cropSrc}
+        imageSrc={cropSrc ?? ""}
+        onClose={() => setCropSrc(null)}
+        onConfirm={handleCropConfirm}
+        uploading={uploadingAvatar}
+      />
+    </motion.div>
+  );
+}
+
 export default function CoachDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [showAddRate, setShowAddRate] = useState(false);
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   const { data: coach, isLoading, error } = useQuery<CoachDetail>({
     queryKey: ["admin-coach", id],
@@ -690,6 +917,15 @@ export default function CoachDetailPage() {
                   <p className="text-sm text-muted">{coach.user.email}</p>
                 )}
                 <Badge variant="admin" className="mt-2 text-[10px]">Coach</Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 h-7 gap-1 text-xs text-muted hover:text-admin"
+                  onClick={() => setEditingProfile(!editingProfile)}
+                >
+                  {editingProfile ? <X className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+                  {editingProfile ? "Cancelar" : "Editar perfil"}
+                </Button>
               </div>
 
               <Separator className="my-4" />
@@ -724,7 +960,7 @@ export default function CoachDetailPage() {
                 )}
               </div>
 
-              {coach.specialties.length > 0 && (
+              {!editingProfile && coach.specialties.length > 0 && (
                 <>
                   <Separator className="my-4" />
                   <div>
@@ -737,6 +973,15 @@ export default function CoachDetailPage() {
                   </div>
                 </>
               )}
+
+              <AnimatePresence>
+                {editingProfile && (
+                  <EditProfileForm
+                    coach={coach}
+                    onDone={() => setEditingProfile(false)}
+                  />
+                )}
+              </AnimatePresence>
             </CardContent>
           </Card>
 

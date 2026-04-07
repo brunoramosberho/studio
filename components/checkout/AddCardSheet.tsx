@@ -48,11 +48,14 @@ export function AddCardSheet({ open, onClose, onSuccess }: AddCardSheetProps) {
     setLoading(true);
     fetch("/api/stripe/setup-intent", { method: "POST" })
       .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to create setup");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Error ${res.status}`);
+        }
         return res.json();
       })
       .then(setSetupData)
-      .catch(() => setError("No se pudo iniciar. Intenta de nuevo."))
+      .catch((err) => setError(err.message || "No se pudo iniciar. Intenta de nuevo."))
       .finally(() => setLoading(false));
   }, [open]);
 

@@ -11,6 +11,7 @@ import {
   CalendarOff,
   UserCircle,
   BarChart3,
+  User,
   ArrowLeft,
   ArrowRightLeft,
   Menu,
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/coach/availability", label: "Disponibilidad", icon: CalendarOff },
   { href: "/coach/fans", label: "Mis Fans", icon: UserCircle },
   { href: "/coach/stats", label: "Mi Historial", icon: BarChart3 },
+  { href: "/coach/profile", label: "Mi Perfil", icon: User },
 ];
 
 function CoachLayoutInner({ children }: { children: React.ReactNode }) {

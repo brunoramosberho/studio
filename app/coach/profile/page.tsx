@@ -1,10 +1,11 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Save, X, Plus, Loader2, User } from "lucide-react";
+import { Save, X, Plus, Loader2, Camera } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +13,19 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { AvatarCrop } from "@/components/shared/avatar-crop";
 import type { CoachProfileWithUser } from "@/types";
 
 export default function CoachProfilePage() {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [bio, setBio] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [newSpecialty, setNewSpecialty] = useState("");
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const { data: profile, isLoading } = useQuery<CoachProfileWithUser>({
     queryKey: ["coach-profile", session?.user?.id],
@@ -34,7 +40,7 @@ export default function CoachProfilePage() {
   useEffect(() => {
     if (profile) {
       setBio(profile.bio || "");
-      setPhotoUrl(profile.user.image || "");
+      setPhotoUrl(profile.photoUrl || profile.user.image || "");
       setSpecialties(profile.specialties || []);
     }
   }, [profile]);
@@ -44,12 +50,55 @@ export default function CoachProfilePage() {
       const res = await fetch(`/api/coaches/${session?.user?.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bio, photoUrl, specialties }),
+        body: JSON.stringify({ bio, specialties }),
       });
       if (!res.ok) throw new Error("Failed to save");
       return res.json();
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coach-profile", session?.user?.id] });
+      toast.success("Perfil guardado");
+    },
+    onError: () => toast.error("Error al guardar perfil"),
   });
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", new File([blob], "avatar.jpg", { type: "image/jpeg" }));
+
+      const res = await fetch(`/api/coaches/${session?.user?.id}/avatar`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setPhotoUrl(data.photoUrl);
+        queryClient.invalidateQueries({ queryKey: ["coach-profile", session?.user?.id] });
+        toast.success("Foto actualizada");
+      } else {
+        toast.error("Error al subir la foto");
+      }
+    } catch {
+      toast.error("Error al subir la foto");
+    } finally {
+      setUploadingAvatar(false);
+      setCropSrc(null);
+    }
+  }
 
   const addSpecialty = () => {
     const trimmed = newSpecialty.trim();
@@ -99,16 +148,46 @@ export default function CoachProfilePage() {
             <CardDescription>Estos datos se muestran en la página pública de coaches</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Photo URL */}
+            {/* Photo upload */}
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">
-                URL de foto
+                Foto de perfil
               </label>
-              <Input
-                value={photoUrl}
-                onChange={(e) => setPhotoUrl(e.target.value)}
-                placeholder="https://..."
-              />
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="group relative shrink-0"
+                  disabled={uploadingAvatar}
+                >
+                  <Avatar className="h-20 w-20 ring-2 ring-coach/20 transition-all group-hover:ring-coach/40">
+                    {photoUrl ? (
+                      <AvatarImage src={photoUrl} alt={userName} />
+                    ) : null}
+                    <AvatarFallback className="bg-coach/10 text-lg text-coach">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                    {uploadingAvatar ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-white" />
+                    ) : (
+                      <Camera className="h-5 w-5 text-white" />
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                </button>
+                <div className="text-sm text-muted">
+                  <p>Haz clic para subir una foto</p>
+                  <p className="text-xs text-muted/60">JPG, PNG. Máx 5 MB.</p>
+                </div>
+              </div>
             </div>
 
             {/* Bio */}
@@ -222,6 +301,14 @@ export default function CoachProfilePage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      <AvatarCrop
+        open={!!cropSrc}
+        imageSrc={cropSrc ?? ""}
+        onClose={() => setCropSrc(null)}
+        onConfirm={handleCropConfirm}
+        uploading={uploadingAvatar}
+      />
     </div>
   );
 }

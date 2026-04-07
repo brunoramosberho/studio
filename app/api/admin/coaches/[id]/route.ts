@@ -217,6 +217,42 @@ export async function GET(
   }
 }
 
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const ctx = await requireRole("ADMIN");
+    const { id } = await params;
+    const { bio, specialties, color } = await request.json();
+
+    const coach = await prisma.coachProfile.findFirst({
+      where: { id, tenantId: ctx.tenant.id },
+    });
+
+    if (!coach) {
+      return NextResponse.json({ error: "Coach no encontrado" }, { status: 404 });
+    }
+
+    const updated = await prisma.coachProfile.update({
+      where: { id },
+      data: {
+        ...(typeof bio === "string" && { bio }),
+        ...(Array.isArray(specialties) && { specialties }),
+        ...(typeof color === "string" && { color }),
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, image: true } },
+      },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("PUT /api/admin/coaches/[id] error:", error);
+    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+  }
+}
+
 async function calculateEarnings(
   coachProfileId: string,
   tenantId: string,
