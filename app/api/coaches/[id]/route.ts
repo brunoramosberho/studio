@@ -45,7 +45,7 @@ export async function PUT(
     }
 
     const isOwner = ctx.session.user.id === userId;
-    const isAdmin = ctx.membership.role === "ADMIN" || ctx.membership.role === "OWNER";
+    const isAdmin = ctx.membership.role === "ADMIN";
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
