@@ -230,7 +230,9 @@ export default function ClassDetailPage() {
   });
 
   const classTypeId = cls?.classType?.id;
+  const now = new Date();
   const validPackages = userPackages
+    .filter((p) => new Date(p.expiresAt) > now)
     .filter((p) => p.creditsTotal === null || p.creditsUsed < (p.creditsTotal ?? 0))
     .filter((p) => {
       const cts = (p.package as any)?.classTypes;

@@ -51,7 +51,9 @@ export function BookingFlow({ classId }: BookingFlowProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId]);
 
+  const now = new Date();
   const validPackages = packages
+    .filter((p) => new Date(p.expiresAt) > now)
     .filter((p) => p.creditsTotal === null || p.creditsUsed < (p.creditsTotal ?? 0))
     .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
 
