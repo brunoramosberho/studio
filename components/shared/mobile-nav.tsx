@@ -133,8 +133,8 @@ export function MobileNav() {
   const scheduleActive = pathname.startsWith("/schedule");
 
   return (
-    <nav ref={navRef} className="fixed bottom-0 left-0 right-0 z-50 overflow-visible border-t border-border/50 bg-background/95 backdrop-blur-xl will-change-transform safe-bottom md:hidden">
-      <div className="flex items-end justify-between gap-1 px-1 pb-1.5 pt-3">
+    <nav ref={navRef} className="fixed bottom-0 left-0 right-0 z-50 overflow-visible border-t border-border/40 bg-background will-change-transform md:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
+      <div className="flex items-end justify-between gap-1 px-1 pb-1 pt-2.5">
         <div className="flex min-w-0 flex-1 justify-around">
           {leftTabs.map((tab) => {
             const isActive = tabIsActive(pathname, tab.href);

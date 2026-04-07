@@ -17,6 +17,7 @@ import { GeistMono } from "geist/font/mono";
 import { Providers } from "./providers";
 import { MobileNav } from "@/components/shared/mobile-nav";
 import { InstallPrompt } from "@/components/shared/install-prompt";
+import { InAppBrowserBanner } from "@/components/shared/in-app-browser-banner";
 import { SplashScreen } from "@/components/shared/splash-screen";
 import "./globals.css";
 
@@ -113,6 +114,7 @@ export default async function RootLayout({
     <html lang="es" className={fontVars} style={themeStyle}>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <Providers>
+          <InAppBrowserBanner />
           <SplashScreen />
           {children}
           <MobileNav />
