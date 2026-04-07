@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useState, useEffect, useCallback } from "react";
 import { X, Share, Plus, Download, Ellipsis, ChevronDown } from "lucide-react";
 import { getMobileInstallPlatform, isStandalonePWA } from "@/lib/pwa-install";
@@ -35,7 +34,6 @@ function markDismissed() {
 type Platform = "ios" | "android" | null;
 
 export function InstallPrompt() {
-  const { data: session, status } = useSession();
   const [visible, setVisible] = useState(false);
   const [platform, setPlatform] = useState<Platform>(null);
   const [deferredPrompt, setDeferredPrompt] =
@@ -47,9 +45,6 @@ export function InstallPrompt() {
   }, []);
 
   useEffect(() => {
-    if (status === "loading") return;
-    if (status === "authenticated" && session?.user) return;
-
     if (isStandalonePWA() || wasDismissedRecently()) return;
 
     const plat = getMobileInstallPlatform();
@@ -83,7 +78,7 @@ export function InstallPrompt() {
       const timer = setTimeout(() => setVisible(true), 3000);
       return () => clearTimeout(timer);
     }
-  }, [status, session?.user]);
+  }, []);
 
   async function handleInstall() {
     if (deferredPrompt) {
