@@ -54,11 +54,11 @@ function daysUntil(date: Date | string): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-const STATUS_LABEL: Record<string, { text: string; variant: "success" | "warning" | "secondary" | "destructive" }> = {
+const STATUS_LABEL: Record<string, { text: string; variant: "success" | "warning" | "secondary" | "danger" }> = {
   active: { text: "Activa", variant: "success" },
   past_due: { text: "Pago pendiente", variant: "warning" },
   paused: { text: "Pausada", variant: "secondary" },
-  canceled: { text: "Cancelada", variant: "destructive" },
+  canceled: { text: "Cancelada", variant: "danger" },
   trialing: { text: "Prueba", variant: "success" },
 };
 
