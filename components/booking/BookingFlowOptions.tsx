@@ -76,14 +76,14 @@ export function BookingFlowOptions({
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 flex-shrink-0" />
             <span>
-              Con membresía, tus {data.classesBoughtThisMonth} clases este mes te saldrían a{" "}
+              Con membresía, tus {data.classesBoughtThisMonth} clases este mes te habrían salido a{" "}
               <strong>
                 {formatCurrency(
                   data.membershipPrice / Math.max(1, data.classesBoughtThisMonth),
                 )}
                 /clase
               </strong>
-              . Ahorrarías{" "}
+              . Habrías ahorrado{" "}
               <strong>{formatCurrency(data.savingsIfMember)}</strong>.
             </span>
           </div>
