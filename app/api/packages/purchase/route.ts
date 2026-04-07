@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireTenant } from "@/lib/tenant";
+import { createMemberPayment } from "@/lib/stripe/payments";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { packageId, email, name } = body;
+    const { packageId, email, name, paymentMethodId } = body;
 
     if (!packageId) {
       return NextResponse.json(
@@ -55,15 +56,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // TODO: Stripe checkout — re-enable when STRIPE_SECRET_KEY is properly configured
-    // const stripeKey = process.env.STRIPE_SECRET_KEY;
-    // if (userId && stripeKey && stripeKey.startsWith("sk_")) {
-    //   const { createCheckoutSession } = await import("@/lib/stripe");
-    //   const origin = request.nextUrl.origin;
-    //   const checkoutSession = await createCheckoutSession({ ... });
-    //   return NextResponse.json({ url: checkoutSession.url });
-    // }
-
     // Resolve user
     let finalUserId = userId;
     if (!finalUserId) {
@@ -76,7 +68,60 @@ export async function POST(request: NextRequest) {
       finalUserId = user.id;
     }
 
-    // Simulated purchase
+    // If tenant has Stripe Connect, create a real PaymentIntent
+    if (tenant.stripeAccountId && pkg.price > 0) {
+      try {
+        const purchasedAt = new Date();
+        const expiresAt = new Date(purchasedAt);
+        expiresAt.setDate(expiresAt.getDate() + pkg.validDays);
+
+        const userPackage = await prisma.userPackage.create({
+          data: {
+            userId: finalUserId,
+            packageId: pkg.id,
+            tenantId: tenant.id,
+            creditsTotal: pkg.credits,
+            creditsUsed: 0,
+            expiresAt,
+            stripePaymentId: "pending_stripe",
+            purchasedAt,
+          },
+        });
+
+        const paymentIntent = await createMemberPayment({
+          tenantId: tenant.id,
+          memberId: finalUserId,
+          amountInCurrency: pkg.price,
+          type: "membership",
+          referenceId: userPackage.id,
+          description: `Paquete ${pkg.name}`,
+          paymentMethodId,
+        });
+
+        if (paymentMethodId && paymentIntent.status === "succeeded") {
+          return NextResponse.json({
+            success: true,
+            requiresPayment: false,
+            packageName: pkg.name,
+            credits: pkg.credits,
+          });
+        }
+
+        return NextResponse.json({
+          success: true,
+          requiresPayment: true,
+          clientSecret: paymentIntent.client_secret,
+          stripeAccountId: tenant.stripeAccountId,
+          packageName: pkg.name,
+          credits: pkg.credits,
+          amount: pkg.price,
+        });
+      } catch (e) {
+        console.error("Stripe payment failed, falling back to simulated:", e);
+      }
+    }
+
+    // Fallback: simulated purchase (no Stripe connected or free package)
     const purchasedAt = new Date();
     const expiresAt = new Date(purchasedAt);
     expiresAt.setDate(expiresAt.getDate() + pkg.validDays);
@@ -95,8 +140,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      simulated: true,
       success: true,
+      requiresPayment: false,
       packageName: pkg.name,
       credits: pkg.credits,
     });

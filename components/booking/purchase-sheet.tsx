@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,9 +12,11 @@ import {
   LogIn,
   Ticket,
   X,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PaymentForm } from "@/components/checkout/PaymentForm";
 import type { Package } from "@prisma/client";
 
 interface PurchaseSheetProps {
@@ -24,7 +26,28 @@ interface PurchaseSheetProps {
   onSuccess?: () => void;
 }
 
-type Step = "confirm" | "guest" | "processing" | "done";
+interface PaymentData {
+  clientSecret: string;
+  stripeAccountId: string;
+  amount: number;
+}
+
+interface SavedCard {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
+const brandLabels: Record<string, string> = {
+  visa: "Visa",
+  mastercard: "Mastercard",
+  amex: "Amex",
+  discover: "Discover",
+};
+
+type Step = "confirm" | "guest" | "processing" | "select-card" | "payment" | "done";
 
 export function PurchaseSheet({
   open,
@@ -42,13 +65,27 @@ export function PurchaseSheet({
   const [guestEmail, setGuestEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
+  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
+  const [payingWithCard, setPayingWithCard] = useState<string | null>(null);
   const purchaseInFlight = useRef(false);
+
+  useEffect(() => {
+    if (open && isLoggedIn) {
+      fetch("/api/stripe/payment-methods")
+        .then((r) => (r.ok ? r.json() : []))
+        .then(setSavedCards)
+        .catch(() => setSavedCards([]));
+    }
+  }, [open, isLoggedIn]);
 
   function resetState() {
     setStep(isLoggedIn ? "confirm" : "guest");
     setGuestName("");
     setGuestEmail("");
     setError(null);
+    setPaymentData(null);
+    setPayingWithCard(null);
     setLoading(false);
     purchaseInFlight.current = false;
   }
@@ -90,6 +127,21 @@ export function PurchaseSheet({
         return;
       }
 
+      if (data.requiresPayment && data.clientSecret && data.stripeAccountId) {
+        setPaymentData({
+          clientSecret: data.clientSecret,
+          stripeAccountId: data.stripeAccountId,
+          amount: data.amount ?? pkg.price,
+        });
+        if (savedCards.length > 0) {
+          setStep("select-card");
+        } else {
+          setStep("payment");
+        }
+        setLoading(false);
+        return;
+      }
+
       setStep("done");
       queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
       onSuccess?.();
@@ -102,6 +154,47 @@ export function PurchaseSheet({
     } finally {
       setLoading(false);
       purchaseInFlight.current = false;
+    }
+  }
+
+  async function payWithSavedCard(paymentMethodId: string) {
+    if (!paymentData) return;
+    setPayingWithCard(paymentMethodId);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/packages/purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packageId: pkg.id, paymentMethodId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Error al procesar el pago");
+        setPayingWithCard(null);
+        return;
+      }
+
+      if (data.requiresPayment) {
+        setPaymentData({
+          clientSecret: data.clientSecret,
+          stripeAccountId: data.stripeAccountId,
+          amount: data.amount ?? pkg.price,
+        });
+        setStep("payment");
+        setPayingWithCard(null);
+        return;
+      }
+
+      setStep("done");
+      queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
+      onSuccess?.();
+    } catch {
+      setError("Error de conexión");
+    } finally {
+      setPayingWithCard(null);
     }
   }
 
@@ -121,7 +214,7 @@ export function PurchaseSheet({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm"
+        className="fixed inset-0 z-[70] bg-foreground/40 backdrop-blur-sm"
         onClick={step !== "processing" ? () => { resetState(); onClose(); } : undefined}
       />
 
@@ -130,7 +223,7 @@ export function PurchaseSheet({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-50 mb-[4.5rem] max-h-[75dvh] overflow-y-auto rounded-3xl bg-white shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:mb-0 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-white shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag indicator (mobile) */}
@@ -298,6 +391,105 @@ export function PurchaseSheet({
                 <p className="mt-4 text-sm font-medium text-muted">
                   Procesando tu compra...
                 </p>
+              </motion.div>
+            )}
+
+            {/* ── Step: Select saved card ── */}
+            {step === "select-card" && paymentData && (
+              <motion.div
+                key="select-card"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <h2 className="font-display text-xl font-bold text-foreground">
+                  Método de pago
+                </h2>
+                <p className="mt-1 mb-5 text-sm text-muted">
+                  {pkg.name} · {new Intl.NumberFormat("es", {
+                    style: "currency",
+                    currency: pkg.currency,
+                    minimumFractionDigits: 0,
+                  }).format(paymentData.amount)}
+                </p>
+
+                {error && (
+                  <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {savedCards.map((card) => (
+                    <button
+                      key={card.id}
+                      onClick={() => payWithSavedCard(card.id)}
+                      disabled={!!payingWithCard}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-border/40 bg-white px-4 py-3.5 text-left transition-colors active:bg-surface disabled:opacity-60"
+                    >
+                      <div className="flex h-9 w-12 items-center justify-center rounded-lg border border-border/30 bg-surface text-[10px] font-bold uppercase tracking-wider text-muted">
+                        {brandLabels[card.brand] ?? card.brand}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[14px] font-medium text-foreground">
+                          ····  {card.last4}
+                        </p>
+                        <p className="text-[11px] text-muted">
+                          {String(card.expMonth).padStart(2, "0")}/{String(card.expYear).slice(-2)}
+                        </p>
+                      </div>
+                      {payingWithCard === card.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted" />
+                      ) : (
+                        <CreditCard className="h-4 w-4 text-muted" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setStep("payment")}
+                  disabled={!!payingWithCard}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/60 py-3.5 text-[13px] font-medium text-muted transition-colors active:bg-surface"
+                >
+                  <Plus className="h-4 w-4" />
+                  Usar otra tarjeta
+                </button>
+              </motion.div>
+            )}
+
+            {/* ── Step: Payment (Stripe Elements) ── */}
+            {step === "payment" && paymentData && (
+              <motion.div
+                key="payment"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <h2 className="font-display text-xl font-bold text-foreground">
+                  Datos de pago
+                </h2>
+                <p className="mt-1 mb-5 text-sm text-muted">
+                  {pkg.name} · {new Intl.NumberFormat("es", {
+                    style: "currency",
+                    currency: pkg.currency,
+                    minimumFractionDigits: 0,
+                  }).format(paymentData.amount)}
+                </p>
+
+                <PaymentForm
+                  clientSecret={paymentData.clientSecret}
+                  stripeAccountId={paymentData.stripeAccountId}
+                  amount={paymentData.amount}
+                  currency={pkg.currency}
+                  onSuccess={() => {
+                    setStep("done");
+                    queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
+                    onSuccess?.();
+                  }}
+                />
               </motion.div>
             )}
 

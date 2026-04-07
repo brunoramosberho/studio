@@ -46,6 +46,7 @@ import {
   TrendingUp,
   Target,
   Scan,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -117,6 +118,7 @@ const flyoutGroups: FlyoutGroup[] = [
     label: "Configuración",
     icon: Settings,
     items: [
+      { href: "/admin/settings/billing", label: "Facturación", icon: CreditCard },
       { href: "/admin/waiver", label: "Waiver", icon: FileSignature },
       { href: "/admin/branding", label: "Marca", icon: Palette },
       { href: "/admin/team", label: "Equipo", icon: ShieldCheck },

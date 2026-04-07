@@ -37,7 +37,14 @@ model Tenant {
   landingUrl      String?
   communityHeadline String @default("Tu comunidad en movimiento")
 
-  stripeCustomerId String?
+  stripeCustomerId      String?   // cus_xxx — Tenant as customer of Magic Payments (SaaS fee)
+  stripeAccountId       String?   // acct_xxx — Connected Account for receiving student payments
+  stripeAccountStatus   String?   // 'pending' | 'active' | 'restricted'
+  stripeSubscriptionId  String?   // sub_xxx — Active SaaS subscription
+  stripePlanId          String?   // price_xxx — Contracted plan
+  subscriptionStatus    String?   // 'active' | 'past_due' | 'canceled' | 'trialing'
+  trialEndsAt           DateTime?
+  applicationFeePercent Float     @default(0) // % fee Magic charges per transaction
 
   zoneRedDays     Int      @default(14)
   zoneYellowDays  Int      @default(30)
@@ -98,6 +105,9 @@ model Tenant {
   conversionConfig      MembershipConversionConfig?
   nudgeEvents           NudgeEvent[]
   introOfferClaims      IntroOfferClaim[]
+
+  stripePayments        StripePayment[]
+  stripeCustomers       StripeCustomer[]
 }
 
 model InstagramIntegration {
@@ -234,6 +244,7 @@ model User {
   waiverSignatures        WaiverSignature[]        @relation("MemberWaiverSignatures")
   nudgeEvents             NudgeEvent[]             @relation("UserNudgeEvents")
   introOfferClaims        IntroOfferClaim[]        @relation("UserIntroOfferClaims")
+  stripeCustomerRecords   StripeCustomer[]         @relation("UserStripeCustomers")
 
   @@index([countryId])
   @@index([cityId])
@@ -1394,4 +1405,44 @@ model LinkConversion {
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, createdAt])
+}
+
+// ── Stripe Payments (Connect: student → studio) ──
+
+model StripePayment {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  memberId              String?
+  stripePaymentIntentId String   @unique
+  amount                Float
+  currency              String   @default("eur")
+  applicationFee        Float?
+  status                String   // 'pending' | 'succeeded' | 'failed' | 'refunded'
+  type                  String   // 'class' | 'membership' | 'product' | 'pos'
+  referenceId           String?
+  metadata              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([memberId])
+  @@index([status])
+}
+
+model StripeCustomer {
+  id                     String   @id @default(cuid())
+  tenantId               String
+  memberId               String
+  stripeCustomerId       String   @unique
+  defaultPaymentMethodId String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  member User   @relation("UserStripeCustomers", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, memberId])
+  @@index([tenantId])
 }

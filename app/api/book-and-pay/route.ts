@@ -3,13 +3,14 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation, sendWelcomeEmail, getTenantBaseUrl } from "@/lib/email";
+import { createMemberPayment } from "@/lib/stripe/payments";
 
 export async function POST(request: NextRequest) {
   try {
     const tenant = await requireTenant();
     const session = await auth();
     const body = await request.json();
-    const { packageId, classId, spotNumber, privacy } = body;
+    const { packageId, classId, spotNumber, privacy, paymentMethodId } = body;
     const email = body.email?.trim().toLowerCase() ?? null;
     const name = body.name?.trim().replace(/\S+/g, (w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) ?? null;
     const phone = body.phone?.trim() || null;
@@ -124,6 +125,11 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(purchasedAt);
     expiresAt.setDate(expiresAt.getDate() + pkg.validDays);
 
+    const stripePaymentId =
+      tenant.stripeAccountId && pkg.price > 0
+        ? "pending_stripe"
+        : `sim_${Date.now()}`;
+
     const { userPackage, booking } = await prisma.$transaction(async (tx) => {
       const up = await tx.userPackage.create({
         data: {
@@ -133,7 +139,7 @@ export async function POST(request: NextRequest) {
           creditsTotal: pkg.credits,
           creditsUsed: 1,
           expiresAt,
-          stripePaymentId: `sim_${Date.now()}`,
+          stripePaymentId,
           purchasedAt,
         },
       });
@@ -160,6 +166,38 @@ export async function POST(request: NextRequest) {
 
       return { userPackage: up, booking: bk };
     });
+
+    // Create PaymentIntent if studio has Stripe Connect
+    let paymentData: {
+      clientSecret: string | null;
+      stripeAccountId: string | null;
+      amount: number;
+    } | null = null;
+
+    if (tenant.stripeAccountId && pkg.price > 0 && finalUserId) {
+      try {
+        const pi = await createMemberPayment({
+          tenantId: tenant.id,
+          memberId: finalUserId,
+          amountInCurrency: pkg.price,
+          type: "class",
+          referenceId: userPackage.id,
+          description: `Clase ${classData.classType.name} + ${pkg.name}`,
+          paymentMethodId,
+        });
+        if (paymentMethodId && pi.status === "succeeded") {
+          paymentData = null;
+        } else {
+          paymentData = {
+            clientSecret: pi.client_secret,
+            stripeAccountId: tenant.stripeAccountId,
+            amount: pkg.price,
+          };
+        }
+      } catch (e) {
+        console.error("Stripe payment creation failed:", e);
+      }
+    }
 
     const baseUrl = getTenantBaseUrl(tenant.slug);
 
@@ -228,6 +266,12 @@ export async function POST(request: NextRequest) {
       packageName: pkg.name,
       creditsTotal: pkg.credits,
       creditsUsed: 1,
+      ...(paymentData && {
+        requiresPayment: true,
+        clientSecret: paymentData.clientSecret,
+        stripeAccountId: paymentData.stripeAccountId,
+        amount: paymentData.amount,
+      }),
     });
   } catch (error) {
     console.error("POST /api/book-and-pay error:", error);

@@ -19,6 +19,7 @@ import {
   Camera,
   Heart,
   Asterisk,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -881,6 +882,19 @@ export default function ProfilePage() {
               </Card>
             </motion.div>
           )}
+
+          <Link
+            href="/my/payment-methods"
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 transition-colors active:bg-surface"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
+              <CreditCard className="h-4 w-4 text-foreground" />
+            </div>
+            <span className="flex-1 text-[15px] font-medium text-foreground">
+              Métodos de pago
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted" />
+          </Link>
 
           <Link
             href="/packages"

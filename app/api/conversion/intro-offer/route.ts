@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { getConversionConfig } from "@/lib/conversion/nudge-engine";
+import { createMemberPayment } from "@/lib/stripe/payments";
 import { addHours } from "date-fns";
 
 export async function POST(request: NextRequest) {
@@ -140,20 +141,6 @@ export async function PATCH(request: NextRequest) {
         where: { id: claim.id },
         data: { acceptedAt: new Date() },
       }),
-      // TODO: Stripe — conectar pago
-      // Cuando Stripe esté integrado, este bloque debe:
-      // 1. Obtener o crear Stripe Customer del miembro
-      // 2. Crear PaymentIntent:
-      //    - amount: claim.introPrice * 100 (centavos)
-      //    - currency: pkg.currency
-      //    - customer: member.stripeCustomerId
-      //    - payment_method: member.defaultPaymentMethodId (si existe)
-      //    - confirm: true (si hay método guardado)
-      //    - off_session: false (estamos en sesión activa)
-      // 3. Si falla: revertir IntroOfferClaim.acceptedAt, retornar error
-      // 4. Si OK: actualizar UserPackage con stripePaymentId
-      //
-      // Por ahora: crear UserPackage con stripePaymentId='pending_stripe'
       prisma.userPackage.create({
         data: {
           userId,
@@ -167,6 +154,30 @@ export async function PATCH(request: NextRequest) {
         },
       }),
     ]);
+
+    // If studio has Stripe Connect, create PaymentIntent for the intro price
+    let paymentIntent: { client_secret: string | null; id: string } | null =
+      null;
+
+    const tenantData = await prisma.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+    });
+
+    if (tenantData.stripeAccountId && claim.introPrice > 0) {
+      try {
+        const pi = await createMemberPayment({
+          tenantId,
+          memberId: userId,
+          amountInCurrency: claim.introPrice,
+          type: "membership",
+          referenceId: userPackage.id,
+          description: `Oferta introductoria — ${pkg.name}`,
+        });
+        paymentIntent = { client_secret: pi.client_secret, id: pi.id };
+      } catch (e) {
+        console.error("Stripe payment creation failed, keeping pending:", e);
+      }
+    }
 
     await prisma.nudgeEvent.create({
       data: {
@@ -183,7 +194,14 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ claim: updatedClaim, userPackage });
+    return NextResponse.json({
+      claim: updatedClaim,
+      userPackage,
+      ...(paymentIntent && {
+        clientSecret: paymentIntent.client_secret,
+        stripeAccountId: tenantData.stripeAccountId,
+      }),
+    });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Internal server error";
