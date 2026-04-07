@@ -137,11 +137,11 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Ch
   CANCELLED: { label: "Cancelado", color: "text-gray-500 bg-gray-50", icon: AlertCircle },
 };
 
-const SUB_STATUS_BADGE: Record<string, { label: string; variant: "success" | "warning" | "secondary" | "destructive" }> = {
+const SUB_STATUS_BADGE: Record<string, { label: string; variant: "success" | "warning" | "secondary" | "danger" }> = {
   active: { label: "Activa", variant: "success" },
   past_due: { label: "Pago pendiente", variant: "warning" },
   paused: { label: "Pausada", variant: "secondary" },
-  canceled: { label: "Cancelada", variant: "destructive" },
+  canceled: { label: "Cancelada", variant: "danger" },
   trialing: { label: "Prueba", variant: "secondary" },
   incomplete: { label: "Incompleta", variant: "warning" },
 };
