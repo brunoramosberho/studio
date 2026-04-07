@@ -1,13 +1,38 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getServerBranding } from "@/lib/branding.server";
 
-export async function GET() {
+const PORTAL_CONFIG = {
+  my: {
+    suffix: "",
+    start_url: "/my",
+  },
+  admin: {
+    suffix: " Admin",
+    start_url: "/admin",
+  },
+  coach: {
+    suffix: " Coach",
+    start_url: "/coach",
+  },
+} as const;
+
+type Portal = keyof typeof PORTAL_CONFIG;
+
+export async function GET(request: NextRequest) {
+  const portal = (request.nextUrl.searchParams.get("portal") || "my") as Portal;
+  const cfg = PORTAL_CONFIG[portal] ?? PORTAL_CONFIG.my;
+
   const b = await getServerBranding();
   const h = await headers();
   const host = h.get("host") || process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
   const protocol = host.includes("localhost") ? "http" : "https";
   const origin = `${protocol}://${host}`;
+
+  const themeColor =
+    portal === "admin" ? b.colorAdmin :
+    portal === "coach" ? b.colorCoach :
+    b.colorBg;
 
   const icons = [
     { src: "/api/icon?size=192", sizes: "192x192", type: "image/png" },
@@ -15,15 +40,15 @@ export async function GET() {
   ];
 
   const manifest = {
-    name: `${b.studioName} Studio`,
-    short_name: b.studioName,
-    id: `/?homescreen=1`,
+    name: `${b.studioName}${cfg.suffix}`,
+    short_name: `${b.studioName}${cfg.suffix}`,
+    id: cfg.start_url,
     description: `${b.tagline} — ${b.slogan}`,
-    start_url: "/my",
+    start_url: cfg.start_url,
     scope: "/",
     display: "standalone",
     background_color: b.colorBg,
-    theme_color: b.colorBg,
+    theme_color: themeColor,
     orientation: "portrait",
     icons,
     handle_links: "preferred",

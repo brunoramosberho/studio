@@ -94,6 +94,10 @@ model Tenant {
   analyticsConfig       TenantAnalyticsConfig?
   linkClicks            LinkClick[]
   linkConversions       LinkConversion[]
+
+  conversionConfig      MembershipConversionConfig?
+  nudgeEvents           NudgeEvent[]
+  introOfferClaims      IntroOfferClaim[]
 }
 
 model InstagramIntegration {
@@ -228,6 +232,8 @@ model User {
   memberCheckIns          CheckIn[]                @relation("MemberCheckIns")
   staffCheckIns           CheckIn[]                @relation("StaffCheckIns")
   waiverSignatures        WaiverSignature[]        @relation("MemberWaiverSignatures")
+  nudgeEvents             NudgeEvent[]             @relation("UserNudgeEvents")
+  introOfferClaims        IntroOfferClaim[]        @relation("UserIntroOfferClaims")
 
   @@index([countryId])
   @@index([cityId])
@@ -1247,6 +1253,85 @@ model StudioSettings {
   coachIconSvg    String?  @db.Text
   landingUrl      String?
   updatedAt       DateTime @updatedAt
+}
+
+// ── Membership Conversion (Nudges) ──
+
+enum NudgeType {
+  booking_flow
+  intro_offer
+  savings_email
+  package_upgrade
+  post_class
+}
+
+model MembershipConversionConfig {
+  id        String @id @default(cuid())
+  tenantId  String @unique
+
+  showInBookingFlow      Boolean @default(true)
+  featuredMembershipId   String?
+  showSavingsBanner      String  @default("if_real") // "always" | "if_real" | "never"
+
+  introOfferEnabled      Boolean @default(true)
+  introOfferPrice        Float   @default(49)
+  introOfferMembershipId String?
+  introOfferTimerHours   Int     @default(72)
+
+  savingsEmailEnabled        Boolean @default(true)
+  savingsEmailTriggerClasses Int     @default(3)
+  savingsEmailDelayHours     Int     @default(24)
+
+  packageUpgradeEnabled  Boolean @default(true)
+  packageUpgradeTrigger  Int     @default(2)
+  packageUpgradeTiming   String  @default("post_booking") // "post_booking" | "pre_booking"
+  packageUpgradeCredit   Boolean @default(true)
+
+  maxNudgesPerMemberPerWeek Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model NudgeEvent {
+  id           String    @id @default(cuid())
+  tenantId     String
+  userId       String
+  type         NudgeType
+  shown        Boolean   @default(true)
+  interacted   Boolean   @default(false)
+  converted    Boolean   @default(false)
+  membershipId String?
+  revenue      Float?
+  metadata     Json?
+  shownAt      DateTime  @default(now())
+  interactedAt DateTime?
+  convertedAt  DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation("UserNudgeEvents", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, type, shownAt])
+  @@index([tenantId, userId, shownAt])
+}
+
+model IntroOfferClaim {
+  id          String    @id @default(cuid())
+  tenantId    String
+  userId      String
+  offeredAt   DateTime  @default(now())
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  rejectedAt  DateTime?
+  introPrice  Float
+  normalPrice Float
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation("UserIntroOfferClaims", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
 }
 
 // ── Marketing: Analytics Config & Link Tracking ──

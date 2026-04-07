@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { formatDate, formatTime } from "./utils";
+import { formatDate, formatTime, formatCurrency } from "./utils";
 import { getServerBranding } from "./branding.server";
 
 function getResend() {
@@ -490,5 +490,92 @@ export async function sendLevelUp({
     });
   } catch (error) {
     console.error("Failed to send level-up email:", error);
+  }
+}
+
+export async function sendSavingsNudgeEmail({
+  to,
+  memberName,
+  classesBought,
+  totalSpent,
+  membershipPrice,
+  savingsAmount,
+  currency,
+  membershipUrl,
+}: {
+  to: string;
+  memberName: string;
+  classesBought: number;
+  totalSpent: number;
+  membershipPrice: number;
+  savingsAmount: number;
+  currency: string;
+  membershipUrl: string;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = memberName.split(" ")[0];
+
+    const fmtTotal = formatCurrency(totalSpent, currency);
+    const fmtMembership = formatCurrency(membershipPrice, currency);
+    const fmtSavings = formatCurrency(savingsAmount, currency);
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#dcfce7;line-height:56px;font-size:28px;">&#128176;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ${firstName}, ¿sabías que podrías pagar menos?
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          Este mes llevas ${classesBought} clases. Los números no mienten.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:16px;">
+        <tr><td style="padding:20px 24px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:4px 0;"><strong>Clases este mes</strong></td>
+              <td style="padding:4px 0;text-align:right;font-weight:600;">${classesBought}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;"><strong>Has pagado</strong></td>
+              <td style="padding:4px 0;text-align:right;font-weight:600;">${fmtTotal}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;"><strong>Mensual costaría</strong></td>
+              <td style="padding:4px 0;text-align:right;font-weight:600;">${fmtMembership}</td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#dcfce7;border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:16px 24px;text-align:center;">
+          <p style="margin:0;font-size:18px;font-weight:700;color:#166534;">
+            Ahorrarías ${fmtSavings} al mes
+          </p>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${membershipUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Ver membresía mensual
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:11px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Si no quieres recibir estos correos, puedes ignorar este mensaje.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `${firstName}, ¿sabías que podrías pagar menos?`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send savings nudge email:", error);
   }
 }
