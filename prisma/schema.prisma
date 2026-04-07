@@ -90,6 +90,10 @@ model Tenant {
 
   waivers               Waiver[]
   waiverSignatures      WaiverSignature[]
+
+  analyticsConfig       TenantAnalyticsConfig?
+  linkClicks            LinkClick[]
+  linkConversions       LinkConversion[]
 }
 
 model InstagramIntegration {
@@ -1243,4 +1247,66 @@ model StudioSettings {
   coachIconSvg    String?  @db.Text
   landingUrl      String?
   updatedAt       DateTime @updatedAt
+}
+
+// ── Marketing: Analytics Config & Link Tracking ──
+
+model TenantAnalyticsConfig {
+  id                String   @id @default(cuid())
+  tenantId          String   @unique
+  ga4MeasurementId  String?
+  ga4ApiSecret      String?
+  metaPixelId       String?
+  gtmContainerId    String?
+
+  ga4EventPurchase        Boolean @default(true)
+  ga4EventBeginCheckout   Boolean @default(true)
+  ga4EventViewItem        Boolean @default(true)
+  ga4EventSignUp          Boolean @default(true)
+
+  metaEventPurchase            Boolean @default(true)
+  metaEventInitiateCheckout    Boolean @default(true)
+  metaEventCompleteRegistration Boolean @default(true)
+  metaEventViewContent         Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model LinkClick {
+  id          String   @id @default(cuid())
+  tenantId    String
+  entityType  String
+  entityId    String
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  referrer    String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, createdAt])
+}
+
+model LinkConversion {
+  id              String   @id @default(cuid())
+  tenantId        String
+  linkClickId     String?
+  entityType      String
+  entityId        String
+  conversionType  String
+  revenue         Float?
+  memberId        String?
+  createdAt       DateTime @default(now())
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
 }

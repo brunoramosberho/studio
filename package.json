@@ -45,6 +45,7 @@
     "next-auth": "^5.0.0-beta.30",
     "pdf-lib": "^1.17.1",
     "prisma": "^6.19.2",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.3",
     "react-big-calendar": "^1.19.4",
     "react-dom": "19.2.3",
