@@ -446,7 +446,7 @@ export default function ClassDetailPage() {
         {/* Back + credits + share */}
         <div className="mb-6 flex items-center justify-between">
           <button
-            onClick={() => router.back()}
+            onClick={() => window.history.length > 1 ? router.back() : router.push("/schedule")}
             className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
