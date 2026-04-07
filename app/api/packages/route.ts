@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PackageType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireTenant, getAuthContext, requireRole } from "@/lib/tenant";
+import { ensureStripePrice } from "@/lib/stripe/subscriptions";
 
 const PACKAGE_TYPES = ["OFFER", "PACK", "SUBSCRIPTION"] as const;
 
@@ -184,6 +185,14 @@ export async function POST(request: NextRequest) {
         classTypes: { select: { id: true, name: true } },
       },
     });
+
+    if (pkgType === PackageType.SUBSCRIPTION && ctx.tenant.stripeAccountId) {
+      try {
+        await ensureStripePrice(created.id, ctx.tenant.stripeAccountId);
+      } catch (e) {
+        console.error("Failed to create Stripe Price for subscription:", e);
+      }
+    }
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

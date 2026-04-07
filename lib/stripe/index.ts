@@ -9,3 +9,10 @@ export {
 export type { CreateMemberPaymentParams } from "./payments";
 export { STRIPE_PLANS } from "./products";
 export type { StripePlanKey } from "./products";
+export {
+  ensureStripePrice,
+  createMemberSubscription,
+  cancelMemberSubscription,
+  pauseSubscription,
+  resumeSubscription,
+} from "./subscriptions";

@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/shared/page-transition";
 import { PurchaseSheet } from "@/components/booking/purchase-sheet";
+import { SubscribeSheet } from "@/components/checkout/SubscribeSheet";
 import { formatCurrency, cn } from "@/lib/utils";
 
 interface ClassTypeRef {
@@ -325,15 +326,21 @@ export default function PackagesPage() {
         )}
       </div>
 
-      {/* Purchase Sheet */}
+      {/* Purchase / Subscribe Sheet */}
       <AnimatePresence>
-        {sheetOpen && selectedPkg && (
+        {sheetOpen && selectedPkg && selectedPkg.type === "SUBSCRIPTION" ? (
+          <SubscribeSheet
+            open={sheetOpen}
+            onClose={() => setSheetOpen(false)}
+            pkg={selectedPkg}
+          />
+        ) : sheetOpen && selectedPkg ? (
           <PurchaseSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}
             pkg={selectedPkg as any}
           />
-        )}
+        ) : null}
       </AnimatePresence>
     </PageTransition>
   );

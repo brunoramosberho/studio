@@ -23,7 +23,7 @@ export async function GET(
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [user, progress, achievements, allAchievements, packages, levels] =
+    const [user, progress, achievements, allAchievements, packages, levels, memberSubscriptions] =
       await Promise.all([
         prisma.user.findUniqueOrThrow({
           where: { id: userId },
@@ -63,6 +63,16 @@ export async function GET(
         }),
 
         prisma.loyaltyLevel.findMany({ orderBy: { minClasses: "asc" } }),
+
+        prisma.memberSubscription.findMany({
+          where: { userId, tenantId },
+          include: {
+            package: {
+              select: { id: true, name: true, price: true, currency: true, recurringInterval: true },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
       ]);
 
     const [upcomingBookings, pastBookings, totalBookings, classesThisMonth] =
@@ -229,6 +239,25 @@ export async function GET(
         coachName: b.class.coach.user.name,
         startsAt: b.class.startsAt.toISOString(),
         status: b.status,
+      })),
+
+      subscriptions: memberSubscriptions.map((s) => ({
+        id: s.id,
+        stripeSubscriptionId: s.stripeSubscriptionId,
+        status: s.status,
+        cancelAtPeriodEnd: s.cancelAtPeriodEnd,
+        currentPeriodStart: s.currentPeriodStart.toISOString(),
+        currentPeriodEnd: s.currentPeriodEnd.toISOString(),
+        pausedAt: s.pausedAt?.toISOString() ?? null,
+        resumesAt: s.resumesAt?.toISOString() ?? null,
+        canceledAt: s.canceledAt?.toISOString() ?? null,
+        package: {
+          id: s.package.id,
+          name: s.package.name,
+          price: s.package.price,
+          currency: s.package.currency,
+          recurringInterval: s.package.recurringInterval,
+        },
       })),
     });
   } catch (error) {

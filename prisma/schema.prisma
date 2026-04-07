@@ -108,6 +108,7 @@ model Tenant {
 
   stripePayments        StripePayment[]
   stripeCustomers       StripeCustomer[]
+  memberSubscriptions   MemberSubscription[]
 }
 
 model InstagramIntegration {
@@ -245,6 +246,7 @@ model User {
   nudgeEvents             NudgeEvent[]             @relation("UserNudgeEvents")
   introOfferClaims        IntroOfferClaim[]        @relation("UserIntroOfferClaims")
   stripeCustomerRecords   StripeCustomer[]         @relation("UserStripeCustomers")
+  memberSubscriptions     MemberSubscription[]
 
   @@index([countryId])
   @@index([cityId])
@@ -524,10 +526,38 @@ model Package {
   classTypes    ClassType[]   @relation("PackageClassTypes")
   recurringInterval String?
   sortOrder     Int           @default(0)
-  userPackages  UserPackage[]
+  userPackages        UserPackage[]
+  memberSubscriptions MemberSubscription[]
 
   @@index([countryId])
   @@index([tenantId])
+}
+
+model MemberSubscription {
+  id                   String    @id @default(cuid())
+  tenantId             String
+  userId               String
+  packageId            String
+  stripeSubscriptionId String    @unique
+  stripePriceId        String
+  status               String    // 'active' | 'past_due' | 'canceled' | 'paused' | 'trialing' | 'incomplete'
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean   @default(false)
+  pausedAt             DateTime?
+  resumesAt            DateTime?
+  canceledAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  package Package @relation(fields: [packageId], references: [id])
+
+  @@unique([tenantId, userId, packageId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
 }
 
 model UserPackage {

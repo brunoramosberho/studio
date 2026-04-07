@@ -11,6 +11,7 @@ import {
   Loader2,
   Package,
   CalendarDays,
+  CalendarSync,
   Trophy,
   Flame,
   TrendingUp,
@@ -26,13 +27,22 @@ import {
   Phone,
   Cake,
   Star,
+  Pause,
+  Play,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { cn, formatDate, timeAgo } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn, formatDate, formatCurrency, timeAgo } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -100,6 +110,24 @@ interface ClientDetail {
     startsAt: string;
     status: string;
   }[];
+  subscriptions: {
+    id: string;
+    stripeSubscriptionId: string;
+    status: string;
+    cancelAtPeriodEnd: boolean;
+    currentPeriodStart: string;
+    currentPeriodEnd: string;
+    pausedAt: string | null;
+    resumesAt: string | null;
+    canceledAt: string | null;
+    package: {
+      id: string;
+      name: string;
+      price: number;
+      currency: string;
+      recurringInterval: string | null;
+    };
+  }[];
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
@@ -107,6 +135,15 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Ch
   CONFIRMED: { label: "Confirmado", color: "text-blue-600 bg-blue-50", icon: CalendarDays },
   NO_SHOW: { label: "No asistió", color: "text-red-600 bg-red-50", icon: XCircle },
   CANCELLED: { label: "Cancelado", color: "text-gray-500 bg-gray-50", icon: AlertCircle },
+};
+
+const SUB_STATUS_BADGE: Record<string, { label: string; variant: "success" | "warning" | "secondary" | "destructive" }> = {
+  active: { label: "Activa", variant: "success" },
+  past_due: { label: "Pago pendiente", variant: "warning" },
+  paused: { label: "Pausada", variant: "secondary" },
+  canceled: { label: "Cancelada", variant: "destructive" },
+  trialing: { label: "Prueba", variant: "secondary" },
+  incomplete: { label: "Incompleta", variant: "warning" },
 };
 
 function StatCard({
@@ -181,6 +218,33 @@ export default function ClientDetailPage() {
     onError: () => toast.error("Error al actualizar asistencia"),
   });
 
+  const subActionMutation = useMutation({
+    mutationFn: async ({
+      subscriptionId,
+      action,
+      resumesAt,
+    }: {
+      subscriptionId: string;
+      action: "pause" | "resume" | "cancel";
+      resumesAt?: string;
+    }) => {
+      const res = await fetch("/api/admin/subscriptions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId, action, resumesAt }),
+      });
+      if (!res.ok) throw new Error("Failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-client", id] });
+      toast.success("Suscripción actualizada");
+      setPauseSubDialog(null);
+    },
+    onError: () => toast.error("Error al actualizar suscripción"),
+  });
+
+  const [pauseSubDialog, setPauseSubDialog] = useState<ClientDetail["subscriptions"][number] | null>(null);
+  const [pauseDays, setPauseDays] = useState("14");
   const [showExpiredPkgs, setShowExpiredPkgs] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
 
@@ -542,6 +606,96 @@ export default function ClientDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Subscriptions */}
+          {client.subscriptions.length > 0 && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <CalendarSync className="h-4 w-4 text-admin" />
+                  <span className="text-sm font-semibold">Suscripciones</span>
+                </div>
+                <div className="space-y-2.5">
+                  {client.subscriptions.map((sub) => {
+                    const badge = SUB_STATUS_BADGE[sub.status] ?? { label: sub.status, variant: "secondary" as const };
+                    const periodEnd = new Date(sub.currentPeriodEnd).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+
+                    return (
+                      <div
+                        key={sub.id}
+                        className={cn(
+                          "rounded-lg border p-3.5 transition-colors",
+                          sub.status === "canceled"
+                            ? "border-border/40 bg-surface/30 opacity-60"
+                            : "border-border/60 bg-white",
+                        )}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold">{sub.package.name}</p>
+                              <Badge variant={badge.variant} className="text-[10px]">{badge.label}</Badge>
+                              {sub.cancelAtPeriodEnd && sub.status !== "canceled" && (
+                                <Badge variant="warning" className="text-[10px]">Cancela {periodEnd}</Badge>
+                              )}
+                            </div>
+                            <p className="mt-0.5 text-xs text-muted">
+                              {formatCurrency(sub.package.price, sub.package.currency)}/{sub.package.recurringInterval === "year" ? "año" : "mes"}
+                              {" · "}Próx. cobro: {periodEnd}
+                            </p>
+                            {sub.status === "paused" && sub.resumesAt && (
+                              <p className="mt-0.5 text-[11px] text-amber-600">
+                                Reanuda {new Date(sub.resumesAt).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                              </p>
+                            )}
+                          </div>
+                          {sub.status !== "canceled" && (
+                            <div className="flex shrink-0 gap-1">
+                              {sub.status === "paused" ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  disabled={subActionMutation.isPending}
+                                  onClick={() => subActionMutation.mutate({ subscriptionId: sub.stripeSubscriptionId, action: "resume" })}
+                                  title="Reanudar"
+                                >
+                                  <Play className="h-3.5 w-3.5" />
+                                </Button>
+                              ) : (sub.status === "active" || sub.status === "past_due") ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  disabled={subActionMutation.isPending}
+                                  onClick={() => setPauseSubDialog(sub)}
+                                  title="Pausar"
+                                >
+                                  <Pause className="h-3.5 w-3.5" />
+                                </Button>
+                              ) : null}
+                              {!sub.cancelAtPeriodEnd && sub.status !== "canceled" && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  disabled={subActionMutation.isPending}
+                                  onClick={() => subActionMutation.mutate({ subscriptionId: sub.stripeSubscriptionId, action: "cancel" })}
+                                  title="Cancelar"
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Upcoming bookings */}
           <Card>
             <CardContent className="p-5">
@@ -712,6 +866,40 @@ export default function ClientDetailPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Pause subscription dialog */}
+      <Dialog open={!!pauseSubDialog} onOpenChange={(o) => !o && setPauseSubDialog(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Pausar suscripción</DialogTitle>
+          </DialogHeader>
+          {pauseSubDialog && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted">{pauseSubDialog.package.name}</p>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted">Días de pausa</label>
+                <Input type="number" min={1} max={90} value={pauseDays} onChange={(e) => setPauseDays(e.target.value)} />
+                <p className="mt-1 text-[11px] text-muted">Se reanudará automáticamente después</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setPauseSubDialog(null)}>Cancelar</Button>
+                <Button
+                  className="flex-1"
+                  disabled={subActionMutation.isPending}
+                  onClick={() => {
+                    const days = parseInt(pauseDays, 10) || 14;
+                    const resumesAt = new Date(Date.now() + days * 86400000).toISOString();
+                    subActionMutation.mutate({ subscriptionId: pauseSubDialog.stripeSubscriptionId, action: "pause", resumesAt });
+                  }}
+                >
+                  {subActionMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}
+                  Pausar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
