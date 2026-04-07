@@ -12,8 +12,6 @@ import {
   Ticket,
   Package,
   UserPen,
-  Music,
-  X,
   MapPin,
   Trophy,
   Camera,
@@ -22,14 +20,13 @@ import {
   CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LevelHexCard } from "@/components/profile/level-hex-card";
 import { ActivityCalendar } from "@/components/profile/activity-calendar";
 import { WearableConnections } from "@/components/profile/wearable-connections";
@@ -43,14 +40,6 @@ interface UserPackageInfo {
   creditsUsed: number;
   expiresAt: string;
   package: { name: string };
-}
-
-interface FavoriteSong {
-  id: string;
-  title: string;
-  artist: string;
-  spotifyTrackId?: string | null;
-  albumArt?: string | null;
 }
 
 interface LocationCountry {
@@ -92,10 +81,7 @@ export default function ProfilePage() {
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [showSongForm, setShowSongForm] = useState(false);
   const [showAllAchievements, setShowAllAchievements] = useState(false);
-  const [songPickerKey, setSongPickerKey] = useState(0);
-  const [songAddError, setSongAddError] = useState<string | null>(null);
 
   const [instagramUser, setInstagramUser] = useState("");
   const [stravaUser, setStravaUser] = useState("");
@@ -173,16 +159,6 @@ export default function ProfilePage() {
     [activeLocations],
   );
 
-  const { data: songs = [], isLoading: loadingSongs } = useQuery<FavoriteSong[]>({
-    queryKey: ["profile", "songs"],
-    queryFn: async () => {
-      const res = await fetch("/api/profile/songs");
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!session?.user,
-  });
-
   const { data: achievements = [] } = useQuery<{ id: string; achievementType: string }[]>({
     queryKey: ["achievements", "me"],
     queryFn: async () => {
@@ -219,59 +195,6 @@ export default function ProfilePage() {
     },
     enabled: !!session?.user,
   });
-
-  const addSongMutation = useMutation({
-    mutationFn: async (track: SpotifyTrack) => {
-      const res = await fetch("/api/profile/songs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: track.name,
-          artist: track.artist,
-          spotifyTrackId: track.trackId,
-          albumArt: track.albumArt,
-          previewUrl: track.previewUrl,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(typeof data.error === "string" ? data.error : "No se pudo añadir la canción");
-      }
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile", "songs"] });
-      setSongAddError(null);
-      setSongPickerKey((k) => k + 1);
-    },
-    onError: (err: Error) => {
-      setSongAddError(err.message);
-    },
-  });
-
-  const removeSongMutation = useMutation({
-    mutationFn: async (songId: string) => {
-      await fetch(`/api/profile/songs?id=${songId}`, { method: "DELETE" });
-    },
-    onMutate: async (songId) => {
-      await queryClient.cancelQueries({ queryKey: ["profile", "songs"] });
-      const prev = queryClient.getQueryData<FavoriteSong[]>(["profile", "songs"]);
-      queryClient.setQueryData<FavoriteSong[]>(["profile", "songs"], (old) =>
-        old?.filter((s) => s.id !== songId) ?? [],
-      );
-      return { prev };
-    },
-    onError: (_err, _id, context) => {
-      if (context?.prev) queryClient.setQueryData(["profile", "songs"], context.prev);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile", "songs"] });
-    },
-  });
-
-  function handleRemoveSong(songId: string) {
-    removeSongMutation.mutate(songId);
-  }
 
   function countryFlag(code: string) {
     return code
@@ -653,107 +576,6 @@ export default function ProfilePage() {
             </div>
           </motion.div>
         )}
-
-        {/* Favorite songs (collapsible) */}
-        <motion.div
-          custom={3}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-        >
-          <button
-            onClick={() => setShowSongForm(!showSongForm)}
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors active:bg-surface"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
-              <Music className="h-4 w-4 text-accent" />
-            </div>
-            <span className="flex-1 text-[15px] font-medium text-foreground">
-              Mis canciones favoritas
-            </span>
-            {!loadingSongs && songs.length > 0 && (
-              <span className="mr-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent/10 px-1.5 text-[11px] font-semibold text-accent">
-                {songs.length}
-              </span>
-            )}
-            <ChevronRight
-              className={cn(
-                "h-4 w-4 text-muted transition-transform",
-                showSongForm && "rotate-90",
-              )}
-            />
-          </button>
-
-          {showSongForm && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="px-4 pb-2 pt-1 space-y-3">
-                <p className="text-xs text-muted">
-                  Tus coaches verán estas canciones para personalizar la clase
-                </p>
-
-                {loadingSongs ? (
-                  <div className="flex justify-center py-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted" />
-                  </div>
-                ) : songs.length > 0 ? (
-                  <div className="space-y-1">
-                    {songs.map((song) => (
-                      <div
-                        key={song.id}
-                        className="flex items-center gap-2.5 rounded-lg bg-surface/60 px-3 py-2"
-                      >
-                        {song.albumArt ? (
-                          <img
-                            src={song.albumArt}
-                            alt={song.title}
-                            className="h-9 w-9 shrink-0 rounded-md object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/10">
-                            <Music className="h-4 w-4 text-muted" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-medium text-foreground">
-                            {song.title}
-                          </p>
-                          <p className="truncate text-[11px] text-muted">{song.artist}</p>
-                        </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleRemoveSong(song.id); }}
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                <Card>
-                  <CardContent className="p-3">
-                    {songAddError ? (
-                      <p className="mb-3 text-xs text-destructive">{songAddError}</p>
-                    ) : null}
-                    <SpotifyTrackPicker
-                      key={songPickerKey}
-                      searchPlaceholder="Busca en Spotify por canción o artista..."
-                      confirmLabel="Añadir a favoritos"
-                      isSubmitting={addSongMutation.isPending}
-                      onSearchInteraction={() => setSongAddError(null)}
-                      onConfirm={(track) => addSongMutation.mutateAsync(track)}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
 
         {/* Connected apps / Wearables */}
         <motion.div
