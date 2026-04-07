@@ -8,7 +8,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useTenant } from "@/components/tenant-provider";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 
@@ -24,7 +23,6 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { studioName, logoUrl, landingUrl } = useBranding();
   const homeHref = landingUrl || "/";
-  const { role } = useTenant();
 
   const isPortal =
     pathname.startsWith("/my") ||
@@ -93,7 +91,7 @@ export function Navbar() {
         {/* Right side */}
         <div className="flex items-center gap-3">
           {session?.user ? (
-            <Link href={role === "ADMIN" ? "/admin" : "/my"}>
+            <Link href="/my">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={session.user.image || undefined} />
                 <AvatarFallback className="bg-surface text-xs text-muted">
