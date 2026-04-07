@@ -48,6 +48,8 @@ import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { StudioLocationMap } from "@/components/shared/studio-location-map";
 import { BiometricsCard } from "@/components/booking/biometrics-card";
 import { FriendBiometrics } from "@/components/booking/friend-biometrics";
+import { MembershipNudge } from "@/components/booking/MembershipNudge";
+import type { NudgeDecision } from "@/lib/conversion/nudge-engine";
 
 interface ClassData {
   id: string;
@@ -153,6 +155,7 @@ export default function ClassDetailPage() {
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [playlistTracks, setPlaylistTracks] = useState<PlaylistTrack[]>([]);
   const [playlistLoading, setPlaylistLoading] = useState(false);
+  const [nudgeConverted, setNudgeConverted] = useState(false);
 
   const {
     data: cls,
@@ -237,6 +240,20 @@ export default function ClassDetailPage() {
     .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
 
   const hasCredits = validPackages.length > 0;
+
+  const { data: nudgeDecision } = useQuery<NudgeDecision>({
+    queryKey: ["nudge-decision", id],
+    queryFn: async () => {
+      const res = await fetch("/api/conversion/nudge?context=booking");
+      if (!res.ok) return { type: "none" as const };
+      return res.json();
+    },
+    enabled: isAuthenticated && !packagesLoading && !hasCredits && !nudgeConverted,
+    staleTime: 60_000,
+  });
+
+  const hasNudge = nudgeDecision && nudgeDecision.type !== "none";
+
   const creditsRemaining = validPackages.length === 0
     ? null
     : validPackages.some((p) => p.creditsTotal === null)
@@ -1023,6 +1040,15 @@ export default function ClassDetailPage() {
                       </Button>
                     </div>
                   )
+                ) : isAuthenticated && !hasCredits && hasNudge ? (
+                  <MembershipNudge
+                    decision={nudgeDecision!}
+                    onMembershipActivated={() => {
+                      setNudgeConverted(true);
+                      queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
+                    }}
+                    onSingleClass={() => setSheetOpen(true)}
+                  />
                 ) : (
                   <Button
                     size="lg"

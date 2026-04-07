@@ -13,13 +13,15 @@ import { PackageUpgradeCard } from "./PackageUpgradeCard";
 interface MembershipNudgeProps {
   decision: NudgeDecision;
   classPrice?: number;
-  onContinue: () => void;
+  onMembershipActivated: () => void;
+  onSingleClass: () => void;
 }
 
 export function MembershipNudge({
   decision,
   classPrice,
-  onContinue,
+  onMembershipActivated,
+  onSingleClass,
 }: MembershipNudgeProps) {
   if (decision.type === "none") return null;
 
@@ -30,10 +32,12 @@ export function MembershipNudge({
         classPrice={classPrice ?? 0}
         onSelect={(option) => {
           if (option === "single") {
-            onContinue();
+            onSingleClass();
+          } else {
+            onMembershipActivated();
           }
         }}
-        onContinue={onContinue}
+        onContinue={onSingleClass}
       />
     );
   }
@@ -42,15 +46,15 @@ export function MembershipNudge({
     return (
       <IntroOfferCard
         data={decision.data}
-        onAccept={() => {}}
-        onReject={onContinue}
+        onAccept={onMembershipActivated}
+        onReject={onSingleClass}
       />
     );
   }
 
   if (decision.type === "package_upgrade") {
     return (
-      <PackageUpgradeCard data={decision.data} onContinue={onContinue} />
+      <PackageUpgradeCard data={decision.data} onContinue={onMembershipActivated} />
     );
   }
 
