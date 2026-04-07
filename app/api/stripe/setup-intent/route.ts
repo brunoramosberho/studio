@@ -16,9 +16,10 @@ export async function POST() {
     if (message === "Studio has no connected Stripe account") {
       return NextResponse.json({ error: message }, { status: 400 });
     }
-    console.error("POST /api/stripe/setup-intent error:", error);
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error("POST /api/stripe/setup-intent error:", detail, error);
     return NextResponse.json(
-      { error: "Failed to create setup intent" },
+      { error: detail || "Failed to create setup intent" },
       { status: 500 },
     );
   }
