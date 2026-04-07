@@ -67,6 +67,7 @@ function ZoomPanContainer({
   const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 });
   const [showHint, setShowHint] = useState(true);
   const [needsZoom, setNeedsZoom] = useState(false);
+  const [isZoomedIn, setIsZoomedIn] = useState(false);
 
   const pointers = useRef(new Map<number, Point>());
   const pinchStartDist = useRef<number | null>(null);
@@ -74,6 +75,7 @@ function ZoomPanContainer({
   const panStart = useRef<Point | null>(null);
   const panStartTranslate = useRef<Point>({ x: 0, y: 0 });
   const interacted = useRef(false);
+  const initialFitScale = useRef(1);
 
   const fitScale = useCallback(() => {
     const el = wrapRef.current;
@@ -88,7 +90,9 @@ function ZoomPanContainer({
 
   useEffect(() => {
     const s = fitScale();
+    initialFitScale.current = s;
     setScale(s);
+    setIsZoomedIn(false);
     const el = wrapRef.current;
     if (!el) return;
     const cx = (el.clientWidth - contentWidth * s) / 2;
@@ -117,6 +121,12 @@ function ZoomPanContainer({
 
   const onPointerDown = useCallback((e: ReactPointerEvent) => {
     dismissHint();
+
+    const zoomed = scale > initialFitScale.current * 1.05;
+    if (!zoomed && pointers.current.size === 0) {
+      return;
+    }
+
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -143,6 +153,7 @@ function ZoomPanContainer({
         MAX_SCALE,
       );
       setScale(newScale);
+      setIsZoomedIn(newScale > initialFitScale.current * 1.05);
 
       const center = mid(a, b);
       const el = wrapRef.current;
@@ -191,6 +202,7 @@ function ZoomPanContainer({
     const cy = e.clientY - rect.top;
     const ratio = newScale / scale;
     setScale(newScale);
+    setIsZoomedIn(newScale > initialFitScale.current * 1.05);
     setTranslate({
       x: cx - (cx - translate.x) * ratio,
       y: cy - (cy - translate.y) * ratio,
@@ -206,7 +218,7 @@ function ZoomPanContainer({
     <div
       ref={wrapRef}
       className="relative w-full overflow-hidden rounded-xl bg-neutral-50/60"
-      style={{ height: containerH, touchAction: "none" }}
+      style={{ height: containerH, touchAction: isZoomedIn ? "none" : "pan-y" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
