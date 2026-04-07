@@ -142,6 +142,174 @@ const PLATFORM_COLOR: Record<string, string> = {
   gympass: "#E4572E",
 };
 
+// ─── Demo Data ──────────────────────────────────────────
+
+function buildDemoQuotas(weekStart: Date): PlatformQuota[] {
+  const days = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const classTypes = [
+    { name: "Cycling", color: "#F59E0B" },
+    { name: "Yoga Flow", color: "#8B5CF6" },
+    { name: "HIIT", color: "#EF4444" },
+    { name: "Pilates", color: "#EC4899" },
+    { name: "Barre", color: "#14B8A6" },
+    { name: "Boxing", color: "#1D4ED8" },
+  ];
+  const coaches = ["Ana García", "Carlos Ruiz", "Sofía Torres", "Diego Martínez"];
+  const rooms = [
+    { name: "Sala A", maxCapacity: 25 },
+    { name: "Sala B", maxCapacity: 18 },
+    { name: "Terraza", maxCapacity: 12 },
+  ];
+  const hours = ["07:00", "09:30", "12:00", "17:00", "19:00"];
+
+  const quotas: PlatformQuota[] = [];
+  let idx = 0;
+
+  for (let d = 0; d < 6; d++) {
+    const count = d < 5 ? 4 : 2;
+    for (let h = 0; h < count; h++) {
+      const ct = classTypes[(d + h) % classTypes.length];
+      const room = rooms[(d + h) % rooms.length];
+      const coach = coaches[(d + h) % coaches.length];
+      const hour = hours[h % hours.length];
+      const [hh, mm] = hour.split(":").map(Number);
+      const startsAt = new Date(weekStart);
+      startsAt.setDate(startsAt.getDate() + d);
+      startsAt.setHours(hh, mm, 0, 0);
+      const classId = `demo-class-${idx}`;
+
+      const cpSpots = [3, 4, 2, 5, 0, 3, 2, 4][(d + h) % 8];
+      const gpSpots = [2, 1, 3, 0, 2, 2, 1, 3][(d + h) % 8];
+      const cpBooked = Math.min(cpSpots, [1, 2, 0, 3, 0, 1, 2, 1][(d + h) % 8]);
+      const gpBooked = Math.min(gpSpots, [0, 1, 1, 0, 2, 0, 1, 0][(d + h) % 8]);
+
+      if (cpSpots > 0) {
+        quotas.push({
+          id: `demo-cp-${idx}`,
+          classId,
+          platform: "classpass",
+          quotaSpots: cpSpots,
+          bookedSpots: cpBooked,
+          isClosedManually: false,
+          class: {
+            id: classId,
+            startsAt: startsAt.toISOString(),
+            classType: ct,
+            room,
+            coach: { user: { name: coach } },
+          },
+        });
+      }
+      if (gpSpots > 0) {
+        quotas.push({
+          id: `demo-gp-${idx}`,
+          classId,
+          platform: "gympass",
+          quotaSpots: gpSpots,
+          bookedSpots: gpBooked,
+          isClosedManually: false,
+          class: {
+            id: classId,
+            startsAt: startsAt.toISOString(),
+            classType: ct,
+            room,
+            coach: { user: { name: coach } },
+          },
+        });
+      }
+      idx++;
+    }
+  }
+  return quotas;
+}
+
+const DEMO_CONFIGS: PlatformConfig[] = [
+  {
+    id: "demo-cp",
+    platform: "classpass",
+    inboundEmail: "classpass.demo@in.mgic.app",
+    portalUrl: "https://partners.classpass.com",
+    ratePerVisit: 6.5,
+    isActive: true,
+    lastExportedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    platformPartnerId: "CP-DEMO-001",
+  },
+  {
+    id: "demo-gp",
+    platform: "gympass",
+    inboundEmail: "gympass.demo@in.mgic.app",
+    portalUrl: "https://partners.wellhub.com",
+    ratePerVisit: 5.0,
+    isActive: true,
+    lastExportedAt: null,
+    platformPartnerId: null,
+  },
+];
+
+function buildDemoBookings(): PlatformBooking[] {
+  const now = new Date();
+  const names = ["María López", "Juan Hernández", "Lucía Fernández", "Pedro Sánchez", "Camila Rivera", "Andrés Morales", "Valentina Cruz", "Mateo Díaz"];
+  const statuses: PlatformBooking["status"][] = ["confirmed", "checked_in", "checked_in", "confirmed", "cancelled", "checked_in", "absent", "confirmed"];
+
+  return names.map((name, i) => {
+    const startsAt = new Date(now);
+    startsAt.setHours(7 + i * 1.5, 0, 0, 0);
+    return {
+      id: `demo-bk-${i}`,
+      platform: i % 3 === 0 ? "gympass" : "classpass",
+      platformBookingId: `${i % 3 === 0 ? "GP" : "CP"}-${10000 + i}`,
+      memberName: name,
+      status: statuses[i % statuses.length],
+      createdAt: new Date(now.getTime() - 3600000 * (i + 1)).toISOString(),
+      class: {
+        startsAt: startsAt.toISOString(),
+        classType: { name: ["Cycling", "Yoga Flow", "HIIT", "Pilates", "Barre", "Boxing", "Cycling", "HIIT"][i], color: ["#F59E0B", "#8B5CF6", "#EF4444", "#EC4899", "#14B8A6", "#1D4ED8", "#F59E0B", "#EF4444"][i] },
+        room: { name: ["Sala A", "Sala B", "Terraza"][i % 3] },
+        coach: { user: { name: ["Ana García", "Carlos Ruiz", "Sofía Torres", "Diego Martínez"][i % 4] } },
+      },
+    };
+  });
+}
+
+function buildDemoAlerts(): PlatformAlert[] {
+  return [
+    {
+      id: "demo-alert-1",
+      platform: "classpass",
+      type: "class_full",
+      message: "Cycling 19:00 está llena — considerar abrir más spots en ClassPass",
+      classId: "demo-class-4",
+      createdAt: new Date(Date.now() - 1800000).toISOString(),
+    },
+    {
+      id: "demo-alert-2",
+      platform: "gympass",
+      type: "unmatched_booking",
+      message: "Reserva GP-10003 no coincide con ninguna clase — verificar manualmente",
+      classId: null,
+      createdAt: new Date(Date.now() - 7200000).toISOString(),
+    },
+  ];
+}
+
+function DemoBanner() {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-2.5">
+      <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
+      <p className="text-xs font-medium text-amber-800">
+        <span className="font-semibold">Modo demo</span> — Estás viendo datos de ejemplo.
+        Configura ClassPass o Gympass para usar datos reales.
+      </p>
+      <Link href="/admin/platforms/setup/classpass" className="ml-auto shrink-0">
+        <Button variant="outline" size="sm" className="h-7 gap-1 border-amber-300 text-xs text-amber-700 hover:bg-amber-100">
+          <Plus className="h-3 w-3" />
+          Conectar
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
 const STATUS_BADGE: Record<string, { label: string; variant: "success" | "danger" | "warning" | "secondary" }> = {
   confirmed: { label: "Confirmada", variant: "warning" },
   cancelled: { label: "Cancelada", variant: "danger" },
@@ -167,6 +335,18 @@ function PlatformDot({ platform }: { platform: string }) {
 // ─── Page ───────────────────────────────────────────────
 
 export default function AdminPlatformsPage() {
+  const { data: configs, isLoading } = useQuery<PlatformConfig[]>({
+    queryKey: ["platform-configs"],
+    queryFn: async () => {
+      const res = await fetch("/api/platforms/config");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const hasActive = (configs ?? []).some((c) => c.isActive);
+  const isDemo = !isLoading && !hasActive;
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <motion.div
@@ -185,6 +365,8 @@ export default function AdminPlatformsPage() {
         <ConfigButtons />
       </motion.div>
 
+      {isDemo && <DemoBanner />}
+
       <Tabs defaultValue="resumen">
         <TabsList>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
@@ -194,11 +376,11 @@ export default function AdminPlatformsPage() {
           <TabsTrigger value="liquidacion">Liquidación</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="resumen"><ResumenTab /></TabsContent>
-        <TabsContent value="quotas"><QuotasTab /></TabsContent>
-        <TabsContent value="reservas"><ReservasTab /></TabsContent>
-        <TabsContent value="exportar"><ExportarTab /></TabsContent>
-        <TabsContent value="liquidacion"><LiquidacionTab /></TabsContent>
+        <TabsContent value="resumen"><ResumenTab demo={isDemo} /></TabsContent>
+        <TabsContent value="quotas"><QuotasTab demo={isDemo} /></TabsContent>
+        <TabsContent value="reservas"><ReservasTab demo={isDemo} /></TabsContent>
+        <TabsContent value="exportar"><ExportarTab demo={isDemo} /></TabsContent>
+        <TabsContent value="liquidacion"><LiquidacionTab demo={isDemo} /></TabsContent>
       </Tabs>
     </div>
   );
@@ -241,7 +423,7 @@ function ConfigButtons() {
 
 // ─── Tab: Resumen ───────────────────────────────────────
 
-function ResumenTab() {
+function ResumenTab({ demo }: { demo: boolean }) {
   const { data: configs, isLoading: loadingConfigs } = useQuery<PlatformConfig[]>({
     queryKey: ["platform-configs"],
     queryFn: async () => {
@@ -249,6 +431,7 @@ function ResumenTab() {
       if (!res.ok) return [];
       return res.json();
     },
+    enabled: !demo,
   });
 
   const { data: bookings } = useQuery<PlatformBooking[]>({
@@ -258,6 +441,7 @@ function ResumenTab() {
       if (!res.ok) return [];
       return res.json();
     },
+    enabled: !demo,
   });
 
   const { data: alerts } = useQuery<PlatformAlert[]>({
@@ -267,11 +451,15 @@ function ResumenTab() {
       if (!res.ok) return [];
       return res.json();
     },
+    enabled: !demo,
   });
 
-  const active = configs?.filter((c) => c.isActive) ?? [];
+  const effectiveConfigs = demo ? DEMO_CONFIGS : configs;
+  const effectiveBookings = demo ? buildDemoBookings() : bookings;
+  const effectiveAlerts = demo ? buildDemoAlerts() : alerts;
+  const active = effectiveConfigs?.filter((c) => c.isActive) ?? [];
 
-  if (loadingConfigs) {
+  if (!demo && loadingConfigs) {
     return (
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -313,12 +501,12 @@ function ResumenTab() {
     );
   }
 
-  const totalBookings = bookings?.length ?? 0;
-  const checkedIn = bookings?.filter((b) => b.status === "checked_in").length ?? 0;
-  const pendingCheckin = bookings?.filter(
+  const totalBookings = effectiveBookings?.length ?? 0;
+  const checkedIn = effectiveBookings?.filter((b) => b.status === "checked_in").length ?? 0;
+  const pendingCheckin = effectiveBookings?.filter(
     (b) => b.status === "confirmed" && new Date(b.class.startsAt) <= new Date(),
   ).length ?? 0;
-  const activeAlerts = alerts?.length ?? 0;
+  const activeAlerts = effectiveAlerts?.length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -350,25 +538,25 @@ function ResumenTab() {
       </div>
 
       {/* Active alerts */}
-      {alerts && alerts.length > 0 && (
+      {effectiveAlerts && effectiveAlerts.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-foreground">Alertas</h3>
-          <AlertList alerts={alerts} />
+          <AlertList alerts={effectiveAlerts} demo={demo} />
         </div>
       )}
 
       {/* Pending check-ins for today */}
-      {pendingCheckin > 0 && bookings && (
+      {pendingCheckin > 0 && effectiveBookings && (
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-foreground">
             Pendientes de check-in
           </h3>
           <div className="space-y-1.5">
-            {bookings
+            {effectiveBookings
               .filter((b) => b.status === "confirmed" && new Date(b.class.startsAt) <= new Date())
               .slice(0, 10)
               .map((b) => (
-                <PendingCheckinRow key={b.id} booking={b} />
+                <PendingCheckinRow key={b.id} booking={b} demo={demo} />
               ))}
           </div>
         </div>
@@ -377,7 +565,7 @@ function ResumenTab() {
   );
 }
 
-function AlertList({ alerts }: { alerts: PlatformAlert[] }) {
+function AlertList({ alerts, demo }: { alerts: PlatformAlert[]; demo?: boolean }) {
   const queryClient = useQueryClient();
 
   const resolveMutation = useMutation({
@@ -424,7 +612,7 @@ function AlertList({ alerts }: { alerts: PlatformAlert[] }) {
                 variant="ghost"
                 size="sm"
                 className="shrink-0 gap-1 text-xs"
-                onClick={() => resolveMutation.mutate(alert.id)}
+                onClick={() => demo ? toast.info("Modo demo — conecta una plataforma para gestionar alertas") : resolveMutation.mutate(alert.id)}
                 disabled={resolveMutation.isPending}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -438,7 +626,7 @@ function AlertList({ alerts }: { alerts: PlatformAlert[] }) {
   );
 }
 
-function PendingCheckinRow({ booking }: { booking: PlatformBooking }) {
+function PendingCheckinRow({ booking, demo }: { booking: PlatformBooking; demo?: boolean }) {
   const queryClient = useQueryClient();
 
   const checkinMutation = useMutation({
@@ -473,7 +661,7 @@ function PendingCheckinRow({ booking }: { booking: PlatformBooking }) {
         <Button
           size="sm"
           className="gap-1.5 bg-admin hover:bg-admin/90"
-          onClick={() => checkinMutation.mutate()}
+          onClick={() => demo ? toast.info("Modo demo — conecta una plataforma para hacer check-in") : checkinMutation.mutate()}
           disabled={checkinMutation.isPending}
         >
           {checkinMutation.isPending ? (
@@ -490,10 +678,11 @@ function PendingCheckinRow({ booking }: { booking: PlatformBooking }) {
 
 // ─── Tab: Quotas ────────────────────────────────────────
 
-function QuotasTab() {
+function QuotasTab({ demo }: { demo: boolean }) {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [editingQuota, setEditingQuota] = useState<{ classId: string; className: string; maxCapacity: number } | null>(null);
   const [quotaValues, setQuotaValues] = useState<{ classpass: string; gympass: string }>({ classpass: "0", gympass: "0" });
+  const [demoOverrides, setDemoOverrides] = useState<Record<string, { cp: number; gp: number }>>({});
   const queryClient = useQueryClient();
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -506,7 +695,21 @@ function QuotasTab() {
       if (!res.ok) return [];
       return res.json();
     },
+    enabled: !demo,
   });
+
+  const demoQuotas = useMemo(() => {
+    if (!demo) return [];
+    const base = buildDemoQuotas(weekStart);
+    return base.map((q) => {
+      const override = demoOverrides[q.classId];
+      if (!override) return q;
+      if (q.platform === "classpass") return { ...q, quotaSpots: override.cp };
+      return { ...q, quotaSpots: override.gp };
+    });
+  }, [demo, weekStart, demoOverrides]);
+
+  const effectiveQuotas = demo ? demoQuotas : quotas;
 
   const saveMutation = useMutation({
     mutationFn: async ({ classId, platform, quotaSpots }: { classId: string; platform: string; quotaSpots: number }) => {
@@ -526,7 +729,7 @@ function QuotasTab() {
 
   const suggestMutation = useMutation({
     mutationFn: async (classId: string) => {
-      const q = quotas?.find((q) => q.classId === classId);
+      const q = effectiveQuotas?.find((q) => q.classId === classId);
       if (!q) return;
       const capacity = q.class.room.maxCapacity;
       const directBooked = 0;
@@ -547,8 +750,8 @@ function QuotasTab() {
   });
 
   function openEditor(classId: string, className: string, maxCapacity: number) {
-    const cpQuota = quotas?.find((q) => q.classId === classId && q.platform === "classpass");
-    const gpQuota = quotas?.find((q) => q.classId === classId && q.platform === "gympass");
+    const cpQuota = effectiveQuotas?.find((q) => q.classId === classId && q.platform === "classpass");
+    const gpQuota = effectiveQuotas?.find((q) => q.classId === classId && q.platform === "gympass");
     setQuotaValues({
       classpass: String(cpQuota?.quotaSpots ?? 0),
       gympass: String(gpQuota?.quotaSpots ?? 0),
@@ -561,6 +764,13 @@ function QuotasTab() {
     const cp = parseInt(quotaValues.classpass) || 0;
     const gp = parseInt(quotaValues.gympass) || 0;
 
+    if (demo) {
+      setDemoOverrides((prev) => ({ ...prev, [editingQuota.classId]: { cp, gp } }));
+      toast.success("Quota actualizado (demo)");
+      setEditingQuota(null);
+      return;
+    }
+
     await Promise.all([
       saveMutation.mutateAsync({ classId: editingQuota.classId, platform: "classpass", quotaSpots: cp }),
       saveMutation.mutateAsync({ classId: editingQuota.classId, platform: "gympass", quotaSpots: gp }),
@@ -570,7 +780,7 @@ function QuotasTab() {
 
   const classMap = useMemo(() => {
     const map = new Map<string, { classData: PlatformQuota["class"]; cp: PlatformQuota | null; gp: PlatformQuota | null }>();
-    for (const q of quotas ?? []) {
+    for (const q of effectiveQuotas ?? []) {
       if (!map.has(q.classId)) {
         map.set(q.classId, { classData: q.class, cp: null, gp: null });
       }
@@ -581,7 +791,7 @@ function QuotasTab() {
     return [...map.entries()].sort(
       (a, b) => new Date(a[1].classData.startsAt).getTime() - new Date(b[1].classData.startsAt).getTime(),
     );
-  }, [quotas]);
+  }, [effectiveQuotas]);
 
   return (
     <div className="space-y-4">
@@ -596,7 +806,7 @@ function QuotasTab() {
         </Button>
       </div>
 
-      {isLoading ? (
+      {!demo && isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)}
         </div>
@@ -765,7 +975,7 @@ function QuotasTab() {
 
 // ─── Tab: Reservas ──────────────────────────────────────
 
-function ReservasTab() {
+function ReservasTab({ demo }: { demo: boolean }) {
   const [platformFilter, setPlatformFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -779,10 +989,13 @@ function ReservasTab() {
       if (!res.ok) return [];
       return res.json();
     },
+    enabled: !demo,
   });
 
+  const effectiveBookings = demo ? buildDemoBookings() : bookings;
+
   const filtered = useMemo(() => {
-    return (bookings ?? []).filter((b) => {
+    return (effectiveBookings ?? []).filter((b) => {
       if (platformFilter !== "all" && b.platform !== platformFilter) return false;
       if (statusFilter !== "all" && b.status !== statusFilter) return false;
       if (search) {
@@ -795,7 +1008,7 @@ function ReservasTab() {
       }
       return true;
     });
-  }, [bookings, platformFilter, statusFilter, search]);
+  }, [effectiveBookings, platformFilter, statusFilter, search]);
 
   const checkinMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -855,7 +1068,7 @@ function ReservasTab() {
         </Button>
       </div>
 
-      {isLoading ? (
+      {!demo && isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)}
         </div>
@@ -909,7 +1122,7 @@ function ReservasTab() {
                         <Button
                           size="sm"
                           className="gap-1 bg-admin hover:bg-admin/90"
-                          onClick={() => checkinMutation.mutate(b.id)}
+                          onClick={() => demo ? toast.info("Modo demo — conecta una plataforma para hacer check-in") : checkinMutation.mutate(b.id)}
                           disabled={checkinMutation.isPending}
                         >
                           <ClipboardCheck className="h-3.5 w-3.5" />
@@ -1043,7 +1256,7 @@ function ManualBookingDialog({
 
 // ─── Tab: Exportar ──────────────────────────────────────
 
-function ExportarTab() {
+function ExportarTab({ demo }: { demo: boolean }) {
   const { data: configs } = useQuery<PlatformConfig[]>({
     queryKey: ["platform-configs"],
     queryFn: async () => {
@@ -1051,14 +1264,20 @@ function ExportarTab() {
       if (!res.ok) return [];
       return res.json();
     },
+    enabled: !demo,
   });
 
   const [weekDate, setWeekDate] = useState(new Date());
   const ws = format(startOfWeek(weekDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
 
-  const active = configs?.filter((c) => c.isActive) ?? [];
+  const effectiveConfigs = demo ? DEMO_CONFIGS : configs;
+  const active = effectiveConfigs?.filter((c) => c.isActive) ?? [];
 
   async function handleDownload(platform: string) {
+    if (demo) {
+      toast.info("Modo demo — conecta una plataforma para exportar horarios reales");
+      return;
+    }
     const url = `/api/platforms/export?platform=${platform}&weekStart=${ws}`;
     const res = await fetch(url);
     if (!res.ok) {
@@ -1167,7 +1386,47 @@ function ExportCard({ config, onDownload }: { config: PlatformConfig; onDownload
 
 // ─── Tab: Liquidación ───────────────────────────────────
 
-function LiquidacionTab() {
+function buildDemoLiquidation(month: string): LiquidationData {
+  const classNames = ["Cycling", "Yoga Flow", "HIIT", "Pilates", "Barre", "Boxing"];
+  const cpCheckedIn = Array.from({ length: 12 }, (_, i) => ({
+    className: classNames[i % classNames.length],
+    date: `${month}-${String(Math.min(28, 3 + i * 2)).padStart(2, "0")}`,
+    bookingId: `CP-${20000 + i}`,
+  }));
+  const gpCheckedIn = Array.from({ length: 7 }, (_, i) => ({
+    className: classNames[(i + 2) % classNames.length],
+    date: `${month}-${String(Math.min(28, 5 + i * 3)).padStart(2, "0")}`,
+    bookingId: `GP-${30000 + i}`,
+  }));
+
+  return {
+    month,
+    platforms: [
+      {
+        platform: "classpass",
+        checkedIn: cpCheckedIn,
+        absent: [
+          { className: "Cycling", date: `${month}-10`, bookingId: "CP-20099" },
+          { className: "HIIT", date: `${month}-18`, bookingId: "CP-20100" },
+        ],
+        rate: 6.5,
+        totalEstimated: cpCheckedIn.length * 6.5,
+      },
+      {
+        platform: "gympass",
+        checkedIn: gpCheckedIn,
+        absent: [
+          { className: "Barre", date: `${month}-14`, bookingId: "GP-30099" },
+        ],
+        rate: 5.0,
+        totalEstimated: gpCheckedIn.length * 5.0,
+      },
+    ],
+    grandTotal: cpCheckedIn.length * 6.5 + gpCheckedIn.length * 5.0,
+  };
+}
+
+function LiquidacionTab({ demo }: { demo: boolean }) {
   const [monthDate, setMonthDate] = useState(new Date());
   const month = format(startOfMonth(monthDate), "yyyy-MM");
 
@@ -1178,7 +1437,10 @@ function LiquidacionTab() {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
+    enabled: !demo,
   });
+
+  const effectiveData = demo ? buildDemoLiquidation(month) : data;
 
   return (
     <div className="space-y-4">
@@ -1195,9 +1457,9 @@ function LiquidacionTab() {
         </Button>
       </div>
 
-      {isLoading ? (
+      {!demo && isLoading ? (
         <Skeleton className="h-64 rounded-2xl" />
-      ) : !data || data.platforms.length === 0 ? (
+      ) : !effectiveData || effectiveData.platforms.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <p className="text-sm text-muted">No hay datos de liquidación para este mes</p>
@@ -1205,7 +1467,7 @@ function LiquidacionTab() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {data.platforms.map((p) => (
+          {effectiveData.platforms.map((p) => (
             <Card key={p.platform}>
               <div className="h-0.5" style={{ backgroundColor: PLATFORM_COLOR[p.platform], opacity: 0.3 }} />
               <CardContent className="p-0">
@@ -1262,7 +1524,7 @@ function LiquidacionTab() {
           <Card className="bg-surface/50">
             <CardContent className="flex items-center justify-between p-4">
               <p className="text-sm font-semibold">Total estimado</p>
-              <p className="font-mono text-xl font-bold">€{data.grandTotal.toFixed(2)}</p>
+              <p className="font-mono text-xl font-bold">€{effectiveData.grandTotal.toFixed(2)}</p>
             </CardContent>
           </Card>
 
