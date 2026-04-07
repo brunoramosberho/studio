@@ -16,6 +16,7 @@ import {
   UserCheck,
   ArrowRight,
   Mail,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -311,6 +312,16 @@ export function BookingSheet({
 
   const canGoBack =
     (step === "package" && !isLoggedIn);
+  const canClose = step !== "booking";
+
+  const recommendedPkgId = (() => {
+    const sub = packages.find((p) => (p as any).type === "SUBSCRIPTION");
+    if (sub) return sub.id;
+    const bestValue = [...packages]
+      .filter((p) => p.credits && p.credits > 1 && !p.isPromo)
+      .sort((a, b) => (a.price / (a.credits ?? 1)) - (b.price / (b.credits ?? 1)))[0];
+    return bestValue?.id ?? null;
+  })();
 
   if (!open) return null;
 
@@ -334,21 +345,27 @@ export function BookingSheet({
         {/* Header */}
         <div className="px-6 pb-2 pt-4">
           <div className="flex items-center justify-between">
-            {canGoBack && (
+            {canGoBack ? (
               <button
                 onClick={() => setStep("info")}
-                className="flex items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
+                className="flex w-8 items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Atrás
               </button>
+            ) : canClose ? (
+              <button
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : (
+              <div className="w-8" />
             )}
-            <div className={cn(!canGoBack && "flex-1")}>
-              <p className="text-center text-xs text-muted">
-                {className} · {formatTime(classTime)}{spotNumber ? ` · Lugar #${spotNumber}` : ""}
-              </p>
-            </div>
-            {!canGoBack && <div className="w-12" />}
+            <p className="flex-1 text-center text-xs text-muted">
+              {className} · {formatTime(classTime)}{spotNumber ? ` · Lugar #${spotNumber}` : ""}
+            </p>
+            <div className="w-8" />
           </div>
         </div>
 
@@ -538,7 +555,7 @@ export function BookingSheet({
 
                 <div className="space-y-2.5">
                   {packages.map((pkg) => {
-                    const isSingle = pkg.credits === 1 && !pkg.isPromo;
+                    const isRecommended = !pkg.isPromo && pkg.id === recommendedPkgId;
                     return (
                       <button
                         key={pkg.id}
@@ -546,12 +563,12 @@ export function BookingSheet({
                         disabled={loading}
                         className={cn(
                           "group relative w-full rounded-2xl border p-4 text-left transition-all",
-                          isSingle
+                          isRecommended
                             ? "border-accent bg-accent/5 hover:border-accent hover:shadow-md"
                             : "border-border hover:border-foreground/20 hover:shadow-md",
                         )}
                       >
-                        {isSingle && (
+                        {isRecommended && (
                           <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
                             <Sparkles className="h-3 w-3" />
                             Recomendado
