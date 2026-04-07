@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const invoice = subscription.latest_invoice as Stripe.Invoice | null;
+    const invoice = subscription.latest_invoice as unknown as Record<string, unknown> | null;
     const pi = invoice?.payment_intent as Stripe.PaymentIntent | null;
 
     if (pi?.client_secret) {
