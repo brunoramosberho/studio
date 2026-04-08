@@ -1,15 +1,12 @@
 import { ImageResponse } from "next/og";
 import { getServerBranding } from "@/lib/branding.server";
-import { getTenantSlug } from "@/lib/tenant";
 
-export const alt = "Instala la app";
+export const alt = "Instala la App";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function Image() {
   const brand = await getServerBranding();
-  const slug = await getTenantSlug();
-  const domain = slug ? `${slug}.mgic.app` : "mgic.app";
 
   const iconUrl = brand.appIconUrl;
   const initials = brand.studioName
@@ -37,11 +34,10 @@ export default async function Image() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "56px",
+            gap: "48px",
             width: "100%",
           }}
         >
-          {/* App icon */}
           {iconUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -68,64 +64,38 @@ export default async function Image() {
                 flexShrink: 0,
               }}
             >
-              <span
-                style={{
-                  color: "#FFFFFF",
-                  fontSize: 80,
-                  fontWeight: 700,
-                }}
-              >
+              <span style={{ color: "#FFFFFF", fontSize: 80, fontWeight: 700 }}>
                 {initials}
               </span>
             </div>
           )}
 
-          {/* Text */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "12px",
+              gap: "16px",
               flex: 1,
             }}
           >
             <span
               style={{
-                fontSize: 56,
+                fontSize: 64,
                 fontWeight: 700,
                 color: "#1C1917",
-                lineHeight: 1.15,
+                lineHeight: 1.1,
               }}
             >
               {brand.studioName}
             </span>
             <span
               style={{
-                fontSize: 32,
-                fontWeight: 600,
-                color: brand.colorAccent,
-                lineHeight: 1.3,
-              }}
-            >
-              Instala la app
-            </span>
-            <span
-              style={{
-                fontSize: 26,
+                fontSize: 28,
                 color: "#78716C",
                 lineHeight: 1.4,
               }}
             >
-              Reserva clases y gestiona tu cuenta
-            </span>
-            <span
-              style={{
-                fontSize: 22,
-                color: "#D6D3D1",
-                marginTop: "8px",
-              }}
-            >
-              {domain}
+              {brand.slogan}
             </span>
           </div>
         </div>

@@ -28,8 +28,8 @@ export function AppHeader({ brand }: { brand: StudioBranding }) {
       <div className="text-[22px] font-semibold text-[#1C1917]">
         {brand.studioName}
       </div>
-      {brand.tagline && (
-        <div className="mt-1 text-[13px] text-[#888]">{brand.tagline}</div>
+      {brand.slogan && (
+        <div className="mt-1 text-[13px] text-[#888]">{brand.slogan}</div>
       )}
     </div>
   );

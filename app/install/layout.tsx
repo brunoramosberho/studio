@@ -3,8 +3,8 @@ import { getServerBranding } from "@/lib/branding.server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const b = await getServerBranding();
-  const title = `${b.studioName} — Descarga la app`;
-  const description = "Reserva clases y gestiona tu cuenta";
+  const title = `Instala la App — ${b.studioName}`;
+  const description = b.slogan;
 
   return {
     title,
