@@ -21,7 +21,7 @@ export async function GET(
         room: { include: { studio: true } },
         coach: {
           select: {
-            id: true, userId: true, bio: true, specialties: true, photoUrl: true, color: true, tenantId: true,
+            id: true, userId: true, name: true, bio: true, specialties: true, photoUrl: true, color: true, tenantId: true,
             user: { select: { name: true, image: true } },
           },
         },
