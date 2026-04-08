@@ -39,6 +39,9 @@ yarn-error.log*
 # local uploads (dev fallback when Supabase Storage is not configured)
 /public/uploads
 
+# generated PWA splash screens & icons per tenant
+/public/pwa
+
 # backups
 /backups
 

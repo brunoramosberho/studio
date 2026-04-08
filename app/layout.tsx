@@ -40,6 +40,8 @@ const fontVars = [
 import { headers } from "next/headers";
 import { getServerBranding } from "@/lib/branding.server";
 import { DEFAULTS, getFontPairing } from "@/lib/branding";
+import { getTenantSlug } from "@/lib/tenant";
+import { buildAppleSplashStartupImages } from "@/lib/pwa/splash-meta";
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getServerBranding();
@@ -50,6 +52,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = host.includes("localhost") ? "http" : "https";
   const baseUrl = `${protocol}://${host}`;
 
+  const slug = await getTenantSlug();
+  const startupImage = slug ? buildAppleSplashStartupImages(slug) : [];
+
   return {
     metadataBase: new URL(baseUrl),
     title: { default: `${fullName} — ${s.tagline}`, template: `%s | ${fullName}` },
@@ -59,10 +64,20 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: "/api/icon?size=192",
       apple: [
-        { url: "/apple-icon", sizes: "180x180", type: "image/png" },
+        { url: slug ? `/pwa/${slug}/apple-icon-180.png` : "/apple-icon", sizes: "180x180", type: "image/png" },
       ],
     },
-    appleWebApp: { capable: true, statusBarStyle: "default", title: fullName },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: fullName,
+      startupImage,
+    },
+    // Override apple-mobile-web-app-capable: Next.js 15+ incorrectly
+    // renders "mobile-web-app-capable" which iOS Safari ignores.
+    other: {
+      "apple-mobile-web-app-capable": "yes",
+    },
     openGraph: {
       title: `${fullName} — ${s.tagline}`,
       description: s.slogan,
