@@ -44,6 +44,17 @@ export async function POST(
       },
     });
 
+    // Sync: also mark booking as ATTENDED
+    prisma.booking.updateMany({
+      where: {
+        classId,
+        userId: memberId,
+        tenantId: ctx.tenant.id,
+        status: "CONFIRMED",
+      },
+      data: { status: "ATTENDED" },
+    }).catch((err) => console.error("Check-in booking sync failed:", err));
+
     return NextResponse.json(checkIn, { status: 201 });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
@@ -82,6 +93,17 @@ export async function DELETE(
     if (deleted.count === 0) {
       return NextResponse.json({ error: "Check-in not found" }, { status: 404 });
     }
+
+    // Sync: revert booking back to CONFIRMED
+    prisma.booking.updateMany({
+      where: {
+        classId,
+        userId: memberId,
+        tenantId: ctx.tenant.id,
+        status: "ATTENDED",
+      },
+      data: { status: "CONFIRMED" },
+    }).catch((err) => console.error("Undo check-in booking sync failed:", err));
 
     return NextResponse.json({ success: true });
   } catch (error) {

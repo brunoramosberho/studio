@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         classId,
         userId: memberId,
         tenantId: ctx.tenant.id,
-        status: "CONFIRMED",
+        status: "ATTENDED",
       },
     });
 

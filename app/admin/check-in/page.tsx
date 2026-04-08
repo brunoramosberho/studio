@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MapPin } from "lucide-react";
 import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
@@ -48,6 +48,7 @@ export default function CheckInPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [filterStudioId, setFilterStudioId] = useState<string>("all");
+  const [showMobileRoster, setShowMobileRoster] = useState(false);
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const isPastDate = !isToday(selectedDate) && selectedDate < new Date();
@@ -106,6 +107,15 @@ export default function CheckInPage() {
     setShowFinished(true);
   }, [classes]);
 
+  useEffect(() => {
+    setShowMobileRoster(false);
+  }, [dateStr]);
+
+  const handleSelectClass = useCallback((classId: string) => {
+    setSelectedClassId(classId);
+    setShowMobileRoster(true);
+  }, []);
+
   const selectedClass = useMemo(
     () => classes.find((c) => c.id === selectedClassId) ?? null,
     [classes, selectedClassId],
@@ -119,18 +129,21 @@ export default function CheckInPage() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Page header */}
-      <div>
+    <div className="space-y-3 md:space-y-4">
+      {/* Page header — hidden on mobile when viewing roster */}
+      <div className={cn(showMobileRoster && "hidden md:block")}>
         <h1 className="text-xl font-semibold text-stone-900">Check-in</h1>
         <p className="text-xs text-stone-400 mt-0.5">
           Gestiona la asistencia de las clases
         </p>
       </div>
 
-      {/* Date nav + studio filter */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      {/* Date nav + studio filter — hidden on mobile when viewing roster */}
+      <div className={cn(
+        "flex items-center justify-between gap-2 flex-wrap",
+        showMobileRoster && "hidden md:flex",
+      )}>
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             onClick={() => setSelectedDate((d) => subDays(d, 1))}
             className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-500"
@@ -148,7 +161,7 @@ export default function CheckInPage() {
           >
             Hoy
           </button>
-          <span className="text-sm font-medium text-stone-700">
+          <span className="text-xs sm:text-sm font-medium text-stone-700 truncate max-w-[160px] sm:max-w-none">
             {formatHeaderDate(selectedDate)}
           </span>
           <button
@@ -176,10 +189,13 @@ export default function CheckInPage() {
         )}
       </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-[260px_1fr] gap-3" style={{ height: "calc(100vh - 200px)" }}>
-        {/* Left: class list */}
-        <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col">
+      {/* Main layout: stacked on mobile (drill-down), side-by-side on desktop */}
+      <div className="flex flex-col md:grid md:grid-cols-[260px_1fr] gap-3 h-[calc(100dvh-160px)] md:h-[calc(100vh-200px)]">
+        {/* Left: class list — hidden on mobile when viewing roster */}
+        <div className={cn(
+          "bg-white border border-stone-200 rounded-2xl overflow-hidden flex-col h-full",
+          showMobileRoster ? "hidden md:flex" : "flex",
+        )}>
           <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-stone-100">
             <span className="text-xs font-medium text-stone-900">
               {isPastDate ? "Clases del día" : "Clases de hoy"}
@@ -199,7 +215,6 @@ export default function CheckInPage() {
               </div>
             ) : (
               <>
-                {/* Finished classes — collapsible, on top (chronological order) */}
                 {finishedClasses.length > 0 && (
                   <>
                     <button
@@ -229,20 +244,19 @@ export default function CheckInPage() {
                           item={c}
                           isSelected={c.id === selectedClassId}
                           occupancy={occupancyPill(c)}
-                          onSelect={() => setSelectedClassId(c.id)}
+                          onSelect={() => handleSelectClass(c.id)}
                         />
                       ))}
                   </>
                 )}
 
-                {/* Active / upcoming classes */}
                 {activeClasses.map((c) => (
                   <ClassListItem
                     key={c.id}
                     item={c}
                     isSelected={c.id === selectedClassId}
                     occupancy={occupancyPill(c)}
-                    onSelect={() => setSelectedClassId(c.id)}
+                    onSelect={() => handleSelectClass(c.id)}
                   />
                 ))}
               </>
@@ -250,22 +264,38 @@ export default function CheckInPage() {
           </div>
         </div>
 
-        {/* Right: roster */}
-        <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden relative">
+        {/* Right: roster — hidden on mobile when viewing class list */}
+        <div className={cn(
+          "bg-white border border-stone-200 rounded-2xl overflow-hidden relative flex-col h-full",
+          showMobileRoster ? "flex" : "hidden md:flex",
+        )}>
+          {/* Mobile back button */}
+          <button
+            onClick={() => setShowMobileRoster(false)}
+            className="md:hidden flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium text-stone-500 border-b border-stone-100 active:bg-stone-50 shrink-0"
+          >
+            <ChevronLeft size={14} />
+            {selectedClass
+              ? `${format(new Date(selectedClass.startTime), "HH:mm")} · ${selectedClass.className}`
+              : "Volver a clases"}
+          </button>
+
           {selectedClass ? (
-            <ClassRoster
-              classId={selectedClass.id}
-              classInfo={{
-                className: selectedClass.className,
-                startTime: selectedClass.startTime,
-                endTime: selectedClass.endTime,
-                coachName: selectedClass.coachName,
-                room: selectedClass.room,
-                capacity: selectedClass.capacity,
-                enrolledCount: selectedClass.enrolledCount,
-                isFinished: selectedClass.isFinished || isPastDate,
-              }}
-            />
+            <div className="flex-1 min-h-0">
+              <ClassRoster
+                classId={selectedClass.id}
+                classInfo={{
+                  className: selectedClass.className,
+                  startTime: selectedClass.startTime,
+                  endTime: selectedClass.endTime,
+                  coachName: selectedClass.coachName,
+                  room: selectedClass.room,
+                  capacity: selectedClass.capacity,
+                  enrolledCount: selectedClass.enrolledCount,
+                  isFinished: selectedClass.isFinished || isPastDate,
+                }}
+              />
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full text-xs text-stone-400">
               {isLoading ? (

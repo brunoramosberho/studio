@@ -165,6 +165,27 @@ export async function PUT(
           if (grants.length > 0) return createGroupedAchievementEvents(grants, tenant.id);
         })
         .catch((err) => console.error("Achievement check failed:", err));
+
+      // Sync: create CheckIn if not exists
+      prisma.checkIn.upsert({
+        where: { classId_memberId: { classId: booking.classId, memberId: booking.userId } },
+        create: {
+          tenantId: tenant.id,
+          classId: booking.classId,
+          memberId: booking.userId,
+          checkedInBy: session.user.id,
+          method: "manual",
+          status: new Date() > booking.class.startsAt ? "late" : "present",
+        },
+        update: {},
+      }).catch((err) => console.error("Attendance→CheckIn sync failed:", err));
+    }
+
+    if ((status === "NO_SHOW" || status === "CANCELLED") && booking.userId) {
+      // Sync: remove CheckIn if exists
+      prisma.checkIn.deleteMany({
+        where: { classId: booking.classId, memberId: booking.userId },
+      }).catch((err) => console.error("Attendance→CheckIn removal sync failed:", err));
     }
 
     if ((status === "ATTENDED" || status === "NO_SHOW") && booking.class.status === "COMPLETED") {

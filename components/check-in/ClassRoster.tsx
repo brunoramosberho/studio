@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useOptimistic, useCallback, useEffect } from "react";
+import { useState, useOptimistic, useCallback, useEffect, startTransition } from "react";
 import {
   Search,
   QrCode,
@@ -251,7 +251,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       }
       const now = new Date();
       const isLate = now > new Date(classInfo.startTime);
-      addOptimistic({ memberId, type: "checkin", status: isLate ? "late" : "present" });
+      startTransition(() => {
+        addOptimistic({ memberId, type: "checkin", status: isLate ? "late" : "present" });
+      });
       checkInMutation.mutate({ memberId, method: "manual" });
     },
     [classInfo.isFinished, classInfo.startTime, addOptimistic, checkInMutation],
@@ -261,7 +263,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
     if (!paymentConfirm) return;
     const now = new Date();
     const isLate = now > new Date(classInfo.startTime);
-    addOptimistic({ memberId: paymentConfirm, type: "checkin", status: isLate ? "late" : "present" });
+    startTransition(() => {
+      addOptimistic({ memberId: paymentConfirm, type: "checkin", status: isLate ? "late" : "present" });
+    });
     checkInMutation.mutate({ memberId: paymentConfirm, method: "manual" });
     setPaymentConfirm(null);
   }, [paymentConfirm, classInfo.startTime, addOptimistic, checkInMutation]);
@@ -276,7 +280,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
   const confirmUndo = useCallback(() => {
     if (!undoConfirm) return;
-    addOptimistic({ memberId: undoConfirm, type: "undo" });
+    startTransition(() => {
+      addOptimistic({ memberId: undoConfirm, type: "undo" });
+    });
     undoCheckInMutation.mutate(undoConfirm);
     setUndoConfirm(null);
   }, [undoConfirm, addOptimistic, undoCheckInMutation]);
@@ -296,22 +302,22 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-stone-100">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-stone-900">
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-stone-100 shrink-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-stone-900 truncate">
               {classInfo.className} · {startFormatted}
             </p>
-            <p className="text-xs text-stone-400">
+            <p className="text-xs text-stone-400 truncate">
               {classInfo.coachName} · {classInfo.room}
             </p>
           </div>
-          <div className="flex gap-2 text-[10px]">
-            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-              {enrolledCount} inscritos
+          <div className="flex gap-1.5 sm:gap-2 text-[10px] shrink-0">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+              {enrolledCount} <span className="hidden sm:inline">inscritos</span><span className="sm:hidden">insc.</span>
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-              {presentCount} confirmados
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+              {presentCount} <span className="hidden sm:inline">confirmados</span><span className="sm:hidden">conf.</span>
             </span>
           </div>
         </div>
@@ -330,7 +336,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-300" size={14} />
           <input
             type="text"
-            placeholder="Buscar miembro por nombre..."
+            placeholder="Buscar miembro..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-stone-200 bg-stone-50 focus:outline-none focus:ring-1 focus:ring-[#3730B8] focus:border-[#3730B8]"
@@ -338,7 +344,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
         </div>
         <button
           disabled
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-stone-200 text-stone-400 opacity-50 cursor-not-allowed"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-stone-200 text-stone-400 opacity-50 cursor-not-allowed"
         >
           <QrCode size={14} />
           Escanear QR
@@ -352,16 +358,16 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           { value: presentCount, label: "Presentes", highlight: false },
           { value: enrolledCount, label: "Inscritos", highlight: false },
           { value: pendingCount, label: "Pendientes", highlight: pendingCount > 0 },
-          { value: waitlist.length, label: "En espera", highlight: false },
+          { value: waitlist.length, label: "Espera", highlight: false },
         ].map((stat) => (
           <div
             key={stat.label}
-            className="py-2 text-center border-r border-stone-100 last:border-r-0"
+            className="py-1.5 sm:py-2 text-center border-r border-stone-100 last:border-r-0"
           >
-            <p className={cn("text-base font-medium", stat.highlight ? "text-amber-600" : "text-stone-900")}>
+            <p className={cn("text-sm sm:text-base font-medium", stat.highlight ? "text-amber-600" : "text-stone-900")}>
               {stat.value}
             </p>
-            <p className={cn("text-[10px]", stat.highlight ? "text-amber-600" : "text-stone-400")}>
+            <p className={cn("text-[9px] sm:text-[10px]", stat.highlight ? "text-amber-600" : "text-stone-400")}>
               {stat.label}
             </p>
           </div>
@@ -405,10 +411,10 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
         {/* Walk-in button */}
         {!classInfo.isFinished && (
-          <div className="px-4 py-3">
+          <div className="px-3 sm:px-4 py-3">
             <button
               onClick={() => setWalkInOpen(true)}
-              className="w-full border border-dashed border-stone-200 rounded-xl py-2.5 text-xs text-stone-400 hover:bg-stone-50 transition-colors"
+              className="w-full border border-dashed border-stone-200 rounded-xl py-2.5 text-xs text-stone-400 hover:bg-stone-50 active:bg-stone-100 transition-colors"
             >
               + Añadir walk-in
             </button>
@@ -570,7 +576,7 @@ function RosterRow({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 px-4 py-2.5 border-b border-stone-100 transition-colors",
+        "group flex items-start gap-3 px-3 sm:px-4 py-2.5 border-b border-stone-100 transition-colors",
         isCheckedIn ? "bg-emerald-50/70" : "hover:bg-stone-50",
         hasBirthday && !isCheckedIn && "bg-pink-50/50",
         hasBirthday && isCheckedIn && "bg-gradient-to-r from-emerald-50/70 to-pink-50/50",
@@ -621,13 +627,13 @@ function RosterRow({
         {member.stats && <AttendeeTags stats={member.stats} />}
       </div>
 
-      {/* Action button — only the button is clickable, not the row */}
+      {/* Action */}
       <div className="shrink-0 mt-0.5">
         {isCheckedIn ? (
-          <div className="group relative">
+          <div className="flex items-center gap-1">
             <span
               className={cn(
-                "flex items-center gap-1 px-3 py-1 rounded-full text-xs cursor-default",
+                "flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full text-xs cursor-default",
                 isLate ? "bg-amber-50 text-amber-700" : "bg-emerald-100 text-emerald-600",
               )}
             >
@@ -637,17 +643,15 @@ function RosterRow({
                 <><Check size={12} /> Presente</>
               )}
             </span>
-            {/* Undo appears on hover as a separate button below */}
             {!isFinished && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onUndoRequest();
                 }}
-                className="absolute -bottom-7 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 px-2 py-0.5 rounded text-[10px] text-stone-400 hover:text-red-500 hover:bg-red-50 whitespace-nowrap z-10"
+                className="p-1.5 rounded-full text-stone-300 hover:text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors md:opacity-0 md:group-hover:opacity-100"
               >
-                <Undo2 size={10} />
-                Deshacer
+                <Undo2 size={12} />
               </button>
             )}
           </div>
@@ -659,7 +663,7 @@ function RosterRow({
             }}
             disabled={isFinished}
             className={cn(
-              "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+              "px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition-colors",
               member.hasPaymentPending
                 ? "bg-red-50 text-red-600 hover:bg-red-100"
                 : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
