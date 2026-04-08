@@ -6,6 +6,7 @@ import { useBranding } from "@/components/branding-provider";
 import { InstalledScreen } from "@/components/install/installed-screen";
 import { IosSafariScreen } from "@/components/install/ios-safari-screen";
 import { IosSafariNewScreen } from "@/components/install/ios-safari-new-screen";
+import { IosSafariIPadScreen } from "@/components/install/ios-safari-ipad-screen";
 import { IosChromeScreen } from "@/components/install/ios-chrome-screen";
 import { AndroidScreen } from "@/components/install/android-screen";
 import { OtherScreen } from "@/components/install/other-screen";
@@ -38,6 +39,7 @@ export default function InstallPage() {
     installed: <InstalledScreen brand={brand} />,
     "ios-safari": <IosSafariScreen brand={brand} />,
     "ios-safari-new": <IosSafariNewScreen brand={brand} />,
+    "ios-safari-ipad": <IosSafariIPadScreen brand={brand} />,
     "ios-chrome": <IosChromeScreen brand={brand} />,
     android: <AndroidScreen brand={brand} deferredPrompt={deferredPrompt} />,
     other: <OtherScreen brand={brand} />,

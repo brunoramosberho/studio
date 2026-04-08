@@ -8,16 +8,11 @@ import {
   ActionBadge,
   ShareIcon,
   PlusIcon,
-  DotsIcon,
   ChevronDownIcon,
-  ChevronRight,
 } from "./step-item";
-import { BrowserTopBar } from "./illustrations";
 import type { StudioBranding } from "@/lib/branding";
 
 export function IosChromeScreen({ brand }: { brand: StudioBranding }) {
-  const color = brand.colorAccent;
-
   const openInSafari = () => {
     window.location.href = window.location.href;
   };
@@ -41,7 +36,7 @@ export function IosChromeScreen({ brand }: { brand: StudioBranding }) {
       </div>
 
       {/* Chrome instructions */}
-      <div className="mb-4 w-full rounded-2xl bg-white p-5 shadow-sm">
+      <div className="w-full rounded-2xl bg-white p-5 shadow-sm">
         <p className="mb-1 text-sm font-medium text-[#1C1917]">
           Continuar con Chrome:
         </p>
@@ -50,16 +45,14 @@ export function IosChromeScreen({ brand }: { brand: StudioBranding }) {
         </p>
 
         <div className="space-y-0">
-          <StepItem num={1} subtitle="Para abrir el menú">
+          <StepItem num={1}>
             <span>Pulsa</span>
-            <IconBadge><DotsIcon size={16} /></IconBadge>
-            <span>abajo a la derecha</span>
+            <IconBadge><ShareIcon size={16} /></IconBadge>
+            <span>en la barra de URL</span>
           </StepItem>
 
-          <StepItem num={2}>
+          <StepItem num={2} subtitle="para ver todas las acciones disponibles">
             <span>Toca</span>
-            <ActionBadge icon={<ShareIcon size={12} />} label="Compartir" />
-            <ChevronRight />
             <ActionBadge icon={<ChevronDownIcon size={12} />} label="Ver más" />
           </StepItem>
 
@@ -68,14 +61,6 @@ export function IosChromeScreen({ brand }: { brand: StudioBranding }) {
             <ActionBadge icon={<PlusIcon size={12} />} label="Agregar a Inicio" />
           </StepItem>
         </div>
-      </div>
-
-      {/* Visual reference */}
-      <div className="w-full rounded-2xl bg-white p-4 shadow-sm">
-        <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-wide text-[#888]">
-          ¿Dónde está el botón?
-        </p>
-        <BrowserTopBar accentColor={color} browser="chrome" />
       </div>
     </div>
   );
