@@ -185,7 +185,7 @@ async function getClassStats(
     where,
     include: {
       classType: { select: { name: true } },
-      coach: { select: { id: true, user: { select: { name: true } } } },
+      coach: { select: { id: true, name: true, user: { select: { name: true } } } },
       room: { select: { maxCapacity: true } },
       _count: {
         select: {
@@ -212,7 +212,7 @@ async function getClassStats(
         key = c.classType.name;
         break;
       case "coach":
-        key = c.coach.user.name ?? c.coach.id;
+        key = c.coach.name ?? c.coach.id;
         break;
       case "day_of_week": {
         const dayNames = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -291,7 +291,7 @@ async function getCoachPerformance(
 
     return {
       coach_id: coach.id,
-      name: coach.user.name,
+      name: coach.name,
       total_classes: totalClasses,
       cancelled_classes: cancelled,
       total_bookings: totalBookings,
@@ -408,7 +408,7 @@ async function getMemberActivity(
             class: {
               include: {
                 classType: { select: { name: true } },
-                coach: { select: { user: { select: { name: true } } } },
+                coach: { select: { name: true, user: { select: { name: true } } } },
               },
             },
           },
@@ -428,7 +428,7 @@ async function getMemberActivity(
       for (const b of u.bookings) {
         const ct = b.class.classType.name;
         classTypes.set(ct, (classTypes.get(ct) ?? 0) + 1);
-        const coach = b.class.coach.user.name ?? "Desconocido";
+        const coach = b.class.coach.name ?? "Desconocido";
         coaches.set(coach, (coaches.get(coach) ?? 0) + 1);
       }
 
@@ -524,7 +524,7 @@ async function getWaitlistData(
     },
     include: {
       classType: { select: { name: true } },
-      coach: { select: { user: { select: { name: true } } } },
+      coach: { select: { name: true, user: { select: { name: true } } } },
       room: { select: { maxCapacity: true, name: true } },
       _count: { select: { waitlist: true, bookings: { where: { status: "CONFIRMED" } } } },
     },
@@ -536,7 +536,7 @@ async function getWaitlistData(
     .map((c) => ({
       class_id: c.id,
       class_type: c.classType.name,
-      coach: c.coach.user.name,
+      coach: c.coach.name,
       starts_at: c.startsAt.toISOString(),
       room: c.room.name,
       capacity: c.room.maxCapacity,
@@ -631,7 +631,7 @@ async function getSchedule(
     },
     include: {
       classType: { select: { name: true, duration: true, level: true } },
-      coach: { select: { user: { select: { name: true } } } },
+      coach: { select: { name: true, user: { select: { name: true } } } },
       room: { select: { name: true, maxCapacity: true, studio: { select: { name: true } } } },
       _count: {
         select: {
@@ -647,7 +647,7 @@ async function getSchedule(
     id: c.id,
     class_type: c.classType.name,
     level: c.classType.level,
-    coach: c.coach.user.name,
+    coach: c.coach.name,
     studio: c.room.studio.name,
     room: c.room.name,
     starts_at: c.startsAt.toISOString(),
@@ -689,7 +689,7 @@ async function createClass(
     },
     include: {
       classType: { select: { name: true } },
-      coach: { select: { user: { select: { name: true } } } },
+      coach: { select: { name: true, user: { select: { name: true } } } },
       room: { select: { name: true, studio: { select: { name: true } } } },
     },
   });
@@ -697,7 +697,7 @@ async function createClass(
   return {
     success: true,
     class_id: newClass.id,
-    summary: `Clase "${newClass.classType.name}" creada para ${newClass.startsAt.toLocaleDateString("es")} con ${newClass.coach.user.name} en ${newClass.room.studio.name} - ${newClass.room.name}`,
+    summary: `Clase "${newClass.classType.name}" creada para ${newClass.startsAt.toLocaleDateString("es")} con ${newClass.coach.name} en ${newClass.room.studio.name} - ${newClass.room.name}`,
   };
 }
 
@@ -883,10 +883,24 @@ async function createRoom(
 }
 
 async function inviteCoach(
-  input: { email: string; name?: string },
+  input: { name: string; email?: string },
   tenantId: string,
 ) {
-  const normalizedEmail = input.email.toLowerCase().trim();
+  const coachName = input.name?.trim();
+  if (!coachName) return { error: "Nombre del coach es requerido" };
+
+  const normalizedEmail = input.email?.toLowerCase().trim() || null;
+
+  if (!normalizedEmail) {
+    const coach = await prisma.coachProfile.create({
+      data: { name: coachName, tenantId },
+    });
+    return {
+      success: true,
+      coach_id: coach.id,
+      summary: `Coach "${coachName}" creado sin cuenta de usuario.`,
+    };
+  }
 
   const existing = await prisma.user.findUnique({
     where: { email: normalizedEmail },
@@ -904,7 +918,12 @@ async function inviteCoach(
     await prisma.$transaction(async (tx) => {
       if (!existing.coachProfiles?.length) {
         await tx.coachProfile.create({
-          data: { userId: existing.id, tenantId },
+          data: { name: coachName, userId: existing.id, tenantId },
+        });
+      } else {
+        await tx.coachProfile.update({
+          where: { id: existing.coachProfiles[0].id },
+          data: { name: coachName },
         });
       }
       const existingMembership = existing.memberships[0];
@@ -922,20 +941,20 @@ async function inviteCoach(
 
     return {
       success: true,
-      summary: `Coach existente "${existing.name || normalizedEmail}" vinculado al studio.`,
+      summary: `Coach "${coachName}" vinculado a cuenta existente (${normalizedEmail}).`,
     };
   }
 
   const user = await prisma.user.create({
     data: {
       email: normalizedEmail,
-      name: input.name || null,
+      name: coachName,
     },
   });
 
   await prisma.$transaction([
     prisma.coachProfile.create({
-      data: { userId: user.id, tenantId },
+      data: { name: coachName, userId: user.id, tenantId },
     }),
     prisma.membership.create({
       data: { userId: user.id, tenantId, role: "COACH" },
@@ -1129,7 +1148,7 @@ async function getAvailabilityCoverage(
   const allBlocks = await prisma.coachAvailabilityBlock.findMany({
     where: {
       tenantId,
-      coachId: { in: coachProfiles.map((p) => p.userId) },
+      coachId: { in: coachProfiles.map((p) => p.userId).filter((id): id is string => id != null) },
       status: { in: ["active", "pending_approval"] },
     },
   });
@@ -1166,7 +1185,7 @@ async function getAvailabilityCoverage(
     });
 
     return {
-      coach_name: profile.user.name || "Coach",
+      coach_name: profile.name || "Coach",
       coach_profile_id: profile.id,
       specialties: profile.specialties,
       days: dayCoverage,

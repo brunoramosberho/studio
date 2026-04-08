@@ -31,9 +31,10 @@ export async function enrichPayloadsWithCurrentClassType(
       },
       coach: {
         select: {
+          name: true,
           userId: true,
           photoUrl: true,
-          user: { select: { name: true, image: true } },
+          user: { select: { image: true } },
         },
       },
     },
@@ -57,8 +58,8 @@ export async function enrichPayloadsWithCurrentClassType(
     payload.classTypeDescription = ct.description;
     payload.classTypeDuration = ct.duration;
     payload.classTypeLevel = ct.level;
-    payload.coachName = row.coach.user.name;
+    payload.coachName = row.coach.name;
     payload.coachUserId = row.coach.userId;
-    payload.coachImage = row.coach.photoUrl || row.coach.user.image;
+    payload.coachImage = row.coach.photoUrl || row.coach.user?.image;
   }
 }

@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         const time = c.startsAt.toISOString().split("T")[1].slice(0, 5);
         const name = c.classType.name;
         const duration = c.classType.duration;
-        const instructor = c.coach.user.name ?? "TBD";
+        const instructor = c.coach.name ?? "TBD";
         csv += `${name},${date},${time},${duration},${instructor},${q.quotaSpots},3\n`;
       }
     } else {
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
         const time = c.startsAt.toISOString().split("T")[1].slice(0, 5);
         const name = c.classType.name;
         const duration = c.classType.duration;
-        const trainer = c.coach.user.name ?? "TBD";
+        const trainer = c.coach.name ?? "TBD";
         csv += `${name},${date},${time},${duration},${trainer},${q.quotaSpots}\n`;
       }
     }

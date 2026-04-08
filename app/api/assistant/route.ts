@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         const spotsLeft = c.room.maxCapacity - c._count.bookings;
         const day = format(c.startsAt, "EEEE d 'de' MMMM", { locale: es });
         const time = format(c.startsAt, "h:mm a");
-        return `- ${c.classType.name} | ${day} ${time} | Coach: ${c.coach.user.name} | Nivel: ${c.classType.level} | Lugares: ${spotsLeft}/${c.room.maxCapacity} | Estudio: ${c.room.studio.name}`;
+        return `- ${c.classType.name} | ${day} ${time} | Coach: ${c.coach.name} | Nivel: ${c.classType.level} | Lugares: ${spotsLeft}/${c.room.maxCapacity} | Estudio: ${c.room.studio.name}`;
       })
       .join("\n");
 

@@ -120,7 +120,7 @@ export default function WaitlistPage() {
                               {entry.class.classType.name}
                             </p>
                             <p className="mt-0.5 text-xs text-muted">
-                              {entry.class.coach.user.name}
+                              {entry.class.coach.name}
                             </p>
                           </div>
                           <Badge>

@@ -61,6 +61,7 @@ export async function GET() {
         coach: {
           select: {
             id: true,
+            name: true,
             photoUrl: true,
             user: { select: { name: true, image: true } },
           },

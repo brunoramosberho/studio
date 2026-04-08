@@ -53,7 +53,7 @@ async function syncCompletedClassFeedEvent(classId: string, tenantId: string) {
     await prisma.feedEvent.create({
       data: {
         tenantId,
-        userId: cls.coach.userId,
+        userId: cls.coach.userId!,
         eventType: "CLASS_COMPLETED",
         visibility: "STUDIO_WIDE",
         createdAt: cls.endsAt,
@@ -62,8 +62,8 @@ async function syncCompletedClassFeedEvent(classId: string, tenantId: string) {
           className: cls.classType.name,
           classTypeColor: cls.classType.color,
           classTypeIcon: cls.classType.icon,
-          coachName: cls.coach.user.name,
-          coachImage: cls.coach.photoUrl || cls.coach.user.image,
+          coachName: cls.coach.name,
+          coachImage: cls.coach.photoUrl || cls.coach.user?.image,
           coachUserId: cls.coach.userId,
           date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),
           time: format(cls.startsAt, "h:mm a"),

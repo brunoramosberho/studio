@@ -119,19 +119,19 @@ export function ClassDetailDialog({
 
           <div className="flex items-center gap-2.5 text-sm">
             <div className="flex h-4 w-4 items-center justify-center">
-              {(cls.coach.photoUrl || cls.coach.user.image) ? (
+              {(cls.coach.photoUrl || cls.coach.user?.image) ? (
                 <img
-                  src={cls.coach.photoUrl || cls.coach.user.image!}
+                  src={cls.coach.photoUrl || cls.coach.user?.image!}
                   alt=""
                   className="h-4 w-4 rounded-full object-cover"
                 />
               ) : (
                 <div className="h-4 w-4 rounded-full bg-accent/20 text-[8px] font-bold text-accent flex items-center justify-center">
-                  {cls.coach.user.name?.charAt(0)}
+                  {cls.coach.name?.charAt(0)}
                 </div>
               )}
             </div>
-            <span>{cls.coach.user.name}</span>
+            <span>{cls.coach.name}</span>
           </div>
 
           {cls.tag && (

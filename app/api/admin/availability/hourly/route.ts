@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const allBlocks = await prisma.coachAvailabilityBlock.findMany({
       where: {
         tenantId: tenant.id,
-        coachId: { in: coachProfiles.map((p) => p.userId) },
+        coachId: { in: coachProfiles.map((p) => p.userId).filter((id): id is string => id != null) },
         status: "active",
       },
     });
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     type Slot = { hour: number; status: SlotStatus; className?: string };
 
     const coaches = coachProfiles.map((profile) => {
-      const initials = (profile.user.name || "C")
+      const initials = (profile.name || "C")
         .split(" ")
         .map((n) => n[0])
         .join("")
@@ -134,10 +134,10 @@ export async function GET(request: NextRequest) {
       return {
         coachId: profile.userId,
         coachProfileId: profile.id,
-        coachName: profile.user.name || "Coach",
+        coachName: profile.name || "Coach",
         initials,
         color: profile.color,
-        image: profile.user.image,
+        image: profile.photoUrl || profile.user?.image,
         slots,
       };
     });

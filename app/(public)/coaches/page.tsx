@@ -27,7 +27,7 @@ export default async function CoachesPage() {
         include: {
           user: { select: { name: true, image: true } },
         },
-        orderBy: { user: { name: "asc" } },
+        orderBy: { name: "asc" },
       })
     : [];
 
@@ -70,8 +70,8 @@ export default async function CoachesPage() {
             {/* Mobile / small tablet: Siclo-style list rows (full-width tap targets) */}
             <ul className="flex flex-col gap-2 md:hidden">
               {coaches.map((coach) => {
-                const photo = coach.photoUrl ?? coach.user.image;
-                const name = coach.user.name ?? "Coach";
+                const photo = coach.photoUrl ?? coach.user?.image;
+                const name = coach.name || "Coach";
                 const initials = name
                   .split(" ")
                   .map((n) => n[0])
@@ -145,8 +145,8 @@ export default async function CoachesPage() {
             {/* Desktop: editorial cards */}
             <div className="hidden gap-6 md:grid md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
               {coaches.map((coach) => {
-                const photo = coach.photoUrl ?? coach.user.image;
-                const name = coach.user.name ?? "Coach";
+                const photo = coach.photoUrl ?? coach.user?.image;
+                const name = coach.name || "Coach";
                 const initials = name
                   .split(" ")
                   .map((n) => n[0])

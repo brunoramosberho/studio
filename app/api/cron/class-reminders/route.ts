@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         class: {
           include: {
             classType: { select: { name: true } },
-            coach: { select: { user: { select: { name: true } } } },
+            coach: { select: { name: true, user: { select: { name: true } } } },
             room: { select: { studio: { select: { city: { select: { timezone: true } } } } } },
           },
         },
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         (cls.startsAt.getTime() - now.getTime()) / 60_000,
       );
       const className = cls.classType.name;
-      const coachName = cls.coach.user.name?.split(" ")[0] ?? "tu coach";
+      const coachName = cls.coach.name?.split(" ")[0] ?? "tu coach";
       const tz = cls.room?.studio?.city?.timezone || "Europe/Madrid";
 
       const timeStr = formatTime(cls.startsAt, tz);
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
           image: b.user?.image ?? null,
         }));
 
-      if (attendees.length > 0) {
+      if (attendees.length > 0 && cls.coach.userId) {
         await prisma.feedEvent.create({
           data: {
             tenantId: tenant.id,
@@ -140,8 +140,8 @@ export async function GET(request: NextRequest) {
               className: cls.classType.name,
               classTypeColor: cls.classType.color,
               classTypeIcon: cls.classType.icon,
-              coachName: cls.coach.user.name,
-              coachImage: cls.coach.photoUrl || cls.coach.user.image,
+              coachName: cls.coach.name,
+              coachImage: cls.coach.photoUrl || cls.coach.user?.image,
               coachUserId: cls.coach.userId,
               date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),
               time: format(cls.startsAt, "h:mm a"),
@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
           await createGroupedAchievementEvents(allGrants, tenant.id);
         }
 
-        const coachFirst = cls.coach.user.name?.split(" ")[0] ?? "Tu coach";
+        const coachFirst = cls.coach.name?.split(" ")[0] ?? "Tu coach";
         sendPushToMany(
           attendedUserIds,
           {

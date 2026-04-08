@@ -203,7 +203,7 @@ export default function HistoryPage() {
                                 {booking.class.classType.name}
                               </p>
                               <p className="mt-0.5 text-xs text-muted">
-                                {booking.class.coach.user.name} · {formatTime(booking.class.startsAt)}
+                                {booking.class.coach.name} · {formatTime(booking.class.startsAt)}
                               </p>
                             </div>
                             <Badge variant={isAttended ? "success" : "danger"}>

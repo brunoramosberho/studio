@@ -81,7 +81,8 @@ interface ClassData {
     bio: string | null;
     specialties: string[];
     photoUrl: string | null;
-    user: { name: string | null; image: string | null };
+    name: string;
+    user?: { name?: string | null; image?: string | null } | null;
   };
   bookings: { id: string; userId: string | null; spotNumber: number | null; status: string }[];
   _count: { bookings: number; blockedSpots?: number; waitlist: number; songRequests?: number };
@@ -349,7 +350,7 @@ export default function ClassDetailPage() {
     const start = new Date(cls.startsAt);
     const end = new Date(cls.endsAt);
     const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-    const title = `${cls.classType.name} con ${cls.coach.user.name ?? ""}`;
+    const title = `${cls.classType.name} con ${cls.coach.name ?? ""}`;
     const location = [cls.room.studio.name, cls.room.studio.address].filter(Boolean).join(", ");
     const details = `${cls.room.name} · ${cls.classType.duration} min`;
 
@@ -390,7 +391,7 @@ export default function ClassDetailPage() {
     const date = new Date(cls.startsAt);
     const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
     const time = formatTime(cls.startsAt);
-    const text = `${cls.classType.name} con ${cls.coach.user.name}\n${dayStr}, ${time}\n${cls.room.studio.name}\n¡Reserva tu lugar!`;
+    const text = `${cls.classType.name} con ${cls.coach.name}\n${dayStr}, ${time}\n${cls.room.studio.name}\n¡Reserva tu lugar!`;
 
     if (navigator.share) {
       try {
@@ -477,20 +478,20 @@ export default function ClassDetailPage() {
 
         {/* Title + coach */}
         <div className="flex items-center gap-3">
-          {(cls.coach.photoUrl || cls.coach.user.image) && (
+          {(cls.coach.photoUrl || cls.coach.user?.image) && (
             <Link href={`/my/user/${cls.coach.userId}`}>
               <img
-                src={cls.coach.photoUrl || cls.coach.user.image!}
-                alt={cls.coach.user.name || "Coach"}
+                src={cls.coach.photoUrl || cls.coach.user?.image!}
+                alt={cls.coach.name || "Coach"}
                 className="h-11 w-11 rounded-full object-cover ring-2 ring-accent/20"
               />
             </Link>
           )}
           <h1 className="font-display text-2xl font-bold text-foreground">
             {cls.classType.name}
-            {cls.coach.user.name && (
+            {cls.coach.name && (
               <span className="font-normal text-muted">
-                {" "}con {cls.coach.user.name}
+                {" "}con {cls.coach.name}
               </span>
             )}
           </h1>
@@ -717,15 +718,15 @@ export default function ClassDetailPage() {
                   className="w-full gap-2 rounded-full"
                 >
                   <Link href={`/my/user/${cls.coach.userId}`}>
-                    {(cls.coach.photoUrl || cls.coach.user.image) && (
+                    {(cls.coach.photoUrl || cls.coach.user?.image) && (
                       <img
-                        src={cls.coach.photoUrl || cls.coach.user.image!}
+                        src={cls.coach.photoUrl || cls.coach.user?.image!}
                         alt=""
                         className="h-5 w-5 rounded-full object-cover"
                       />
                     )}
                     <span className="truncate">
-                      Clases con {cls.coach.user.name?.split(" ")[0] ?? "coach"}
+                      Clases con {cls.coach.name?.split(" ")[0] ?? "coach"}
                     </span>
                     <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted" />
                   </Link>
@@ -760,7 +761,7 @@ export default function ClassDetailPage() {
                   myBookedSpot={myBookedSpot}
                   disabled={!!myBooking || bookingSuccess}
                   layout={cls.room.layout}
-                  coachName={cls.coach.user.name}
+                  coachName={cls.coach.name}
                 />
               </div>
             )}

@@ -67,7 +67,7 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
       class: {
         include: {
           classType: true,
-          coach: { include: { user: { select: { name: true } } } },
+          coach: { select: { name: true } },
           room: {
             include: {
               studio: {
@@ -110,7 +110,7 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
       to: first.user.email,
       name: userName,
       className: cls.classType.name,
-      coachName: cls.coach.user.name ?? "Coach",
+      coachName: cls.coach.name,
       date: cls.startsAt,
       startTime: cls.startsAt,
       location: cls.room?.studio?.name ?? undefined,

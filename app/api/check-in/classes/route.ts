@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       include: {
         classType: { select: { id: true, name: true, color: true, icon: true } },
         coach: {
-          select: { id: true, user: { select: { name: true, image: true } } },
+          select: { id: true, name: true, photoUrl: true, user: { select: { name: true, image: true } } },
         },
         room: {
           select: { id: true, name: true, maxCapacity: true, studio: { select: { id: true, name: true } } },
@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
       classIcon: c.classType.icon,
       startTime: c.startsAt.toISOString(),
       endTime: c.endsAt.toISOString(),
-      coachName: c.coach.user.name,
-      coachImage: c.coach.user.image,
+      coachName: c.coach.name,
+      coachImage: c.coach.photoUrl || c.coach.user?.image,
       room: c.room.name,
       studioId: c.room.studio.id,
       studioName: c.room.studio.name,

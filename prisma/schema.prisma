@@ -285,8 +285,9 @@ enum Role {
 
 model CoachProfile {
   id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   bio         String?

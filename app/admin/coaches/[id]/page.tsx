@@ -88,7 +88,8 @@ interface TypeBreakdown {
 
 interface CoachDetail {
   id: string;
-  userId: string;
+  name: string;
+  userId: string | null;
   bio: string | null;
   specialties: string[];
   photoUrl: string | null;
@@ -101,7 +102,7 @@ interface CoachDetail {
     phone: string | null;
     instagramUser: string | null;
     createdAt: string;
-  };
+  } | null;
   payRates: PayRate[];
   stats: {
     classesThisMonth: number;
@@ -568,11 +569,12 @@ function EditProfileForm({
 }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editName, setEditName] = useState(coach.name);
   const [bio, setBio] = useState(coach.bio || "");
   const [specialties, setSpecialties] = useState<string[]>(coach.specialties || []);
   const [newSpecialty, setNewSpecialty] = useState("");
   const [color, setColor] = useState(coach.color || "#C9A96E");
-  const [avatarPreview, setAvatarPreview] = useState(coach.photoUrl || coach.user.image || "");
+  const [avatarPreview, setAvatarPreview] = useState(coach.photoUrl || coach.user?.image || "");
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
@@ -581,7 +583,7 @@ function EditProfileForm({
       const res = await fetch(`/api/admin/coaches/${coach.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bio, specialties, color }),
+        body: JSON.stringify({ name: editName, bio, specialties, color }),
       });
       if (!res.ok) throw new Error("Error al guardar");
       return res.json();
@@ -638,8 +640,7 @@ function EditProfileForm({
     }
   }
 
-  const displayName = coach.user.name || coach.user.email;
-  const initials = displayName
+  const initials = coach.name
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -655,6 +656,18 @@ function EditProfileForm({
     >
       <Separator className="my-4" />
       <div className="space-y-4">
+        {/* Name */}
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted">Nombre</label>
+          <Input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder="Nombre del coach"
+            className="h-9 text-sm"
+            required
+          />
+        </div>
+
         {/* Photo upload */}
         <div>
           <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted">Foto</label>
@@ -861,8 +874,8 @@ export default function CoachDetailPage() {
     );
   }
 
-  const displayName = coach.user.name || coach.user.email;
-  const initials = (coach.user.name || coach.user.email)
+  const displayName = coach.name;
+  const initials = coach.name
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -902,8 +915,8 @@ export default function CoachDetailPage() {
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center">
                 <Avatar className="h-20 w-20 ring-4 ring-admin/10">
-                  {(coach.photoUrl || coach.user.image) && (
-                    <AvatarImage src={coach.photoUrl || coach.user.image!} />
+                  {(coach.photoUrl || coach.user?.image) && (
+                    <AvatarImage src={(coach.photoUrl || coach.user?.image)!} />
                   )}
                   <AvatarFallback
                     className="text-xl font-bold text-white"
@@ -913,10 +926,17 @@ export default function CoachDetailPage() {
                   </AvatarFallback>
                 </Avatar>
                 <h2 className="mt-3 font-display text-lg font-bold">{displayName}</h2>
-                {coach.user.name && (
+                {coach.user?.email && (
                   <p className="text-sm text-muted">{coach.user.email}</p>
                 )}
-                <Badge variant="admin" className="mt-2 text-[10px]">Coach</Badge>
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge variant="admin" className="text-[10px]">Coach</Badge>
+                  {coach.userId ? (
+                    <Badge variant="outline" className="text-[10px] text-green-600 border-green-300">Cuenta vinculada</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] text-gray-500 border-gray-300">Sin cuenta</Badge>
+                  )}
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -931,23 +951,27 @@ export default function CoachDetailPage() {
               <Separator className="my-4" />
 
               <div className="space-y-2.5">
-                <div className="flex items-center gap-3 text-sm">
-                  <Mail className="h-4 w-4 shrink-0 text-muted" />
-                  <span className="truncate text-foreground">{coach.user.email}</span>
-                </div>
-                {coach.user.phone && (
+                {coach.user?.email && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <Mail className="h-4 w-4 shrink-0 text-muted" />
+                    <span className="truncate text-foreground">{coach.user.email}</span>
+                  </div>
+                )}
+                {coach.user?.phone && (
                   <div className="flex items-center gap-3 text-sm">
                     <Phone className="h-4 w-4 shrink-0 text-muted" />
                     <span className="text-foreground">{coach.user.phone}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-3 text-sm">
-                  <Clock className="h-4 w-4 shrink-0 text-muted" />
-                  <span className="text-muted">
-                    Desde {format(new Date(coach.user.createdAt), "MMM yyyy", { locale: es })}
-                  </span>
-                </div>
-                {coach.user.instagramUser && (
+                {coach.user?.createdAt && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <Clock className="h-4 w-4 shrink-0 text-muted" />
+                    <span className="text-muted">
+                      Desde {format(new Date(coach.user.createdAt), "MMM yyyy", { locale: es })}
+                    </span>
+                  </div>
+                )}
+                {coach.user?.instagramUser && (
                   <a
                     href={`https://instagram.com/${coach.user.instagramUser}`}
                     target="_blank"
@@ -957,6 +981,9 @@ export default function CoachDetailPage() {
                     <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" /></svg>
                     @{coach.user.instagramUser}
                   </a>
+                )}
+                {!coach.userId && (
+                  <p className="text-xs text-muted/60">Sin información de contacto (no tiene cuenta vinculada)</p>
                 )}
               </div>
 

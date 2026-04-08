@@ -106,13 +106,17 @@ export async function getSubstituteSuggestions(
 
   const allProfiles = await prisma.coachProfile.findMany({
     where: { tenantId, userId: { not: cls.coach.userId } },
-    include: { user: { select: { id: true, name: true, image: true } } },
+    include: { user: { select: { id: true, image: true } } },
   });
+
+  const coachUserIds = allProfiles
+    .map((p) => p.userId)
+    .filter((id): id is string => id != null);
 
   const allBlocks = await prisma.coachAvailabilityBlock.findMany({
     where: {
       tenantId,
-      coachId: { in: allProfiles.map((p) => p.userId) },
+      coachId: { in: coachUserIds },
     },
   });
 
@@ -157,9 +161,9 @@ export async function getSubstituteSuggestions(
 
     return {
       coachProfileId: p.id,
-      userId: p.userId,
-      name: p.user.name || "Coach",
-      image: p.user.image,
+      userId: p.userId ?? "",
+      name: p.name || "Coach",
+      image: p.user?.image ?? null,
       available,
       hasDiscipline,
       weekLoad,

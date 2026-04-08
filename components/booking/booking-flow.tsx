@@ -206,7 +206,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
         classTitle={classData.classType.name}
         classDate={formatDate(classData.startsAt)}
         classTime={formatTime(classData.startsAt)}
-        coachName={classData.coach.user.name ?? "Coach"}
+        coachName={classData.coach.name ?? "Coach"}
         startsAt={classData.startsAt.toString()}
         endsAt={classData.endsAt.toString()}
         location={classData.room?.studio?.name ?? undefined}
@@ -214,7 +214,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
     );
   }
 
-  const coachName = classData.coach.user.name ?? "Coach";
+  const coachName = classData.coach.name ?? "Coach";
 
   return (
     <motion.div

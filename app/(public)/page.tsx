@@ -61,7 +61,8 @@ interface CoachData {
   bio: string | null;
   specialties: string[];
   photoUrl: string | null;
-  user: { name: string | null; image: string | null };
+  name: string;
+  user?: { name?: string | null; image?: string | null } | null;
 }
 
 interface PackageData {
@@ -377,8 +378,8 @@ export default function LandingPage() {
             className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 md:overflow-visible md:pb-0"
           >
             {coaches.slice(0, 6).map((coach, i) => {
-              const photo = coach.photoUrl ?? coach.user.image;
-              const name = coach.user.name ?? "Coach";
+              const photo = coach.photoUrl ?? coach.user?.image;
+              const name = coach.name || "Coach";
               const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2);
 
               return (

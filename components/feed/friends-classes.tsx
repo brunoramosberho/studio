@@ -23,7 +23,7 @@ interface FriendBookedClass {
     startsAt: string;
     endsAt: string;
     classType: { name: string; color: string; duration: number; icon?: string | null };
-    coach: { photoUrl?: string | null; user: { name: string | null; image: string | null } };
+    coach: { name: string; photoUrl?: string | null; user?: { name?: string | null; image?: string | null } | null };
     room?: { studio?: { name?: string } };
     spotsLeft?: number | null;
   };
@@ -62,7 +62,7 @@ export function FriendsClasses() {
     const date = new Date(c.class.startsAt);
     const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
     const timeStr = formatTimeRange(c.class.startsAt, c.class.endsAt);
-    const text = `${c.class.classType.name} con ${c.class.coach.user.name}\n${dayStr}, ${timeStr}\n¡Reserva tu lugar!`;
+    const text = `${c.class.classType.name} con ${c.class.coach.name}\n${dayStr}, ${timeStr}\n¡Reserva tu lugar!`;
 
     if (navigator.share) {
       try {
@@ -107,15 +107,15 @@ export function FriendsClasses() {
               <Link href={`/class/${c.classId}`} className="block">
                 <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
                   <div className="flex items-center gap-3">
-                    {(c.class.coach.photoUrl || c.class.coach.user.image) ? (
+                    {(c.class.coach.photoUrl || c.class.coach.user?.image) ? (
                       <img
-                        src={(c.class.coach.photoUrl || c.class.coach.user.image)!}
-                        alt={c.class.coach.user.name || "Coach"}
+                        src={(c.class.coach.photoUrl || c.class.coach.user?.image)!}
+                        alt={c.class.coach.name || "Coach"}
                         className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
                       />
                     ) : (
                       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent">
-                        {c.class.coach.user.name?.charAt(0) || "C"}
+                        {c.class.coach.name?.charAt(0) || "C"}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
@@ -123,7 +123,7 @@ export function FriendsClasses() {
                         {c.class.classType.name}
                       </p>
                       <p className="truncate text-[13px] text-muted">
-                        con {c.class.coach.user.name?.split(" ")[0]}
+                        con {c.class.coach.name?.split(" ")[0]}
                         {studioName && <span className="text-muted/50"> · {studioName}</span>}
                       </p>
                     </div>

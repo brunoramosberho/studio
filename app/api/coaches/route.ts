@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       include: {
         user: { select: { id: true, name: true, email: true, image: true } },
       },
-      orderBy: { user: { name: "asc" } },
+      orderBy: { name: "asc" },
     });
 
     if (!withStats) {

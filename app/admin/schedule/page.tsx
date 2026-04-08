@@ -80,7 +80,7 @@ export default function AdminSchedulePage() {
     const typeMap = new Map<string, string>();
     for (const c of classes ?? []) {
       if (c.room?.studio) studioMap.set(c.room.studio.id, c.room.studio.name);
-      coachMap.set(c.coach.id, c.coach.user.name ?? "Coach");
+      coachMap.set(c.coach.id, c.coach.name ?? "Coach");
       typeMap.set(c.classType.id, c.classType.name);
     }
     return {
@@ -329,7 +329,7 @@ export default function AdminSchedulePage() {
                                 {cls.classType.name}
                               </p>
                               <p className="truncate text-[9px] opacity-80">
-                                {cls.coach.user.name?.split(" ")[0]} · {formatTime(cls.startsAt)}
+                                {cls.coach.name?.split(" ")[0]} · {formatTime(cls.startsAt)}
                               </p>
                               <p className="text-[8px] opacity-60">
                                 {booked}/{maxCap}

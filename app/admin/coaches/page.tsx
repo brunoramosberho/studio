@@ -18,6 +18,7 @@ import {
   Trophy,
   ChevronRight,
   Search,
+  Link2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,12 +48,13 @@ interface CoachStats {
 
 interface CoachData {
   id: string;
-  userId: string;
+  name: string;
+  userId: string | null;
   bio: string | null;
   specialties: string[];
   photoUrl: string | null;
   color: string;
-  user: { id: string; name: string | null; email: string; image: string | null };
+  user: { id: string; name: string | null; email: string; image: string | null } | null;
   stats: CoachStats;
 }
 
@@ -101,7 +103,8 @@ const fadeUp = {
 export default function AdminCoachesPage() {
   const router = useRouter();
   const qc = useQueryClient();
-  const [showInvite, setShowInvite] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [coachName, setCoachName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -117,23 +120,25 @@ export default function AdminCoachesPage() {
     },
   });
 
-  const inviteMutation = useMutation({
-    mutationFn: async (emailToInvite: string) => {
+  const createMutation = useMutation({
+    mutationFn: async (payload: { name: string; email?: string }) => {
       const res = await fetch("/api/admin/coaches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailToInvite }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al invitar");
+      if (!res.ok) throw new Error(data.error || "Error al crear");
       return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-coaches"] });
+      setCoachName("");
       setEmail("");
       setError("");
-      setShowInvite(false);
-      setSuccessMsg("Coach invitado correctamente");
+      setShowCreate(false);
+      const msg = email.trim() ? "Coach creado e invitación enviada" : "Coach creado correctamente";
+      setSuccessMsg(msg);
       setTimeout(() => setSuccessMsg(""), 4000);
     },
     onError: (err: Error) => setError(err.message),
@@ -157,11 +162,13 @@ export default function AdminCoachesPage() {
     onError: () => setRemovingId(null),
   });
 
-  function handleInvite(e: React.FormEvent) {
+  function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!email.trim()) return;
-    inviteMutation.mutate(email.trim());
+    if (!coachName.trim()) return;
+    const payload: { name: string; email?: string } = { name: coachName.trim() };
+    if (email.trim()) payload.email = email.trim();
+    createMutation.mutate(payload);
   }
 
   const totalClasses = coaches?.reduce((s, c) => s + c.stats.classesThisMonth, 0) ?? 0;
@@ -179,11 +186,11 @@ export default function AdminCoachesPage() {
         </motion.div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
           <Button
-            onClick={() => setShowInvite(!showInvite)}
+            onClick={() => setShowCreate(!showCreate)}
             className="gap-2 bg-admin text-white hover:bg-admin/90"
           >
-            {showInvite ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {showInvite ? "Cancelar" : "Invitar coach"}
+            {showCreate ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {showCreate ? "Cancelar" : "Nuevo coach"}
           </Button>
         </motion.div>
       </div>
@@ -240,9 +247,9 @@ export default function AdminCoachesPage() {
         </div>
       )}
 
-      {/* Invite form */}
+      {/* Create form */}
       <AnimatePresence>
-        {showInvite && (
+        {showCreate && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -251,36 +258,47 @@ export default function AdminCoachesPage() {
             <Card>
               <CardContent className="p-5">
                 <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Mail className="h-4 w-4 text-coach" />
-                  Invitar nuevo coach por correo
+                  <UserCog className="h-4 w-4 text-coach" />
+                  Nuevo coach
                 </div>
                 <p className="mb-3 text-xs text-muted">
-                  Si el correo ya pertenece a un cliente, se le asignará el rol de coach automáticamente.
+                  El email es opcional. Si lo proporcionas, se le enviará una invitación para acceder al portal de coach.
                 </p>
-                <form onSubmit={handleInvite} className="flex gap-2">
-                  <Input
-                    type="email"
-                    placeholder="correo@ejemplo.com"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setError(""); }}
-                    className="flex-1"
-                    required
-                  />
-                  <Button
-                    type="submit"
-                    disabled={inviteMutation.isPending}
-                    className="gap-2"
-                    style={{ backgroundColor: "var(--color-coach)", color: "#fff" }}
-                  >
-                    {inviteMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Mail className="h-4 w-4" />
-                    )}
-                    Enviar
-                  </Button>
+                <form onSubmit={handleCreate} className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Nombre del coach *"
+                      value={coachName}
+                      onChange={(e) => { setCoachName(e.target.value); setError(""); }}
+                      className="flex-1"
+                      required
+                    />
+                    <Input
+                      type="email"
+                      placeholder="correo@ejemplo.com (opcional)"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setError(""); }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending}
+                      className="gap-2"
+                      style={{ backgroundColor: "var(--color-coach)", color: "#fff" }}
+                    >
+                      {createMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : email.trim() ? (
+                        <Mail className="h-4 w-4" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      {email.trim() ? "Crear e invitar" : "Crear"}
+                    </Button>
+                  </div>
+                  {error && <p className="text-sm text-destructive">{error}</p>}
                 </form>
-                {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
               </CardContent>
             </Card>
           </motion.div>
@@ -324,21 +342,23 @@ export default function AdminCoachesPage() {
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
             <UserCog className="h-10 w-10 text-muted/30" />
             <p className="font-medium text-muted">No hay coaches registrados</p>
-            <Button onClick={() => setShowInvite(true)} variant="outline" className="mt-2 gap-2">
+            <Button onClick={() => setShowCreate(true)} variant="outline" className="mt-2 gap-2">
               <Plus className="h-4 w-4" />
-              Invitar primer coach
+              Crear primer coach
             </Button>
           </CardContent>
         </Card>
       ) : (
         <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-3">
-          {coaches.filter((c) =>
-            !searchQuery ||
-            c.user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            c.user.email.toLowerCase().includes(searchQuery.toLowerCase())
-          ).map((coach, idx) => {
-            const name = coach.user.name ?? "Coach";
-            const initials = (coach.user.name || coach.user.email)
+          {coaches.filter((c) => {
+            if (!searchQuery) return true;
+            const q = searchQuery.toLowerCase();
+            return (
+              c.name.toLowerCase().includes(q) ||
+              c.user?.email?.toLowerCase().includes(q)
+            );
+          }).map((coach, idx) => {
+            const initials = coach.name
               .split(" ")
               .map((n) => n[0])
               .join("")
@@ -347,6 +367,8 @@ export default function AdminCoachesPage() {
             const isRemoving = removingId === coach.id;
             const s = coach.stats;
             const rank = idx + 1;
+            const photo = coach.photoUrl || coach.user?.image;
+            const hasAccount = !!coach.userId;
 
             return (
               <motion.div key={coach.id} variants={fadeUp}>
@@ -360,7 +382,7 @@ export default function AdminCoachesPage() {
                       <RankBadge rank={rank} />
 
                       <Avatar className="h-11 w-11 ring-2 ring-admin/10">
-                        {(coach.photoUrl || coach.user.image) && <AvatarImage src={coach.photoUrl || coach.user.image!} alt={name} />}
+                        {photo && <AvatarImage src={photo} alt={coach.name} />}
                         <AvatarFallback className="bg-admin/10 text-sm text-admin">
                           {initials}
                         </AvatarFallback>
@@ -368,14 +390,19 @@ export default function AdminCoachesPage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="truncate font-display text-base font-bold">{name}</h3>
-                          {!coach.user.name && (
-                            <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
-                              Pendiente
+                          <h3 className="truncate font-display text-base font-bold">{coach.name}</h3>
+                          {!hasAccount && (
+                            <Badge variant="outline" className="text-[10px] text-gray-500 border-gray-300">
+                              Sin cuenta
                             </Badge>
                           )}
+                          {hasAccount && (
+                            <Link2 className="h-3 w-3 text-green-500" />
+                          )}
                         </div>
-                        <p className="truncate text-xs text-muted">{coach.user.email}</p>
+                        {coach.user?.email && (
+                          <p className="truncate text-xs text-muted">{coach.user.email}</p>
+                        )}
                         {s.disciplines.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">
                             {s.disciplines.map((d) => (

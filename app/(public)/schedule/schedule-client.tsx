@@ -430,7 +430,7 @@ export function ScheduleClient({
               <div className="flex gap-4">
                 {coaches.map((c) => {
                   const active = filterCoaches.has(c.id);
-                  const firstName = c.user.name?.split(" ")[0] || "Coach";
+                  const firstName = c.name?.split(" ")[0] || "Coach";
                   return (
                     <button
                       key={c.id}
@@ -443,9 +443,9 @@ export function ScheduleClient({
                           active ? "border-foreground ring-2 ring-foreground/20" : "border-transparent",
                         )}
                       >
-                        {(c.photoUrl || c.user.image) ? (
+                        {(c.photoUrl || c.user?.image) ? (
                           <img
-                            src={c.photoUrl || c.user.image!}
+                            src={c.photoUrl || c.user?.image!}
                             alt={firstName}
                             className="h-full w-full object-cover"
                           />
@@ -489,15 +489,15 @@ export function ScheduleClient({
                     href={`/my/user/${selectedCoach.userId}`}
                     className="flex items-center gap-2.5 rounded-xl bg-surface/80 px-3 py-2 transition-colors active:bg-surface"
                   >
-                    {(selectedCoach.photoUrl || selectedCoach.user.image) && (
+                    {(selectedCoach.photoUrl || selectedCoach.user?.image) && (
                       <img
-                        src={selectedCoach.photoUrl || selectedCoach.user.image!}
+                        src={selectedCoach.photoUrl || selectedCoach.user?.image!}
                         alt=""
                         className="h-7 w-7 rounded-full object-cover"
                       />
                     )}
                     <span className="flex-1 text-[13px] font-medium text-foreground">
-                      {selectedCoach.user.name?.split(" ")[0]}
+                      {selectedCoach.name?.split(" ")[0]}
                     </span>
                     <span className="text-[12px] font-medium text-accent">
                       Ver perfil
@@ -674,7 +674,7 @@ export function ScheduleClient({
             <div className="flex items-start gap-5 overflow-x-auto scrollbar-none">
               {coaches.map((c) => {
                 const active = filterCoaches.has(c.id);
-                const firstName = c.user.name?.split(" ")[0] || "Coach";
+                const firstName = c.name?.split(" ")[0] || "Coach";
                 return (
                   <button
                     key={c.id}
@@ -689,9 +689,9 @@ export function ScheduleClient({
                           : "border-transparent hover:border-foreground/20",
                       )}
                     >
-                      {(c.photoUrl || c.user.image) ? (
+                      {(c.photoUrl || c.user?.image) ? (
                         <img
-                          src={c.photoUrl || c.user.image!}
+                          src={c.photoUrl || c.user?.image!}
                           alt={firstName}
                           className="h-full w-full object-cover"
                         />
@@ -734,15 +734,15 @@ export function ScheduleClient({
                     href={`/my/user/${selectedCoach.userId}`}
                     className="inline-flex items-center gap-2.5 rounded-xl bg-surface/80 px-4 py-2 transition-colors hover:bg-surface"
                   >
-                    {(selectedCoach.photoUrl || selectedCoach.user.image) && (
+                    {(selectedCoach.photoUrl || selectedCoach.user?.image) && (
                       <img
-                        src={selectedCoach.photoUrl || selectedCoach.user.image!}
+                        src={selectedCoach.photoUrl || selectedCoach.user?.image!}
                         alt=""
                         className="h-7 w-7 rounded-full object-cover"
                       />
                     )}
                     <span className="text-[13px] font-medium text-foreground">
-                      {selectedCoach.user.name?.split(" ")[0]}
+                      {selectedCoach.name?.split(" ")[0]}
                     </span>
                     <span className="text-[12px] font-medium text-accent">
                       Ver perfil
@@ -1066,10 +1066,10 @@ function MobileClassCard({
 
         {/* Coach photo + info */}
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          {(cls.coach.photoUrl || cls.coach.user.image) ? (
+          {(cls.coach.photoUrl || cls.coach.user?.image) ? (
             <img
-              src={cls.coach.photoUrl || cls.coach.user.image!}
-              alt={cls.coach.user.name || "Coach"}
+              src={cls.coach.photoUrl || cls.coach.user?.image!}
+              alt={cls.coach.name || "Coach"}
               className={cn(
                 "h-9 w-9 flex-shrink-0 rounded-full object-cover",
                 past && "grayscale",
@@ -1082,7 +1082,7 @@ function MobileClassCard({
                 past && "opacity-50",
               )}
             >
-              {cls.coach.user.name?.charAt(0) || "C"}
+              {cls.coach.name?.charAt(0) || "C"}
             </div>
           )}
           <div className="min-w-0 flex-1">
@@ -1105,7 +1105,7 @@ function MobileClassCard({
               )}
             </div>
             <p className="truncate text-[13px] text-muted">
-              con {cls.coach.user.name?.split(" ")[0]}
+              con {cls.coach.name?.split(" ")[0]}
               {cls.room?.studio?.name && (
                 <span className="text-muted/50"> · {cls.room.studio.name}</span>
               )}
@@ -1254,10 +1254,10 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
             )}
           </div>
           <div className="mt-1 flex items-center gap-1.5">
-            {(cls.coach.photoUrl || cls.coach.user.image) ? (
+            {(cls.coach.photoUrl || cls.coach.user?.image) ? (
               <img
-                src={cls.coach.photoUrl || cls.coach.user.image!}
-                alt={cls.coach.user.name || "Coach"}
+                src={cls.coach.photoUrl || cls.coach.user?.image!}
+                alt={cls.coach.name || "Coach"}
                 className={cn(
                   "h-5 w-5 rounded-full object-cover",
                   past && "grayscale",
@@ -1270,7 +1270,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
                   past && "opacity-50",
                 )}
               >
-                {cls.coach.user.name?.charAt(0) || "C"}
+                {cls.coach.name?.charAt(0) || "C"}
               </div>
             )}
             <p
@@ -1279,7 +1279,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
                 past ? "text-muted/40" : "text-muted",
               )}
             >
-              {cls.coach.user.name?.split(" ")[0]}
+              {cls.coach.name?.split(" ")[0]}
             </p>
           </div>
           {cls.room?.studio?.name && (

@@ -6,15 +6,26 @@ import { sendRoleInvitation } from "@/lib/email";
 export async function POST(request: NextRequest) {
   const ctx = await requireRole("ADMIN");
 
-  const { email } = await request.json();
-  if (!email || typeof email !== "string") {
-    return NextResponse.json({ error: "Email requerido" }, { status: 400 });
+  const body = await request.json();
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const email = typeof body.email === "string" ? body.email.toLowerCase().trim() : null;
+
+  if (!name) {
+    return NextResponse.json({ error: "Nombre es requerido" }, { status: 400 });
   }
 
-  const normalizedEmail = email.toLowerCase().trim();
+  const origin = request.nextUrl.origin;
+
+  if (!email) {
+    const coach = await prisma.coachProfile.create({
+      data: { name, tenantId: ctx.tenant.id },
+      include: { user: { select: { id: true, name: true, email: true, image: true } } },
+    });
+    return NextResponse.json(coach, { status: 201 });
+  }
 
   const existing = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
+    where: { email },
     include: {
       coachProfiles: { where: { tenantId: ctx.tenant.id } },
       memberships: { where: { tenantId: ctx.tenant.id } },
@@ -28,13 +39,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const origin = request.nextUrl.origin;
-
   if (existing) {
     await prisma.$transaction(async (tx) => {
       if (!existing.coachProfiles?.length) {
         await tx.coachProfile.create({
-          data: { userId: existing.id, tenantId: ctx.tenant.id },
+          data: { name, userId: existing.id, tenantId: ctx.tenant.id },
+        });
+      } else {
+        await tx.coachProfile.update({
+          where: { id: existing.coachProfiles[0].id },
+          data: { name },
         });
       }
 
@@ -52,7 +66,7 @@ export async function POST(request: NextRequest) {
     });
 
     await sendRoleInvitation({
-      to: normalizedEmail,
+      to: email,
       role: "COACH",
       invitedBy: ctx.session.user.name || "Un administrador",
       loginUrl: `${origin}/login`,
@@ -60,20 +74,20 @@ export async function POST(request: NextRequest) {
 
     const coach = await prisma.coachProfile.findFirst({
       where: { userId: existing.id, tenantId: ctx.tenant.id },
-      include: { user: { select: { name: true, email: true, image: true } } },
+      include: { user: { select: { id: true, name: true, email: true, image: true } } },
     });
 
     return NextResponse.json(coach, { status: 200 });
   }
 
   const user = await prisma.user.create({
-    data: { email: normalizedEmail },
+    data: { email, name },
   });
 
   const [coach] = await prisma.$transaction([
     prisma.coachProfile.create({
-      data: { userId: user.id, tenantId: ctx.tenant.id },
-      include: { user: { select: { name: true, email: true, image: true } } },
+      data: { name, userId: user.id, tenantId: ctx.tenant.id },
+      include: { user: { select: { id: true, name: true, email: true, image: true } } },
     }),
     prisma.membership.create({
       data: { userId: user.id, tenantId: ctx.tenant.id, role: "COACH" },
@@ -81,7 +95,7 @@ export async function POST(request: NextRequest) {
   ]);
 
   await sendRoleInvitation({
-    to: normalizedEmail,
+    to: email,
     role: "COACH",
     invitedBy: ctx.session.user.name || "Un administrador",
     loginUrl: `${origin}/login`,
@@ -109,14 +123,16 @@ export async function DELETE(request: NextRequest) {
 
   await prisma.$transaction(async (tx) => {
     await tx.coachProfile.delete({ where: { id: coachProfileId } });
-    const membership = await tx.membership.findUnique({
-      where: { userId_tenantId: { userId: profile.userId, tenantId: ctx.tenant.id } },
-    });
-    if (membership) {
-      await tx.membership.update({
-        where: { id: membership.id },
-        data: { role: "CLIENT" },
+    if (profile.userId) {
+      const membership = await tx.membership.findUnique({
+        where: { userId_tenantId: { userId: profile.userId, tenantId: ctx.tenant.id } },
       });
+      if (membership) {
+        await tx.membership.update({
+          where: { id: membership.id },
+          data: { role: "CLIENT" },
+        });
+      }
     }
   });
 

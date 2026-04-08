@@ -29,7 +29,7 @@ export function ClassCard({
       new Date(classData.startsAt).getTime()) /
       60_000,
   );
-  const coachName = classData.coach.user.name ?? "Coach";
+  const coachName = classData.coach.name ?? "Coach";
   const coachInitials = coachName
     .split(" ")
     .map((n) => n[0])
@@ -77,9 +77,9 @@ export function ClassCard({
           {/* Coach */}
           <div className="mt-2 flex items-center gap-2">
             <Avatar className="h-6 w-6">
-              {(classData.coach.photoUrl || classData.coach.user.image) && (
+              {(classData.coach.photoUrl || classData.coach.user?.image) && (
                 <AvatarImage
-                  src={(classData.coach.photoUrl || classData.coach.user.image)!}
+                  src={(classData.coach.photoUrl || classData.coach.user?.image)!}
                   alt={coachName}
                 />
               )}

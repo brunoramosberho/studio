@@ -22,7 +22,7 @@ const LEVEL_OPTIONS: Level[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL"];
 
 interface FilterBarProps {
   classTypes: ClassType[];
-  coaches: (CoachProfile & { user: Pick<User, "name" | "image"> })[];
+  coaches: (CoachProfile & { user?: Pick<User, "name" | "image"> | null })[];
   filters: ScheduleFilters;
   onFilterChange: (filters: Partial<ScheduleFilters>) => void;
   onClear: () => void;
@@ -80,7 +80,7 @@ export function FilterBar({
           <SelectContent>
             {coaches.map((c) => (
               <SelectItem key={c.id} value={c.id}>
-                {c.user.name}
+                {c.name}
               </SelectItem>
             ))}
           </SelectContent>

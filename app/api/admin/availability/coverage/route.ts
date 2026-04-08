@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const allBlocks = await prisma.coachAvailabilityBlock.findMany({
       where: {
         tenantId: tenant.id,
-        coachId: { in: coachProfiles.map((p) => p.userId) },
+        coachId: { in: coachProfiles.map((p) => p.userId).filter((id): id is string => id != null) },
         status: { in: ["active", "pending_approval"] },
       },
     });
@@ -92,10 +92,10 @@ export async function GET(request: NextRequest) {
       return {
         id: profile.id,
         userId: profile.userId,
-        name: profile.user.name || "Coach",
-        image: profile.user.image,
+        name: profile.name || "Coach",
+        image: profile.photoUrl || profile.user?.image,
         color: profile.color,
-        initials: (profile.user.name || "C")
+        initials: (profile.name || "C")
           .split(" ")
           .map((n) => n[0])
           .join("")

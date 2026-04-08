@@ -34,7 +34,7 @@ interface StudioWithRooms {
   rooms: { id: string; name: string; maxCapacity: number; classTypes: { id: string; name: string }[] }[];
 }
 
-type CoachProfileWithUser = CoachProfile & { user: Pick<User, "id" | "name" | "email" | "image"> };
+type CoachProfileWithUser = CoachProfile & { user?: Pick<User, "id" | "name" | "email" | "image"> | null };
 
 const SONG_CRITERIA_OPTIONS = [
   { value: "ALL", label: "Todos los asistentes" },
@@ -233,7 +233,7 @@ export function ClassFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {coaches?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.user.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

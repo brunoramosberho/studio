@@ -69,7 +69,7 @@ interface ClassDetail {
   id: string;
   classTypeId: string;
   classType: { id: string; name: string; color: string; duration: number; icon?: string | null };
-  coach: { id: string; userId: string; color: string; user: { name: string | null; image: string | null } };
+  coach: { id: string; userId: string; color: string; name: string; user?: { name?: string | null; image?: string | null } | null };
   room: {
     id: string;
     name: string;
@@ -484,7 +484,7 @@ export default function AdminClassDetailPage() {
               </span>
             </div>
             <div className="mt-2 text-sm text-muted">
-              Coach: <span className="font-medium text-foreground">{classData.coach.user.name}</span>
+              Coach: <span className="font-medium text-foreground">{classData.coach.name}</span>
             </div>
           </CardContent>
         </Card>
@@ -534,7 +534,7 @@ export default function AdminClassDetailPage() {
                 selectedSpot={null}
                 onSelectSpot={() => {}}
                 layout={classData.room.layout as RoomLayoutData}
-                coachName={classData.coach.user.name}
+                coachName={classData.coach.name}
                 adminMode={blockingMode}
                 onToggleBlock={handleToggleBlock}
                 disabled={!blockingMode}

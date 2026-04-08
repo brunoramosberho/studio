@@ -115,7 +115,7 @@ export async function POST(
       const event = await prisma.feedEvent.create({
         data: {
           tenantId: ctx.tenant.id,
-          userId: cls.coach.userId,
+          userId: cls.coach.userId ?? ctx.session.user.id,
           eventType: "CLASS_COMPLETED",
           visibility: "STUDIO_WIDE",
           payload: {
@@ -123,9 +123,9 @@ export async function POST(
             className: cls.classType.name,
             classTypeColor: cls.classType.color,
             classTypeIcon: cls.classType.icon,
-            coachName: cls.coach.user.name,
-            coachImage: cls.coach.photoUrl || cls.coach.user.image,
-            coachUserId: cls.coach.userId,
+            coachName: cls.coach.name,
+            coachImage: cls.coach.photoUrl || cls.coach.user?.image,
+            coachUserId: cls.coach.userId ?? ctx.session.user.id,
             date: format(localDate, "EEEE d 'de' MMMM", { locale: es }),
             time: timeStr,
             startsAt: cls.startsAt.toISOString(),
@@ -149,7 +149,7 @@ export async function POST(
     }
 
     if (!existingEvent && feedEventId && idsToMark.length > 0) {
-      const coachFirst = cls.coach.user.name?.split(" ")[0] ?? "Tu coach";
+      const coachFirst = cls.coach.name?.split(" ")[0] ?? "Tu coach";
       sendPushToMany(
         idsToMark,
         {

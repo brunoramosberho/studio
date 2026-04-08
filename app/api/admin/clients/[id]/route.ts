@@ -252,7 +252,7 @@ export async function GET(
             class: {
               include: {
                 classType: { select: { name: true, color: true } },
-                coach: { select: { user: { select: { name: true } } } },
+                coach: { select: { name: true, user: { select: { name: true } } } },
                 room: { select: { name: true } },
               },
             },
@@ -270,7 +270,7 @@ export async function GET(
             class: {
               include: {
                 classType: { select: { name: true, color: true } },
-                coach: { select: { user: { select: { name: true } } } },
+                coach: { select: { name: true, user: { select: { name: true } } } },
               },
             },
           },
@@ -403,7 +403,7 @@ export async function GET(
         classId: b.classId,
         className: b.class.classType.name,
         classColor: b.class.classType.color,
-        coachName: b.class.coach.user.name,
+        coachName: b.class.coach.name,
         roomName: b.class.room.name,
         startsAt: b.class.startsAt.toISOString(),
         endsAt: b.class.endsAt.toISOString(),
@@ -416,7 +416,7 @@ export async function GET(
         classId: b.classId,
         className: b.class.classType.name,
         classColor: b.class.classType.color,
-        coachName: b.class.coach.user.name,
+        coachName: b.class.coach.name,
         startsAt: b.class.startsAt.toISOString(),
         status: b.status,
       })),

@@ -189,7 +189,8 @@ export async function GET(
 
     return NextResponse.json({
       id: coach.id,
-      userId: coach.user.id,
+      name: coach.name,
+      userId: coach.userId,
       bio: coach.bio,
       specialties: coach.specialties,
       photoUrl: coach.photoUrl,
@@ -224,7 +225,7 @@ export async function PUT(
   try {
     const ctx = await requireRole("ADMIN");
     const { id } = await params;
-    const { bio, specialties, color } = await request.json();
+    const { name, bio, specialties, color } = await request.json();
 
     const coach = await prisma.coachProfile.findFirst({
       where: { id, tenantId: ctx.tenant.id },
@@ -237,6 +238,7 @@ export async function PUT(
     const updated = await prisma.coachProfile.update({
       where: { id },
       data: {
+        ...(typeof name === "string" && name.trim() && { name: name.trim() }),
         ...(typeof bio === "string" && { bio }),
         ...(Array.isArray(specialties) && { specialties }),
         ...(typeof color === "string" && { color }),

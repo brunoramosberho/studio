@@ -54,7 +54,8 @@ interface LinkedClassOption {
   coach: {
     id: string;
     userId: string;
-    user: { name: string | null; image: string | null };
+    name: string;
+    user?: { name?: string | null; image?: string | null } | null;
   };
   room: {
     name: string;
@@ -280,7 +281,7 @@ export default function AdminFeedPage() {
     return upcomingClasses.filter(
       (c) =>
         c.classType.name.toLowerCase().includes(q) ||
-        c.coach.user.name?.toLowerCase().includes(q) ||
+        c.coach.name?.toLowerCase().includes(q) ||
         c.room.studio.name.toLowerCase().includes(q),
     );
   }, [upcomingClasses, classSearch]);
@@ -1066,7 +1067,7 @@ export default function AdminFeedPage() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-foreground">{linkedClass.classType.name}</p>
                           <p className="text-[11px] text-muted">
-                            con {linkedClass.coach.user.name} · {new Date(linkedClass.startsAt).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })} · {new Date(linkedClass.startsAt).toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true })}
+                            con {linkedClass.coach.name} · {new Date(linkedClass.startsAt).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })} · {new Date(linkedClass.startsAt).toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true })}
                           </p>
                           <p className="text-[11px] text-muted/70">
                             {linkedClass.room.name} · {linkedClass.room.studio.name}
@@ -1198,7 +1199,7 @@ export default function AdminFeedPage() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-foreground">{cls.classType.name}</p>
                           <p className="text-[11px] text-muted">
-                            con {cls.coach.user.name} · {cls.room.studio.name}
+                            con {cls.coach.name} · {cls.room.studio.name}
                           </p>
                         </div>
                         <div className="shrink-0 text-right">

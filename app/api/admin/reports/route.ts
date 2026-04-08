@@ -398,7 +398,7 @@ export async function GET() {
           occupancyPct: pct,
           enrolled: c._count.bookings,
           capacity: cap,
-          coachName: c.coach?.user.name ?? null,
+          coachName: c.coach?.name ?? null,
         };
       })
       .filter((c) => c.occupancyPct < 30);

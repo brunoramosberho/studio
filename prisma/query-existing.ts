@@ -26,7 +26,7 @@ async function main() {
     });
     console.log("\n  CoachProfiles:");
     for (const c of coaches)
-      console.log(`    "${c.user.name}" (${c.user.email}) → id: ${c.id}`);
+      console.log(`    "${c.name}" (${c.user?.email ?? "sin cuenta"}) → id: ${c.id}`);
 
     const rooms = await prisma.room.findMany({
       where: { tenantId: tenant.id },

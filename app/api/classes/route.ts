@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
         coach: {
           select: {
             id: true,
+            name: true,
             userId: true,
             photoUrl: true,
             color: true,
@@ -176,6 +177,7 @@ export async function POST(request: NextRequest) {
         coach: {
           select: {
             id: true,
+            name: true,
             userId: true,
             photoUrl: true,
             color: true,

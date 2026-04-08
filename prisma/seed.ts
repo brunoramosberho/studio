@@ -321,6 +321,7 @@ async function main() {
     });
     const profile = await prisma.coachProfile.create({
       data: {
+        name: c.name,
         userId: user.id,
         tenantId,
         bio: c.bio,

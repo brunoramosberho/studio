@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
             },
           },
           room: { select: { studio: { select: { name: true, cityId: true } } } },
-          coach: { select: { userId: true, photoUrl: true, user: { select: { name: true, image: true } } } },
+          coach: { select: { name: true, userId: true, photoUrl: true, user: { select: { name: true, image: true } } } },
         },
       });
       for (const c of classRooms) {
@@ -240,9 +240,9 @@ export async function GET(request: NextRequest) {
           description: c.classType.description,
           duration: c.classType.duration,
           level: c.classType.level,
-          coachName: c.coach.user.name,
-          coachUserId: c.coach.userId,
-          coachImage: c.coach.photoUrl || c.coach.user.image,
+          coachName: c.coach.name,
+          coachUserId: c.coach.userId ?? "",
+          coachImage: c.coach.photoUrl || c.coach.user?.image || null,
         });
       }
     }

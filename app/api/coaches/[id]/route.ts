@@ -34,7 +34,7 @@ export async function PUT(
   try {
     const ctx = await requireAuth();
     const { id: userId } = await params;
-    const { bio, photoUrl, specialties } = await request.json();
+    const { name, bio, photoUrl, specialties } = await request.json();
 
     const coach = await prisma.coachProfile.findFirst({
       where: { userId, tenantId: ctx.tenant.id },
@@ -53,6 +53,7 @@ export async function PUT(
     const updated = await prisma.coachProfile.update({
       where: { id: coach.id },
       data: {
+        ...(typeof name === "string" && name.trim() && { name: name.trim() }),
         ...(typeof bio === "string" && { bio }),
         ...(typeof photoUrl === "string" && { photoUrl }),
         ...(Array.isArray(specialties) && { specialties }),

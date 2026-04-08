@@ -128,7 +128,7 @@ export default function AdminClassesPage() {
         const q = searchQuery.toLowerCase();
         return (
           c.classType.name.toLowerCase().includes(q) ||
-          c.coach.user.name?.toLowerCase().includes(q) ||
+          c.coach.name?.toLowerCase().includes(q) ||
           c.tag?.toLowerCase().includes(q) ||
           c.room?.studio?.name?.toLowerCase().includes(q) ||
           c.room?.name?.toLowerCase().includes(q)
@@ -139,7 +139,7 @@ export default function AdminClassesPage() {
       const dir = sort.dir === "asc" ? 1 : -1;
       if (sort.key === "startsAt") return (new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()) * dir;
       if (sort.key === "classType") return a.classType.name.localeCompare(b.classType.name) * dir;
-      if (sort.key === "coach") return (a.coach.user.name ?? "").localeCompare(b.coach.user.name ?? "") * dir;
+      if (sort.key === "coach") return (a.coach.name ?? "").localeCompare(b.coach.name ?? "") * dir;
       if (sort.key === "studio") return (a.room?.studio?.name ?? "").localeCompare(b.room?.studio?.name ?? "") * dir;
       const aEnrolled = a._count?.bookings ?? 0;
       const bEnrolled = b._count?.bookings ?? 0;
@@ -313,7 +313,7 @@ export default function AdminClassesPage() {
                               {isCancelled && <Badge variant="danger">Cancelada</Badge>}
                             </div>
                           </TableCell>
-                          <TableCell className="py-3 text-sm">{cls.coach.user.name}</TableCell>
+                          <TableCell className="py-3 text-sm">{cls.coach.name}</TableCell>
                           <TableCell className="py-3">
                             {cls.room?.studio ? (
                               <div className="text-sm">
@@ -430,7 +430,7 @@ export default function AdminClassesPage() {
                           <Clock className="h-3.5 w-3.5 text-muted" />
                           {formatTime(cls.startsAt)} – {formatTime(cls.endsAt)}
                         </span>
-                        <span>{cls.coach.user.name}</span>
+                        <span>{cls.coach.name}</span>
                         {cls.room?.studio && (
                           <span className="flex items-center gap-1 text-muted/70">
                             <MapPin className="h-3 w-3" />

@@ -135,7 +135,7 @@ export async function GET() {
         day,
         time,
         date: dateStr,
-        coachName: c.coach?.user.name || null,
+        coachName: c.coach?.name || null,
         spotsLeft: c.room.maxCapacity - c._count.bookings,
         capacity: c.room.maxCapacity,
         color: c.classType.color,

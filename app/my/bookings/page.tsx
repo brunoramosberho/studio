@@ -134,7 +134,7 @@ export default function BookingsPage() {
     const date = new Date(booking.class.startsAt);
     const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
     const timeStr = formatTimeRange(booking.class.startsAt, booking.class.endsAt);
-    const text = `${booking.class.classType.name} con ${booking.class.coach.user.name}\n${dayStr}, ${timeStr}\n¡Reserva tu lugar!`;
+    const text = `${booking.class.classType.name} con ${booking.class.coach.name}\n${dayStr}, ${timeStr}\n¡Reserva tu lugar!`;
 
     if (navigator.share) {
       try {
@@ -286,15 +286,15 @@ export default function BookingsPage() {
                     >
                       <div className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          {(booking.class.coach.photoUrl || booking.class.coach.user.image) ? (
+                          {(booking.class.coach.photoUrl || booking.class.coach.user?.image) ? (
                             <img
-                              src={(booking.class.coach.photoUrl || booking.class.coach.user.image)!}
-                              alt={booking.class.coach.user.name || "Coach"}
+                              src={(booking.class.coach.photoUrl || booking.class.coach.user?.image)!}
+                              alt={booking.class.coach.name || "Coach"}
                               className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
                             />
                           ) : (
                             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent">
-                              {booking.class.coach.user.name?.charAt(0) || "C"}
+                              {booking.class.coach.name?.charAt(0) || "C"}
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
@@ -302,7 +302,7 @@ export default function BookingsPage() {
                               {booking.class.classType.name}
                             </p>
                             <p className="truncate text-[13px] text-muted">
-                              con {booking.class.coach.user.name?.split(" ")[0]}
+                              con {booking.class.coach.name?.split(" ")[0]}
                               {studioName && <span className="text-muted/50"> · {studioName}</span>}
                             </p>
                           </div>
@@ -515,15 +515,15 @@ function BookingCard({
       >
         <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
           <div className="flex items-center gap-3">
-            {(booking.class.coach.photoUrl || booking.class.coach.user.image) ? (
+            {(booking.class.coach.photoUrl || booking.class.coach.user?.image) ? (
               <img
-                src={(booking.class.coach.photoUrl || booking.class.coach.user.image)!}
-                alt={booking.class.coach.user.name || "Coach"}
+                src={(booking.class.coach.photoUrl || booking.class.coach.user?.image)!}
+                alt={booking.class.coach.name || "Coach"}
                 className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
               />
             ) : (
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent">
-                {booking.class.coach.user.name?.charAt(0) || "C"}
+                {booking.class.coach.name?.charAt(0) || "C"}
               </div>
             )}
             <div className="min-w-0 flex-1">
@@ -538,7 +538,7 @@ function BookingCard({
                 )}
               </div>
               <p className="truncate text-[13px] text-muted">
-                con {booking.class.coach.user.name?.split(" ")[0]}
+                con {booking.class.coach.name?.split(" ")[0]}
                 {studioName && <span className="text-muted/50"> · {studioName}</span>}
               </p>
             </div>
@@ -625,15 +625,15 @@ function WaitlistCard({
           />
 
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            {(entry.class.coach.photoUrl || entry.class.coach.user.image) ? (
+            {(entry.class.coach.photoUrl || entry.class.coach.user?.image) ? (
               <img
-                src={entry.class.coach.photoUrl || entry.class.coach.user.image!}
-                alt={entry.class.coach.user.name || "Coach"}
+                src={entry.class.coach.photoUrl || entry.class.coach.user?.image!}
+                alt={entry.class.coach.name || "Coach"}
                 className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
               />
             ) : (
               <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-[13px] font-bold text-accent">
-                {entry.class.coach.user.name?.charAt(0) || "C"}
+                {entry.class.coach.name?.charAt(0) || "C"}
               </div>
             )}
             <div className="min-w-0 flex-1">
@@ -647,7 +647,7 @@ function WaitlistCard({
                 </span>
               </div>
               <p className="truncate text-[13px] text-muted">
-                con {entry.class.coach.user.name?.split(" ")[0]}
+                con {entry.class.coach.name?.split(" ")[0]}
                 {studioName && (
                   <span className="text-muted/50"> · {studioName}</span>
                 )}

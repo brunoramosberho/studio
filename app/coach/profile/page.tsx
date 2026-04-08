@@ -40,7 +40,7 @@ export default function CoachProfilePage() {
   useEffect(() => {
     if (profile) {
       setBio(profile.bio || "");
-      setPhotoUrl(profile.photoUrl || profile.user.image || "");
+      setPhotoUrl(profile.photoUrl || profile.user?.image || "");
       setSpecialties(profile.specialties || []);
     }
   }, [profile]);

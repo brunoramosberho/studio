@@ -89,7 +89,7 @@ interface PlatformBooking {
     startsAt: string;
     classType: { name: string; color: string };
     room: { name: string };
-    coach: { user: { name: string | null } };
+    coach: { name: string; user?: { name?: string | null } | null };
   };
 }
 
@@ -105,7 +105,7 @@ interface PlatformQuota {
     startsAt: string;
     classType: { name: string; color: string };
     room: { name: string; maxCapacity: number };
-    coach: { user: { name: string | null } };
+    coach: { name: string; user?: { name?: string | null } | null };
   };
 }
 
@@ -196,7 +196,7 @@ function buildDemoQuotas(weekStart: Date): PlatformQuota[] {
             startsAt: startsAt.toISOString(),
             classType: ct,
             room,
-            coach: { user: { name: coach } },
+            coach: { name: coach },
           },
         });
       }
@@ -213,7 +213,7 @@ function buildDemoQuotas(weekStart: Date): PlatformQuota[] {
             startsAt: startsAt.toISOString(),
             classType: ct,
             room,
-            coach: { user: { name: coach } },
+            coach: { name: coach },
           },
         });
       }
@@ -265,7 +265,7 @@ function buildDemoBookings(): PlatformBooking[] {
         startsAt: startsAt.toISOString(),
         classType: { name: ["Cycling", "Yoga Flow", "HIIT", "Pilates", "Barre", "Boxing", "Cycling", "HIIT"][i], color: ["#F59E0B", "#8B5CF6", "#EF4444", "#EC4899", "#14B8A6", "#1D4ED8", "#F59E0B", "#EF4444"][i] },
         room: { name: ["Sala A", "Sala B", "Terraza"][i % 3] },
-        coach: { user: { name: ["Ana García", "Carlos Ruiz", "Sofía Torres", "Diego Martínez"][i % 4] } },
+        coach: { name: ["Ana García", "Carlos Ruiz", "Sofía Torres", "Diego Martínez"][i % 4] },
       },
     };
   });
@@ -848,7 +848,7 @@ function QuotasTab({ demo }: { demo: boolean }) {
                       </span>
                     </div>
                     <p className="text-xs text-muted">
-                      {classData.coach.user.name} · {classData.room.name}
+                      {classData.coach.name} · {classData.room.name}
                     </p>
                   </div>
 

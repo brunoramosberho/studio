@@ -43,7 +43,7 @@ export interface RoomWithStudio extends Room {
 export interface ClassWithDetails extends Class {
   classType: ClassType;
   room: RoomWithStudio;
-  coach: CoachProfile & { user: Pick<User, "name" | "image"> };
+  coach: CoachProfile & { user?: Pick<User, "name" | "image"> | null };
   bookings: Booking[];
   _count?: { bookings: number; waitlist: number; songRequests?: number };
   spotsLeft?: number;
@@ -63,7 +63,7 @@ export interface UserPackageWithDetails extends UserPackage {
 }
 
 export interface CoachProfileWithUser extends CoachProfile {
-  user: Pick<User, "id" | "name" | "email" | "image">;
+  user?: Pick<User, "id" | "name" | "email" | "image"> | null;
 }
 
 export interface ScheduleFilters {
