@@ -81,7 +81,8 @@ function DotsIconSvg({ size = 14 }: { size?: number }) {
   );
 }
 
-export function SafariBottomBarModern({ accentColor, url = "tu-estudio.mgic.app" }: { accentColor: string; url?: string }) {
+export function SafariBottomBarModern({ accentColor, url }: { accentColor: string; url?: string }) {
+  const displayUrl = url || (typeof window !== "undefined" ? window.location.hostname : "tu-estudio.mgic.app");
   return (
     <div className="overflow-hidden rounded-xl border border-black/[0.08] bg-[#F9F9F9]">
       {/* Page content area */}
@@ -99,7 +100,7 @@ export function SafariBottomBarModern({ accentColor, url = "tu-estudio.mgic.app"
 
         {/* URL pill */}
         <div className="flex h-7 flex-1 items-center justify-center rounded-lg bg-white px-2">
-          <span className="truncate text-[11px] text-[#8E8E93]">{url}</span>
+          <span className="truncate text-[11px] text-[#8E8E93]">{displayUrl}</span>
         </div>
 
         {/* Reload */}
@@ -125,12 +126,13 @@ export function SafariBottomBarModern({ accentColor, url = "tu-estudio.mgic.app"
 export function BrowserTopBar({
   accentColor,
   browser = "safari",
-  url = "tu-estudio.mgic.app",
+  url,
 }: {
   accentColor: string;
   browser?: "safari" | "chrome";
   url?: string;
 }) {
+  const displayUrl = url || (typeof window !== "undefined" ? window.location.hostname : "tu-estudio.mgic.app");
   const iconColor = browser === "safari" ? "#007AFF" : "#5F6368";
 
   return (
@@ -149,7 +151,7 @@ export function BrowserTopBar({
             {browser === "safari" && (
               <svg className="mr-1 inline-block" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth={2.5}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
             )}
-            {url}
+            {displayUrl}
           </span>
         </div>
 
