@@ -16,6 +16,7 @@ import {
   Flame,
   TrendingUp,
   Clock,
+  Eye,
   Smartphone,
   Plus,
   Minus,
@@ -60,6 +61,7 @@ interface ClientDetail {
   stravaUser: string | null;
   memberSince: string;
   pwaInstalledAt: string | null;
+  lastSeenAt: string | null;
   role: string;
   stats: {
     totalClasses: number;
@@ -398,6 +400,14 @@ export default function ClientDetailPage() {
                     Miembro desde {format(new Date(client.memberSince), "MMM yyyy", { locale: es })}
                   </span>
                 </div>
+                {client.lastSeenAt && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <Eye className="h-4 w-4 shrink-0 text-muted" />
+                    <span className="text-muted">
+                      Activo {timeAgo(client.lastSeenAt)}
+                    </span>
+                  </div>
+                )}
                 {client.instagramUser && (
                   <a
                     href={`https://instagram.com/${client.instagramUser}`}

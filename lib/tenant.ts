@@ -116,6 +116,24 @@ async function ensureMembership(
   });
 }
 
+const LAST_SEEN_THROTTLE_MS = 60 * 60 * 1000; // 1 hour
+
+function touchLastSeen(membership: Membership): void {
+  const now = new Date();
+  if (
+    membership.lastSeenAt &&
+    now.getTime() - membership.lastSeenAt.getTime() < LAST_SEEN_THROTTLE_MS
+  ) {
+    return;
+  }
+  prisma.membership
+    .update({
+      where: { userId_tenantId: { userId: membership.userId, tenantId: membership.tenantId } },
+      data: { lastSeenAt: now },
+    })
+    .catch(() => {});
+}
+
 export async function getAuthContext(): Promise<AuthContext | null> {
   const session = await resolveSession();
   if (!session?.user?.id) return null;
@@ -124,6 +142,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   if (!tenant) return null;
 
   const membership = await ensureMembership(session.user.id, tenant.id);
+  touchLastSeen(membership);
 
   return { session: session as AuthContext["session"], tenant, membership };
 }
@@ -134,6 +153,7 @@ export async function requireAuth(): Promise<AuthContext> {
 
   const tenant = await requireTenant();
   const membership = await ensureMembership(session.user.id, tenant.id);
+  touchLastSeen(membership);
 
   return { session: session as AuthContext["session"], tenant, membership };
 }

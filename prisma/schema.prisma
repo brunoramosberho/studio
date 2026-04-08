@@ -145,6 +145,7 @@ model Membership {
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   role            Role      @default(CLIENT)
   pwaInstalledAt  DateTime?
+  lastSeenAt      DateTime?
   createdAt       DateTime  @default(now())
 
   @@unique([userId, tenantId])

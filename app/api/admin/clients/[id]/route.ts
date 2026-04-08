@@ -170,7 +170,7 @@ export async function GET(
 
     const membership = await prisma.membership.findUnique({
       where: { userId_tenantId: { userId, tenantId } },
-      select: { role: true, pwaInstalledAt: true, createdAt: true },
+      select: { role: true, pwaInstalledAt: true, lastSeenAt: true, createdAt: true },
     });
 
     if (!membership) {
@@ -353,6 +353,7 @@ export async function GET(
       stravaUser: user.stravaUser,
       memberSince: membership.createdAt.toISOString(),
       pwaInstalledAt: membership.pwaInstalledAt?.toISOString() ?? null,
+      lastSeenAt: membership.lastSeenAt?.toISOString() ?? null,
       role: membership.role,
 
       stats: {
