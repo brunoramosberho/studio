@@ -62,7 +62,10 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: ["pilates", "wellness", "reformer", "barre", "mat flow", "studio"],
     manifest: "/api/manifest",
     icons: {
-      icon: "/api/icon?size=192",
+      icon: [
+        { url: "/api/icon?size=32", sizes: "32x32", type: "image/png" },
+        { url: "/api/icon?size=192", sizes: "192x192", type: "image/png" },
+      ],
       apple: [
         { url: slug ? `/pwa/${slug}/apple-icon-180.png` : "/apple-icon", sizes: "180x180", type: "image/png" },
       ],

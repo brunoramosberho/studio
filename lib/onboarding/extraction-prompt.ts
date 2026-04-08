@@ -43,6 +43,15 @@ El JSON debe seguir exactamente este schema:
       "confidence": "high" | "medium" | "low"
     }
   ],
+  "coaches": [
+    {
+      "name": string,                    // nombre completo del coach/instructor
+      "photoUrl": string | null,         // URL absoluta de su foto si se ve en el sitio (convertir relativas a absolutas)
+      "specialties": string[],           // disciplinas que imparte (ej: ["Yoga", "Pilates"])
+      "source": "website" | "instagram" | "both",
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
   "packages": [
     {
       "name": string,
@@ -145,6 +154,18 @@ Meditation/mindfulness: "brain", "wind", "moon"
 General: "star", "circle-dot", "sun", "mountain"
 
 Elegir el icono que mejor represente la naturaleza de cada disciplina.
+
+=== INSTRUCCIONES PARA COACHES/INSTRUCTORES ===
+
+Extraer todos los coaches, instructores o profesores mencionados en el sitio web o Instagram:
+- Buscar secciones como "Equipo", "Nuestros coaches", "Instructores", "Team", "Profesores"
+- Para cada coach extraer su nombre completo tal como aparece
+- Si hay foto del coach en el sitio, incluir la URL absoluta en photoUrl
+  (convertir URLs relativas a absolutas usando el dominio del sitio)
+- Si se mencionan qué clases o disciplinas imparte, incluirlas en specialties
+- En Instagram, si los posts mencionan o tagean coaches, extraerlos también
+- NO inventar coaches. Solo incluir los que aparezcan explícitamente
+- Si no hay coaches visibles en ninguna fuente, devolver array vacío []
 
 === INSTRUCCIONES PARA LOGO ===
 

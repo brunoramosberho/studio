@@ -209,6 +209,22 @@ export async function POST(req: Request) {
       extracted.identity.websiteUrl = websiteUrl;
     }
 
+    if (!Array.isArray(extracted.coaches)) {
+      extracted.coaches = [];
+    }
+    for (const coach of extracted.coaches) {
+      if (coach.photoUrl && !coach.photoUrl.startsWith("http")) {
+        try {
+          coach.photoUrl = new URL(coach.photoUrl, websiteUrl).href;
+        } catch {
+          coach.photoUrl = null;
+        }
+      }
+      if (!Array.isArray(coach.specialties)) {
+        coach.specialties = [];
+      }
+    }
+
     return NextResponse.json(extracted);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error interno";

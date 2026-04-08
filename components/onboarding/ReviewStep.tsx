@@ -4,6 +4,7 @@ import { IdentityCard } from "./review/IdentityCard";
 import { BrandCard } from "./review/BrandCard";
 import { LocationsCard } from "./review/LocationsCard";
 import { DisciplinesCard } from "./review/DisciplinesCard";
+import { CoachesCard } from "./review/CoachesCard";
 import { PackagesCard } from "./review/PackagesCard";
 import { PendingBanner } from "./review/PendingBanner";
 import type { ExtractedData } from "@/lib/onboarding/types";
@@ -56,6 +57,10 @@ export function ReviewStep({ data, slug, slugAvailable, onChange, onSlugChange }
           <DisciplinesCard
             data={data.disciplines}
             onChange={(disciplines) => onChange({ ...data, disciplines })}
+          />
+          <CoachesCard
+            data={data.coaches}
+            onChange={(coaches) => onChange({ ...data, coaches })}
           />
           <PackagesCard
             data={data.packages}

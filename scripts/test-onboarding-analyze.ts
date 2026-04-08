@@ -81,6 +81,12 @@ async function main() {
     console.log(`  • ${d.name} (${d.durationMinutes ?? "?"}min) [${d.confidence}] — ${d.source}`);
   }
 
+  console.log(`\n── Coaches (${(data.coaches || []).length}) ──`);
+  for (const c of data.coaches || []) {
+    console.log(`  • ${c.name} ${c.photoUrl ? "📷" : ""} [${c.confidence}] — ${c.source}`);
+    if (c.specialties.length) console.log(`    Specialties: ${c.specialties.join(", ")}`);
+  }
+
   console.log(`\n── Packages (${data.packages.length}) ──`);
   for (const p of data.packages) {
     const credits = p.unlimited ? "∞" : p.credits ?? "?";

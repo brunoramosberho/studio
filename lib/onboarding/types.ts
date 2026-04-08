@@ -38,6 +38,14 @@ export interface ExtractedDiscipline {
   confidence: Confidence;
 }
 
+export interface ExtractedCoach {
+  name: string;
+  photoUrl: string | null;
+  specialties: string[];
+  source: Source;
+  confidence: Confidence;
+}
+
 export interface ExtractedPackage {
   name: string;
   type: "offer" | "package" | "subscription";
@@ -55,6 +63,7 @@ export interface ExtractedData {
   brand: ExtractedBrand;
   locations: ExtractedLocation[];
   disciplines: ExtractedDiscipline[];
+  coaches: ExtractedCoach[];
   packages: ExtractedPackage[];
   manualRequired: {
     rooms: true;
