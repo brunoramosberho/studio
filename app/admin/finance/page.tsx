@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import {
   DollarSign,
   TrendingUp,
@@ -75,11 +76,14 @@ interface FinanceData {
 interface Transaction {
   id: string;
   source: string;
+  memberId: string | null;
   memberName: string;
   memberEmail: string;
   concept: string | null;
   conceptSub: string | null;
   conceptType: string;
+  itemName: string | null;
+  itemHref: string | null;
   grossAmount: number;
   fee: number | null;
   netAmount: number | null;
@@ -131,8 +135,8 @@ const methodLabels: Record<string, string> = {
 };
 
 const conceptTypeStyles: Record<string, string> = {
-  subscription: "bg-stone-100 text-stone-600",
-  package: "bg-blue-50 text-blue-700",
+  subscription: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200",
+  package: "bg-stone-100 text-stone-500",
   product: "bg-emerald-50 text-emerald-700",
   penalty: "bg-red-50 text-red-700",
 };
@@ -198,6 +202,7 @@ export default function FinancePage() {
   const [method, setMethod] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [hideAbandoned, setHideAbandoned] = useState(true);
   const renewalsRef = useRef<HTMLDivElement>(null);
 
   const { data: finance, isLoading: financeLd } = useQuery<FinanceData>({
@@ -231,7 +236,13 @@ export default function FinancePage() {
   }, [range]);
 
   const summary = finance?.summary;
-  const tx = txData?.transactions ?? [];
+  const allTx = txData?.transactions ?? [];
+  const tx = hideAbandoned
+    ? allTx.filter((t) => {
+        if (t.status !== "pending") return true;
+        return Date.now() - new Date(t.createdAt).getTime() < 60 * 60 * 1000;
+      })
+    : allTx;
   const pagination = txData?.pagination;
 
   return (
@@ -446,7 +457,7 @@ export default function FinancePage() {
               className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-stone-200 text-sm outline-none focus:border-stone-400 placeholder:text-stone-300"
             />
           </div>
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1 flex-wrap items-center">
             {methodFilters.map((f) => (
               <button
                 key={f.value}
@@ -461,6 +472,15 @@ export default function FinancePage() {
                 {f.label}
               </button>
             ))}
+            <label className="ml-2 flex items-center gap-1.5 text-xs text-stone-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={hideAbandoned}
+                onChange={(e) => setHideAbandoned(e.target.checked)}
+                className="rounded border-stone-300 text-stone-600 focus:ring-stone-400 h-3 w-3"
+              />
+              Ocultar abandonados
+            </label>
           </div>
         </div>
 
@@ -498,12 +518,28 @@ export default function FinancePage() {
                   <tr key={t.id} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
                     {/* Client */}
                     <td className="px-4 py-2.5">
-                      <p className="text-xs font-medium text-stone-700 truncate max-w-[140px]">{t.memberName}</p>
-                      <p className="text-[10px] text-stone-400 truncate max-w-[140px]">{t.memberEmail}</p>
+                      {t.memberId ? (
+                        <Link href={`/admin/clients/${t.memberId}`} className="group block">
+                          <p className="text-xs font-medium text-stone-700 truncate max-w-[140px] group-hover:text-stone-900 group-hover:underline">{t.memberName}</p>
+                          <p className="text-[10px] text-stone-400 truncate max-w-[140px]">{t.memberEmail}</p>
+                        </Link>
+                      ) : (
+                        <div>
+                          <p className="text-xs font-medium text-stone-700 truncate max-w-[140px]">{t.memberName}</p>
+                          <p className="text-[10px] text-stone-400 truncate max-w-[140px]">{t.memberEmail}</p>
+                        </div>
+                      )}
                     </td>
                     {/* Concept */}
                     <td className="px-4 py-2.5">
-                      <p className="text-xs text-stone-600 truncate max-w-[150px]">{t.concept ?? t.conceptSub ?? "—"}</p>
+                      {t.itemName && t.itemHref ? (
+                        <Link href={t.itemHref} className="text-xs font-medium text-stone-700 hover:text-stone-900 hover:underline truncate block max-w-[170px]">
+                          {t.itemName}
+                        </Link>
+                      ) : (
+                        <p className="text-xs font-medium text-stone-600 truncate max-w-[170px]">{t.concept ?? "—"}</p>
+                      )}
+                      <p className="text-[10px] text-stone-400 truncate max-w-[170px]">{t.conceptSub}</p>
                       <span className={cn("inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium", conceptTypeStyles[t.conceptType] ?? "bg-stone-100 text-stone-500")}>
                         {conceptTypeLabels[t.conceptType] ?? t.conceptType}
                       </span>
@@ -530,7 +566,7 @@ export default function FinancePage() {
                     </td>
                     {/* Status */}
                     <td className="px-4 py-2.5 text-center">
-                      <StatusBadge status={t.status} />
+                      <StatusBadge status={t.status} createdAt={t.createdAt} />
                     </td>
                     {/* Processed By */}
                     <td className="px-4 py-2.5 hidden lg:table-cell">
@@ -683,7 +719,7 @@ function FeeNetCell({ transaction: t }: { transaction: Transaction }) {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, createdAt }: { status: string; createdAt: string }) {
   if (status === "succeeded") {
     return <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-700 font-medium">✓ Cobrado</span>;
   }
@@ -692,6 +728,11 @@ function StatusBadge({ status }: { status: string }) {
   }
   if (status === "refunded") {
     return <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-500 font-medium">↩ Reembolsado</span>;
+  }
+  const ageMs = Date.now() - new Date(createdAt).getTime();
+  const isAbandoned = ageMs > 60 * 60 * 1000;
+  if (isAbandoned) {
+    return <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-400 font-medium">○ Abandonado</span>;
   }
   return <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 font-medium">● Pendiente</span>;
 }

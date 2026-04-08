@@ -41,18 +41,10 @@ function getDateRange(range: Range, month?: string) {
   return { start, end };
 }
 
-function mapStripeType(type: string): string {
-  if (type === "membership" || type === "subscription") return "subscription";
-  if (type === "class" || type === "package") return "package";
-  if (type === "product") return "product";
-  if (type === "penalty") return "penalty";
-  return "package";
-}
-
 function getConceptType(type: string): string {
-  if (type === "membership" || type === "subscription") return "subscription";
-  if (type === "class" || type === "package") return "package";
-  if (type === "product") return "product";
+  if (type === "subscription") return "subscription";
+  if (type === "membership" || type === "class" || type === "package") return "package";
+  if (type === "product" || type === "pos") return "product";
   if (type === "penalty") return "penalty";
   return "package";
 }
@@ -114,14 +106,48 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // Resolve referenceIds to actual item names
+    const allRefIds = [
+      ...stripePayments.filter((p) => p.referenceId).map((p) => p.referenceId!),
+      ...posTransactions.filter((p) => p.referenceId).map((p) => p.referenceId!),
+    ];
+    const uniqueRefIds = [...new Set(allRefIds)];
+
+    const userPackages = uniqueRefIds.length > 0
+      ? await prisma.userPackage.findMany({
+          where: { id: { in: uniqueRefIds } },
+          include: { package: { select: { id: true, name: true, type: true, price: true, currency: true } } },
+        })
+      : [];
+
+    const products = uniqueRefIds.length > 0
+      ? await prisma.product.findMany({
+          where: { id: { in: uniqueRefIds } },
+          select: { id: true, name: true, price: true },
+        })
+      : [];
+
+    const refMap = new Map<string, { name: string; itemType: string; itemId: string; href: string | null }>();
+    for (const up of userPackages) {
+      const pkgType = up.package.type;
+      const href = pkgType === "SUBSCRIPTION" ? "/admin/subscriptions" : "/admin/packages";
+      refMap.set(up.id, { name: up.package.name, itemType: pkgType, itemId: up.package.id, href });
+    }
+    for (const p of products) {
+      refMap.set(p.id, { name: p.name, itemType: "PRODUCT", itemId: p.id, href: "/admin/shop" });
+    }
+
     interface UnifiedTransaction {
       id: string;
       source: string;
+      memberId: string | null;
       memberName: string;
       memberEmail: string;
       concept: string | null;
       conceptSub: string | null;
       conceptType: string;
+      itemName: string | null;
+      itemHref: string | null;
       grossAmount: number;
       fee: number | null;
       netAmount: number | null;
@@ -136,15 +162,29 @@ export async function GET(request: NextRequest) {
     const unified: UnifiedTransaction[] = [];
 
     for (const sp of stripePayments) {
-      const conceptType = getConceptType(sp.type);
+      const ref = sp.referenceId ? refMap.get(sp.referenceId) : null;
+      const resolvedType = ref
+        ? (ref.itemType === "SUBSCRIPTION" ? "subscription"
+          : ref.itemType === "PRODUCT" ? "product"
+          : "package")
+        : getConceptType(sp.type);
+      const defaultConceptSub =
+        resolvedType === "subscription" ? "Renovación automática" :
+        resolvedType === "package" ? "Compra de paquete" :
+        resolvedType === "product" ? "Compra en tienda" :
+        resolvedType === "penalty" ? "Penalización" :
+        "Pago con Stripe";
       unified.push({
         id: sp.id,
         source: "stripe",
+        memberId: sp.member?.id ?? null,
         memberName: sp.member?.name ?? "Sin nombre",
         memberEmail: sp.member?.email ?? "",
-        concept: sp.concept ?? null,
-        conceptSub: sp.conceptSub ?? "Renovación automática",
-        conceptType,
+        concept: sp.concept ?? ref?.name ?? null,
+        conceptSub: sp.conceptSub ?? defaultConceptSub,
+        conceptType: resolvedType,
+        itemName: ref?.name ?? null,
+        itemHref: ref?.href ?? null,
         grossAmount: sp.amount,
         fee: sp.stripeFee ?? null,
         netAmount: sp.netAmount ?? null,
@@ -188,14 +228,29 @@ export async function GET(request: NextRequest) {
         isFeesEstimated = true;
       }
 
+      const posRef = pt.referenceId ? refMap.get(pt.referenceId) : null;
+      const posResolvedType = posRef
+        ? (posRef.itemType === "SUBSCRIPTION" ? "subscription"
+          : posRef.itemType === "PRODUCT" ? "product"
+          : "package")
+        : getConceptType(pt.type);
+      const posDefaultSub =
+        posResolvedType === "subscription" ? "Cobro en recepción" :
+        posResolvedType === "package" ? "Venta de paquete · POS" :
+        posResolvedType === "product" ? "Venta en tienda · POS" :
+        posResolvedType === "penalty" ? "Penalización · POS" :
+        source === "cash" ? "Pago en efectivo" : "POS · Front desk";
       unified.push({
         id: pt.id,
         source,
+        memberId: pt.member?.id ?? null,
         memberName: pt.member?.name ?? "Sin nombre",
         memberEmail: pt.member?.email ?? "",
-        concept: pt.concept ?? null,
-        conceptSub: pt.conceptSub ?? (source === "cash" ? "Efectivo" : "POS · Front desk"),
-        conceptType: pt.type,
+        concept: pt.concept ?? posRef?.name ?? null,
+        conceptSub: pt.conceptSub ?? posDefaultSub,
+        conceptType: posResolvedType,
+        itemName: posRef?.name ?? null,
+        itemHref: posRef?.href ?? null,
         grossAmount: pt.amount,
         fee,
         netAmount,

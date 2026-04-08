@@ -29,6 +29,9 @@ import {
   Star,
   Pause,
   Play,
+  DollarSign,
+  CreditCard,
+  Receipt,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -128,6 +131,27 @@ interface ClientDetail {
       recurringInterval: string | null;
     };
   }[];
+  paymentHistory: {
+    id: string;
+    amount: number;
+    method: string;
+    type: string;
+    typeLabel: string;
+    concept: string | null;
+    itemName: string | null;
+    itemHref: string | null;
+    status: string;
+    processedBy: string;
+    createdAt: string;
+  }[];
+  revenueSummary: {
+    totalHistoric: number;
+    totalThisYear: number;
+    totalThisMonth: number;
+    transactionsCount: number;
+    transactionsThisYear: number;
+    byType: { type: string; amount: number }[];
+  };
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
@@ -247,6 +271,7 @@ export default function ClientDetailPage() {
   const [pauseDays, setPauseDays] = useState("14");
   const [showExpiredPkgs, setShowExpiredPkgs] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [showAllPayments, setShowAllPayments] = useState(false);
 
   if (isLoading) {
     return (
@@ -744,6 +769,137 @@ export default function ClientDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Revenue summary */}
+          {client.revenueSummary && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-emerald-600" />
+                  <span className="text-sm font-semibold">Resumen de ingresos</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-border/40 bg-surface/30 p-3 text-center">
+                    <p className="font-mono text-lg font-bold text-emerald-700">
+                      {formatCurrency(client.revenueSummary.totalHistoric)}
+                    </p>
+                    <p className="text-[10px] text-muted">Total histórico</p>
+                    <p className="text-[10px] text-muted">{client.revenueSummary.transactionsCount} pagos</p>
+                  </div>
+                  <div className="rounded-lg border border-border/40 bg-surface/30 p-3 text-center">
+                    <p className="font-mono text-lg font-bold">
+                      {formatCurrency(client.revenueSummary.totalThisYear)}
+                    </p>
+                    <p className="text-[10px] text-muted">Este año</p>
+                    <p className="text-[10px] text-muted">{client.revenueSummary.transactionsThisYear} pagos</p>
+                  </div>
+                  <div className="rounded-lg border border-border/40 bg-surface/30 p-3 text-center">
+                    <p className="font-mono text-lg font-bold">
+                      {formatCurrency(client.revenueSummary.totalThisMonth)}
+                    </p>
+                    <p className="text-[10px] text-muted">Este mes</p>
+                  </div>
+                </div>
+                {client.revenueSummary.byType.length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    {client.revenueSummary.byType.map((t) => (
+                      <div key={t.type} className="flex items-center justify-between text-xs">
+                        <span className="text-muted">{t.type}</span>
+                        <span className="font-medium">{formatCurrency(t.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Payment history */}
+          {client.paymentHistory && client.paymentHistory.length > 0 && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-admin" />
+                    <span className="text-sm font-semibold">Historial de pagos</span>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {client.paymentHistory.length}
+                    </Badge>
+                  </div>
+                  {client.paymentHistory.length > 10 && (
+                    <button
+                      onClick={() => setShowAllPayments(!showAllPayments)}
+                      className="text-xs font-medium text-admin hover:underline"
+                    >
+                      {showAllPayments ? "Ver recientes" : `Ver todo (${client.paymentHistory.length})`}
+                    </button>
+                  )}
+                </div>
+                <div className="overflow-hidden rounded-lg border border-border/50">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border/50 bg-surface/50">
+                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted">Concepto</th>
+                        <th className="hidden px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted sm:table-cell">Método</th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted">Monto</th>
+                        <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted">Estado</th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted">Fecha</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(showAllPayments ? client.paymentHistory : client.paymentHistory.slice(0, 10)).map((p, i, arr) => (
+                        <tr
+                          key={p.id}
+                          className={cn(
+                            "transition-colors hover:bg-surface/30",
+                            i < arr.length - 1 && "border-b border-border/30",
+                          )}
+                        >
+                          <td className="px-4 py-2.5">
+                            {p.itemName && p.itemHref ? (
+                              <Link href={p.itemHref} className="text-sm font-medium hover:text-admin hover:underline">
+                                {p.itemName}
+                              </Link>
+                            ) : (
+                              <p className="text-sm font-medium">{p.concept || p.typeLabel}</p>
+                            )}
+                            <p className="text-[10px] text-muted">{p.typeLabel}{p.processedBy !== "Sistema" ? ` · ${p.processedBy}` : ""}</p>
+                          </td>
+                          <td className="hidden px-4 py-2.5 sm:table-cell">
+                            <span className={cn(
+                              "inline-block rounded-full px-2 py-0.5 text-[10px] font-medium",
+                              p.method === "Stripe" ? "bg-blue-50 text-blue-700" :
+                              p.method === "TPV" ? "bg-emerald-50 text-emerald-700" :
+                              "bg-amber-50 text-amber-700",
+                            )}>
+                              {p.method}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono font-medium">
+                            {formatCurrency(p.amount)}
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            {p.status === "succeeded" ? (
+                              <span className="text-[10px] font-medium text-emerald-700">✓ Cobrado</span>
+                            ) : p.status === "failed" ? (
+                              <span className="text-[10px] font-medium text-red-700">✗ Fallido</span>
+                            ) : p.status === "refunded" ? (
+                              <span className="text-[10px] font-medium text-stone-500">↩ Reembolsado</span>
+                            ) : (
+                              <span className="text-[10px] font-medium text-amber-700">● Pendiente</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-right text-muted">
+                            {format(new Date(p.createdAt), "d MMM yyyy", { locale: es })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Past bookings */}
           <Card>

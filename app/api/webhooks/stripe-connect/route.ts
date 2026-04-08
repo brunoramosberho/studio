@@ -82,8 +82,12 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        const piId = (inv.payment_intent as string) ?? (inv.id as string);
+        const amountPaid = typeof inv.amount_paid === "number" ? inv.amount_paid / 100 : memberSub.package.price;
+
+        let userPackageId: string | undefined;
         if (periodEnd) {
-          await prisma.userPackage.create({
+          const userPackage = await prisma.userPackage.create({
             data: {
               tenantId: memberSub.tenantId,
               userId: memberSub.userId,
@@ -91,9 +95,32 @@ export async function POST(request: NextRequest) {
               creditsTotal: memberSub.package.credits,
               creditsUsed: 0,
               expiresAt: new Date(periodEnd * 1000),
-              stripePaymentId: (inv.payment_intent as string) ?? (inv.id as string),
+              stripePaymentId: piId,
             },
           });
+          userPackageId = userPackage.id;
+        }
+
+        if (piId) {
+          const existing = await prisma.stripePayment.findUnique({
+            where: { stripePaymentIntentId: piId },
+          });
+          if (!existing) {
+            await prisma.stripePayment.create({
+              data: {
+                tenantId: memberSub.tenantId,
+                memberId: memberSub.userId,
+                stripePaymentIntentId: piId,
+                amount: amountPaid,
+                currency: memberSub.package.currency?.toLowerCase() ?? "eur",
+                status: "succeeded",
+                type: "subscription",
+                concept: memberSub.package.name,
+                conceptSub: "Renovación automática",
+                referenceId: userPackageId ?? null,
+              },
+            });
+          }
         }
         break;
       }
@@ -106,10 +133,38 @@ export async function POST(request: NextRequest) {
             : (inv.subscription as Record<string, string> | null)?.id;
         if (!subId) break;
 
+        const failedSub = await prisma.memberSubscription.findUnique({
+          where: { stripeSubscriptionId: subId },
+          include: { package: true },
+        });
+
         await prisma.memberSubscription.updateMany({
           where: { stripeSubscriptionId: subId },
           data: { status: "past_due" },
         });
+
+        if (failedSub) {
+          const failedPiId = (inv.payment_intent as string) ?? `inv_failed_${inv.id}`;
+          const failedAmount = typeof inv.amount_due === "number" ? inv.amount_due / 100 : failedSub.package.price;
+          const existing = await prisma.stripePayment.findUnique({
+            where: { stripePaymentIntentId: failedPiId },
+          });
+          if (!existing) {
+            await prisma.stripePayment.create({
+              data: {
+                tenantId: failedSub.tenantId,
+                memberId: failedSub.userId,
+                stripePaymentIntentId: failedPiId,
+                amount: failedAmount,
+                currency: failedSub.package.currency?.toLowerCase() ?? "eur",
+                status: "failed",
+                type: "subscription",
+                concept: failedSub.package.name,
+                conceptSub: "Renovación fallida",
+              },
+            });
+          }
+        }
         break;
       }
 

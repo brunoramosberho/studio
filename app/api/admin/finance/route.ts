@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
           status: "succeeded",
           createdAt: { gte: start, lte: end },
         },
-        select: { amount: true, type: true, createdAt: true, stripeFee: true, netAmount: true },
+        select: { amount: true, type: true, referenceId: true, createdAt: true, stripeFee: true, netAmount: true },
       }),
       prisma.stripePayment.findMany({
         where: {
@@ -166,6 +166,22 @@ export async function GET(request: NextRequest) {
       0,
     );
 
+    // Resolve referenceIds for accurate source classification
+    const allRefIds = stripePayments
+      .filter((p) => p.referenceId)
+      .map((p) => p.referenceId!);
+    const uniqueRefIds = [...new Set(allRefIds)];
+    const refPackageTypes = new Map<string, string>();
+    if (uniqueRefIds.length > 0) {
+      const userPkgs = await prisma.userPackage.findMany({
+        where: { id: { in: uniqueRefIds } },
+        include: { package: { select: { type: true } } },
+      });
+      for (const up of userPkgs) {
+        refPackageTypes.set(up.id, up.package.type);
+      }
+    }
+
     // bySource breakdown
     const sourceMap: Record<string, number> = {
       subscriptions: 0,
@@ -176,12 +192,16 @@ export async function GET(request: NextRequest) {
     };
 
     for (const p of stripePayments) {
-      const t = p.type;
-      if (t === "subscription" || t === "membership") sourceMap.subscriptions += p.amount;
-      else if (t === "package" || t === "class") sourceMap.packages += p.amount;
-      else if (t === "product") sourceMap.products += p.amount;
-      else if (t === "penalty") sourceMap.penalties += p.amount;
-      else sourceMap.packages += p.amount;
+      const pkgType = p.referenceId ? refPackageTypes.get(p.referenceId) : null;
+      if (pkgType === "SUBSCRIPTION" || (!pkgType && p.type === "subscription")) {
+        sourceMap.subscriptions += p.amount;
+      } else if (pkgType === "PRODUCT" || (!pkgType && p.type === "product")) {
+        sourceMap.products += p.amount;
+      } else if (p.type === "penalty") {
+        sourceMap.penalties += p.amount;
+      } else {
+        sourceMap.packages += p.amount;
+      }
     }
     for (const p of posTransactions) {
       if (p.type === "subscription") sourceMap.subscriptions += p.amount;

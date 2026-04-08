@@ -2,6 +2,163 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 
+
+function getMethodLabel(source: string): string {
+  if (source === "stripe") return "Stripe";
+  if (source === "tpv") return "TPV";
+  if (source === "cash") return "Efectivo";
+  return source;
+}
+
+function resolveTypeLabel(paymentType: string, ref: { itemType?: string } | null): string {
+  if (ref?.itemType === "SUBSCRIPTION") return "Suscripción";
+  if (ref?.itemType === "PACK" || ref?.itemType === "OFFER") return "Bono / Paquete";
+  if (ref?.itemType === "PRODUCT") return "Producto";
+  if (paymentType === "subscription") return "Suscripción";
+  if (paymentType === "membership" || paymentType === "class" || paymentType === "package") return "Bono / Paquete";
+  if (paymentType === "product" || paymentType === "pos") return "Producto";
+  if (paymentType === "penalty") return "Penalización";
+  return "Otro";
+}
+
+function buildPaymentHistory(
+  stripePayments: { id: string; amount: number; status: string; type: string; referenceId: string | null; concept: string | null; createdAt: Date }[],
+  posTransactions: { id: string; amount: number; status: string; type: string; referenceId: string | null; paymentMethod: string; concept: string | null; processedBy: { name: string | null } | null; createdAt: Date }[],
+  refMap: Map<string, { name: string; href: string | null; itemType?: string }>,
+) {
+  const payments: {
+    id: string;
+    amount: number;
+    method: string;
+    type: string;
+    typeLabel: string;
+    concept: string | null;
+    itemName: string | null;
+    itemHref: string | null;
+    status: string;
+    processedBy: string;
+    createdAt: string;
+  }[] = [];
+
+  for (const sp of stripePayments) {
+    const ref = sp.referenceId ? refMap.get(sp.referenceId) : null;
+    payments.push({
+      id: sp.id,
+      amount: sp.amount,
+      method: "Stripe",
+      type: sp.type,
+      typeLabel: resolveTypeLabel(sp.type, ref ?? null),
+      concept: sp.concept ?? ref?.name ?? null,
+      itemName: ref?.name ?? null,
+      itemHref: ref?.href ?? null,
+      status: sp.status,
+      processedBy: "Sistema",
+      createdAt: sp.createdAt.toISOString(),
+    });
+  }
+
+  for (const pt of posTransactions) {
+    const ref = pt.referenceId ? refMap.get(pt.referenceId) : null;
+    payments.push({
+      id: pt.id,
+      amount: pt.amount,
+      method: getMethodLabel(pt.paymentMethod === "cash" ? "cash" : "tpv"),
+      type: pt.type,
+      typeLabel: resolveTypeLabel(pt.type, ref ?? null),
+      concept: pt.concept ?? ref?.name ?? null,
+      itemName: ref?.name ?? null,
+      itemHref: ref?.href ?? null,
+      status: pt.status === "completed" ? "succeeded" : pt.status,
+      processedBy: pt.processedBy?.name ?? "Sistema",
+      createdAt: pt.createdAt.toISOString(),
+    });
+  }
+
+  payments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return payments;
+}
+
+function buildRevenueSummary(
+  stripePayments: { amount: number; status: string; type: string; referenceId: string | null; createdAt: Date }[],
+  posTransactions: { amount: number; status: string; type: string; referenceId: string | null; createdAt: Date }[],
+  refMap: Map<string, { name: string; href: string | null; itemType?: string }>,
+  yearStart: Date,
+  monthStart: Date,
+) {
+  let totalHistoric = 0;
+  let totalThisYear = 0;
+  let totalThisMonth = 0;
+  let countTotal = 0;
+  let countThisYear = 0;
+  const byType: Record<string, number> = {};
+
+  const allPayments = [
+    ...stripePayments.filter((p) => p.status === "succeeded").map((p) => ({ amount: p.amount, type: p.type, referenceId: p.referenceId, createdAt: p.createdAt })),
+    ...posTransactions.filter((p) => p.status === "completed").map((p) => ({ amount: p.amount, type: p.type, referenceId: p.referenceId, createdAt: p.createdAt })),
+  ];
+
+  for (const p of allPayments) {
+    totalHistoric += p.amount;
+    countTotal++;
+
+    const ref = p.referenceId ? refMap.get(p.referenceId) : null;
+    const label = resolveTypeLabel(p.type, ref ?? null);
+    byType[label] = (byType[label] ?? 0) + p.amount;
+
+    if (p.createdAt >= yearStart) {
+      totalThisYear += p.amount;
+      countThisYear++;
+    }
+    if (p.createdAt >= monthStart) {
+      totalThisMonth += p.amount;
+    }
+  }
+
+  return {
+    totalHistoric,
+    totalThisYear,
+    totalThisMonth,
+    transactionsCount: countTotal,
+    transactionsThisYear: countThisYear,
+    byType: Object.entries(byType).map(([type, amount]) => ({ type, amount })),
+  };
+}
+
+async function resolveRefMap(
+  stripePayments: { referenceId: string | null }[],
+  posTransactions: { referenceId: string | null }[],
+) {
+  const allRefIds = [
+    ...stripePayments.filter((p) => p.referenceId).map((p) => p.referenceId!),
+    ...posTransactions.filter((p) => p.referenceId).map((p) => p.referenceId!),
+  ];
+  const uniqueRefIds = [...new Set(allRefIds)];
+
+  const refMap = new Map<string, { name: string; href: string | null; itemType?: string }>();
+
+  if (uniqueRefIds.length > 0) {
+    const [userPkgs, prods] = await Promise.all([
+      prisma.userPackage.findMany({
+        where: { id: { in: uniqueRefIds } },
+        include: { package: { select: { id: true, name: true, type: true } } },
+      }),
+      prisma.product.findMany({
+        where: { id: { in: uniqueRefIds } },
+        select: { id: true, name: true },
+      }),
+    ]);
+    for (const up of userPkgs) {
+      const href = up.package.type === "SUBSCRIPTION" ? "/admin/subscriptions" : "/admin/packages";
+      refMap.set(up.id, { name: up.package.name, href, itemType: up.package.type });
+    }
+    for (const p of prods) {
+      refMap.set(p.id, { name: p.name, href: "/admin/shop", itemType: "PRODUCT" });
+    }
+  }
+
+  return refMap;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -75,8 +232,16 @@ export async function GET(
         }),
       ]);
 
-    const [upcomingBookings, pastBookings, totalBookings, classesThisMonth] =
-      await Promise.all([
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    const [
+      upcomingBookings,
+      pastBookings,
+      totalBookings,
+      classesThisMonth,
+      stripePayments,
+      posTransactions,
+    ] = await Promise.all([
         prisma.booking.findMany({
           where: {
             userId,
@@ -128,6 +293,19 @@ export async function GET(
             class: { tenantId, startsAt: { gte: monthStart } },
           },
         }),
+
+        prisma.stripePayment.findMany({
+          where: { tenantId, memberId: userId },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+        }),
+
+        prisma.posTransaction.findMany({
+          where: { tenantId, memberId: userId },
+          include: { processedBy: { select: { name: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+        }),
       ]);
 
     const earnedIds = new Set(achievements.map((a) => a.achievementId));
@@ -161,6 +339,8 @@ export async function GET(
     const daysSinceLastVisit = lastVisitDate
       ? Math.floor((now.getTime() - lastVisitDate.getTime()) / 86400000)
       : null;
+
+    const paymentRefMap = await resolveRefMap(stripePayments, posTransactions);
 
     return NextResponse.json({
       id: user.id,
@@ -259,6 +439,9 @@ export async function GET(
           recurringInterval: s.package.recurringInterval,
         },
       })),
+
+      paymentHistory: buildPaymentHistory(stripePayments, posTransactions, paymentRefMap),
+      revenueSummary: buildRevenueSummary(stripePayments, posTransactions, paymentRefMap, yearStart, monthStart),
     });
   } catch (error) {
     console.error("GET /api/admin/clients/[id] error:", error);
