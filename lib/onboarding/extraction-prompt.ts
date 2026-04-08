@@ -15,10 +15,12 @@ El JSON debe seguir exactamente este schema:
     "websiteUrl": string
   },
   "brand": {
-    "primaryColor": string | null,     // hex #RRGGBB — color principal de botones/CTAs/links
-    "landingBgColor": string | null,   // hex #RRGGBB — color de fondo oscuro de hero/secciones
-    "logoUrl": string | null,          // URL absoluta del logo (buscar en [logo-candidate] o [og:image])
-    "currency": string                 // "EUR" | "MXN" | "BRL" | "USD" etc.
+    "primaryColor": string | null,       // hex #RRGGBB — color PRINCIPAL de la marca
+    "accentColor": string | null,        // hex #RRGGBB — color de acento para botones/CTAs en la app
+    "secondaryColors": string[],         // hex #RRGGBB[] — paleta de 2-4 colores secundarios de la marca
+    "landingBgColor": string | null,     // hex #RRGGBB — color de fondo oscuro de hero/secciones
+    "logoUrl": string | null,            // URL absoluta del logo (buscar en [logo-candidate] o [og:image])
+    "currency": string                   // "EUR" | "MXN" | "BRL" | "USD" etc.
   },
   "locations": [
     {
@@ -67,32 +69,62 @@ El JSON debe seguir exactamente este schema:
   }
 }
 
-=== INSTRUCCIONES PARA MARCA / COLORES ===
+=== INSTRUCCIONES CRÍTICAS PARA EXTRACCIÓN DE COLORES DE MARCA ===
 
-El contenido incluye señales de marca extraídas del HTML:
-- [css-colors-found]: lista de colores hex encontrados en el CSS del sitio
-- [css-var]: variables CSS con colores (ej: --primary: #c7a56c)
-- [theme-color]: color del meta tag theme-color
-- [logo-candidate]: URLs de imágenes que contienen "logo" en su src o alt
-- [og:image]: imagen Open Graph del sitio
-- [favicon]: icono del sitio
+La extracción de colores de marca es una de las tareas MÁS IMPORTANTES. Los colores deben reflejar
+la identidad REAL de la marca. Usa estas fuentes en orden de prioridad:
 
-Para brand.primaryColor: buscar el color que más se usa en botones, links y CTAs.
-  Priorizar colores de [css-var] con nombres como --primary, --accent, --brand.
-  Evitar blanco (#FFFFFF), negro (#000000) y grises puros.
-Para brand.landingBgColor: buscar el color de fondo de las secciones hero/oscuras.
-  Buscar en [css-var] con nombres como --bg, --dark, --hero.
-Para brand.logoUrl: usar [logo-candidate] primero, luego [og:image].
-  Convertir URLs relativas a absolutas usando el dominio del sitio.
+1. **BRANDBOOK / MANUAL DE MARCA (máxima prioridad):**
+   Si se incluye un PDF de brandbook, los colores definidos ahí son la verdad absoluta.
+   Extraer primarios, acentos y secundarios tal como aparecen en el manual.
+
+2. **SCREENSHOTS DE INSTAGRAM (alta prioridad):**
+   Las imágenes de Instagram revelan la paleta real que usa la marca día a día.
+   ANALIZA VISUALMENTE cada imagen:
+   - ¿Cuál es el color de fondo dominante que se repite en las publicaciones?
+   - ¿Qué color usan para texto destacado, títulos, o elementos de diseño?
+   - ¿Hay un patrón de colores consistente entre las imágenes?
+   - Los colores que aparecen en 3+ imágenes SON los colores de la marca.
+   - Ignora colores de la interfaz de Instagram (blanco, negro del UI de la app).
+
+3. **SITIO WEB (prioridad normal):**
+   El contenido del sitio web incluye señales de marca extraídas del HTML:
+   - [css-colors-found]: colores hex del CSS
+   - [css-var]: variables CSS (ej: --primary: #c7a56c)
+   - [theme-color]: meta tag theme-color
+   - [logo-candidate]: imágenes con "logo" en src/alt
+   - [og:image]: imagen Open Graph
+   - [favicon]: icono del sitio
+   NOTA: Si el sitio web tiene contenido vacío o mínimo (muchos SPAs modernos cargan
+   por JavaScript y no muestran contenido), NO inventes colores del sitio.
+   Usa las imágenes de Instagram o el brandbook como fuente primaria.
+
+=== QUÉ SIGNIFICA CADA COLOR ===
+
+- **primaryColor**: El color que DEFINE la marca. El tono principal que ves repetidamente
+  en su identidad visual. Ejemplo: el rojo de Coca-Cola, el azul de Facebook.
+  Si en Instagram siempre usan un fondo marrón/olive/khaki, ese ES el primary.
+
+- **accentColor**: Un color complementario que funcione como acento en una app.
+  Se usa para botones, CTAs, links, badges. Debe contrastar con primaryColor.
+  Si el primary es oscuro, el accent puede ser un tono más claro o un complementario.
+  Si solo hay un color de marca, derivar un acento que funcione bien con él.
+
+- **secondaryColors**: Array de 2-4 colores adicionales que usa la marca.
+  Colores de textos, fondos alternativos, bordes, etc. Incluir variaciones
+  claras y oscuras del color primario si no hay más colores evidentes.
+
+- **landingBgColor**: Color de fondo para secciones hero/oscuras de la landing.
+  Puede ser el mismo que primaryColor si es oscuro, o un tono más oscuro.
 
 === INSTRUCCIONES PARA COLORES DE DISCIPLINAS ===
 
 Cada disciplina debe tener un suggestedColor DISTINTO. Generar una paleta derivada
-del primaryColor de la marca:
+de los colores de marca (primaryColor, accentColor, secondaryColors):
 - Usar variaciones de tono (hue shift), saturación y luminosidad
 - Cada disciplina debe ser visualmente distinguible de las demás
 - Mantener la "familia" de colores coherente con la marca
-- Si hay 3 disciplinas y el primary es #c7a56c, podrías usar: #c7a56c, #6c9dc7, #c76c7a
+- Pueden basarse en los secondaryColors existentes si hay suficientes
 
 === INSTRUCCIONES PARA ICONOS DE DISCIPLINAS ===
 
@@ -114,15 +146,27 @@ General: "star", "circle-dot", "sun", "mountain"
 
 Elegir el icono que mejor represente la naturaleza de cada disciplina.
 
+=== INSTRUCCIONES PARA LOGO ===
+
+Para brand.logoUrl:
+- Usar [logo-candidate] del HTML si hay alguno, verificando que la URL sea válida
+- Luego [og:image] como fallback
+- Convertir URLs relativas a absolutas usando el dominio del sitio
+- Si el sitio web está vacío y solo hay screenshots de Instagram, dejar null
+  (no inventar URLs)
+
 === REGLAS GENERALES ===
 
 - Si no puedes extraer algo con confianza, usa null en vez de inventar datos
+- NUNCA inventes colores aleatorios. Si no hay datos de color de NINGUNA fuente, usa null
 - Los colores deben ser hex válidos (#RRGGBB)
 - Los precios deben ser números sin símbolo de moneda
 - confidence "high" = claramente visible en el contenido
 - confidence "medium" = inferido con razonable certeza
 - confidence "low" = posible pero incierto
-- Para disciplinas, usa los nombres exactos como aparecen en el sitio
+- Para disciplinas, usa los nombres exactos como aparecen en el contenido
 - Para paquetes, extrae TODOS los que aparezcan en la página de precios
 - identity.websiteUrl debe ser la URL canónica del sitio analizado
+- Si el sitio web no tiene contenido útil (SPA vacío), indica websiteAnalyzed: false
+  y extrae toda la info de Instagram/brandbook
 `;

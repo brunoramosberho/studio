@@ -9,6 +9,8 @@ export interface ExtractedIdentity {
 
 export interface ExtractedBrand {
   primaryColor: string | null;
+  accentColor: string | null;
+  secondaryColors: string[];
   landingBgColor: string | null;
   logoUrl: string | null;
   currency: string;

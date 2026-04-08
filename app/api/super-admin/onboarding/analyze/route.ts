@@ -79,6 +79,10 @@ export async function POST(req: Request) {
 
     if (brandbookBase64) {
       content.push({
+        type: "text",
+        text: "A continuación el brandbook/manual de marca del estudio en PDF. Extrae colores de marca, tipografías, y cualquier guideline visual:",
+      });
+      content.push({
         type: "document",
         source: {
           type: "base64",
@@ -88,15 +92,21 @@ export async function POST(req: Request) {
       } as Anthropic.Messages.ContentBlockParam);
     }
 
-    for (const img of instagramBase64List) {
+    if (instagramBase64List.length > 0) {
       content.push({
-        type: "image",
-        source: {
-          type: "base64",
-          media_type: img.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-          data: img.data,
-        },
+        type: "text",
+        text: `A continuación ${instagramBase64List.length} screenshots del Instagram del estudio. Analiza VISUALMENTE: colores de marca (fondos, acentos, textos), estilo visual, disciplinas mencionadas, y cualquier información sobre el estudio. Los colores que ves repetidamente en estas imágenes SON los colores de la marca:`,
       });
+      for (const img of instagramBase64List) {
+        content.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: img.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+            data: img.data,
+          },
+        });
+      }
     }
 
     content.push({ type: "text", text: EXTRACTION_PROMPT });
@@ -178,16 +188,23 @@ export async function POST(req: Request) {
       }
     }
 
-    // 7. Post-process: resolve relative logo URL
-    if (extracted.brand?.logoUrl && !extracted.brand.logoUrl.startsWith("http")) {
-      try {
-        extracted.brand.logoUrl = new URL(extracted.brand.logoUrl, websiteUrl).href;
-      } catch {
-        // leave as-is
+    // 7. Post-process
+    if (extracted.brand) {
+      if (extracted.brand.logoUrl && !extracted.brand.logoUrl.startsWith("http")) {
+        try {
+          extracted.brand.logoUrl = new URL(extracted.brand.logoUrl, websiteUrl).href;
+        } catch {
+          // leave as-is
+        }
+      }
+      if (!Array.isArray(extracted.brand.secondaryColors)) {
+        extracted.brand.secondaryColors = [];
+      }
+      if (!extracted.brand.accentColor) {
+        extracted.brand.accentColor = null;
       }
     }
 
-    // Ensure websiteUrl is set
     if (extracted.identity) {
       extracted.identity.websiteUrl = websiteUrl;
     }
