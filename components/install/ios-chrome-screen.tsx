@@ -3,6 +3,7 @@
 import { ExternalLink } from "lucide-react";
 import { AppHeader } from "./app-header";
 import { StepItem } from "./step-item";
+import { BrowserTopBar, ChromeShareSheetMockup } from "./illustrations";
 import type { StudioBranding } from "@/lib/branding";
 
 export function IosChromeScreen({ brand }: { brand: StudioBranding }) {
@@ -43,8 +44,9 @@ export function IosChromeScreen({ brand }: { brand: StudioBranding }) {
           <StepItem
             num={1}
             color={color}
-            title={`Toca <strong>${shareIconHtml()}</strong> en la barra de dirección`}
-            subtitle="Arriba a la derecha"
+            title={`Toca ${shareIconHtml()} en la barra de dirección`}
+            subtitle="Arriba a la derecha, junto a la URL"
+            illustration={<BrowserTopBar accentColor={color} browser="chrome" />}
           />
           <StepItem
             num={2}
@@ -56,6 +58,7 @@ export function IosChromeScreen({ brand }: { brand: StudioBranding }) {
             num={3}
             color={color}
             title='Selecciona <strong>"Agregar a Inicio"</strong>'
+            illustration={<ChromeShareSheetMockup accentColor={color} />}
           />
         </div>
       </div>

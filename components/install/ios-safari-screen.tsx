@@ -2,7 +2,7 @@
 
 import { AppHeader } from "./app-header";
 import { StepItem } from "./step-item";
-import { SafariShareIcon } from "./safari-share-icon";
+import { SafariShareLocations, ShareSheetMockup } from "./illustrations";
 import type { StudioBranding } from "@/lib/branding";
 
 export function IosSafariScreen({ brand }: { brand: StudioBranding }) {
@@ -21,14 +21,16 @@ export function IosSafariScreen({ brand }: { brand: StudioBranding }) {
           <StepItem
             num={1}
             color={color}
-            title={`Toca <strong><span class="inline-flex align-middle">${shareIconHtml()}</span></strong> en la barra inferior`}
-            subtitle="El botón de compartir de Safari"
+            title={`Busca el botón ${shareIconHtml()} de compartir`}
+            subtitle="Está en la barra inferior o junto a la barra de dirección arriba"
+            illustration={<SafariShareLocations accentColor={color} />}
           />
           <StepItem
             num={2}
             color={color}
             title='Desplázate y toca <strong>"Añadir a pantalla de inicio"</strong>'
             subtitle="Puede que tengas que deslizar en el menú"
+            illustration={<ShareSheetMockup accentColor={color} />}
           />
           <StepItem
             num={3}
