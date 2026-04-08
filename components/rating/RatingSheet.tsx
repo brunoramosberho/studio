@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { formatTime } from "@/lib/utils";
 
 interface PendingClass {
@@ -24,7 +23,6 @@ interface RatingReason {
 }
 
 export function RatingSheet() {
-  const router = useRouter();
   const [pending, setPending] = useState<PendingClass | null>(null);
   const [visible, setVisible] = useState(false);
   const [rating, setRating] = useState(0);
@@ -173,17 +171,6 @@ export function RatingSheet() {
                   </button>
                 ))}
               </div>
-              {rating >= 4 && (
-                <button
-                  onClick={() => {
-                    dismiss();
-                    router.push(`/feed/new?from=rating&classId=${pending.classId}`);
-                  }}
-                  className="w-full rounded-[14px] bg-accent py-3 text-sm font-semibold text-white mb-3"
-                >
-                  Compartir en el feed
-                </button>
-              )}
               <button onClick={dismiss} className="text-stone-400 text-[13px]">
                 Cerrar
               </button>

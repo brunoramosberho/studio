@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 
 interface RatingReason {
   id: string;
@@ -16,7 +15,6 @@ export function RatingSection({
   classId: string;
   classTypeId: string;
 }) {
-  const router = useRouter();
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [showReasons, setShowReasons] = useState(false);
@@ -136,14 +134,6 @@ export function RatingSection({
               </button>
             ))}
           </div>
-          {rating >= 4 && (
-            <button
-              onClick={() => router.push(`/feed/new?from=rating&classId=${classId}`)}
-              className="mt-2 text-[13px] font-medium text-accent"
-            >
-              Compartir en el feed →
-            </button>
-          )}
         </div>
       ) : showReasons ? (
         /* Reasons selection */

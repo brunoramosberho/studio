@@ -5,7 +5,6 @@ import { getAuthContext, requireTenant } from "@/lib/tenant";
 import { RatingReasonsPage } from "./rating-reasons-page";
 import { RatingThankYouPage } from "./rating-thank-you-page";
 import { TokenExpiredPage } from "./token-expired-page";
-import { RedirectToFeed } from "./redirect-to-feed";
 
 export default async function RatePage({
   searchParams,

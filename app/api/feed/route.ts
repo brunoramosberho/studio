@@ -268,6 +268,20 @@ export async function GET(request: NextRequest) {
       for (const row of withPlaylist) playlistCounts.add(row.classId);
     }
 
+    const avgRatingMap = new Map<string, number>();
+    if (completedClassIds.length > 0) {
+      const ratingAggs = await prisma.classRating.groupBy({
+        by: ["classId"],
+        where: { classId: { in: completedClassIds } },
+        _avg: { rating: true },
+      });
+      for (const r of ratingAggs) {
+        if (r._avg.rating != null) {
+          avgRatingMap.set(r.classId, Math.round(r._avg.rating * 10) / 10);
+        }
+      }
+    }
+
     for (const event of items) {
       const payload = event.payload as Record<string, unknown> | null;
       const classId = payload?.classId as string | undefined;
@@ -289,6 +303,8 @@ export async function GET(request: NextRequest) {
         }
         if (event.eventType === "CLASS_COMPLETED") {
           payload.hasPlaylist = playlistCounts.has(classId);
+          const avg = avgRatingMap.get(classId);
+          if (avg !== undefined) payload.avgRating = avg;
         }
       }
     }

@@ -58,7 +58,6 @@ export async function GET(request: NextRequest) {
         coach: {
           select: {
             id: true,
-            name: true,
             userId: true,
             photoUrl: true,
             color: true,
@@ -120,6 +119,7 @@ export async function GET(request: NextRequest) {
 
     const result = classes.map((c) => ({
       ...c,
+      coach: { ...c.coach, name: c.coach.user?.name ?? null },
       friendsGoing: friendBookings.get(c.id) ?? [],
       isBooked: myBookingMap.has(c.id),
       myBookingId: myBookingMap.get(c.id) ?? null,
@@ -177,7 +177,6 @@ export async function POST(request: NextRequest) {
         coach: {
           select: {
             id: true,
-            name: true,
             userId: true,
             photoUrl: true,
             color: true,
@@ -190,7 +189,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(newClass, { status: 201 });
+    return NextResponse.json({
+      ...newClass,
+      coach: { ...newClass.coach, name: newClass.coach.user?.name ?? null },
+    }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });

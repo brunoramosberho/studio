@@ -222,7 +222,12 @@ export async function GET(
       if (wl) myWaitlistEntry = wl;
     }
 
-    return NextResponse.json({ ...classData, bookings, spotsLeft, spotMap, myWaitlistEntry });
+    const coach = {
+      ...classData.coach,
+      name: classData.coach.user?.name ?? null,
+    };
+
+    return NextResponse.json({ ...classData, coach, bookings, spotsLeft, spotMap, myWaitlistEntry });
   } catch (error) {
     console.error("GET /api/classes/[id] error:", error);
     return NextResponse.json(
@@ -275,7 +280,10 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json({
+      ...updated,
+      coach: { ...updated.coach, name: updated.coach.user?.name ?? null },
+    });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });

@@ -193,6 +193,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
   const currentUserId = session?.user?.id;
   const hasPlaylist = p.hasPlaylist === true;
   const userAttended = currentUserId ? attendees.some((a) => a.id === currentUserId) : false;
+  const avgRating = typeof p.avgRating === "number" ? (p.avgRating as number) : null;
   const canSeePlaylist = hasPlaylist && userAttended;
 
   const [playlistOpen, setPlaylistOpen] = useState(false);
@@ -252,6 +253,21 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
             {(p.date as string) ?? ""} · {(p.time as string) ?? ""}
             {event.studioName && ` · ${event.studioName}`}
           </p>
+          {avgRating !== null && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <div className="flex">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <span
+                    key={s}
+                    className={`text-[12px] ${s <= Math.round(avgRating) ? "text-amber-400" : "text-stone-200"}`}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+              <span className="text-[11px] text-muted">{avgRating.toFixed(1)}</span>
+            </div>
+          )}
         </div>
         <span className="flex-shrink-0 text-[11px] text-muted/60">
           {timeAgo(event.createdAt)}

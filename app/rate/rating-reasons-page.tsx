@@ -67,10 +67,6 @@ export function RatingReasonsPage({
           ...(comment.trim() && { comment: comment.trim() }),
         }),
       });
-      if (isLoggedIn) {
-        router.push(`/feed/new?from=rating&classId=${classId}`);
-        return;
-      }
       setDone(true);
     } catch {
       setSubmitting(false);

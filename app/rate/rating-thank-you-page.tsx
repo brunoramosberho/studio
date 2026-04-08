@@ -1,17 +1,12 @@
-"use client";
-
-import { useRouter } from "next/navigation";
 import { formatTime } from "@/lib/utils";
 
 export function RatingThankYouPage({
   rating,
-  classId,
   className,
   coachName,
   coachPhoto,
   coachColor,
   startsAt,
-  isLoggedIn,
 }: {
   rating: number;
   classId: string;
@@ -22,7 +17,6 @@ export function RatingThankYouPage({
   startsAt: string;
   isLoggedIn: boolean;
 }) {
-  const router = useRouter();
   const stars = [1, 2, 3, 4, 5];
 
   return (
@@ -76,23 +70,6 @@ export function RatingThankYouPage({
           </div>
         </div>
 
-        {rating >= 4 && (
-          isLoggedIn ? (
-            <button
-              onClick={() => router.push(`/feed/new?from=rating&classId=${classId}`)}
-              className="w-full rounded-[14px] bg-accent py-3 text-sm font-semibold text-white mb-3"
-            >
-              Compartir en el feed
-            </button>
-          ) : (
-            <a
-              href={`/login?redirect=${encodeURIComponent(`/feed/new?from=rating&classId=${classId}`)}`}
-              className="block w-full rounded-[14px] bg-accent py-3 text-sm font-semibold text-white mb-3 text-center"
-            >
-              Inicia sesión para compartir tu clase
-            </a>
-          )
-        )}
       </div>
     </div>
   );
