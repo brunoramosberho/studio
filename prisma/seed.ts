@@ -30,6 +30,8 @@ async function main() {
   );
 
   // Clear existing data (respecting foreign key order)
+  await prisma.classRating.deleteMany();
+  await prisma.ratingReason.deleteMany();
   await prisma.studioSettings.deleteMany();
   await prisma.pushSubscription.deleteMany();
   await prisma.favoriteSong.deleteMany();
@@ -73,6 +75,28 @@ async function main() {
   });
   const tenantId = tenant.id;
   console.log("✓ Created tenant: " + tenant.slug);
+
+  // --- Default rating reasons (universal — no classType) ---
+  const DEFAULT_RATING_REASONS = [
+    { emoji: "👤", text: "La atención del coach" },
+    { emoji: "💪", text: "El nivel de dificultad" },
+    { emoji: "🎵", text: "El ambiente de la clase" },
+    { emoji: "🏠", text: "El espacio" },
+    { emoji: "⏰", text: "La duración de la clase" },
+    { emoji: "😤", text: "Me sentí fuera de lugar" },
+  ];
+  for (let i = 0; i < DEFAULT_RATING_REASONS.length; i++) {
+    await prisma.ratingReason.create({
+      data: {
+        tenantId,
+        classTypeId: null,
+        emoji: DEFAULT_RATING_REASONS[i].emoji,
+        text: DEFAULT_RATING_REASONS[i].text,
+        order: i,
+      },
+    });
+  }
+  console.log("✓ Seeded default rating reasons");
 
   for (const L of LOYALTY_LEVELS_SEED) {
     await prisma.loyaltyLevel.create({

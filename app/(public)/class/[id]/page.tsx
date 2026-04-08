@@ -49,6 +49,7 @@ import { StudioLocationMap } from "@/components/shared/studio-location-map";
 import { BiometricsCard } from "@/components/booking/biometrics-card";
 import { FriendBiometrics } from "@/components/booking/friend-biometrics";
 import { MembershipNudge } from "@/components/booking/MembershipNudge";
+import { RatingSection } from "@/components/rating/RatingSection";
 import type { NudgeDecision } from "@/lib/conversion/nudge-engine";
 
 interface ClassData {
@@ -705,6 +706,11 @@ export default function ClassDetailPage() {
 
             {/* Friend biometrics */}
             <FriendBiometrics classId={id} />
+
+            {/* ── Rating Section ── */}
+            {userAttended && (
+              <RatingSection classId={id} classTypeId={cls.classType.id} />
+            )}
 
             {/* ── Book Again CTA ── */}
             <div className="mt-2 space-y-2.5">

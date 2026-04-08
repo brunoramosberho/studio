@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { formatDate, formatTime, formatCurrency } from "./utils";
 import { getServerBranding } from "./branding.server";
+import { createRatingToken } from "./ratings/token";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -577,5 +578,100 @@ export async function sendSavingsNudgeEmail({
     });
   } catch (error) {
     console.error("Failed to send savings nudge email:", error);
+  }
+}
+
+export async function sendRatingRequestEmail({
+  to,
+  name,
+  userId,
+  classId,
+  tenantId,
+  className,
+  coachName,
+  coachPhotoUrl,
+  startTime,
+  timezone,
+  tenantSlug,
+}: {
+  to: string;
+  name: string;
+  userId: string;
+  classId: string;
+  tenantId: string;
+  className: string;
+  coachName: string;
+  coachPhotoUrl?: string | null;
+  startTime: Date;
+  timezone?: string;
+  tenantSlug: string;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = name.split(" ")[0];
+    const baseUrl = getTenantBaseUrl(tenantSlug);
+
+    const links = await Promise.all(
+      [1, 2, 3, 4, 5].map(async (r) => ({
+        rating: r,
+        url: `${baseUrl}/rate?token=${await createRatingToken({
+          userId,
+          classId,
+          tenantId,
+          rating: r,
+        })}`,
+      }))
+    );
+
+    const starsHtml = links
+      .map(
+        (l) =>
+          `<a href="${l.url}" target="_blank" style="display:inline-block;padding:8px 6px;font-size:36px;text-decoration:none;color:#F5A623;line-height:1;">&#9733;</a>`
+      )
+      .join("");
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ${firstName}, ¿cómo te hicimos sentir?
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};">
+          Tu opinión nos ayuda a mejorar cada clase.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:12px 16px;">
+          <table cellpadding="0" cellspacing="0"><tr>
+            <td style="vertical-align:middle;padding-right:10px;">
+              ${coachPhotoUrl
+                ? `<img src="${coachPhotoUrl}" alt="${coachName}" width="36" height="36" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" />`
+                : `<div style="width:36px;height:36px;border-radius:50%;background:${b.colorAccent};color:#fff;font-size:14px;font-weight:600;text-align:center;line-height:36px;">${coachName.charAt(0)}</div>`}
+            </td>
+            <td style="vertical-align:middle;">
+              <p style="margin:0;font-size:14px;font-weight:600;color:${b.colorFg};">${className}</p>
+              <p style="margin:0;font-size:12px;color:${b.colorMuted};">${coachName} · ${formatTime(startTime, timezone)}</p>
+            </td>
+          </tr></table>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        ${starsHtml}
+      </div>
+
+      <p style="margin:0;font-size:11px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Al tocar una estrella guardamos tu opinión automáticamente. No necesitas abrir ninguna app.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `${firstName}, ¿cómo estuvo tu clase?`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send rating request email:", error);
   }
 }

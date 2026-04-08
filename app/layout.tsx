@@ -19,6 +19,7 @@ import { MobileNav } from "@/components/shared/mobile-nav";
 import { InstallPrompt } from "@/components/shared/install-prompt";
 import { InAppBrowserBanner } from "@/components/shared/in-app-browser-banner";
 import { SplashScreen } from "@/components/shared/splash-screen";
+import { RatingSheet } from "@/components/rating/RatingSheet";
 import "./globals.css";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dmsans", display: "swap" });
@@ -136,6 +137,7 @@ export default async function RootLayout({
           <SplashScreen />
           {children}
           <MobileNav />
+          <RatingSheet />
           <InstallPrompt />
         </Providers>
       </body>

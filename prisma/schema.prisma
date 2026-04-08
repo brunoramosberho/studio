@@ -115,6 +115,8 @@ model Tenant {
   stripeCustomers       StripeCustomer[]
   memberSubscriptions   MemberSubscription[]
   posTransactions       PosTransaction[]
+  classRatings          ClassRating[]
+  ratingReasons         RatingReason[]
 }
 
 model InstagramIntegration {
@@ -257,6 +259,7 @@ model User {
   memberSubscriptions     MemberSubscription[]
   posTransactionsProcessed PosTransaction[]        @relation("PosProcessedBy")
   posTransactionsMember    PosTransaction[]        @relation("PosMember")
+  classRatings             ClassRating[]           @relation("UserClassRatings")
 
   @@index([countryId])
   @@index([cityId])
@@ -349,9 +352,10 @@ model ClassType {
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   classes     Class[]
-  rooms       Room[]   @relation("RoomClassTypes")
-  packages    Package[] @relation("PackageClassTypes")
+  rooms         Room[]   @relation("RoomClassTypes")
+  packages      Package[] @relation("PackageClassTypes")
   coachPayRates CoachPayRate[]
+  ratingReasons RatingReason[]
 
   @@index([tenantId])
 }
@@ -391,6 +395,8 @@ model Class {
   checkIns             CheckIn[]
   platformQuotas       SchedulePlatformQuota[]
   platformBookings     PlatformBooking[]
+  ratings              ClassRating[]
+  ratingEmailSent      Boolean   @default(false)
 
   @@index([startsAt])
   @@index([classTypeId])
@@ -1523,4 +1529,48 @@ model StripeCustomer {
 
   @@unique([tenantId, memberId])
   @@index([tenantId])
+}
+
+// ── Class Ratings ──
+
+enum RatingSource {
+  email
+  app_sheet
+  class_page
+}
+
+model ClassRating {
+  id         String       @id @default(cuid())
+  tenantId   String
+  userId     String
+  classId    String
+  rating     Int          // 1-5
+  reasons    String[]
+  comment    String?
+  source     RatingSource
+  emailToken String?      @unique
+  createdAt  DateTime     @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation("UserClassRatings", fields: [userId], references: [id], onDelete: Cascade)
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, classId])
+  @@index([tenantId, classId])
+  @@index([tenantId, createdAt])
+}
+
+model RatingReason {
+  id          String     @id @default(cuid())
+  tenantId    String
+  classTypeId String?
+  text        String
+  emoji       String
+  order       Int        @default(0)
+  active      Boolean    @default(true)
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  classType ClassType? @relation(fields: [classTypeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, classTypeId])
 }
