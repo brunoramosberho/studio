@@ -1,0 +1,207 @@
+import { NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+import { requireSuperAdmin } from "@/lib/tenant";
+import { EXTRACTION_PROMPT } from "@/lib/onboarding/extraction-prompt";
+import { scrapeSite } from "@/lib/onboarding/scrape";
+import type { ExtractedData } from "@/lib/onboarding/types";
+
+interface AnalyzeBody {
+  websiteUrl: string;
+  brandbookBase64?: string | null;
+  instagramScreenshots?: { data: string; mediaType: string }[];
+}
+
+function normalizeUrl(raw: string): string {
+  let url = raw.trim();
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  return url.replace(/\/+$/, "");
+}
+
+export const maxDuration = 60;
+
+export async function POST(req: Request) {
+  try {
+    await requireSuperAdmin();
+
+    let body: AnalyzeBody;
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.error("[onboarding/analyze] JSON parse error:", e);
+      return NextResponse.json(
+        { error: "Error al leer los datos del formulario. Intenta sin archivos adjuntos." },
+        { status: 400 },
+      );
+    }
+
+    const rawUrl = body.websiteUrl;
+    if (!rawUrl) {
+      return NextResponse.json(
+        { error: "websiteUrl es requerido" },
+        { status: 400 },
+      );
+    }
+
+    const websiteUrl = normalizeUrl(rawUrl);
+
+    // 1. Scrape homepage + discover & fetch relevant internal pages
+    let scraped;
+    try {
+      scraped = await scrapeSite(websiteUrl);
+    } catch (e) {
+      const msg =
+        e instanceof Error && e.name === "AbortError"
+          ? "No se pudo acceder al sitio (timeout). ¿Está online?"
+          : "No se pudo acceder al sitio. ¿La URL es correcta?";
+      return NextResponse.json({ error: msg }, { status: 422 });
+    }
+
+    const { mainHtml, extraPages } = scraped;
+
+    // 2. Files arrive as base64 from the client
+    const brandbookBase64 = body.brandbookBase64 || null;
+    const instagramBase64List = (body.instagramScreenshots || []).slice(0, 5);
+
+    // 4. Build Claude message content
+    const content: Anthropic.Messages.ContentBlockParam[] = [
+      {
+        type: "text",
+        text: `Analiza este sitio web de un estudio de fitness/wellness:\n\n${mainHtml}`,
+      },
+    ];
+
+    for (const page of extraPages) {
+      content.push({
+        type: "text",
+        text: `Página adicional (${page.url}):\n\n${page.html}`,
+      });
+    }
+
+    if (brandbookBase64) {
+      content.push({
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: "application/pdf",
+          data: brandbookBase64,
+        },
+      } as Anthropic.Messages.ContentBlockParam);
+    }
+
+    for (const img of instagramBase64List) {
+      content.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: img.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+          data: img.data,
+        },
+      });
+    }
+
+    content.push({ type: "text", text: EXTRACTION_PROMPT });
+
+    console.log(
+      "[onboarding/analyze] Content blocks:",
+      content.length,
+      "Total text size:",
+      content.reduce((s, c) => s + ("text" in c && typeof c.text === "string" ? c.text.length : 0), 0),
+    );
+
+    // 5. Call Claude
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    let message: Anthropic.Messages.Message;
+    try {
+      message = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4096,
+        messages: [{ role: "user", content }],
+      });
+    } catch (e) {
+      console.error("[onboarding/analyze] Claude API error:", e);
+      const errMsg = e instanceof Error ? e.message : "Error de IA";
+      return NextResponse.json(
+        { error: `Error al comunicarse con la IA: ${errMsg.slice(0, 200)}` },
+        { status: 502 },
+      );
+    }
+
+    // 6. Parse response
+    const responseText =
+      message.content[0].type === "text" ? message.content[0].text : "";
+
+    let extracted: ExtractedData;
+    try {
+      extracted = JSON.parse(responseText);
+    } catch {
+      // Retry once with stricter prompt
+      try {
+        const retryMessage = await anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4096,
+          messages: [
+            { role: "user", content },
+            { role: "assistant", content: responseText },
+            {
+              role: "user",
+              content:
+                "Tu respuesta no es JSON válido. Responde ÚNICAMENTE con el JSON, sin texto adicional, sin backticks, sin markdown. Solo el objeto JSON.",
+            },
+          ],
+        });
+
+        const retryText =
+          retryMessage.content[0].type === "text"
+            ? retryMessage.content[0].text
+            : "";
+
+        try {
+          extracted = JSON.parse(retryText);
+        } catch {
+          return NextResponse.json(
+            {
+              error: "No se pudo obtener una respuesta válida de la IA. Intenta de nuevo.",
+              raw: retryText.slice(0, 500),
+            },
+            { status: 502 },
+          );
+        }
+      } catch (e) {
+        console.error("[onboarding/analyze] Claude retry error:", e);
+        return NextResponse.json(
+          { error: "Error al reintentar con la IA. Intenta de nuevo." },
+          { status: 502 },
+        );
+      }
+    }
+
+    // 7. Post-process: resolve relative logo URL
+    if (extracted.brand?.logoUrl && !extracted.brand.logoUrl.startsWith("http")) {
+      try {
+        extracted.brand.logoUrl = new URL(extracted.brand.logoUrl, websiteUrl).href;
+      } catch {
+        // leave as-is
+      }
+    }
+
+    // Ensure websiteUrl is set
+    if (extracted.identity) {
+      extracted.identity.websiteUrl = websiteUrl;
+    }
+
+    return NextResponse.json(extracted);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error interno";
+    if (msg === "Unauthorized") {
+      return NextResponse.json({ error: msg }, { status: 401 });
+    }
+    if (msg === "Forbidden") {
+      return NextResponse.json({ error: msg }, { status: 403 });
+    }
+    console.error("[onboarding/analyze]", e);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}

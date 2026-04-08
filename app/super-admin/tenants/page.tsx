@@ -15,7 +15,8 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Building2, Users } from "lucide-react";
+import { Plus, Building2, Users, Sparkles } from "lucide-react";
+import Link from "next/link";
 
 interface Tenant {
   id: string;
@@ -95,11 +96,18 @@ export default function TenantsPage() {
           </p>
         </div>
 
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex items-center gap-2">
+          <Button asChild className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+            <Link href="/tenants/new">
+              <Sparkles className="h-4 w-4" />
+              Nuevo con IA
+            </Link>
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+            <Button variant="outline" className="gap-2">
               <Plus className="h-4 w-4" />
-              Crear Tenant
+              Manual
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -161,6 +169,7 @@ export default function TenantsPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="mt-6 space-y-3">
