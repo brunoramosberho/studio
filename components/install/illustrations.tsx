@@ -1,5 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
+function useHostname() {
+  const [hostname, setHostname] = useState("tu-estudio.mgic.app");
+  useEffect(() => {
+    setHostname(window.location.hostname);
+  }, []);
+  return hostname;
+}
+
 /* ─── Pulsing ring animation (shared) ─── */
 
 function PulseRing({ color }: { color: string }) {
@@ -82,7 +92,8 @@ function DotsIconSvg({ size = 14 }: { size?: number }) {
 }
 
 export function SafariBottomBarModern({ accentColor, url }: { accentColor: string; url?: string }) {
-  const displayUrl = url || (typeof window !== "undefined" ? window.location.hostname : "tu-estudio.mgic.app");
+  const fallback = useHostname();
+  const displayUrl = url || fallback;
   return (
     <div className="overflow-hidden rounded-xl border border-black/[0.08] bg-[#F9F9F9]">
       {/* Page content area */}
@@ -132,7 +143,8 @@ export function BrowserTopBar({
   browser?: "safari" | "chrome";
   url?: string;
 }) {
-  const displayUrl = url || (typeof window !== "undefined" ? window.location.hostname : "tu-estudio.mgic.app");
+  const fallback = useHostname();
+  const displayUrl = url || fallback;
   const iconColor = browser === "safari" ? "#007AFF" : "#5F6368";
 
   return (
@@ -182,26 +194,16 @@ export function BrowserTopBar({
   );
 }
 
-/* ─── Safari illustration: adapts to iOS version ─── */
+/* ─── Safari illustration: shows both bar styles ─── */
 
-export function SafariBarIllustration({
-  accentColor,
-  useDotsFlow,
-}: {
-  accentColor: string;
-  useDotsFlow: boolean;
-}) {
-  if (useDotsFlow) {
-    return <SafariBottomBarModern accentColor={accentColor} />;
-  }
-
+export function SafariBarIllustration({ accentColor }: { accentColor: string }) {
   return (
     <div className="space-y-3">
       <div>
         <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[#888]">
-          Opción A — Barra inferior
+          Si ves <strong>···</strong> en la barra
         </p>
-        <SafariBottomBar accentColor={accentColor} />
+        <SafariBottomBarModern accentColor={accentColor} />
       </div>
 
       <div className="flex items-center gap-2 px-2">
@@ -212,9 +214,9 @@ export function SafariBarIllustration({
 
       <div>
         <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[#888]">
-          Opción B — Barra de dirección
+          Si ves <strong>↑</strong> en la barra
         </p>
-        <BrowserTopBar accentColor={accentColor} browser="safari" />
+        <SafariBottomBar accentColor={accentColor} />
       </div>
     </div>
   );

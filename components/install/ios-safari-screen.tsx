@@ -15,9 +15,14 @@ import { SafariBarIllustration } from "./illustrations";
 import type { StudioBranding } from "@/lib/branding";
 
 /**
- * iOS 18+ changed Safari's bottom bar: ← tab URL reload ···
- * Share is now behind the ··· menu, no longer a direct ↑ button.
- * iOS 15-17 had ← → ↑ bookmark tabs in the bottom toolbar.
+ * iOS 18+ Safari has two possible layouts depending on the user's
+ * "Address Bar Position" setting (Settings > Safari):
+ *
+ * - Tab Bar (bottom, default): compact bar with ··· → share is behind menu
+ * - Single Tab (top): classic toolbar at bottom with ↑ directly visible
+ *
+ * We can't detect this from JS, so we show both options.
+ * iOS 15-17 always shows ↑ in the bottom toolbar.
  */
 export function IosSafariScreen({
   brand,
@@ -27,7 +32,7 @@ export function IosSafariScreen({
   iosVersion: number | null;
 }) {
   const color = brand.colorAccent;
-  const useDotsFlow = iosVersion !== null && iosVersion >= 18;
+  const isIOS18Plus = iosVersion !== null && iosVersion >= 18;
 
   return (
     <div className="flex w-full max-w-sm flex-col items-center px-6">
@@ -35,18 +40,17 @@ export function IosSafariScreen({
 
       <div className="mb-4 w-full rounded-2xl bg-white p-5 shadow-sm">
         <div className="space-y-0">
-          {useDotsFlow ? (
-            /* ── iOS 18+: ··· → Compartir → Añadir ── */
+          {isIOS18Plus ? (
             <>
               <StepItem num={1} subtitle="En la barra inferior de Safari">
                 <span>Pulsa</span>
                 <IconBadge><DotsIcon size={16} /></IconBadge>
+                <span>o</span>
+                <IconBadge><ShareIcon size={16} /></IconBadge>
               </StepItem>
 
-              <StepItem num={2}>
+              <StepItem num={2} subtitle="Si pulsaste ···, primero toca Compartir">
                 <span>Toca</span>
-                <ActionBadge icon={<ShareIcon size={12} />} label="Compartir" />
-                <ChevronRight />
                 <ActionBadge icon={<ChevronDownIcon size={12} />} label="Ver más" />
               </StepItem>
 
@@ -62,15 +66,10 @@ export function IosSafariScreen({
               </StepItem>
             </>
           ) : (
-            /* ── iOS 15-17: ↑ → Ver más → Añadir ── */
             <>
-              <StepItem
-                num={1}
-                subtitle="Está en la barra inferior o junto a la URL arriba"
-              >
+              <StepItem num={1} subtitle="En la barra inferior de Safari">
                 <span>Pulsa</span>
                 <IconBadge><ShareIcon size={16} /></IconBadge>
-                <span>en Safari</span>
               </StepItem>
 
               <StepItem num={2}>
@@ -95,7 +94,7 @@ export function IosSafariScreen({
         <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-wide text-[#888]">
           ¿Dónde está el botón?
         </p>
-        <SafariBarIllustration accentColor={color} useDotsFlow={useDotsFlow} />
+        <SafariBarIllustration accentColor={color} />
       </div>
     </div>
   );
