@@ -33,11 +33,9 @@ export default function InstallPage() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  if (!device) return null;
-
   const screens: Record<DeviceInfo["scenario"], React.ReactNode> = {
     installed: <InstalledScreen brand={brand} />,
-    "ios-safari": <IosSafariScreen brand={brand} iosVersion={device.iosVersion} />,
+    "ios-safari": <IosSafariScreen brand={brand} iosVersion={device?.iosVersion ?? null} />,
     "ios-safari-new": <IosSafariNewScreen brand={brand} />,
     "ios-safari-ipad": <IosSafariIPadScreen brand={brand} />,
     "ios-chrome": <IosChromeScreen brand={brand} />,
@@ -46,8 +44,16 @@ export default function InstallPage() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col items-center bg-[#F5F0EA]">
-      {screens[device.scenario]}
+    <div
+      className="fixed inset-0 overflow-auto bg-background"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
+      <div className="flex min-h-full flex-col items-center">
+        {device ? screens[device.scenario] : null}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { X, Share, Plus, Download, Ellipsis, ChevronDown } from "lucide-react";
 import { getMobileInstallPlatform, isStandalonePWA } from "@/lib/pwa-install";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ function markDismissed() {
 type Platform = "ios" | "android" | null;
 
 export function InstallPrompt() {
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [platform, setPlatform] = useState<Platform>(null);
   const [deferredPrompt, setDeferredPrompt] =
@@ -45,7 +47,7 @@ export function InstallPrompt() {
   }, []);
 
   useEffect(() => {
-    if (isStandalonePWA() || wasDismissedRecently()) return;
+    if (isStandalonePWA() || wasDismissedRecently() || pathname === "/install") return;
 
     const plat = getMobileInstallPlatform();
     if (!plat) return;

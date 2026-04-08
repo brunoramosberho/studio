@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 export function SplashScreen() {
+  const pathname = usePathname();
   const [fading, setFading] = useState(false);
   const [removed, setRemoved] = useState(false);
 
@@ -15,7 +17,7 @@ export function SplashScreen() {
     });
   }, []);
 
-  if (removed) return null;
+  if (removed || pathname === "/install") return null;
 
   return (
     <div
