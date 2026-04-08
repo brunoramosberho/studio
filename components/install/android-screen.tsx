@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { AppHeader } from "./app-header";
-import { StepItem } from "./step-item";
+import { StepItem, IconBadge, ActionBadge, PlusIcon } from "./step-item";
 import type { StudioBranding } from "@/lib/branding";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -18,8 +18,6 @@ export function AndroidScreen({
   brand: StudioBranding;
   deferredPrompt: BeforeInstallPromptEvent | null;
 }) {
-  const color = brand.colorAccent;
-
   return (
     <div className="flex w-full max-w-sm flex-col items-center px-6">
       <AppHeader brand={brand} />
@@ -33,17 +31,15 @@ export function AndroidScreen({
           </p>
 
           <div className="space-y-0">
-            <StepItem
-              num={1}
-              color={color}
-              title='Toca <strong>⋮</strong> arriba a la derecha'
-              subtitle="El menú de tres puntos"
-            />
-            <StepItem
-              num={2}
-              color={color}
-              title='Toca <strong>"Añadir a pantalla de inicio"</strong>'
-            />
+            <StepItem num={1} subtitle="El menú de tres puntos">
+              <span>Toca</span>
+              <IconBadge><VerticalDotsIcon /></IconBadge>
+              <span>arriba a la derecha</span>
+            </StepItem>
+            <StepItem num={2}>
+              <span>Toca</span>
+              <ActionBadge icon={<PlusIcon size={12} />} label="Añadir a pantalla de inicio" />
+            </StepItem>
           </div>
         </div>
       )}
@@ -89,5 +85,15 @@ function AndroidInstallButton({
     >
       {installing ? "Instalando..." : `Instalar ${brand.studioName}`}
     </button>
+  );
+}
+
+function VerticalDotsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+      <circle cx="12" cy="5" r="2.5" />
+      <circle cx="12" cy="12" r="2.5" />
+      <circle cx="12" cy="19" r="2.5" />
+    </svg>
   );
 }

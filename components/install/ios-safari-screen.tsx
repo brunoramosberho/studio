@@ -1,7 +1,15 @@
 "use client";
 
 import { AppHeader } from "./app-header";
-import { StepItem } from "./step-item";
+import {
+  StepItem,
+  IconBadge,
+  ActionBadge,
+  ShareIcon,
+  PlusIcon,
+  ChevronDownIcon,
+  ChevronRight,
+} from "./step-item";
 import { SafariShareLocations, ShareSheetMockup } from "./illustrations";
 import type { StudioBranding } from "@/lib/branding";
 
@@ -13,32 +21,37 @@ export function IosSafariScreen({ brand }: { brand: StudioBranding }) {
       <AppHeader brand={brand} />
 
       <div className="mb-4 w-full rounded-2xl bg-white p-5 shadow-sm">
-        <p className="mb-4 text-sm font-medium text-[#1C1917]">
-          Instálala en 3 pasos:
-        </p>
-
         <div className="space-y-0">
           <StepItem
             num={1}
-            color={color}
-            title={`Busca el botón ${shareIconHtml()} de compartir`}
-            subtitle="Está en la barra inferior o junto a la barra de dirección arriba"
-            illustration={<SafariShareLocations accentColor={color} />}
-          />
-          <StepItem
-            num={2}
-            color={color}
-            title='Desplázate y toca <strong>"Añadir a pantalla de inicio"</strong>'
-            subtitle="Puede que tengas que deslizar en el menú"
-            illustration={<ShareSheetMockup accentColor={color} />}
-          />
-          <StepItem
-            num={3}
-            color={color}
-            title='Toca <strong>"Añadir"</strong> para confirmar'
-            subtitle="La app aparecerá en tu pantalla de inicio"
-          />
+            subtitle="Está en la barra inferior o junto a la URL arriba"
+          >
+            <span>Pulsa</span>
+            <IconBadge><ShareIcon size={16} /></IconBadge>
+            <span>en Safari</span>
+          </StepItem>
+
+          <StepItem num={2}>
+            <span>Toca</span>
+            <ActionBadge icon={<ChevronDownIcon size={12} />} label="Ver más" />
+            <ChevronRight />
+            <ActionBadge icon={<PlusIcon size={12} />} label="Añadir a pantalla de inicio" />
+          </StepItem>
+
+          <StepItem num={3}>
+            <span>Toca</span>
+            <ActionBadge icon={<PlusIcon size={12} />} label="Añadir" />
+            <span>para confirmar</span>
+          </StepItem>
         </div>
+      </div>
+
+      {/* Visual reference: where to find the share button */}
+      <div className="mb-4 w-full rounded-2xl bg-white p-4 shadow-sm">
+        <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-wide text-[#888]">
+          ¿Dónde está el botón?
+        </p>
+        <SafariShareLocations accentColor={color} />
       </div>
 
       <div className="w-full">
@@ -51,8 +64,4 @@ export function IosSafariScreen({ brand }: { brand: StudioBranding }) {
       </div>
     </div>
   );
-}
-
-function shareIconHtml() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
 }
