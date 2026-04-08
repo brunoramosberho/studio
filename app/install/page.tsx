@@ -48,7 +48,6 @@ export default function InstallPage() {
       className="fixed inset-0 overflow-auto bg-background"
       style={{
         paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       <div className="flex min-h-full flex-col items-center">
