@@ -48,6 +48,7 @@ import {
   Scan,
   CreditCard,
   CalendarSync,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -93,6 +94,7 @@ const flyoutGroups: FlyoutGroup[] = [
     label: "Negocio",
     icon: Briefcase,
     items: [
+      { href: "/admin/finance", label: "Finanzas", icon: Wallet },
       { href: "/admin/packages", label: "Paquetes", icon: Package },
       { href: "/admin/subscriptions", label: "Suscripciones", icon: CalendarSync },
       { href: "/admin/shop", label: "Tienda", icon: ShoppingBag },

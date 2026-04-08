@@ -5,7 +5,7 @@ import {
   createMemberSubscription,
   cancelMemberSubscription,
 } from "@/lib/stripe/subscriptions";
-import type Stripe from "stripe";
+
 
 export async function GET() {
   try {
@@ -106,12 +106,13 @@ export async function POST(request: NextRequest) {
     }
 
     const invoice = subscription.latest_invoice as unknown as Record<string, unknown> | null;
-    const pi = invoice?.payment_intent as Stripe.PaymentIntent | null;
+    const confirmationSecret = invoice?.confirmation_secret as Record<string, unknown> | null;
+    const clientSecret = confirmationSecret?.client_secret as string | null;
 
-    if (pi?.client_secret) {
+    if (clientSecret) {
       return NextResponse.json({
         status: "requires_payment",
-        clientSecret: pi.client_secret,
+        clientSecret,
         stripeAccountId: tenant.stripeAccountId,
         subscriptionId: subscription.id,
       });

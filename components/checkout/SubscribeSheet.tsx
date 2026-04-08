@@ -10,6 +10,7 @@ import {
   CreditCard,
   X,
   Plus,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaymentForm } from "@/components/checkout/PaymentForm";
@@ -54,7 +55,9 @@ export function SubscribeSheet({
   const { data: session } = useSession();
   const [step, setStep] = useState<Step>("confirm");
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
+  const [selectedCard, setSelectedCard] = useState<SavedCard | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingCards, setLoadingCards] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentData, setPaymentData] = useState<{
     clientSecret: string;
@@ -64,11 +67,21 @@ export function SubscribeSheet({
 
   useEffect(() => {
     if (open && session?.user) {
+      resetState();
+      setLoadingCards(true);
       fetch("/api/stripe/payment-methods")
         .then((r) => (r.ok ? r.json() : []))
-        .then(setSavedCards)
-        .catch(() => setSavedCards([]));
+        .then((cards: SavedCard[]) => {
+          setSavedCards(cards);
+          setSelectedCard(cards.length > 0 ? cards[0] : null);
+        })
+        .catch(() => {
+          setSavedCards([]);
+          setSelectedCard(null);
+        })
+        .finally(() => setLoadingCards(false));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, session?.user]);
 
   function resetState() {
@@ -82,7 +95,7 @@ export function SubscribeSheet({
   async function subscribe(paymentMethodId?: string) {
     setLoading(true);
     setError(null);
-    if (!paymentMethodId) setStep("processing");
+    setStep("processing");
 
     try {
       const res = await fetch("/api/stripe/member-subscription", {
@@ -111,11 +124,7 @@ export function SubscribeSheet({
           clientSecret: data.clientSecret,
           stripeAccountId: data.stripeAccountId,
         });
-        if (!paymentMethodId && savedCards.length > 0) {
-          setStep("select-card");
-        } else {
-          setStep("payment");
-        }
+        setStep("payment");
         setLoading(false);
         return;
       }
@@ -131,9 +140,17 @@ export function SubscribeSheet({
     }
   }
 
-  async function payWithSavedCard(cardId: string) {
-    setPayingWithCard(cardId);
-    await subscribe(cardId);
+  function handleSubscribe() {
+    if (selectedCard) {
+      subscribe(selectedCard.id);
+    } else {
+      subscribe();
+    }
+  }
+
+  function selectCard(card: SavedCard) {
+    setSelectedCard(card);
+    setStep("confirm");
   }
 
   if (!open) return null;
@@ -204,11 +221,41 @@ export function SubscribeSheet({
                   </div>
                 </div>
 
+                {/* Payment method section */}
+                {!loadingCards && (
+                  <div className="mt-4">
+                    {selectedCard ? (
+                      <button
+                        onClick={() => setStep("select-card")}
+                        className="flex w-full items-center gap-3 rounded-2xl border border-border/40 bg-surface/50 px-4 py-3 text-left transition-colors active:bg-surface"
+                      >
+                        <div className="flex h-8 w-11 items-center justify-center rounded-lg border border-border/30 bg-white text-[9px] font-bold uppercase tracking-wider text-muted">
+                          {brandLabels[selectedCard.brand] ?? selectedCard.brand}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[13px] font-medium text-foreground">····  {selectedCard.last4}</p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted" />
+                      </button>
+                    ) : (
+                      <p className="text-center text-xs text-muted">
+                        Se te pedirá un método de pago
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {loadingCards && (
+                  <div className="mt-4 flex justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted" />
+                  </div>
+                )}
+
                 <Button
                   size="lg"
-                  onClick={() => subscribe()}
-                  disabled={loading}
-                  className="mt-6 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                  onClick={handleSubscribe}
+                  disabled={loading || loadingCards}
+                  className="mt-5 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
                 >
                   <CalendarSync className="h-4 w-4" />
                   Suscribirme por {formatted}/{interval}
@@ -226,28 +273,25 @@ export function SubscribeSheet({
               </motion.div>
             )}
 
-            {step === "select-card" && paymentData && (
+            {step === "select-card" && (
               <motion.div key="select-card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <h2 className="font-display text-xl font-bold text-foreground">
                   Método de pago
                 </h2>
                 <p className="mt-1 mb-5 text-sm text-muted">
-                  {pkg.name} · {formatted}/{interval}
+                  Elige la tarjeta para esta suscripción
                 </p>
-
-                {error && (
-                  <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {error}
-                  </div>
-                )}
 
                 <div className="space-y-2">
                   {savedCards.map((card) => (
                     <button
                       key={card.id}
-                      onClick={() => payWithSavedCard(card.id)}
-                      disabled={!!payingWithCard}
-                      className="flex w-full items-center gap-3 rounded-2xl border border-border/40 bg-white px-4 py-3.5 text-left transition-colors active:bg-surface disabled:opacity-60"
+                      onClick={() => selectCard(card)}
+                      className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition-colors active:bg-surface ${
+                        selectedCard?.id === card.id
+                          ? "border-foreground/30 bg-surface/80"
+                          : "border-border/40 bg-white"
+                      }`}
                     >
                       <div className="flex h-9 w-12 items-center justify-center rounded-lg border border-border/30 bg-surface text-[10px] font-bold uppercase tracking-wider text-muted">
                         {brandLabels[card.brand] ?? card.brand}
@@ -258,18 +302,18 @@ export function SubscribeSheet({
                           {String(card.expMonth).padStart(2, "0")}/{String(card.expYear).slice(-2)}
                         </p>
                       </div>
-                      {payingWithCard === card.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted" />
-                      ) : (
-                        <CreditCard className="h-4 w-4 text-muted" />
+                      {selectedCard?.id === card.id && (
+                        <Check className="h-4 w-4 text-foreground" />
                       )}
                     </button>
                   ))}
                 </div>
 
                 <button
-                  onClick={() => setStep("payment")}
-                  disabled={!!payingWithCard}
+                  onClick={() => {
+                    setSelectedCard(null);
+                    setStep("confirm");
+                  }}
                   className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/60 py-3.5 text-[13px] font-medium text-muted transition-colors active:bg-surface"
                 >
                   <Plus className="h-4 w-4" />

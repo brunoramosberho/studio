@@ -106,9 +106,15 @@ model Tenant {
   nudgeEvents           NudgeEvent[]
   introOfferClaims      IntroOfferClaim[]
 
+  taxRate               Float     @default(0.21)
+  tpvFeePercent         Float?
+  tpvFeeFixed           Float?
+  tpvSettlementDays     Int?
+
   stripePayments        StripePayment[]
   stripeCustomers       StripeCustomer[]
   memberSubscriptions   MemberSubscription[]
+  posTransactions       PosTransaction[]
 }
 
 model InstagramIntegration {
@@ -246,7 +252,10 @@ model User {
   nudgeEvents             NudgeEvent[]             @relation("UserNudgeEvents")
   introOfferClaims        IntroOfferClaim[]        @relation("UserIntroOfferClaims")
   stripeCustomerRecords   StripeCustomer[]         @relation("UserStripeCustomers")
+  stripePayments          StripePayment[]          @relation("UserStripePayments")
   memberSubscriptions     MemberSubscription[]
+  posTransactionsProcessed PosTransaction[]        @relation("PosProcessedBy")
+  posTransactionsMember    PosTransaction[]        @relation("PosMember")
 
   @@index([countryId])
   @@index([cityId])
@@ -1440,25 +1449,62 @@ model LinkConversion {
 // ── Stripe Payments (Connect: student → studio) ──
 
 model StripePayment {
-  id                    String   @id @default(cuid())
+  id                    String    @id @default(cuid())
   tenantId              String
   memberId              String?
-  stripePaymentIntentId String   @unique
+  stripePaymentIntentId String    @unique
   amount                Float
-  currency              String   @default("eur")
+  currency              String    @default("eur")
   applicationFee        Float?
-  status                String   // 'pending' | 'succeeded' | 'failed' | 'refunded'
-  type                  String   // 'class' | 'membership' | 'product' | 'pos'
+  stripeFee             Float?
+  netAmount             Float?
+  availableOn           DateTime?
+  status                String    // 'pending' | 'succeeded' | 'failed' | 'refunded'
+  type                  String    // 'subscription' | 'package' | 'product' | 'penalty' | 'class' | 'membership' | 'pos'
+  concept               String?
+  conceptSub            String?
   referenceId           String?
   metadata              Json?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  member User?  @relation("UserStripePayments", fields: [memberId], references: [id])
 
   @@index([tenantId])
   @@index([memberId])
   @@index([status])
+  @@index([tenantId, createdAt])
+}
+
+model PosTransaction {
+  id              String    @id @default(cuid())
+  tenantId        String
+  memberId        String?
+  amount          Float
+  currency        String    @default("eur")
+  paymentMethod   String    // 'card' | 'cash' | 'saved_card'
+  type            String    // 'subscription' | 'package' | 'product' | 'penalty'
+  concept         String?
+  conceptSub      String?
+  status          String    @default("completed") // 'completed' | 'refunded'
+  processedById   String?
+  fee             Float?
+  netAmount       Float?
+  availableOn     DateTime?
+  isFeesEstimated Boolean   @default(false)
+  referenceId     String?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  member      User?  @relation("PosMember", fields: [memberId], references: [id])
+  processedBy User?  @relation("PosProcessedBy", fields: [processedById], references: [id])
+
+  @@index([tenantId])
+  @@index([memberId])
+  @@index([tenantId, createdAt])
 }
 
 model StripeCustomer {

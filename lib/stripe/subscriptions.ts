@@ -91,7 +91,7 @@ export async function createMemberSubscription({
       payment_method_types: ["card"],
       save_default_payment_method: "on_subscription",
     },
-    expand: ["latest_invoice.payment_intent"],
+    expand: ["latest_invoice.confirmation_secret"],
     metadata: { tenantId, userId, packageId },
   };
 
@@ -103,9 +103,6 @@ export async function createMemberSubscription({
   const subscription = await stripe.subscriptions.create(subParams, {
     stripeAccount: tenant.stripeAccountId,
   });
-
-  const invoice = subscription.latest_invoice as unknown as Record<string, unknown> | null;
-  const pi = invoice?.payment_intent as Stripe.PaymentIntent | null;
 
   await prisma.memberSubscription.create({
     data: {
