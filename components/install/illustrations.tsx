@@ -69,6 +69,57 @@ export function SafariBottomBar({ accentColor }: { accentColor: string }) {
   );
 }
 
+/* ─── Safari iOS 18+ bottom bar: ← tab URL reload ··· ─── */
+
+function DotsIconSvg({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="5" cy="12" r="2.5" />
+      <circle cx="12" cy="12" r="2.5" />
+      <circle cx="19" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
+export function SafariBottomBarModern({ accentColor, url = "tu-estudio.mgic.app" }: { accentColor: string; url?: string }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-black/[0.08] bg-[#F9F9F9]">
+      {/* Page content area */}
+      <div className="flex h-10 items-end justify-center bg-white px-3 pb-1">
+        <div className="h-1 w-16 rounded-full bg-black/[0.06]" />
+      </div>
+
+      {/* Bottom bar: ← tab URL reload ··· */}
+      <div className="flex items-center gap-2 border-t border-black/[0.08] bg-[#F7F7F7] px-2.5 py-2">
+        {/* Back */}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#007AFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+
+        {/* Tabs */}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#007AFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><rect x="7" y="7" width="14" height="14" rx="2" /></svg>
+
+        {/* URL pill */}
+        <div className="flex h-7 flex-1 items-center justify-center rounded-lg bg-white px-2">
+          <span className="truncate text-[11px] text-[#8E8E93]">{url}</span>
+        </div>
+
+        {/* Reload */}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#007AFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" /></svg>
+
+        {/* ··· highlighted */}
+        <div className="relative flex items-center justify-center">
+          <PulseRing color={accentColor} />
+          <div
+            className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-[#007AFF]"
+            style={{ boxShadow: `0 0 0 2px ${accentColor}` }}
+          >
+            <DotsIconSvg size={14} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Safari / Chrome top URL bar mockup ─── */
 
 export function BrowserTopBar({
@@ -129,12 +180,21 @@ export function BrowserTopBar({
   );
 }
 
-/* ─── Combined Safari illustration: top + bottom options ─── */
+/* ─── Safari illustration: adapts to iOS version ─── */
 
-export function SafariShareLocations({ accentColor }: { accentColor: string }) {
+export function SafariBarIllustration({
+  accentColor,
+  useDotsFlow,
+}: {
+  accentColor: string;
+  useDotsFlow: boolean;
+}) {
+  if (useDotsFlow) {
+    return <SafariBottomBarModern accentColor={accentColor} />;
+  }
+
   return (
     <div className="space-y-3">
-      {/* Option A: bottom bar */}
       <div>
         <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[#888]">
           Opción A — Barra inferior
@@ -148,7 +208,6 @@ export function SafariShareLocations({ accentColor }: { accentColor: string }) {
         <div className="h-px flex-1 bg-black/[0.06]" />
       </div>
 
-      {/* Option B: top URL bar */}
       <div>
         <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[#888]">
           Opción B — Barra de dirección

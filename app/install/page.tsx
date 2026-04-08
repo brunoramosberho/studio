@@ -37,7 +37,7 @@ export default function InstallPage() {
 
   const screens: Record<DeviceInfo["scenario"], React.ReactNode> = {
     installed: <InstalledScreen brand={brand} />,
-    "ios-safari": <IosSafariScreen brand={brand} />,
+    "ios-safari": <IosSafariScreen brand={brand} iosVersion={device.iosVersion} />,
     "ios-safari-new": <IosSafariNewScreen brand={brand} />,
     "ios-safari-ipad": <IosSafariIPadScreen brand={brand} />,
     "ios-chrome": <IosChromeScreen brand={brand} />,
