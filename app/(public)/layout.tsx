@@ -25,7 +25,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
   if (showSidebar) {
     return (
-      <div className="min-h-dvh bg-background">
+      <div className="min-h-dvh bg-background safe-top">
         {tracker}
         <DesktopSidebar />
 

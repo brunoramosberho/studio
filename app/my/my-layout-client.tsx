@@ -20,7 +20,7 @@ export function MyLayoutClient({ children }: { children: React.ReactNode }) {
   if (status === "loading" || status === "unauthenticated") return null;
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="min-h-dvh bg-background safe-top">
       <DesktopSidebar />
 
       <main className="pb-24 md:ml-64 md:pb-0">
