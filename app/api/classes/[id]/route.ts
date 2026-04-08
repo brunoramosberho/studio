@@ -224,7 +224,7 @@ export async function GET(
 
     const coach = {
       ...classData.coach,
-      name: classData.coach.user?.name ?? null,
+      name: classData.coach.name || classData.coach.user?.name || null,
     };
 
     return NextResponse.json({ ...classData, coach, bookings, spotsLeft, spotMap, myWaitlistEntry });
@@ -282,7 +282,7 @@ export async function PUT(
 
     return NextResponse.json({
       ...updated,
-      coach: { ...updated.coach, name: updated.coach.user?.name ?? null },
+      coach: { ...updated.coach, name: updated.coach.name || updated.coach.user?.name || null },
     });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
