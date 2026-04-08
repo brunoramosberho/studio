@@ -3,8 +3,14 @@ import { getServerBranding } from "@/lib/branding.server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const b = await getServerBranding();
+  const title = `${b.studioName} — Descarga la app`;
+  const description = "Reserva clases y gestiona tu cuenta";
+
   return {
-    title: `Instalar ${b.studioName}`,
+    title,
+    description,
+    openGraph: { title, description },
+    twitter: { title, description, card: "summary_large_image" },
   };
 }
 
