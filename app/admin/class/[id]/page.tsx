@@ -390,7 +390,7 @@ export default function AdminClassDetailPage() {
     attendance[booking.id] ?? (booking.status as AttendanceStatus);
 
   const toggleAttendance = (bookingId: string, current: AttendanceStatus) => {
-    if (isPastClass && !isCompleted) {
+    if (isPastClass) {
       setAttendance((prev) => ({
         ...prev,
         [bookingId]: current === "ATTENDED" ? "NO_SHOW" : "ATTENDED",
@@ -427,7 +427,7 @@ export default function AdminClassDetailPage() {
     );
   }
 
-  const enrolled = classData.bookings.length;
+  const enrolled = classData.bookings.filter((b) => b.status !== "NO_SHOW").length;
   const capacity = classData.room.maxCapacity;
   const blockedCount = classData._count.blockedSpots;
   const hasLayout = classData.room.layout && (classData.room.layout as RoomLayoutData).spots?.length > 0;

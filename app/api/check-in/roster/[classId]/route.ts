@@ -47,7 +47,7 @@ export async function GET(
     }
 
     const bookings = await prisma.booking.findMany({
-      where: { classId, status: { in: ["CONFIRMED", "ATTENDED"] } },
+      where: { classId, status: { in: ["CONFIRMED", "ATTENDED", "NO_SHOW"] } },
       include: {
         user: {
           select: {

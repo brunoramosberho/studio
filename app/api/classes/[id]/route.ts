@@ -13,6 +13,12 @@ export async function GET(
 
     const authCtx = await getAuthContext();
     const currentUserId = authCtx?.session?.user?.id;
+    const isCoachOrAdmin =
+      authCtx?.membership?.role === "COACH" || authCtx?.membership?.role === "ADMIN";
+
+    const bookingStatuses = isCoachOrAdmin
+      ? ["CONFIRMED", "ATTENDED", "NO_SHOW"]
+      : ["CONFIRMED", "ATTENDED"];
 
     const classData = await prisma.class.findFirst({
       where: { id, tenantId: tenant.id },
@@ -26,7 +32,7 @@ export async function GET(
           },
         },
         bookings: {
-          where: { status: { in: ["CONFIRMED", "ATTENDED"] } },
+          where: { status: { in: bookingStatuses } },
           include: {
             user: {
               select: {
@@ -65,9 +71,6 @@ export async function GET(
 
     const blockedCount = classData._count.blockedSpots;
     const spotsLeft = classData.room.maxCapacity - classData._count.bookings - blockedCount;
-
-    const isCoachOrAdmin =
-      authCtx?.membership?.role === "COACH" || authCtx?.membership?.role === "ADMIN";
 
     let friendIds = new Set<string>();
     if (currentUserId) {

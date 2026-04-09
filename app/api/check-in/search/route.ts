@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         where: {
           classId,
           userId: { in: members.map((m) => m.id) },
-          status: { in: ["CONFIRMED", "ATTENDED"] },
+          status: { in: ["CONFIRMED", "ATTENDED", "NO_SHOW"] },
         },
         select: { userId: true },
       }),

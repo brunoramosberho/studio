@@ -185,6 +185,26 @@ export async function createGroupedAchievementEvents(
 export async function checkAchievements(userId: string, tenantId: string) {
   await syncMemberProgressFromBookings(userId, tenantId);
 
+  const config = await prisma.tenantGamificationConfig.findUnique({
+    where: { tenantId },
+  });
+
+  if (config && !config.achievementsEnabled) {
+    const count = await prisma.booking.count({
+      where: { userId, tenantId, status: "ATTENDED" },
+    });
+    await checkLevelUp(userId, tenantId, count);
+    return [];
+  }
+
+  const disabledKeys = new Set<string>();
+  if (config?.achievementOverrides && typeof config.achievementOverrides === "object") {
+    const overrides = config.achievementOverrides as Record<string, { enabled?: boolean }>;
+    for (const [key, ovr] of Object.entries(overrides)) {
+      if (ovr?.enabled === false) disabledKeys.add(key);
+    }
+  }
+
   const attendedBookings = await prisma.booking.findMany({
     where: { userId, tenantId, status: "ATTENDED" },
     include: { class: { include: { classType: true } } },
@@ -208,6 +228,7 @@ export async function checkAchievements(userId: string, tenantId: string) {
     key: string,
     meta?: Record<string, string | number>,
   ) => {
+    if (disabledKeys.has(key)) return;
     const r = await grantAchievement(userId, tenantId, key, meta);
     if (r) granted.push({ userId, achievementKey: r });
   };
@@ -289,6 +310,11 @@ async function checkLevelUp(
   tenantId: string,
   totalClassesAttended: number,
 ) {
+  const cfg = await prisma.tenantGamificationConfig.findUnique({
+    where: { tenantId },
+  });
+  if (cfg && !cfg.levelsEnabled) return;
+
   const levels = await prisma.loyaltyLevel.findMany({
     orderBy: { minClasses: "asc" },
   });

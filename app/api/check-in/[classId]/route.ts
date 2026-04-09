@@ -51,7 +51,7 @@ export async function POST(
         classId,
         userId: memberId,
         tenantId: ctx.tenant.id,
-        status: "CONFIRMED",
+        status: { in: ["CONFIRMED", "NO_SHOW"] },
       },
       data: { status: "ATTENDED" },
     }).catch((err) => console.error("Check-in booking sync failed:", err));
