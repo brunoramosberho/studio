@@ -12,6 +12,7 @@ import {
   Dumbbell,
   AlertTriangle,
   Rss,
+  Check,
 } from "lucide-react";
 import { IconPicker, getIconComponent } from "@/components/admin/icon-picker";
 import { Card, CardContent } from "@/components/ui/card";
@@ -109,6 +110,7 @@ interface FeedDisciplineSettings {
 function FeedConfigCard() {
   const queryClient = useQueryClient();
   const [localThreshold, setLocalThreshold] = useState<string>("");
+  const [saved, setSaved] = useState(false);
 
   const { data: config, isLoading } = useQuery<FeedDisciplineSettings>({
     queryKey: ["admin", "feed-discipline-settings"],
@@ -137,6 +139,8 @@ function FeedConfigCard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "feed-discipline-settings"] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
     },
   });
 
@@ -165,11 +169,23 @@ function FeedConfigCard() {
               Muestra la sección &quot;Descubre nuestras disciplinas&quot; a miembros nuevos
             </p>
           </div>
-          <Switch
-            checked={config.feedShowDisciplines}
-            onCheckedChange={(checked) => mutation.mutate({ feedShowDisciplines: checked })}
-            disabled={mutation.isPending}
-          />
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "flex items-center gap-1 text-xs font-medium text-emerald-600 transition-opacity duration-300",
+                saved ? "opacity-100" : "opacity-0",
+              )}
+            >
+              <Check className="h-3.5 w-3.5" />
+              Guardado
+            </span>
+            {mutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted" />}
+            <Switch
+              checked={config.feedShowDisciplines}
+              onCheckedChange={(checked) => mutation.mutate({ feedShowDisciplines: checked })}
+              disabled={mutation.isPending}
+            />
+          </div>
         </div>
 
         {config.feedShowDisciplines && (
