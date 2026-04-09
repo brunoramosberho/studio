@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             userId: true,
+            name: true,
             photoUrl: true,
             color: true,
             bio: true,
@@ -178,6 +179,7 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             userId: true,
+            name: true,
             photoUrl: true,
             color: true,
             bio: true,
