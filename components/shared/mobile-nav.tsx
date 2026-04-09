@@ -155,7 +155,7 @@ export function MobileNav() {
                 )}
               >
                 <tab.icon
-                  className={cn("h-5 w-5", isActive && "fill-current stroke-[2.5]")}
+                  className={cn("h-5 w-5", isActive && "stroke-[2.5]")}
                 />
                 <span>{tab.label}</span>
               </Link>
@@ -198,7 +198,7 @@ export function MobileNav() {
                 )}
               >
                 <tab.icon
-                  className={cn("h-5 w-5", isActive && "fill-current stroke-[2.5]")}
+                  className={cn("h-5 w-5", isActive && "stroke-[2.5]")}
                 />
                 <span>{tab.label}</span>
               </Link>
