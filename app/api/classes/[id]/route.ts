@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, requireRole, getAuthContext } from "@/lib/tenant";
 import { refundAndClearWaitlist } from "@/lib/waitlist";
+import { BookingStatus } from "@prisma/client";
 
 export async function GET(
   _request: NextRequest,
@@ -16,7 +17,7 @@ export async function GET(
     const isCoachOrAdmin =
       authCtx?.membership?.role === "COACH" || authCtx?.membership?.role === "ADMIN";
 
-    const bookingStatuses = isCoachOrAdmin
+    const bookingStatuses: BookingStatus[] = isCoachOrAdmin
       ? ["CONFIRMED", "ATTENDED", "NO_SHOW"]
       : ["CONFIRMED", "ATTENDED"];
 
