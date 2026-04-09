@@ -27,7 +27,7 @@ function StravaLogo({ className, style }: { className?: string; style?: React.CS
   );
 }
 
-export function WearableConnections() {
+export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState(false);
@@ -75,7 +75,10 @@ export function WearableConnections() {
     <>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors active:bg-surface"
+        className={cn(
+          "flex w-full items-center gap-3 px-4 text-left transition-colors",
+          grouped ? "py-3 active:bg-surface/50" : "rounded-xl py-3.5 active:bg-surface",
+        )}
       >
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
           <Watch className="h-4 w-4 text-foreground" />

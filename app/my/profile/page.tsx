@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from "framer-motion";
 import {
   LogOut,
   Loader2,
@@ -18,6 +19,10 @@ import {
   Heart,
   Asterisk,
   CreditCard,
+  Gift,
+  Copy,
+  Users,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +38,7 @@ import { WearableConnections } from "@/components/profile/wearable-connections";
 import { cn } from "@/lib/utils";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
+import { useBranding } from "@/components/branding-provider";
 
 interface UserPackageInfo {
   id: string;
@@ -67,9 +73,32 @@ const fadeUp = {
   }),
 };
 
+interface ReferralSheetData {
+  code: string;
+  shareUrl: string;
+  config: {
+    isEnabled: boolean;
+    referrerRewardText: string | null;
+    referrerRewardWhen: string | null;
+    refereeRewardText: string | null;
+    triggerStage: string;
+  } | null;
+  stats: { total: number; delivered: number; pending: number };
+}
+
+const TRIGGER_LABELS: Record<string, string> = {
+  installed: "instale la app",
+  purchased: "haga su primera compra",
+  booked: "reserve su primera clase",
+  attended: "vaya a su primera clase",
+  member: "active su membresía",
+};
+
 export default function ProfilePage() {
   const { data: session, update } = useSession();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const brand = useBranding();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
@@ -85,6 +114,11 @@ export default function ProfilePage() {
 
   const [instagramUser, setInstagramUser] = useState("");
   const [stravaUser, setStravaUser] = useState("");
+
+  const [showReferralSheet, setShowReferralSheet] = useState(false);
+  const [referralData, setReferralData] = useState<ReferralSheetData | null>(null);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
@@ -287,6 +321,37 @@ export default function ProfilePage() {
     } catch {}
     setSaving(false);
   }
+
+  const openReferralSheet = useCallback(async () => {
+    setShowReferralSheet(true);
+    if (referralData) return;
+    setReferralLoading(true);
+    try {
+      const res = await fetch("/api/referrals");
+      if (res.ok) setReferralData(await res.json());
+    } catch {}
+    setReferralLoading(false);
+  }, [referralData]);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!referralData) return;
+    try {
+      await navigator.clipboard.writeText(referralData.shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }, [referralData]);
+
+  const handleShareLink = useCallback(async () => {
+    if (!referralData || !navigator.share) return;
+    try {
+      await navigator.share({
+        title: `Únete a ${brand.studioName}`,
+        text: `Te invito a ${brand.studioName}`,
+        url: referralData.shareUrl,
+      });
+    } catch {}
+  }, [referralData, brand.studioName]);
 
   const profileLevelTier = gamification?.level
     ? getLoyaltyTierVisual(gamification.level.name)
@@ -521,9 +586,181 @@ export default function ProfilePage() {
           );
         })()}
 
+        {/* Quick actions */}
+        <motion.div
+          custom={3.5}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+        >
+          <div className="divide-y divide-border/40 rounded-2xl border border-border/50 bg-white">
+            {/* Invite a friend — first item */}
+            <button
+              onClick={openReferralSheet}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-surface/50"
+            >
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-full"
+                style={{ background: `${brand.colorAccent}15` }}
+              >
+                <Gift className="h-4 w-4" style={{ color: brand.colorAccent }} />
+              </div>
+              <span className="flex-1 text-[15px] font-medium text-foreground">
+                Invita a un amigo
+              </span>
+              <ChevronRight className="h-4 w-4 text-muted" />
+            </button>
+
+            {/* Edit profile */}
+            <div>
+              <button
+                onClick={() => setShowEditForm(!showEditForm)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-surface/50"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
+                  <UserPen className="h-4 w-4 text-foreground" />
+                </div>
+                <span className="flex-1 text-[15px] font-medium text-foreground">
+                  Editar perfil
+                </span>
+                <ChevronRight
+                  className={cn(
+                    "h-4 w-4 text-muted transition-transform",
+                    showEditForm && "rotate-90",
+                  )}
+                />
+              </button>
+
+              {showEditForm && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-4 pb-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <form onSubmit={handleSave} className="space-y-4">
+                          <div>
+                            <label className="text-xs font-medium uppercase tracking-wider text-muted">
+                              Nombre
+                            </label>
+                            <Input
+                              value={name}
+                              onChange={(e) => setName(e.target.value)}
+                              placeholder="Tu nombre completo"
+                              className="mt-1.5"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium uppercase tracking-wider text-muted">
+                              Teléfono
+                            </label>
+                            <div className="mt-1.5">
+                              <PhoneInput
+                                value={phone}
+                                onChange={setPhone}
+                                defaultCountry="ES"
+                                placeholder="612 345 678"
+                              />
+                              {phone && !isValidPhoneNumber(phone) && (
+                                <p className="mt-1 text-[11px] text-destructive">
+                                  Número de teléfono inválido
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium uppercase tracking-wider text-muted">
+                              Correo electrónico
+                            </label>
+                            <Input
+                              value={session?.user?.email ?? ""}
+                              disabled
+                              className="mt-1.5 opacity-50"
+                            />
+                          </div>
+                          <div className="space-y-3 rounded-xl bg-surface/50 p-3">
+                            <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
+                              Redes sociales
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <svg className="h-4.5 w-4.5 shrink-0 text-muted" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                              <Input
+                                value={instagramUser}
+                                onChange={(e) => setInstagramUser(e.target.value)}
+                                placeholder="tu_usuario"
+                                className="h-8 text-[13px]"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <svg className="h-4.5 w-4.5 shrink-0 text-muted" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066l-2.084 4.116zm-3.08-8.399l2.086 4.116h3.065L12.304 3.614v.001l-5.154 10.172h3.066l2.091-4.242zM12.29 0l5.15 10.172h3.065L12.29 0zm0 0l-5.15 10.172H4.075L12.29 0z"/></svg>
+                              <Input
+                                value={stravaUser}
+                                onChange={(e) => setStravaUser(e.target.value)}
+                                placeholder="https://strava.app.link/..."
+                                className="h-8 text-[13px]"
+                              />
+                            </div>
+                          </div>
+                          <Button
+                            type="submit"
+                            size="sm"
+                            disabled={saving || !name.trim() || (!!phone && !isValidPhoneNumber(phone))}
+                            className="w-full"
+                          >
+                            {saving ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : saved ? (
+                              <Check className="mr-2 h-4 w-4" />
+                            ) : null}
+                            {saved ? "Guardado" : "Guardar cambios"}
+                          </Button>
+                        </form>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            <Link
+              href="/my/payment-methods"
+              className="flex w-full items-center gap-3 px-4 py-3 transition-colors active:bg-surface/50"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
+                <CreditCard className="h-4 w-4 text-foreground" />
+              </div>
+              <span className="flex-1 text-[15px] font-medium text-foreground">
+                Métodos de pago
+              </span>
+              <ChevronRight className="h-4 w-4 text-muted" />
+            </Link>
+
+            <Link
+              href="/packages"
+              className="flex w-full items-center gap-3 px-4 py-3 transition-colors active:bg-surface/50"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
+                <Package className="h-4 w-4 text-foreground" />
+              </div>
+              <span className="flex-1 text-[15px] font-medium text-foreground">
+                Comprar paquetes
+              </span>
+              <ChevronRight className="h-4 w-4 text-muted" />
+            </Link>
+
+            {/* Connected apps / Wearables */}
+            <div>
+              <WearableConnections grouped />
+            </div>
+          </div>
+        </motion.div>
+
         {/* Active rewards */}
         {gamification && (gamification.rewards.length > 0 || gamification.freeClassCredits > 0) && (
-          <motion.div custom={4} variants={fadeUp} initial="hidden" animate="show">
+          <motion.div custom={4.5} variants={fadeUp} initial="hidden" animate="show">
             <div className="rounded-2xl border border-border/50 bg-white p-4">
               <div className="mb-3 flex items-center gap-2">
                 <Package className="h-4 w-4 text-accent" />
@@ -576,162 +813,6 @@ export default function ProfilePage() {
             </div>
           </motion.div>
         )}
-
-        {/* Connected apps / Wearables */}
-        <motion.div
-          custom={3.5}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-        >
-          <WearableConnections />
-        </motion.div>
-
-        {/* Quick actions */}
-        <motion.div
-          className="space-y-1"
-          custom={4}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-        >
-          {/* Edit profile */}
-          <button
-            onClick={() => setShowEditForm(!showEditForm)}
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors active:bg-surface"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
-              <UserPen className="h-4 w-4 text-foreground" />
-            </div>
-            <span className="flex-1 text-[15px] font-medium text-foreground">
-              Editar perfil
-            </span>
-            <ChevronRight
-              className={cn(
-                "h-4 w-4 text-muted transition-transform",
-                showEditForm && "rotate-90",
-              )}
-            />
-          </button>
-
-          {showEditForm && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <Card className="mx-4 mb-2">
-                <CardContent className="p-4">
-                  <form onSubmit={handleSave} className="space-y-4">
-                    <div>
-                      <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                        Nombre
-                      </label>
-                      <Input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Tu nombre completo"
-                        className="mt-1.5"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                        Teléfono
-                      </label>
-                      <div className="mt-1.5">
-                        <PhoneInput
-                          value={phone}
-                          onChange={setPhone}
-                          defaultCountry="ES"
-                          placeholder="612 345 678"
-                        />
-                        {phone && !isValidPhoneNumber(phone) && (
-                          <p className="mt-1 text-[11px] text-destructive">
-                            Número de teléfono inválido
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                        Correo electrónico
-                      </label>
-                      <Input
-                        value={session?.user?.email ?? ""}
-                        disabled
-                        className="mt-1.5 opacity-50"
-                      />
-                    </div>
-                    <div className="space-y-3 rounded-xl bg-surface/50 p-3">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
-                        Redes sociales
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <svg className="h-4.5 w-4.5 shrink-0 text-muted" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-                        <Input
-                          value={instagramUser}
-                          onChange={(e) => setInstagramUser(e.target.value)}
-                          placeholder="tu_usuario"
-                          className="h-8 text-[13px]"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <svg className="h-4.5 w-4.5 shrink-0 text-muted" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066l-2.084 4.116zm-3.08-8.399l2.086 4.116h3.065L12.304 3.614v.001l-5.154 10.172h3.066l2.091-4.242zM12.29 0l5.15 10.172h3.065L12.29 0zm0 0l-5.15 10.172H4.075L12.29 0z"/></svg>
-                        <Input
-                          value={stravaUser}
-                          onChange={(e) => setStravaUser(e.target.value)}
-                          placeholder="https://strava.app.link/..."
-                          className="h-8 text-[13px]"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={saving || !name.trim() || (!!phone && !isValidPhoneNumber(phone))}
-                      className="w-full"
-                    >
-                      {saving ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : saved ? (
-                        <Check className="mr-2 h-4 w-4" />
-                      ) : null}
-                      {saved ? "Guardado" : "Guardar cambios"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          <Link
-            href="/my/payment-methods"
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 transition-colors active:bg-surface"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
-              <CreditCard className="h-4 w-4 text-foreground" />
-            </div>
-            <span className="flex-1 text-[15px] font-medium text-foreground">
-              Métodos de pago
-            </span>
-            <ChevronRight className="h-4 w-4 text-muted" />
-          </Link>
-
-          <Link
-            href="/packages"
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 transition-colors active:bg-surface"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface">
-              <Package className="h-4 w-4 text-foreground" />
-            </div>
-            <span className="flex-1 text-[15px] font-medium text-foreground">
-              Comprar paquetes
-            </span>
-            <ChevronRight className="h-4 w-4 text-muted" />
-          </Link>
-
-        </motion.div>
 
         <Separator />
 
@@ -818,6 +899,22 @@ export default function ProfilePage() {
         </motion.div>
       </div>
 
+      {/* Referral bottom sheet */}
+      <ReferralSheet
+        open={showReferralSheet}
+        onClose={() => setShowReferralSheet(false)}
+        data={referralData}
+        loading={referralLoading}
+        copied={copied}
+        onCopy={handleCopyLink}
+        onShare={handleShareLink}
+        onViewAll={() => {
+          setShowReferralSheet(false);
+          router.push("/my/referrals");
+        }}
+        brand={brand}
+      />
+
       {/* Avatar crop modal */}
       <AvatarCrop
         open={!!cropSrc}
@@ -827,5 +924,247 @@ export default function ProfilePage() {
         uploading={uploadingAvatar}
       />
     </PageTransition>
+  );
+}
+
+/* ── iOS-style Share Icon ── */
+
+function IosShareIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 3v12" />
+      <path d="m8 7 4-4 4 4" />
+      <path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4" />
+    </svg>
+  );
+}
+
+/* ── Referral Bottom Sheet ── */
+
+function ReferralSheet({
+  open,
+  onClose,
+  data,
+  loading,
+  copied,
+  onCopy,
+  onShare,
+  onViewAll,
+  brand,
+}: {
+  open: boolean;
+  onClose: () => void;
+  data: ReferralSheetData | null;
+  loading: boolean;
+  copied: boolean;
+  onCopy: () => void;
+  onShare: () => void;
+  onViewAll: () => void;
+  brand: ReturnType<typeof useBranding>;
+}) {
+  const dragY = useMotionValue(0);
+  const backdropOpacity = useTransform(dragY, [0, 300], [1, 0]);
+
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
+
+  const handleDragEnd = useCallback(
+    (_: unknown, info: PanInfo) => {
+      if (info.offset.y > 120 || info.velocity.y > 400) onClose();
+      dragY.set(0);
+    },
+    [onClose, dragY],
+  );
+
+  const config = data?.config;
+  const hasRewards = config?.isEnabled && (config.refereeRewardText || config.referrerRewardText);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            style={{ opacity: backdropOpacity }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
+
+          <motion.div
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.8 }}
+            onDrag={(_, info) => dragY.set(Math.max(0, info.offset.y))}
+            onDragEnd={handleDragEnd}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 350 }}
+            className="fixed inset-x-0 bottom-0 z-[61] flex max-h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-white"
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-border/60" />
+            </div>
+
+            <div className="overflow-y-auto px-5 pb-8">
+              {/* Header */}
+              <div className="flex items-center justify-between py-3">
+                <h2 className="font-display text-lg font-bold text-foreground">
+                  Invita a un amigo
+                </h2>
+                <button
+                  onClick={onClose}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-muted active:bg-surface"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted" />
+                </div>
+              ) : !data ? (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-sm text-muted">No se pudo cargar</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Share URL — tappable to copy */}
+                  <button
+                    onClick={onCopy}
+                    className="w-full rounded-2xl border border-border/50 bg-surface/50 p-3 text-left transition-colors active:bg-surface"
+                  >
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                        Tu link personal
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-muted">
+                        {copied ? (
+                          <>
+                            <Check className="h-3 w-3 text-green-500" />
+                            <span className="text-green-600">Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" />
+                            Copiar
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    <p className="truncate font-mono text-[13px] text-foreground/70">
+                      {data.shareUrl}
+                    </p>
+                  </button>
+
+                  {/* Rewards — only shown when program is active and has reward text */}
+                  {hasRewards && (
+                    <div className="space-y-2">
+                      {config.refereeRewardText && (
+                        <div className="flex items-start gap-3 rounded-2xl bg-surface/50 p-3.5">
+                          <div
+                            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                            style={{ background: `${brand.colorAccent}15` }}
+                          >
+                            <Gift className="h-4 w-4" style={{ color: brand.colorAccent }} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                              Tu amigo recibe
+                            </p>
+                            <p className="mt-0.5 text-[14px] font-semibold text-foreground">
+                              {config.refereeRewardText}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {config.referrerRewardText && (
+                        <div className="flex items-start gap-3 rounded-2xl bg-surface/50 p-3.5">
+                          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground/5">
+                            <Trophy className="h-4 w-4 text-foreground/60" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                              Tú recibes
+                              {config.triggerStage
+                                ? ` · cuando ${TRIGGER_LABELS[config.triggerStage] ?? "complete el paso"}`
+                                : ""}
+                            </p>
+                            <p className="mt-0.5 text-[14px] font-semibold text-foreground">
+                              {config.referrerRewardText}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={onShare}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-semibold text-white transition-opacity active:opacity-80"
+                      style={{ background: brand.colorAccent }}
+                    >
+                      <IosShareIcon className="h-[18px] w-[18px]" />
+                      Compartir
+                    </button>
+                    <button
+                      onClick={onCopy}
+                      className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-white px-5 py-3.5 text-[15px] font-medium text-foreground transition-colors active:bg-surface"
+                    >
+                      {copied ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                      {copied ? "Copiado" : "Copiar"}
+                    </button>
+                  </div>
+
+                  {/* Stats / link to full dashboard */}
+                  {config?.isEnabled && (
+                    <button
+                      onClick={onViewAll}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-border/50 bg-white p-4 text-left transition-colors active:bg-surface/50"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface">
+                        <Users className="h-4.5 w-4.5 text-foreground/70" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[15px] font-semibold text-foreground">
+                          {data.stats.total === 0
+                            ? "Aún no has invitado a nadie"
+                            : `${data.stats.total} amigo${data.stats.total !== 1 ? "s" : ""} invitado${data.stats.total !== 1 ? "s" : ""}`}
+                        </p>
+                        <p className="text-[12px] text-muted">
+                          {data.stats.total === 0
+                            ? "Comparte tu link para empezar"
+                            : "Ver detalles y progreso"}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
