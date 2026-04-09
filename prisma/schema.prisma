@@ -122,6 +122,12 @@ model Tenant {
   posTransactions       PosTransaction[]
   classRatings          ClassRating[]
   ratingReasons         RatingReason[]
+
+  highlightsEnabled     Boolean       @default(false)
+  highlights            Highlight[]
+
+  feedShowDisciplines      Boolean @default(true)
+  feedDisciplineThreshold  Int?    @default(5)
 }
 
 model InstagramIntegration {
@@ -429,6 +435,9 @@ model ClassType {
   icon        String?
   mediaUrl    String?
   tags        String[] @default([])
+
+  showInFeed  Boolean @default(true)
+
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   classes     Class[]
@@ -1675,4 +1684,38 @@ model RatingReason {
   classType ClassType? @relation(fields: [classTypeId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, classTypeId])
+}
+
+// ── Highlights (marketing banners on feed) ──
+
+model Highlight {
+  id          String   @id @default(cuid())
+  tenantId    String
+  title       String?
+  subtitle    String?
+  imageUrl    String
+  linkUrl     String
+  isExternal  Boolean  @default(false)
+  position    Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clicks HighlightClick[]
+
+  @@index([tenantId, isActive])
+}
+
+model HighlightClick {
+  id          String    @id @default(cuid())
+  highlightId String
+  userId      String?
+  userName    String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  highlight Highlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
+
+  @@index([highlightId, createdAt])
 }
