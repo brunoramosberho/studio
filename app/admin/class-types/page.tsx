@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -11,6 +11,7 @@ import {
   Clock,
   Dumbbell,
   AlertTriangle,
+  Rss,
 } from "lucide-react";
 import { IconPicker, getIconComponent } from "@/components/admin/icon-picker";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 const stagger = {
@@ -70,6 +72,7 @@ interface ClassTypeData {
   icon: string | null;
   mediaUrl: string | null;
   tags: string[];
+  showInFeed: boolean;
   _count: { classes: number; rooms: number };
 }
 
@@ -95,6 +98,135 @@ const emptyForm: FormData = {
   tags: [],
 };
 
+interface FeedDisciplineSettings {
+  feedShowDisciplines: boolean;
+  feedDisciplineThreshold: number | null;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Global feed-disciplines config (top card)                         */
+/* ------------------------------------------------------------------ */
+function FeedConfigCard() {
+  const queryClient = useQueryClient();
+  const [localThreshold, setLocalThreshold] = useState<string>("");
+
+  const { data: config, isLoading } = useQuery<FeedDisciplineSettings>({
+    queryKey: ["admin", "feed-discipline-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/settings/feed-disciplines");
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (config?.feedDisciplineThreshold != null) {
+      setLocalThreshold(String(config.feedDisciplineThreshold));
+    }
+  }, [config?.feedDisciplineThreshold]);
+
+  const mutation = useMutation({
+    mutationFn: async (patch: Partial<FeedDisciplineSettings>) => {
+      const res = await fetch("/api/admin/settings/feed-disciplines", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error("Error al guardar");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "feed-discipline-settings"] });
+    },
+  });
+
+  function commitThreshold() {
+    const val = parseInt(localThreshold) || 1;
+    setLocalThreshold(String(val));
+    if (val !== config?.feedDisciplineThreshold) {
+      mutation.mutate({ feedDisciplineThreshold: val });
+    }
+  }
+
+  if (isLoading || !config) {
+    return <Skeleton className="h-[120px] rounded-2xl" />;
+  }
+
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-admin/10 text-admin">
+            <Rss className="h-4.5 w-4.5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold">Disciplinas en el feed</p>
+            <p className="text-xs text-muted">
+              Muestra la sección &quot;Descubre nuestras disciplinas&quot; a miembros nuevos
+            </p>
+          </div>
+          <Switch
+            checked={config.feedShowDisciplines}
+            onCheckedChange={(checked) => mutation.mutate({ feedShowDisciplines: checked })}
+            disabled={mutation.isPending}
+          />
+        </div>
+
+        {config.feedShowDisciplines && (
+          <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-surface/30 p-4 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-xs font-medium text-muted">
+                Desaparece después de…
+              </label>
+              <Select
+                value={config.feedDisciplineThreshold == null ? "never" : "threshold"}
+                onValueChange={(v) =>
+                  mutation.mutate({
+                    feedDisciplineThreshold: v === "never" ? null : (config.feedDisciplineThreshold ?? 5),
+                  })
+                }
+                disabled={mutation.isPending}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="threshold">Después de X clases tomadas</SelectItem>
+                  <SelectItem value="never">Nunca (siempre visible)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {config.feedDisciplineThreshold != null && (
+              <div className="w-full sm:w-32">
+                <label className="mb-1.5 block text-xs font-medium text-muted">Clases</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={999}
+                  value={localThreshold}
+                  onChange={(e) => setLocalThreshold(e.target.value)}
+                  onBlur={commitThreshold}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitThreshold();
+                    }
+                  }}
+                  disabled={mutation.isPending}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main page                                                         */
+/* ------------------------------------------------------------------ */
 export default function AdminClassTypesPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -158,6 +290,22 @@ export default function AdminClassTypesPage() {
     },
   });
 
+  const toggleFeedMutation = useMutation({
+    mutationFn: async ({ id, showInFeed }: { id: string; showInFeed: boolean }) => {
+      const res = await fetch(`/api/class-types/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ showInFeed }),
+      });
+      if (!res.ok) throw new Error("Error al actualizar");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "class-types"] });
+      queryClient.invalidateQueries({ queryKey: ["class-types"] });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/class-types/${id}`, { method: "DELETE" });
@@ -190,6 +338,9 @@ export default function AdminClassTypesPage() {
           Nueva disciplina
         </Button>
       </div>
+
+      {/* Global feed config */}
+      <FeedConfigCard />
 
       {isLoading ? (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -288,6 +439,20 @@ export default function AdminClassTypesPage() {
                       ))}
                     </div>
                   )}
+                  <Separator className="my-3" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Rss className="h-3 w-3 text-muted" />
+                      <span className="text-xs text-muted">Mostrar en feed</span>
+                    </div>
+                    <Switch
+                      checked={ct.showInFeed}
+                      onCheckedChange={(checked) =>
+                        toggleFeedMutation.mutate({ id: ct.id, showInFeed: checked })
+                      }
+                      disabled={toggleFeedMutation.isPending}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>

@@ -50,7 +50,7 @@ export async function POST(
         {
           title: className,
           body: `A ${likerName} le gustó el post`,
-          url: "/my",
+          url: `/my?post=${eventId}`,
           tag: `like-${eventId}`,
         },
         tenant.id,
@@ -60,7 +60,7 @@ export async function POST(
       sendPushToUser(feedEvent.userId, {
         title: type === "kudos" ? "Kudos" : "Nuevo like",
         body: `${likerName} ${label}`,
-        url: "/my",
+        url: `/my?post=${eventId}`,
         tag: `like-${eventId}-${session.user.id}`,
       }, tenant.id).catch(() => {});
     }

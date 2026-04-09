@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
         }));
 
       if (attendees.length > 0 && cls.coach.userId) {
-        await prisma.feedEvent.create({
+        const feedEvent = await prisma.feedEvent.create({
           data: {
             tenantId: tenant.id,
             userId: cls.coach.userId,
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
           {
             title: `${cls.classType.name} completada`,
             body: `${coachFirst} finalizó la clase. ¡Mira el post y comparte fotos!`,
-            url: "/my",
+            url: `/my?post=${feedEvent.id}`,
             tag: `class-completed-${cls.id}`,
           },
           tenant.id,

@@ -12,7 +12,31 @@ interface NotificationItem {
   type: string;
   readAt: string | null;
   createdAt: string;
+  feedEventId: string | null;
+  actorId: string | null;
   actor: { id: string; name: string | null; image: string | null; hasActiveMembership?: boolean; level?: string | null } | null;
+}
+
+function getNotificationHref(n: NotificationItem): string | null {
+  switch (n.type) {
+    case "FRIEND_REQUEST":
+      return "/my/friends";
+    case "FRIEND_ACCEPTED":
+      return n.actorId ? `/my/user/${n.actorId}` : "/my/friends";
+    case "LIKE":
+    case "KUDOS":
+    case "COMMENT":
+      return n.feedEventId ? `/my?post=${n.feedEventId}` : "/my";
+    case "REFERRAL_JOINED":
+    case "REFERRAL_REWARD":
+      return "/my/referrals";
+    case "ACHIEVEMENT":
+      return "/my/profile";
+    case "CLASS_REMINDER":
+      return "/my/bookings";
+    default:
+      return null;
+  }
 }
 
 const typeLabels: Record<string, string> = {
@@ -97,46 +121,63 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-border/50 bg-white">
-            {notifications.map((n, i) => (
-              <div
-                key={n.id}
-                className={cn(
-                  "flex items-start gap-3 px-4 py-3.5",
-                  !n.readAt && "bg-accent/5",
-                  i < notifications.length - 1 && "border-b border-border/30",
-                )}
-              >
-                {n.actor ? (
-                  <UserAvatar
-                    user={n.actor as UserAvatarUser}
-                    size={40}
-                    className="flex-shrink-0"
-                  />
-                ) : (
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-surface">
-                    <Bell className="h-4 w-4 text-muted" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] leading-snug text-foreground">
-                    {n.actor?.name && (
-                      <span className="font-semibold">
-                        {n.actor.name.split(" ")[0]}{" "}
+            {notifications.map((n, i) => {
+              const href = getNotificationHref(n);
+              const content = (
+                <>
+                  {n.actor ? (
+                    <UserAvatar
+                      user={n.actor as UserAvatarUser}
+                      size={40}
+                      className="flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-surface">
+                      <Bell className="h-4 w-4 text-muted" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] leading-snug text-foreground">
+                      {n.actor?.name && (
+                        <span className="font-semibold">
+                          {n.actor.name.split(" ")[0]}{" "}
+                        </span>
+                      )}
+                      <span className="text-muted">
+                        {typeLabels[n.type] ?? n.type}
                       </span>
-                    )}
-                    <span className="text-muted">
-                      {typeLabels[n.type] ?? n.type}
-                    </span>
-                  </p>
-                  <p className="mt-0.5 text-[12px] text-muted/70">
-                    {timeAgo(n.createdAt)}
-                  </p>
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-muted/70">
+                      {timeAgo(n.createdAt)}
+                    </p>
+                  </div>
+                  {!n.readAt && (
+                    <div className="mt-2 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-accent" />
+                  )}
+                </>
+              );
+
+              const className = cn(
+                "flex items-start gap-3 px-4 py-3.5",
+                !n.readAt && "bg-accent/5",
+                i < notifications.length - 1 && "border-b border-border/30",
+                href && "cursor-pointer active:bg-surface/50 transition-colors",
+              );
+
+              return href ? (
+                <button
+                  key={n.id}
+                  className={cn(className, "w-full text-left")}
+                  onClick={() => router.push(href)}
+                >
+                  {content}
+                </button>
+              ) : (
+                <div key={n.id} className={className}>
+                  {content}
                 </div>
-                {!n.readAt && (
-                  <div className="mt-2 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-accent" />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

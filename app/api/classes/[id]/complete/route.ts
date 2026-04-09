@@ -155,7 +155,7 @@ export async function POST(
         {
           title: `${cls.classType.name} completada`,
           body: `${coachFirst} finalizó la clase. ¡Mira el post y comparte fotos!`,
-          url: "/my",
+          url: `/my?post=${feedEventId}`,
           tag: `class-completed-${id}`,
         },
         ctx.tenant.id,

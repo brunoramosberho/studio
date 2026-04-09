@@ -27,11 +27,11 @@ export async function GET(request: NextRequest) {
     const cursor = searchParams.get("cursor");
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 50);
 
-    // Parallel: user city, total attended classes, and tenant disciplines
+    // Parallel: user city, total attended classes, tenant feed config, and tenant disciplines
     let userCityId: string | null = null;
     let totalClasses = 0;
 
-    const [userLoc, memberProgress, disciplines] = await Promise.all([
+    const [userLoc, memberProgress, tenantFeedConfig, allDisciplines] = await Promise.all([
       currentUserId
         ? prisma.user.findUnique({
             where: { id: currentUserId },
@@ -44,8 +44,12 @@ export async function GET(request: NextRequest) {
             select: { totalClassesAttended: true },
           })
         : null,
+      prisma.tenant.findUniqueOrThrow({
+        where: { id: tenant.id },
+        select: { feedShowDisciplines: true, feedDisciplineThreshold: true },
+      }),
       prisma.classType.findMany({
-        where: { tenantId: tenant.id },
+        where: { tenantId: tenant.id, showInFeed: true },
         select: {
           id: true,
           name: true,
@@ -556,6 +560,12 @@ export async function GET(request: NextRequest) {
         payload.attendees = attendees.map((a) => withAvatarMeta(a, avatarMeta));
       }
     }
+
+    const { feedShowDisciplines, feedDisciplineThreshold } = tenantFeedConfig;
+    const disciplines =
+      feedShowDisciplines && (feedDisciplineThreshold == null || totalClasses < feedDisciplineThreshold)
+        ? allDisciplines
+        : [];
 
     return NextResponse.json({ feed, nextCursor, totalClasses, disciplines });
   } catch (error) {

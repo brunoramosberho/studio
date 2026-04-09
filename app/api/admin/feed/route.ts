@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
       const payload: PushPayload = {
         title: pushTitle,
         body: pushBody,
-        url: "/my",
+        url: `/my?post=${event.id}`,
         tag: `studio-post-${event.id}`,
       };
 

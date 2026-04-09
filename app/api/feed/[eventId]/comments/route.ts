@@ -91,7 +91,7 @@ export async function POST(
         {
           title: `Comentario en ${className}`,
           body: `${commenterName}: ${preview}`,
-          url: "/my",
+          url: `/my?post=${eventId}`,
           tag: `comment-${eventId}`,
         },
         tenant.id,
@@ -100,7 +100,7 @@ export async function POST(
       sendPushToUser(feedEvent.userId, {
         title: "Nuevo comentario",
         body: `${commenterName}: ${preview}`,
-        url: "/my",
+        url: `/my?post=${eventId}`,
         tag: `comment-${eventId}`,
       }, tenant.id).catch(() => {});
     }

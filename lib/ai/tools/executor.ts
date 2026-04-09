@@ -808,6 +808,7 @@ async function sendAnnouncement(
     sendPushToUser(userId, {
       title: input.title,
       body: input.message,
+      url: "/my",
     }, tenantId).catch(() => {});
     sentCount++;
   }
@@ -1115,7 +1116,7 @@ async function createPost(
       sendPushToUser(sub.userId, {
         title: input.title || "Nuevo post del studio",
         body: input.body.length > 120 ? input.body.slice(0, 117) + "..." : input.body,
-        url: "/my",
+        url: `/my?post=${event.id}`,
       }, tenantId).catch(() => {});
     }
   }

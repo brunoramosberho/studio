@@ -902,10 +902,13 @@ export function FeedEventCard({ event }: FeedEventCardProps) {
   const openDiscipline = () => setDisciplineOpen(true);
 
   return (
-    <article className={cn(
-      "overflow-hidden border-y border-border/40 bg-white sm:rounded-2xl sm:border sm:shadow-warm-sm",
-      event.isPinned && "ring-1 ring-accent/20",
-    )}>
+    <article
+      id={`post-${event.id}`}
+      className={cn(
+        "overflow-hidden border-y border-border/40 bg-white sm:rounded-2xl sm:border sm:shadow-warm-sm",
+        event.isPinned && "ring-1 ring-accent/20",
+      )}
+    >
       {event.eventType === "STUDIO_POST" ? (
         <StudioPostCard event={event} />
       ) : event.eventType === "ACHIEVEMENT_UNLOCKED" ? (

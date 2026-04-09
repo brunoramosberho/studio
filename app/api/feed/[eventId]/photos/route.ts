@@ -124,7 +124,7 @@ export async function POST(
         {
           title: isVideoUpload ? "Nuevo video" : "Nueva foto",
           body: `${uploaderName} subió ${isVideoUpload ? "un video" : "una foto"} a ${className}`,
-          url: "/my",
+          url: `/my?post=${eventId}`,
           tag: `photo-${eventId}`,
         },
         tenant.id,

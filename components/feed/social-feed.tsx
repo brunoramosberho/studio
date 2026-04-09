@@ -2,6 +2,7 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useCallback, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { FeedEventCard } from "./feed-event-card";
 import { FeedPwaHint } from "./feed-pwa-hint";
 import { DiscoverDisciplines } from "./discover-disciplines";
@@ -106,6 +107,9 @@ function EmptyFeed() {
 
 export function SocialFeed() {
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrolledRef = useRef(false);
+  const searchParams = useSearchParams();
+  const highlightPostId = searchParams.get("post");
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
@@ -135,14 +139,25 @@ export function SocialFeed() {
     return () => observer.disconnect();
   }, [handleIntersect]);
 
+  useEffect(() => {
+    if (!highlightPostId || isLoading || scrolledRef.current) return;
+    const el = document.getElementById(`post-${highlightPostId}`);
+    if (!el) return;
+    scrolledRef.current = true;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-accent/40");
+      setTimeout(() => el.classList.remove("ring-2", "ring-accent/40"), 3000);
+    });
+  }, [highlightPostId, isLoading, data]);
+
   const rawEvents = data?.pages.flatMap((p) => p.feed) ?? [];
   const pinned = rawEvents.filter((e) => e.isPinned);
   const unpinned = rawEvents.filter((e) => !e.isPinned);
   const allEvents = [...pinned, ...unpinned];
   const firstPage = data?.pages[0];
-  const totalClasses = firstPage?.totalClasses ?? 0;
   const disciplines = firstPage?.disciplines ?? [];
-  const showDiscover = totalClasses < 5 && disciplines.length > 0;
+  const showDiscover = disciplines.length > 0;
 
   return (
     <div className="space-y-4">
