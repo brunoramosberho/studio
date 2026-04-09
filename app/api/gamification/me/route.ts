@@ -105,11 +105,9 @@ export async function GET() {
       progressPercent,
       currentStreak: progress?.currentStreak ?? 0,
       longestStreak: progress?.longestStreak ?? 0,
-      freeClassCredits: progress?.freeClassCredits ?? 0,
       levels: levelsEnabled
         ? levels.map((l) => ({
             ...applyLevelOverride(l),
-            rewardOnUnlock: l.rewardOnUnlock,
             reached: totalClasses >= (levelOverrides[String(l.sortOrder)]?.minClasses ?? l.minClasses),
             isCurrent: l.id === currentLevel?.id,
           }))
@@ -125,8 +123,6 @@ export async function GET() {
           icon: ovr?.icon ?? a.icon,
           category: a.category,
           achievementType: feedAchievementTypeFromKey(a.key),
-          rewardType: a.rewardType,
-          rewardValue: a.rewardValue,
           earned: earnedIds.has(a.id),
           earnedAt: earned?.earnedAt ?? null,
           rewardApplied: earned?.rewardApplied ?? false,

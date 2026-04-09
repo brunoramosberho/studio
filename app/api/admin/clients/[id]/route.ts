@@ -363,7 +363,6 @@ export async function GET(
         currentStreak: progress?.currentStreak ?? 0,
         longestStreak: progress?.longestStreak ?? 0,
         daysSinceLastVisit,
-        freeClassCredits: progress?.freeClassCredits ?? 0,
       },
 
       level: currentLevel

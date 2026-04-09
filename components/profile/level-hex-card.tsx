@@ -15,7 +15,6 @@ interface LevelInfo {
   sortOrder: number;
   reached: boolean;
   isCurrent: boolean;
-  rewardOnUnlock: unknown;
 }
 
 interface LevelHexCardProps {

@@ -107,10 +107,6 @@ async function main() {
         minClasses: L.minClasses,
         icon: L.icon,
         color: L.color,
-        rewardOnUnlock:
-          L.rewardOnUnlock == null
-            ? undefined
-            : (L.rewardOnUnlock as Prisma.InputJsonValue),
       },
     });
   }
@@ -130,11 +126,7 @@ async function main() {
           A.triggerConfig == null
             ? undefined
             : (A.triggerConfig as Prisma.InputJsonValue),
-        rewardType: A.rewardType,
-        rewardValue:
-          A.rewardValue == null
-            ? undefined
-            : (A.rewardValue as Prisma.InputJsonValue),
+        rewardType: "NONE",
         isSystem: true,
         active: true,
       },

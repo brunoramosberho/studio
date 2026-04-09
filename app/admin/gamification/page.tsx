@@ -51,7 +51,6 @@ interface LevelRow {
   minClasses: number;
   icon: string;
   color: string;
-  rewardOnUnlock: unknown;
 }
 
 interface AchievementRow {
@@ -63,7 +62,6 @@ interface AchievementRow {
   category: string;
   triggerType: string;
   triggerValue: number | null;
-  rewardType: string;
   active: boolean;
 }
 
@@ -677,12 +675,8 @@ export default function AdminGamificationPage() {
                             {triggerLabel(a.triggerType)}
                             {a.triggerValue != null && ` (${a.triggerValue})`}
                           </span>
-                          {a.rewardType !== "NONE" && (
-                            <Badge variant="outline" className="hidden text-[10px] sm:inline-flex">
-                              <Gift className="mr-1 h-3 w-3" />
-                              Premio
-                            </Badge>
-                          )}
+
+
                           {enabled && (
                             <Button
                               size="icon"

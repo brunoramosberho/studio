@@ -71,7 +71,6 @@ interface ClientDetail {
     currentStreak: number;
     longestStreak: number;
     daysSinceLastVisit: number | null;
-    freeClassCredits: number;
   };
   level: { name: string; icon: string; color: string; minClasses: number } | null;
   nextLevel: { name: string; icon: string; color: string; minClasses: number } | null;

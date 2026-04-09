@@ -61,7 +61,6 @@ export async function GET() {
         minClasses: l.minClasses,
         icon: l.icon,
         color: l.color,
-        rewardOnUnlock: l.rewardOnUnlock,
       })),
       systemAchievements: systemAchievements.map((a) => ({
         id: a.id,
@@ -72,7 +71,6 @@ export async function GET() {
         category: a.category,
         triggerType: a.triggerType,
         triggerValue: a.triggerValue,
-        rewardType: a.rewardType,
         active: a.active,
       })),
       config: config

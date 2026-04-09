@@ -212,12 +212,10 @@ export default function ProfilePage() {
     progressPercent: number;
     currentStreak: number;
     longestStreak: number;
-    freeClassCredits: number;
-    levels: { name: string; icon: string; color: string; minClasses: number; sortOrder: number; reached: boolean; isCurrent: boolean; rewardOnUnlock: unknown }[];
+    levels: { name: string; icon: string; color: string; minClasses: number; sortOrder: number; reached: boolean; isCurrent: boolean }[];
     achievements: {
       id: string; key: string; name: string; description: string | null;
       icon: string; achievementType: string; earned: boolean; earnedAt: string | null;
-      rewardType: string; rewardValue: unknown;
     }[];
     rewards: { id: string; rewardKind: string; rewardData: Record<string, unknown>; expiresAt: string | null }[];
   }>({
@@ -759,7 +757,7 @@ export default function ProfilePage() {
         </motion.div>
 
         {/* Active rewards */}
-        {gamification && (gamification.rewards.length > 0 || gamification.freeClassCredits > 0) && (
+        {gamification && gamification.rewards.length > 0 && (
           <motion.div custom={4.5} variants={fadeUp} initial="hidden" animate="show">
             <div className="rounded-2xl border border-border/50 bg-white p-4">
               <div className="mb-3 flex items-center gap-2">
@@ -769,49 +767,7 @@ export default function ProfilePage() {
                 </span>
               </div>
               <div className="space-y-2">
-                {gamification.freeClassCredits > 0 && (
-                  <div className="flex items-center gap-3 rounded-xl bg-green-50 px-3 py-2.5">
-                    <span className="text-lg">🎁</span>
-                    <div>
-                      <p className="text-[13px] font-semibold text-green-800">
-                        {gamification.freeClassCredits} clase{gamification.freeClassCredits > 1 ? "s" : ""} gratis
-                      </p>
-                      <p className="text-[11px] text-green-600">Disponible</p>
-                    </div>
-                  </div>
-                )}
-                {gamification.rewards
-                  .filter((r) => r.rewardKind === "DISCOUNT_CODE")
-                  .map((r) => {
-                    const data = r.rewardData as { discountPercent?: number; code?: string };
-                    return (
-                      <div key={r.id} className="flex items-center gap-3 rounded-xl bg-accent/5 px-3 py-2.5">
-                        <span className="text-lg">🏷️</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[13px] font-semibold text-foreground">
-                            {data.discountPercent ?? 10}% de descuento
-                          </p>
-                          {r.expiresAt && (
-                            <p className="text-[11px] text-muted">
-                              Válido hasta{" "}
-                              {new Date(r.expiresAt).toLocaleDateString("es-MX", {
-                                day: "numeric",
-                                month: "short",
-                              })}
-                            </p>
-                          )}
-                        </div>
-                        {data.code && (
-                          <span className="rounded-md bg-surface px-2 py-1 font-mono text-[11px] font-semibold text-accent">
-                            {data.code}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                {gamification.rewards
-                  .filter((r) => r.rewardKind === "CUSTOM")
-                  .map((r) => {
+                {gamification.rewards.map((r) => {
                     const data = r.rewardData as { text?: string };
                     return (
                       <div key={r.id} className="flex items-center gap-3 rounded-xl bg-amber-50 px-3 py-2.5">
