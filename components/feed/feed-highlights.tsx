@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import Link from "next/link";
+import { ImageOff } from "lucide-react";
 
 interface HighlightItem {
   id: string;
@@ -23,6 +24,7 @@ function trackClick(id: string) {
 }
 
 function HighlightCard({ item }: { item: HighlightItem }) {
+  const [imgError, setImgError] = useState(false);
   const handleClick = useCallback(() => {
     trackClick(item.id);
   }, [item.id]);
@@ -30,14 +32,21 @@ function HighlightCard({ item }: { item: HighlightItem }) {
   const hasText = item.title || item.subtitle;
 
   const content = (
-    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-stone-100 shadow-warm-sm transition-transform active:scale-[0.98]">
-      <img
-        src={item.imageUrl}
-        alt={item.title || ""}
-        className="h-full w-full object-cover"
-        loading="lazy"
-      />
-      {hasText && (
+    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-stone-200 shadow-warm-sm transition-transform active:scale-[0.98]">
+      {imgError ? (
+        <div className="flex h-full w-full items-center justify-center bg-stone-200">
+          <ImageOff className="h-8 w-8 text-stone-400" />
+        </div>
+      ) : (
+        <img
+          src={item.imageUrl}
+          alt={item.title || ""}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setImgError(true)}
+        />
+      )}
+      {hasText && !imgError && (
         <>
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-3.5">
