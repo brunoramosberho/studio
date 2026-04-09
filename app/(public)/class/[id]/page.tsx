@@ -7,7 +7,7 @@ import { useSession, signIn } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
+  ChevronLeft,
   Loader2,
   AlertCircle,
   AlertTriangle,
@@ -448,11 +448,10 @@ export default function ClassDetailPage() {
         {/* Back + credits + share */}
         <div className="mb-6 flex items-center justify-between">
           <button
-            onClick={() => window.history.length > 1 ? router.back() : router.push("/schedule")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+            onClick={() => router.back()}
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Volver
+            <ChevronLeft className="h-5 w-5 text-foreground" />
           </button>
           <div className="flex items-center gap-2">
             {!isPast && isAuthenticated && creditsRemaining !== null && (

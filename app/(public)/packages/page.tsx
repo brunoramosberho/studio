@@ -2,18 +2,18 @@
 
 import { useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
-  Sparkles,
+  ChevronLeft,
   Gift,
   Ticket,
   Layers,
   CalendarSync,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/shared/page-transition";
 import { PurchaseSheet } from "@/components/booking/purchase-sheet";
@@ -93,6 +93,7 @@ const fadeUp = {
 };
 
 export default function PackagesPage() {
+  const router = useRouter();
   const { data: session, status: authStatus } = useSession();
   const isLoggedIn = authStatus === "authenticated";
 
@@ -153,14 +154,22 @@ export default function PackagesPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-16 lg:px-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-16 lg:px-8">
         {/* Header */}
-        <div className="mb-8 sm:mb-12 sm:text-center">
-          <h1 className="font-display text-3xl font-bold text-foreground sm:text-4xl">
-            Precios
-          </h1>
-          <p className="mt-2 text-sm text-muted sm:mx-auto sm:max-w-lg sm:mt-3 sm:text-base">
-            Ofertas de entrada, paquetes de clases y suscripciones para tu ritmo.
+        <div className="mb-6 sm:mb-12">
+          <div className="flex items-center gap-3 sm:justify-center">
+            <button
+              onClick={() => router.back()}
+              className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface sm:hidden"
+            >
+              <ChevronLeft className="h-5 w-5 text-foreground" />
+            </button>
+            <h1 className="font-display text-2xl font-bold text-foreground sm:text-4xl">
+              Precios
+            </h1>
+          </div>
+          <p className="mt-1 text-sm text-muted sm:mx-auto sm:max-w-lg sm:mt-3 sm:text-center sm:text-base">
+            Ofertas, paquetes y suscripciones para tu ritmo.
           </p>
         </div>
 
@@ -222,7 +231,7 @@ export default function PackagesPage() {
         {/* Packages grid */}
         {!loading && (
           <motion.div
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
             variants={stagger}
             initial="hidden"
             animate="show"
@@ -235,59 +244,59 @@ export default function PackagesPage() {
                 <motion.div key={pkg.id} variants={fadeUp}>
                   <div
                     className={cn(
-                      "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-warm-md",
+                      "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-4 sm:p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-warm-md",
                       pkg.isPromo && "border-2 border-dashed border-accent/40",
                     )}
                   >
                     {pkg.isPromo && (
-                      <div className="absolute -top-0 right-4 rounded-b-lg bg-accent/10 px-3 py-1">
-                        <span className="flex items-center gap-1 text-[11px] font-semibold text-accent">
+                      <div className="absolute -top-0 right-3 rounded-b-lg bg-accent/10 px-2.5 py-0.5 sm:right-4 sm:px-3 sm:py-1">
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-accent sm:text-[11px]">
                           <Gift className="h-3 w-3" />
                           Primera vez
                         </span>
                       </div>
                     )}
 
-                    <div className="mb-4">
+                    <div className="mb-3 sm:mb-4">
                       {pkg.description && (
-                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-accent">
+                        <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wider text-accent sm:mb-1 sm:text-[11px]">
                           {pkg.description}
                         </p>
                       )}
-                      <h3 className="font-display text-xl font-bold text-foreground">
+                      <h3 className="font-display text-lg font-bold text-foreground sm:text-xl">
                         {pkg.name}
                       </h3>
                     </div>
 
-                    <div className="mb-5">
-                      <span className="font-mono text-3xl font-medium text-foreground">
+                    <div className="mb-3 sm:mb-5">
+                      <span className="font-mono text-2xl font-medium text-foreground sm:text-3xl">
                         {formatCurrency(pkg.price, pkg.currency)}
                       </span>
                       {pkg.credits && (
-                        <span className="ml-1 text-sm text-muted">
+                        <span className="ml-1 text-xs text-muted sm:text-sm">
                           / {pkg.credits} {pkg.credits === 1 ? "clase" : "clases"}
                         </span>
                       )}
                       {pkg.type === "SUBSCRIPTION" && (
-                        <span className="ml-1 text-sm text-muted">
+                        <span className="ml-1 text-xs text-muted sm:text-sm">
                           / {pkg.recurringInterval === "year" ? "año" : "mes"}
                         </span>
                       )}
                     </div>
 
-                    <ul className="flex-1 space-y-2.5">
+                    <ul className="flex-1 space-y-1.5 sm:space-y-2.5">
                       {features.map((feature) => (
                         <li
                           key={feature}
-                          className="flex items-start gap-2 text-sm text-muted"
+                          className="flex items-start gap-1.5 text-[13px] text-muted sm:gap-2 sm:text-sm"
                         >
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-accent sm:h-4 sm:w-4" />
                           {feature}
                         </li>
                       ))}
                     </ul>
 
-                    <div className="mt-6">
+                    <div className="mt-4 sm:mt-6">
                       <Button
                         className="w-full rounded-full"
                         onClick={() => handleBuy(pkg)}
@@ -306,24 +315,6 @@ export default function PackagesPage() {
           </motion.div>
         )}
 
-        {/* Help section */}
-        {!loading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="mx-auto mt-12 max-w-2xl rounded-2xl bg-surface/80 p-6 text-center sm:p-8"
-          >
-            <Sparkles className="mx-auto mb-3 h-7 w-7 text-accent" />
-            <h3 className="font-display text-lg font-bold text-foreground">
-              ¿No sabes cuál elegir?
-            </h3>
-            <p className="mt-1 text-sm text-muted">
-              Escríbenos y te ayudamos a encontrar el paquete perfecto para tus
-              objetivos.
-            </p>
-          </motion.div>
-        )}
       </div>
 
       {/* Purchase / Subscribe Sheet */}

@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Package,
   Infinity as InfinityIcon,
   ArrowRight,
   CalendarSync,
+  ChevronLeft,
   Loader2,
   Pause,
   XCircle,
@@ -65,6 +67,7 @@ const STATUS_LABEL: Record<string, { text: string; variant: "success" | "warning
 };
 
 export default function PackagesPage() {
+  const router = useRouter();
   const [packages, setPackages] = useState<UserPackageWithDetails[]>([]);
   const [subscriptions, setSubscriptions] = useState<MemberSub[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,15 +231,21 @@ export default function PackagesPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
+      <div className="space-y-5">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface"
+          >
+            <ChevronLeft className="h-5 w-5 text-foreground" />
+          </button>
+          <h1 className="flex-1 font-display text-xl font-bold text-foreground">
             Mis Paquetes
           </h1>
-          <Button asChild size="sm">
+          <Button asChild size="sm" variant="outline" className="rounded-full">
             <Link href="/packages">
               Ver planes
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
             </Link>
           </Button>
         </div>

@@ -3,11 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, ExternalLink, ArrowLeft } from "lucide-react";
+import { ShoppingBag, ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
-import Link from "next/link";
 
 interface ShopProduct {
   id: string;
@@ -57,17 +56,9 @@ export default function ShopPage() {
     <div className="min-h-dvh bg-background pb-28">
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         {/* Header */}
-        <div className="mb-6 flex items-center gap-3">
-          <Link
-            href="/my"
-            className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div>
-            <h1 className="font-display text-2xl font-bold text-foreground">Tienda</h1>
-            <p className="text-sm text-muted">Descubre nuestros productos</p>
-          </div>
+        <div className="mb-6">
+          <h1 className="font-display text-2xl font-bold text-foreground">Tienda</h1>
+          <p className="text-sm text-muted">Descubre nuestros productos</p>
         </div>
 
         {/* Category filter */}

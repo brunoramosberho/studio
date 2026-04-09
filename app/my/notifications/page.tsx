@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bell, Loader2 } from "lucide-react";
+import { ChevronLeft, Bell, Loader2 } from "lucide-react";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { cn } from "@/lib/utils";
@@ -72,9 +72,9 @@ export default function NotificationsPage() {
         <div className="mb-5 flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-muted active:bg-surface"
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5 text-foreground" />
           </button>
           <h1 className="font-display text-xl font-bold text-foreground">
             Notificaciones

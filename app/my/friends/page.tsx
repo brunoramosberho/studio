@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, UserPlus, Check, X, Loader2, Search, Gift, Copy, ChevronRight } from "lucide-react";
+import { ChevronLeft, UserPlus, Check, X, Loader2, Search, Gift, Copy, ChevronRight } from "lucide-react";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
@@ -159,9 +159,9 @@ export default function FriendsPage() {
         <div className="mb-5 flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-muted active:bg-surface"
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5 text-foreground" />
           </button>
           <h1 className="font-display text-xl font-bold text-foreground">
             Amigos

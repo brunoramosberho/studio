@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,7 +12,6 @@ import {
   ChevronLeft,
   Check,
 } from "lucide-react";
-import Link from "next/link";
 import { PageTransition } from "@/components/shared/page-transition";
 import { AddCardSheet } from "@/components/checkout/AddCardSheet";
 
@@ -40,6 +40,7 @@ function BrandIcon({ brand }: { brand: string }) {
 }
 
 export default function PaymentMethodsPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [showAddCard, setShowAddCard] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -74,12 +75,12 @@ export default function PaymentMethodsPage() {
       <div className="space-y-5 pb-20">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Link
-            href="/my/profile"
+          <button
+            onClick={() => router.back()}
             className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface"
           >
             <ChevronLeft className="h-5 w-5 text-foreground" />
-          </Link>
+          </button>
           <h1 className="font-display text-xl font-bold text-foreground">
             Métodos de pago
           </h1>
