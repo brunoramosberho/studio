@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, UserPlus, Check, X, Loader2, Search } from "lucide-react";
+import { ArrowLeft, UserPlus, Check, X, Loader2, Search, Gift, Copy, ChevronRight } from "lucide-react";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
+import { useBranding } from "@/components/branding-provider";
 import { cn, maskLastName } from "@/lib/utils";
 
 interface Friend {
@@ -40,6 +41,7 @@ interface Suggestion {
 
 export default function FriendsPage() {
   const router = useRouter();
+  const brand = useBranding();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pending, setPending] = useState<PendingRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<PendingRequest[]>([]);
@@ -48,20 +50,45 @@ export default function FriendsPage() {
   const [sent, setSent] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
 
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     Promise.all([
       fetch("/api/friends").then((r) => r.json()),
       fetch("/api/friends/suggestions").then((r) => r.json()),
+      fetch("/api/referrals").then((r) => r.ok ? r.json() : null),
     ])
-      .then(([data, sug]) => {
+      .then(([data, sug, ref]) => {
         setFriends(data.friends ?? []);
         setPending(data.pendingRequests ?? []);
         setSentRequests(data.sentRequests ?? []);
         setSuggestions(sug ?? []);
+        if (ref?.shareUrl) setShareUrl(ref.shareUrl);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }, [shareUrl]);
+
+  const handleShare = useCallback(async () => {
+    if (!shareUrl || !navigator.share) return;
+    try {
+      await navigator.share({
+        title: `Únete a ${brand.studioName}`,
+        text: `Te invito a ${brand.studioName}`,
+        url: shareUrl,
+      });
+    } catch {}
+  }, [shareUrl, brand.studioName]);
 
   async function handleAccept(friendshipId: string) {
     const res = await fetch(`/api/friends/${friendshipId}`, {
@@ -152,6 +179,53 @@ export default function FriendsPage() {
             className="h-11 w-full rounded-2xl border border-border/50 bg-white pl-10 pr-4 text-[14px] text-foreground placeholder:text-muted/60 focus:border-accent focus:outline-none"
           />
         </div>
+
+        {/* Invite banner */}
+        {shareUrl && (
+          <div className="mb-5 rounded-2xl border border-border/50 bg-white p-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                style={{ background: `${brand.colorAccent}15` }}
+              >
+                <Gift className="h-5 w-5" style={{ color: brand.colorAccent }} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-semibold text-foreground">
+                  Invita amigos al estudio
+                </p>
+                <p className="text-[12px] text-muted">
+                  Comparte tu link personal
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={handleShare}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[14px] font-semibold text-white transition-opacity active:opacity-80"
+                style={{ background: brand.colorAccent }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M12 3v12" />
+                  <path d="m8 7 4-4 4 4" />
+                  <path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4" />
+                </svg>
+                Compartir
+              </button>
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-white px-4 py-2.5 text-[14px] font-medium text-foreground transition-colors active:bg-surface"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                {copied ? "Copiado" : "Copiar link"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
