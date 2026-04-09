@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { formatTime } from "@/lib/utils";
 
 interface PendingClass {
@@ -23,6 +24,9 @@ interface RatingReason {
 }
 
 export function RatingSheet() {
+  const pathname = usePathname();
+  const isAdmin = pathname.startsWith("/admin");
+
   const [pending, setPending] = useState<PendingClass | null>(null);
   const [visible, setVisible] = useState(false);
   const [rating, setRating] = useState(0);
@@ -35,6 +39,7 @@ export function RatingSheet() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (isAdmin) return;
     fetch("/api/ratings/pending")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: PendingClass | null) => {
@@ -47,7 +52,7 @@ export function RatingSheet() {
         }, 1500);
       })
       .catch(() => {});
-  }, []);
+  }, [isAdmin]);
 
   const dismiss = useCallback(() => {
     if (pending) {
@@ -117,7 +122,7 @@ export function RatingSheet() {
     setSubmitted(true);
   };
 
-  if (!pending) return null;
+  if (!pending || isAdmin) return null;
 
   const stars = [1, 2, 3, 4, 5];
   const activeRating = hovered || rating;
