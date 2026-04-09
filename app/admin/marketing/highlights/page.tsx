@@ -84,6 +84,46 @@ function Toggle({
   );
 }
 
+const TARGET_W = 600;
+const TARGET_H = 750;
+const MAX_QUALITY = 0.82;
+
+function cropAndCompress(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const srcRatio = img.width / img.height;
+      const targetRatio = TARGET_W / TARGET_H;
+
+      let sx = 0, sy = 0, sw = img.width, sh = img.height;
+      if (srcRatio > targetRatio) {
+        sw = Math.round(img.height * targetRatio);
+        sx = Math.round((img.width - sw) / 2);
+      } else {
+        sh = Math.round(img.width / targetRatio);
+        sy = Math.round((img.height - sh) / 2);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = TARGET_W;
+      canvas.height = TARGET_H;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, TARGET_W, TARGET_H);
+
+      const useWebp = canvas.toDataURL("image/webp").startsWith("data:image/webp");
+      const mime = useWebp ? "image/webp" : "image/jpeg";
+
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("Canvas export failed"))),
+        mime,
+        MAX_QUALITY,
+      );
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 function ImageUploader({
   currentUrl,
   onUpload,
@@ -100,8 +140,12 @@ function ImageUploader({
       setUploading(true);
       setPreview(URL.createObjectURL(file));
       try {
+        const blob = await cropAndCompress(file);
+        const ext = blob.type === "image/webp" ? "webp" : "jpg";
+        const processed = new File([blob], `highlight.${ext}`, { type: blob.type });
+
         const form = new FormData();
-        form.append("file", file);
+        form.append("file", processed);
         const res = await fetch("/api/admin/marketing/highlights/upload", {
           method: "POST",
           body: form,
@@ -134,7 +178,7 @@ function ImageUploader({
       <button
         type="button"
         onClick={() => fileRef.current?.click()}
-        className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 transition-colors hover:border-stone-400"
+        className="group relative aspect-[4/5] w-full max-w-[260px] overflow-hidden rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 transition-colors hover:border-stone-400"
       >
         {preview ? (
           <>
@@ -155,12 +199,17 @@ function ImageUploader({
               <>
                 <ImagePlus className="h-8 w-8" />
                 <span className="text-xs font-medium">Subir imagen</span>
-                <span className="text-[10px]">16:9 recomendado</span>
+                <span className="text-[10px]">
+                  Se recorta a {TARGET_W}×{TARGET_H}px (4:5)
+                </span>
               </>
             )}
           </div>
         )}
       </button>
+      <p className="mt-1.5 text-[10px] text-stone-400">
+        La imagen se recorta al centro y comprime automáticamente a {TARGET_W}×{TARGET_H}px.
+      </p>
     </div>
   );
 }
