@@ -36,9 +36,9 @@ export function RatingSheet() {
 
   useEffect(() => {
     fetch("/api/ratings/pending")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((data: PendingClass | null) => {
-        if (!data) return;
+        if (!data || !data.classId) return;
         const key = `rating_dismissed_${data.classId}`;
         if (typeof window !== "undefined" && localStorage.getItem(key)) return;
         setTimeout(() => {
@@ -60,7 +60,9 @@ export function RatingSheet() {
   const prefetchReasons = useCallback(async () => {
     if (!pending || reasons.length > 0) return;
     const res = await fetch(`/api/ratings/reasons?classTypeId=${pending.classTypeId}`);
+    if (!res.ok) return;
     const data = await res.json();
+    if (!Array.isArray(data)) return;
     setReasons(data);
   }, [pending, reasons.length]);
 
