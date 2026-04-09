@@ -1,7 +1,13 @@
 import { prisma } from "@/lib/db";
 import { ACHIEVEMENT_DEFS } from "./achievement-defs";
 import { feedAchievementTypeFromKey } from "./gamification/catalog";
-import { maxClassesInSingleWeek, syncMemberProgressFromBookings } from "./gamification/progress";
+import {
+  maxClassesInSingleWeek,
+  syncMemberProgressFromBookings,
+  longestWeeklyStreak,
+  distinctClassTypes,
+  detectComeback,
+} from "./gamification/progress";
 import {
   applyAchievementCatalogReward,
   applyGamificationReward,
@@ -220,8 +226,11 @@ export async function checkAchievements(userId: string, tenantId: string) {
   });
 
   const totalAttended = attendedBookings.length;
-  const longestStreak = progress?.longestStreak ?? 0;
+  const longestStrk = progress?.longestStreak ?? 0;
   const maxWeek = maxClassesInSingleWeek(attendedBookings);
+  const weeklyStrk = longestWeeklyStreak(attendedBookings);
+  const classVariety = distinctClassTypes(attendedBookings);
+  const isComeback = detectComeback(attendedBookings, 30);
 
   const granted: GrantedAchievement[] = [];
 
@@ -249,7 +258,7 @@ export async function checkAchievements(userId: string, tenantId: string) {
     }
   }
 
-  for (const m of [5, 10, 25, 50, 100] as const) {
+  for (const m of [5, 10, 25, 50, 100, 150, 200, 300, 500]) {
     if (totalAttended >= m) {
       await tryGrant(`classes_${m}`, { count: m });
     }
@@ -261,12 +270,32 @@ export async function checkAchievements(userId: string, tenantId: string) {
     if (hour >= 21) await tryGrant("night_owl");
   }
 
+  // Weekly intensity
+  if (maxWeek >= 3) await tryGrant("classes_3_week");
   if (maxWeek >= 5) await tryGrant("week_warrior");
+  if (maxWeek >= 7) await tryGrant("classes_7_week");
 
-  if (longestStreak >= 3) await tryGrant("streak_3");
-  if (longestStreak >= 7) await tryGrant("streak_7");
-  if (longestStreak >= 14) await tryGrant("streak_14");
-  if (longestStreak >= 30) await tryGrant("streak_30");
+  // Day streaks
+  if (longestStrk >= 3) await tryGrant("streak_3");
+  if (longestStrk >= 7) await tryGrant("streak_7");
+  if (longestStrk >= 14) await tryGrant("streak_14");
+  if (longestStrk >= 30) await tryGrant("streak_30");
+  if (longestStrk >= 60) await tryGrant("streak_60");
+  if (longestStrk >= 90) await tryGrant("streak_90");
+
+  // Weekly streaks (consecutive weeks with at least 1 class)
+  if (weeklyStrk >= 4) await tryGrant("weekly_streak_4");
+  if (weeklyStrk >= 8) await tryGrant("weekly_streak_8");
+  if (weeklyStrk >= 12) await tryGrant("weekly_streak_12");
+  if (weeklyStrk >= 26) await tryGrant("weekly_streak_26");
+  if (weeklyStrk >= 52) await tryGrant("weekly_streak_52");
+
+  // Class variety
+  if (classVariety >= 3) await tryGrant("variety_3");
+  if (classVariety >= 5) await tryGrant("variety_5");
+
+  // Comeback
+  if (isComeback) await tryGrant("comeback");
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -280,6 +309,15 @@ export async function checkAchievements(userId: string, tenantId: string) {
     ) {
       await tryGrant("birthday");
     }
+
+    // Birthday class: attended a class on your birthday
+    const bMonth = user.birthday.getUTCMonth();
+    const bDay = user.birthday.getUTCDate();
+    const attendedOnBirthday = attendedBookings.some((b) => {
+      const d = new Date(b.class.startsAt);
+      return d.getUTCMonth() === bMonth && d.getUTCDate() === bDay;
+    });
+    if (attendedOnBirthday) await tryGrant("birthday_class");
   }
 
   await checkLevelUp(userId, tenantId, totalAttended);

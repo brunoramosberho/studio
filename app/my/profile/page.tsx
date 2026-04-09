@@ -809,6 +809,22 @@ export default function ProfilePage() {
                       </div>
                     );
                   })}
+                {gamification.rewards
+                  .filter((r) => r.rewardKind === "CUSTOM")
+                  .map((r) => {
+                    const data = r.rewardData as { text?: string };
+                    return (
+                      <div key={r.id} className="flex items-center gap-3 rounded-xl bg-amber-50 px-3 py-2.5">
+                        <span className="text-lg">🎁</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-semibold text-amber-800">
+                            {data.text ?? "Premio especial"}
+                          </p>
+                          <p className="text-[11px] text-amber-600">De tu estudio</p>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </motion.div>

@@ -118,3 +118,64 @@ export function maxClassesInSingleWeek(
   }
   return Math.max(0, ...weekCounts.values());
 }
+
+/**
+ * Longest consecutive weekly streak: how many consecutive calendar weeks
+ * (Mon-Sun) the user attended at least 1 class.
+ */
+export function longestWeeklyStreak(
+  attendedBookings: { class: { startsAt: Date } }[],
+): number {
+  if (attendedBookings.length === 0) return 0;
+
+  const weekKeys = new Set<string>();
+  for (const b of attendedBookings) {
+    const ws = startOfWeek(new Date(b.class.startsAt), { weekStartsOn: 1 });
+    weekKeys.add(ws.toISOString().slice(0, 10));
+  }
+
+  const sorted = [...weekKeys].sort();
+  if (sorted.length === 0) return 0;
+
+  let best = 1;
+  let current = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1]);
+    const curr = new Date(sorted[i]);
+    const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays === 7) {
+      current++;
+      best = Math.max(best, current);
+    } else {
+      current = 1;
+    }
+  }
+  return best;
+}
+
+/**
+ * Count of distinct class type names the user has attended.
+ */
+export function distinctClassTypes(
+  attendedBookings: { class: { classType: { name: string } } }[],
+): number {
+  const names = new Set(attendedBookings.map((b) => b.class.classType.name));
+  return names.size;
+}
+
+/**
+ * Detect if the current class is a comeback after N+ days of inactivity.
+ */
+export function detectComeback(
+  attendedBookings: { class: { startsAt: Date } }[],
+  thresholdDays: number,
+): boolean {
+  if (attendedBookings.length < 2) return false;
+  const sorted = [...attendedBookings].sort(
+    (a, b) => new Date(a.class.startsAt).getTime() - new Date(b.class.startsAt).getTime(),
+  );
+  const last = new Date(sorted[sorted.length - 1].class.startsAt);
+  const secondLast = new Date(sorted[sorted.length - 2].class.startsAt);
+  const gapDays = (last.getTime() - secondLast.getTime()) / (1000 * 60 * 60 * 24);
+  return gapDays >= thresholdDays;
+}

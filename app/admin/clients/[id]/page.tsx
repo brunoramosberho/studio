@@ -33,6 +33,7 @@ import {
   DollarSign,
   CreditCard,
   Receipt,
+  Gift,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,7 @@ interface ClientDetail {
   classesToNext: number;
   achievements: {
     id: string;
+    key: string;
     name: string;
     icon: string;
     description: string | null;
@@ -268,6 +270,35 @@ export default function ClientDetailPage() {
     },
     onError: () => toast.error("Error al actualizar suscripción"),
   });
+
+  const grantPrizeMutation = useMutation({
+    mutationFn: async ({
+      achievementKey,
+      rewardText,
+    }: {
+      achievementKey: string;
+      rewardText: string;
+    }) => {
+      const res = await fetch("/api/admin/gamification/prize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, achievementKey, rewardText }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Error");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-client", id] });
+      toast.success("Premio otorgado correctamente");
+      setPrizeDialog(null);
+      setPrizeText("");
+    },
+    onError: (err: Error) => toast.error(err.message || "Error al otorgar premio"),
+  });
+
+  const [prizeDialog, setPrizeDialog] = useState<ClientDetail["achievements"][number] | null>(null);
+  const [prizeText, setPrizeText] = useState("");
 
   const [pauseSubDialog, setPauseSubDialog] = useState<ClientDetail["subscriptions"][number] | null>(null);
   const [pauseDays, setPauseDays] = useState("14");
@@ -476,7 +507,7 @@ export default function ClientDetailPage() {
             </Card>
           )}
 
-          {/* Achievements */}
+          {/* Achievements — click earned ones to grant a manual prize */}
           {client.achievements.length > 0 && (
             <Card>
               <CardContent className="p-5">
@@ -489,35 +520,39 @@ export default function ClientDetailPage() {
                     {earnedAchievements.length}/{client.achievements.length}
                   </span>
                 </div>
-                {earnedAchievements.length > 0 ? (
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {earnedAchievements.map((a) => (
-                      <div
-                        key={a.id}
-                        className="flex flex-col items-center gap-0.5 rounded-lg bg-surface px-1 py-2 text-center"
-                        title={a.description || a.name}
-                      >
-                        <span className="text-lg">{a.icon}</span>
-                        <span className="text-[8px] font-semibold leading-tight text-foreground">
-                          {a.name}
-                        </span>
-                      </div>
-                    ))}
-                    {lockedAchievements.slice(0, 4).map((a) => (
-                      <div
-                        key={a.id}
-                        className="flex flex-col items-center gap-0.5 rounded-lg bg-surface/40 px-1 py-2 text-center opacity-30 grayscale"
-                        title={a.description || a.name}
-                      >
-                        <span className="text-lg">{a.icon}</span>
-                        <span className="text-[8px] font-semibold leading-tight text-foreground">
-                          {a.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted/60">Sin logros aún</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {earnedAchievements.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => setPrizeDialog(a)}
+                      className="group flex flex-col items-center gap-0.5 rounded-lg bg-surface px-1 py-2 text-center transition-colors hover:bg-amber-50"
+                      title={`${a.name} — Clic para otorgar premio`}
+                    >
+                      <span className="text-lg">{a.icon}</span>
+                      <span className="text-[8px] font-semibold leading-tight text-foreground">
+                        {a.name}
+                      </span>
+                      <Gift className="h-3 w-3 text-amber-500 opacity-0 transition-opacity group-hover:opacity-100" />
+                    </button>
+                  ))}
+                  {lockedAchievements.map((a) => (
+                    <div
+                      key={a.id}
+                      className="flex flex-col items-center gap-0.5 rounded-lg bg-surface/40 px-1 py-2 text-center opacity-30 grayscale"
+                      title={a.description || a.name}
+                    >
+                      <span className="text-lg">{a.icon}</span>
+                      <span className="text-[8px] font-semibold leading-tight text-foreground">
+                        {a.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {earnedAchievements.length > 0 && (
+                  <p className="mt-2 text-center text-[10px] text-muted">
+                    Toca un logro desbloqueado para otorgar un premio manual
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -1060,6 +1095,64 @@ export default function ClientDetailPage() {
                 >
                   {subActionMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}
                   Pausar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Grant manual prize dialog */}
+      <Dialog open={!!prizeDialog} onOpenChange={(o) => { if (!o) { setPrizeDialog(null); setPrizeText(""); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-amber-500" />
+              Otorgar premio
+            </DialogTitle>
+          </DialogHeader>
+          {prizeDialog && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 rounded-lg bg-surface/50 p-3">
+                <span className="text-2xl">{prizeDialog.icon}</span>
+                <div>
+                  <p className="text-sm font-semibold">{prizeDialog.name}</p>
+                  <p className="text-xs text-muted">{prizeDialog.description}</p>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted">
+                  ¿Qué premio le quieres dar?
+                </label>
+                <Input
+                  value={prizeText}
+                  onChange={(e) => setPrizeText(e.target.value)}
+                  placeholder="Ej: Neceser de la marca, clase gratis, 20% descuento…"
+                />
+                <p className="mt-1 text-[11px] text-muted">
+                  Este texto se mostrará al cliente como premio asociado a este logro.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setPrizeDialog(null); setPrizeText(""); }}>
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 bg-amber-500 hover:bg-amber-600"
+                  disabled={!prizeText.trim() || grantPrizeMutation.isPending}
+                  onClick={() =>
+                    grantPrizeMutation.mutate({
+                      achievementKey: prizeDialog.key,
+                      rewardText: prizeText.trim(),
+                    })
+                  }
+                >
+                  {grantPrizeMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Gift className="mr-2 h-4 w-4" />
+                  )}
+                  Otorgar
                 </Button>
               </div>
             </div>

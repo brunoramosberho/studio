@@ -105,6 +105,8 @@ model Tenant {
   referralConfig        ReferralConfig?
   referralRewards       ReferralReward[]
 
+  gamificationConfig    TenantGamificationConfig?
+
   conversionConfig      MembershipConversionConfig?
   nudgeEvents           NudgeEvent[]
   introOfferClaims      IntroOfferClaim[]
@@ -885,12 +887,17 @@ enum AchievementTriggerType {
   CLASS_COUNT
   STREAK_DAYS
   BIRTHDAY
+  BIRTHDAY_CLASS
   MANUAL
   REFERRAL
   FIRST_7AM_CLASS
   FIRST_9PM_CLASS
   FIVE_CLASSES_ONE_WEEK
   FIRST_CLASS_OF_TYPE
+  WEEKLY_STREAK
+  CLASS_VARIETY
+  COMEBACK
+  CLASSES_IN_WEEK
 }
 
 enum AchievementRewardType {
@@ -902,11 +909,13 @@ enum AchievementRewardType {
 enum MemberRewardSourceType {
   ACHIEVEMENT
   LEVEL_UP
+  MANUAL
 }
 
 enum MemberRewardKind {
   DISCOUNT_CODE
   FREE_CLASS
+  CUSTOM
 }
 
 /// Definición de logro: tenantId null = sistema (todos los estudios). key único global.
@@ -1002,6 +1011,21 @@ model MemberReward {
 
   @@index([userId, tenantId])
   @@index([tenantId])
+}
+
+/// Per-tenant gamification settings: toggle sections, override names/icons, define auto-rewards.
+model TenantGamificationConfig {
+  id                   String   @id @default(cuid())
+  tenantId             String   @unique
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  levelsEnabled        Boolean  @default(true)
+  achievementsEnabled  Boolean  @default(true)
+  autoRewardsEnabled   Boolean  @default(false)
+  levelOverrides       Json?
+  achievementOverrides Json?
+  autoRewards          Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model Notification {

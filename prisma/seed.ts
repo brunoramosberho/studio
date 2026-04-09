@@ -46,6 +46,7 @@ async function main() {
   await prisma.memberProgress.deleteMany();
   await prisma.achievement.deleteMany();
   await prisma.loyaltyLevel.deleteMany();
+  await prisma.tenantGamificationConfig.deleteMany();
   await prisma.waitlist.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.class.deleteMany();

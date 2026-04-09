@@ -379,6 +379,7 @@ export async function GET(
         const earned = achievements.find((e) => e.achievementId === a.id);
         return {
           id: a.id,
+          key: a.key,
           name: a.name,
           icon: a.icon,
           description: a.description,

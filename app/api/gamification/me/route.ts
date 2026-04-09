@@ -9,7 +9,7 @@ export async function GET() {
     const userId = session.user.id;
     const tenantId = tenant.id;
 
-    const [progress, levels, achievements, rewards, activeSub] = await Promise.all([
+    const [progress, levels, achievements, rewards, activeSub, gamConfig] = await Promise.all([
       prisma.memberProgress.findUnique({
         where: { userId_tenantId: { userId, tenantId } },
         include: { currentLevel: true },
@@ -33,7 +33,15 @@ export async function GET() {
         },
         select: { id: true },
       }),
+      prisma.tenantGamificationConfig.findUnique({
+        where: { tenantId },
+      }),
     ]);
+
+    const achOverrides = (gamConfig?.achievementOverrides ?? {}) as Record<string, { enabled?: boolean; name?: string; icon?: string }>;
+    const levelOverrides = (gamConfig?.levelOverrides ?? {}) as Record<string, { name?: string; minClasses?: number }>;
+    const levelsEnabled = gamConfig?.levelsEnabled ?? true;
+    const achievementsEnabled = gamConfig?.achievementsEnabled ?? true;
 
     const allAchievements = await prisma.achievement.findMany({
       where: {
@@ -42,6 +50,10 @@ export async function GET() {
       },
       orderBy: { createdAt: "asc" },
     });
+
+    const filteredAchievements = achievementsEnabled
+      ? allAchievements.filter((a) => achOverrides[a.key]?.enabled !== false)
+      : [];
 
     const earnedIds = new Set(achievements.map((a) => a.achievementId));
 
@@ -66,27 +78,27 @@ export async function GET() {
           ? 100
           : 0;
 
+    const applyLevelOverride = (l: typeof levels[number]) => {
+      const ovr = levelOverrides[String(l.sortOrder)];
+      return {
+        id: l.id,
+        name: ovr?.name ?? l.name,
+        icon: l.icon,
+        color: l.color,
+        minClasses: ovr?.minClasses ?? l.minClasses,
+        sortOrder: l.sortOrder,
+      };
+    };
+
     return NextResponse.json({
       hasActiveMembership: !!activeSub,
-      level: currentLevel
-        ? {
-            id: currentLevel.id,
-            name: currentLevel.name,
-            icon: currentLevel.icon,
-            color: currentLevel.color,
-            minClasses: currentLevel.minClasses,
-            sortOrder: currentLevel.sortOrder,
-          }
+      levelsEnabled,
+      achievementsEnabled,
+      level: currentLevel && levelsEnabled
+        ? { ...applyLevelOverride(currentLevel) }
         : null,
-      nextLevel: nextLevel
-        ? {
-            id: nextLevel.id,
-            name: nextLevel.name,
-            icon: nextLevel.icon,
-            color: nextLevel.color,
-            minClasses: nextLevel.minClasses,
-            sortOrder: nextLevel.sortOrder,
-          }
+      nextLevel: nextLevel && levelsEnabled
+        ? { ...applyLevelOverride(nextLevel) }
         : null,
       totalClasses,
       classesToNext,
@@ -94,25 +106,23 @@ export async function GET() {
       currentStreak: progress?.currentStreak ?? 0,
       longestStreak: progress?.longestStreak ?? 0,
       freeClassCredits: progress?.freeClassCredits ?? 0,
-      levels: levels.map((l) => ({
-        id: l.id,
-        name: l.name,
-        icon: l.icon,
-        color: l.color,
-        minClasses: l.minClasses,
-        sortOrder: l.sortOrder,
-        rewardOnUnlock: l.rewardOnUnlock,
-        reached: totalClasses >= l.minClasses,
-        isCurrent: l.id === currentLevel?.id,
-      })),
-      achievements: allAchievements.map((a) => {
+      levels: levelsEnabled
+        ? levels.map((l) => ({
+            ...applyLevelOverride(l),
+            rewardOnUnlock: l.rewardOnUnlock,
+            reached: totalClasses >= (levelOverrides[String(l.sortOrder)]?.minClasses ?? l.minClasses),
+            isCurrent: l.id === currentLevel?.id,
+          }))
+        : [],
+      achievements: filteredAchievements.map((a) => {
         const earned = achievements.find((e) => e.achievementId === a.id);
+        const ovr = achOverrides[a.key];
         return {
           id: a.id,
           key: a.key,
-          name: a.name,
+          name: ovr?.name ?? a.name,
           description: a.description,
-          icon: a.icon,
+          icon: ovr?.icon ?? a.icon,
           category: a.category,
           achievementType: feedAchievementTypeFromKey(a.key),
           rewardType: a.rewardType,
