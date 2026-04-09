@@ -13,6 +13,7 @@ export {
   ensureStripePrice,
   createMemberSubscription,
   cancelMemberSubscription,
+  reactivateMemberSubscription,
   pauseSubscription,
   resumeSubscription,
 } from "./subscriptions";

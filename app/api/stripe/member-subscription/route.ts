@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import {
   createMemberSubscription,
   cancelMemberSubscription,
+  reactivateMemberSubscription,
 } from "@/lib/stripe/subscriptions";
 
 
@@ -131,6 +132,56 @@ export async function POST(request: NextRequest) {
     console.error("POST /api/stripe/member-subscription error:", error);
     return NextResponse.json(
       { error: "Failed to create subscription" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const { session, tenant } = await requireAuth();
+    const { subscriptionId } = (await request.json()) as {
+      subscriptionId: string;
+    };
+
+    if (!subscriptionId) {
+      return NextResponse.json(
+        { error: "subscriptionId is required" },
+        { status: 400 },
+      );
+    }
+
+    const memberSub = await prisma.memberSubscription.findUnique({
+      where: { stripeSubscriptionId: subscriptionId },
+    });
+
+    if (
+      !memberSub ||
+      memberSub.userId !== session.user.id ||
+      memberSub.tenantId !== tenant.id
+    ) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    if (!memberSub.cancelAtPeriodEnd) {
+      return NextResponse.json(
+        { error: "Subscription is not pending cancellation" },
+        { status: 400 },
+      );
+    }
+
+    await reactivateMemberSubscription(subscriptionId);
+
+    return NextResponse.json({ ok: true, cancelAtPeriodEnd: false });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    if (message === "Unauthorized") {
+      return NextResponse.json({ error: message }, { status: 401 });
+    }
+    console.error("PATCH /api/stripe/member-subscription error:", error);
+    return NextResponse.json(
+      { error: "Failed to reactivate subscription" },
       { status: 500 },
     );
   }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Package,
   Infinity as InfinityIcon,
@@ -11,6 +11,7 @@ import {
   Loader2,
   Pause,
   XCircle,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { PageTransition } from "@/components/shared/page-transition";
+import { SubscribeSheet } from "@/components/checkout/SubscribeSheet";
 import { formatCurrency } from "@/lib/utils";
 import type { UserPackageWithDetails } from "@/types";
 
@@ -67,6 +69,8 @@ export default function PackagesPage() {
   const [subscriptions, setSubscriptions] = useState<MemberSub[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
+  const [renewSub, setRenewSub] = useState<MemberSub | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -103,11 +107,41 @@ export default function PackagesPage() {
     setCancelingId(null);
   }
 
+  async function handleReactivate(sub: MemberSub) {
+    setReactivatingId(sub.stripeSubscriptionId);
+    try {
+      const res = await fetch("/api/stripe/member-subscription", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId: sub.stripeSubscriptionId }),
+      });
+      if (res.ok) {
+        setSubscriptions((prev) =>
+          prev.map((s) =>
+            s.stripeSubscriptionId === sub.stripeSubscriptionId
+              ? { ...s, cancelAtPeriodEnd: false }
+              : s,
+          ),
+        );
+      }
+    } catch {}
+    setReactivatingId(null);
+  }
+
   const now = Date.now();
-  const active = packages.filter((p) => new Date(p.expiresAt).getTime() > now);
-  const expired = packages.filter((p) => new Date(p.expiresAt).getTime() <= now);
+  const active = packages.filter((p) => {
+    const notExpired = new Date(p.expiresAt).getTime() > now;
+    const hasCredits = p.creditsTotal === null || (p.creditsTotal - p.creditsUsed) > 0;
+    return notExpired && hasCredits;
+  });
+  const expired = packages.filter((p) => {
+    const isExpired = new Date(p.expiresAt).getTime() <= now;
+    const noCredits = p.creditsTotal !== null && (p.creditsTotal - p.creditsUsed) <= 0;
+    return isExpired || noCredits;
+  });
   const activeSubs = subscriptions.filter((s) => s.status !== "canceled");
-  const hasContent = packages.length > 0 || activeSubs.length > 0;
+  const canceledSubs = subscriptions.filter((s) => s.status === "canceled");
+  const hasContent = packages.length > 0 || subscriptions.length > 0;
 
   function renderPackageCard(pkg: UserPackageWithDetails, isExpired: boolean) {
     const remaining = pkg.creditsTotal !== null
@@ -117,6 +151,8 @@ export default function PackagesPage() {
       ? ((pkg.creditsTotal - pkg.creditsUsed) / pkg.creditsTotal) * 100
       : 100;
     const days = daysUntil(pkg.expiresAt);
+    const noCreditsLeft = pkg.creditsTotal !== null && remaining !== null && remaining <= 0;
+    const dateExpired = new Date(pkg.expiresAt).getTime() <= now;
 
     return (
       <motion.div key={pkg.id} variants={fadeUp}>
@@ -125,7 +161,7 @@ export default function PackagesPage() {
             <div className="flex items-start justify-between">
               <div>
                 <Badge variant={isExpired ? "secondary" : "success"}>
-                  {isExpired ? "Expirado" : "Activo"}
+                  {noCreditsLeft && !dateExpired ? "Sin créditos" : isExpired ? "Expirado" : "Activo"}
                 </Badge>
                 <CardTitle className="mt-2">{pkg.package.name}</CardTitle>
                 {pkg.package.description && (
@@ -276,9 +312,25 @@ export default function PackagesPage() {
 
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-muted">
-                          Próxima renovación: {periodEnd}
+                          {sub.cancelAtPeriodEnd
+                            ? `Acceso hasta: ${periodEnd}`
+                            : `Próxima renovación: ${periodEnd}`}
                         </p>
-                        {!sub.cancelAtPeriodEnd && sub.status !== "canceled" && sub.status !== "paused" && (
+                        {sub.cancelAtPeriodEnd && sub.status !== "canceled" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={reactivatingId === sub.stripeSubscriptionId}
+                            onClick={() => handleReactivate(sub)}
+                          >
+                            {reactivatingId === sub.stripeSubscriptionId ? (
+                              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="mr-1.5 h-3 w-3" />
+                            )}
+                            Reactivar
+                          </Button>
+                        ) : !sub.cancelAtPeriodEnd && sub.status !== "canceled" && sub.status !== "paused" ? (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -293,7 +345,7 @@ export default function PackagesPage() {
                             )}
                             Cancelar
                           </Button>
-                        )}
+                        ) : null}
                       </div>
                     </CardContent>
                   </Card>
@@ -304,18 +356,83 @@ export default function PackagesPage() {
             {/* Active packages */}
             {active.map((p) => renderPackageCard(p, false))}
 
-            {expired.length > 0 && (
+            {(expired.length > 0 || canceledSubs.length > 0) && (
               <>
                 <Separator className="my-6" />
                 <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                  Paquetes expirados
+                  Expirados
                 </p>
+
+                {canceledSubs.map((sub) => {
+                  const interval = sub.package.recurringInterval === "year" ? "año" : "mes";
+                  return (
+                    <motion.div key={sub.id} variants={fadeUp}>
+                      <Card className="opacity-50 hover:opacity-80 transition-opacity">
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <Badge variant="danger">Cancelada</Badge>
+                              <CardTitle className="mt-2">{sub.package.name}</CardTitle>
+                              <p className="mt-1 text-sm text-muted">
+                                {formatCurrency(sub.package.price, sub.package.currency)}/{interval}
+                              </p>
+                            </div>
+                            <CalendarSync className="h-5 w-5 text-muted/30" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted">
+                              Finalizó el{" "}
+                              {new Date(sub.currentPeriodEnd).toLocaleDateString("es-ES", {
+                                day: "numeric",
+                                month: "long",
+                              })}
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setRenewSub(sub)}
+                            >
+                              <RefreshCw className="mr-1.5 h-3 w-3" />
+                              Renovar
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+
                 {expired.map((p) => renderPackageCard(p, true))}
               </>
             )}
           </motion.div>
         )}
       </div>
+      <AnimatePresence>
+        {renewSub && (
+          <SubscribeSheet
+            open={!!renewSub}
+            onClose={() => setRenewSub(null)}
+            pkg={renewSub.package}
+            onSuccess={() => {
+              setRenewSub(null);
+              setLoading(true);
+              Promise.all([
+                fetch("/api/packages/mine").then((r) => (r.ok ? r.json() : [])),
+                fetch("/api/stripe/member-subscription").then((r) => (r.ok ? r.json() : [])),
+              ])
+                .then(([pkgs, subs]) => {
+                  setPackages(pkgs);
+                  setSubscriptions(subs);
+                })
+                .catch(() => {})
+                .finally(() => setLoading(false));
+            }}
+          />
+        )}
+      </AnimatePresence>
     </PageTransition>
   );
 }

@@ -160,6 +160,38 @@ export async function cancelMemberSubscription(
 }
 
 /**
+ * Reactivate a subscription that was set to cancel at period end.
+ * This simply removes the cancellation — no new charge since the period is already paid.
+ */
+export async function reactivateMemberSubscription(subscriptionId: string) {
+  const memberSub = await prisma.memberSubscription.findUniqueOrThrow({
+    where: { stripeSubscriptionId: subscriptionId },
+    include: { tenant: true },
+  });
+
+  if (!memberSub.tenant.stripeAccountId) {
+    throw new Error("No connected account");
+  }
+
+  if (memberSub.status === "canceled") {
+    throw new Error("Cannot reactivate a fully canceled subscription");
+  }
+
+  const stripe = getStripe();
+
+  await stripe.subscriptions.update(
+    subscriptionId,
+    { cancel_at_period_end: false },
+    { stripeAccount: memberSub.tenant.stripeAccountId },
+  );
+
+  await prisma.memberSubscription.update({
+    where: { stripeSubscriptionId: subscriptionId },
+    data: { cancelAtPeriodEnd: false },
+  });
+}
+
+/**
  * Admin: pause collection on a member's subscription.
  */
 export async function pauseSubscription(
