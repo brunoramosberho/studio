@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { findMembershipByReferralCode } from "@/lib/referrals/code";
+import { sendPushToUser } from "@/lib/push";
 
 export async function POST(request: NextRequest) {
   try {
@@ -79,6 +80,25 @@ export async function POST(request: NextRequest) {
           ],
           skipDuplicates: true,
         });
+
+        // Notify the referrer
+        const newUserName = (name || email.split("@")[0]).split(" ")[0];
+
+        await prisma.notification.create({
+          data: {
+            userId: referrer.userId,
+            type: "REFERRAL_JOINED",
+            actorId: user.id,
+            tenantId: tenant.id,
+          },
+        });
+
+        sendPushToUser(referrer.userId, {
+          title: "Tu invitación funcionó 🎉",
+          body: `${newUserName} se unió con tu link de invitación`,
+          url: "/my/referrals",
+          tag: `referral-joined-${user.id}`,
+        }, tenant.id).catch(() => {});
       }
     }
 

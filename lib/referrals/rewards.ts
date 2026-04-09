@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { MemberLifecycleStage, ReferralRewardType } from "@prisma/client";
+import { sendPushToUser } from "@/lib/push";
 
 export async function checkAndDeliverRewards(
   membershipId: string,
@@ -158,14 +159,17 @@ async function notifyReferrerRewardUnlocked(
     data: {
       userId: referrerUserId,
       tenantId,
-      type: "referral_reward",
+      type: "REFERRAL_REWARD",
       actorId: referredUserId,
     },
   });
 
-  console.log(
-    `[Referral] Reward unlocked for referrer ${referrerUserId}: ${referredName} completed the trigger stage`,
-  );
+  sendPushToUser(referrerUserId, {
+    title: "¡Premio desbloqueado! 🎁",
+    body: `${referredName} completó el reto — tu premio de referido está listo`,
+    url: "/my/referrals",
+    tag: `referral-reward-${referredUserId}`,
+  }, tenantId).catch(() => {});
 }
 
 async function notifyAdminManualReward(userId: string, tenantId: string) {
@@ -179,18 +183,23 @@ async function notifyAdminManualReward(userId: string, tenantId: string) {
     select: { name: true, email: true },
   });
 
+  const userName = user?.name?.split(" ")[0] ?? user?.email ?? "Un miembro";
+
   for (const admin of admins) {
     await prisma.notification.create({
       data: {
         userId: admin.userId,
         tenantId,
-        type: "referral_manual_reward",
+        type: "REFERRAL_MANUAL_REWARD",
         actorId: userId,
       },
     });
-  }
 
-  console.log(
-    `[Referral] Manual reward pending for ${user?.name ?? user?.email} — admin notification created`,
-  );
+    sendPushToUser(admin.userId, {
+      title: "Premio de referido pendiente",
+      body: `${userName} desbloqueó un premio manual — revisa y entrega`,
+      url: "/admin/referrals",
+      tag: `referral-manual-${userId}`,
+    }, tenantId).catch(() => {});
+  }
 }
