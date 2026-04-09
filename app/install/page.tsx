@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { detectDevice, type DeviceInfo } from "@/lib/pwa/detect";
 import { useBranding } from "@/components/branding-provider";
@@ -23,6 +23,14 @@ interface ReferralData {
 }
 
 export default function InstallPage() {
+  return (
+    <Suspense>
+      <InstallPageInner />
+    </Suspense>
+  );
+}
+
+function InstallPageInner() {
   const brand = useBranding();
   const searchParams = useSearchParams();
   const [device, setDevice] = useState<DeviceInfo | null>(null);
