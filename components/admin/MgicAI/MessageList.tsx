@@ -1,8 +1,9 @@
 "use client";
 
 import { memo } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 import type { AiMessage } from "./index";
@@ -35,6 +36,16 @@ const TOOL_LABELS: Record<string, string> = {
   get_availability_pending: "Revisando solicitudes pendientes",
   get_substitute_suggestions: "Buscando coaches sustitutos",
   review_availability_request: "Procesando solicitud de disponibilidad",
+  get_packages_overview: "Revisando paquetes y ventas",
+  get_subscriptions_status: "Analizando suscripciones",
+  get_finance_summary: "Calculando finanzas detalladas",
+  get_checkin_stats: "Consultando check-ins del día",
+  get_platform_status: "Revisando plataformas externas",
+  get_client_detail: "Consultando perfil del cliente",
+  get_coach_detail: "Consultando perfil del coach",
+  get_ratings_summary: "Analizando ratings de clases",
+  get_gamification_overview: "Revisando gamificación",
+  get_referral_metrics: "Analizando programa de referidos",
 };
 
 export function MessageList({ messages, isStreaming, activeTools }: MessageListProps) {
@@ -213,39 +224,73 @@ function formatInline(text: string): React.ReactNode {
   let key = 0;
 
   while (remaining.length > 0) {
+    const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/);
     const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
-    if (boldMatch && boldMatch.index !== undefined) {
-      if (boldMatch.index > 0) {
-        parts.push(<span key={key++}>{remaining.slice(0, boldMatch.index)}</span>);
-      }
-      parts.push(
-        <strong key={key++} className="font-semibold text-foreground">
-          {boldMatch[1]}
-        </strong>,
-      );
-      remaining = remaining.slice(boldMatch.index + boldMatch[0].length);
-      continue;
+    const codeMatch = remaining.match(/`(.+?)`/);
+
+    const candidates: { type: string; index: number; match: RegExpMatchArray }[] = [];
+    if (linkMatch?.index !== undefined) candidates.push({ type: "link", index: linkMatch.index, match: linkMatch });
+    if (boldMatch?.index !== undefined) candidates.push({ type: "bold", index: boldMatch.index, match: boldMatch });
+    if (codeMatch?.index !== undefined) candidates.push({ type: "code", index: codeMatch.index, match: codeMatch });
+
+    if (candidates.length === 0) {
+      parts.push(<span key={key++}>{remaining}</span>);
+      break;
     }
 
-    const codeMatch = remaining.match(/`(.+?)`/);
-    if (codeMatch && codeMatch.index !== undefined) {
-      if (codeMatch.index > 0) {
-        parts.push(<span key={key++}>{remaining.slice(0, codeMatch.index)}</span>);
+    candidates.sort((a, b) => a.index - b.index);
+    const first = candidates[0];
+
+    if (first.index > 0) {
+      parts.push(<span key={key++}>{remaining.slice(0, first.index)}</span>);
+    }
+
+    if (first.type === "link") {
+      const [fullMatch, label, href] = first.match;
+      const isInternal = href.startsWith("/");
+      if (isInternal) {
+        parts.push(
+          <Link
+            key={key++}
+            href={href}
+            className="inline-flex items-center gap-1 font-medium text-admin underline decoration-admin/30 underline-offset-2 transition-colors hover:text-admin/80 hover:decoration-admin/50"
+          >
+            {label}
+          </Link>,
+        );
+      } else {
+        parts.push(
+          <a
+            key={key++}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-medium text-admin underline decoration-admin/30 underline-offset-2 transition-colors hover:text-admin/80 hover:decoration-admin/50"
+          >
+            {label}
+            <ExternalLink className="inline h-3 w-3" />
+          </a>,
+        );
       }
+      remaining = remaining.slice(first.index + fullMatch.length);
+    } else if (first.type === "bold") {
+      parts.push(
+        <strong key={key++} className="font-semibold text-foreground">
+          {first.match[1]}
+        </strong>,
+      );
+      remaining = remaining.slice(first.index + first.match[0].length);
+    } else {
       parts.push(
         <code
           key={key++}
           className="rounded-md bg-surface px-1.5 py-0.5 text-[13px] font-medium text-foreground"
         >
-          {codeMatch[1]}
+          {first.match[1]}
         </code>,
       );
-      remaining = remaining.slice(codeMatch.index + codeMatch[0].length);
-      continue;
+      remaining = remaining.slice(first.index + first.match[0].length);
     }
-
-    parts.push(<span key={key++}>{remaining}</span>);
-    break;
   }
 
   return <>{parts}</>;
