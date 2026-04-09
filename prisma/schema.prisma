@@ -102,6 +102,9 @@ model Tenant {
   linkClicks            LinkClick[]
   linkConversions       LinkConversion[]
 
+  referralConfig        ReferralConfig?
+  referralRewards       ReferralReward[]
+
   conversionConfig      MembershipConversionConfig?
   nudgeEvents           NudgeEvent[]
   introOfferClaims      IntroOfferClaim[]
@@ -139,6 +142,15 @@ model InstagramIntegration {
   @@index([igUserId])
 }
 
+enum MemberLifecycleStage {
+  lead
+  installed
+  purchased
+  booked
+  attended
+  member
+}
+
 model Membership {
   id              String    @id @default(cuid())
   userId          String
@@ -150,8 +162,74 @@ model Membership {
   lastSeenAt      DateTime?
   createdAt       DateTime  @default(now())
 
+  lifecycleStage     MemberLifecycleStage @default(lead)
+  lifecycleUpdatedAt DateTime?
+  firstPurchaseAt    DateTime?
+  firstBookingAt     DateTime?
+  firstAttendanceAt  DateTime?
+  becameMemberAt     DateTime?
+
+  referralCode         String?      @unique
+  referredByMembershipId String?
+  referredByMembership   Membership?  @relation("MemberReferrals", fields: [referredByMembershipId], references: [id])
+  referrals              Membership[] @relation("MemberReferrals")
+
+  referralRewards ReferralReward[] @relation("MemberReferralRewards")
+
   @@unique([userId, tenantId])
   @@index([tenantId])
+}
+
+// ── Referrals ──
+
+model ReferralConfig {
+  id          String  @id @default(cuid())
+  tenantId    String  @unique
+  isEnabled   Boolean @default(true)
+
+  triggerStage  MemberLifecycleStage @default(attended)
+
+  referrerRewardType    ReferralRewardType @default(manual)
+  referrerRewardValue   Float?
+  referrerRewardText    String?
+  referrerRewardWhen    String?
+
+  refereeRewardType     ReferralRewardType @default(manual)
+  refereeRewardValue    Float?
+  refereeRewardText     String?
+  refereeRewardWhen     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+enum ReferralRewardType {
+  class_credit
+  discount
+  days_free
+  manual
+}
+
+model ReferralReward {
+  id           String             @id @default(cuid())
+  tenantId     String
+  membershipId String
+  referralId   String
+  type         String             // 'referrer' | 'referee'
+  rewardType   ReferralRewardType
+  rewardValue  Float?
+  rewardText   String?
+  status       String             @default("pending") // 'pending' | 'delivered' | 'expired'
+  deliveredAt  DateTime?
+  createdAt    DateTime           @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership Membership @relation("MemberReferralRewards", fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, membershipId])
+  @@index([tenantId, status])
 }
 
 // ── Auth (global) ──

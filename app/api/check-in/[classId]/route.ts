@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
+import { updateLifecycle } from "@/lib/referrals/lifecycle";
 
 export async function POST(
   request: NextRequest,
@@ -54,6 +55,10 @@ export async function POST(
       },
       data: { status: "ATTENDED" },
     }).catch((err) => console.error("Check-in booking sync failed:", err));
+
+    updateLifecycle(memberId, ctx.tenant.id, "attended").catch(
+      (err) => console.error("Lifecycle update (attended) failed:", err),
+    );
 
     return NextResponse.json(checkIn, { status: 201 });
   } catch (error) {

@@ -116,6 +116,7 @@ const flyoutGroups: FlyoutGroup[] = [
     items: [
       { href: "/admin/marketing", label: "Links & UTM", icon: Link2 },
       { href: "/admin/marketing/pixels", label: "Pixels", icon: Scan },
+      { href: "/admin/settings/referrals", label: "Referidos", icon: Users },
     ],
   },
   {

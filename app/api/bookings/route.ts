@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { requireAuth, requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
+import { updateLifecycle } from "@/lib/referrals/lifecycle";
 
 export async function GET(request: NextRequest) {
   try {
@@ -281,6 +282,12 @@ export async function POST(request: NextRequest) {
         timezone: classData.room.studio.city?.timezone,
         classUrl: `${baseUrl}/class/${classId}`,
       });
+    }
+
+    if (session?.user?.id) {
+      updateLifecycle(session.user.id, tenant.id, "booked").catch(
+        (err) => console.error("Lifecycle update (booked) failed:", err),
+      );
     }
 
     if (session?.user?.id && privacy !== "PRIVATE") {

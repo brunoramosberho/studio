@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { prisma } from "@/lib/db";
+import { updateLifecycle } from "@/lib/referrals/lifecycle";
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,6 +43,12 @@ export async function POST(request: NextRequest) {
             },
             data: { stripePaymentId: pi.id },
           });
+        }
+
+        if (payment?.memberId && payment.tenantId) {
+          updateLifecycle(payment.memberId, payment.tenantId, "purchased").catch(
+            (err) => console.error("Lifecycle update (purchased) failed:", err),
+          );
         }
         break;
       }
@@ -122,6 +129,10 @@ export async function POST(request: NextRequest) {
             });
           }
         }
+
+        updateLifecycle(memberSub.userId, memberSub.tenantId, "member").catch(
+          (err) => console.error("Lifecycle update (member) failed:", err),
+        );
         break;
       }
 

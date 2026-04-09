@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
+import { findMembershipByReferralCode } from "@/lib/referrals/code";
 
 export async function POST(request: NextRequest) {
   try {
     const tenant = await requireTenant();
-    const { email, name, phone } = await request.json();
+    const { email, name, phone, referralCode } = await request.json();
 
     if (!email) {
       return NextResponse.json({ error: "email required" }, { status: 400 });
@@ -42,10 +43,43 @@ export async function POST(request: NextRequest) {
       where: { userId_tenantId: { userId: user.id, tenantId: tenant.id } },
     });
 
-    if (!existingMembership) {
-      await prisma.membership.create({
+    let membership = existingMembership;
+
+    if (!membership) {
+      membership = await prisma.membership.create({
         data: { userId: user.id, tenantId: tenant.id, role: "CLIENT" },
       });
+    }
+
+    // Link referral if code provided and membership doesn't already have one (first-touch wins)
+    if (referralCode && !membership.referredByMembershipId) {
+      const referrer = await findMembershipByReferralCode(referralCode, tenant.id);
+
+      if (referrer && referrer.userId !== user.id) {
+        await prisma.membership.update({
+          where: { id: membership.id },
+          data: { referredByMembershipId: referrer.id },
+        });
+
+        // Auto-friend: create bidirectional friendship
+        await prisma.friendship.createMany({
+          data: [
+            {
+              requesterId: user.id,
+              addresseeId: referrer.userId,
+              tenantId: tenant.id,
+              status: "ACCEPTED",
+            },
+            {
+              requesterId: referrer.userId,
+              addresseeId: user.id,
+              tenantId: tenant.id,
+              status: "ACCEPTED",
+            },
+          ],
+          skipDuplicates: true,
+        });
+      }
     }
 
     return NextResponse.json({ success: true });
