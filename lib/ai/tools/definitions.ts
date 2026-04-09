@@ -163,6 +163,225 @@ export const tools: Anthropic.Tool[] = [
     },
   },
 
+  // ─── PACKAGES & SUBSCRIPTIONS ─────────────────────────────────
+
+  {
+    name: "get_packages_overview",
+    description:
+      "Resumen de paquetes: paquetes activos, ventas recientes, créditos consumidos vs disponibles, paquetes más populares, paquetes próximos a vencer. Útil para entender el estado comercial de los paquetes.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        period_days: {
+          type: "number",
+          description: "Últimos N días para analizar ventas (default: 30)",
+        },
+        include_expiring: {
+          type: "boolean",
+          description: "Incluir paquetes que expiran en los próximos 7 días",
+        },
+      },
+      required: [],
+    },
+  },
+
+  {
+    name: "get_subscriptions_status",
+    description:
+      "Estado de suscripciones recurrentes: activas, canceladas, pausadas, MRR (Monthly Recurring Revenue), churn, suscripciones por vencer. Útil para analizar ingresos recurrentes.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        include_members: {
+          type: "boolean",
+          description: "Incluir lista de miembros por estado de suscripción",
+        },
+      },
+      required: [],
+    },
+  },
+
+  // ─── FINANCE ────────────────────────────────────────────────
+
+  {
+    name: "get_finance_summary",
+    description:
+      "Resumen financiero detallado: ingresos por Stripe y POS, desglose por tipo (suscripción, paquete, producto, penalidad), métodos de pago, comisiones, ingresos netos. Más completo que get_revenue_summary.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        period_days: {
+          type: "number",
+          description: "Últimos N días a analizar (default: 30)",
+        },
+        breakdown_by: {
+          type: "string",
+          enum: ["type", "day", "method"],
+          description: "Dimensión de desglose: tipo de pago, por día, o método de pago",
+        },
+      },
+      required: [],
+    },
+  },
+
+  // ─── CHECK-IN ───────────────────────────────────────────────
+
+  {
+    name: "get_checkin_stats",
+    description:
+      "Estadísticas de check-in: check-ins de hoy, asistencia vs no-shows, tasa de asistencia por clase, métodos de check-in (QR, manual, nombre). Útil para ver la operación del día.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        date: {
+          type: "string",
+          description: "Fecha ISO (YYYY-MM-DD). Si no se provee, usa hoy.",
+        },
+        period_days: {
+          type: "number",
+          description: "Para tendencias: últimos N días (opcional, solo si no se usa date)",
+        },
+      },
+      required: [],
+    },
+  },
+
+  // ─── PLATFORMS ──────────────────────────────────────────────
+
+  {
+    name: "get_platform_status",
+    description:
+      "Estado de plataformas externas (ClassPass, Gympass): configuración activa, alertas pendientes, reservas recientes, cuotas y ocupación. Útil para monitorear la integración con plataformas.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        platform: {
+          type: "string",
+          enum: ["classpass", "gympass", "all"],
+          description: "Filtrar por plataforma o ver todas (default: all)",
+        },
+        period_days: {
+          type: "number",
+          description: "Últimos N días para bookings y alertas (default: 7)",
+        },
+      },
+      required: [],
+    },
+  },
+
+  // ─── DETAILED ENTITIES ─────────────────────────────────────
+
+  {
+    name: "get_client_detail",
+    description:
+      "Perfil completo de un cliente: datos personales, paquetes activos, historial de bookings, pagos, estado de waiver, progreso de gamificación, suscripción activa. Más profundo que get_member_activity.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        client_id: {
+          type: "string",
+          description: "ID del usuario (opcional si se usa nombre o email)",
+        },
+        client_name: {
+          type: "string",
+          description: "Nombre para buscar (opcional)",
+        },
+        client_email: {
+          type: "string",
+          description: "Email para buscar (opcional)",
+        },
+      },
+      required: [],
+    },
+  },
+
+  {
+    name: "get_coach_detail",
+    description:
+      "Perfil completo de un coach: datos personales, especialidades, tarifas de pago, estadísticas de clases, ratings promedio, estado de disponibilidad actual. Más profundo que get_coach_performance.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        coach_id: {
+          type: "string",
+          description: "ID del coach profile (opcional si se usa nombre)",
+        },
+        coach_name: {
+          type: "string",
+          description: "Nombre para buscar (opcional)",
+        },
+      },
+      required: [],
+    },
+  },
+
+  // ─── RATINGS ────────────────────────────────────────────────
+
+  {
+    name: "get_ratings_summary",
+    description:
+      "Resumen de ratings de clases: promedio general, distribución de estrellas, razones más frecuentes, ratings por coach, por disciplina, tendencia temporal. Útil para medir satisfacción.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        period_days: {
+          type: "number",
+          description: "Últimos N días (default: 30)",
+        },
+        group_by: {
+          type: "string",
+          enum: ["coach", "class_type", "overall"],
+          description: "Agrupar por coach, disciplina, o ver resumen general",
+        },
+        coach_id: {
+          type: "string",
+          description: "Filtrar por coach específico (opcional)",
+        },
+      },
+      required: [],
+    },
+  },
+
+  // ─── GAMIFICATION ───────────────────────────────────────────
+
+  {
+    name: "get_gamification_overview",
+    description:
+      "Resumen de gamificación: distribución de niveles, logros más desbloqueados, leaderboard (top miembros por clases), streaks activos, rewards pendientes. Útil para medir engagement.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        top_n: {
+          type: "number",
+          description: "Top N miembros en el leaderboard (default: 10)",
+        },
+        include_achievements: {
+          type: "boolean",
+          description: "Incluir desglose de logros desbloqueados",
+        },
+      },
+      required: [],
+    },
+  },
+
+  // ─── REFERRALS ──────────────────────────────────────────────
+
+  {
+    name: "get_referral_metrics",
+    description:
+      "Métricas de referidos: total de referidos, conversiones, rewards entregados/pendientes, top referidores, configuración actual del programa. Útil para evaluar el programa de referidos.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        period_days: {
+          type: "number",
+          description: "Últimos N días (default: 30)",
+        },
+      },
+      required: [],
+    },
+  },
+
   // ─── AVAILABILITY TOOLS ──────────────────────────────────────
 
   {

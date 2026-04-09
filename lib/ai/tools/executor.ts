@@ -58,6 +58,26 @@ export async function executeTool(name: string, input: any, tenantId: string, ad
       return getSubstituteSuggestionsAI(input, tenantId);
     case "review_availability_request":
       return reviewAvailabilityRequest(input, tenantId, adminUserId);
+    case "get_packages_overview":
+      return getPackagesOverview(input, tenantId);
+    case "get_subscriptions_status":
+      return getSubscriptionsStatus(input, tenantId);
+    case "get_finance_summary":
+      return getFinanceSummary(input, tenantId);
+    case "get_checkin_stats":
+      return getCheckinStats(input, tenantId);
+    case "get_platform_status":
+      return getPlatformStatus(input, tenantId);
+    case "get_client_detail":
+      return getClientDetail(input, tenantId);
+    case "get_coach_detail":
+      return getCoachDetail(input, tenantId);
+    case "get_ratings_summary":
+      return getRatingsSummary(input, tenantId);
+    case "get_gamification_overview":
+      return getGamificationOverview(input, tenantId);
+    case "get_referral_metrics":
+      return getReferralMetrics(input, tenantId);
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -1405,4 +1425,992 @@ async function reviewAvailabilityRequest(
       summary: `Solicitud de ${block.coach.name} rechazada (${dateRange}).${input.rejection_note ? ` Motivo: ${input.rejection_note}` : ""} El coach ha sido notificado.`,
     };
   }
+}
+
+// ─── PHASE 1: NEW READ TOOLS ────────────────────────────────
+
+async function getPackagesOverview(
+  input: { period_days?: number; include_expiring?: boolean },
+  tenantId: string,
+) {
+  const days = input.period_days ?? 30;
+  const since = daysAgo(days);
+  const now = new Date();
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 86400000);
+
+  const [packages, recentSales, allUserPackages] = await Promise.all([
+    prisma.package.findMany({
+      where: { tenantId, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        price: true,
+        credits: true,
+        validDays: true,
+        currency: true,
+        _count: { select: { userPackages: true } },
+      },
+      orderBy: { sortOrder: "asc" },
+    }),
+    prisma.userPackage.findMany({
+      where: { tenantId, purchasedAt: { gte: since } },
+      include: {
+        package: { select: { name: true, type: true, price: true } },
+        user: { select: { name: true } },
+      },
+      orderBy: { purchasedAt: "desc" },
+    }),
+    prisma.userPackage.findMany({
+      where: { tenantId, expiresAt: { gte: now } },
+      include: {
+        package: { select: { name: true } },
+        user: { select: { name: true } },
+      },
+    }),
+  ]);
+
+  const totalRevenue = recentSales.reduce((s, p) => s + p.package.price, 0);
+
+  const salesByPackage = new Map<string, { name: string; count: number; revenue: number }>();
+  for (const sale of recentSales) {
+    const key = sale.package.name;
+    const existing = salesByPackage.get(key) ?? { name: key, count: 0, revenue: 0 };
+    existing.count++;
+    existing.revenue += sale.package.price;
+    salesByPackage.set(key, existing);
+  }
+
+  let totalCreditsAvailable = 0;
+  let totalCreditsUsed = 0;
+  for (const up of allUserPackages) {
+    if (up.creditsTotal) {
+      totalCreditsAvailable += up.creditsTotal - up.creditsUsed;
+      totalCreditsUsed += up.creditsUsed;
+    }
+  }
+
+  const result: Record<string, unknown> = {
+    active_packages: packages.map((p) => ({
+      id: p.id,
+      name: p.name,
+      type: p.type,
+      price: p.price,
+      currency: p.currency,
+      credits: p.credits,
+      valid_days: p.validDays,
+      total_sold: p._count.userPackages,
+    })),
+    period_days: days,
+    recent_sales: {
+      total_sales: recentSales.length,
+      total_revenue: totalRevenue,
+      by_package: Array.from(salesByPackage.values()).sort((a, b) => b.revenue - a.revenue),
+    },
+    active_user_packages: allUserPackages.length,
+    credits: {
+      total_available: totalCreditsAvailable,
+      total_used: totalCreditsUsed,
+      usage_pct: totalCreditsAvailable + totalCreditsUsed > 0
+        ? Math.round((totalCreditsUsed / (totalCreditsAvailable + totalCreditsUsed)) * 100)
+        : 0,
+    },
+  };
+
+  if (input.include_expiring) {
+    const expiring = allUserPackages
+      .filter((up) => up.expiresAt <= sevenDaysFromNow)
+      .map((up) => ({
+        user_name: up.user.name,
+        package_name: up.package.name,
+        expires_at: up.expiresAt.toISOString(),
+        credits_remaining: up.creditsTotal ? up.creditsTotal - up.creditsUsed : "unlimited",
+      }))
+      .sort((a, b) => new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime());
+
+    result.expiring_soon = { count: expiring.length, packages: expiring.slice(0, 20) };
+  }
+
+  return result;
+}
+
+async function getSubscriptionsStatus(
+  input: { include_members?: boolean },
+  tenantId: string,
+) {
+  const subscriptions = await prisma.memberSubscription.findMany({
+    where: { tenantId },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      package: { select: { name: true, price: true, recurringInterval: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const byStatus = new Map<string, typeof subscriptions>();
+  for (const sub of subscriptions) {
+    const list = byStatus.get(sub.status) ?? [];
+    list.push(sub);
+    byStatus.set(sub.status, list);
+  }
+
+  const activeSubs = byStatus.get("active") ?? [];
+  const mrr = activeSubs.reduce((s, sub) => {
+    const price = sub.package.price;
+    const interval = sub.package.recurringInterval;
+    if (interval === "year") return s + price / 12;
+    if (interval === "week") return s + price * 4.33;
+    return s + price;
+  }, 0);
+
+  const thirtyDaysAgo = daysAgo(30);
+  const recentCancellations = subscriptions.filter(
+    (s) => s.status === "canceled" && s.canceledAt && s.canceledAt >= thirtyDaysAgo,
+  );
+  const cancelingAtEnd = activeSubs.filter((s) => s.cancelAtPeriodEnd);
+
+  const result: Record<string, unknown> = {
+    total_subscriptions: subscriptions.length,
+    by_status: Object.fromEntries(
+      Array.from(byStatus.entries()).map(([status, subs]) => [status, subs.length]),
+    ),
+    mrr: Math.round(mrr * 100) / 100,
+    churn_last_30_days: recentCancellations.length,
+    canceling_at_period_end: cancelingAtEnd.length,
+    paused: (byStatus.get("paused") ?? []).length,
+  };
+
+  if (input.include_members) {
+    const membersByStatus: Record<string, { name: string | null; email: string; package: string; since: string }[]> = {};
+    for (const [status, subs] of byStatus.entries()) {
+      membersByStatus[status] = subs.slice(0, 15).map((s) => ({
+        name: s.user.name,
+        email: s.user.email,
+        package: s.package.name,
+        since: s.createdAt.toISOString(),
+      }));
+    }
+    result.members_by_status = membersByStatus;
+  }
+
+  return result;
+}
+
+async function getFinanceSummary(
+  input: { period_days?: number; breakdown_by?: string },
+  tenantId: string,
+) {
+  const days = input.period_days ?? 30;
+  const since = daysAgo(days);
+  const prevSince = daysAgo(days * 2);
+
+  const [stripePayments, prevStripe, posTransactions, prevPos] = await Promise.all([
+    prisma.stripePayment.findMany({
+      where: { tenantId, createdAt: { gte: since }, status: "succeeded" },
+    }),
+    prisma.stripePayment.findMany({
+      where: { tenantId, createdAt: { gte: prevSince, lt: since }, status: "succeeded" },
+    }),
+    prisma.posTransaction.findMany({
+      where: { tenantId, createdAt: { gte: since }, status: "completed" },
+    }),
+    prisma.posTransaction.findMany({
+      where: { tenantId, createdAt: { gte: prevSince, lt: since }, status: "completed" },
+    }),
+  ]);
+
+  const stripeTotal = stripePayments.reduce((s, p) => s + p.amount, 0);
+  const stripeNet = stripePayments.reduce((s, p) => s + (p.netAmount ?? p.amount), 0);
+  const stripeFees = stripePayments.reduce((s, p) => s + (p.stripeFee ?? 0) + (p.applicationFee ?? 0), 0);
+  const posTotal = posTransactions.reduce((s, p) => s + p.amount, 0);
+  const posNet = posTransactions.reduce((s, p) => s + (p.netAmount ?? p.amount), 0);
+
+  const prevTotal = prevStripe.reduce((s, p) => s + p.amount, 0) +
+    prevPos.reduce((s, p) => s + p.amount, 0);
+  const currentTotal = stripeTotal + posTotal;
+
+  const result: Record<string, unknown> = {
+    period_days: days,
+    total_revenue: Math.round(currentTotal * 100) / 100,
+    prev_period_revenue: Math.round(prevTotal * 100) / 100,
+    change_pct: prevTotal > 0 ? Math.round(((currentTotal - prevTotal) / prevTotal) * 100) : null,
+    stripe: {
+      gross: Math.round(stripeTotal * 100) / 100,
+      fees: Math.round(stripeFees * 100) / 100,
+      net: Math.round(stripeNet * 100) / 100,
+      transactions: stripePayments.length,
+    },
+    pos: {
+      gross: Math.round(posTotal * 100) / 100,
+      net: Math.round(posNet * 100) / 100,
+      transactions: posTransactions.length,
+    },
+    total_net: Math.round((stripeNet + posNet) * 100) / 100,
+  };
+
+  if (input.breakdown_by === "type") {
+    const byType = new Map<string, { count: number; revenue: number }>();
+    for (const p of stripePayments) {
+      const key = p.type;
+      const existing = byType.get(key) ?? { count: 0, revenue: 0 };
+      existing.count++;
+      existing.revenue += p.amount;
+      byType.set(key, existing);
+    }
+    for (const p of posTransactions) {
+      const key = p.type;
+      const existing = byType.get(key) ?? { count: 0, revenue: 0 };
+      existing.count++;
+      existing.revenue += p.amount;
+      byType.set(key, existing);
+    }
+    result.breakdown = Array.from(byType.entries())
+      .map(([type, data]) => ({ type, ...data, revenue: Math.round(data.revenue * 100) / 100 }))
+      .sort((a, b) => b.revenue - a.revenue);
+  } else if (input.breakdown_by === "method") {
+    const byMethod = new Map<string, { count: number; revenue: number }>();
+    for (const p of stripePayments) {
+      const key = "stripe_online";
+      const existing = byMethod.get(key) ?? { count: 0, revenue: 0 };
+      existing.count++;
+      existing.revenue += p.amount;
+      byMethod.set(key, existing);
+    }
+    for (const p of posTransactions) {
+      const key = p.paymentMethod;
+      const existing = byMethod.get(key) ?? { count: 0, revenue: 0 };
+      existing.count++;
+      existing.revenue += p.amount;
+      byMethod.set(key, existing);
+    }
+    result.breakdown = Array.from(byMethod.entries())
+      .map(([method, data]) => ({ method, ...data, revenue: Math.round(data.revenue * 100) / 100 }))
+      .sort((a, b) => b.revenue - a.revenue);
+  } else if (input.breakdown_by === "day") {
+    const byDay = new Map<string, number>();
+    for (const p of stripePayments) {
+      const key = p.createdAt.toISOString().slice(0, 10);
+      byDay.set(key, (byDay.get(key) ?? 0) + p.amount);
+    }
+    for (const p of posTransactions) {
+      const key = p.createdAt.toISOString().slice(0, 10);
+      byDay.set(key, (byDay.get(key) ?? 0) + p.amount);
+    }
+    result.breakdown = Array.from(byDay.entries())
+      .map(([day, revenue]) => ({ day, revenue: Math.round(revenue * 100) / 100 }))
+      .sort((a, b) => a.day.localeCompare(b.day));
+  }
+
+  return result;
+}
+
+async function getCheckinStats(
+  input: { date?: string; period_days?: number },
+  tenantId: string,
+) {
+  const targetDate = input.date ? new Date(input.date) : new Date();
+  const dayStart = new Date(targetDate);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(targetDate);
+  dayEnd.setHours(23, 59, 59, 999);
+
+  const [todayClasses, checkIns, bookings] = await Promise.all([
+    prisma.class.findMany({
+      where: { tenantId, startsAt: { gte: dayStart, lte: dayEnd }, status: { not: "CANCELLED" } },
+      include: {
+        classType: { select: { name: true } },
+        coach: { select: { name: true } },
+        room: { select: { maxCapacity: true } },
+        _count: {
+          select: {
+            bookings: { where: { status: { in: CONFIRMED_OR_ATTENDED } } },
+            checkIns: true,
+          },
+        },
+      },
+      orderBy: { startsAt: "asc" },
+    }),
+    prisma.checkIn.findMany({
+      where: { tenantId, createdAt: { gte: dayStart, lte: dayEnd } },
+    }),
+    prisma.booking.findMany({
+      where: {
+        class: { tenantId, startsAt: { gte: dayStart, lte: dayEnd } },
+        status: { in: ["CONFIRMED", "ATTENDED", "NO_SHOW"] },
+      },
+    }),
+  ]);
+
+  const noShows = bookings.filter((b) => b.status === "NO_SHOW").length;
+  const attended = bookings.filter((b) => b.status === "ATTENDED").length;
+  const confirmed = bookings.filter((b) => b.status === "CONFIRMED").length;
+
+  const byMethod = new Map<string, number>();
+  for (const ci of checkIns) {
+    byMethod.set(ci.method, (byMethod.get(ci.method) ?? 0) + 1);
+  }
+
+  const classes = todayClasses.map((c) => ({
+    class_type: c.classType.name,
+    coach: c.coach.name,
+    starts_at: c.startsAt.toISOString(),
+    capacity: c.room.maxCapacity,
+    booked: c._count.bookings,
+    checked_in: c._count.checkIns,
+    checkin_rate_pct: c._count.bookings > 0
+      ? Math.round((c._count.checkIns / c._count.bookings) * 100)
+      : 0,
+  }));
+
+  const result: Record<string, unknown> = {
+    date: dayStart.toISOString().slice(0, 10),
+    total_classes: todayClasses.length,
+    total_bookings: bookings.length,
+    total_checkins: checkIns.length,
+    attended,
+    no_shows: noShows,
+    still_confirmed: confirmed,
+    attendance_rate_pct: bookings.length > 0
+      ? Math.round(((attended + checkIns.length) / bookings.length) * 100)
+      : 0,
+    by_method: Object.fromEntries(byMethod),
+    classes,
+  };
+
+  if (input.period_days) {
+    const trendSince = daysAgo(input.period_days);
+    const [trendCheckIns, trendBookings] = await Promise.all([
+      prisma.checkIn.count({ where: { tenantId, createdAt: { gte: trendSince } } }),
+      prisma.booking.count({
+        where: {
+          class: { tenantId, startsAt: { gte: trendSince } },
+          status: { in: ["ATTENDED", "NO_SHOW", "CONFIRMED"] },
+        },
+      }),
+    ]);
+    result.trend = {
+      period_days: input.period_days,
+      total_checkins: trendCheckIns,
+      total_bookings: trendBookings,
+      avg_attendance_rate_pct: trendBookings > 0
+        ? Math.round((trendCheckIns / trendBookings) * 100)
+        : 0,
+    };
+  }
+
+  return result;
+}
+
+async function getPlatformStatus(
+  input: { platform?: string; period_days?: number },
+  tenantId: string,
+) {
+  const days = input.period_days ?? 7;
+  const since = daysAgo(days);
+  const platformFilter = input.platform && input.platform !== "all"
+    ? { platform: input.platform as "classpass" | "gympass" }
+    : {};
+
+  const [configs, alerts, bookings, quotas] = await Promise.all([
+    prisma.studioPlatformConfig.findMany({
+      where: { tenantId, ...platformFilter },
+    }),
+    prisma.platformAlert.findMany({
+      where: { tenantId, ...platformFilter, isResolved: false },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+    prisma.platformBooking.findMany({
+      where: { tenantId, ...platformFilter, createdAt: { gte: since } },
+      include: {
+        class: {
+          select: { startsAt: true, classType: { select: { name: true } } },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.schedulePlatformQuota.findMany({
+      where: {
+        tenantId,
+        ...platformFilter,
+        class: { startsAt: { gte: new Date() } },
+      },
+      include: {
+        class: {
+          select: {
+            startsAt: true,
+            classType: { select: { name: true } },
+            room: { select: { maxCapacity: true } },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const bookingsByPlatform = new Map<string, { total: number; confirmed: number; cancelled: number; checked_in: number }>();
+  for (const b of bookings) {
+    const key = b.platform;
+    const existing = bookingsByPlatform.get(key) ?? { total: 0, confirmed: 0, cancelled: 0, checked_in: 0 };
+    existing.total++;
+    if (b.status === "confirmed") existing.confirmed++;
+    if (b.status === "cancelled") existing.cancelled++;
+    if (b.status === "checked_in") existing.checked_in++;
+    bookingsByPlatform.set(key, existing);
+  }
+
+  return {
+    platforms: configs.map((c) => ({
+      platform: c.platform,
+      is_active: c.isActive,
+      activated_at: c.activatedAt?.toISOString() ?? null,
+      rate_per_visit: c.ratePerVisit,
+      inbound_email: c.inboundEmail,
+    })),
+    unresolved_alerts: alerts.map((a) => ({
+      id: a.id,
+      platform: a.platform,
+      type: a.type,
+      message: a.message,
+      created_at: a.createdAt.toISOString(),
+    })),
+    bookings_summary: Object.fromEntries(
+      Array.from(bookingsByPlatform.entries()).map(([platform, stats]) => [platform, stats]),
+    ),
+    period_days: days,
+    upcoming_quotas: quotas.slice(0, 20).map((q) => ({
+      platform: q.platform,
+      class_type: q.class.classType.name,
+      starts_at: q.class.startsAt.toISOString(),
+      quota_spots: q.quotaSpots,
+      booked_spots: q.bookedSpots,
+      available: q.quotaSpots - q.bookedSpots,
+      is_closed: q.isClosedManually,
+    })),
+    estimated_revenue: Array.from(bookingsByPlatform.entries()).reduce((total, [platform, stats]) => {
+      const config = configs.find((c) => c.platform === platform);
+      return total + (stats.confirmed + stats.checked_in) * (config?.ratePerVisit ?? 0);
+    }, 0),
+  };
+}
+
+async function getClientDetail(
+  input: { client_id?: string; client_name?: string; client_email?: string },
+  tenantId: string,
+) {
+  if (!input.client_id && !input.client_name && !input.client_email) {
+    return { error: "Proporciona al menos client_id, client_name o client_email" };
+  }
+
+  const userWhere: Record<string, unknown> = {};
+  if (input.client_id) {
+    userWhere.id = input.client_id;
+  } else if (input.client_email) {
+    userWhere.email = input.client_email.toLowerCase().trim();
+  } else if (input.client_name) {
+    userWhere.name = { contains: input.client_name, mode: "insensitive" };
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      ...userWhere,
+      memberships: { some: { tenantId, role: "CLIENT" } },
+    },
+    take: 5,
+    include: {
+      memberships: {
+        where: { tenantId },
+        include: {
+          referredByMembership: { select: { user: { select: { name: true, email: true } } } },
+          _count: { select: { referrals: true } },
+        },
+      },
+      packages: {
+        where: { tenantId },
+        include: { package: { select: { name: true, type: true, credits: true } } },
+        orderBy: { purchasedAt: "desc" },
+      },
+      memberSubscriptions: {
+        where: { tenantId },
+        include: { package: { select: { name: true, price: true } } },
+      },
+      bookings: {
+        where: { class: { tenantId }, status: { in: CONFIRMED_OR_ATTENDED } },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: {
+          class: {
+            include: {
+              classType: { select: { name: true } },
+              coach: { select: { name: true } },
+            },
+          },
+        },
+      },
+      stripePayments: {
+        where: { tenantId },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { amount: true, type: true, status: true, concept: true, createdAt: true },
+      },
+      waiverSignatures: {
+        where: { tenantId },
+        take: 1,
+        orderBy: { signedAt: "desc" },
+        select: { signedAt: true, waiverVersion: true },
+      },
+      memberProgressRows: {
+        where: { tenantId },
+        include: { currentLevel: { select: { name: true, icon: true } } },
+      },
+      memberAchievements: {
+        where: { tenantId },
+        include: { achievement: { select: { name: true, icon: true } } },
+        orderBy: { earnedAt: "desc" },
+        take: 10,
+      },
+    },
+  });
+
+  if (users.length === 0) return { error: "Cliente no encontrado" };
+
+  return users.map((u) => {
+    const membership = u.memberships[0];
+    const progress = u.memberProgressRows[0];
+    const activePackages = u.packages.filter((p) => p.expiresAt >= new Date());
+
+    return {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      birthday: u.birthday?.toISOString().slice(0, 10) ?? null,
+      joined: membership?.createdAt.toISOString() ?? u.createdAt.toISOString(),
+      lifecycle_stage: membership?.lifecycleStage ?? null,
+      referred_by: membership?.referredByMembership
+        ? `${membership.referredByMembership.user.name} (${membership.referredByMembership.user.email})`
+        : null,
+      referrals_made: membership?._count.referrals ?? 0,
+      active_packages: activePackages.map((p) => ({
+        name: p.package.name,
+        type: p.package.type,
+        credits_remaining: p.creditsTotal ? p.creditsTotal - p.creditsUsed : "unlimited",
+        expires_at: p.expiresAt.toISOString(),
+      })),
+      all_packages_count: u.packages.length,
+      active_subscription: u.memberSubscriptions.length > 0
+        ? u.memberSubscriptions.map((s) => ({
+            package: s.package.name,
+            status: s.status,
+            price: s.package.price,
+            current_period_end: s.currentPeriodEnd.toISOString(),
+            cancel_at_period_end: s.cancelAtPeriodEnd,
+          }))
+        : null,
+      recent_bookings: u.bookings.map((b) => ({
+        class_type: b.class.classType.name,
+        coach: b.class.coach.name,
+        date: b.class.startsAt.toISOString(),
+        status: b.status,
+      })),
+      total_bookings: u.bookings.length,
+      recent_payments: u.stripePayments.map((p) => ({
+        amount: p.amount,
+        type: p.type,
+        status: p.status,
+        concept: p.concept,
+        date: p.createdAt.toISOString(),
+      })),
+      waiver: u.waiverSignatures.length > 0
+        ? { signed: true, signed_at: u.waiverSignatures[0].signedAt.toISOString(), version: u.waiverSignatures[0].waiverVersion }
+        : { signed: false },
+      gamification: progress
+        ? {
+            level: progress.currentLevel?.name ?? null,
+            level_icon: progress.currentLevel?.icon ?? null,
+            total_classes: progress.totalClassesAttended,
+            current_streak: progress.currentStreak,
+            longest_streak: progress.longestStreak,
+          }
+        : null,
+      achievements: u.memberAchievements.map((a) => ({
+        name: a.achievement.name,
+        icon: a.achievement.icon,
+        earned_at: a.earnedAt.toISOString(),
+      })),
+    };
+  });
+}
+
+async function getCoachDetail(
+  input: { coach_id?: string; coach_name?: string },
+  tenantId: string,
+) {
+  if (!input.coach_id && !input.coach_name) {
+    return { error: "Proporciona al menos coach_id o coach_name" };
+  }
+
+  const where: Record<string, unknown> = { tenantId };
+  if (input.coach_id) {
+    where.id = input.coach_id;
+  } else if (input.coach_name) {
+    where.name = { contains: input.coach_name, mode: "insensitive" };
+  }
+
+  const since30 = daysAgo(30);
+  const coaches = await prisma.coachProfile.findMany({
+    where,
+    take: 5,
+    include: {
+      user: { select: { id: true, name: true, email: true, phone: true, image: true } },
+      payRates: {
+        where: { isActive: true },
+        include: { classType: { select: { name: true } } },
+      },
+      classes: {
+        where: { startsAt: { gte: since30 } },
+        include: {
+          classType: { select: { name: true } },
+          room: { select: { maxCapacity: true } },
+          _count: {
+            select: {
+              bookings: { where: { status: { in: CONFIRMED_OR_ATTENDED } } },
+            },
+          },
+          ratings: {
+            select: { rating: true, reasons: true, comment: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (coaches.length === 0) return { error: "Coach no encontrado" };
+
+  const coachIds = coaches.map((c) => c.userId).filter((id): id is string => id != null);
+  const availabilityBlocks = coachIds.length > 0
+    ? await prisma.coachAvailabilityBlock.findMany({
+        where: { tenantId, coachId: { in: coachIds }, status: { in: ["active", "pending_approval"] } },
+      })
+    : [];
+
+  return coaches.map((coach) => {
+    const activeClasses = coach.classes.filter((c) => c.status !== "CANCELLED");
+    const totalBookings = activeClasses.reduce((s, c) => s + c._count.bookings, 0);
+    const totalCapacity = activeClasses.reduce((s, c) => s + c.room.maxCapacity, 0);
+    const allRatings = activeClasses.flatMap((c) => c.ratings);
+    const avgRating = allRatings.length > 0
+      ? Math.round((allRatings.reduce((s, r) => s + r.rating, 0) / allRatings.length) * 10) / 10
+      : null;
+
+    const coachBlocks = availabilityBlocks.filter((b) => b.coachId === coach.userId);
+    const activeBlocks = coachBlocks.filter((b) => b.status === "active");
+    const pendingBlocks = coachBlocks.filter((b) => b.status === "pending_approval");
+
+    return {
+      coach_profile_id: coach.id,
+      name: coach.name,
+      email: coach.user?.email ?? null,
+      phone: coach.user?.phone ?? null,
+      photo: coach.photoUrl ?? coach.user?.image ?? null,
+      bio: coach.bio,
+      specialties: coach.specialties,
+      color: coach.color,
+      linked_user: !!coach.userId,
+      pay_rates: coach.payRates.map((pr) => ({
+        type: pr.type,
+        amount: pr.amount,
+        currency: pr.currency,
+        class_type: pr.classType?.name ?? "Todas",
+        bonus_multiplier: pr.bonusMultiplier,
+      })),
+      last_30_days: {
+        total_classes: coach.classes.length,
+        cancelled: coach.classes.filter((c) => c.status === "CANCELLED").length,
+        total_bookings: totalBookings,
+        avg_fill_rate_pct: totalCapacity > 0 ? Math.round((totalBookings / totalCapacity) * 100) : 0,
+        avg_rating: avgRating,
+        total_ratings: allRatings.length,
+      },
+      availability: {
+        active_blocks: activeBlocks.length,
+        pending_requests: pendingBlocks.length,
+      },
+    };
+  });
+}
+
+async function getRatingsSummary(
+  input: { period_days?: number; group_by?: string; coach_id?: string },
+  tenantId: string,
+) {
+  const days = input.period_days ?? 30;
+  const since = daysAgo(days);
+
+  const where: Record<string, unknown> = { tenantId, createdAt: { gte: since } };
+  if (input.coach_id) {
+    where.class = { coachId: input.coach_id };
+  }
+
+  const ratings = await prisma.classRating.findMany({
+    where,
+    include: {
+      class: {
+        include: {
+          classType: { select: { name: true } },
+          coach: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (ratings.length === 0) {
+    return { period_days: days, total_ratings: 0, message: "No hay ratings en este período" };
+  }
+
+  const avg = Math.round((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length) * 10) / 10;
+  const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const allReasons = new Map<string, number>();
+  for (const r of ratings) {
+    distribution[r.rating] = (distribution[r.rating] ?? 0) + 1;
+    for (const reason of r.reasons) {
+      allReasons.set(reason, (allReasons.get(reason) ?? 0) + 1);
+    }
+  }
+
+  const result: Record<string, unknown> = {
+    period_days: days,
+    total_ratings: ratings.length,
+    average_rating: avg,
+    distribution,
+    top_reasons: Array.from(allReasons.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([reason, count]) => ({ reason, count })),
+    low_ratings: ratings
+      .filter((r) => r.rating <= 2)
+      .slice(0, 10)
+      .map((r) => ({
+        rating: r.rating,
+        class_type: r.class.classType.name,
+        coach: r.class.coach.name,
+        reasons: r.reasons,
+        comment: r.comment,
+        date: r.createdAt.toISOString(),
+      })),
+  };
+
+  if (input.group_by === "coach") {
+    const byCoach = new Map<string, { name: string; ratings: number[]; count: number }>();
+    for (const r of ratings) {
+      const key = r.class.coach.id;
+      const existing = byCoach.get(key) ?? { name: r.class.coach.name, ratings: [], count: 0 };
+      existing.ratings.push(r.rating);
+      existing.count++;
+      byCoach.set(key, existing);
+    }
+    result.by_coach = Array.from(byCoach.values())
+      .map((c) => ({
+        coach: c.name,
+        total_ratings: c.count,
+        avg_rating: Math.round((c.ratings.reduce((s, r) => s + r, 0) / c.count) * 10) / 10,
+      }))
+      .sort((a, b) => b.avg_rating - a.avg_rating);
+  } else if (input.group_by === "class_type") {
+    const byType = new Map<string, { ratings: number[]; count: number }>();
+    for (const r of ratings) {
+      const key = r.class.classType.name;
+      const existing = byType.get(key) ?? { ratings: [], count: 0 };
+      existing.ratings.push(r.rating);
+      existing.count++;
+      byType.set(key, existing);
+    }
+    result.by_class_type = Array.from(byType.entries())
+      .map(([name, data]) => ({
+        class_type: name,
+        total_ratings: data.count,
+        avg_rating: Math.round((data.ratings.reduce((s, r) => s + r, 0) / data.count) * 10) / 10,
+      }))
+      .sort((a, b) => b.avg_rating - a.avg_rating);
+  }
+
+  return result;
+}
+
+async function getGamificationOverview(
+  input: { top_n?: number; include_achievements?: boolean },
+  tenantId: string,
+) {
+  const topN = input.top_n ?? 10;
+
+  const [levels, progress, recentAchievements, config] = await Promise.all([
+    prisma.loyaltyLevel.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.memberProgress.findMany({
+      where: { tenantId },
+      include: {
+        user: { select: { name: true, email: true } },
+        currentLevel: { select: { name: true, icon: true } },
+      },
+      orderBy: { totalClassesAttended: "desc" },
+    }),
+    prisma.memberAchievement.findMany({
+      where: { tenantId },
+      include: {
+        achievement: { select: { name: true, icon: true, category: true } },
+        user: { select: { name: true } },
+      },
+      orderBy: { earnedAt: "desc" },
+      take: 50,
+    }),
+    prisma.tenantGamificationConfig.findFirst({ where: { tenantId } }),
+  ]);
+
+  const levelDistribution = new Map<string, number>();
+  let noLevel = 0;
+  for (const p of progress) {
+    if (p.currentLevel) {
+      const key = `${p.currentLevel.icon} ${p.currentLevel.name}`;
+      levelDistribution.set(key, (levelDistribution.get(key) ?? 0) + 1);
+    } else {
+      noLevel++;
+    }
+  }
+
+  const activeStreaks = progress.filter((p) => p.currentStreak > 0).length;
+  const avgStreak = progress.length > 0
+    ? Math.round((progress.reduce((s, p) => s + p.currentStreak, 0) / progress.length) * 10) / 10
+    : 0;
+
+  const result: Record<string, unknown> = {
+    config: {
+      levels_enabled: config?.levelsEnabled ?? true,
+      achievements_enabled: config?.achievementsEnabled ?? true,
+      auto_rewards_enabled: config?.autoRewardsEnabled ?? false,
+    },
+    total_members_with_progress: progress.length,
+    level_distribution: {
+      ...Object.fromEntries(levelDistribution),
+      sin_nivel: noLevel,
+    },
+    levels: levels.map((l) => ({
+      name: l.name,
+      icon: l.icon,
+      min_classes: l.minClasses,
+      members: levelDistribution.get(`${l.icon} ${l.name}`) ?? 0,
+    })),
+    streaks: {
+      active_streaks: activeStreaks,
+      avg_streak: avgStreak,
+      longest_streak: progress.length > 0 ? Math.max(...progress.map((p) => p.longestStreak)) : 0,
+    },
+    leaderboard: progress.slice(0, topN).map((p, i) => ({
+      rank: i + 1,
+      name: p.user.name,
+      total_classes: p.totalClassesAttended,
+      level: p.currentLevel ? `${p.currentLevel.icon} ${p.currentLevel.name}` : null,
+      current_streak: p.currentStreak,
+    })),
+  };
+
+  if (input.include_achievements) {
+    const achievementCounts = new Map<string, { name: string; icon: string; category: string; count: number }>();
+    for (const a of recentAchievements) {
+      const key = a.achievement.name;
+      const existing = achievementCounts.get(key) ?? {
+        name: a.achievement.name,
+        icon: a.achievement.icon,
+        category: a.achievement.category,
+        count: 0,
+      };
+      existing.count++;
+      achievementCounts.set(key, existing);
+    }
+
+    result.recent_achievements = recentAchievements.slice(0, 20).map((a) => ({
+      member: a.user.name,
+      achievement: `${a.achievement.icon} ${a.achievement.name}`,
+      earned_at: a.earnedAt.toISOString(),
+    }));
+    result.most_earned = Array.from(achievementCounts.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+      .map((a) => ({ achievement: `${a.icon} ${a.name}`, category: a.category, earned_count: a.count }));
+  }
+
+  return result;
+}
+
+async function getReferralMetrics(
+  input: { period_days?: number },
+  tenantId: string,
+) {
+  const days = input.period_days ?? 30;
+  const since = daysAgo(days);
+
+  const [config, membershipsWithReferrals, rewards, recentReferrals] = await Promise.all([
+    prisma.referralConfig.findFirst({ where: { tenantId } }),
+    prisma.membership.findMany({
+      where: { tenantId, role: "CLIENT", referralCode: { not: null } },
+      include: {
+        user: { select: { name: true, email: true } },
+        _count: { select: { referrals: true } },
+      },
+    }),
+    prisma.referralReward.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.membership.findMany({
+      where: { tenantId, referredByMembershipId: { not: null }, createdAt: { gte: since } },
+      include: {
+        user: { select: { name: true } },
+        referredByMembership: {
+          select: { user: { select: { name: true } } },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const totalReferrals = membershipsWithReferrals.reduce((s, m) => s + m._count.referrals, 0);
+  const topReferrers = membershipsWithReferrals
+    .filter((m) => m._count.referrals > 0)
+    .sort((a, b) => b._count.referrals - a._count.referrals)
+    .slice(0, 10);
+
+  const pendingRewards = rewards.filter((r) => r.status === "pending").length;
+  const deliveredRewards = rewards.filter((r) => r.status === "delivered").length;
+
+  return {
+    config: config
+      ? {
+          enabled: config.isEnabled,
+          trigger_stage: config.triggerStage,
+          referrer_reward: config.referrerRewardType,
+          referrer_reward_text: config.referrerRewardText,
+          referee_reward: config.refereeRewardType,
+          referee_reward_text: config.refereeRewardText,
+        }
+      : null,
+    total_referrals: totalReferrals,
+    recent_referrals_count: recentReferrals.length,
+    period_days: days,
+    recent_referrals: recentReferrals.slice(0, 15).map((r) => ({
+      new_member: r.user.name,
+      referred_by: r.referredByMembership?.user.name ?? "Desconocido",
+      joined: r.createdAt.toISOString(),
+    })),
+    rewards: {
+      total: rewards.length,
+      pending: pendingRewards,
+      delivered: deliveredRewards,
+    },
+    top_referrers: topReferrers.map((m) => ({
+      name: m.user.name,
+      email: m.user.email,
+      referrals: m._count.referrals,
+      code: m.referralCode,
+    })),
+    members_with_code: membershipsWithReferrals.length,
+  };
 }
