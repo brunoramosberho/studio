@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import {
   ChevronDown,
   Loader2,
-  Users,
+
   Ticket,
   AlertTriangle,
   Dumbbell,
@@ -1150,14 +1150,7 @@ function MobileClassCard({
             <span className="text-[11px] font-medium text-rose-500">
               {spotsLeft} {spotsLeft === 1 ? "lugar" : "lugares"}
             </span>
-          ) : (
-            <Users
-              className={cn(
-                "h-4 w-4",
-                past ? "text-muted/20" : "text-muted/40",
-              )}
-            />
-          )}
+          ) : null}
         </div>
       </div>
     </Link>
@@ -1304,14 +1297,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
           <span className="text-[10px] font-medium text-rose-500">
             {spotsLeft} {spotsLeft === 1 ? "lugar" : "lugares"}
           </span>
-        ) : (
-          <Users
-            className={cn(
-              "h-3.5 w-3.5",
-              past ? "text-muted/20" : "text-muted/30",
-            )}
-          />
-        )}
+        ) : null}
       </div>
     </Link>
   );
