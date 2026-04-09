@@ -1,18 +1,37 @@
 @import "tailwindcss";
 
 @theme {
+  /* Base */
   --color-background: #FFFFFF;
-  --color-foreground: #0F172A;
-  --color-surface: #F8FAFC;
-  --color-accent: #6366F1;
-  --color-accent-soft: #E0E7FF;
-  --color-muted: #64748B;
-  --color-destructive: #C0392B;
-  --color-coach: #059669;
-  --color-admin: #4338CA;
-  --color-border: #E2E8F0;
-  --color-ring: #6366F1;
-  --color-input-border: #CBD5E1;
+  --color-foreground: #18181B;
+  --color-surface: #FAFAFA;
+  --color-muted: #71717A;
+  --color-border: #E4E4E7;
+  --color-hero-bg: #18181B;
+
+  /* Accent — Coral Fire */
+  --color-accent: #FF5A2C;
+  --color-accent-soft: #FFF1EE;
+  --color-accent-border: #FED7C7;
+  --color-accent-fg: #FFFFFF;
+  --color-accent-text: #C93B15;
+  --color-ring: #FF5A2C;
+  --color-input-border: #D4D4D8;
+
+  /* Roles */
+  --color-coach: #15803D;
+  --color-coach-soft: #F0FDF4;
+  --color-admin: #1E40AF;
+  --color-admin-soft: #EFF6FF;
+
+  /* Semantic */
+  --color-success: #16A34A;
+  --color-success-soft: #DCFCE7;
+  --color-warning: #D97706;
+  --color-warning-soft: #FEF9C3;
+  --color-danger: #DC2626;
+  --color-danger-soft: #FEE2E2;
+  --color-destructive: #DC2626;
 
   --font-display: var(--font-inter), sans-serif;
   --font-body: var(--font-inter), sans-serif;

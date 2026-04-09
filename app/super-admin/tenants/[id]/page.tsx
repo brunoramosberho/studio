@@ -35,6 +35,7 @@ interface TenantDetail {
   colorAccentSoft: string;
   colorMuted: string;
   colorBorder: string;
+  colorHeroBg: string;
   colorCoach: string;
   colorAdmin: string;
   createdAt: string;
@@ -58,6 +59,7 @@ const COLOR_FIELDS = [
   { key: "colorAccentSoft", label: "Acento suave" },
   { key: "colorMuted", label: "Muted" },
   { key: "colorBorder", label: "Borde" },
+  { key: "colorHeroBg", label: "Hero BG" },
   { key: "colorCoach", label: "Coach" },
   { key: "colorAdmin", label: "Admin" },
 ] as const;
@@ -71,8 +73,11 @@ export default function TenantDetailPage({
   const router = useRouter();
   const [tenant, setTenant] = useState<TenantDetail | null>(null);
   const [form, setForm] = useState({ name: "", slug: "" });
+  const [colors, setColors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savingColors, setSavingColors] = useState(false);
+  const [savedColors, setSavedColors] = useState(false);
 
   useEffect(() => {
     fetch(`/api/super-admin/tenants/${id}`)
@@ -80,6 +85,9 @@ export default function TenantDetailPage({
       .then((data) => {
         setTenant(data);
         setForm({ name: data.name, slug: data.slug });
+        const c: Record<string, string> = {};
+        for (const cf of COLOR_FIELDS) c[cf.key] = data[cf.key] ?? "";
+        setColors(c);
       });
   }, [id]);
 
@@ -98,6 +106,22 @@ export default function TenantDetailPage({
       setTimeout(() => setSaved(false), 2000);
     }
     setSaving(false);
+  }
+
+  async function handleSaveColors() {
+    setSavingColors(true);
+    const res = await fetch(`/api/super-admin/tenants/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(colors),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setTenant((prev) => (prev ? { ...prev, ...updated } : prev));
+      setSavedColors(true);
+      setTimeout(() => setSavedColors(false), 2000);
+    }
+    setSavingColors(false);
   }
 
   async function toggleActive() {
@@ -269,27 +293,43 @@ export default function TenantDetailPage({
                 <p className="mb-2 text-xs font-medium text-gray-500">
                   Colores
                 </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {COLOR_FIELDS.map((cf) => {
-                    const color = tenant[cf.key];
-                    return (
-                      <div key={cf.key} className="flex items-center gap-2">
-                        <div
-                          className="h-6 w-6 shrink-0 rounded-md border border-gray-200"
-                          style={{ backgroundColor: color }}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  {COLOR_FIELDS.map((cf) => (
+                    <label key={cf.key} className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={colors[cf.key] || "#000000"}
+                        onChange={(e) =>
+                          setColors((prev) => ({ ...prev, [cf.key]: e.target.value }))
+                        }
+                        className="h-7 w-7 shrink-0 cursor-pointer rounded-md border border-gray-200 bg-transparent p-0.5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[11px] text-gray-500">
+                          {cf.label}
+                        </p>
+                        <input
+                          type="text"
+                          value={colors[cf.key] || ""}
+                          onChange={(e) =>
+                            setColors((prev) => ({ ...prev, [cf.key]: e.target.value }))
+                          }
+                          className="w-full rounded border border-transparent bg-transparent font-mono text-[10px] text-gray-600 transition-colors hover:border-gray-200 focus:border-gray-300 focus:outline-none"
+                          spellCheck={false}
                         />
-                        <div className="min-w-0">
-                          <p className="truncate text-[11px] text-gray-500">
-                            {cf.label}
-                          </p>
-                          <p className="font-mono text-[10px] text-gray-400">
-                            {color}
-                          </p>
-                        </div>
                       </div>
-                    );
-                  })}
+                    </label>
+                  ))}
                 </div>
+                <Button
+                  size="sm"
+                  onClick={handleSaveColors}
+                  disabled={savingColors}
+                  className="mt-3 gap-1.5 bg-indigo-600 hover:bg-indigo-700"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  {savedColors ? "Guardado" : savingColors ? "Guardando..." : "Guardar colores"}
+                </Button>
               </div>
 
               <Separator />

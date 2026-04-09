@@ -23,16 +23,16 @@ model Tenant {
   logoUrl         String?
   appIconUrl      String?
   fontPairing     String   @default("jakarta-dmsans")
-  colorBg         String   @default("#FAF9F6")
-  colorFg         String   @default("#1C1917")
-  colorSurface    String   @default("#F5F2ED")
-  colorAccent     String   @default("#C9A96E")
-  colorAccentSoft String   @default("#E8D9BF")
-  colorMuted      String   @default("#8C8279")
-  colorBorder     String   @default("#E8E2D9")
-  colorHeroBg     String   @default("#1C1917")
-  colorCoach      String   @default("#2D5016")
-  colorAdmin      String   @default("#1A2C4E")
+  colorBg         String   @default("#FFFFFF")
+  colorFg         String   @default("#18181B")
+  colorSurface    String   @default("#FAFAFA")
+  colorAccent     String   @default("#FF5A2C")
+  colorAccentSoft String   @default("#FFF1EE")
+  colorMuted      String   @default("#71717A")
+  colorBorder     String   @default("#E4E4E7")
+  colorHeroBg     String   @default("#18181B")
+  colorCoach      String   @default("#15803D")
+  colorAdmin      String   @default("#1E40AF")
   coachIconSvg    String?  @db.Text
   landingUrl      String?
   communityHeadline String @default("Tu comunidad en movimiento")
@@ -1299,15 +1299,15 @@ model StudioSettings {
   logoUrl         String?
   appIconUrl      String?
   fontPairing     String   @default("jakarta-dmsans")
-  colorBg         String   @default("#FAF9F6")
-  colorFg         String   @default("#1C1917")
-  colorSurface    String   @default("#F5F2ED")
-  colorAccent     String   @default("#C9A96E")
-  colorAccentSoft String   @default("#E8D9BF")
-  colorMuted      String   @default("#8C8279")
-  colorBorder     String   @default("#E8E2D9")
-  colorCoach      String   @default("#2D5016")
-  colorAdmin      String   @default("#1A2C4E")
+  colorBg         String   @default("#FFFFFF")
+  colorFg         String   @default("#18181B")
+  colorSurface    String   @default("#FAFAFA")
+  colorAccent     String   @default("#FF5A2C")
+  colorAccentSoft String   @default("#FFF1EE")
+  colorMuted      String   @default("#71717A")
+  colorBorder     String   @default("#E4E4E7")
+  colorCoach      String   @default("#15803D")
+  colorAdmin      String   @default("#1E40AF")
   coachIconSvg    String?  @db.Text
   landingUrl      String?
   updatedAt       DateTime @updatedAt
