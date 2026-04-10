@@ -58,8 +58,26 @@ export interface BookingWithDetails extends Booking {
   class: ClassWithDetails;
 }
 
+export interface CreditUsageDetail {
+  id: string;
+  classTypeId: string;
+  creditsTotal: number;
+  creditsUsed: number;
+  classType: { id: string; name: string };
+}
+
+export interface CreditAllocationDetail {
+  classTypeId: string;
+  credits: number;
+  classType: { id: string; name: string };
+}
+
 export interface UserPackageWithDetails extends UserPackage {
-  package: Package;
+  package: Package & {
+    classTypes?: { id: string; name: string }[];
+    creditAllocations?: CreditAllocationDetail[];
+  };
+  creditUsages?: CreditUsageDetail[];
 }
 
 export interface CoachProfileWithUser extends CoachProfile {

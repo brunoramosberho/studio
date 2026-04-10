@@ -53,12 +53,21 @@ interface MemberSub {
   };
 }
 
+interface CreditUsageRef {
+  id: string;
+  classTypeId: string;
+  creditsTotal: number;
+  creditsUsed: number;
+  classType: ClassTypeRef;
+}
+
 interface UserPkg {
   id: string;
   creditsTotal: number | null;
   creditsUsed: number;
   expiresAt: string;
   purchasedAt: string;
+  creditUsages?: CreditUsageRef[];
   package: {
     id: string;
     name: string;
@@ -343,7 +352,38 @@ function SubscriptionDetail({
           )}
 
           {/* Credits */}
-          {sub.package.credits && (
+          {relatedPkg?.creditUsages && relatedPkg.creditUsages.length > 0 ? (
+            <div className="rounded-2xl border border-border/50 p-4 space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Ticket className="h-5 w-5 text-muted" />
+                Créditos por disciplina
+              </div>
+              {relatedPkg.creditUsages.map((u) => {
+                const remaining = u.creditsTotal - u.creditsUsed;
+                const pct = u.creditsTotal > 0 ? (u.creditsUsed / u.creditsTotal) * 100 : 0;
+                return (
+                  <div key={u.id}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-foreground">{u.classType.name}</span>
+                      <span className="font-mono text-muted">
+                        <span className="text-foreground">{remaining}</span>/{u.creditsTotal}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface">
+                      <div
+                        className="h-full rounded-full bg-accent transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex items-center gap-2 rounded-xl bg-surface/80 px-3 py-2 text-xs text-muted">
+                <Info className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>Los límites se renuevan el {periodEndShort}.</span>
+              </div>
+            </div>
+          ) : sub.package.credits ? (
             <div className="rounded-2xl border border-border/50 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -378,9 +418,7 @@ function SubscriptionDetail({
                 </span>
               </div>
             </div>
-          )}
-
-          {!sub.package.credits && (
+          ) : (
             <div className="rounded-2xl border border-border/50 p-4">
               <div className="flex items-center gap-3">
                 <Ticket className="h-5 w-5 text-accent" />
@@ -549,7 +587,34 @@ function PackageDetail({
 
           {/* Credits */}
           <div className="rounded-2xl border border-border/50 p-4">
-            {pkg.creditsTotal === null ? (
+            {pkg.creditUsages && pkg.creditUsages.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Ticket className="h-5 w-5 text-muted" />
+                  Créditos por disciplina
+                </div>
+                {pkg.creditUsages.map((u) => {
+                  const rem = u.creditsTotal - u.creditsUsed;
+                  const pct = u.creditsTotal > 0 ? ((u.creditsTotal - u.creditsUsed) / u.creditsTotal) * 100 : 0;
+                  return (
+                    <div key={u.id}>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-foreground">{u.classType.name}</span>
+                        <span className="font-mono text-muted">
+                          <span className="text-foreground">{rem}</span>/{u.creditsTotal}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface">
+                        <div
+                          className="h-full rounded-full bg-accent transition-all"
+                          style={{ width: `${isExpired ? 0 : pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : pkg.creditsTotal === null ? (
               <div className="flex items-center gap-3">
                 <Ticket className="h-5 w-5 text-accent" />
                 <span className="font-medium text-foreground">Clases ilimitadas</span>

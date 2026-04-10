@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
+import { findPackageForClass, deductCredit, userPackageIncludeForBooking } from "@/lib/credits";
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,41 +71,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find a valid package with available credits
     const userPackages = await prisma.userPackage.findMany({
       where: {
         userId: session.user.id,
         tenantId: tenant.id,
         expiresAt: { gt: new Date() },
       },
-      include: { package: { include: { classTypes: { select: { id: true } } } } },
+      include: userPackageIncludeForBooking,
       orderBy: { expiresAt: "asc" },
     });
 
     const classTypeId = classData.classTypeId;
-    function packageCoversClass(p: (typeof userPackages)[number]) {
-      if (!p.package.classTypes.length) return true;
-      return p.package.classTypes.some((ct) => ct.id === classTypeId);
-    }
-
-    let userPackage = null;
-
-    if (packageId) {
-      userPackage = userPackages.find(
-        (p) =>
-          p.id === packageId &&
-          (p.creditsTotal === null || p.creditsUsed < p.creditsTotal) &&
-          packageCoversClass(p),
-      );
-    }
-
-    if (!userPackage) {
-      userPackage = userPackages.find(
-        (p) =>
-          (p.creditsTotal === null || p.creditsUsed < p.creditsTotal) &&
-          packageCoversClass(p),
-      );
-    }
+    const userPackage = findPackageForClass(userPackages, classTypeId, packageId);
 
     if (!userPackage) {
       return NextResponse.json(
@@ -113,10 +91,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await prisma.userPackage.update({
-      where: { id: userPackage.id },
-      data: { creditsUsed: { increment: 1 } },
-    });
+    await deductCredit(userPackage.id, classTypeId);
 
     const maxPosition = await prisma.waitlist.aggregate({
       where: { classId, tenantId: tenant.id },

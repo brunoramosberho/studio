@@ -10,12 +10,14 @@ interface PackageSelectorProps {
   packages: UserPackageWithDetails[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  classTypeId?: string;
 }
 
 export function PackageSelector({
   packages,
   selectedId,
   onSelect,
+  classTypeId,
 }: PackageSelectorProps) {
   const sorted = [...packages].sort(
     (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
@@ -31,10 +33,22 @@ export function PackageSelector({
       {sorted.map((pkg, i) => {
         const isSelected = selectedId === pkg.id;
         const isRecommended = pkg.id === recommendedId;
-        const creditsRemaining =
-          pkg.creditsTotal !== null
+        const hasAllocations = (pkg.creditUsages?.length ?? 0) > 0;
+        const allocUsage = hasAllocations && classTypeId
+          ? pkg.creditUsages!.find((u) => u.classTypeId === classTypeId)
+          : null;
+
+        const creditsRemaining = hasAllocations
+          ? allocUsage
+            ? allocUsage.creditsTotal - allocUsage.creditsUsed
+            : 0
+          : pkg.creditsTotal !== null
             ? (pkg.creditsTotal ?? 0) - pkg.creditsUsed
             : null;
+
+        const creditsTotal = hasAllocations
+          ? allocUsage?.creditsTotal ?? 0
+          : pkg.creditsTotal;
 
         return (
           <motion.button
@@ -96,14 +110,16 @@ export function PackageSelector({
                   {creditsRemaining !== null ? (
                     <p className="font-mono text-sm font-medium text-foreground">
                       <span className="text-[#C9A96E]">{creditsRemaining}</span>
-                      <span className="text-muted/50">/{pkg.creditsTotal}</span>
+                      <span className="text-muted/50">/{creditsTotal}</span>
                     </p>
                   ) : (
                     <Badge variant="success" className="text-[10px]">
                       Ilimitado
                     </Badge>
                   )}
-                  <p className="text-[10px] text-muted">créditos</p>
+                  <p className="text-[10px] text-muted">
+                    {hasAllocations && allocUsage ? allocUsage.classType.name : "créditos"}
+                  </p>
                 </div>
               </CardContent>
             </Card>

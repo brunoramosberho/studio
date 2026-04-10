@@ -93,12 +93,18 @@ export default function PackagesPage() {
   const now = Date.now();
   const active = packages.filter((p) => {
     const notExpired = new Date(p.expiresAt).getTime() > now;
-    const hasCredits = p.creditsTotal === null || (p.creditsTotal - p.creditsUsed) > 0;
+    const hasAllocations = (p.creditUsages?.length ?? 0) > 0;
+    const hasCredits = hasAllocations
+      ? p.creditUsages!.some((u) => u.creditsUsed < u.creditsTotal)
+      : p.creditsTotal === null || (p.creditsTotal - p.creditsUsed) > 0;
     return notExpired && hasCredits;
   });
   const expired = packages.filter((p) => {
     const isExpired = new Date(p.expiresAt).getTime() <= now;
-    const noCredits = p.creditsTotal !== null && (p.creditsTotal - p.creditsUsed) <= 0;
+    const hasAllocations = (p.creditUsages?.length ?? 0) > 0;
+    const noCredits = hasAllocations
+      ? p.creditUsages!.every((u) => u.creditsUsed >= u.creditsTotal)
+      : p.creditsTotal !== null && (p.creditsTotal - p.creditsUsed) <= 0;
     return isExpired || noCredits;
   });
   const activeSubs = subscriptions.filter((s) => s.status !== "canceled");
@@ -160,6 +166,7 @@ export default function PackagesPage() {
   }
 
   function renderPackageCard(pkg: UserPackageWithDetails, isExpired: boolean) {
+    const hasAllocations = (pkg.creditUsages?.length ?? 0) > 0;
     const remaining = pkg.creditsTotal !== null
       ? pkg.creditsTotal - pkg.creditsUsed
       : null;
@@ -167,7 +174,9 @@ export default function PackagesPage() {
       ? ((pkg.creditsTotal - pkg.creditsUsed) / pkg.creditsTotal) * 100
       : 100;
     const days = daysUntil(pkg.expiresAt);
-    const noCreditsLeft = pkg.creditsTotal !== null && remaining !== null && remaining <= 0;
+    const noCreditsLeft = hasAllocations
+      ? pkg.creditUsages!.every((u) => u.creditsUsed >= u.creditsTotal)
+      : pkg.creditsTotal !== null && remaining !== null && remaining <= 0;
     const dateExpired = new Date(pkg.expiresAt).getTime() <= now;
 
     return (
@@ -186,9 +195,9 @@ export default function PackagesPage() {
                       {pkg.package.description}
                     </CardDescription>
                   )}
-                  {(pkg.package as any).classTypes?.length > 0 && (
+                  {(pkg.package.classTypes?.length ?? 0) > 0 && (
                     <p className="mt-1.5 text-xs text-muted">
-                      Válido para: {(pkg.package as any).classTypes.map((ct: { name: string }) => ct.name).join(", ")}
+                      Válido para: {pkg.package.classTypes!.map((ct) => ct.name).join(", ")}
                     </p>
                   )}
                 </div>
@@ -196,46 +205,78 @@ export default function PackagesPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-end justify-between">
-                <div>
-                  {pkg.creditsTotal === null ? (
-                    <div className="flex items-center gap-2">
-                      <InfinityIcon className="h-6 w-6 text-accent" />
-                      <p className="font-mono text-2xl font-bold text-accent">
-                        Ilimitado
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="font-mono text-3xl font-bold text-foreground">
-                        {remaining}
-                        <span className="text-lg text-muted">
-                          /{pkg.creditsTotal}
-                        </span>
-                      </p>
-                      <p className="text-xs text-muted">créditos restantes</p>
-                    </>
+              {hasAllocations ? (
+                <div className="space-y-3">
+                  {pkg.creditUsages!.map((u) => {
+                    const rem = u.creditsTotal - u.creditsUsed;
+                    const pct = u.creditsTotal > 0 ? ((u.creditsTotal - u.creditsUsed) / u.creditsTotal) * 100 : 0;
+                    return (
+                      <div key={u.id}>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium text-foreground">{u.classType.name}</span>
+                          <span className="font-mono text-xs text-muted">
+                            <span className="text-foreground">{rem}</span>/{u.creditsTotal}
+                          </span>
+                        </div>
+                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface">
+                          <div
+                            className="h-full rounded-full bg-accent transition-all"
+                            style={{ width: `${isExpired ? 0 : pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {!isExpired && (
+                    <p className="text-[10px] text-muted">
+                      {days} {days === 1 ? "día restante" : "días restantes"}
+                    </p>
                   )}
                 </div>
-                {!isExpired && (
-                  <div className="text-right">
-                    <p className="font-mono text-sm font-bold text-foreground">
-                      {days}
-                    </p>
-                    <p className="text-[10px] text-muted">
-                      {days === 1 ? "día restante" : "días restantes"}
-                    </p>
+              ) : (
+                <>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      {pkg.creditsTotal === null ? (
+                        <div className="flex items-center gap-2">
+                          <InfinityIcon className="h-6 w-6 text-accent" />
+                          <p className="font-mono text-2xl font-bold text-accent">
+                            Ilimitado
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-mono text-3xl font-bold text-foreground">
+                            {remaining}
+                            <span className="text-lg text-muted">
+                              /{pkg.creditsTotal}
+                            </span>
+                          </p>
+                          <p className="text-xs text-muted">créditos restantes</p>
+                        </>
+                      )}
+                    </div>
+                    {!isExpired && (
+                      <div className="text-right">
+                        <p className="font-mono text-sm font-bold text-foreground">
+                          {days}
+                        </p>
+                        <p className="text-[10px] text-muted">
+                          {days === 1 ? "día restante" : "días restantes"}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {pkg.creditsTotal !== null && (
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface">
-                  <div
-                    className="h-full rounded-full bg-accent transition-all"
-                    style={{ width: `${isExpired ? 0 : progress}%` }}
-                  />
-                </div>
+                  {pkg.creditsTotal !== null && (
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface">
+                      <div
+                        className="h-full rounded-full bg-accent transition-all"
+                        style={{ width: `${isExpired ? 0 : progress}%` }}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
         orderBy: [{ sortOrder: "asc" }, { price: "asc" }],
         include: {
           classTypes: { select: { id: true, name: true } },
+          creditAllocations: { include: { classType: { select: { id: true, name: true } } } },
         },
       });
       return NextResponse.json(packages);
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
       orderBy: [{ sortOrder: "asc" }, { price: "asc" }],
       include: {
         classTypes: { select: { id: true, name: true } },
+        creditAllocations: { include: { classType: { select: { id: true, name: true } } } },
       },
     });
 
@@ -85,6 +87,7 @@ export async function POST(request: NextRequest) {
       recurringInterval,
       countryId,
       sortOrder,
+      creditAllocations,
     } = body;
 
     if (typeof name !== "string" || !name.trim()) {
@@ -150,6 +153,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const hasAllocations = Array.isArray(creditAllocations) && creditAllocations.length > 0;
+
     const created = await prisma.package.create({
       data: {
         tenantId: ctx.tenant.id,
@@ -159,7 +164,7 @@ export async function POST(request: NextRequest) {
             ? null
             : String(description),
         type: pkgType,
-        credits: creditsVal,
+        credits: hasAllocations ? null : creditsVal,
         validDays: validDaysNum,
         price: priceNum,
         currency: typeof currency === "string" && currency ? currency : "MXN",
@@ -180,9 +185,20 @@ export async function POST(request: NextRequest) {
               },
             }
           : {}),
+        ...(hasAllocations
+          ? {
+              creditAllocations: {
+                create: creditAllocations.map((a: { classTypeId: string; credits: number }) => ({
+                  classTypeId: a.classTypeId,
+                  credits: a.credits,
+                })),
+              },
+            }
+          : {}),
       },
       include: {
         classTypes: { select: { id: true, name: true } },
+        creditAllocations: { include: { classType: { select: { id: true, name: true } } } },
       },
     });
 

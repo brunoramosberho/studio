@@ -31,6 +31,12 @@ interface ClassTypeRef {
   name: string;
 }
 
+interface CreditAlloc {
+  classTypeId: string;
+  credits: number;
+  classType: ClassTypeRef;
+}
+
 interface PackageData {
   id: string;
   name: string;
@@ -43,6 +49,7 @@ interface PackageData {
   isPromo: boolean;
   isActive: boolean;
   classTypes: ClassTypeRef[];
+  creditAllocations?: CreditAlloc[];
   recurringInterval: string | null;
   sortOrder: number;
 }
@@ -202,15 +209,23 @@ export default function PackageDetailPage() {
                 )}
               </span>
             </div>
-            {pkg.credits && (
+            {pkg.creditAllocations && pkg.creditAllocations.length > 0 ? (
+              pkg.creditAllocations.map((alloc) => (
+                <div key={alloc.classTypeId} className="flex items-center gap-2.5 text-sm text-muted">
+                  <Ticket className="h-4 w-4 flex-shrink-0" />
+                  <span>
+                    {alloc.credits} {alloc.credits === 1 ? "crédito" : "créditos"} de {alloc.classType.name}
+                  </span>
+                </div>
+              ))
+            ) : pkg.credits ? (
               <div className="flex items-center gap-2.5 text-sm text-muted">
                 <Ticket className="h-4 w-4 flex-shrink-0" />
                 <span>
                   {pkg.credits} {pkg.credits === 1 ? "crédito de clase" : "créditos de clase"}
                 </span>
               </div>
-            )}
-            {!pkg.credits && (
+            ) : (
               <div className="flex items-center gap-2.5 text-sm text-muted">
                 <Ticket className="h-4 w-4 flex-shrink-0" />
                 <span>Clases ilimitadas</span>

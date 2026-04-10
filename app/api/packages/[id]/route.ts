@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/tenant";
 const PACKAGE_TYPES = ["OFFER", "PACK", "SUBSCRIPTION"] as const;
 
 const classTypesInclude = { select: { id: true, name: true } } as const;
+const creditAllocationsInclude = { include: { classType: { select: { id: true, name: true } } } } as const;
 
 const authErrorMessages = [
   "Unauthorized",
@@ -52,6 +53,7 @@ export async function PUT(
       recurringInterval,
       countryId,
       sortOrder,
+      creditAllocations,
     } = body;
 
     const data: Prisma.PackageUncheckedUpdateInput = {};
@@ -149,10 +151,23 @@ export async function PUT(
       data.classTypes = { set: classTypeIds.map((cid: string) => ({ id: cid })) };
     }
 
-    if (Object.keys(data).length === 0) {
+    const hasAllocations = Array.isArray(creditAllocations);
+
+    if (hasAllocations) {
+      if (creditAllocations.length > 0) {
+        data.credits = null;
+      }
+    }
+
+    const includeClause = {
+      classTypes: classTypesInclude,
+      creditAllocations: creditAllocationsInclude,
+    };
+
+    if (Object.keys(data).length === 0 && !hasAllocations) {
       const unchanged = await prisma.package.findFirst({
         where: { id, tenantId: ctx.tenant.id },
-        include: { classTypes: classTypesInclude },
+        include: includeClause,
       });
       return NextResponse.json(unchanged);
     }
@@ -160,8 +175,26 @@ export async function PUT(
     const updated = await prisma.package.update({
       where: { id },
       data,
-      include: { classTypes: classTypesInclude },
+      include: includeClause,
     });
+
+    if (hasAllocations) {
+      await prisma.packageCreditAllocation.deleteMany({ where: { packageId: id } });
+      if (creditAllocations.length > 0) {
+        await prisma.packageCreditAllocation.createMany({
+          data: creditAllocations.map((a: { classTypeId: string; credits: number }) => ({
+            packageId: id,
+            classTypeId: a.classTypeId,
+            credits: a.credits,
+          })),
+        });
+      }
+      const refreshed = await prisma.package.findUnique({
+        where: { id },
+        include: includeClause,
+      });
+      return NextResponse.json(refreshed);
+    }
 
     return NextResponse.json(updated);
   } catch (error) {

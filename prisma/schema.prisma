@@ -447,6 +447,8 @@ model ClassType {
   packages      Package[] @relation("PackageClassTypes")
   coachPayRates CoachPayRate[]
   ratingReasons RatingReason[]
+  packageCreditAllocations PackageCreditAllocation[]
+  userPackageCreditUsages  UserPackageCreditUsage[]
 
   @@index([tenantId])
 }
@@ -652,6 +654,7 @@ model Package {
   sortOrder     Int           @default(0)
   userPackages        UserPackage[]
   memberSubscriptions MemberSubscription[]
+  creditAllocations   PackageCreditAllocation[]
 
   @@index([countryId])
   @@index([tenantId])
@@ -697,10 +700,36 @@ model UserPackage {
   expiresAt       DateTime
   stripePaymentId String?
   purchasedAt     DateTime @default(now())
+  creditUsages    UserPackageCreditUsage[]
 
   @@index([userId])
   @@index([expiresAt])
   @@index([tenantId])
+}
+
+model PackageCreditAllocation {
+  id          String    @id @default(cuid())
+  packageId   String
+  package     Package   @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  classTypeId String
+  classType   ClassType @relation(fields: [classTypeId], references: [id])
+  credits     Int
+
+  @@unique([packageId, classTypeId])
+  @@index([packageId])
+}
+
+model UserPackageCreditUsage {
+  id            String      @id @default(cuid())
+  userPackageId String
+  userPackage   UserPackage @relation(fields: [userPackageId], references: [id], onDelete: Cascade)
+  classTypeId   String
+  classType     ClassType   @relation(fields: [classTypeId], references: [id])
+  creditsTotal  Int
+  creditsUsed   Int         @default(0)
+
+  @@unique([userPackageId, classTypeId])
+  @@index([userPackageId])
 }
 
 // ── Location Hierarchy ──

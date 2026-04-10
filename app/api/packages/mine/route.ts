@@ -21,7 +21,17 @@ export async function GET() {
           },
         }),
       },
-      include: { package: { include: { classTypes: { select: { id: true, name: true } } } } },
+      include: {
+        package: {
+          include: {
+            classTypes: { select: { id: true, name: true } },
+            creditAllocations: { include: { classType: { select: { id: true, name: true } } } },
+          },
+        },
+        creditUsages: {
+          include: { classType: { select: { id: true, name: true } } },
+        },
+      },
       orderBy: { expiresAt: "asc" },
     });
 

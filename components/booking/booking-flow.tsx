@@ -54,9 +54,17 @@ export function BookingFlow({ classId }: BookingFlowProps) {
   }, [classId]);
 
   const now = new Date();
+  const classTypeId = classData?.classTypeId;
   const validPackages = packages
     .filter((p) => new Date(p.expiresAt) > now)
-    .filter((p) => p.creditsTotal === null || p.creditsUsed < (p.creditsTotal ?? 0))
+    .filter((p) => {
+      const hasAllocations = (p.creditUsages?.length ?? 0) > 0;
+      if (hasAllocations && classTypeId) {
+        const usage = p.creditUsages!.find((u) => u.classTypeId === classTypeId);
+        return usage ? usage.creditsUsed < usage.creditsTotal : false;
+      }
+      return p.creditsTotal === null || p.creditsUsed < (p.creditsTotal ?? 0);
+    })
     .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
 
   const firstPackageId = validPackages[0]?.id;
@@ -360,6 +368,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
                   packages={validPackages}
                   selectedId={store.selectedPackageId}
                   onSelect={store.setSelectedPackage}
+                  classTypeId={classTypeId}
                 />
               )}
               <Card className="rounded-2xl border border-[#C9A96E]/20 bg-[#C9A96E]/5">
@@ -429,6 +438,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
                 packages={validPackages}
                 selectedId={store.selectedPackageId}
                 onSelect={store.setSelectedPackage}
+                classTypeId={classTypeId}
               />
               <Button
                 size="lg"

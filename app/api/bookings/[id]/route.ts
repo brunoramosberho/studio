@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
 import { promoteFromWaitlist, notifySpotWatchers } from "@/lib/waitlist";
+import { restoreCredit } from "@/lib/credits";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -79,7 +80,7 @@ async function syncCompletedClassFeedEvent(classId: string, tenantId: string) {
 /** Returns true if credit was restored, false if it was lost */
 async function restoreCreditIfEligible(booking: {
   packageUsed: string | null;
-  class: { startsAt: Date };
+  class: { startsAt: Date; classTypeId: string };
 }): Promise<boolean> {
   if (!booking.packageUsed) return true;
 
@@ -87,10 +88,7 @@ async function restoreCreditIfEligible(booking: {
     new Date(booking.class.startsAt).getTime() - Date.now();
   if (hoursUntilClass <= CANCELLATION_WINDOW_MS) return false;
 
-  await prisma.userPackage.update({
-    where: { id: booking.packageUsed },
-    data: { creditsUsed: { decrement: 1 } },
-  });
+  await restoreCredit(booking.packageUsed, booking.class.classTypeId);
   return true;
 }
 

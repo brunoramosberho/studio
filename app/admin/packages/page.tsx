@@ -30,6 +30,12 @@ import {
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
 
+interface CreditAllocation {
+  classTypeId: string;
+  credits: number;
+  classType: { id: string; name: string };
+}
+
 interface PackageData {
   id: string;
   name: string;
@@ -42,6 +48,7 @@ interface PackageData {
   isPromo: boolean;
   isActive: boolean;
   classTypes: { id: string; name: string }[];
+  creditAllocations: CreditAllocation[];
   recurringInterval: string | null;
   sortOrder: number;
   countryId: string | null;
@@ -97,6 +104,11 @@ function classTypesLabel(pkg: PackageData): string {
   return pkg.classTypes.map((c) => c.name).join(", ");
 }
 
+interface FormCreditAllocation {
+  classTypeId: string;
+  credits: string;
+}
+
 interface FormState {
   type: PackageKind;
   name: string;
@@ -105,6 +117,8 @@ interface FormState {
   currency: string;
   creditsUnlimited: boolean;
   credits: string;
+  perDisciplineCredits: boolean;
+  creditAllocations: FormCreditAllocation[];
   validDays: string;
   recurringInterval: string;
   classTypeIds: string[];
@@ -121,6 +135,8 @@ function emptyForm(forType: PackageKind): FormState {
     currency: "EUR",
     creditsUnlimited: false,
     credits: "",
+    perDisciplineCredits: false,
+    creditAllocations: [],
     validDays: "30",
     recurringInterval: "month",
     classTypeIds: [],
@@ -130,14 +146,22 @@ function emptyForm(forType: PackageKind): FormState {
 }
 
 function formFromPackage(pkg: PackageData): FormState {
+  const hasAllocations = pkg.creditAllocations?.length > 0;
   return {
     type: pkg.type,
     name: pkg.name,
     description: pkg.description ?? "",
     price: String(pkg.price),
     currency: pkg.currency || "EUR",
-    creditsUnlimited: pkg.credits === null,
+    creditsUnlimited: !hasAllocations && pkg.credits === null,
     credits: pkg.credits === null ? "" : String(pkg.credits),
+    perDisciplineCredits: hasAllocations,
+    creditAllocations: hasAllocations
+      ? pkg.creditAllocations.map((a) => ({
+          classTypeId: a.classTypeId,
+          credits: String(a.credits),
+        }))
+      : [],
     validDays: String(pkg.validDays),
     recurringInterval:
       pkg.recurringInterval === "year" || pkg.recurringInterval === "annual"
@@ -153,12 +177,25 @@ function buildPayload(form: FormState) {
   const price = parseFloat(form.price);
   const validDays = parseInt(form.validDays, 10);
   const sortOrder = parseInt(form.sortOrder, 10) || 0;
-  const credits =
-    form.creditsUnlimited
+
+  const useAllocations = form.perDisciplineCredits && form.creditAllocations.length > 0;
+
+  const credits = useAllocations
+    ? null
+    : form.creditsUnlimited
       ? null
       : form.credits.trim() === ""
         ? null
         : parseInt(form.credits, 10);
+
+  const creditAllocations = useAllocations
+    ? form.creditAllocations
+        .filter((a) => {
+          const n = parseInt(a.credits, 10);
+          return !Number.isNaN(n) && n > 0;
+        })
+        .map((a) => ({ classTypeId: a.classTypeId, credits: parseInt(a.credits, 10) }))
+    : [];
 
   return {
     name: form.name.trim(),
@@ -173,6 +210,7 @@ function buildPayload(form: FormState) {
     classTypeIds: form.classTypeIds,
     countryId: form.countryId.trim() === "" ? null : form.countryId,
     sortOrder,
+    creditAllocations,
   };
 }
 
@@ -296,7 +334,16 @@ export default function AdminPackagesPage() {
       setFormError("Selecciona la periodicidad de la suscripción.");
       return;
     }
-    if (!form.creditsUnlimited) {
+    if (form.perDisciplineCredits) {
+      const validAllocations = form.creditAllocations.filter((a) => {
+        const n = parseInt(a.credits, 10);
+        return !Number.isNaN(n) && n > 0;
+      });
+      if (validAllocations.length === 0) {
+        setFormError("Agrega créditos a al menos una disciplina.");
+        return;
+      }
+    } else if (!form.creditsUnlimited) {
       if (form.credits.trim() === "") {
         setFormError("Indica un número de créditos o marca ilimitado.");
         return;
@@ -418,7 +465,11 @@ export default function AdminPackagesPage() {
                       <span>
                         Créditos:{" "}
                         <strong className="font-mono text-foreground">
-                          {pkg.credits === null ? "Ilimitados" : pkg.credits}
+                          {pkg.creditAllocations?.length > 0
+                            ? pkg.creditAllocations.map((a) => `${a.credits} ${a.classType.name}`).join(", ")
+                            : pkg.credits === null
+                              ? "Ilimitados"
+                              : pkg.credits}
                         </strong>
                       </span>
                       <span>
@@ -586,32 +637,92 @@ export default function AdminPackagesPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1">
-                <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-credits">
-                  Créditos
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-credits">
+                    Créditos
+                  </label>
+                  <Input
+                    id="pkg-credits"
+                    type="number"
+                    min={0}
+                    disabled={form.creditsUnlimited || form.perDisciplineCredits}
+                    value={form.perDisciplineCredits ? "" : form.credits}
+                    onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
+                    placeholder={form.perDisciplineCredits ? "Por disciplina" : "Número de clases"}
+                  />
+                </div>
+                <label className="flex cursor-pointer items-center gap-2 pb-2 text-sm text-muted">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-input-border accent-admin"
+                    checked={form.creditsUnlimited}
+                    disabled={form.perDisciplineCredits}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, creditsUnlimited: e.target.checked }))
+                    }
+                  />
+                  Ilimitado
                 </label>
-                <Input
-                  id="pkg-credits"
-                  type="number"
-                  min={0}
-                  disabled={form.creditsUnlimited}
-                  value={form.credits}
-                  onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
-                  placeholder="Número de clases"
-                />
               </div>
-              <label className="flex cursor-pointer items-center gap-2 pb-2 text-sm text-muted">
+
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-input-border accent-admin"
-                  checked={form.creditsUnlimited}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, creditsUnlimited: e.target.checked }))
-                  }
+                  checked={form.perDisciplineCredits}
+                  disabled={form.creditsUnlimited}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setForm((f) => ({
+                      ...f,
+                      perDisciplineCredits: checked,
+                      creditAllocations: checked
+                        ? classTypes.map((ct) => {
+                            const existing = f.creditAllocations.find((a) => a.classTypeId === ct.id);
+                            return { classTypeId: ct.id, credits: existing?.credits ?? "" };
+                          })
+                        : [],
+                    }));
+                  }}
                 />
-                Ilimitado
+                Créditos por disciplina
               </label>
+
+              {form.perDisciplineCredits && (
+                <div className="space-y-2 rounded-xl border border-input-border/60 bg-surface/50 p-3">
+                  <p className="mb-1 text-xs text-muted">
+                    Asigna créditos independientes a cada disciplina. Deja en 0 las que no apliquen.
+                  </p>
+                  {classTypes.map((ct) => {
+                    const alloc = form.creditAllocations.find((a) => a.classTypeId === ct.id);
+                    return (
+                      <div key={ct.id} className="flex items-center gap-3">
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium">{ct.name}</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          className="w-24"
+                          value={alloc?.credits ?? ""}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setForm((f) => ({
+                              ...f,
+                              creditAllocations: f.creditAllocations.some((a) => a.classTypeId === ct.id)
+                                ? f.creditAllocations.map((a) =>
+                                    a.classTypeId === ct.id ? { ...a, credits: val } : a,
+                                  )
+                                : [...f.creditAllocations, { classTypeId: ct.id, credits: val }],
+                            }));
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

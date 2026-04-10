@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { prisma } from "@/lib/db";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
+import { createCreditUsagesForPackage } from "@/lib/credits";
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
 
         const memberSub = await prisma.memberSubscription.findUnique({
           where: { stripeSubscriptionId: subId },
-          include: { package: true },
+          include: { package: { include: { creditAllocations: true } } },
         });
         if (!memberSub) break;
 
@@ -92,6 +93,8 @@ export async function POST(request: NextRequest) {
         const piId = (inv.payment_intent as string) ?? (inv.id as string);
         const amountPaid = typeof inv.amount_paid === "number" ? inv.amount_paid / 100 : memberSub.package.price;
 
+        const hasAllocations = memberSub.package.creditAllocations.length > 0;
+
         let userPackageId: string | undefined;
         if (periodEnd) {
           const userPackage = await prisma.userPackage.create({
@@ -99,13 +102,16 @@ export async function POST(request: NextRequest) {
               tenantId: memberSub.tenantId,
               userId: memberSub.userId,
               packageId: memberSub.packageId,
-              creditsTotal: memberSub.package.credits,
+              creditsTotal: hasAllocations ? null : memberSub.package.credits,
               creditsUsed: 0,
               expiresAt: new Date(periodEnd * 1000),
               stripePaymentId: piId,
             },
           });
           userPackageId = userPackage.id;
+          if (hasAllocations) {
+            await createCreditUsagesForPackage(userPackage.id, memberSub.packageId);
+          }
         }
 
         if (piId) {

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation, sendWelcomeEmail, getTenantBaseUrl } from "@/lib/email";
 import { createMemberPayment } from "@/lib/stripe/payments";
+import { createCreditUsagesForPackage } from "@/lib/credits";
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
 
     const pkg = await prisma.package.findUnique({
       where: { id: packageId, tenantId: tenant.id },
+      include: { creditAllocations: true },
     });
     if (!pkg || !pkg.isActive) {
       return NextResponse.json({ error: "Paquete no encontrado" }, { status: 404 });
@@ -130,19 +132,32 @@ export async function POST(request: NextRequest) {
         ? "pending_stripe"
         : `sim_${Date.now()}`;
 
+    const hasAllocations = pkg.creditAllocations.length > 0;
+
     const { userPackage, booking } = await prisma.$transaction(async (tx) => {
       const up = await tx.userPackage.create({
         data: {
           tenantId: tenant.id,
           userId: finalUserId!,
           packageId: pkg.id,
-          creditsTotal: pkg.credits,
-          creditsUsed: 1,
+          creditsTotal: hasAllocations ? null : pkg.credits,
+          creditsUsed: hasAllocations ? 0 : 1,
           expiresAt,
           stripePaymentId,
           purchasedAt,
         },
       });
+
+      if (hasAllocations) {
+        await tx.userPackageCreditUsage.createMany({
+          data: pkg.creditAllocations.map((a) => ({
+            userPackageId: up.id,
+            classTypeId: a.classTypeId,
+            creditsTotal: a.credits,
+            creditsUsed: a.classTypeId === classData.classTypeId ? 1 : 0,
+          })),
+        });
+      }
 
       const bk = await tx.booking.create({
         data: {

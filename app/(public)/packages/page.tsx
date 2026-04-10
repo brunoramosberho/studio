@@ -27,6 +27,12 @@ interface ClassTypeRef {
   name: string;
 }
 
+interface CreditAlloc {
+  classTypeId: string;
+  credits: number;
+  classType: ClassTypeRef;
+}
+
 interface PackageData {
   id: string;
   name: string;
@@ -39,6 +45,7 @@ interface PackageData {
   isPromo: boolean;
   isActive: boolean;
   classTypes: ClassTypeRef[];
+  creditAllocations?: CreditAlloc[];
   recurringInterval: string | null;
   sortOrder: number;
 }
@@ -76,7 +83,11 @@ function validDaysShort(days: number): string {
 function buildFeatures(pkg: PackageData): string[] {
   const features: string[] = [];
 
-  if (pkg.credits) {
+  if (pkg.creditAllocations && pkg.creditAllocations.length > 0) {
+    pkg.creditAllocations.forEach((a) => {
+      features.push(`${a.credits} ${a.classType.name}`);
+    });
+  } else if (pkg.credits) {
     features.push(`${pkg.credits} ${pkg.credits === 1 ? "clase" : "clases"}`);
   } else {
     features.push("Clases ilimitadas");
@@ -292,11 +303,15 @@ export default function PackagesPage() {
                       <span className="font-mono text-2xl font-medium text-foreground sm:text-3xl">
                         {formatCurrency(pkg.price, pkg.currency)}
                       </span>
-                      {pkg.credits && (
+                      {pkg.creditAllocations && pkg.creditAllocations.length > 0 ? (
+                        <span className="ml-1 text-xs text-muted sm:text-sm">
+                          / {pkg.creditAllocations.map((a) => `${a.credits} ${a.classType.name}`).join(" + ")}
+                        </span>
+                      ) : pkg.credits ? (
                         <span className="ml-1 text-xs text-muted sm:text-sm">
                           / {pkg.credits} {pkg.credits === 1 ? "clase" : "clases"}
                         </span>
-                      )}
+                      ) : null}
                       {pkg.type === "SUBSCRIPTION" && (
                         <span className="ml-1 text-xs text-muted sm:text-sm">
                           / {pkg.recurringInterval === "year" ? "año" : "mes"}
