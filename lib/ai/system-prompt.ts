@@ -129,7 +129,6 @@ Mapa de páginas del admin:
 - [Conversión](/admin/conversion) — funnel, nudges, intro offers
 - [Links & UTM](/admin/marketing) — tracking de links, campañas UTM
 - [Highlights](/admin/marketing/highlights) — banners del carrusel en el feed
-- [Pixels](/admin/marketing/pixels) — GA4, Meta Pixel, GTM
 - [Referidos](/admin/settings/referrals) — programa de referidos, configuración, rewards
 - [Facturación](/admin/settings/billing) — plan del studio, facturación, Stripe
 - [Waiver](/admin/waiver) — acuerdo de responsabilidad, firmas, configuración

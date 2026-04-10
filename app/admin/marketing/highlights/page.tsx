@@ -134,10 +134,12 @@ function ImageUploader({
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentUrl || null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFile = useCallback(
     async (file: File) => {
       setUploading(true);
+      setError(null);
       setPreview(URL.createObjectURL(file));
       try {
         const blob = await cropAndCompress(file);
@@ -151,12 +153,14 @@ function ImageUploader({
           body: form,
         });
         const data = await res.json();
-        if (data.url) {
-          onUpload(data.url);
-          setPreview(data.url);
+        if (!res.ok || !data.url) {
+          throw new Error(data.error || `Upload failed (${res.status})`);
         }
-      } catch {
+        onUpload(data.url);
+        setPreview(data.url);
+      } catch (e) {
         setPreview(currentUrl || null);
+        setError(e instanceof Error ? e.message : "Error al subir imagen");
       }
       setUploading(false);
     },
@@ -207,6 +211,9 @@ function ImageUploader({
           </div>
         )}
       </button>
+      {error && (
+        <p className="mt-1.5 text-xs font-medium text-red-600">{error}</p>
+      )}
       <p className="mt-1.5 text-[10px] text-stone-400">
         La imagen se recorta al centro y comprime automáticamente a {TARGET_W}×{TARGET_H}px.
       </p>

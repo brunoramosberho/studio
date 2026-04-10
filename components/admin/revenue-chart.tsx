@@ -37,7 +37,7 @@ export function RevenueChart({ data, title = "Ingresos" }: RevenueChartProps) {
       </CardHeader>
       <CardContent>
         <div className="h-64 w-full sm:h-80">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
             <BarChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
               <XAxis
                 dataKey="name"
