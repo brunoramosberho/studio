@@ -13,6 +13,8 @@ import {
   Dumbbell,
   ArrowRight,
   Asterisk,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { DisciplineSheet, type DisciplineData } from "@/components/feed/discipline-sheet";
@@ -159,6 +161,55 @@ export function ScheduleClient({
       0,
     );
   }, [creditsPkgs]);
+
+  const { data: notifyMeEntries = [] } = useQuery<{ id: string; classId: string }[]>({
+    queryKey: ["notify-spot", "mine"],
+    queryFn: async () => {
+      const res = await fetch("/api/notify-spot/mine");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
+
+  const [notifyMeMap, setNotifyMeMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    if (notifyMeEntries.length > 0) {
+      setNotifyMeMap(new Map(notifyMeEntries.map((e) => [e.classId, e.id])));
+    }
+  }, [notifyMeEntries]);
+
+  const handleToggleNotifyMe = useCallback(async (classId: string) => {
+    const entryId = notifyMeMap.get(classId);
+    const isActive = !!entryId;
+
+    if (isActive) {
+      setNotifyMeMap((prev) => { const next = new Map(prev); next.delete(classId); return next; });
+      try {
+        await fetch(`/api/notify-spot/${entryId}`, { method: "DELETE" });
+      } catch {
+        setNotifyMeMap((prev) => new Map(prev).set(classId, entryId));
+      }
+    } else {
+      setNotifyMeMap((prev) => new Map(prev).set(classId, "pending"));
+      try {
+        const res = await fetch("/api/notify-spot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ classId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setNotifyMeMap((prev) => new Map(prev).set(classId, data.id));
+        } else {
+          setNotifyMeMap((prev) => { const next = new Map(prev); next.delete(classId); return next; });
+        }
+      } catch {
+        setNotifyMeMap((prev) => { const next = new Map(prev); next.delete(classId); return next; });
+      }
+    }
+  }, [notifyMeMap]);
 
   const { data: allStudios = [], isLoading: loadingStudios } = useQuery<StudioItem[]>({
     queryKey: ["studios"],
@@ -586,6 +637,8 @@ export function ScheduleClient({
                   onCancel={handleCancelBooking}
                   cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null}
                   onTapDiscipline={openDiscipline}
+                  notifyMeSet={notifyMeMap}
+                  onToggleNotifyMe={session?.user ? handleToggleNotifyMe : undefined}
                 />
               </div>
             ))
@@ -780,7 +833,7 @@ export function ScheduleClient({
           {days.map((day) => {
             const dayClasses = getClassesForDay(day);
             return (
-              <DesktopDayColumn key={day.toISOString()} classes={dayClasses} classLinkPrefix={classLinkPrefix} onCancel={handleCancelBooking} cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null} onTapDiscipline={openDiscipline} />
+              <DesktopDayColumn key={day.toISOString()} classes={dayClasses} classLinkPrefix={classLinkPrefix} onCancel={handleCancelBooking} cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null} onTapDiscipline={openDiscipline} notifyMeSet={notifyMeMap} onToggleNotifyMe={session?.user ? handleToggleNotifyMe : undefined} />
             );
           })}
         </div>
@@ -917,12 +970,16 @@ function CollapsiblePastClasses({
   onCancel,
   cancellingId,
   onTapDiscipline,
+  notifyMeSet,
+  onToggleNotifyMe,
 }: {
   classes: ClassWithDetails[];
   classLinkPrefix: string;
   onCancel: (id: string, cls?: ClassWithDetails) => void;
   cancellingId: string | null;
   onTapDiscipline: (cls: ClassWithDetails) => void;
+  notifyMeSet: Map<string, string>;
+  onToggleNotifyMe?: (classId: string) => void;
 }) {
   const pastClasses = classes.filter((c) => isPast(new Date(c.startsAt)));
   const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startsAt)));
@@ -939,6 +996,8 @@ function CollapsiblePastClasses({
             onCancel={onCancel}
             cancellingId={cancellingId}
             onTapDiscipline={onTapDiscipline}
+            isNotifyMe={notifyMeSet.has(cls.id)}
+            onToggleNotifyMe={onToggleNotifyMe}
           />
         ))}
       </div>
@@ -955,6 +1014,8 @@ function CollapsiblePastClasses({
           onCancel={onCancel}
           cancellingId={cancellingId}
           onTapDiscipline={onTapDiscipline}
+          isNotifyMe={notifyMeSet.has(cls.id)}
+          onToggleNotifyMe={onToggleNotifyMe}
         />
       ))}
       <button
@@ -974,6 +1035,8 @@ function CollapsiblePastClasses({
           onCancel={onCancel}
           cancellingId={cancellingId}
           onTapDiscipline={onTapDiscipline}
+          isNotifyMe={notifyMeSet.has(cls.id)}
+          onToggleNotifyMe={onToggleNotifyMe}
         />
       ))}
     </div>
@@ -1013,12 +1076,16 @@ function MobileClassCard({
   onCancel,
   cancellingId,
   onTapDiscipline,
+  isNotifyMe,
+  onToggleNotifyMe,
 }: {
   cls: ClassWithDetails;
   classLinkPrefix?: string;
   onCancel: (id: string, cls?: ClassWithDetails) => void;
   cancellingId: string | null;
   onTapDiscipline: (cls: ClassWithDetails) => void;
+  isNotifyMe?: boolean;
+  onToggleNotifyMe?: (classId: string) => void;
 }) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
@@ -1133,7 +1200,7 @@ function MobileClassCard({
         </div>
 
         {/* Spots / Waitlist / Cancel */}
-        <div className="flex flex-shrink-0 flex-col items-end gap-0.5">
+        <div className="flex flex-shrink-0 flex-col items-end gap-1">
           {!past && myBookingId ? (
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCancel(myBookingId, cls); }}
@@ -1143,9 +1210,29 @@ function MobileClassCard({
               {isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : "Cancelar"}
             </button>
           ) : !past && isFull ? (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-              {hasWaitlist ? "Lista de espera" : "Llena"}
-            </span>
+            <>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                {hasWaitlist ? "Lista de espera" : "Llena"}
+              </span>
+              {onToggleNotifyMe && (
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleNotifyMe(cls.id); }}
+                  className={cn(
+                    "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-all active:scale-95",
+                    isNotifyMe
+                      ? "bg-accent/10 text-accent"
+                      : "bg-surface text-muted hover:text-foreground",
+                  )}
+                >
+                  {isNotifyMe ? (
+                    <BellOff className="h-2.5 w-2.5" />
+                  ) : (
+                    <Bell className="h-2.5 w-2.5" />
+                  )}
+                  {isNotifyMe ? "Avisándote" : "Avísame"}
+                </button>
+              )}
+            </>
           ) : !past && spotsLeft <= 3 ? (
             <span className="text-[11px] font-medium text-rose-500">
               {spotsLeft} {spotsLeft === 1 ? "lugar" : "lugares"}
@@ -1158,7 +1245,7 @@ function MobileClassCard({
 }
 
 /* ── Desktop class card ── */
-function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId, onTapDiscipline }: { classes: ClassWithDetails[]; classLinkPrefix: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null; onTapDiscipline: (cls: ClassWithDetails) => void }) {
+function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId, onTapDiscipline, notifyMeSet, onToggleNotifyMe }: { classes: ClassWithDetails[]; classLinkPrefix: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null; onTapDiscipline: (cls: ClassWithDetails) => void; notifyMeSet: Map<string, string>; onToggleNotifyMe?: (classId: string) => void }) {
   const pastClasses = classes.filter((c) => isPast(new Date(c.startsAt)));
   const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startsAt)));
   const [showPast, setShowPast] = useState(false);
@@ -1167,7 +1254,7 @@ function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId, on
     return (
       <div className="space-y-2">
         {classes.map((cls) => (
-          <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} onTapDiscipline={onTapDiscipline} />
+          <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} onTapDiscipline={onTapDiscipline} isNotifyMe={notifyMeSet.has(cls.id)} onToggleNotifyMe={onToggleNotifyMe} />
         ))}
       </div>
     );
@@ -1176,7 +1263,7 @@ function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId, on
   return (
     <div className="space-y-2">
       {showPast && pastClasses.map((cls) => (
-        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} onTapDiscipline={onTapDiscipline} />
+        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} onTapDiscipline={onTapDiscipline} isNotifyMe={notifyMeSet.has(cls.id)} onToggleNotifyMe={onToggleNotifyMe} />
       ))}
       <button
         onClick={() => setShowPast(!showPast)}
@@ -1186,13 +1273,13 @@ function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId, on
         {showPast ? "Ocultar" : `${pastClasses.length} anterior${pastClasses.length > 1 ? "es" : ""}`}
       </button>
       {upcomingClasses.map((cls) => (
-        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} onTapDiscipline={onTapDiscipline} />
+        <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} onTapDiscipline={onTapDiscipline} isNotifyMe={notifyMeSet.has(cls.id)} onToggleNotifyMe={onToggleNotifyMe} />
       ))}
     </div>
   );
 }
 
-function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellingId, onTapDiscipline }: { cls: ClassWithDetails; classLinkPrefix?: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null; onTapDiscipline: (cls: ClassWithDetails) => void }) {
+function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellingId, onTapDiscipline, isNotifyMe, onToggleNotifyMe }: { cls: ClassWithDetails; classLinkPrefix?: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null; onTapDiscipline: (cls: ClassWithDetails) => void; isNotifyMe?: boolean; onToggleNotifyMe?: (classId: string) => void }) {
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.room?.maxCapacity ?? 0;
@@ -1290,9 +1377,25 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
             {isCancelling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Cancelar"}
           </button>
         ) : !past && isFull ? (
-          <span className="self-start rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold text-amber-700">
-            {hasWaitlist ? "Lista de espera" : "Llena"}
-          </span>
+          <div className="flex flex-col items-start gap-1">
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold text-amber-700">
+              {hasWaitlist ? "Lista de espera" : "Llena"}
+            </span>
+            {onToggleNotifyMe && (
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleNotifyMe(cls.id); }}
+                className={cn(
+                  "flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium transition-all active:scale-95",
+                  isNotifyMe
+                    ? "bg-accent/10 text-accent"
+                    : "bg-surface text-muted hover:text-foreground",
+                )}
+              >
+                {isNotifyMe ? <BellOff className="h-2 w-2" /> : <Bell className="h-2 w-2" />}
+                {isNotifyMe ? "Avisándote" : "Avísame"}
+              </button>
+            )}
+          </div>
         ) : !past && spotsLeft <= 3 ? (
           <span className="text-[10px] font-medium text-rose-500">
             {spotsLeft} {spotsLeft === 1 ? "lugar" : "lugares"}
