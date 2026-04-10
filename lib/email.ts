@@ -308,6 +308,87 @@ export async function sendWaitlistPromotion({
   }
 }
 
+export async function sendSpotAvailable({
+  to,
+  name,
+  className,
+  coachName,
+  date,
+  startTime,
+  location,
+  timezone,
+  classUrl,
+}: {
+  to: string;
+  name: string;
+  className: string;
+  coachName: string;
+  date: Date;
+  startTime: Date;
+  location?: string;
+  timezone?: string;
+  classUrl: string;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:${b.colorAccent}15;line-height:56px;font-size:28px;">&#128276;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ¡Se abrió un lugar!
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          Hola ${name}, se liberó un espacio en la clase que te interesaba.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>Fecha</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Hora</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Coach</strong></td>
+              <td style="padding:3px 0 3px 16px;">${coachName}</td>
+            </tr>
+            ${location ? `<tr>
+              <td style="padding:3px 0;"><strong>Estudio</strong></td>
+              <td style="padding:3px 0 3px 16px;">${location}</td>
+            </tr>` : ""}
+          </table>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:16px;">
+        <a href="${classUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Reservar mi lugar
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        ¡Date prisa! Resérvalo antes de que alguien más lo tome.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `¡Se abrió un lugar en ${className}! — ${formatDate(date)}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send spot available email:", error);
+  }
+}
+
 export async function sendRoleInvitation({
   to,
   role,

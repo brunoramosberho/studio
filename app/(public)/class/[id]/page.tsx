@@ -29,6 +29,8 @@ import {
   ChevronUp,
   ArrowRight,
   CalendarDays,
+  Bell,
+  BellRing,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +94,7 @@ interface ClassData {
   songRequestsEnabled?: boolean;
   songRequestCriteria?: string[];
   myWaitlistEntry?: { id: string; position: number } | null;
+  myNotifyMe?: { id: string } | null;
 }
 
 interface FeedAttendee {
@@ -151,6 +154,9 @@ export default function ClassDetailPage() {
   const [waitlistJoined, setWaitlistJoined] = useState(false);
   const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null);
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
+  const [notifyMeActive, setNotifyMeActive] = useState(false);
+  const [notifyMeId, setNotifyMeId] = useState<string | null>(null);
+  const [togglingNotifyMe, setTogglingNotifyMe] = useState(false);
 
   const [showPeople, setShowPeople] = useState(false);
   const [feedMedia, setFeedMedia] = useState<FeedMediaItem[]>([]);
@@ -284,6 +290,13 @@ export default function ClassDetailPage() {
   }, [cls?.myWaitlistEntry]);
 
   useEffect(() => {
+    if (cls?.myNotifyMe) {
+      setNotifyMeActive(true);
+      setNotifyMeId(cls.myNotifyMe.id);
+    }
+  }, [cls?.myNotifyMe]);
+
+  useEffect(() => {
     if (!bookingSuccess || songRequestChecked || !isAuthenticated) return;
     setSongRequestChecked(true);
     fetch(`/api/classes/${id}/song-request`)
@@ -336,6 +349,10 @@ export default function ClassDetailPage() {
       if (res.ok) {
         setWaitlistJoined(true);
         setWaitlistPosition(data.position ?? data.waitlistCount ?? null);
+        if (notifyMeActive) {
+          setNotifyMeActive(false);
+          setNotifyMeId(null);
+        }
       } else {
         setError(data.error || "No se pudo unir a la lista de espera");
       }
@@ -343,6 +360,37 @@ export default function ClassDetailPage() {
       setError("No se pudo unir a la lista de espera");
     } finally {
       setJoiningWaitlist(false);
+    }
+  }
+
+  async function handleToggleNotifyMe() {
+    setTogglingNotifyMe(true);
+    setError(null);
+    try {
+      if (notifyMeActive && notifyMeId) {
+        const res = await fetch(`/api/notify-spot/${notifyMeId}`, { method: "DELETE" });
+        if (res.ok) {
+          setNotifyMeActive(false);
+          setNotifyMeId(null);
+        }
+      } else {
+        const res = await fetch("/api/notify-spot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ classId: id }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setNotifyMeActive(true);
+          setNotifyMeId(data.id);
+        } else {
+          setError(data.error || "No se pudo activar la notificación");
+        }
+      }
+    } catch {
+      setError("No se pudo procesar tu solicitud");
+    } finally {
+      setTogglingNotifyMe(false);
     }
   }
 
@@ -985,8 +1033,51 @@ export default function ClassDetailPage() {
               </div>
             )}
 
+            {/* Notify-me active state (without waitlist) */}
+            {notifyMeActive && !waitlistJoined && !myBooking && !bookingSuccess && classFull && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent">
+                    <BellRing className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Te avisaremos si se abre un lugar
+                    </p>
+                    <p className="text-xs text-muted">
+                      Recibirás una notificación por push y correo
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted leading-relaxed">
+                  Si se libera un espacio, te avisaremos para que lo reserves antes que alguien más.
+                  No se te descuenta ningún crédito.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleToggleNotifyMe}
+                    disabled={togglingNotifyMe}
+                    className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-muted transition-colors hover:bg-surface hover:text-foreground disabled:opacity-50"
+                  >
+                    {togglingNotifyMe ? "Cancelando..." : "Cancelar notificación"}
+                  </button>
+                  {hasCredits && (
+                    <Button
+                      size="sm"
+                      className="rounded-full"
+                      onClick={handleJoinWaitlist}
+                      disabled={joiningWaitlist}
+                    >
+                      {joiningWaitlist && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                      Unirme a la lista de espera
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* CTA */}
-            {!myBooking && !bookingSuccess && !waitlistJoined && (
+            {!myBooking && !bookingSuccess && !waitlistJoined && !(notifyMeActive && classFull) && (
               <div className="space-y-4">
                 {classFull ? (
                   isAuthenticated ? (
@@ -1022,13 +1113,76 @@ export default function ClassDetailPage() {
                             </span>
                           )}
                         </Button>
+                        {!notifyMeActive ? (
+                          <button
+                            onClick={handleToggleNotifyMe}
+                            disabled={togglingNotifyMe}
+                            className="flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm text-muted transition-colors hover:text-foreground disabled:opacity-50"
+                          >
+                            {togglingNotifyMe ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Bell className="h-3.5 w-3.5" />
+                            )}
+                            Solo avísame si se abre un lugar
+                          </button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2 rounded-full bg-accent/10 py-2.5 text-sm font-medium text-accent">
+                            <BellRing className="h-3.5 w-3.5" />
+                            Te avisaremos si se abre un lugar
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <div className="space-y-3 text-center">
-                        <p className="text-sm text-muted">Clase llena. Necesitas un paquete para unirte a la lista de espera.</p>
-                        <Button asChild size="lg" className="w-full rounded-full">
-                          <Link href="/packages">Ver paquetes</Link>
-                        </Button>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-center gap-2 text-sm">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+                            <Users className="h-3 w-3" />
+                            Clase llena
+                          </span>
+                        </div>
+                        {notifyMeActive ? (
+                          <div className="space-y-2 text-center">
+                            <div className="flex items-center justify-center gap-2 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
+                              <BellRing className="h-4 w-4" />
+                              Te avisaremos si se abre un lugar
+                            </div>
+                            <button
+                              onClick={handleToggleNotifyMe}
+                              disabled={togglingNotifyMe}
+                              className="text-xs text-muted hover:text-foreground transition-colors"
+                            >
+                              Cancelar notificación
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <Button
+                              size="lg"
+                              variant="outline"
+                              className="w-full min-h-[48px] rounded-full gap-2"
+                              onClick={handleToggleNotifyMe}
+                              disabled={togglingNotifyMe}
+                            >
+                              {togglingNotifyMe ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Bell className="h-4 w-4" />
+                              )}
+                              Avísame si se libera un espacio
+                            </Button>
+                            <p className="text-center text-xs text-muted">
+                              Sin compromiso — solo te notificamos si hay lugar.
+                            </p>
+                          </>
+                        )}
+                        <div className="pt-1">
+                          <Button asChild variant="ghost" size="sm" className="w-full rounded-full text-muted">
+                            <Link href="/packages">
+                              Comprar paquete para lista de espera
+                            </Link>
+                          </Button>
+                        </div>
                       </div>
                     )
                   ) : (
@@ -1039,7 +1193,7 @@ export default function ClassDetailPage() {
                           Clase llena
                         </span>
                       </div>
-                      <p className="text-sm text-muted">Inicia sesión para unirte a la lista de espera.</p>
+                      <p className="text-sm text-muted">Inicia sesión para unirte a la lista de espera o recibir una notificación si se abre un lugar.</p>
                       <Button asChild size="lg" className="w-full rounded-full">
                         <Link href="/login">
                           <LogIn className="mr-2 h-4 w-4" />

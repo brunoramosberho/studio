@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { requireAuth, requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
+import { removeSpotNotifyMe } from "@/lib/waitlist";
 
 export async function GET(request: NextRequest) {
   try {
@@ -266,6 +267,10 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    if (session?.user?.id) {
+      removeSpotNotifyMe(classId, session.user.id);
+    }
 
     const recipientEmail = session?.user?.email ?? guestEmail;
     const recipientName = session?.user?.name ?? guestName;

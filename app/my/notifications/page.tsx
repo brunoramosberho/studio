@@ -33,7 +33,10 @@ function getNotificationHref(n: NotificationItem): string | null {
     case "ACHIEVEMENT":
       return "/my/profile";
     case "CLASS_REMINDER":
+    case "WAITLIST_PROMOTED":
       return "/my/bookings";
+    case "SPOT_AVAILABLE":
+      return "/schedule";
     default:
       return null;
   }
@@ -50,6 +53,8 @@ const typeLabels: Record<string, string> = {
   COMMENT: "comentó en tu post",
   ACHIEVEMENT: "desbloqueó un logro",
   CLASS_REMINDER: "Tu clase empieza pronto",
+  WAITLIST_PROMOTED: "¡Entraste a la clase desde la lista de espera!",
+  SPOT_AVAILABLE: "¡Se abrió un lugar en una clase que te interesa!",
 };
 
 function timeAgo(dateStr: string) {

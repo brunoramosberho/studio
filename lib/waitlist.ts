@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
-import { sendPushToUser } from "@/lib/push";
-import { sendWaitlistPromotion } from "@/lib/email";
+import { sendPushToUser, sendPushToMany } from "@/lib/push";
+import { sendWaitlistPromotion, sendSpotAvailable, getTenantBaseUrl } from "@/lib/email";
 
 /**
  * Refund the credit held by a waitlist entry back to the user's package.
@@ -152,5 +152,116 @@ export async function refundAndClearWaitlist(
     await prisma.waitlist.deleteMany({ where: { classId, tenantId } });
   }
 
+  await clearSpotNotifyMe(classId, tenantId);
+
   return entries.length;
+}
+
+/**
+ * Notify all "notify me" subscribers that a spot opened up.
+ * Sends push + email + in-app notification to each subscriber.
+ * Called after a booking cancellation when spots become available.
+ */
+export async function notifySpotWatchers(classId: string, tenantId: string) {
+  const classData = await prisma.class.findUnique({
+    where: { id: classId },
+    include: {
+      room: {
+        select: {
+          maxCapacity: true,
+          studio: {
+            include: { city: { select: { timezone: true } } },
+          },
+        },
+      },
+      _count: {
+        select: {
+          bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
+          blockedSpots: true,
+        },
+      },
+      classType: true,
+      coach: { select: { name: true } },
+    },
+  });
+
+  if (!classData) return;
+
+  const spotsLeft =
+    classData.room.maxCapacity -
+    classData._count.bookings -
+    classData._count.blockedSpots;
+
+  if (spotsLeft <= 0) return;
+
+  const watchers = await prisma.classNotifyMe.findMany({
+    where: { classId, tenantId },
+    include: { user: { select: { id: true, name: true, email: true } } },
+  });
+
+  if (watchers.length === 0) return;
+
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { slug: true },
+  });
+
+  const baseUrl = tenant ? getTenantBaseUrl(tenant.slug) : "";
+  const classUrl = `${baseUrl}/class/${classId}`;
+  const timezone = classData.room.studio?.city?.timezone;
+  const location = classData.room.studio?.name ?? undefined;
+
+  for (const watcher of watchers) {
+    sendPushToUser(
+      watcher.userId,
+      {
+        title: "¡Se abrió un lugar!",
+        body: `Hay espacio en ${classData.classType.name}. ¡Resérvalo antes que alguien más!`,
+        url: `/class/${classId}`,
+        tag: `spot-available-${classId}`,
+      },
+      tenantId,
+    ).catch(() => {});
+
+    if (watcher.user.email) {
+      sendSpotAvailable({
+        to: watcher.user.email,
+        name: watcher.user.name ?? "Hola",
+        className: classData.classType.name,
+        coachName: classData.coach.name,
+        date: classData.startsAt,
+        startTime: classData.startsAt,
+        location,
+        timezone,
+        classUrl,
+      }).catch(() => {});
+    }
+
+    prisma.notification
+      .create({
+        data: {
+          tenantId,
+          userId: watcher.userId,
+          type: "SPOT_AVAILABLE",
+        },
+      })
+      .catch(() => {});
+  }
+}
+
+/**
+ * Delete all "notify me" entries for a class.
+ * Used when a class is cancelled, completed, or starts.
+ */
+export async function clearSpotNotifyMe(classId: string, tenantId: string) {
+  await prisma.classNotifyMe.deleteMany({ where: { classId, tenantId } });
+}
+
+/**
+ * Remove a user's "notify me" entry when they book or join the waitlist.
+ */
+export async function removeSpotNotifyMe(classId: string, userId: string) {
+  await prisma.classNotifyMe
+    .delete({ where: { classId_userId: { classId, userId } } })
+    .catch(() => {});
 }

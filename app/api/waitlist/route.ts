@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
+import { removeSpotNotifyMe } from "@/lib/waitlist";
 
 export async function POST(request: NextRequest) {
   try {
@@ -133,6 +134,8 @@ export async function POST(request: NextRequest) {
         packageUsed: userPackage.id,
       },
     });
+
+    removeSpotNotifyMe(classId, session.user.id);
 
     return NextResponse.json({ ...entry, waitlistCount: position }, { status: 201 });
   } catch (error) {

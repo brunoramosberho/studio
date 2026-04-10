@@ -69,6 +69,7 @@ model Tenant {
   classes           Class[]
   bookings          Booking[]
   waitlists         Waitlist[]
+  spotNotifyMe      ClassNotifyMe[]
   packages          Package[]
   userPackages      UserPackage[]
   rooms             Room[]
@@ -317,6 +318,7 @@ model User {
   accounts     Account[]
   sessions     Session[]
   waitlists    Waitlist[]
+  spotNotifyMe ClassNotifyMe[]
 
   feedEvents           FeedEvent[]      @relation("FeedEventAuthor")
   likes                Like[]           @relation("UserLikes")
@@ -475,6 +477,7 @@ model Class {
   tag         String?
   bookings             Booking[]
   waitlist             Waitlist[]
+  spotNotifyMe         ClassNotifyMe[]
   blockedSpots         BlockedSpot[]
   songRequests         ClassSongRequest[]
   songRequestsEnabled  Boolean   @default(true)
@@ -601,6 +604,21 @@ model Waitlist {
   position    Int
   packageUsed String?
   createdAt   DateTime @default(now())
+
+  @@unique([classId, userId])
+  @@index([classId])
+  @@index([tenantId])
+}
+
+model ClassNotifyMe {
+  id        String   @id @default(cuid())
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
 
   @@unique([classId, userId])
   @@index([classId])

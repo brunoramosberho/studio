@@ -218,12 +218,20 @@ export async function GET(
     }
 
     let myWaitlistEntry: { id: string; position: number } | null = null;
+    let myNotifyMe: { id: string } | null = null;
     if (currentUserId) {
-      const wl = await prisma.waitlist.findUnique({
-        where: { classId_userId: { classId: id, userId: currentUserId } },
-        select: { id: true, position: true },
-      });
+      const [wl, nm] = await Promise.all([
+        prisma.waitlist.findUnique({
+          where: { classId_userId: { classId: id, userId: currentUserId } },
+          select: { id: true, position: true },
+        }),
+        prisma.classNotifyMe.findUnique({
+          where: { classId_userId: { classId: id, userId: currentUserId } },
+          select: { id: true },
+        }),
+      ]);
       if (wl) myWaitlistEntry = wl;
+      if (nm) myNotifyMe = nm;
     }
 
     const coach = {
@@ -231,7 +239,7 @@ export async function GET(
       name: classData.coach.name || classData.coach.user?.name || null,
     };
 
-    return NextResponse.json({ ...classData, coach, bookings, spotsLeft, spotMap, myWaitlistEntry });
+    return NextResponse.json({ ...classData, coach, bookings, spotsLeft, spotMap, myWaitlistEntry, myNotifyMe });
   } catch (error) {
     console.error("GET /api/classes/[id] error:", error);
     return NextResponse.json(

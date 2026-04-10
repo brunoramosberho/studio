@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Loader2, ArrowRight, ShoppingBag, LogIn, Clock, Users } from "lucide-react";
+import { Loader2, ArrowRight, ShoppingBag, LogIn, Clock, Users, Bell, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,8 @@ export function BookingFlow({ classId }: BookingFlowProps) {
   const [waitlistJoined, setWaitlistJoined] = useState(false);
   const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null);
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
+  const [notifyMeActive, setNotifyMeActive] = useState(false);
+  const [togglingNotifyMe, setTogglingNotifyMe] = useState(false);
 
   const { data: classData, isLoading: classLoading } = useQuery<ClassWithDetails>({
     queryKey: ["classes", classId],
@@ -126,6 +128,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
         setIsClassFull(false);
         setWaitlistJoined(true);
         setWaitlistPosition(data.position ?? data.waitlistCount ?? null);
+        setNotifyMeActive(false);
       } else {
         setError(data.error || "No se pudo unir a la lista de espera");
       }
@@ -133,6 +136,28 @@ export function BookingFlow({ classId }: BookingFlowProps) {
       setError("No se pudo unir a la lista de espera");
     } finally {
       setJoiningWaitlist(false);
+    }
+  }
+
+  async function handleToggleNotifyMe() {
+    setTogglingNotifyMe(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/notify-spot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId }),
+      });
+      if (res.ok) {
+        setNotifyMeActive(true);
+      } else {
+        const data = await res.json();
+        setError(data.error || "No se pudo activar la notificación");
+      }
+    } catch {
+      setError("No se pudo activar la notificación");
+    } finally {
+      setTogglingNotifyMe(false);
     }
   }
 
@@ -283,25 +308,50 @@ export function BookingFlow({ classId }: BookingFlowProps) {
               <Skeleton className="h-12 w-full rounded-full" />
             </div>
           ) : validPackages.length === 0 ? (
-            <Card className="rounded-2xl border border-[#C9A96E]/20 bg-[#C9A96E]/5">
-              <CardContent className="p-6 text-center">
-                <ShoppingBag className="mx-auto h-10 w-10 text-[#C9A96E]/50" />
-                <h3 className="mt-3 font-display text-lg font-bold text-foreground">
-                  {classFull
-                    ? "Necesitas un paquete para unirte a la lista de espera"
-                    : "Necesitas un paquete para reservar"}
-                </h3>
-                <p className="mt-1 text-sm text-muted">
-                  Adquiere un paquete de clases para {classFull ? "unirte a la lista de espera" : "reservar tu lugar"}.
-                </p>
-                <Button asChild className="mt-4 w-full" size="lg">
-                  <Link href="/packages">
-                    Ver paquetes
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <Card className="rounded-2xl border border-[#C9A96E]/20 bg-[#C9A96E]/5">
+                <CardContent className="p-6 text-center">
+                  <ShoppingBag className="mx-auto h-10 w-10 text-[#C9A96E]/50" />
+                  <h3 className="mt-3 font-display text-lg font-bold text-foreground">
+                    {classFull
+                      ? "Necesitas un paquete para unirte a la lista de espera"
+                      : "Necesitas un paquete para reservar"}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted">
+                    Adquiere un paquete de clases para {classFull ? "unirte a la lista de espera" : "reservar tu lugar"}.
+                  </p>
+                  <Button asChild className="mt-4 w-full" size="lg">
+                    <Link href="/packages">
+                      Ver paquetes
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+              {classFull && (
+                notifyMeActive ? (
+                  <div className="flex items-center justify-center gap-2 rounded-2xl bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
+                    <BellRing className="h-4 w-4" />
+                    Te avisaremos si se abre un lugar
+                  </div>
+                ) : (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className={cn("w-full min-h-[48px] gap-2")}
+                    onClick={handleToggleNotifyMe}
+                    disabled={togglingNotifyMe}
+                  >
+                    {togglingNotifyMe ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Bell className="h-4 w-4" />
+                    )}
+                    Avísame si se libera un espacio
+                  </Button>
+                )
+              )}
+            </div>
           ) : classFull ? (
             /* --- Waitlist flow --- */
             <div className="space-y-4">
@@ -343,6 +393,25 @@ export function BookingFlow({ classId }: BookingFlowProps) {
                   </span>
                 )}
               </Button>
+              {!notifyMeActive ? (
+                <button
+                  onClick={handleToggleNotifyMe}
+                  disabled={togglingNotifyMe}
+                  className="flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm text-muted transition-colors hover:text-foreground disabled:opacity-50"
+                >
+                  {togglingNotifyMe ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Bell className="h-3.5 w-3.5" />
+                  )}
+                  Solo avísame si se abre un lugar
+                </button>
+              ) : (
+                <div className="flex items-center justify-center gap-2 rounded-full bg-accent/10 py-2.5 text-sm font-medium text-accent">
+                  <BellRing className="h-3.5 w-3.5" />
+                  Te avisaremos si se abre un lugar
+                </div>
+              )}
             </div>
           ) : validPackages.length === 1 ? (
             <Button

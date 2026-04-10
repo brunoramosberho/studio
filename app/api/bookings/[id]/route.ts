@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
-import { promoteFromWaitlist } from "@/lib/waitlist";
+import { promoteFromWaitlist, notifySpotWatchers } from "@/lib/waitlist";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -154,9 +154,9 @@ export async function PUT(
     });
 
     if (status === "CANCELLED") {
-      promoteFromWaitlist(booking.classId, tenant.id).catch((err) =>
-        console.error("Waitlist promotion failed:", err),
-      );
+      promoteFromWaitlist(booking.classId, tenant.id)
+        .then(() => notifySpotWatchers(booking.classId, tenant.id))
+        .catch((err) => console.error("Waitlist promotion / spot notify failed:", err));
     }
 
     if (status === "ATTENDED" && booking.userId) {
@@ -251,9 +251,9 @@ export async function DELETE(
         .catch(() => {});
     }
 
-    promoteFromWaitlist(booking.classId, tenant.id).catch((err) =>
-      console.error("Waitlist promotion failed:", err),
-    );
+    promoteFromWaitlist(booking.classId, tenant.id)
+      .then(() => notifySpotWatchers(booking.classId, tenant.id))
+      .catch((err) => console.error("Waitlist promotion / spot notify failed:", err));
 
     return NextResponse.json(cancelled);
   } catch (error) {
