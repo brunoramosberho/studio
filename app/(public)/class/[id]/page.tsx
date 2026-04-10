@@ -1042,7 +1042,7 @@ export default function ClassDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      Te avisaremos si se abre un lugar
+                      Te notificaremos si se abre un lugar
                     </p>
                     <p className="text-xs text-muted">
                       Recibirás una notificación por push y correo
@@ -1050,7 +1050,7 @@ export default function ClassDetailPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted leading-relaxed">
-                  Si se libera un espacio, te avisaremos para que lo reserves antes que alguien más.
+                  Si se libera un espacio, te notificaremos para que lo reserves antes que alguien más.
                   No se te descuenta ningún crédito.
                 </p>
                 <div className="flex gap-2">
@@ -1124,12 +1124,12 @@ export default function ClassDetailPage() {
                             ) : (
                               <Bell className="h-3.5 w-3.5" />
                             )}
-                            Solo avísame si se abre un lugar
+                            Solo notifícame si se abre un lugar
                           </button>
                         ) : (
                           <div className="flex items-center justify-center gap-2 rounded-full bg-accent/10 py-2.5 text-sm font-medium text-accent">
                             <BellRing className="h-3.5 w-3.5" />
-                            Te avisaremos si se abre un lugar
+                            Te notificaremos si se abre un lugar
                           </div>
                         )}
                       </div>
@@ -1145,7 +1145,7 @@ export default function ClassDetailPage() {
                           <div className="space-y-2 text-center">
                             <div className="flex items-center justify-center gap-2 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
                               <BellRing className="h-4 w-4" />
-                              Te avisaremos si se abre un lugar
+                              Te notificaremos si se abre un lugar
                             </div>
                             <button
                               onClick={handleToggleNotifyMe}
@@ -1169,7 +1169,7 @@ export default function ClassDetailPage() {
                               ) : (
                                 <Bell className="h-4 w-4" />
                               )}
-                              Avísame si se libera un espacio
+                              Notifícame si se libera un espacio
                             </Button>
                             <p className="text-center text-xs text-muted">
                               Sin compromiso — solo te notificamos si hay lugar.

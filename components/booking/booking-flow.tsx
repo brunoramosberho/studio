@@ -340,7 +340,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
                 notifyMeActive ? (
                   <div className="flex items-center justify-center gap-2 rounded-2xl bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
                     <BellRing className="h-4 w-4" />
-                    Te avisaremos si se abre un lugar
+                    Te notificaremos si se abre un lugar
                   </div>
                 ) : (
                   <Button
@@ -355,7 +355,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
                     ) : (
                       <Bell className="h-4 w-4" />
                     )}
-                    Avísame si se libera un espacio
+                    Notifícame si se libera un espacio
                   </Button>
                 )
               )}
@@ -413,12 +413,12 @@ export function BookingFlow({ classId }: BookingFlowProps) {
                   ) : (
                     <Bell className="h-3.5 w-3.5" />
                   )}
-                  Solo avísame si se abre un lugar
+                  Solo notifícame si se abre un lugar
                 </button>
               ) : (
                 <div className="flex items-center justify-center gap-2 rounded-full bg-accent/10 py-2.5 text-sm font-medium text-accent">
                   <BellRing className="h-3.5 w-3.5" />
-                  Te avisaremos si se abre un lugar
+                  Te notificaremos si se abre un lugar
                 </div>
               )}
             </div>

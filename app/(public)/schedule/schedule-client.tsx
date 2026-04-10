@@ -1229,7 +1229,7 @@ function MobileClassCard({
                   ) : (
                     <Bell className="h-2.5 w-2.5" />
                   )}
-                  {isNotifyMe ? "Avisándote" : "Avísame"}
+                  {isNotifyMe ? "Notificado" : "Notifícame"}
                 </button>
               )}
             </>
@@ -1392,7 +1392,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
                 )}
               >
                 {isNotifyMe ? <BellOff className="h-2 w-2" /> : <Bell className="h-2 w-2" />}
-                {isNotifyMe ? "Avisándote" : "Avísame"}
+                {isNotifyMe ? "Notificado" : "Notifícame"}
               </button>
             )}
           </div>
