@@ -7,22 +7,24 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
-  CheckCircle2,
-  Sparkles,
+  Clock,
+  CreditCard,
   Gift,
   Layers,
   CalendarSync,
   Ticket,
-  Share,
+  Share2,
   Check,
-  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/shared/page-transition";
 import { PurchaseSheet } from "@/components/booking/purchase-sheet";
-import { formatCurrency, cn } from "@/lib/utils";
+import { SubscribeSheet } from "@/components/checkout/SubscribeSheet";
+import { useBranding } from "@/components/branding-provider";
+import { formatCurrency } from "@/lib/utils";
 
 interface ClassTypeRef {
   id: string;
@@ -45,56 +47,31 @@ interface PackageData {
   sortOrder: number;
 }
 
-function buildFeatures(pkg: PackageData): string[] {
-  const features: string[] = [];
+const TYPE_META: Record<
+  PackageData["type"],
+  { label: string; icon: typeof Gift }
+> = {
+  OFFER: { label: "Oferta", icon: Gift },
+  PACK: { label: "Paquete de clases", icon: Layers },
+  SUBSCRIPTION: { label: "Suscripción", icon: CalendarSync },
+};
 
-  if (pkg.credits) {
-    const perClass = formatCurrency(
-      Math.round(pkg.price / pkg.credits),
-      pkg.currency
-    );
-    features.push(
-      `${pkg.credits} ${pkg.credits === 1 ? "clase" : "clases"} (${perClass} c/u)`
-    );
-  } else {
-    features.push("Clases ilimitadas");
+function validDaysLabel(days: number): string {
+  if (days <= 7) return `${days} días`;
+  if (days <= 31) return `${Math.round(days / 7)} semana${Math.round(days / 7) > 1 ? "s" : ""}`;
+  if (days <= 365) {
+    const months = Math.round(days / 30);
+    return `${months} ${months === 1 ? "mes" : "meses"}`;
   }
-
-  features.push(`Válido por ${pkg.validDays} días`);
-
-  if (pkg.classTypes.length > 0) {
-    features.push(pkg.classTypes.map((c) => c.name).join(", "));
-  } else {
-    features.push("Cualquier disciplina");
-  }
-
-  if (pkg.type === "SUBSCRIPTION") {
-    features.push(
-      pkg.recurringInterval === "year"
-        ? "Renovación anual"
-        : "Renovación mensual"
-    );
-  }
-
-  return features;
+  const years = Math.round(days / 365);
+  return `${years} año${years > 1 ? "s" : ""}`;
 }
-
-const TYPE_ICON = {
-  OFFER: Gift,
-  PACK: Layers,
-  SUBSCRIPTION: CalendarSync,
-};
-
-const TYPE_LABEL = {
-  OFFER: "Oferta",
-  PACK: "Paquete",
-  SUBSCRIPTION: "Suscripción",
-};
 
 export default function PackageDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
+  const { studioName, logoUrl, appIconUrl } = useBranding();
   const isLoggedIn = authStatus === "authenticated";
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -111,25 +88,6 @@ export default function PackageDetailPage() {
     enabled: !!id,
   });
 
-  const { data: myPackages = [] } = useQuery<
-    { id: string; creditsTotal: number | null; creditsUsed: number; expiresAt: string }[]
-  >({
-    queryKey: ["packages", "mine"],
-    queryFn: async () => {
-      const res = await fetch("/api/packages/mine");
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: isLoggedIn,
-  });
-
-  const activeCredits = myPackages
-    .filter((p) => new Date(p.expiresAt).getTime() > Date.now())
-    .reduce((sum, p) => {
-      if (p.creditsTotal === null) return Infinity;
-      return sum + Math.max(0, (p.creditsTotal ?? 0) - p.creditsUsed);
-    }, 0);
-
   function handleShare() {
     const url = window.location.href;
     if (navigator.share) {
@@ -143,10 +101,14 @@ export default function PackageDetailPage() {
 
   if (isLoading || authStatus === "loading") {
     return (
-      <div className="mx-auto max-w-lg px-4 py-12">
-        <Skeleton className="mb-4 h-8 w-32" />
-        <Skeleton className="mb-8 h-6 w-48" />
-        <Skeleton className="h-96 rounded-2xl" />
+      <div className="mx-auto max-w-lg px-4 py-8">
+        <Skeleton className="mb-6 h-5 w-20" />
+        <Skeleton className="mb-2 h-4 w-32" />
+        <Skeleton className="mb-6 h-10 w-64" />
+        <Skeleton className="mb-3 h-5 w-48" />
+        <Skeleton className="mb-3 h-5 w-36" />
+        <Skeleton className="mb-8 h-16 w-full rounded-2xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     );
   }
@@ -172,164 +134,211 @@ export default function PackageDetailPage() {
     );
   }
 
-  const features = buildFeatures(pkg);
-  const Icon = TYPE_ICON[pkg.type];
+  const meta = TYPE_META[pkg.type];
+  const Icon = meta.icon;
+  const studioIcon = appIconUrl || logoUrl;
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-lg px-4 py-8 sm:py-16">
-        {/* Back */}
-        <Link
-          href="/packages"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Todos los paquetes
-        </Link>
-
-        {/* Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className={cn(
-            "relative overflow-hidden rounded-2xl border bg-white p-8",
-            pkg.isPromo && "border-2 border-dashed border-accent/40"
-          )}
-        >
-          {pkg.isPromo && (
-            <div className="absolute -top-0 right-4 rounded-b-lg bg-accent/10 px-3 py-1">
-              <span className="flex items-center gap-1 text-[11px] font-semibold text-accent">
-                <Gift className="h-3 w-3" />
-                Primera vez
-              </span>
-            </div>
-          )}
-
-          {/* Type badge */}
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
-              <Icon className="h-4 w-4 text-accent" />
-            </div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-accent">
-              {TYPE_LABEL[pkg.type]}
-            </span>
-          </div>
-
-          {/* Name & description */}
-          {pkg.description && (
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-accent">
-              {pkg.description}
-            </p>
-          )}
-          <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
-            {pkg.name}
-          </h1>
-
-          {/* Price */}
-          <div className="mt-4 mb-6">
-            <span className="font-mono text-4xl font-medium text-foreground">
-              {formatCurrency(pkg.price, pkg.currency)}
-            </span>
-            {pkg.credits && (
-              <span className="ml-2 text-base text-muted">
-                / {pkg.credits} {pkg.credits === 1 ? "clase" : "clases"}
-              </span>
-            )}
-            {pkg.type === "SUBSCRIPTION" && (
-              <span className="ml-2 text-base text-muted">
-                / {pkg.recurringInterval === "year" ? "año" : "mes"}
-              </span>
-            )}
-          </div>
-
-          {/* Features */}
-          <ul className="space-y-3 border-t border-border/40 pt-6">
-            {features.map((feature) => (
-              <li
-                key={feature}
-                className="flex items-start gap-2.5 text-sm text-muted"
-              >
-                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
-                {feature}
-              </li>
-            ))}
-          </ul>
-
-          {/* CTA */}
-          <div className="mt-8 space-y-3">
-            <Button
-              className="w-full rounded-full text-base py-6"
-              onClick={() => setSheetOpen(true)}
-            >
-              {pkg.isPromo
-                ? "Probar ahora"
-                : pkg.type === "SUBSCRIPTION"
-                  ? "Suscribirme"
-                  : `Comprar por ${formatCurrency(pkg.price, pkg.currency)}`}
-            </Button>
-
-            <button
-              onClick={handleShare}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-3 text-sm font-medium text-muted transition-colors hover:bg-surface"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4 text-emerald-500" />
-                  Link copiado
-                </>
-              ) : (
-                <>
-                  <Share className="h-4 w-4" />
-                  Compartir
-                </>
-              )}
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Active credits */}
-        {isLoggedIn && activeCredits > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="mt-4 flex items-center justify-center gap-2 rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3"
+      <div className="mx-auto max-w-lg">
+        {/* Top bar */}
+        <div className="sticky top-0 z-10 flex items-center justify-between bg-background/80 px-4 py-3 backdrop-blur-lg sm:relative sm:bg-transparent sm:px-0 sm:py-8 sm:backdrop-blur-none">
+          <button
+            onClick={() => router.back()}
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface"
           >
-            <Ticket className="h-4 w-4 text-accent" />
-            <span className="text-sm text-foreground">
-              Ya tienes{" "}
-              <span className="font-bold text-accent">
-                {activeCredits === Infinity
-                  ? "créditos ilimitados"
-                  : `${activeCredits} crédito${activeCredits !== 1 ? "s" : ""}`}
+            <ArrowLeft className="h-5 w-5 text-foreground" />
+          </button>
+          <button
+            onClick={handleShare}
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface"
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-green-600" />
+            ) : (
+              <Share2 className="h-4 w-4 text-muted" />
+            )}
+          </button>
+        </div>
+
+        <div className="px-4 sm:px-0">
+          {/* Type label */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              {meta.label}
+            </p>
+
+            {/* Name */}
+            <h1 className="mt-1.5 font-display text-2xl font-bold leading-tight text-foreground sm:text-3xl">
+              {pkg.name}
+            </h1>
+          </motion.div>
+
+          {/* Info pills */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className="mt-4 space-y-2.5"
+          >
+            <div className="flex items-center gap-2.5 text-sm text-muted">
+              <Clock className="h-4 w-4 flex-shrink-0" />
+              <span>
+                {pkg.type === "SUBSCRIPTION"
+                  ? `Renovación ${pkg.recurringInterval === "year" ? "anual" : "mensual"}`
+                  : `Caduca despues de ${validDaysLabel(pkg.validDays)}`}
               </span>
+            </div>
+            <div className="flex items-center gap-2.5 text-sm text-muted">
+              <CreditCard className="h-4 w-4 flex-shrink-0" />
+              <span>
+                {formatCurrency(pkg.price, pkg.currency)}
+                {pkg.type === "SUBSCRIPTION" && (
+                  <span> / {pkg.recurringInterval === "year" ? "año" : "mes"}</span>
+                )}
+              </span>
+            </div>
+            {pkg.credits && (
+              <div className="flex items-center gap-2.5 text-sm text-muted">
+                <Ticket className="h-4 w-4 flex-shrink-0" />
+                <span>
+                  {pkg.credits} {pkg.credits === 1 ? "crédito de clase" : "créditos de clase"}
+                </span>
+              </div>
+            )}
+            {!pkg.credits && (
+              <div className="flex items-center gap-2.5 text-sm text-muted">
+                <Ticket className="h-4 w-4 flex-shrink-0" />
+                <span>Clases ilimitadas</span>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Studio branding row */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="mt-6 flex items-center gap-3 rounded-2xl border border-border/50 px-4 py-3"
+          >
+            {studioIcon ? (
+              <img
+                src={studioIcon}
+                alt={studioName}
+                className="h-9 w-9 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
+                <Icon className="h-4 w-4 text-accent" />
+              </div>
+            )}
+            <span className="text-sm font-medium text-foreground">
+              {studioName}
             </span>
           </motion.div>
-        )}
 
-        {/* Help */}
+          {/* Description */}
+          {pkg.description && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.15 }}
+              className="mt-8"
+            >
+              <h2 className="font-display text-base font-bold text-foreground">
+                Descripción
+              </h2>
+              <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted">
+                {pkg.description}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Class types */}
+          {pkg.classTypes.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+              className="mt-6"
+            >
+              <h2 className="font-display text-base font-bold text-foreground">
+                Válido para
+              </h2>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {pkg.classTypes.map((ct) => (
+                  <Badge key={ct.id} variant="secondary">
+                    {ct.name}
+                  </Badge>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {pkg.classTypes.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+              className="mt-6 text-sm text-muted"
+            >
+              Válido para cualquier disciplina
+            </motion.div>
+          )}
+
+          {/* Promo badge */}
+          {pkg.isPromo && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25 }}
+              className="mt-6 text-xs font-medium text-muted"
+            >
+              *Máximo 1 uso por persona*
+            </motion.div>
+          )}
+        </div>
+
+        {/* CTA */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 rounded-2xl bg-surface/80 p-6 text-center"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.25 }}
+          className="mt-8 px-4 sm:px-0"
         >
-          <Sparkles className="mx-auto mb-2 h-6 w-6 text-accent" />
-          <p className="text-sm text-muted">
-            ¿Tienes dudas? Escríbenos y te ayudamos a elegir.
-          </p>
+          <Button
+            size="lg"
+            className="w-full rounded-full py-6 text-base"
+            onClick={() => setSheetOpen(true)}
+          >
+            {pkg.type === "SUBSCRIPTION"
+              ? `Suscribirme por ${formatCurrency(pkg.price, pkg.currency)}/${pkg.recurringInterval === "year" ? "año" : "mes"}`
+              : pkg.isPromo
+                ? "Probar ahora"
+                : `Comprar por ${formatCurrency(pkg.price, pkg.currency)}`}
+          </Button>
         </motion.div>
       </div>
 
+      {/* Purchase / Subscribe Sheet */}
       <AnimatePresence>
-        {sheetOpen && pkg && (
+        {sheetOpen && pkg && pkg.type === "SUBSCRIPTION" ? (
+          <SubscribeSheet
+            open={sheetOpen}
+            onClose={() => setSheetOpen(false)}
+            pkg={pkg}
+          />
+        ) : sheetOpen && pkg ? (
           <PurchaseSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}
             pkg={pkg as any}
           />
-        )}
+        ) : null}
       </AnimatePresence>
     </PageTransition>
   );

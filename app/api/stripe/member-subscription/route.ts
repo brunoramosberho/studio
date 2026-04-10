@@ -19,10 +19,13 @@ export async function GET() {
           select: {
             id: true,
             name: true,
+            description: true,
             price: true,
             currency: true,
             recurringInterval: true,
             credits: true,
+            validDays: true,
+            classTypes: { select: { id: true, name: true } },
           },
         },
       },

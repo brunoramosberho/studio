@@ -10,6 +10,7 @@ import {
   ArrowRight,
   CalendarSync,
   ChevronLeft,
+  ChevronRight,
   Loader2,
   Pause,
   XCircle,
@@ -36,10 +37,13 @@ interface MemberSub {
   package: {
     id: string;
     name: string;
+    description: string | null;
     price: number;
     currency: string;
     recurringInterval: string | null;
     credits: number | null;
+    validDays: number;
+    classTypes: { id: string; name: string }[];
   };
 }
 
@@ -71,8 +75,6 @@ export default function PackagesPage() {
   const [packages, setPackages] = useState<UserPackageWithDetails[]>([]);
   const [subscriptions, setSubscriptions] = useState<MemberSub[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cancelingId, setCancelingId] = useState<string | null>(null);
-  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
   const [renewSub, setRenewSub] = useState<MemberSub | null>(null);
 
   useEffect(() => {
@@ -87,49 +89,6 @@ export default function PackagesPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
-
-  async function handleCancel(sub: MemberSub) {
-    if (!confirm("¿Cancelar suscripción? Seguirás teniendo acceso hasta el fin del periodo actual.")) return;
-    setCancelingId(sub.stripeSubscriptionId);
-    try {
-      const res = await fetch("/api/stripe/member-subscription", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId: sub.stripeSubscriptionId }),
-      });
-      if (res.ok) {
-        setSubscriptions((prev) =>
-          prev.map((s) =>
-            s.stripeSubscriptionId === sub.stripeSubscriptionId
-              ? { ...s, cancelAtPeriodEnd: true }
-              : s,
-          ),
-        );
-      }
-    } catch {}
-    setCancelingId(null);
-  }
-
-  async function handleReactivate(sub: MemberSub) {
-    setReactivatingId(sub.stripeSubscriptionId);
-    try {
-      const res = await fetch("/api/stripe/member-subscription", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId: sub.stripeSubscriptionId }),
-      });
-      if (res.ok) {
-        setSubscriptions((prev) =>
-          prev.map((s) =>
-            s.stripeSubscriptionId === sub.stripeSubscriptionId
-              ? { ...s, cancelAtPeriodEnd: false }
-              : s,
-          ),
-        );
-      }
-    } catch {}
-    setReactivatingId(null);
-  }
 
   const now = Date.now();
   const active = packages.filter((p) => {
@@ -146,6 +105,60 @@ export default function PackagesPage() {
   const canceledSubs = subscriptions.filter((s) => s.status === "canceled");
   const hasContent = packages.length > 0 || subscriptions.length > 0;
 
+  function renderSubscriptionCard(sub: MemberSub, isCanceled: boolean) {
+    const badge = STATUS_LABEL[sub.status] ?? { text: sub.status, variant: "secondary" as const };
+    const periodEnd = new Date(sub.currentPeriodEnd).toLocaleDateString("es-ES", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    const interval = sub.package.recurringInterval === "year" ? "año" : "mes";
+
+    return (
+      <motion.div key={sub.id} variants={fadeUp}>
+        <Link href={`/my/membership/${sub.id}`}>
+          <Card className={`transition-all active:scale-[0.98] ${isCanceled ? "opacity-50 hover:opacity-80" : "hover:shadow-warm-sm"}`}>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={isCanceled ? "danger" : badge.variant}>
+                      {isCanceled ? "Cancelada" : badge.text}
+                    </Badge>
+                    {sub.cancelAtPeriodEnd && sub.status !== "canceled" && (
+                      <Badge variant="warning">Cancela {new Date(sub.currentPeriodEnd).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</Badge>
+                    )}
+                  </div>
+                  <CardTitle className="mt-2 truncate">{sub.package.name}</CardTitle>
+                  <p className="mt-1 text-sm text-muted">
+                    {formatCurrency(sub.package.price, sub.package.currency)}/{interval}
+                  </p>
+                </div>
+                <ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-muted/40" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {sub.status === "paused" && sub.resumesAt && (
+                <div className="mb-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  <Pause className="h-4 w-4" />
+                  Pausada — reanuda el{" "}
+                  {new Date(sub.resumesAt).toLocaleDateString("es-ES", { day: "numeric", month: "long" })}
+                </div>
+              )}
+              <p className="text-xs text-muted">
+                {isCanceled
+                  ? `Finalizó el ${periodEnd}`
+                  : sub.cancelAtPeriodEnd
+                    ? `Acceso hasta: ${periodEnd}`
+                    : `Renueve ${periodEnd}`}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+      </motion.div>
+    );
+  }
+
   function renderPackageCard(pkg: UserPackageWithDetails, isExpired: boolean) {
     const remaining = pkg.creditsTotal !== null
       ? pkg.creditsTotal - pkg.creditsUsed
@@ -159,72 +172,74 @@ export default function PackagesPage() {
 
     return (
       <motion.div key={pkg.id} variants={fadeUp}>
-        <Card className={isExpired ? "opacity-50" : ""}>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <Badge variant={isExpired ? "secondary" : "success"}>
-                  {noCreditsLeft && !dateExpired ? "Sin créditos" : isExpired ? "Expirado" : "Activo"}
-                </Badge>
-                <CardTitle className="mt-2">{pkg.package.name}</CardTitle>
-                {pkg.package.description && (
-                  <CardDescription className="mt-1">
-                    {pkg.package.description}
-                  </CardDescription>
-                )}
-                {(pkg.package as any).classTypes?.length > 0 && (
-                  <p className="mt-1.5 text-xs text-muted">
-                    Válido para: {(pkg.package as any).classTypes.map((ct: { name: string }) => ct.name).join(", ")}
-                  </p>
-                )}
+        <Link href={`/my/membership/${pkg.id}`}>
+          <Card className={`transition-all active:scale-[0.98] ${isExpired ? "opacity-50 hover:opacity-80" : "hover:shadow-warm-sm"}`}>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="min-w-0 flex-1">
+                  <Badge variant={isExpired ? "secondary" : "success"}>
+                    {noCreditsLeft && !dateExpired ? "Sin créditos" : isExpired ? "Expirado" : "Activo"}
+                  </Badge>
+                  <CardTitle className="mt-2 truncate">{pkg.package.name}</CardTitle>
+                  {pkg.package.description && (
+                    <CardDescription className="mt-1 line-clamp-1">
+                      {pkg.package.description}
+                    </CardDescription>
+                  )}
+                  {(pkg.package as any).classTypes?.length > 0 && (
+                    <p className="mt-1.5 text-xs text-muted">
+                      Válido para: {(pkg.package as any).classTypes.map((ct: { name: string }) => ct.name).join(", ")}
+                    </p>
+                  )}
+                </div>
+                <ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-muted/40" />
               </div>
-              <Package className="h-5 w-5 text-muted/30" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end justify-between">
-              <div>
-                {pkg.creditsTotal === null ? (
-                  <div className="flex items-center gap-2">
-                    <InfinityIcon className="h-6 w-6 text-accent" />
-                    <p className="font-mono text-2xl font-bold text-accent">
-                      Ilimitado
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end justify-between">
+                <div>
+                  {pkg.creditsTotal === null ? (
+                    <div className="flex items-center gap-2">
+                      <InfinityIcon className="h-6 w-6 text-accent" />
+                      <p className="font-mono text-2xl font-bold text-accent">
+                        Ilimitado
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="font-mono text-3xl font-bold text-foreground">
+                        {remaining}
+                        <span className="text-lg text-muted">
+                          /{pkg.creditsTotal}
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted">créditos restantes</p>
+                    </>
+                  )}
+                </div>
+                {!isExpired && (
+                  <div className="text-right">
+                    <p className="font-mono text-sm font-bold text-foreground">
+                      {days}
+                    </p>
+                    <p className="text-[10px] text-muted">
+                      {days === 1 ? "día restante" : "días restantes"}
                     </p>
                   </div>
-                ) : (
-                  <>
-                    <p className="font-mono text-3xl font-bold text-foreground">
-                      {remaining}
-                      <span className="text-lg text-muted">
-                        /{pkg.creditsTotal}
-                      </span>
-                    </p>
-                    <p className="text-xs text-muted">créditos restantes</p>
-                  </>
                 )}
               </div>
-              {!isExpired && (
-                <div className="text-right">
-                  <p className="font-mono text-sm font-bold text-foreground">
-                    {days}
-                  </p>
-                  <p className="text-[10px] text-muted">
-                    {days === 1 ? "día restante" : "días restantes"}
-                  </p>
+
+              {pkg.creditsTotal !== null && (
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all"
+                    style={{ width: `${isExpired ? 0 : progress}%` }}
+                  />
                 </div>
               )}
-            </div>
-
-            {pkg.creditsTotal !== null && (
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface">
-                <div
-                  className="h-full rounded-full bg-accent transition-all"
-                  style={{ width: `${isExpired ? 0 : progress}%` }}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
       </motion.div>
     );
   }
@@ -279,88 +294,7 @@ export default function PackagesPage() {
             animate="show"
           >
             {/* Active subscriptions */}
-            {activeSubs.map((sub) => {
-              const badge = STATUS_LABEL[sub.status] ?? { text: sub.status, variant: "secondary" as const };
-              const periodEnd = new Date(sub.currentPeriodEnd).toLocaleDateString("es-ES", {
-                day: "numeric",
-                month: "long",
-              });
-              const interval = sub.package.recurringInterval === "year" ? "año" : "mes";
-
-              return (
-                <motion.div key={sub.id} variants={fadeUp}>
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={badge.variant}>{badge.text}</Badge>
-                            {sub.cancelAtPeriodEnd && sub.status !== "canceled" && (
-                              <Badge variant="warning">Cancela {periodEnd}</Badge>
-                            )}
-                          </div>
-                          <CardTitle className="mt-2">{sub.package.name}</CardTitle>
-                          <p className="mt-1 text-sm text-muted">
-                            {formatCurrency(sub.package.price, sub.package.currency)}/{interval}
-                          </p>
-                        </div>
-                        <CalendarSync className="h-5 w-5 text-muted/30" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {sub.status === "paused" && sub.resumesAt && (
-                        <div className="mb-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                          <Pause className="h-4 w-4" />
-                          Pausada — reanuda el{" "}
-                          {new Date(sub.resumesAt).toLocaleDateString("es-ES", {
-                            day: "numeric",
-                            month: "long",
-                          })}
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted">
-                          {sub.cancelAtPeriodEnd
-                            ? `Acceso hasta: ${periodEnd}`
-                            : `Próxima renovación: ${periodEnd}`}
-                        </p>
-                        {sub.cancelAtPeriodEnd && sub.status !== "canceled" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={reactivatingId === sub.stripeSubscriptionId}
-                            onClick={() => handleReactivate(sub)}
-                          >
-                            {reactivatingId === sub.stripeSubscriptionId ? (
-                              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-                            ) : (
-                              <RefreshCw className="mr-1.5 h-3 w-3" />
-                            )}
-                            Reactivar
-                          </Button>
-                        ) : !sub.cancelAtPeriodEnd && sub.status !== "canceled" && sub.status !== "paused" ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            disabled={cancelingId === sub.stripeSubscriptionId}
-                            onClick={() => handleCancel(sub)}
-                          >
-                            {cancelingId === sub.stripeSubscriptionId ? (
-                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            ) : (
-                              <XCircle className="mr-1 h-3 w-3" />
-                            )}
-                            Cancelar
-                          </Button>
-                        ) : null}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
+            {activeSubs.map((sub) => renderSubscriptionCard(sub, false))}
 
             {/* Active packages */}
             {active.map((p) => renderPackageCard(p, false))}
@@ -372,47 +306,7 @@ export default function PackagesPage() {
                   Expirados
                 </p>
 
-                {canceledSubs.map((sub) => {
-                  const interval = sub.package.recurringInterval === "year" ? "año" : "mes";
-                  return (
-                    <motion.div key={sub.id} variants={fadeUp}>
-                      <Card className="opacity-50 hover:opacity-80 transition-opacity">
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <Badge variant="danger">Cancelada</Badge>
-                              <CardTitle className="mt-2">{sub.package.name}</CardTitle>
-                              <p className="mt-1 text-sm text-muted">
-                                {formatCurrency(sub.package.price, sub.package.currency)}/{interval}
-                              </p>
-                            </div>
-                            <CalendarSync className="h-5 w-5 text-muted/30" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs text-muted">
-                              Finalizó el{" "}
-                              {new Date(sub.currentPeriodEnd).toLocaleDateString("es-ES", {
-                                day: "numeric",
-                                month: "long",
-                              })}
-                            </p>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setRenewSub(sub)}
-                            >
-                              <RefreshCw className="mr-1.5 h-3 w-3" />
-                              Renovar
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-
+                {canceledSubs.map((sub) => renderSubscriptionCard(sub, true))}
                 {expired.map((p) => renderPackageCard(p, true))}
               </>
             )}

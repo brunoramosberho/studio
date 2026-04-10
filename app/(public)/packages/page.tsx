@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -12,6 +13,7 @@ import {
   Ticket,
   Layers,
   CalendarSync,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,26 +59,39 @@ const TABS: { type: TabType; label: string; icon: typeof Gift }[] = [
   { type: "SUBSCRIPTION", label: "Suscripciones", icon: CalendarSync },
 ];
 
+function validDaysShort(days: number): string {
+  if (days <= 7) return `${days} días`;
+  if (days <= 31) {
+    const w = Math.round(days / 7);
+    return `${w} sem`;
+  }
+  if (days <= 365) {
+    const m = Math.round(days / 30);
+    return `${m} ${m === 1 ? "mes" : "meses"}`;
+  }
+  const y = Math.round(days / 365);
+  return `${y} año${y > 1 ? "s" : ""}`;
+}
+
 function buildFeatures(pkg: PackageData): string[] {
   const features: string[] = [];
 
   if (pkg.credits) {
-    const perClass = formatCurrency(Math.round(pkg.price / pkg.credits), pkg.currency);
-    features.push(`${pkg.credits} ${pkg.credits === 1 ? "clase" : "clases"} (${perClass} c/u)`);
+    features.push(`${pkg.credits} ${pkg.credits === 1 ? "clase" : "clases"}`);
   } else {
     features.push("Clases ilimitadas");
   }
 
-  features.push(`Válido por ${pkg.validDays} días`);
+  if (pkg.type === "SUBSCRIPTION") {
+    features.push(pkg.recurringInterval === "year" ? "Renovación anual" : "Renovación mensual");
+  } else {
+    features.push(`Válido por ${validDaysShort(pkg.validDays)}`);
+  }
 
   if (pkg.classTypes.length > 0) {
     features.push(pkg.classTypes.map((c) => c.name).join(", "));
   } else {
     features.push("Cualquier disciplina");
-  }
-
-  if (pkg.type === "SUBSCRIPTION") {
-    features.push(pkg.recurringInterval === "year" ? "Renovación anual" : "Renovación mensual");
   }
 
   return features;
@@ -145,7 +160,9 @@ export default function PackagesPage() {
     [visiblePackages, currentTab],
   );
 
-  function handleBuy(pkg: PackageData) {
+  function handleBuy(e: React.MouseEvent, pkg: PackageData) {
+    e.preventDefault();
+    e.stopPropagation();
     setSelectedPkg(pkg);
     setSheetOpen(true);
   }
@@ -242,9 +259,10 @@ export default function PackagesPage() {
 
               return (
                 <motion.div key={pkg.id} variants={fadeUp}>
-                  <div
+                  <Link
+                    href={`/packages/${pkg.id}`}
                     className={cn(
-                      "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-4 sm:p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-warm-md",
+                      "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-4 sm:p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-warm-md active:scale-[0.98]",
                       pkg.isPromo && "border-2 border-dashed border-accent/40",
                     )}
                   >
@@ -258,11 +276,13 @@ export default function PackagesPage() {
                     )}
 
                     <div className="mb-3 sm:mb-4">
-                      {pkg.description && (
-                        <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wider text-accent sm:mb-1 sm:text-[11px]">
-                          {pkg.description}
-                        </p>
-                      )}
+                      <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wider text-muted sm:mb-1 sm:text-[11px]">
+                        {pkg.type === "OFFER"
+                          ? "Oferta"
+                          : pkg.type === "SUBSCRIPTION"
+                            ? "Suscripción"
+                            : "Paquete"}
+                      </p>
                       <h3 className="font-display text-lg font-bold text-foreground sm:text-xl">
                         {pkg.name}
                       </h3>
@@ -296,10 +316,10 @@ export default function PackagesPage() {
                       ))}
                     </ul>
 
-                    <div className="mt-4 sm:mt-6">
+                    <div className="mt-4 flex items-center gap-2 sm:mt-6">
                       <Button
-                        className="w-full rounded-full"
-                        onClick={() => handleBuy(pkg)}
+                        className="flex-1 rounded-full"
+                        onClick={(e) => handleBuy(e, pkg)}
                       >
                         {pkg.isPromo
                           ? "Probar ahora"
@@ -307,8 +327,11 @@ export default function PackagesPage() {
                             ? "Suscribirme"
                             : `Comprar por ${formatCurrency(pkg.price, pkg.currency)}`}
                       </Button>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/50 text-muted transition-colors sm:hidden">
+                        <ChevronRight className="h-4 w-4" />
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 </motion.div>
               );
             })}
