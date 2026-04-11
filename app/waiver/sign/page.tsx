@@ -115,7 +115,7 @@ export default function WaiverSignPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-stone-50">
+      <div className="flex h-dvh items-center justify-center bg-stone-50">
         <Loader2 size={24} className="animate-spin text-stone-400" />
       </div>
     );
@@ -123,7 +123,7 @@ export default function WaiverSignPage() {
 
   if (!waiver) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-stone-50 px-6 text-center">
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-stone-50 px-6 text-center">
         <Check size={40} className="text-emerald-500" />
         <p className="text-base font-medium text-stone-700">
           No hay waiver pendiente
@@ -143,7 +143,7 @@ export default function WaiverSignPage() {
   // ─── STEP: Intro ────────────────────────────────────────
   if (step === "intro") {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center bg-stone-50 px-6 text-center">
+      <div className="flex h-dvh flex-col items-center justify-center bg-stone-50 px-6 text-center">
         <div className="mb-8">
           {logoUrl ? (
             <Image
@@ -183,20 +183,22 @@ export default function WaiverSignPage() {
   if (step === "read") {
     const skipScroll = !waiver.requireScrollRead;
     return (
-      <div className="flex min-h-dvh flex-col bg-stone-50">
+      <div className="flex h-dvh flex-col overflow-hidden bg-stone-50">
         {/* Fixed header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-stone-100 bg-white/90 px-5 py-3 backdrop-blur-sm">
-          <span className="text-sm font-medium text-stone-800">
-            {studioName}
-          </span>
-          <span className="text-xs text-stone-400">1 de 2</span>
+        <div className="shrink-0 border-b border-stone-100 bg-white/90 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-stone-800">
+              {studioName}
+            </span>
+            <span className="text-xs text-stone-400">1 de 2</span>
+          </div>
         </div>
 
         {/* Scrollable content */}
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-5 py-6"
+          className="min-h-0 flex-1 overflow-y-auto px-5 py-6"
         >
           <h2 className="mb-4 text-lg font-semibold text-stone-800">
             {waiver.title}
@@ -208,7 +210,7 @@ export default function WaiverSignPage() {
         </div>
 
         {/* Fixed footer */}
-        <div className="sticky bottom-0 border-t border-stone-100 bg-white px-5 py-4 safe-bottom">
+        <div className="shrink-0 border-t border-stone-100 bg-white px-5 py-4 safe-bottom">
           {!skipScroll && !hasScrolled && (
             <p className="mb-2 text-center text-xs text-stone-400">
               Desliza para leer todo el documento
@@ -230,22 +232,24 @@ export default function WaiverSignPage() {
   // ─── STEP: Sign ─────────────────────────────────────────
   if (step === "sign") {
     return (
-      <div className="flex min-h-dvh flex-col bg-stone-50">
+      <div className="flex h-dvh flex-col overflow-hidden bg-stone-50">
         {/* Fixed header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-stone-100 bg-white/90 px-5 py-3 backdrop-blur-sm">
-          <button
-            onClick={() => setStep("read")}
-            className="text-sm text-stone-500"
-          >
-            ← Volver
-          </button>
-          <span className="text-xs text-stone-400">
-            2 de 2 · Firma el acuerdo
-          </span>
-          <div className="w-12" />
+        <div className="shrink-0 border-b border-stone-100 bg-white/90 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setStep("read")}
+              className="text-sm text-stone-500"
+            >
+              ← Volver
+            </button>
+            <span className="text-xs text-stone-400">
+              2 de 2 · Firma el acuerdo
+            </span>
+            <div className="w-12" />
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6">
           {/* Name */}
           <label className="mb-1 block text-sm font-medium text-stone-700">
             Nombre completo <span className="text-red-400">*</span>
@@ -344,7 +348,7 @@ export default function WaiverSignPage() {
         </div>
 
         {/* Fixed footer */}
-        <div className="sticky bottom-0 border-t border-stone-100 bg-white px-5 py-4 safe-bottom">
+        <div className="shrink-0 border-t border-stone-100 bg-white px-5 py-4 safe-bottom">
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || submitting}
@@ -371,7 +375,7 @@ export default function WaiverSignPage() {
 
   // ─── STEP: Done ─────────────────────────────────────────
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-stone-50 px-6 text-center">
+    <div className="flex h-dvh flex-col items-center justify-center bg-stone-50 px-6 text-center">
       <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
         <Check size={32} className="text-emerald-600" />
       </div>
