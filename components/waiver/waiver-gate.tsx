@@ -28,7 +28,7 @@ export function WaiverGate() {
       .then((data) => {
         const isPending = data && (data.status === "pending" || data.status === "needs_resign");
         const triggerEnabled = data?.triggers?.onFirstOpen !== false;
-        if (isPending && triggerEnabled) {
+        if (isPending && triggerEnabled && data?.hasUpcomingBooking) {
           setShow(true);
         }
       })

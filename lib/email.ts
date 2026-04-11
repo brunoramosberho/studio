@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { formatDate, formatTime, formatCurrency } from "./utils";
 import { getServerBranding } from "./branding.server";
+import { type StudioBranding } from "./branding";
 import { createRatingToken } from "./ratings/token";
 
 function getResend() {
@@ -128,6 +129,52 @@ export function getTenantBaseUrl(tenantSlug: string) {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
   const protocol = rootDomain.includes("localhost") ? "http" : "https";
   return `${protocol}://${tenantSlug}.${rootDomain}`;
+}
+
+export async function sendWaiverReminder({
+  to,
+  name,
+  signUrl,
+  branding,
+}: {
+  to: string;
+  name: string;
+  signUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = name?.split(" ")[0] || "";
+
+    const content = `
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${b.colorFg};">
+        Firma pendiente
+      </h1>
+      <p style="margin:0 0 24px;font-size:14px;color:${b.colorMuted};line-height:1.6;">
+        ${firstName ? `Hola ${firstName}, tienes` : "Tienes"} una reserva próxima en ${b.studioName}. 
+        Para asistir necesitas firmar el acuerdo de responsabilidad. Solo toma un minuto.
+      </p>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${signUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Firmar ahora
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Si ya firmaste, puedes ignorar este correo.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Firma pendiente — ${b.studioName}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send waiver reminder:", error);
+  }
 }
 
 export async function sendWelcomeEmail({

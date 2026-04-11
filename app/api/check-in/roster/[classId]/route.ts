@@ -110,6 +110,20 @@ export async function GET(
     const cancelMap = new Map(cancelCounts.map((r) => [r.userId, r._count]));
     const allMap = new Map(allBookingCounts.map((r) => [r.userId, r._count]));
 
+    // Waiver status for all members
+    const activeWaiver = await prisma.waiver.findFirst({
+      where: { tenantId: ctx.tenant.id, status: "active" },
+      select: { id: true, version: true, blockCheckinWithoutSignature: true },
+    });
+
+    const waiverSignatures = activeWaiver
+      ? await prisma.waiverSignature.findMany({
+          where: { waiverId: activeWaiver.id, memberId: { in: userIds } },
+          select: { memberId: true, waiverVersion: true },
+        })
+      : [];
+    const waiverSignedMap = new Map(waiverSignatures.map((s) => [s.memberId, s.waiverVersion]));
+
     const now = new Date();
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -163,6 +177,11 @@ export async function GET(
 
         const memberSince = user.createdAt.toISOString();
 
+        const signedVersion = waiverSignedMap.get(user.id);
+        const waiverPending = activeWaiver
+          ? signedVersion === undefined || signedVersion < activeWaiver.version
+          : false;
+
         return {
           memberId: user.id,
           memberName: user.name,
@@ -173,6 +192,7 @@ export async function GET(
           remainingClasses: remainingCredits,
           isUnlimited,
           hasPaymentPending: hasExpiredMembership,
+          waiverPending,
           memberSince,
           checkIn: ci
             ? { status: ci.status, method: ci.method, createdAt: ci.createdAt.toISOString() }
@@ -212,7 +232,11 @@ export async function GET(
       since: w.createdAt.toISOString(),
     }));
 
-    return NextResponse.json({ roster, waitlist: waitlistData });
+    return NextResponse.json({
+      roster,
+      waitlist: waitlistData,
+      blockCheckinWithoutWaiver: activeWaiver?.blockCheckinWithoutSignature ?? false,
+    });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });

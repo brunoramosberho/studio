@@ -18,6 +18,7 @@ import {
   Star,
   Trophy,
   AlertTriangle,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -47,6 +48,7 @@ interface RosterMember {
   remainingClasses: number | null;
   isUnlimited: boolean;
   hasPaymentPending: boolean;
+  waiverPending: boolean;
   memberSince: string;
   stats: AttendeeStats;
   checkIn: {
@@ -172,18 +174,24 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [walkInQuery, setWalkInQuery] = useState("");
   const [paymentConfirm, setPaymentConfirm] = useState<string | null>(null);
+  const [waiverConfirm, setWaiverConfirm] = useState<string | null>(null);
   const [undoConfirm, setUndoConfirm] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<{ url: string; name: string } | null>(null);
 
   const rosterKey = ["check-in-roster", classId];
 
-  const { data, isLoading } = useQuery<{ roster: RosterMember[]; waitlist: WaitlistMember[] }>({
+  const { data, isLoading } = useQuery<{
+    roster: RosterMember[];
+    waitlist: WaitlistMember[];
+    blockCheckinWithoutWaiver: boolean;
+  }>({
     queryKey: rosterKey,
     queryFn: () => fetch(`/api/check-in/roster/${classId}`).then((r) => r.json()),
     refetchInterval: 30_000,
   });
 
   const roster = data?.roster ?? [];
+  const blockWaiver = data?.blockCheckinWithoutWaiver ?? false;
   const waitlist = data?.waitlist ?? [];
 
   const [optimisticRoster, addOptimistic] = useOptimistic(
@@ -203,11 +211,11 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   );
 
   const checkInMutation = useMutation({
-    mutationFn: async ({ memberId, method }: { memberId: string; method: string }) => {
+    mutationFn: async ({ memberId, method, force }: { memberId: string; method: string; force?: boolean }) => {
       const res = await fetch(`/api/check-in/${classId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberId, method }),
+        body: JSON.stringify({ memberId, method, force }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -243,8 +251,12 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   });
 
   const handleCheckIn = useCallback(
-    (memberId: string, hasPaymentPending: boolean) => {
+    (memberId: string, hasPaymentPending: boolean, waiverPending: boolean) => {
       if (classInfo.isFinished) return;
+      if (waiverPending && blockWaiver) {
+        setWaiverConfirm(memberId);
+        return;
+      }
       if (hasPaymentPending) {
         setPaymentConfirm(memberId);
         return;
@@ -256,7 +268,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       });
       checkInMutation.mutate({ memberId, method: "manual" });
     },
-    [classInfo.isFinished, classInfo.startTime, addOptimistic, checkInMutation],
+    [classInfo.isFinished, classInfo.startTime, addOptimistic, checkInMutation, blockWaiver],
   );
 
   const confirmPaymentCheckIn = useCallback(() => {
@@ -390,7 +402,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
               key={member.memberId}
               member={member}
               isFinished={classInfo.isFinished}
-              onCheckIn={() => handleCheckIn(member.memberId, member.hasPaymentPending)}
+              onCheckIn={() => handleCheckIn(member.memberId, member.hasPaymentPending, member.waiverPending)}
               onUndoRequest={() => handleUndoRequest(member.memberId)}
               onPhotoClick={member.memberImage
                 ? () => setPhotoPreview({ url: member.memberImage!, name: member.memberName ?? "" })
@@ -421,6 +433,27 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           </div>
         )}
       </div>
+
+      {/* Waiver pending confirmation */}
+      {waiverConfirm && (
+        <ConfirmDialog
+          icon={<FileText className="text-amber-600 shrink-0 mt-0.5" size={18} />}
+          title="Waiver no firmado"
+          description="Este miembro no ha firmado el acuerdo de responsabilidad. Puedes enviarle el link para que firme desde su celular."
+          confirmLabel="Check-in de todas formas"
+          confirmClassName="bg-amber-50 text-amber-700 hover:bg-amber-100"
+          onConfirm={() => {
+            const now = new Date();
+            const isLate = now > new Date(classInfo.startTime);
+            startTransition(() => {
+              addOptimistic({ memberId: waiverConfirm, type: "checkin", status: isLate ? "late" : "present" });
+            });
+            checkInMutation.mutate({ memberId: waiverConfirm, method: "manual", force: true });
+            setWaiverConfirm(null);
+          }}
+          onCancel={() => setWaiverConfirm(null)}
+        />
+      )}
 
       {/* Payment pending confirmation */}
       {paymentConfirm && (
@@ -616,12 +649,20 @@ function RosterRow({
         <p className="text-[13px] font-medium text-stone-900 truncate">
           {member.memberName}
         </p>
-        <p className={cn(
-          "text-[11px] truncate",
-          member.hasPaymentPending ? "text-red-500" : "text-stone-400",
-        )}>
-          {packageLabel}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className={cn(
+            "text-[11px] truncate",
+            member.hasPaymentPending ? "text-red-500" : "text-stone-400",
+          )}>
+            {packageLabel}
+          </p>
+          {member.waiverPending && (
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+              <FileText size={9} />
+              Waiver
+            </span>
+          )}
+        </div>
 
         {/* Tags */}
         {member.stats && <AttendeeTags stats={member.stats} />}
@@ -666,7 +707,9 @@ function RosterRow({
               "px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition-colors",
               member.hasPaymentPending
                 ? "bg-red-50 text-red-600 hover:bg-red-100"
-                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                : member.waiverPending
+                  ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
               isFinished && "opacity-50 cursor-not-allowed",
             )}
           >

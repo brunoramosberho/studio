@@ -640,18 +640,20 @@ export default function AdminWaiverPage() {
               onChange={(v) => handleSaveSettings({ triggerOnBooking: v })}
             />
             <SettingsToggle
-              label="Primera apertura de la app"
-              description="Interstitial al abrir la app si no ha firmado"
+              label="Al abrir la app"
+              description="Solo si tiene una reserva futura y no ha firmado"
               checked={waiver.triggerOnFirstOpen}
               onChange={(v) => handleSaveSettings({ triggerOnFirstOpen: v })}
             />
             <SettingsToggle
-              label="Email tras primera reserva"
+              label="Email 5 min después de reservar"
+              description="Si no firmó tras la reserva, se le envía un recordatorio por correo"
               checked={waiver.triggerOnFirstBooking}
               onChange={(v) => handleSaveSettings({ triggerOnFirstBooking: v })}
             />
             <SettingsToggle
-              label="Recordatorio 24h antes de primera clase"
+              label="Recordatorio 1h antes de la clase"
+              description="Correo recordatorio si aún no ha firmado"
               checked={waiver.triggerReminder24h}
               onChange={(v) => handleSaveSettings({ triggerReminder24h: v })}
             />

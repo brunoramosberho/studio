@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendPushToUser, sendPushToMany } from "@/lib/push";
+import { sendWaiverReminder } from "@/lib/email";
+import { tenantToBranding } from "@/lib/branding";
 import { refundAndClearWaitlist } from "@/lib/waitlist";
 import {
   checkAchievements,
@@ -10,6 +12,9 @@ import {
 import { formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+
+const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
+const protocol = rootDomain.includes("localhost") ? "http" : "https";
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -263,6 +268,104 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // ── Waiver reminders ──────────────────────────────────────
+  let waiverEmailsSent = 0;
+
+  for (const tenant of tenants) {
+    const tenantData = await prisma.tenant.findUnique({
+      where: { id: tenant.id },
+    });
+    if (!tenantData?.slug) continue;
+
+    const branding = tenantToBranding(tenantData);
+
+    const activeWaiver = await prisma.waiver.findFirst({
+      where: { tenantId: tenant.id, status: "active" },
+      select: {
+        id: true,
+        version: true,
+        triggerOnFirstBooking: true,
+        triggerReminder24h: true,
+      },
+    });
+    if (!activeWaiver) continue;
+
+    const signUrl = `${protocol}://${tenantData.slug}.${rootDomain}/waiver/sign`;
+
+    // 5-min post-booking email: bookings created 5–10 min ago, member hasn't signed
+    if (activeWaiver.triggerOnFirstBooking) {
+      const fiveMinAgo = new Date(now.getTime() - 5 * 60_000);
+      const tenMinAgo = new Date(now.getTime() - 10 * 60_000);
+
+      const recentBookings = await prisma.booking.findMany({
+        where: {
+          tenantId: tenant.id,
+          status: "CONFIRMED",
+          createdAt: { gte: tenMinAgo, lte: fiveMinAgo },
+          userId: { not: null },
+          user: {
+            waiverSignatures: { none: { waiverId: activeWaiver.id } },
+          },
+        },
+        include: {
+          user: { select: { id: true, email: true, name: true } },
+        },
+      });
+
+      const alreadyEmailed = new Set<string>();
+      for (const booking of recentBookings) {
+        if (!booking.user?.email || alreadyEmailed.has(booking.user.id)) continue;
+        alreadyEmailed.add(booking.user.id);
+
+        await sendWaiverReminder({
+          to: booking.user.email,
+          name: booking.user.name ?? "",
+          signUrl,
+          branding,
+        });
+        waiverEmailsSent++;
+      }
+    }
+
+    // 1h-before-class reminder: classes starting in 55–65 min, member hasn't signed
+    if (activeWaiver.triggerReminder24h) {
+      const oneHourFromNow = new Date(now.getTime() + 60 * 60_000);
+      const windowStart = new Date(now.getTime() + 55 * 60_000);
+
+      const upcomingBookings = await prisma.booking.findMany({
+        where: {
+          tenantId: tenant.id,
+          status: "CONFIRMED",
+          userId: { not: null },
+          class: {
+            startsAt: { gte: windowStart, lte: oneHourFromNow },
+            status: "SCHEDULED",
+          },
+          user: {
+            waiverSignatures: { none: { waiverId: activeWaiver.id } },
+          },
+        },
+        include: {
+          user: { select: { id: true, email: true, name: true } },
+        },
+      });
+
+      const alreadyEmailed = new Set<string>();
+      for (const booking of upcomingBookings) {
+        if (!booking.user?.email || alreadyEmailed.has(booking.user.id)) continue;
+        alreadyEmailed.add(booking.user.id);
+
+        await sendWaiverReminder({
+          to: booking.user.email,
+          name: booking.user.name ?? "",
+          signUrl,
+          branding,
+        });
+        waiverEmailsSent++;
+      }
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     sent,
@@ -270,5 +373,6 @@ export async function GET(request: NextRequest) {
     waitlistRefunded,
     birthdayChecked,
     streaksReset,
+    waiverEmailsSent,
   });
 }

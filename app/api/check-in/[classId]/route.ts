@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
+import { getMemberWaiverStatus } from "@/lib/waiver/status";
 
 export async function POST(
   request: NextRequest,
@@ -10,7 +11,7 @@ export async function POST(
   try {
     const ctx = await requireRole("ADMIN");
     const { classId } = await params;
-    const { memberId, method = "manual" } = await request.json();
+    const { memberId, method = "manual", force = false } = await request.json();
 
     if (!memberId) {
       return NextResponse.json({ error: "memberId is required" }, { status: 400 });
@@ -29,6 +30,16 @@ export async function POST(
     });
     if (existing) {
       return NextResponse.json({ error: "Already checked in" }, { status: 409 });
+    }
+
+    if (!force) {
+      const waiverResult = await getMemberWaiverStatus(memberId, ctx.tenant.id);
+      if (waiverResult.blockCheckin && waiverResult.status !== "signed") {
+        return NextResponse.json(
+          { error: "waiver_pending", message: "El miembro no ha firmado el waiver" },
+          { status: 403 },
+        );
+      }
     }
 
     const now = new Date();

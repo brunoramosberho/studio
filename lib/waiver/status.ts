@@ -11,6 +11,7 @@ export interface WaiverStatusResult {
   waiverId?: string;
   version?: number;
   blockCheckin?: boolean;
+  hasUpcomingBooking?: boolean;
   triggers?: {
     onBooking: boolean;
     onFirstOpen: boolean;
@@ -46,22 +47,26 @@ export async function getMemberWaiverStatus(
     select: { waiverVersion: true },
   });
 
-  if (!signature) {
-    return {
-      status: "pending",
-      waiverId: activeWaiver.id,
-      version: activeWaiver.version,
-      blockCheckin: activeWaiver.blockCheckinWithoutSignature,
-      triggers,
-    };
-  }
+  const isPending = !signature;
+  const needsResign = signature && signature.waiverVersion < activeWaiver.version;
 
-  if (signature.waiverVersion < activeWaiver.version) {
+  if (isPending || needsResign) {
+    const upcomingBooking = await prisma.booking.findFirst({
+      where: {
+        userId: memberId,
+        tenantId,
+        status: "CONFIRMED",
+        class: { startsAt: { gt: new Date() } },
+      },
+      select: { id: true },
+    });
+
     return {
-      status: "needs_resign",
+      status: isPending ? "pending" : "needs_resign",
       waiverId: activeWaiver.id,
       version: activeWaiver.version,
       blockCheckin: activeWaiver.blockCheckinWithoutSignature,
+      hasUpcomingBooking: !!upcomingBooking,
       triggers,
     };
   }
