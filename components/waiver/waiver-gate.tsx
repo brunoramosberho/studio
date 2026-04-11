@@ -64,7 +64,7 @@ export function WaiverGate() {
               <div className="mt-3 flex items-center gap-2">
                 <Link
                   href="/waiver/sign"
-                  onClick={() => sessionStorage.setItem(DISMISSED_KEY, "1")}
+                  onClick={handleDismiss}
                   className="flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-medium text-white transition-opacity active:opacity-80"
                 >
                   Firmar ahora
