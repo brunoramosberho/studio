@@ -309,8 +309,9 @@ export default function ClassDetailPage() {
       .catch(() => {});
   }, [bookingSuccess, id, isAuthenticated, songRequestChecked]);
 
+  const hasBooking = !!myBooking || bookingSuccess;
   useEffect(() => {
-    if (!bookingSuccess || !isAuthenticated) return;
+    if (!hasBooking || !isAuthenticated) return;
     fetch("/api/waiver/status")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -319,7 +320,7 @@ export default function ClassDetailPage() {
         }
       })
       .catch(() => {});
-  }, [bookingSuccess, isAuthenticated]);
+  }, [hasBooking, isAuthenticated]);
 
   async function handleDirectBook() {
     setError(null);
@@ -884,6 +885,36 @@ export default function ClassDetailPage() {
               )}
             </AnimatePresence>
 
+            {/* Waiver prompt - shown above everything when pending */}
+            <AnimatePresence>
+              {waiverPending && (myBooking || bookingSuccess) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4"
+                >
+                  <Link
+                    href="/waiver/sign"
+                    className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5 transition-colors active:bg-amber-100"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                      <FileText className="h-4 w-4 text-amber-700" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-amber-800">
+                        Firma el acuerdo de responsabilidad
+                      </p>
+                      <p className="text-xs text-amber-600">
+                        Requerido para asistir a tu clase
+                      </p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-amber-500" />
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Booking success */}
             <AnimatePresence>
               {bookingSuccess && (
@@ -962,36 +993,6 @@ export default function ClassDetailPage() {
                           onComplete={() => setShowSongRequest(false)}
                           onSkip={() => setShowSongRequest(false)}
                         />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Waiver prompt */}
-                  <AnimatePresence>
-                    {waiverPending && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 overflow-hidden"
-                      >
-                        <Link
-                          href="/waiver/sign"
-                          className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5 transition-colors active:bg-amber-100"
-                        >
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100">
-                            <FileText className="h-4 w-4 text-amber-700" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-amber-800">
-                              Firma el acuerdo de responsabilidad
-                            </p>
-                            <p className="text-xs text-amber-600">
-                              Requerido para asistir a tu clase
-                            </p>
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-amber-500" />
-                        </Link>
                       </motion.div>
                     )}
                   </AnimatePresence>
