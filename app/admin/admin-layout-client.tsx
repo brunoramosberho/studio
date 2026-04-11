@@ -49,7 +49,7 @@ import {
   CalendarSync,
   Wallet,
 } from "lucide-react";
-import { SparklesIcon } from "lucide-animated";
+import { SparklesIcon, type SparklesIconHandle } from "lucide-animated";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
@@ -435,10 +435,13 @@ function MobileAccordionGroup({
 function MgicAIButton() {
   const { toggle, isOpen } = useMgicAI();
   const { colorAdmin } = useBranding();
+  const sparklesRef = useRef<SparklesIconHandle>(null);
 
   return (
     <button
       onClick={toggle}
+      onMouseEnter={() => sparklesRef.current?.startAnimation()}
+      onMouseLeave={() => sparklesRef.current?.stopAnimation()}
       className={cn(
         "group flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-[13px] font-semibold transition-all",
         isOpen
@@ -453,7 +456,7 @@ function MgicAIButton() {
           isOpen ? "bg-admin/10" : "bg-white/15",
         )}
       >
-        <SparklesIcon size={14} />
+        <SparklesIcon ref={sparklesRef} size={14} />
       </span>
       <span className="flex-1">Mgic AI</span>
       <span
