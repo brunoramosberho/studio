@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { Suspense, useState, useRef, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { useBranding } from "@/components/branding-provider";
 import { useTenant } from "@/components/tenant-provider";
 import { SignatureCanvas } from "@/components/waiver/signature-canvas";
@@ -21,15 +22,31 @@ interface WaiverData {
 }
 
 export default function WaiverSignPage() {
+  return (
+    <Suspense fallback={<div className="flex h-dvh items-center justify-center bg-stone-50"><Loader2 size={24} className="animate-spin text-stone-400" /></div>}>
+      <WaiverSignContent />
+    </Suspense>
+  );
+}
+
+function WaiverSignContent() {
   const { data: session } = useSession();
-  const { studioName, logoUrl } = useBranding();
+  const brandingCtx = useBranding();
   const { tenantId } = useTenant();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
 
   const [step, setStep] = useState<Step>("intro");
   const [waiver, setWaiver] = useState<WaiverData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tokenExpired, setTokenExpired] = useState(false);
+
+  // Branding overrides (from token verify response when no session)
+  const [tokenBranding, setTokenBranding] = useState<{ studioName: string; logoUrl: string | null } | null>(null);
+  const studioName = tokenBranding?.studioName || brandingCtx.studioName;
+  const logoUrl = tokenBranding?.logoUrl || brandingCtx.logoUrl;
 
   // Read step
   const [hasScrolled, setHasScrolled] = useState(false);
@@ -50,6 +67,23 @@ export default function WaiverSignPage() {
   }, [session?.user?.name, name]);
 
   useEffect(() => {
+    if (token) {
+      fetch(`/api/waiver/verify-token?token=${encodeURIComponent(token)}`)
+        .then((r) => {
+          if (r.status === 401) { setTokenExpired(true); return null; }
+          return r.ok ? r.json() : null;
+        })
+        .then((data) => {
+          if (!data) return;
+          setTokenBranding({ studioName: data.studioName, logoUrl: data.logoUrl });
+          if (data.userName && !name) setName(data.userName);
+          if (data.waiver) setWaiver(data.waiver);
+        })
+        .catch(() => setError("No se pudo cargar el waiver"))
+        .finally(() => setLoading(false));
+      return;
+    }
+
     if (!tenantId) return;
     fetch(`/api/waiver/${tenantId}/active`)
       .then((r) => r.json())
@@ -60,7 +94,7 @@ export default function WaiverSignPage() {
       })
       .catch(() => setError("No se pudo cargar el waiver"))
       .finally(() => setLoading(false));
-  }, [tenantId]);
+  }, [tenantId, token]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -97,6 +131,7 @@ export default function WaiverSignPage() {
           participantName: name.trim(),
           participantPhone: phone.trim() || undefined,
           participantBirthDate: birthDate || undefined,
+          ...(token ? { token } : {}),
         }),
       });
 
@@ -112,6 +147,22 @@ export default function WaiverSignPage() {
       setSubmitting(false);
     }
   };
+
+  if (tokenExpired) {
+    return (
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-stone-50 px-6 text-center">
+        <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
+          <X size={28} className="text-amber-600" />
+        </div>
+        <p className="text-base font-medium text-stone-700">
+          Link expirado
+        </p>
+        <p className="max-w-xs text-sm text-stone-500">
+          Este enlace ya no es válido. Abre la app para firmar el acuerdo desde ahí.
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -137,7 +188,7 @@ export default function WaiverSignPage() {
 
   const waiverHtml = waiver.content.replace(
     /\{\{nombre_cliente\}\}/g,
-    session?.user?.name ?? "",
+    name,
   );
 
   // ─── STEP: Intro ────────────────────────────────────────

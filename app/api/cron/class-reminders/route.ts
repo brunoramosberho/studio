@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { sendPushToUser, sendPushToMany } from "@/lib/push";
 import { sendWaiverReminder } from "@/lib/email";
 import { tenantToBranding } from "@/lib/branding";
+import { createWaiverToken } from "@/lib/waiver/token";
 import { refundAndClearWaitlist } from "@/lib/waitlist";
 import {
   checkAchievements,
@@ -290,7 +291,7 @@ export async function GET(request: NextRequest) {
     });
     if (!activeWaiver) continue;
 
-    const signUrl = `${protocol}://${tenantData.slug}.${rootDomain}/waiver/sign`;
+    const baseSignUrl = `${protocol}://${tenantData.slug}.${rootDomain}/waiver/sign`;
 
     // 5-min post-booking email: bookings created 5–10 min ago, member hasn't signed
     if (activeWaiver.triggerOnFirstBooking) {
@@ -317,10 +318,11 @@ export async function GET(request: NextRequest) {
         if (!booking.user?.email || alreadyEmailed.has(booking.user.id)) continue;
         alreadyEmailed.add(booking.user.id);
 
+        const token = await createWaiverToken({ userId: booking.user.id, tenantId: tenant.id });
         await sendWaiverReminder({
           to: booking.user.email,
           name: booking.user.name ?? "",
-          signUrl,
+          signUrl: `${baseSignUrl}?token=${token}`,
           branding,
         });
         waiverEmailsSent++;
@@ -355,10 +357,11 @@ export async function GET(request: NextRequest) {
         if (!booking.user?.email || alreadyEmailed.has(booking.user.id)) continue;
         alreadyEmailed.add(booking.user.id);
 
+        const token = await createWaiverToken({ userId: booking.user.id, tenantId: tenant.id });
         await sendWaiverReminder({
           to: booking.user.email,
           name: booking.user.name ?? "",
-          signUrl,
+          signUrl: `${baseSignUrl}?token=${token}`,
           branding,
         });
         waiverEmailsSent++;

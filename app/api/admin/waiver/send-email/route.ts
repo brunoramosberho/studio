@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { sendWaiverReminder, getTenantBaseUrl } from "@/lib/email";
 import { getServerBranding } from "@/lib/branding.server";
+import { createWaiverToken } from "@/lib/waiver/token";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +25,8 @@ export async function POST(request: NextRequest) {
 
     const branding = await getServerBranding();
     const baseUrl = getTenantBaseUrl(ctx.tenant.slug);
-    const signUrl = `${baseUrl}/waiver/sign`;
+    const token = await createWaiverToken({ userId: memberId, tenantId: ctx.tenant.id });
+    const signUrl = `${baseUrl}/waiver/sign?token=${token}`;
 
     await sendWaiverReminder({
       to: user.email,

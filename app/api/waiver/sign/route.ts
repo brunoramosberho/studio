@@ -4,14 +4,33 @@ import { prisma } from "@/lib/db";
 import { generateSignatureHash } from "@/lib/waiver/hash";
 import { generateSignedPdf } from "@/lib/waiver/pdf";
 import { uploadMedia } from "@/lib/supabase-storage";
+import { verifyWaiverToken } from "@/lib/waiver/token";
+
+async function resolveIdentity(req: NextRequest, body: Record<string, unknown>) {
+  // Token-based auth (from email links)
+  const token = body.token as string | undefined;
+  if (token) {
+    const payload = await verifyWaiverToken(token);
+    if (payload) return { userId: payload.userId, tenantId: payload.tenantId };
+  }
+
+  // Session-based auth (from PWA)
+  const ctx = await getAuthContext();
+  if (ctx) return { userId: ctx.session.user.id, tenantId: ctx.tenant.id };
+
+  return null;
+}
 
 export async function POST(req: NextRequest) {
-  const ctx = await getAuthContext();
-  if (!ctx) {
+  const body = await req.json();
+  const identity = await resolveIdentity(req, body);
+
+  if (!identity) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
+  const { userId, tenantId } = identity;
+
   const {
     waiverId,
     signatureData,
@@ -36,7 +55,7 @@ export async function POST(req: NextRequest) {
   }
 
   const waiver = await prisma.waiver.findFirst({
-    where: { id: waiverId, tenantId: ctx.tenant.id, status: "active" },
+    where: { id: waiverId, tenantId, status: "active" },
   });
 
   if (!waiver) {
@@ -48,7 +67,7 @@ export async function POST(req: NextRequest) {
 
   const existing = await prisma.waiverSignature.findUnique({
     where: {
-      waiverId_memberId: { waiverId, memberId: ctx.session.user.id },
+      waiverId_memberId: { waiverId, memberId: userId },
     },
   });
 
@@ -88,9 +107,9 @@ export async function POST(req: NextRequest) {
       })
     : await prisma.waiverSignature.create({
         data: {
-          tenantId: ctx.tenant.id,
+          tenantId,
           waiverId,
-          memberId: ctx.session.user.id,
+          memberId: userId,
           waiverVersion: waiver.version,
           participantName,
           participantPhone: participantPhone || null,
@@ -105,8 +124,13 @@ export async function POST(req: NextRequest) {
         },
       });
 
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { name: true },
+  });
+
   // PDF generation runs async — don't block the response
-  generatePdfInBackground(signatureRecord.id, waiver, ctx.tenant.name, {
+  generatePdfInBackground(signatureRecord.id, waiver, tenant?.name ?? "", {
     memberName: participantName,
     phone: participantPhone,
     birthDate: participantBirthDate,
