@@ -35,7 +35,6 @@ import {
   Gift,
   Trophy,
 } from "lucide-react";
-import { TrophyIcon } from "lucide-animated";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -513,7 +512,7 @@ export default function ClientDetailPage() {
               <CardContent className="p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <TrophyIcon size={16} className="text-amber-500" />
+                    <Trophy className="h-4 w-4 text-amber-500" />
                     <span className="text-sm font-semibold">Logros</span>
                   </div>
                   <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
