@@ -315,7 +315,9 @@ export default function ClassDetailPage() {
     fetch("/api/waiver/status")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data && (data.status === "pending" || data.status === "needs_resign")) {
+        const isPending = data && (data.status === "pending" || data.status === "needs_resign");
+        const triggerEnabled = data?.triggers?.onBooking !== false;
+        if (isPending && triggerEnabled) {
           setWaiverPending(true);
         }
       })

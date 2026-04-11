@@ -1399,6 +1399,7 @@ model Waiver {
   requireBirthDate  Boolean @default(false)
   requireScrollRead Boolean @default(true)
 
+  triggerOnBooking      Boolean @default(true)
   triggerOnFirstOpen    Boolean @default(true)
   triggerOnFirstBooking Boolean @default(true)
   triggerReminder24h    Boolean @default(true)

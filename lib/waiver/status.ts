@@ -11,6 +11,10 @@ export interface WaiverStatusResult {
   waiverId?: string;
   version?: number;
   blockCheckin?: boolean;
+  triggers?: {
+    onBooking: boolean;
+    onFirstOpen: boolean;
+  };
 }
 
 export async function getMemberWaiverStatus(
@@ -19,12 +23,23 @@ export async function getMemberWaiverStatus(
 ): Promise<WaiverStatusResult> {
   const activeWaiver = await prisma.waiver.findFirst({
     where: { tenantId, status: "active" },
-    select: { id: true, version: true, blockCheckinWithoutSignature: true },
+    select: {
+      id: true,
+      version: true,
+      blockCheckinWithoutSignature: true,
+      triggerOnBooking: true,
+      triggerOnFirstOpen: true,
+    },
   });
 
   if (!activeWaiver) {
     return { status: "not_required" };
   }
+
+  const triggers = {
+    onBooking: activeWaiver.triggerOnBooking,
+    onFirstOpen: activeWaiver.triggerOnFirstOpen,
+  };
 
   const signature = await prisma.waiverSignature.findUnique({
     where: { waiverId_memberId: { waiverId: activeWaiver.id, memberId } },
@@ -37,6 +52,7 @@ export async function getMemberWaiverStatus(
       waiverId: activeWaiver.id,
       version: activeWaiver.version,
       blockCheckin: activeWaiver.blockCheckinWithoutSignature,
+      triggers,
     };
   }
 
@@ -46,6 +62,7 @@ export async function getMemberWaiverStatus(
       waiverId: activeWaiver.id,
       version: activeWaiver.version,
       blockCheckin: activeWaiver.blockCheckinWithoutSignature,
+      triggers,
     };
   }
 

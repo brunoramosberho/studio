@@ -57,7 +57,9 @@ export function ConfirmationScreen({
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (cancelled) return;
-        if (data && (data.status === "pending" || data.status === "needs_resign")) {
+        const isPending = data && (data.status === "pending" || data.status === "needs_resign");
+        const triggerEnabled = data?.triggers?.onBooking !== false;
+        if (isPending && triggerEnabled) {
           setWaiverPhase("prompt");
         } else {
           setWaiverPhase("done");

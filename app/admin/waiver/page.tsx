@@ -29,6 +29,7 @@ interface WaiverData {
   requirePhone: boolean;
   requireBirthDate: boolean;
   requireScrollRead: boolean;
+  triggerOnBooking: boolean;
   triggerOnFirstOpen: boolean;
   triggerOnFirstBooking: boolean;
   triggerReminder24h: boolean;
@@ -633,7 +634,14 @@ export default function AdminWaiverPage() {
 
           <SettingsSection title="Cuándo mostrar el waiver">
             <SettingsToggle
+              label="Al hacer una reserva"
+              description="Muestra el waiver justo después de reservar una clase"
+              checked={waiver.triggerOnBooking}
+              onChange={(v) => handleSaveSettings({ triggerOnBooking: v })}
+            />
+            <SettingsToggle
               label="Primera apertura de la app"
+              description="Interstitial al abrir la app si no ha firmado"
               checked={waiver.triggerOnFirstOpen}
               onChange={(v) => handleSaveSettings({ triggerOnFirstOpen: v })}
             />
