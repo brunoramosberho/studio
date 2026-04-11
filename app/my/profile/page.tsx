@@ -352,7 +352,7 @@ export default function ProfilePage() {
   }, [referralData, brand.studioName]);
 
   const profileLevelTier = gamification?.level
-    ? getLoyaltyTierVisual(gamification.level.name)
+    ? getLoyaltyTierVisual(gamification.level.name, gamification.level.sortOrder)
     : null;
 
   const activePackages = packages.filter(

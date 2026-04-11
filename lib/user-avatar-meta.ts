@@ -39,19 +39,19 @@ export async function getUsersAvatarMeta(
   ]);
 
   const subSet = new Set(activeSubs.map((s) => s.userId));
-  const levelMap = new Map<string, string>();
+  const levelMap = new Map<string, { name: string; sortOrder: number }>();
   for (const p of progresses) {
     if (p.currentLevel) {
-      levelMap.set(p.userId, p.currentLevel.name);
+      levelMap.set(p.userId, { name: p.currentLevel.name, sortOrder: p.currentLevel.sortOrder });
     }
   }
 
   const result = new Map<string, AvatarMeta>();
   for (const id of unique) {
-    const levelName = levelMap.get(id);
+    const lvl = levelMap.get(id);
     result.set(id, {
       hasActiveMembership: subSet.has(id),
-      level: levelName ? getLoyaltyTierVisual(levelName) : null,
+      level: lvl ? getLoyaltyTierVisual(lvl.name, lvl.sortOrder) : null,
     });
   }
 

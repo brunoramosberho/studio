@@ -1,16 +1,24 @@
 export type LoyaltyTierVisual = "bronze" | "silver" | "gold" | "platinum" | "elite";
 
-/** Mapea nombre de nivel (ES/EN) al estilo visual del badge. */
-export function getLoyaltyTierVisual(levelName: string): LoyaltyTierVisual {
+const TIER_BY_ORDER: LoyaltyTierVisual[] = ["bronze", "silver", "gold", "platinum", "elite"];
+
+/**
+ * Mapea un nivel al estilo visual del badge.
+ * Prioriza sortOrder (0–4 → bronze…elite). Si no se provee,
+ * intenta deducirlo del nombre como fallback.
+ */
+export function getLoyaltyTierVisual(levelName: string, sortOrder?: number): LoyaltyTierVisual {
+  if (sortOrder !== undefined) return TIER_BY_ORDER[Math.min(sortOrder, TIER_BY_ORDER.length - 1)];
+
   const n = levelName
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "");
-  if (n.includes("bronce") || n.includes("bronze")) return "bronze";
-  if (n.includes("plata") || n.includes("silver")) return "silver";
-  if ((n.includes("oro") || n.includes("gold")) && !n.includes("plat")) return "gold";
-  if (n.includes("platino") || n.includes("platinum")) return "platinum";
-  if (n.includes("elite")) return "elite";
+  if (/\bbronce\b/.test(n) || /\bbronze\b/.test(n)) return "bronze";
+  if (/\bplata\b/.test(n) || /\bsilver\b/.test(n)) return "silver";
+  if ((/\boro\b/.test(n) || /\bgold\b/.test(n)) && !/\bplat/.test(n)) return "gold";
+  if (/\bplatino\b/.test(n) || /\bplatinum\b/.test(n)) return "platinum";
+  if (/\belite\b/.test(n)) return "elite";
   return "bronze";
 }
 

@@ -73,7 +73,7 @@ export default function DashboardPage() {
                 image: session?.user?.image,
                 name: session?.user?.name,
                 hasActiveMembership,
-                level: level ? getLoyaltyTierVisual(level.name) : null,
+                level: level ? getLoyaltyTierVisual(level.name, level.sortOrder) : null,
               }}
               size={40}
             />

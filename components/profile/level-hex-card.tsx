@@ -152,8 +152,8 @@ export function LevelHexCard({
   levels,
 }: LevelHexCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const { coachIconSvg } = useBranding();
-  const currentTier = getLoyaltyTierVisual(level.name);
+  const { coachIconSvg, studioName } = useBranding();
+  const currentTier = getLoyaltyTierVisual(level.name, level.sortOrder);
   const palette = TIER_PALETTE[currentTier];
 
   const currentIdx = levels.findIndex((l) => l.isCurrent);
@@ -194,7 +194,7 @@ export function LevelHexCard({
               color: "transparent",
             }}
           >
-            {level.name}
+            {studioName} {level.name}
           </span>
           <div className="mt-1.5 h-1.5 rounded-full bg-surface">
             <div
@@ -244,7 +244,7 @@ export function LevelHexCard({
               {levels.length > 1 && (
                 <div className="flex items-end justify-between px-1">
                   {levels.map((l) => {
-                    const t = getLoyaltyTierVisual(l.name);
+                    const t = getLoyaltyTierVisual(l.name, l.sortOrder);
                     return (
                       <div
                         key={l.name}
