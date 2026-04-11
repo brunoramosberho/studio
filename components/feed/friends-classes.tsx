@@ -33,19 +33,6 @@ export function FriendsClasses() {
   const { data: session } = useSession();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const { data: upcomingBookings = [] } = useQuery<unknown[]>({
-    queryKey: ["bookings", "upcoming"],
-    queryFn: async () => {
-      const res = await fetch("/api/bookings?status=upcoming");
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!session?.user,
-    staleTime: 30_000,
-  });
-
-  const hasUpcoming = upcomingBookings.length > 0;
-
   const { data: friendClasses = [] } = useQuery<FriendBookedClass[]>({
     queryKey: ["classes", "friends-bookings"],
     queryFn: async () => {
@@ -53,7 +40,7 @@ export function FriendsClasses() {
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: !!session?.user && !hasUpcoming,
+    enabled: !!session?.user,
     staleTime: 60_000,
   });
 
@@ -75,7 +62,7 @@ export function FriendsClasses() {
     }
   }, []);
 
-  if (hasUpcoming || friendClasses.length === 0) return null;
+  if (friendClasses.length === 0) return null;
 
   return (
     <section>

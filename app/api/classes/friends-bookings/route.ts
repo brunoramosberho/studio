@@ -98,6 +98,7 @@ export async function GET() {
           icon: c.classType.icon,
         },
         coach: {
+          name: c.coach.name,
           photoUrl: c.coach.photoUrl,
           user: c.coach.user,
         },
