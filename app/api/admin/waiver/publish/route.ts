@@ -7,15 +7,26 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { requireResign } = body as { requireResign?: boolean };
 
-  const draft = await prisma.waiver.findFirst({
-    where: { tenantId: ctx.tenant.id, status: "draft" },
+  const latest = await prisma.waiver.findFirst({
+    where: { tenantId: ctx.tenant.id },
+    orderBy: { version: "desc" },
   });
 
-  if (!draft) {
-    return NextResponse.json({ error: "No draft to publish" }, { status: 404 });
+  if (!latest) {
+    return NextResponse.json(
+      { error: "No hay waiver creado" },
+      { status: 404 },
+    );
   }
 
-  if (!draft.content?.trim()) {
+  if (latest.status === "active") {
+    return NextResponse.json(
+      { error: "El waiver ya está publicado. Si hiciste cambios, ya están activos." },
+      { status: 409 },
+    );
+  }
+
+  if (!latest.content?.trim()) {
     return NextResponse.json(
       { error: "El waiver no puede estar vacío" },
       { status: 400 },
@@ -23,15 +34,13 @@ export async function POST(req: NextRequest) {
   }
 
   await prisma.$transaction(async (tx) => {
-    // Deactivate current active waiver(s)
     await tx.waiver.updateMany({
       where: { tenantId: ctx.tenant.id, status: "active" },
       data: { status: "draft" },
     });
 
-    // Activate the draft
     await tx.waiver.update({
-      where: { id: draft.id },
+      where: { id: latest.id },
       data: {
         status: "active",
         publishedAt: new Date(),
@@ -39,16 +48,15 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // If requireResign, delete old signatures so members must re-sign
     if (requireResign) {
       await tx.waiverSignature.deleteMany({
         where: {
           tenantId: ctx.tenant.id,
-          waiverVersion: { lt: draft.version },
+          waiverVersion: { lt: latest.version },
         },
       });
     }
   });
 
-  return NextResponse.json({ success: true, version: draft.version });
+  return NextResponse.json({ success: true, version: latest.version });
 }

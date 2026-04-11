@@ -14,6 +14,7 @@ import {
   Loader2,
   Plus,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type Tab = "editor" | "signatures" | "settings";
@@ -78,13 +79,20 @@ export default function AdminWaiverPage() {
   const fetchWaiver = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/waiver");
+      if (!res.ok) {
+        toast.error("No se pudo cargar el waiver");
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
       if (data.waiver) {
         setWaiver(data.waiver);
         setTitle(data.waiver.title);
         setContent(data.waiver.content);
       }
-    } catch {}
+    } catch {
+      toast.error("Error de conexión al cargar el waiver");
+    }
     setLoading(false);
   }, []);
 
@@ -99,10 +107,17 @@ export default function AdminWaiverPage() {
       if (sigFilter) params.set("status", sigFilter);
       if (sigSearch) params.set("search", sigSearch);
       const res = await fetch(`/api/admin/waiver/signatures?${params}`);
+      if (!res.ok) {
+        toast.error("No se pudieron cargar las firmas");
+        setSigLoading(false);
+        return;
+      }
       const data = await res.json();
       setSignatures(data.signatures || []);
       setStats(data.stats || { signed: 0, pending: 0, needsResign: 0, total: 0 });
-    } catch {}
+    } catch {
+      toast.error("Error de conexión al cargar firmas");
+    }
     setSigLoading(false);
   }, [sigFilter, sigSearch]);
 
@@ -119,12 +134,20 @@ export default function AdminWaiverPage() {
         body: JSON.stringify({ title: "Acuerdo de responsabilidad", content: "" }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "No se pudo crear el waiver");
+        setSaving(false);
+        return;
+      }
       if (data.waiver) {
         setWaiver(data.waiver);
         setTitle(data.waiver.title);
         setContent(data.waiver.content);
+        toast.success("Waiver creado");
       }
-    } catch {}
+    } catch {
+      toast.error("Error de conexión");
+    }
     setSaving(false);
   };
 
@@ -132,14 +155,24 @@ export default function AdminWaiverPage() {
     setSaving(true);
     setSaved(false);
     try {
-      await fetch("/api/admin/waiver", {
+      const res = await fetch("/api/admin/waiver", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "No se pudo guardar");
+        setSaving(false);
+        return;
+      }
+      const data = await res.json();
+      if (data.waiver) setWaiver(data.waiver);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {}
+    } catch {
+      toast.error("Error de conexión al guardar");
+    }
     setSaving(false);
   };
 
@@ -151,36 +184,60 @@ export default function AdminWaiverPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requireResign: publishMode === "resign" }),
       });
-      if (res.ok) {
-        setShowPublish(false);
-        fetchWaiver();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "No se pudo publicar el waiver");
+        setPublishing(false);
+        return;
       }
-    } catch {}
+      setShowPublish(false);
+      toast.success(`Waiver v${data.version} publicado`);
+      fetchWaiver();
+    } catch {
+      toast.error("Error de conexión al publicar");
+    }
     setPublishing(false);
   };
 
   const handleSaveSettings = async (updates: Record<string, boolean>) => {
     setSaving(true);
     try {
-      await fetch("/api/admin/waiver", {
+      const res = await fetch("/api/admin/waiver", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "No se pudo guardar la configuración");
+        setSaving(false);
+        return;
+      }
       setWaiver((prev) => (prev ? { ...prev, ...updates } : prev));
-    } catch {}
+    } catch {
+      toast.error("Error de conexión");
+    }
     setSaving(false);
   };
 
   const handleRemindAll = async () => {
     setReminding(true);
     try {
-      await fetch("/api/admin/waiver/remind", {
+      const res = await fetch("/api/admin/waiver/remind", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-    } catch {}
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "No se pudo enviar recordatorios");
+        setReminding(false);
+        return;
+      }
+      toast.success(data.sent ? `${data.sent} recordatorios enviados` : "Recordatorios enviados");
+    } catch {
+      toast.error("Error de conexión");
+    }
     setReminding(false);
   };
 

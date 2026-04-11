@@ -56,12 +56,16 @@ export async function PATCH(req: NextRequest) {
   const ctx = await requireRole("ADMIN");
   const body = await req.json();
 
-  const draft = await prisma.waiver.findFirst({
-    where: { tenantId: ctx.tenant.id, status: "draft" },
+  const latest = await prisma.waiver.findFirst({
+    where: { tenantId: ctx.tenant.id },
+    orderBy: { version: "desc" },
   });
 
-  if (!draft) {
-    return NextResponse.json({ error: "No draft found" }, { status: 404 });
+  if (!latest) {
+    return NextResponse.json(
+      { error: "No hay waiver creado" },
+      { status: 404 },
+    );
   }
 
   const {
@@ -77,7 +81,7 @@ export async function PATCH(req: NextRequest) {
   } = body;
 
   const waiver = await prisma.waiver.update({
-    where: { id: draft.id },
+    where: { id: latest.id },
     data: {
       ...(title !== undefined && { title }),
       ...(content !== undefined && { content }),
