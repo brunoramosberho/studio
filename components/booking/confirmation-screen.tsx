@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Check, Calendar, BookOpen, ArrowRight, FileText, ChevronRight } from "lucide-react";
+import { PartyPopperIcon, type PartyPopperIconHandle } from "lucide-animated";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { generateCalendarUrl } from "@/lib/utils";
@@ -156,13 +157,49 @@ export function ConfirmationScreen({
           </motion.div>
         </motion.div>
       ) : (
+        <ConfirmationContent
+          particles={particles}
+          calendarUrl={calendarUrl}
+          classTitle={classTitle}
+          classDate={classDate}
+          classTime={classTime}
+          coachName={coachName}
+        />
+      )}
+    </AnimatePresence>
+  );
+}
+
+function ConfirmationContent({
+  particles,
+  calendarUrl,
+  classTitle,
+  classDate,
+  classTime,
+  coachName,
+}: {
+  particles: ReturnType<typeof useConfettiParticles>;
+  calendarUrl: string | null;
+  classTitle?: string;
+  classDate?: string;
+  classTime?: string;
+  coachName?: string;
+}) {
+  const partyRef = useRef<PartyPopperIconHandle>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => partyRef.current?.startAnimation(), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
         <motion.div
           key="confirmation"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="flex flex-col items-center px-4 py-8 text-center"
         >
-          {/* Animated checkmark with confetti */}
+          {/* Animated party popper with confetti */}
           <div className="relative mb-8">
             {particles.map((p) => (
               <motion.div
@@ -214,7 +251,7 @@ export function ConfirmationScreen({
                   delay: 0.2,
                 }}
               >
-                <Check className="h-10 w-10" style={{ color: ACCENT }} strokeWidth={3} />
+                <PartyPopperIcon ref={partyRef} size={40} style={{ color: ACCENT }} />
               </motion.div>
             </motion.div>
           </div>
@@ -296,7 +333,5 @@ export function ConfirmationScreen({
             </Button>
           </motion.div>
         </motion.div>
-      )}
-    </AnimatePresence>
   );
 }

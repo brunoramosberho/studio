@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useOptimistic, useCallback, useEffect, startTransition } from "react";
+import { useState, useOptimistic, useCallback, useEffect, useRef, startTransition } from "react";
 import {
   Search,
   QrCode,
@@ -21,6 +21,7 @@ import {
   FileText,
   Mail,
 } from "lucide-react";
+import { CircleCheckIcon, type CircleCheckIconHandle } from "lucide-animated";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -595,6 +596,15 @@ function RosterRow({
   const hasBirthday = member.stats?.birthdayLabel === "today";
   const hasPhoto = !!member.memberImage;
 
+  const circleCheckRef = useRef<CircleCheckIconHandle>(null);
+  const prevCheckedIn = useRef(isCheckedIn);
+  useEffect(() => {
+    if (isCheckedIn && !prevCheckedIn.current) {
+      circleCheckRef.current?.startAnimation();
+    }
+    prevCheckedIn.current = isCheckedIn;
+  }, [isCheckedIn]);
+
   const packageLabel = member.hasPaymentPending
     ? "Pago pendiente"
     : member.isUnlimited
@@ -678,7 +688,7 @@ function RosterRow({
               {isLate ? (
                 <><Clock size={12} /> Tarde</>
               ) : (
-                <><Check size={12} /> Presente</>
+                <><CircleCheckIcon ref={circleCheckRef} size={12} /> Presente</>
               )}
             </span>
             {!isFinished && (

@@ -1,8 +1,10 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { useRef, useEffect } from "react";
 import Link from "next/link";
-import { Calendar, ArrowRight, Users, Bell } from "lucide-react";
+import { Calendar, ArrowRight, Users } from "lucide-react";
+import { BellIcon, type BellIconHandle } from "lucide-animated";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { PageTransition } from "@/components/shared/page-transition";
@@ -34,6 +36,14 @@ export default function DashboardPage() {
     enabled: !!session?.user,
   });
   const unreadCount = notifData?.unreadCount ?? 0;
+
+  const bellRef = useRef<BellIconHandle>(null);
+  useEffect(() => {
+    if (unreadCount > 0) {
+      const timer = setTimeout(() => bellRef.current?.startAnimation(), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [unreadCount]);
 
   const { data: headerData } = useQuery<FeedHeaderData>({
     queryKey: ["feed-header"],
@@ -91,7 +101,7 @@ export default function DashboardPage() {
               href="/my/notifications"
               className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors active:bg-surface"
             >
-              <Bell className="h-5 w-5" />
+              <BellIcon ref={bellRef} size={20} />
               {unreadCount > 0 && (
                 <span className="absolute right-0.5 top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-white">
                   {unreadCount > 9 ? "9+" : unreadCount}

@@ -7,6 +7,7 @@ import { useBranding } from "@/components/branding-provider";
 import { useTenant } from "@/components/tenant-provider";
 import { SignatureCanvas } from "@/components/waiver/signature-canvas";
 import { Check, ChevronRight, Loader2, X } from "lucide-react";
+import { FileCheckIcon, type FileCheckIconHandle } from "lucide-animated";
 import Image from "next/image";
 
 type Step = "intro" | "read" | "sign" | "done";
@@ -425,10 +426,18 @@ function WaiverSignContent() {
   }
 
   // ─── STEP: Done ─────────────────────────────────────────
+  const fileCheckRef = useRef<FileCheckIconHandle>(null);
+  useEffect(() => {
+    if (step === "done") {
+      const timer = setTimeout(() => fileCheckRef.current?.startAnimation(), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
+
   return (
     <div className="flex h-dvh flex-col items-center justify-center bg-stone-50 px-6 text-center">
       <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-        <Check size={32} className="text-emerald-600" />
+        <FileCheckIcon ref={fileCheckRef} size={32} className="text-emerald-600" />
       </div>
 
       <h1 className="mb-2 text-xl font-semibold text-stone-800">

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Bell, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
+import { BellIcon } from "lucide-animated";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { cn } from "@/lib/utils";
@@ -116,7 +117,7 @@ export default function NotificationsPage() {
           </div>
         ) : notifications.length === 0 ? (
           <div className="rounded-2xl border border-border/50 bg-white py-16 text-center">
-            <Bell className="mx-auto h-10 w-10 text-muted/20" />
+            <div className="mx-auto w-fit"><BellIcon size={40} className="text-muted/20" /></div>
             <p className="mt-3 text-[15px] font-medium text-foreground">
               Sin notificaciones
             </p>
@@ -138,7 +139,7 @@ export default function NotificationsPage() {
                     />
                   ) : (
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-surface">
-                      <Bell className="h-4 w-4 text-muted" />
+                      <BellIcon size={16} className="text-muted" />
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
