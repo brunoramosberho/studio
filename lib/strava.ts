@@ -18,7 +18,7 @@ export function buildStravaAuthUrl(userId: string, redirectUri: string, state?: 
     redirect_uri: redirectUri,
     response_type: "code",
     approval_prompt: "auto",
-    scope: "read,activity:read",
+    scope: "read,activity:read_all,activity:write",
     state: state || userId,
   });
   return `${STRAVA_OAUTH}/authorize?${params}`;
@@ -134,4 +134,24 @@ export async function fetchStravaActivity(
   }
 
   return res.json();
+}
+
+export async function updateStravaActivity(
+  accessToken: string,
+  activityId: string | number,
+  data: { name?: string; description?: string },
+): Promise<void> {
+  const res = await fetch(`${STRAVA_API}/activities/${activityId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`Strava activity update failed: ${res.status} ${text}`);
+  }
 }

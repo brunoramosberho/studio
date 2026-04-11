@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getValidAccessToken, fetchStravaActivity } from "@/lib/strava";
-import { encrypt } from "@/lib/encryption";
+import { getValidAccessToken, fetchStravaActivity, updateStravaActivity } from "@/lib/strava";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -64,7 +63,17 @@ export async function POST(request: NextRequest) {
           endsAt: { gte: new Date(activityStart.getTime() - WINDOW_MS) },
         },
       },
-      include: { class: { select: { startsAt: true, endsAt: true } } },
+      include: {
+        class: {
+          select: {
+            startsAt: true,
+            endsAt: true,
+            classType: { select: { name: true, description: true } },
+            coach: { select: { user: { select: { name: true } } } },
+            room: { select: { studio: { select: { tenant: { select: { name: true } } } } } },
+          },
+        },
+      },
       orderBy: { class: { startsAt: "desc" } },
     });
 
@@ -112,6 +121,24 @@ export async function POST(request: NextRequest) {
         rawPayload: JSON.parse(JSON.stringify(activity)),
       },
     });
+
+    const cls = bestMatch.class;
+    const discipline = cls.classType?.name;
+    const coachName = cls.coach?.user?.name?.split(" ")[0];
+    const tenantName = cls.room?.studio?.tenant?.name;
+
+    if (discipline) {
+      const nameParts = [discipline];
+      if (coachName) nameParts.push(`con ${coachName}`);
+      if (tenantName) nameParts.push(`@ ${tenantName}`);
+
+      const description = cls.classType?.description || undefined;
+
+      updateStravaActivity(accessToken, providerActivityId, {
+        name: nameParts.join(" "),
+        description: description ?? undefined,
+      }).catch((err) => console.error("Failed to update Strava activity:", err));
+    }
 
     return NextResponse.json({ ok: true, matched: bestMatch.id });
   } catch (error) {
