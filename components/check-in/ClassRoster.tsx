@@ -19,6 +19,7 @@ import {
   Trophy,
   AlertTriangle,
   FileText,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -436,13 +437,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
       {/* Waiver pending confirmation */}
       {waiverConfirm && (
-        <ConfirmDialog
-          icon={<FileText className="text-amber-600 shrink-0 mt-0.5" size={18} />}
-          title="Waiver no firmado"
-          description="Este miembro no ha firmado el acuerdo de responsabilidad. Puedes enviarle el link para que firme desde su celular."
-          confirmLabel="Check-in de todas formas"
-          confirmClassName="bg-amber-50 text-amber-700 hover:bg-amber-100"
-          onConfirm={() => {
+        <WaiverConfirmDialog
+          memberId={waiverConfirm}
+          onForceCheckIn={() => {
             const now = new Date();
             const isLate = now > new Date(classInfo.startTime);
             startTransition(() => {
@@ -786,6 +783,97 @@ function WaitlistSection({
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── Waiver Confirm Dialog (with send email) ──
+
+function WaiverConfirmDialog({
+  memberId,
+  onForceCheckIn,
+  onCancel,
+}: {
+  memberId: string;
+  onForceCheckIn: () => void;
+  onCancel: () => void;
+}) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function handleSendEmail() {
+    setSending(true);
+    try {
+      const res = await fetch("/api/admin/waiver/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error ?? "Error al enviar correo");
+      } else {
+        setSent(true);
+        toast.success("Correo enviado");
+      }
+    } catch {
+      toast.error("Error al enviar correo");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
+      <div className="bg-white rounded-xl shadow-xl p-4 mx-4 max-w-sm w-full">
+        <div className="flex items-start gap-3">
+          <FileText className="text-amber-600 shrink-0 mt-0.5" size={18} />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-stone-900">Waiver no firmado</p>
+            <p className="text-xs text-stone-500 mt-1">
+              Este miembro no ha firmado el acuerdo de responsabilidad.
+            </p>
+
+            <div className="flex flex-col gap-2 mt-3">
+              <button
+                onClick={handleSendEmail}
+                disabled={sending || sent}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs rounded-lg transition-colors",
+                  sent
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-blue-50 text-blue-700 hover:bg-blue-100",
+                  (sending || sent) && "opacity-70 cursor-not-allowed",
+                )}
+              >
+                {sending ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : sent ? (
+                  <Check size={13} />
+                ) : (
+                  <Mail size={13} />
+                )}
+                {sent ? "Correo enviado" : "Enviar link por correo"}
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={onCancel}
+                  className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={onForceCheckIn}
+                  className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100"
+                >
+                  Check-in de todas formas
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
