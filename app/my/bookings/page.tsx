@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,7 +12,7 @@ import {
   Check,
   Clock,
 } from "lucide-react";
-import { CalendarDaysIcon } from "lucide-animated";
+import { CalendarDaysIcon, type CalendarDaysIconHandle } from "lucide-animated";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -207,7 +207,7 @@ export default function BookingsPage() {
         ) : tab === "upcoming" && mergedUpcoming.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface">
-              <CalendarDaysIcon size={28} className="text-muted/40" />
+              <AutoAnimatedCalendarDays size={28} className="text-muted/40" />
             </div>
             <p className="mt-4 font-display text-lg font-bold text-foreground">
               Sin clases próximas
@@ -222,7 +222,7 @@ export default function BookingsPage() {
         ) : tab === "past" && past.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface">
-              <CalendarDaysIcon size={28} className="text-muted/40" />
+              <AutoAnimatedCalendarDays size={28} className="text-muted/40" />
             </div>
             <p className="mt-4 font-display text-lg font-bold text-foreground">
               Sin historial aún
@@ -671,6 +671,15 @@ function WaitlistCard({
       </Link>
     </motion.div>
   );
+}
+
+function AutoAnimatedCalendarDays({ size, className }: { size: number; className?: string }) {
+  const ref = useRef<CalendarDaysIconHandle>(null);
+  useEffect(() => {
+    const timer = setTimeout(() => ref.current?.startAnimation(), 400);
+    return () => clearTimeout(timer);
+  }, []);
+  return <CalendarDaysIcon ref={ref} size={size} className={className} />;
 }
 
 function StatusBadge({ status }: { status: string }) {
