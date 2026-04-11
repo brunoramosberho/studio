@@ -20,6 +20,7 @@ import {
   Trash2,
   ArrowLeft,
 } from "lucide-react";
+import { SparklesIcon, type SparklesIconHandle } from "lucide-animated";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 import { MessageList } from "./MessageList";
@@ -526,6 +527,7 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
 function MgicAIButton() {
   const { toggle, isOpen } = useMgicAI();
   const { colorAdmin } = useBranding();
+  const sparklesRef = useRef<SparklesIconHandle>(null);
 
   return (
     <AnimatePresence>
@@ -537,11 +539,13 @@ function MgicAIButton() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={toggle}
+          onMouseEnter={() => sparklesRef.current?.startAnimation()}
+          onMouseLeave={() => sparklesRef.current?.stopAnimation()}
           className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl"
           style={{ backgroundColor: colorAdmin }}
           aria-label="Abrir Mgic AI"
         >
-          <Sparkles className="h-4 w-4" />
+          <SparklesIcon ref={sparklesRef} size={16} />
           <span className="hidden sm:inline">Mgic AI</span>
         </motion.button>
       )}
