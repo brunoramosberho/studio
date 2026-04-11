@@ -3,14 +3,16 @@
 import { useState, useRef, useEffect } from "react";
 import { Camera, Loader2, X, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { captureVideoPoster, uploadVideoPosterToStorage } from "@/lib/media-utils";
 
 const MAX_DIMENSION = 1920;
 const JPEG_QUALITY = 0.80;
 const SIZE_THRESHOLD = 2 * 1024 * 1024;
 
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
-const MAX_VIDEO_SIZE_LABEL = "50";
+const MAX_VIDEO_SIZE = 30 * 1024 * 1024;
+const MAX_VIDEO_SIZE_LABEL = "30";
 const MAX_VIDEO_DURATION = 60;
+const ACCEPTED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 
 function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) return Promise.resolve(file);
@@ -77,6 +79,7 @@ function getVideoDuration(file: File): Promise<number> {
   });
 }
 
+
 function uploadWithProgress(
   url: string,
   file: File,
@@ -133,6 +136,13 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
     for (const file of Array.from(files)) {
       const isVid = file.type.startsWith("video/");
 
+      if (isVid && !ACCEPTED_VIDEO_TYPES.includes(file.type)) {
+        setValidationError(
+          "Formato de video no soportado. Usa MP4 o WebM.",
+        );
+        return;
+      }
+
       if (isVid && file.size > MAX_VIDEO_SIZE) {
         setValidationError(
           `Video demasiado pesado (${(file.size / 1024 / 1024).toFixed(0)} MB). Máximo: ${MAX_VIDEO_SIZE_LABEL} MB.`,
@@ -186,7 +196,6 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
 
       if (item.isVideo) {
         try {
-          // 1. Get signed upload URL
           const urlRes = await fetch(`/api/feed/${eventId}/photos/upload-url`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -204,23 +213,28 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
 
           const { signedUrl, publicUrl } = await urlRes.json();
 
-          // 2. Upload directly to storage with progress
           setProgress(0);
           await uploadWithProgress(
             signedUrl,
             item.file,
             item.file.type,
-            (fraction) => setProgress(fraction),
+            (fraction) => setProgress(fraction * 0.9),
           );
+
+          let thumbnailUrl: string | null = null;
+          const poster = await captureVideoPoster(item.file);
+          if (poster) {
+            thumbnailUrl = await uploadVideoPosterToStorage(eventId, item.file.name, poster);
+          }
           setProgress(1);
 
-          // 3. Register the uploaded file
           const regRes = await fetch(`/api/feed/${eventId}/photos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               url: publicUrl,
               mimeType: item.file.type,
+              thumbnailUrl,
             }),
           });
 
@@ -278,7 +292,7 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,video/*"
+        accept="image/*,video/mp4,video/quicktime,video/webm"
         multiple
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}

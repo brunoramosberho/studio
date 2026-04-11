@@ -23,7 +23,7 @@ interface MediaGalleryProps {
 
 const isVideo = (mime: string) => mime.startsWith("video/");
 
-function InlineVideo({ src, className, onClick }: { src: string; className?: string; onClick: () => void }) {
+function InlineVideo({ src, poster, className, onClick }: { src: string; poster?: string | null; className?: string; onClick: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -36,6 +36,7 @@ function InlineVideo({ src, className, onClick }: { src: string; className?: str
           video.play().catch(() => {});
         } else {
           video.pause();
+          video.currentTime = 0;
         }
       },
       { threshold: 0.5 },
@@ -49,7 +50,9 @@ function InlineVideo({ src, className, onClick }: { src: string; className?: str
     <video
       ref={videoRef}
       src={src}
+      poster={poster || undefined}
       className={className}
+      preload="metadata"
       muted
       loop
       playsInline
@@ -299,31 +302,38 @@ function Lightbox({
           }}
           onTransitionEnd={handleTransitionEnd}
         >
-          {media.map((item) => (
-            <div
-              key={item.id}
-              className="flex h-full items-center justify-center"
-              style={{ width: `${100 / media.length}%` }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {isVideo(item.mimeType) ? (
-                <video
-                  src={item.url}
-                  className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
-                  controls
-                  autoPlay={item.id === media[idx].id}
-                  playsInline
-                />
-              ) : (
-                <img
-                  src={item.url}
-                  alt=""
-                  className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
-                  draggable={false}
-                />
-              )}
-            </div>
-          ))}
+          {media.map((item, i) => {
+            const isNearby = Math.abs(i - idx) <= 1;
+            return (
+              <div
+                key={item.id}
+                className="flex h-full items-center justify-center"
+                style={{ width: `${100 / media.length}%` }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {isNearby ? (
+                  isVideo(item.mimeType) ? (
+                    <video
+                      src={item.url}
+                      poster={item.thumbnailUrl || undefined}
+                      className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
+                      controls
+                      autoPlay={i === idx}
+                      preload={i === idx ? "auto" : "metadata"}
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={item.url}
+                      alt=""
+                      className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
+                      draggable={false}
+                    />
+                  )
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -381,6 +391,7 @@ export function MediaGallery({ media, className, eventId, currentUserId, coachUs
               {isVideo(item.mimeType) ? (
                 <InlineVideo
                   src={item.url}
+                  poster={item.thumbnailUrl}
                   className={cn(
                     "h-full w-full object-cover",
                     media.length === 1 && "aspect-[4/3]",
@@ -392,7 +403,7 @@ export function MediaGallery({ media, className, eventId, currentUserId, coachUs
                 />
               ) : (
                 <img
-                  src={item.url}
+                  src={item.thumbnailUrl || item.url}
                   alt=""
                   loading="lazy"
                   className={cn(

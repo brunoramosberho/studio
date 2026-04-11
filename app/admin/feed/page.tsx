@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { captureVideoPoster, uploadVideoPosterToStorage } from "@/lib/media-utils";
 import {
   Megaphone,
   Trophy,
@@ -386,10 +387,16 @@ export default function AdminFeedPage() {
               });
               if (!putRes.ok) { failedCount++; continue; }
 
+              let thumbnailUrl: string | null = null;
+              const poster = await captureVideoPoster(file);
+              if (poster) {
+                thumbnailUrl = await uploadVideoPosterToStorage(event.id, file.name, poster);
+              }
+
               const regRes = await fetch(`/api/feed/${event.id}/photos`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: publicUrl, mimeType: file.type }),
+                body: JSON.stringify({ url: publicUrl, mimeType: file.type, thumbnailUrl }),
               });
               if (regRes.ok) uploadedCount++;
               else failedCount++;

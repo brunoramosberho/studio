@@ -60,9 +60,10 @@ export async function POST(
 
     if (reqContentType.includes("application/json")) {
       const body = await request.json();
-      const { url, mimeType: bodyMime } = body as {
+      const { url, mimeType: bodyMime, thumbnailUrl: bodyThumb } = body as {
         url?: string;
         mimeType?: string;
+        thumbnailUrl?: string | null;
       };
       if (!url || !bodyMime) {
         return NextResponse.json(
@@ -71,6 +72,7 @@ export async function POST(
         );
       }
       photoUrl = url;
+      thumbnailUrl = bodyThumb ?? null;
       mimeType = bodyMime;
     } else {
       const formData = await request.formData();
