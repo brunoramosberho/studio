@@ -5,8 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { FileText, ChevronRight, X } from "lucide-react";
-import { useBranding } from "@/components/branding-provider";
+import { FileText, ArrowRight, X } from "lucide-react";
 
 const DISMISSED_KEY = "waiver-gate-dismissed";
 const SKIP_PREFIXES = ["/login", "/admin", "/coach", "/dev", "/waiver", "/super-admin", "/directory", "/install"];
@@ -14,7 +13,6 @@ const SKIP_PREFIXES = ["/login", "/admin", "/coach", "/dev", "/waiver", "/super-
 export function WaiverGate() {
   const pathname = usePathname();
   const { data: session, status: authStatus } = useSession();
-  const { studioName } = useBranding();
   const [show, setShow] = useState(false);
 
   const shouldSkip = SKIP_PREFIXES.some((p) => pathname.startsWith(p));
@@ -44,70 +42,50 @@ export function WaiverGate() {
     <AnimatePresence>
       {show && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-stone-50 px-6 text-center"
-          style={{ paddingTop: "env(safe-area-inset-top)" }}
+          initial={{ opacity: 0, y: 80 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 80 }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          className="fixed inset-x-0 bottom-20 z-50 mx-auto w-[calc(100%-2rem)] max-w-md md:bottom-6"
         >
-          <button
-            onClick={handleDismiss}
-            className="absolute right-4 top-4 rounded-full p-2 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
-            style={{ marginTop: "env(safe-area-inset-top)" }}
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-200/80 bg-white p-4 shadow-lg shadow-black/5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50">
+              <FileText className="h-4.5 w-4.5 text-amber-600" />
+            </div>
 
-          <motion.div
-            className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 15 }}
-          >
-            <FileText className="h-8 w-8 text-amber-600" />
-          </motion.div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-stone-800">
+                Tienes un acuerdo pendiente
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
+                Antes de asistir a tu clase, necesitas firmar el acuerdo de responsabilidad. Es rápido y solo lo haces una vez.
+              </p>
 
-          <motion.h1
-            className="mb-3 text-xl font-semibold text-stone-800"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            Firma requerida
-          </motion.h1>
-
-          <motion.p
-            className="mb-10 max-w-xs text-sm leading-relaxed text-stone-500"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-          >
-            Para seguir usando {studioName}, necesitas firmar el acuerdo de
-            responsabilidad. Solo lo harás una vez.
-          </motion.p>
-
-          <motion.div
-            className="flex w-full max-w-xs flex-col gap-3"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-          >
-            <Link
-              href="/waiver/sign"
-              onClick={() => sessionStorage.setItem(DISMISSED_KEY, "1")}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1C2340] py-4 text-base font-medium text-white active:opacity-90"
-            >
-              Leer y firmar
-              <ChevronRight size={18} />
-            </Link>
+              <div className="mt-3 flex items-center gap-2">
+                <Link
+                  href="/waiver/sign"
+                  onClick={() => sessionStorage.setItem(DISMISSED_KEY, "1")}
+                  className="flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-medium text-white transition-opacity active:opacity-80"
+                >
+                  Firmar ahora
+                  <ArrowRight size={13} />
+                </Link>
+                <button
+                  onClick={handleDismiss}
+                  className="rounded-full px-3 py-1.5 text-xs text-stone-400 transition-colors hover:text-stone-600"
+                >
+                  Después
+                </button>
+              </div>
+            </div>
 
             <button
               onClick={handleDismiss}
-              className="py-2 text-sm text-stone-400 transition-colors hover:text-stone-600"
+              className="shrink-0 rounded-full p-1 text-stone-300 transition-colors hover:bg-stone-100 hover:text-stone-500"
             >
-              Después
+              <X size={16} />
             </button>
-          </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
