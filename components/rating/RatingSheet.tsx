@@ -122,6 +122,12 @@ export function RatingSheet() {
     setSubmitted(true);
   };
 
+  useEffect(() => {
+    if (!submitted) return;
+    const timer = setTimeout(dismiss, 2500);
+    return () => clearTimeout(timer);
+  }, [submitted, dismiss]);
+
   if (!pending || isAdmin) return null;
 
   const stars = [1, 2, 3, 4, 5];
