@@ -61,6 +61,15 @@ function WaiverSignContent() {
   const [accepted, setAccepted] = useState(false);
   const [showCanvas, setShowCanvas] = useState(false);
 
+  // Done step — animated icon
+  const fileCheckRef = useRef<FileCheckIconHandle>(null);
+  useEffect(() => {
+    if (step === "done") {
+      const timer = setTimeout(() => fileCheckRef.current?.startAnimation(), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
+
   useEffect(() => {
     if (session?.user?.name && !name) {
       setName(session.user.name);
@@ -426,14 +435,6 @@ function WaiverSignContent() {
   }
 
   // ─── STEP: Done ─────────────────────────────────────────
-  const fileCheckRef = useRef<FileCheckIconHandle>(null);
-  useEffect(() => {
-    if (step === "done") {
-      const timer = setTimeout(() => fileCheckRef.current?.startAnimation(), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [step]);
-
   return (
     <div className="flex h-dvh flex-col items-center justify-center bg-stone-50 px-6 text-center">
       <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
