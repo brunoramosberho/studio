@@ -49,6 +49,7 @@ import {
   CalendarSync,
   Wallet,
 } from "lucide-react";
+import { SparklesIcon } from "lucide-animated";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
@@ -452,7 +453,7 @@ function MgicAIButton() {
           isOpen ? "bg-admin/10" : "bg-white/15",
         )}
       >
-        <Sparkles className="h-3.5 w-3.5" />
+        <SparklesIcon size={14} />
       </span>
       <span className="flex-1">Mgic AI</span>
       <span
