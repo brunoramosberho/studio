@@ -210,7 +210,14 @@ export default function AdminClassesPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => {
+          setStatusFilter(v);
+          setSort((prev) => ({
+            ...prev,
+            dir: v === "past" ? "desc" : prev.key === "startsAt" ? "asc" : prev.dir,
+          }));
+          setPage(1);
+        }}>
           <SelectTrigger className="w-full sm:w-44">
             <SelectValue />
           </SelectTrigger>
