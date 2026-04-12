@@ -45,14 +45,23 @@ export default async function TermsPage() {
         <h2>{t("termsPayments")}</h2>
         <p>{t("termsPaymentsDesc")}</p>
 
+        <h2>{t("termsWithdrawal")}</h2>
+        <p>{t("termsWithdrawalDesc")}</p>
+
         <h2>{t("termsConduct")}</h2>
-        <p>{t("termsConductDesc")}</p>
+        <p>{t("termsConductDesc", { company: COMPANY })}</p>
+
+        <h2>{t("termsIntellectual")}</h2>
+        <p>{t("termsIntellectualDesc", { company: COMPANY })}</p>
 
         <h2>{t("termsLiability")}</h2>
         <p>{t("termsLiabilityDesc", { company: COMPANY })}</p>
 
         <h2>{t("termsChanges")}</h2>
         <p>{t("termsChangesDesc")}</p>
+
+        <h2>{t("termsLaw")}</h2>
+        <p>{t("termsLawDesc")}</p>
 
         <h2>{t("termsContact")}</h2>
         <p>{t("termsContactDesc", { company: COMPANY })}</p>
