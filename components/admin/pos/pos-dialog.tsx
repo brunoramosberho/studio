@@ -13,18 +13,11 @@ import { CartStep } from "./cart-step";
 import { PaymentStep } from "./payment-step";
 import { ConfirmationStep } from "./confirmation-step";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export function PosDialog() {
   const { isOpen, closePOS, step, customer, setStep } = usePosStore();
-
-  const title =
-    step === "customer"
-      ? "Punto de venta"
-      : step === "cart"
-        ? "Punto de venta"
-        : step === "payment"
-          ? "Punto de venta"
-          : "Punto de venta";
+  const t = useTranslations("pos");
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && closePOS()}>
@@ -42,28 +35,28 @@ export function PosDialog() {
         )}
       >
         <DialogHeader>
-          <DialogTitle className="text-xl">{title}</DialogTitle>
+          <DialogTitle className="text-xl">{t("title")}</DialogTitle>
         </DialogHeader>
 
         {/* Step indicator */}
         {step !== "confirmation" && (
           <div className="flex items-center gap-1.5 py-1">
             <StepDot
-              label="Cliente"
+              label={t("stepCustomer")}
               active={step === "customer"}
               completed={step !== "customer" && !!customer}
               onClick={() => step !== "customer" && setStep("customer")}
             />
             <div className="h-px flex-1 bg-border/50" />
             <StepDot
-              label="Carrito"
+              label={t("stepCart")}
               active={step === "cart"}
               completed={step === "payment"}
               onClick={() => step === "payment" && setStep("cart")}
             />
             <div className="h-px flex-1 bg-border/50" />
             <StepDot
-              label="Pago"
+              label={t("stepPayment")}
               active={step === "payment"}
               completed={false}
             />
@@ -82,7 +75,7 @@ export function PosDialog() {
                   onClick={() => setStep("cart")}
                   disabled={!customer}
                 >
-                  Continuar
+                  {t("continue")}
                 </Button>
               </div>
             </div>

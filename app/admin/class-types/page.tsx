@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -50,12 +51,15 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 };
 
-const LEVEL_LABELS: Record<string, string> = {
-  ALL: "Todos los niveles",
-  BEGINNER: "Principiante",
-  INTERMEDIATE: "Intermedio",
-  ADVANCED: "Avanzado",
-};
+function useLevelLabels() {
+  const ts = useTranslations("status");
+  return {
+    ALL: ts("allLevels"),
+    BEGINNER: ts("beginner"),
+    INTERMEDIATE: ts("intermediate"),
+    ADVANCED: ts("advanced"),
+  } as Record<string, string>;
+}
 
 const PRESET_COLORS = [
   "#1A2C4E", "#C9A96E", "#8B5E3C", "#2D6A4F", "#6B21A8",
@@ -108,6 +112,8 @@ interface FeedDisciplineSettings {
 /*  Global feed-disciplines config (top card)                         */
 /* ------------------------------------------------------------------ */
 function FeedConfigCard() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
   const [localThreshold, setLocalThreshold] = useState<string>("");
   const [saved, setSaved] = useState(false);
@@ -164,9 +170,9 @@ function FeedConfigCard() {
             <Rss className="h-4.5 w-4.5" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold">Disciplinas en el feed</p>
+            <p className="text-sm font-semibold">{t("disciplinesInFeed")}</p>
             <p className="text-xs text-muted">
-              Muestra la sección &quot;Descubre nuestras disciplinas&quot; a miembros nuevos
+              {t("disciplinesInFeedDesc")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -177,7 +183,7 @@ function FeedConfigCard() {
               )}
             >
               <Check className="h-3.5 w-3.5" />
-              Guardado
+              {tc("saved")}
             </span>
             {mutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted" />}
             <Switch
@@ -192,7 +198,7 @@ function FeedConfigCard() {
           <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-surface/30 p-4 sm:flex-row sm:items-end">
             <div className="flex-1">
               <label className="mb-1.5 block text-xs font-medium text-muted">
-                Desaparece después de…
+                {t("disappearsAfter")}
               </label>
               <Select
                 value={config.feedDisciplineThreshold == null ? "never" : "threshold"}
@@ -207,15 +213,15 @@ function FeedConfigCard() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="threshold">Después de X clases tomadas</SelectItem>
-                  <SelectItem value="never">Nunca (siempre visible)</SelectItem>
+                  <SelectItem value="threshold">{t("afterXClasses")}</SelectItem>
+                  <SelectItem value="never">{t("neverAlwaysVisible")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {config.feedDisciplineThreshold != null && (
               <div className="w-full sm:w-32">
-                <label className="mb-1.5 block text-xs font-medium text-muted">Clases</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted">{t("classes")}</label>
                 <Input
                   type="number"
                   min={1}
@@ -244,6 +250,10 @@ function FeedConfigCard() {
 /*  Main page                                                         */
 /* ------------------------------------------------------------------ */
 export default function AdminClassTypesPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
+  const LEVEL_LABELS = useLevelLabels();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ClassTypeData | null>(null);
@@ -343,15 +353,15 @@ export default function AdminClassTypesPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Disciplinas</h1>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("disciplines")}</h1>
           <p className="mt-1 text-sm text-muted">
-            Tipos de clase disponibles en el estudio
+            {t("disciplinesSubtitle")}
           </p>
         </motion.div>
 
         <Button onClick={openCreate} className="gap-2 bg-admin hover:bg-admin/90">
           <Plus className="h-4 w-4" />
-          Nueva disciplina
+          {t("newDiscipline")}
         </Button>
       </div>
 
@@ -369,14 +379,14 @@ export default function AdminClassTypesPage() {
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <Dumbbell className="h-10 w-10 text-muted/30" />
             <div>
-              <p className="font-medium text-muted">No hay disciplinas configuradas</p>
+              <p className="font-medium text-muted">{t("noDisciplines")}</p>
               <p className="mt-1 text-sm text-muted/70">
-                Crea tu primera disciplina para poder programar clases
+                {t("noDisciplinesDesc")}
               </p>
             </div>
             <Button onClick={openCreate} variant="outline" size="sm" className="mt-2 gap-2">
               <Plus className="h-3.5 w-3.5" />
-              Crear disciplina
+              {t("createDiscipline")}
             </Button>
           </CardContent>
         </Card>
@@ -459,7 +469,7 @@ export default function AdminClassTypesPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <Rss className="h-3 w-3 text-muted" />
-                      <span className="text-xs text-muted">Mostrar en feed</span>
+                      <span className="text-xs text-muted">{t("showInFeed")}</span>
                     </div>
                     <Switch
                       checked={ct.showInFeed}
@@ -480,28 +490,28 @@ export default function AdminClassTypesPage() {
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditing(null); saveMutation.reset(); } }}>
         <DialogContent className="max-h-[min(90vh,820px)] overflow-hidden sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar disciplina" : "Nueva disciplina"}</DialogTitle>
+            <DialogTitle>{editing ? t("editDiscipline") : t("newDiscipline")}</DialogTitle>
             <DialogDescription>
               {editing
-                ? "Modifica los datos de la disciplina"
-                : "Define un nuevo tipo de clase para el estudio"}
+                ? t("editDisciplineDesc")
+                : t("newDisciplineDesc")}
             </DialogDescription>
           </DialogHeader>
 
           <Tabs defaultValue="basic" className="mt-2">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="basic">Básico</TabsTrigger>
-              <TabsTrigger value="style">Estilo</TabsTrigger>
-              <TabsTrigger value="content">Contenido</TabsTrigger>
+              <TabsTrigger value="basic">{t("basicTab")}</TabsTrigger>
+              <TabsTrigger value="style">{t("styleTab")}</TabsTrigger>
+              <TabsTrigger value="content">{t("contentTab")}</TabsTrigger>
             </TabsList>
 
             <div className="mt-3 max-h-[min(58vh,520px)] overflow-y-auto pr-1">
               <TabsContent value="basic" className="m-0">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Nombre</label>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">{tc("name")}</label>
                     <Input
-                      placeholder="Ej: Reformer, Mat Flow, Barre..."
+                      placeholder={t("disciplineNamePlaceholder")}
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
@@ -509,10 +519,10 @@ export default function AdminClassTypesPage() {
 
                   <div className="sm:col-span-2">
                     <label className="mb-1.5 block text-xs font-medium text-muted">
-                      Descripción <span className="font-normal">(opcional)</span>
+                      {t("descriptionLabel")} <span className="font-normal">({t("optionalLabel")})</span>
                     </label>
                     <Textarea
-                      placeholder="Breve descripción de la clase"
+                      placeholder={t("classDescriptionPlaceholder")}
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={3}
@@ -520,7 +530,7 @@ export default function AdminClassTypesPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Duración (min)</label>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">{t("durationMin")}</label>
                     <Input
                       type="number"
                       min={15}
@@ -532,16 +542,16 @@ export default function AdminClassTypesPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Nivel</label>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">{t("levelLabel")}</label>
                     <Select value={formData.level} onValueChange={(v) => setFormData({ ...formData, level: v })}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ALL">Todos los niveles</SelectItem>
-                        <SelectItem value="BEGINNER">Principiante</SelectItem>
-                        <SelectItem value="INTERMEDIATE">Intermedio</SelectItem>
-                        <SelectItem value="ADVANCED">Avanzado</SelectItem>
+                        <SelectItem value="ALL">{ts("allLevels")}</SelectItem>
+                        <SelectItem value="BEGINNER">{ts("beginner")}</SelectItem>
+                        <SelectItem value="INTERMEDIATE">{ts("intermediate")}</SelectItem>
+                        <SelectItem value="ADVANCED">{ts("advanced")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -552,7 +562,7 @@ export default function AdminClassTypesPage() {
                 <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
                   <div className="space-y-4">
                     <div>
-                      <label className="mb-1.5 block text-xs font-medium text-muted">Color</label>
+                      <label className="mb-1.5 block text-xs font-medium text-muted">{t("colorLabel")}</label>
                       <div className="grid grid-cols-10 gap-2">
                         {PRESET_COLORS.map((c) => (
                           <button
@@ -579,7 +589,7 @@ export default function AdminClassTypesPage() {
                     </div>
 
                     <div>
-                      <label className="mb-1.5 block text-xs font-medium text-muted">Icono</label>
+                      <label className="mb-1.5 block text-xs font-medium text-muted">{t("iconLabel")}</label>
                       <div className="rounded-md border border-border bg-surface/20 p-3">
                         <IconPicker
                           value={formData.icon}
@@ -592,7 +602,7 @@ export default function AdminClassTypesPage() {
 
                   <div className="hidden lg:block">
                     <div className="rounded-md border border-border bg-white p-4 shadow-sm">
-                      <p className="text-xs font-medium text-muted">Preview</p>
+                      <p className="text-xs font-medium text-muted">{t("preview")}</p>
                       <div className="mt-3 flex items-center gap-3">
                         <div
                           className="flex h-12 w-12 items-center justify-center rounded-md text-white"
@@ -605,7 +615,7 @@ export default function AdminClassTypesPage() {
                         </div>
                         <div className="min-w-0">
                           <p className="truncate font-display text-base font-bold">
-                            {formData.name?.trim() ? formData.name : "Nombre de disciplina"}
+                            {formData.name?.trim() ? formData.name : t("disciplineNameDefault")}
                           </p>
                           <p className="mt-0.5 text-xs text-muted">
                             {LEVEL_LABELS[formData.level] ?? formData.level} · {formData.duration} min
@@ -624,19 +634,19 @@ export default function AdminClassTypesPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
                     <label className="mb-1.5 block text-xs font-medium text-muted">
-                      Video o imagen <span className="font-normal">(URL, opcional)</span>
+                      {t("videoOrImage")} <span className="font-normal">(URL, {t("optionalLabel")})</span>
                     </label>
                     <Input
                       placeholder="https://cdn.example.com/video.mp4"
                       value={formData.mediaUrl}
                       onChange={(e) => setFormData({ ...formData, mediaUrl: e.target.value })}
                     />
-                    <p className="mt-1 text-[11px] text-muted">Se muestra al tocar la disciplina en el feed</p>
+                    <p className="mt-1 text-[11px] text-muted">{t("mediaFeedHint")}</p>
                   </div>
 
                   <div className="sm:col-span-2">
                     <label className="mb-1.5 block text-xs font-medium text-muted">
-                      Tags <span className="font-normal">(Enter para agregar)</span>
+                      Tags <span className="font-normal">({t("enterToAdd")})</span>
                     </label>
                     <div className="mb-2 flex flex-wrap gap-1.5">
                       {formData.tags.map((tag) => (
@@ -680,7 +690,7 @@ export default function AdminClassTypesPage() {
 
           {saveMutation.isError && (
             <p className="mt-3 text-sm text-destructive">
-              {saveMutation.error?.message || "Error al guardar"}
+              {saveMutation.error?.message || tc("errorSaving")}
             </p>
           )}
 
@@ -688,7 +698,7 @@ export default function AdminClassTypesPage() {
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDialogOpen(false)}>
-              Cancelar
+              {tc("cancel")}
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
@@ -696,7 +706,7 @@ export default function AdminClassTypesPage() {
               className="gap-2 bg-admin hover:bg-admin/90"
             >
               {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              {editing ? "Guardar" : "Crear disciplina"}
+              {editing ? tc("save") : t("createDiscipline")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -708,22 +718,20 @@ export default function AdminClassTypesPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              Eliminar disciplina
+              {t("deleteDiscipline")}
             </DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de eliminar{" "}
-              <span className="font-medium text-foreground">{deleteTarget?.name}</span>?
-              Esta acción no se puede deshacer.
+              {t("deleteDisciplineConfirm", { name: deleteTarget?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
           {deleteMutation.isError && (
             <p className="text-sm text-destructive">
-              {deleteMutation.error?.message || "Error al eliminar"}
+              {deleteMutation.error?.message || t("deleteError")}
             </p>
           )}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-              Cancelar
+              {tc("cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -731,7 +739,7 @@ export default function AdminClassTypesPage() {
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Eliminar
+              {tc("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

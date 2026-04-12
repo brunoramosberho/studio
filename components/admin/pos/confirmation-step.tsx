@@ -11,23 +11,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/store/pos-store";
 import { formatCurrency } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
-const paymentMethodLabels: Record<string, { label: string; icon: typeof CreditCard }> = {
-  saved_card: { label: "Tarjeta guardada", icon: CreditCard },
-  terminal: { label: "Terminal bancaria", icon: Smartphone },
-  cash: { label: "Efectivo", icon: Banknote },
+const paymentMethodLabelKeys: Record<string, { labelKey: "savedCard" | "bankTerminal" | "cashPayment"; icon: typeof CreditCard }> = {
+  saved_card: { labelKey: "savedCard", icon: CreditCard },
+  terminal: { labelKey: "bankTerminal", icon: Smartphone },
+  cash: { labelKey: "cashPayment", icon: Banknote },
 };
 
 export function ConfirmationStep() {
+  const t = useTranslations("pos");
+  const tc = useTranslations("common");
   const { saleResult, closePOS, openPOS } = usePosStore();
 
   if (!saleResult) return null;
 
-  const method = paymentMethodLabels[saleResult.paymentMethod] ?? {
-    label: saleResult.paymentMethod,
+  const methodDef = paymentMethodLabelKeys[saleResult.paymentMethod] ?? {
+    labelKey: saleResult.paymentMethod as "savedCard",
     icon: Receipt,
   };
-  const MethodIcon = method.icon;
+  const MethodIcon = methodDef.icon;
 
   const displayTotal =
     saleResult.total > 0
@@ -43,10 +46,10 @@ export function ConfirmationStep() {
         </div>
         <div className="text-center">
           <h3 className="font-display text-lg font-bold text-foreground">
-            Venta completada
+            {t("saleCompleted")}
           </h3>
           <p className="text-sm text-muted">
-            Venta para{" "}
+            {t("saleFor")}{" "}
             <span className="font-medium text-foreground">
               {saleResult.customerName}
             </span>
@@ -63,7 +66,7 @@ export function ConfirmationStep() {
               {saleResult.selectedClass.label}
             </p>
             <p className="text-xs text-green-600">
-              Clase reservada
+              {t("classReserved")}
             </p>
           </div>
         </div>
@@ -93,11 +96,11 @@ export function ConfirmationStep() {
 
           {/* Total */}
           <div className="flex items-center justify-between px-4 py-3 bg-foreground/[0.02]">
-            <span className="text-sm font-bold">Total</span>
+            <span className="text-sm font-bold">{t("total")}</span>
             <span className="text-lg font-bold">
               {displayTotal > 0
                 ? formatCurrency(displayTotal, saleResult.currency)
-                : "Gratis"}
+                : tc("free")}
             </span>
           </div>
         </div>
@@ -108,8 +111,8 @@ export function ConfirmationStep() {
         <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-white px-4 py-3">
           <MethodIcon className="h-4 w-4 text-muted" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted">Método de pago</p>
-            <p className="text-sm font-medium">{method.label}</p>
+            <p className="text-xs text-muted">{t("paymentMethod")}</p>
+            <p className="text-sm font-medium">{t(methodDef.labelKey)}</p>
           </div>
         </div>
       )}
@@ -117,14 +120,14 @@ export function ConfirmationStep() {
       {/* Note about email */}
       {displayTotal > 0 && (
         <p className="text-center text-xs text-muted">
-          Se envió un recibo de compra por correo al cliente.
+          {t("receiptSentEmail")}
         </p>
       )}
 
       {/* Actions */}
       <div className="flex justify-center gap-2 pt-2">
         <Button variant="outline" size="sm" onClick={closePOS}>
-          Cerrar
+          {tc("close")}
         </Button>
         <Button
           size="sm"
@@ -134,7 +137,7 @@ export function ConfirmationStep() {
             setTimeout(() => openPOS(), 100);
           }}
         >
-          Nueva venta
+          {t("newSale")}
         </Button>
       </div>
     </div>

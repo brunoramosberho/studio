@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { formatTime } from "@/lib/utils";
 
 interface PendingClass {
@@ -26,6 +27,7 @@ interface RatingReason {
 export function RatingSheet() {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
+  const t = useTranslations("rating");
 
   const [pending, setPending] = useState<PendingClass | null>(null);
   const [visible, setVisible] = useState(false);
@@ -159,8 +161,8 @@ export function RatingSheet() {
             /* Thank-you state */
             <div className="text-center py-6">
               <div className="text-4xl mb-3">🙏</div>
-              <h2 className="text-[17px] font-semibold text-stone-900 mb-1">¡Gracias!</h2>
-              <p className="text-sm text-stone-500 mb-4">Tu opinión nos ayuda a mejorar.</p>
+              <h2 className="text-[17px] font-semibold text-stone-900 mb-1">{t("thanks")}</h2>
+              <p className="text-sm text-stone-500 mb-4">{t("thanksDesc")}</p>
               {/* Editable stars in thank-you */}
               <div className="flex justify-center gap-1 mb-6">
                 {stars.map((s) => (
@@ -185,7 +187,7 @@ export function RatingSheet() {
                 ))}
               </div>
               <button onClick={dismiss} className="text-stone-400 text-[13px]">
-                Cerrar
+                {t("close")}
               </button>
             </div>
           ) : showReasons ? (
@@ -214,7 +216,7 @@ export function RatingSheet() {
               </div>
 
               <h2 className="text-[17px] font-semibold text-stone-900 text-center mb-5">
-                ¿Qué podríamos mejorar?
+                {t("whatToImprove")}
               </h2>
               <div className="flex flex-wrap gap-2 justify-center mb-4">
                 {reasons.map((reason) => {
@@ -237,7 +239,7 @@ export function RatingSheet() {
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="¿Algo más? (opcional)"
+                placeholder={t("anythingElse")}
                 rows={2}
                 className="w-full rounded-[14px] border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 resize-none focus:outline-none focus:ring-2 focus:ring-accent/30 mb-4"
               />
@@ -246,17 +248,17 @@ export function RatingSheet() {
                 disabled={selectedReasons.size === 0 || submitting}
                 className="w-full rounded-[14px] bg-accent py-3 text-sm font-semibold text-white disabled:opacity-50 mb-3"
               >
-                {submitting ? "Enviando..." : "Enviar"}
+                {submitting ? t("sending") : t("send")}
               </button>
               <button onClick={dismiss} className="w-full text-stone-400 text-[13px] text-center">
-                Ahora no
+                {t("notNow")}
               </button>
             </div>
           ) : (
             /* Main rating view */
             <div className="py-2">
               <h2 className="text-[17px] font-semibold text-stone-900 text-center mb-4">
-                ¿Cómo te hicimos sentir hoy?
+                {t("howDidWeMakeYouFeel")}
               </h2>
 
               {/* Class chip */}
@@ -308,7 +310,7 @@ export function RatingSheet() {
               </div>
 
               <button onClick={dismiss} className="w-full text-stone-400 text-[13px] text-center">
-                Ahora no
+                {t("notNow")}
               </button>
             </div>
           )}

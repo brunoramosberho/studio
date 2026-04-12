@@ -14,9 +14,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
+import { useTranslations } from "next-intl";
 import type { CoachProfileWithUser } from "@/types";
 
 export default function CoachProfilePage() {
+  const t = useTranslations("coach");
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,9 +59,9 @@ export default function CoachProfilePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coach-profile", session?.user?.id] });
-      toast.success("Perfil guardado");
+      toast.success(t("profileSaved"));
     },
-    onError: () => toast.error("Error al guardar perfil"),
+    onError: () => toast.error(t("profileSaveError")),
   });
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -88,12 +90,12 @@ export default function CoachProfilePage() {
         const data = await res.json();
         setPhotoUrl(data.photoUrl);
         queryClient.invalidateQueries({ queryKey: ["coach-profile", session?.user?.id] });
-        toast.success("Foto actualizada");
+        toast.success(t("photoUpdated"));
       } else {
-        toast.error("Error al subir la foto");
+        toast.error(t("photoUploadError"));
       }
     } catch {
-      toast.error("Error al subir la foto");
+      toast.error(t("photoUploadError"));
     } finally {
       setUploadingAvatar(false);
       setCropSrc(null);
@@ -132,8 +134,8 @@ export default function CoachProfilePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="font-display text-2xl font-bold sm:text-3xl">Mi Perfil</h1>
-        <p className="mt-1 text-muted">Edita tu información visible para los clientes</p>
+        <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("myProfile")}</h1>
+        <p className="mt-1 text-muted">{t("editVisibleInfo")}</p>
       </motion.div>
 
       {/* Edit form */}
@@ -144,14 +146,14 @@ export default function CoachProfilePage() {
       >
         <Card>
           <CardHeader>
-            <CardTitle>Información del perfil</CardTitle>
-            <CardDescription>Estos datos se muestran en la página pública de coaches</CardDescription>
+            <CardTitle>{t("profileInfo")}</CardTitle>
+            <CardDescription>{t("profileInfoDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Photo upload */}
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">
-                Foto de perfil
+                {t("profilePhoto")}
               </label>
               <div className="flex items-center gap-4">
                 <button
@@ -184,8 +186,8 @@ export default function CoachProfilePage() {
                   />
                 </button>
                 <div className="text-sm text-muted">
-                  <p>Haz clic para subir una foto</p>
-                  <p className="text-xs text-muted/60">JPG, PNG. Máx 5 MB.</p>
+                  <p>{t("clickToUploadPhoto")}</p>
+                  <p className="text-xs text-muted/60">{t("photoFormats")}</p>
                 </div>
               </div>
             </div>
@@ -193,12 +195,12 @@ export default function CoachProfilePage() {
             {/* Bio */}
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">
-                Biografía
+                {t("bio")}
               </label>
               <textarea
                 className="w-full rounded-xl border border-input-border bg-white p-4 text-sm transition-colors focus:border-coach focus:outline-none focus:ring-1 focus:ring-coach/30"
                 rows={5}
-                placeholder="Cuéntale a tus alumnos sobre ti..."
+                placeholder={t("bioPlaceholder")}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
               />
@@ -207,7 +209,7 @@ export default function CoachProfilePage() {
             {/* Specialties */}
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">
-                Especialidades
+                {t("specialties")}
               </label>
               <div className="flex flex-wrap gap-2 mb-3">
                 {specialties.map((s) => (
@@ -230,7 +232,7 @@ export default function CoachProfilePage() {
                 <Input
                   value={newSpecialty}
                   onChange={(e) => setNewSpecialty(e.target.value)}
-                  placeholder="Ej: Reformer, Mat, Prenatal..."
+                  placeholder={t("specialtiesPlaceholder")}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSpecialty())}
                 />
                 <Button variant="ghost" size="icon" onClick={addSpecialty}>
@@ -252,7 +254,7 @@ export default function CoachProfilePage() {
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
-                Guardar cambios
+                {t("saveChanges")}
               </Button>
             </div>
           </CardContent>
@@ -267,8 +269,8 @@ export default function CoachProfilePage() {
       >
         <Card className="border-coach/15">
           <CardHeader>
-            <CardTitle className="text-base">Vista previa</CardTitle>
-            <CardDescription>Así se ve tu perfil para los clientes</CardDescription>
+            <CardTitle className="text-base">{t("preview")}</CardTitle>
+            <CardDescription>{t("previewDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
@@ -290,11 +292,11 @@ export default function CoachProfilePage() {
                     </Badge>
                   ))}
                   {specialties.length === 0 && (
-                    <span className="text-sm text-muted/50">Sin especialidades</span>
+                    <span className="text-sm text-muted/50">{t("noSpecialties")}</span>
                   )}
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-muted">
-                  {bio || "Sin biografía aún..."}
+                  {bio || t("noBioYet")}
                 </p>
               </div>
             </div>

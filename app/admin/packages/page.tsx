@@ -29,6 +29,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface CreditAllocation {
   classTypeId: string;
@@ -68,17 +69,17 @@ interface LocationCountry {
   cities: { id: string; name: string }[];
 }
 
-const TAB_CONFIG: { type: PackageKind; label: string; icon: typeof Gift }[] = [
-  { type: "OFFER", label: "Ofertas", icon: Gift },
-  { type: "PACK", label: "Paquetes", icon: Layers },
-  { type: "SUBSCRIPTION", label: "Suscripciones", icon: CalendarSync },
+const TAB_CONFIG: { type: PackageKind; labelKey: string; icon: typeof Gift }[] = [
+  { type: "OFFER", labelKey: "offers", icon: Gift },
+  { type: "PACK", labelKey: "packs", icon: Layers },
+  { type: "SUBSCRIPTION", labelKey: "subscriptions", icon: CalendarSync },
 ];
 
 const CURRENCIES = ["EUR", "MXN", "USD"] as const;
 
 const RECURRING_OPTIONS = [
-  { value: "month", label: "Mensual" },
-  { value: "year", label: "Anual" },
+  { value: "month", labelKey: "monthly" },
+  { value: "year", labelKey: "annual" },
 ] as const;
 
 const stagger = {
@@ -91,16 +92,16 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 };
 
-function formatRecurringLabel(interval: string | null): string {
+function formatRecurringLabel(interval: string | null, t: (key: string) => string): string {
   if (!interval) return "—";
   const lower = interval.toLowerCase();
-  if (lower === "month" || lower === "monthly") return "Mensual";
-  if (lower === "year" || lower === "annual" || lower === "yearly") return "Anual";
+  if (lower === "month" || lower === "monthly") return t("monthly");
+  if (lower === "year" || lower === "annual" || lower === "yearly") return t("annual");
   return interval;
 }
 
-function classTypesLabel(pkg: PackageData): string {
-  if (!pkg.classTypes?.length) return "Todas las disciplinas";
+function classTypesLabel(pkg: PackageData, t: (key: string) => string): string {
+  if (!pkg.classTypes?.length) return t("allDisciplinesLabel");
   return pkg.classTypes.map((c) => c.name).join(", ");
 }
 
@@ -215,6 +216,8 @@ function buildPayload(form: FormState) {
 }
 
 export default function AdminPackagesPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<PackageKind>("OFFER");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -264,7 +267,7 @@ export default function AdminPackagesPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "No se pudo actualizar");
+        throw new Error(err.error || tc("errorSaving"));
       }
       return res.json();
     },
@@ -282,7 +285,7 @@ export default function AdminPackagesPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "No se pudo guardar");
+        throw new Error(err.error || tc("errorSaving"));
       }
       return res.json();
     },
@@ -317,21 +320,21 @@ export default function AdminPackagesPage() {
   const onSubmit = () => {
     setFormError(null);
     if (!form.name.trim()) {
-      setFormError("El nombre es obligatorio.");
+      setFormError(t("nameRequired2"));
       return;
     }
     const price = parseFloat(form.price);
     if (Number.isNaN(price) || price < 0) {
-      setFormError("Indica un precio válido.");
+      setFormError(t("validPriceRequired"));
       return;
     }
     const validDays = parseInt(form.validDays, 10);
     if (Number.isNaN(validDays) || validDays < 1) {
-      setFormError("Los días de validez deben ser al menos 1.");
+      setFormError(t("validDaysMin1"));
       return;
     }
     if (form.type === "SUBSCRIPTION" && !form.recurringInterval) {
-      setFormError("Selecciona la periodicidad de la suscripción.");
+      setFormError(t("selectRecurringInterval"));
       return;
     }
     if (form.perDisciplineCredits) {
@@ -340,17 +343,17 @@ export default function AdminPackagesPage() {
         return !Number.isNaN(n) && n > 0;
       });
       if (validAllocations.length === 0) {
-        setFormError("Agrega créditos a al menos una disciplina.");
+        setFormError(t("addCreditsToOneDiscipline"));
         return;
       }
     } else if (!form.creditsUnlimited) {
       if (form.credits.trim() === "") {
-        setFormError("Indica un número de créditos o marca ilimitado.");
+        setFormError(t("creditsNumberOrUnlimited"));
         return;
       }
       const c = parseInt(form.credits, 10);
       if (Number.isNaN(c) || c < 0) {
-        setFormError("Los créditos deben ser un número válido.");
+        setFormError(t("creditsValidNumber"));
         return;
       }
     }
@@ -367,22 +370,22 @@ export default function AdminPackagesPage() {
     }));
   };
 
-  const tabMeta = TAB_CONFIG.find((t) => t.type === activeTab)!;
+  const tabMeta = TAB_CONFIG.find((tb) => tb.type === activeTab)!;
   const TabIcon = tabMeta.icon;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Paquetes y precios</h1>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("packagesAndPricing")}</h1>
           <p className="mt-1 text-muted">
-            Ofertas de entrada, paquetes de créditos y suscripciones recurrentes
+            {t("packagesSubtitle")}
           </p>
         </motion.div>
 
         <Button onClick={openCreate} className="gap-2 bg-admin hover:bg-admin/90">
           <Plus className="h-4 w-4" />
-          Nuevo
+          {tc("new")}
         </Button>
       </div>
 
@@ -402,7 +405,7 @@ export default function AdminPackagesPage() {
               )}
             >
               <Icon className="h-4 w-4 shrink-0 opacity-80" />
-              <span className="truncate">{tab.label}</span>
+              <span className="truncate">{t(tab.labelKey)}</span>
             </button>
           );
         })}
@@ -421,7 +424,7 @@ export default function AdminPackagesPage() {
               <TabIcon className="h-6 w-6 text-muted/40" />
             </div>
             <p className="font-medium text-muted">
-              No hay {tabMeta.label.toLowerCase()} en este momento
+              {t("noItemsNow", { type: t(tabMeta.labelKey).toLowerCase() })}
             </p>
             <Button
               size="sm"
@@ -429,7 +432,7 @@ export default function AdminPackagesPage() {
               onClick={openCreate}
             >
               <Plus className="h-4 w-4" />
-              Crear uno
+              {t("createOne")}
             </Button>
           </CardContent>
         </Card>
@@ -443,11 +446,11 @@ export default function AdminPackagesPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-display text-base font-bold">{pkg.name}</h3>
                       <Badge variant={pkg.isActive ? "success" : "secondary"}>
-                        {pkg.isActive ? "Activo" : "Inactivo"}
+                        {pkg.isActive ? t("activeStatus") : t("inactiveStatus")}
                       </Badge>
                       {pkg.isPromo ? (
                         <Badge variant="outline" className="border-admin/30 text-admin">
-                          Promo
+                          {t("promo")}
                         </Badge>
                       ) : null}
                     </div>
@@ -457,40 +460,40 @@ export default function AdminPackagesPage() {
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
                       <span>
-                        Precio:{" "}
+                        {t("priceLabel")}:{" "}
                         <strong className="font-mono text-foreground">
                           {formatCurrency(pkg.price, pkg.currency)}
                         </strong>
                       </span>
                       <span>
-                        Créditos:{" "}
+                        {t("creditsLabel")}:{" "}
                         <strong className="font-mono text-foreground">
                           {pkg.creditAllocations?.length > 0
                             ? pkg.creditAllocations.map((a) => `${a.credits} ${a.classType.name}`).join(", ")
                             : pkg.credits === null
-                              ? "Ilimitados"
+                              ? t("unlimited")
                               : pkg.credits}
                         </strong>
                       </span>
                       <span>
-                        Validez:{" "}
+                        {t("validityLabel")}:{" "}
                         <strong className="font-mono text-foreground">
-                          {pkg.validDays} días
+                          {pkg.validDays} {t("daysUnit")}
                         </strong>
                       </span>
                       {pkg.type === "SUBSCRIPTION" ? (
                         <span>
-                          Periodicidad:{" "}
+                          {t("periodicityLabel")}:{" "}
                           <strong className="text-foreground">
-                            {formatRecurringLabel(pkg.recurringInterval)}
+                            {formatRecurringLabel(pkg.recurringInterval, t)}
                           </strong>
                         </span>
                       ) : null}
                     </div>
 
                     <p className="text-xs leading-relaxed text-muted">
-                      <span className="font-medium text-foreground/80">Disciplinas: </span>
-                      {classTypesLabel(pkg)}
+                      <span className="font-medium text-foreground/80">{t("disciplinesLabel")}: </span>
+                      {classTypesLabel(pkg, t)}
                     </p>
                   </div>
 
@@ -509,7 +512,7 @@ export default function AdminPackagesPage() {
                       ) : (
                         <ToggleLeft className="h-4 w-4 text-muted" />
                       )}
-                      {pkg.isActive ? "Desactivar" : "Activar"}
+                      {pkg.isActive ? t("deactivate") : t("activate")}
                     </Button>
                     <Button
                       variant="ghost"
@@ -518,7 +521,7 @@ export default function AdminPackagesPage() {
                       onClick={() => openEdit(pkg)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
-                      Editar
+                      {tc("edit")}
                     </Button>
                   </div>
                 </CardContent>
@@ -536,17 +539,17 @@ export default function AdminPackagesPage() {
       >
         <DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar paquete" : "Nuevo paquete"}</DialogTitle>
+            <DialogTitle>{editingId ? t("editPackage") : t("newPackage")}</DialogTitle>
             <DialogDescription>
               {editingId
-                ? "Actualiza precios, validez, disciplinas y visibilidad."
-                : "Define tipo, precio y reglas de uso. Sin disciplinas marcadas = todas."}
+                ? t("editPackageDesc")
+                : t("newPackageDesc")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5 pt-1">
             <div>
-              <p className="mb-2 text-sm font-medium">Tipo</p>
+              <p className="mb-2 text-sm font-medium">{t("typeLabel")}</p>
               <div className="flex gap-1 rounded-xl bg-surface p-1">
                 {TAB_CONFIG.map((tab) => (
                   <button
@@ -569,36 +572,36 @@ export default function AdminPackagesPage() {
                       editingId && "cursor-not-allowed opacity-60",
                     )}
                   >
-                    {tab.label}
+                    {t(tab.labelKey)}
                   </button>
                 ))}
               </div>
               {editingId ? (
-                <p className="mt-1.5 text-xs text-muted">El tipo no se puede cambiar al editar.</p>
+                <p className="mt-1.5 text-xs text-muted">{t("typeCannotChange")}</p>
               ) : null}
             </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-name">
-                Nombre
+                {tc("name")}
               </label>
               <Input
                 id="pkg-name"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Ej. Primera clase"
+                placeholder={t("namePkgPlaceholder")}
               />
             </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-desc">
-                Descripción
+                {t("description")}
               </label>
               <Textarea
                 id="pkg-desc"
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Texto breve para clientes…"
+                placeholder={t("descPkgPlaceholder")}
                 rows={3}
               />
             </div>
@@ -606,7 +609,7 @@ export default function AdminPackagesPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-price">
-                  Precio
+                  {t("priceLabel")}
                 </label>
                 <Input
                   id="pkg-price"
@@ -620,7 +623,7 @@ export default function AdminPackagesPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-currency">
-                  Moneda
+                  {t("currency")}
                 </label>
                 <Input
                   id="pkg-currency"
@@ -641,7 +644,7 @@ export default function AdminPackagesPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="flex-1">
                   <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-credits">
-                    Créditos
+                    {t("creditsLabel")}
                   </label>
                   <Input
                     id="pkg-credits"
@@ -650,7 +653,7 @@ export default function AdminPackagesPage() {
                     disabled={form.creditsUnlimited || form.perDisciplineCredits}
                     value={form.perDisciplineCredits ? "" : form.credits}
                     onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
-                    placeholder={form.perDisciplineCredits ? "Por disciplina" : "Número de clases"}
+                    placeholder={form.perDisciplineCredits ? t("byDiscipline") : t("numberOfClasses")}
                   />
                 </div>
                 <label className="flex cursor-pointer items-center gap-2 pb-2 text-sm text-muted">
@@ -663,7 +666,7 @@ export default function AdminPackagesPage() {
                       setForm((f) => ({ ...f, creditsUnlimited: e.target.checked }))
                     }
                   />
-                  Ilimitado
+                  {t("unlimited")}
                 </label>
               </div>
 
@@ -687,13 +690,13 @@ export default function AdminPackagesPage() {
                     }));
                   }}
                 />
-                Créditos por disciplina
+                {t("perDisciplineCredits")}
               </label>
 
               {form.perDisciplineCredits && (
                 <div className="space-y-2 rounded-xl border border-input-border/60 bg-surface/50 p-3">
                   <p className="mb-1 text-xs text-muted">
-                    Asigna créditos independientes a cada disciplina. Deja en 0 las que no apliquen.
+                    {t("perDisciplineHint")}
                   </p>
                   {classTypes.map((ct) => {
                     const alloc = form.creditAllocations.find((a) => a.classTypeId === ct.id);
@@ -728,7 +731,7 @@ export default function AdminPackagesPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-days">
-                  Días de validez
+                  {t("validDays")}
                 </label>
                 <Input
                   id="pkg-days"
@@ -740,7 +743,7 @@ export default function AdminPackagesPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-sort">
-                  Orden
+                  {t("sortOrder")}
                 </label>
                 <Input
                   id="pkg-sort"
@@ -754,7 +757,7 @@ export default function AdminPackagesPage() {
 
             {form.type === "SUBSCRIPTION" ? (
               <div>
-                <p className="mb-2 text-sm font-medium">Periodicidad</p>
+                <p className="mb-2 text-sm font-medium">{t("periodicityLabel")}</p>
                 <div className="flex gap-1 rounded-xl bg-surface p-1">
                   {RECURRING_OPTIONS.map((opt) => (
                     <button
@@ -770,7 +773,7 @@ export default function AdminPackagesPage() {
                           : "text-muted hover:text-foreground",
                       )}
                     >
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </button>
                   ))}
                 </div>
@@ -779,17 +782,17 @@ export default function AdminPackagesPage() {
 
             <div>
               <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-sm font-medium">Disciplinas</p>
+                <p className="text-sm font-medium">{t("disciplinesLabel")}</p>
                 {loadingClassTypes ? (
                   <Loader2 className="h-4 w-4 animate-spin text-muted" />
                 ) : null}
               </div>
               <p className="mb-2 text-xs text-muted">
-                Sin selección = todas las disciplinas. Marca solo si quieres restringir.
+                {t("noSelectionAllDisciplines")}
               </p>
               <div className="max-h-44 space-y-2 overflow-y-auto rounded-xl border border-input-border/60 bg-surface/50 p-3">
                 {classTypes.length === 0 && !loadingClassTypes ? (
-                  <p className="text-sm text-muted">No hay disciplinas en el estudio.</p>
+                  <p className="text-sm text-muted">{t("noDisciplinesInStudio")}</p>
                 ) : (
                   classTypes.map((ct) => (
                     <label
@@ -811,7 +814,7 @@ export default function AdminPackagesPage() {
 
             <div>
               <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-country">
-                País (opcional)
+                {t("countryOptional")}
               </label>
               <div className="rounded-md border border-input-border bg-background shadow-sm">
                 <select
@@ -825,7 +828,7 @@ export default function AdminPackagesPage() {
                     "disabled:cursor-not-allowed disabled:opacity-50",
                   )}
                 >
-                  <option value="">Sin restricción geográfica</option>
+                  <option value="">{t("noGeoRestriction")}</option>
                   {countries.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} ({c.code})
@@ -845,7 +848,7 @@ export default function AdminPackagesPage() {
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={closeDialog}>
-                Cancelar
+                {tc("cancel")}
               </Button>
               <Button
                 type="button"
@@ -854,7 +857,7 @@ export default function AdminPackagesPage() {
                 className="gap-2 bg-admin hover:bg-admin/90"
               >
                 {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                {editingId ? "Guardar" : "Crear"}
+                {editingId ? tc("save") : tc("create")}
               </Button>
             </div>
           </div>

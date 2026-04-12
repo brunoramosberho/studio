@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
@@ -25,6 +26,7 @@ import { cn, formatTime } from "@/lib/utils";
 import type { Package } from "@prisma/client";
 
 function GuestLoginPrompt({ email, classId }: { email: string; classId: string }) {
+  const t = useTranslations("bookingSheet");
   const [magicSent, setMagicSent] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -42,10 +44,10 @@ function GuestLoginPrompt({ email, classId }: { email: string; classId: string }
           <Mail className="h-5 w-5 text-accent" />
         </div>
         <p className="mt-3 text-sm font-medium text-foreground">
-          Revisa tu correo
+          {t("checkYourEmail")}
         </p>
         <p className="mt-1 text-xs text-muted">
-          Enviamos un enlace a <span className="font-medium text-foreground">{email}</span> para acceder a tu cuenta.
+          {t("sentLinkTo")} <span className="font-medium text-foreground">{email}</span> {t("toAccessAccount")}
         </p>
       </motion.div>
     );
@@ -54,7 +56,7 @@ function GuestLoginPrompt({ email, classId }: { email: string; classId: string }
   return (
     <>
       <p className="mt-5 text-sm text-muted">
-        Accede a tu cuenta para ver tus reservas y gestionar tus clases.
+        {t("accessAccountDesc")}
       </p>
       <Button
         onClick={() => signIn("google", { callbackUrl: "/my/bookings" })}
@@ -62,7 +64,7 @@ function GuestLoginPrompt({ email, classId }: { email: string; classId: string }
         size="lg"
       >
         <LogIn className="h-4 w-4" />
-        Continuar con Google
+        {t("continueWithGoogle")}
       </Button>
       <Button
         variant="outline"
@@ -72,7 +74,7 @@ function GuestLoginPrompt({ email, classId }: { email: string; classId: string }
         size="lg"
       >
         {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-        Enviar enlace a {email}
+        {t("sendLinkTo")} {email}
       </Button>
     </>
   );
@@ -115,6 +117,7 @@ export function BookingSheet({
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const t = useTranslations("bookingSheet");
   const isLoggedIn = !!session?.user;
 
   const initialStep: Step = isLoggedIn ? "package" : "info";
@@ -278,7 +281,7 @@ export function BookingSheet({
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Error al reservar");
+        setError(data.error || t("bookingError"));
         setStep("package");
         setLoading(false);
         return;
@@ -319,7 +322,7 @@ export function BookingSheet({
       queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
       onSuccess(isLoggedIn ? undefined : guestEmail);
     } catch {
-      setError("Error de conexión");
+      setError(t("connectionError"));
       setStep("package");
     } finally {
       setLoading(false);
@@ -388,7 +391,7 @@ export function BookingSheet({
               <div className="w-8" />
             )}
             <p className="flex-1 text-center text-xs text-muted">
-              {className} · {formatTime(classTime)}{spotNumber ? ` · Lugar #${spotNumber}` : ""}
+              {className} · {formatTime(classTime)}{spotNumber ? ` · ${t("spot")} #${spotNumber}` : ""}
             </p>
             <div className="w-8" />
           </div>
@@ -406,10 +409,10 @@ export function BookingSheet({
                 transition={{ duration: 0.2 }}
               >
                 <h2 className="mb-1 font-display text-xl font-bold text-foreground">
-                  Tus datos
+                  {t("yourInfo")}
                 </h2>
                 <p className="mb-5 text-sm text-muted">
-                  Ingresa tu información para reservar
+                  {t("enterInfoToBook")}
                 </p>
 
                 <form onSubmit={handleInfoContinue} className="space-y-3">
@@ -432,7 +435,7 @@ export function BookingSheet({
                   {checkingEmail && (
                     <div className="flex items-center gap-2 py-1">
                       <Loader2 className="h-3.5 w-3.5 animate-spin text-muted" />
-                      <span className="text-xs text-muted">Verificando...</span>
+                      <span className="text-xs text-muted">{t("verifying")}</span>
                     </div>
                   )}
 
@@ -447,10 +450,10 @@ export function BookingSheet({
                         <UserCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-green-800">
-                            ¡Ya tienes {emailCheck.credits === -1 ? "créditos ilimitados" : `${emailCheck.credits} clase${emailCheck.credits !== 1 ? "s" : ""}`} disponible{emailCheck.credits !== 1 ? "s" : ""}!
+                            {emailCheck.credits === -1 ? t("hasUnlimitedCredits") : t("hasCredits", { count: emailCheck.credits })}
                           </p>
                           <p className="mt-0.5 text-xs text-green-700">
-                            Inicia sesión para reservar con tus créditos.
+                            {t("loginToBook")}
                           </p>
                           <div className="mt-3 flex flex-col gap-2">
                             <Button
@@ -460,7 +463,7 @@ export function BookingSheet({
                               className="w-full gap-1.5 rounded-full bg-green-700 text-white hover:bg-green-800"
                             >
                               <LogIn className="h-3.5 w-3.5" />
-                              Iniciar sesión con Google
+                              {t("loginWithGoogle")}
                             </Button>
                             <Button
                               type="button"
@@ -469,7 +472,7 @@ export function BookingSheet({
                               onClick={() => signIn("resend", { email: guestEmail, callbackUrl: `/class/${classId}`, redirect: false })}
                               className="w-full text-xs text-green-700 hover:text-green-800"
                             >
-                              Enviar link por correo
+                              {t("sendEmailLink")}
                             </Button>
                           </div>
                         </div>
@@ -485,7 +488,7 @@ export function BookingSheet({
                       className="rounded-xl bg-accent/5 px-4 py-3"
                     >
                       <p className="text-xs text-muted">
-                        Ya tienes cuenta. Necesitas comprar un paquete para reservar.
+                        {t("existingAccountNeedPackage")}
                       </p>
                     </motion.div>
                   )}
@@ -494,12 +497,12 @@ export function BookingSheet({
                   {!(emailCheck?.exists && emailCheck?.hasCredits) && (
                     <>
                       <div>
-                        <label htmlFor="guest-name" className="mb-1.5 block text-xs font-medium text-muted">Nombre</label>
+                        <label htmlFor="guest-name" className="mb-1.5 block text-xs font-medium text-muted">{t("name")}</label>
                         <Input
                           id="guest-name"
                           name="name"
                           autoComplete="name"
-                          placeholder="Tu nombre"
+                          placeholder={t("yourName")}
                           value={guestName}
                           onChange={(e) => handleNameChange(e.target.value)}
                           required
@@ -509,7 +512,7 @@ export function BookingSheet({
                       {showPhoneField && (
                         <div>
                           <label htmlFor="guest-phone" className="mb-1.5 block text-xs font-medium text-muted">
-                            Teléfono
+                            {t("phone")}
                           </label>
                           <PhoneInput
                             value={guestPhone}
@@ -519,7 +522,7 @@ export function BookingSheet({
                           />
                           {guestPhone && !isValidPhoneNumber(guestPhone) && (
                             <p className="mt-1 text-[11px] text-destructive">
-                              Número inválido
+                              {t("invalidNumber")}
                             </p>
                           )}
                         </div>
@@ -531,7 +534,7 @@ export function BookingSheet({
                         disabled={checkingEmail || !guestName.trim() || !guestEmail.trim() || (showPhoneField && (!guestPhone || !isValidPhoneNumber(guestPhone)))}
                         className="mt-4 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
                       >
-                        Elegir paquete
+                        {t("choosePackage")}
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     </>
@@ -546,7 +549,7 @@ export function BookingSheet({
                         className="inline-flex items-center gap-1.5 text-xs text-accent transition-colors hover:text-accent/80"
                       >
                         <LogIn className="h-3.5 w-3.5" />
-                        Ya tengo cuenta · Iniciar sesión
+                        {t("alreadyHaveAccount")}
                       </button>
                     </div>
                   )}
@@ -564,12 +567,12 @@ export function BookingSheet({
                 transition={{ duration: 0.2 }}
               >
                 <h2 className="mb-1 font-display text-xl font-bold text-foreground">
-                  Elige tu paquete
+                  {t("chooseYourPackage")}
                 </h2>
                 <p className="mb-5 text-sm text-muted">
                   {!isLoggedIn && guestEmail
-                    ? `Para ${guestEmail}`
-                    : "Selecciona un paquete para reservar tu lugar"}
+                    ? t("forEmail", { email: guestEmail })
+                    : t("selectPackageToBook")}
                 </p>
 
                 {error && (
@@ -596,13 +599,13 @@ export function BookingSheet({
                         {isRecommended && (
                           <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
                             <Sparkles className="h-3 w-3" />
-                            Recomendado
+                            {t("recommended")}
                           </div>
                         )}
                         {pkg.isPromo && (
                           <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
                             <Sparkles className="h-3 w-3" />
-                            Primera vez
+                            {t("firstTime")}
                           </div>
                         )}
                         <div className="flex items-center justify-between">
@@ -618,9 +621,9 @@ export function BookingSheet({
                             <div className="mt-2 flex items-center gap-3 text-xs text-muted">
                               <span className="flex items-center gap-1">
                                 <Ticket className="h-3 w-3" />
-                                {pkg.credits === null ? "Ilimitado" : `${pkg.credits} clase${pkg.credits !== 1 ? "s" : ""}`}
+                                {pkg.credits === null ? t("unlimited") : t("classesCount", { count: pkg.credits })}
                               </span>
-                              <span>{pkg.validDays} días</span>
+                              <span>{t("validDays", { days: pkg.validDays })}</span>
                             </div>
                           </div>
                           <div className="text-right">
@@ -629,7 +632,7 @@ export function BookingSheet({
                             </p>
                             {pkg.credits && pkg.credits > 1 && (
                               <p className="text-[10px] text-muted">
-                                {formatPrice({ ...pkg, price: pkg.price / pkg.credits } as Package)}/clase
+                                {formatPrice({ ...pkg, price: pkg.price / pkg.credits } as Package)}/{t("perClass")}
                               </p>
                             )}
                           </div>
@@ -641,7 +644,7 @@ export function BookingSheet({
 
                 {!isLoggedIn && (
                   <p className="mt-4 text-center text-[10px] text-muted/60">
-                    Pago seguro · Los créditos se activan al instante
+                    {t("securePayment")}
                   </p>
                 )}
               </motion.div>
@@ -657,7 +660,7 @@ export function BookingSheet({
               >
                 <Loader2 className="h-8 w-8 animate-spin text-accent" />
                 <p className="mt-4 text-sm font-medium text-muted">
-                  Reservando tu lugar...
+                  {t("bookingInProgress")}
                 </p>
               </motion.div>
             )}
@@ -681,10 +684,10 @@ export function BookingSheet({
                 </motion.div>
 
                 <h2 className="mt-5 font-display text-xl font-bold text-foreground">
-                  ¡Lugar reservado!
+                  {t("spotReserved")}
                 </h2>
                 <p className="mt-1 text-sm text-muted">
-                  {result.spotNumber ? `Lugar #${result.spotNumber} · ` : ""}{className}
+                  {result.spotNumber ? `${t("spot")} #${result.spotNumber} · ` : ""}{className}
                 </p>
                 <p className="mt-0.5 text-xs text-muted">
                   {formatTime(classTime)}
@@ -703,7 +706,7 @@ export function BookingSheet({
                     className="mt-8 w-full rounded-full bg-foreground text-background hover:bg-foreground/90"
                     size="lg"
                   >
-                    Ver mis reservas
+                    {t("viewMyBookings")}
                   </Button>
                 )}
               </motion.div>

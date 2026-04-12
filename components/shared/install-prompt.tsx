@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { X, Share, Plus, Download, Ellipsis, ChevronDown } from "lucide-react";
 import { getMobileInstallPlatform, isStandalonePWA } from "@/lib/pwa-install";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,7 @@ type Platform = "ios" | "android" | null;
 
 export function InstallPrompt() {
   const pathname = usePathname();
+  const t = useTranslations("install");
   const [visible, setVisible] = useState(false);
   const [platform, setPlatform] = useState<Platform>(null);
   const [deferredPrompt, setDeferredPrompt] =
@@ -107,7 +109,7 @@ export function InstallPrompt() {
         <button
           onClick={dismiss}
           className="absolute right-3 top-3 rounded-full p-1 text-muted transition-colors hover:bg-surface hover:text-foreground"
-          aria-label="Cerrar"
+          aria-label={t("close")}
         >
           <X className="h-4 w-4" />
         </button>
@@ -119,10 +121,10 @@ export function InstallPrompt() {
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">
-                Instala la app
+                {t("installApp")}
               </p>
               <p className="text-xs text-muted">
-                Acceso rápido desde tu pantalla
+                {t("quickAccess")}
               </p>
             </div>
           </div>
@@ -130,7 +132,7 @@ export function InstallPrompt() {
           {platform === "ios" ? (
             <div className="space-y-3">
               <p className="text-[13px] leading-relaxed text-muted">
-                Agrégala a tu pantalla de inicio en 3 pasos:
+                {t("iosSteps")}
               </p>
               <div className="space-y-0 rounded-xl bg-surface/80 p-3">
                 <div className="flex items-center gap-3 pb-2.5">
@@ -138,8 +140,8 @@ export function InstallPrompt() {
                     <Ellipsis className="h-4 w-4" />
                   </div>
                   <p className="text-[13px] text-foreground">
-                    Toca <strong>⋯</strong>{" "}
-                    <span className="text-muted">abajo a la derecha</span>
+                    {t("tapMenu")}{" "}
+                    <span className="text-muted">{t("bottomRight")}</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-3 border-t border-border/40 py-2.5">
@@ -147,7 +149,7 @@ export function InstallPrompt() {
                     <Share className="h-3.5 w-3.5" />
                   </div>
                   <p className="text-[13px] text-foreground">
-                    Toca <strong>Compartir</strong>
+                    {t("tapShare")}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 border-t border-border/40 pt-2.5">
@@ -155,10 +157,9 @@ export function InstallPrompt() {
                     <Plus className="h-3.5 w-3.5" />
                   </div>
                   <p className="text-[13px] text-foreground">
-                    Toca <strong>Agregar a Inicio</strong>{" "}
+                    {t("tapAddToHome")}{" "}
                     <span className="text-muted">
-                      <ChevronDown className="mb-0.5 inline h-3 w-3" /> desliza
-                      abajo
+                      <ChevronDown className="mb-0.5 inline h-3 w-3" /> {t("scrollDown")}
                     </span>
                   </p>
                 </div>
@@ -167,19 +168,19 @@ export function InstallPrompt() {
                 onClick={dismiss}
                 className="w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90"
               >
-                Entendido
+                {t("gotIt")}
               </button>
             </div>
           ) : (
             <div className="space-y-3">
               <p className="text-[13px] leading-relaxed text-muted">
-                Instálala como app para reservar clases más rápido.
+                {t("androidDesc")}
               </p>
               <button
                 onClick={handleInstall}
                 className="w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90"
               >
-                Instalar app
+                {t("installAppButton")}
               </button>
             </div>
           )}

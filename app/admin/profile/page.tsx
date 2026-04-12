@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Loader2, Check, Camera, UserPen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +22,8 @@ interface ProfileData {
 }
 
 export default function AdminProfilePage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const { data: session, update } = useSession();
   const queryClient = useQueryClient();
 
@@ -113,8 +116,8 @@ export default function AdminProfilePage() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="font-display text-2xl font-bold sm:text-3xl">Mi perfil</h1>
-        <p className="mt-1 text-muted">Configura tu información personal</p>
+        <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("myProfile")}</h1>
+        <p className="mt-1 text-muted">{t("profileSubtitle")}</p>
       </motion.div>
 
       {isLoading ? (
@@ -159,7 +162,7 @@ export default function AdminProfilePage() {
                 />
               </button>
               <div className="text-center">
-                <p className="font-display text-lg font-bold">{displayName || "Sin nombre"}</p>
+                <p className="font-display text-lg font-bold">{displayName || tc("noName")}</p>
                 <p className="text-sm text-muted">{profile?.email || session?.user?.email}</p>
               </div>
             </CardContent>
@@ -170,23 +173,23 @@ export default function AdminProfilePage() {
             <CardContent className="p-5">
               <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
                 <UserPen className="h-4 w-4 text-admin" />
-                Información personal
+                {t("personalInfo")}
               </div>
               <form onSubmit={handleSave} className="space-y-4">
                 <div>
                   <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                    Nombre
+                    {tc("name")}
                   </label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Tu nombre completo"
+                    placeholder={t("fullNamePlaceholder")}
                     className="mt-1.5"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                    Teléfono
+                    {t("phone")}
                   </label>
                   <div className="mt-1.5">
                     <PhoneInput
@@ -197,14 +200,14 @@ export default function AdminProfilePage() {
                     />
                     {phone && !isValidPhoneNumber(phone) && (
                       <p className="mt-1 text-[11px] text-destructive">
-                        Número de teléfono inválido
+                        {t("invalidPhone")}
                       </p>
                     )}
                   </div>
                 </div>
                 <div>
                   <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                    Correo electrónico
+                    {t("emailLabel")}
                   </label>
                   <Input
                     value={profile?.email || session?.user?.email || ""}
@@ -222,7 +225,7 @@ export default function AdminProfilePage() {
                   ) : saved ? (
                     <Check className="h-4 w-4" />
                   ) : null}
-                  {saved ? "Guardado" : "Guardar cambios"}
+                  {saved ? tc("saved") : t("saveChanges")}
                 </Button>
               </form>
             </CardContent>

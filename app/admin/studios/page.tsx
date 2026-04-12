@@ -43,6 +43,7 @@ import {
 import { PlacesAutocomplete, type PlaceResult } from "@/components/admin/places-autocomplete";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface City {
   id: string;
@@ -95,6 +96,8 @@ const fadeUp = {
 };
 
 export default function AdminStudiosPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
 
   const [studioDialogOpen, setStudioDialogOpen] = useState(false);
@@ -155,7 +158,7 @@ export default function AdminStudiosPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "No se pudo crear la ciudad");
+        throw new Error(err.error || t("cityCreateError"));
       }
       return res.json() as Promise<City>;
     },
@@ -164,9 +167,9 @@ export default function AdminStudiosPage() {
       setCityDialogOpen(false);
       setCityForm({ countryId: "", name: "" });
       setStudioForm((f) => ({ ...f, cityId: created.id }));
-      toast.success(`Ciudad creada: ${created.name}`);
+      toast.success(t("cityCreated", { name: created.name }));
     },
-    onError: (err: Error) => toast.error(err.message || "No se pudo crear la ciudad"),
+    onError: (err: Error) => toast.error(err.message || t("cityCreateError")),
   });
 
   // Studio mutations
@@ -187,9 +190,9 @@ export default function AdminStudiosPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setStudioDialogOpen(false);
       setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
-      toast.success("Estudio creado");
+      toast.success(t("studioCreated"));
     },
-    onError: (err: Error) => toast.error(err.message || "No se pudo crear el estudio"),
+    onError: (err: Error) => toast.error(err.message || t("studioCreateError")),
   });
 
   const updateStudioMut = useMutation({
@@ -211,9 +214,9 @@ export default function AdminStudiosPage() {
       setStudioDialogOpen(false);
       setEditingStudio(null);
       setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
-      toast.success("Estudio actualizado");
+      toast.success(t("studioUpdated"));
     },
-    onError: (err: Error) => toast.error(err.message || "No se pudo actualizar el estudio"),
+    onError: (err: Error) => toast.error(err.message || t("studioUpdateError")),
   });
 
   const deleteStudioMut = useMutation({
@@ -226,9 +229,9 @@ export default function AdminStudiosPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
-      toast.success("Estudio eliminado");
+      toast.success(t("studioDeleted"));
     },
-    onError: (err: Error) => toast.error(err.message || "No se pudo eliminar el estudio"),
+    onError: (err: Error) => toast.error(err.message || t("studioDeleteError")),
   });
 
   // Room mutations
@@ -259,9 +262,9 @@ export default function AdminStudiosPage() {
       setRoomDialogOpen(false);
       setRoomForm({ name: "", classTypeIds: [], maxCapacity: "", layout: createEmptyLayout() });
       setRoomForStudio("");
-      toast.success("Sala creada");
+      toast.success(t("roomCreated"));
     },
-    onError: (err: Error) => toast.error(err.message || "No se pudo crear la sala"),
+    onError: (err: Error) => toast.error(err.message || t("roomCreateError")),
   });
 
   const updateRoomMut = useMutation({
@@ -291,9 +294,9 @@ export default function AdminStudiosPage() {
       setRoomDialogOpen(false);
       setEditingRoom(null);
       setRoomForm({ name: "", classTypeIds: [], maxCapacity: "", layout: createEmptyLayout() });
-      toast.success("Sala actualizada");
+      toast.success(t("roomUpdated"));
     },
-    onError: (err: Error) => toast.error(err.message || "No se pudo actualizar la sala"),
+    onError: (err: Error) => toast.error(err.message || t("roomUpdateError")),
   });
 
   const deleteRoomMut = useMutation({
@@ -306,9 +309,9 @@ export default function AdminStudiosPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
-      toast.success("Sala eliminada");
+      toast.success(t("roomDeleted"));
     },
-    onError: (err: Error) => toast.error(err.message || "No se pudo eliminar la sala"),
+    onError: (err: Error) => toast.error(err.message || t("roomDeleteError")),
   });
 
   const studiosByCity = useMemo(() => {
@@ -381,9 +384,9 @@ export default function AdminStudiosPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Estudios y Salas</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">{t("studiosAndRooms")}</h1>
           <p className="mt-1 text-sm text-muted">
-            Administra tus estudios, ubicaciones y salas
+            {t("studiosAndRoomsDesc")}
           </p>
         </div>
         <Button
@@ -391,7 +394,7 @@ export default function AdminStudiosPage() {
           className="gap-2 bg-admin text-white hover:bg-admin/90"
         >
           <Plus className="h-4 w-4" />
-          Nuevo Estudio
+          {t("newStudio")}
         </Button>
       </div>
 
@@ -407,17 +410,17 @@ export default function AdminStudiosPage() {
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Building2 className="h-12 w-12 text-muted/30" />
             <p className="mt-4 font-display text-lg font-semibold text-foreground">
-              No hay estudios
+              {t("noStudios")}
             </p>
             <p className="mt-1 text-sm text-muted">
-              Crea tu primer estudio para empezar
+              {t("createFirstStudioDesc")}
             </p>
             <Button
               onClick={openCreateStudio}
               className="mt-6 gap-2 bg-admin text-white hover:bg-admin/90"
             >
               <Plus className="h-4 w-4" />
-              Crear Estudio
+              {t("createStudio")}
             </Button>
           </CardContent>
         </Card>
@@ -432,7 +435,7 @@ export default function AdminStudiosPage() {
                 </p>
                 <p className="text-sm text-muted">{city.country.name}</p>
                 <Badge variant="secondary" className="ml-auto text-[10px]">
-                  {studios.length} estudio{studios.length !== 1 ? "s" : ""}
+                  {studios.length} {studios.length === 1 ? t("studioCountSingular") : t("studioCountPlural")}
                 </Badge>
               </div>
 
@@ -459,13 +462,13 @@ export default function AdminStudiosPage() {
                                 {studio.name}
                               </h3>
                               <Badge variant="secondary" className="text-[10px]">
-                                {studio.rooms.length} {studio.rooms.length === 1 ? "sala" : "salas"}
+                                {studio.rooms.length} {studio.rooms.length === 1 ? t("roomSingular") : t("roomPlural")}
                               </Badge>
                             </div>
                             <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
                               <MapPin className="h-3 w-3" />
                               <span>
-                                {studio.address ? studio.address : "Sin dirección"}
+                                {studio.address ? studio.address : t("noAddress")}
                               </span>
                             </div>
                           </div>
@@ -480,7 +483,7 @@ export default function AdminStudiosPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm("¿Eliminar este estudio?")) deleteStudioMut.mutate(studio.id);
+                                if (confirm(t("deleteStudioConfirm"))) deleteStudioMut.mutate(studio.id);
                               }}
                               className="rounded-lg p-2 text-muted transition-colors hover:bg-red-50 hover:text-red-600"
                             >
@@ -499,7 +502,7 @@ export default function AdminStudiosPage() {
                             {studio.rooms.length === 0 ? (
                               <div className="flex flex-col items-center py-8">
                                 <DoorOpen className="h-8 w-8 text-muted/30" />
-                                <p className="mt-2 text-sm text-muted">Sin salas aún</p>
+                                <p className="mt-2 text-sm text-muted">{t("noRoomsYet")}</p>
                               </div>
                             ) : (
                               <div className="divide-y divide-border/30">
@@ -521,7 +524,7 @@ export default function AdminStudiosPage() {
                                         )}
                                       </div>
                                       <p className="text-xs text-muted">
-                                        {disciplinesForRoom(room)} · {room.maxCapacity} spots
+                                        {disciplinesForRoom(room)} · {t("spotsCountLabel", { count: room.maxCapacity })}
                                       </p>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -537,7 +540,7 @@ export default function AdminStudiosPage() {
                                       </button>
                                       <button
                                         onClick={() => {
-                                          if (confirm("¿Eliminar esta sala?")) deleteRoomMut.mutate(room.id);
+                                          if (confirm(t("deleteRoomConfirm"))) deleteRoomMut.mutate(room.id);
                                         }}
                                         className="rounded-lg p-1.5 text-muted transition-colors hover:bg-red-50 hover:text-red-600"
                                       >
@@ -556,7 +559,7 @@ export default function AdminStudiosPage() {
                                 onClick={() => openCreateRoom(studio.id)}
                               >
                                 <Plus className="h-3 w-3" />
-                                Agregar Sala
+                                {t("addRoom")}
                               </Button>
                             </div>
                           </div>
@@ -583,32 +586,32 @@ export default function AdminStudiosPage() {
       <Dialog open={studioDialogOpen} onOpenChange={setStudioDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingStudio ? "Editar Estudio" : "Nuevo Estudio"}</DialogTitle>
+            <DialogTitle>{editingStudio ? t("editStudio") : t("newStudio")}</DialogTitle>
             <DialogDescription>
               {editingStudio
-                ? "Modifica los datos del estudio"
-                : "Ingresa los datos del nuevo estudio"}
+                ? t("editStudioDesc")
+                : t("newStudioDesc")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted">Nombre</label>
+              <label className="text-xs font-medium text-muted">{tc("name")}</label>
               <Input
-                placeholder="Ej: Flō Polanco"
+                placeholder={t("namePlaceholderStudio")}
                 value={studioForm.name}
                 onChange={(e) => setStudioForm((f) => ({ ...f, name: e.target.value }))}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted">Ciudad</label>
+              <label className="text-xs font-medium text-muted">{t("city")}</label>
               <Select
                 value={studioForm.cityId}
                 onValueChange={(val) => setStudioForm((f) => ({ ...f, cityId: val }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar ciudad" />
+                  <SelectValue placeholder={t("selectCity")} />
                 </SelectTrigger>
                 <SelectContent>
                   {allCities.map((city) => (
@@ -632,13 +635,13 @@ export default function AdminStudiosPage() {
                   }}
                 >
                   <Plus className="mr-1 h-3.5 w-3.5" />
-                  Dar de alta nueva ciudad
+                  {t("addNewCity")}
                 </Button>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted">Dirección (opcional)</label>
+              <label className="text-xs font-medium text-muted">{t("addressOptional")}</label>
               <PlacesAutocomplete
                 value={studioForm.address}
                 onChange={(val) => setStudioForm((f) => ({ ...f, address: val }))}
@@ -653,7 +656,7 @@ export default function AdminStudiosPage() {
                 onClear={() =>
                   setStudioForm((f) => ({ ...f, address: "", latitude: null, longitude: null }))
                 }
-                placeholder="Buscar dirección..."
+                placeholder={t("searchAddress")}
               />
               {studioForm.latitude != null && (
                 <p className="text-[10px] text-muted/60">
@@ -668,7 +671,7 @@ export default function AdminStudiosPage() {
                 className="flex-1"
                 onClick={() => setStudioDialogOpen(false)}
               >
-                Cancelar
+                {tc("cancel")}
               </Button>
               <Button
                 className="flex-1 bg-admin text-white hover:bg-admin/90"
@@ -676,7 +679,7 @@ export default function AdminStudiosPage() {
                 onClick={handleStudioSubmit}
               >
                 {studioSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingStudio ? "Guardar" : "Crear"}
+                {editingStudio ? tc("save") : tc("create")}
               </Button>
             </div>
           </div>
@@ -687,21 +690,21 @@ export default function AdminStudiosPage() {
       <Dialog open={cityDialogOpen} onOpenChange={(open) => { setCityDialogOpen(open); if (!open) createCityMut.reset(); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Nueva ciudad</DialogTitle>
+            <DialogTitle>{t("newCity")}</DialogTitle>
             <DialogDescription>
-              Esto se usa para organizar estudios por ubicación. Normalmente se configura una sola vez.
+              {t("newCityDesc")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted">País</label>
+              <label className="text-xs font-medium text-muted">{t("countryLabel")}</label>
               <Select
                 value={cityForm.countryId}
                 onValueChange={(val) => setCityForm((f) => ({ ...f, countryId: val }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar país" />
+                  <SelectValue placeholder={t("selectCountry")} />
                 </SelectTrigger>
                 <SelectContent>
                   {(locations ?? []).map((c) => (
@@ -714,9 +717,9 @@ export default function AdminStudiosPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted">Nombre</label>
+              <label className="text-xs font-medium text-muted">{tc("name")}</label>
               <Input
-                placeholder="Ej: Monterrey"
+                placeholder={t("cityPlaceholder")}
                 value={cityForm.name}
                 onChange={(e) => setCityForm((f) => ({ ...f, name: e.target.value }))}
               />
@@ -724,7 +727,7 @@ export default function AdminStudiosPage() {
 
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setCityDialogOpen(false)}>
-                Cancelar
+                {tc("cancel")}
               </Button>
               <Button
                 className="flex-1 bg-admin text-white hover:bg-admin/90"
@@ -732,7 +735,7 @@ export default function AdminStudiosPage() {
                 onClick={() => createCityMut.mutate()}
               >
                 {createCityMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Crear ciudad
+                {t("createCityAction")}
               </Button>
             </div>
           </div>
@@ -743,27 +746,27 @@ export default function AdminStudiosPage() {
       <Dialog open={roomDialogOpen} onOpenChange={setRoomDialogOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingRoom ? "Editar Sala" : "Nueva Sala"}</DialogTitle>
+            <DialogTitle>{editingRoom ? t("editRoom") : t("newRoom")}</DialogTitle>
             <DialogDescription>
               {editingRoom
-                ? "Modifica los datos y el layout de la sala"
-                : "Configura la sala y diseña la distribución de lugares"}
+                ? t("editRoomDesc")
+                : t("newRoomDesc")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5 pt-2">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted">Nombre</label>
+                <label className="text-xs font-medium text-muted">{tc("name")}</label>
                 <Input
-                  placeholder="Ej: Sala Reformer 1"
+                  placeholder={t("namePlaceholderRoom")}
                   value={roomForm.name}
                   onChange={(e) => setRoomForm((f) => ({ ...f, name: e.target.value }))}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted">Disciplinas</label>
+                <label className="text-xs font-medium text-muted">{t("discipline")}</label>
                 <div className="rounded-lg border border-border bg-white p-2 space-y-1 max-h-40 overflow-y-auto">
                   {classTypes?.length ? classTypes.map((ct) => (
                     <label
@@ -786,12 +789,12 @@ export default function AdminStudiosPage() {
                       {ct.name}
                     </label>
                   )) : (
-                    <p className="px-2 py-1 text-xs text-muted">No hay disciplinas</p>
+                    <p className="px-2 py-1 text-xs text-muted">{t("noDisciplines")}</p>
                   )}
                 </div>
                 {roomForm.classTypeIds.length > 0 && (
                   <p className="text-[11px] text-muted">
-                    {roomForm.classTypeIds.length} seleccionada{roomForm.classTypeIds.length !== 1 && "s"}
+                    {t("selectedCount", { count: roomForm.classTypeIds.length })}
                   </p>
                 )}
               </div>
@@ -801,7 +804,7 @@ export default function AdminStudiosPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-muted">
-                  Distribución de la sala
+                  {t("roomDistribution")}
                 </label>
                 <div className="flex items-center gap-2">
                   <button
@@ -812,7 +815,7 @@ export default function AdminStudiosPage() {
                       !useLayout ? "bg-admin/10 text-admin" : "text-muted hover:text-foreground",
                     )}
                   >
-                    Solo capacidad
+                    {t("capacityOnly")}
                   </button>
                   <button
                     type="button"
@@ -822,7 +825,7 @@ export default function AdminStudiosPage() {
                       useLayout ? "bg-admin/10 text-admin" : "text-muted hover:text-foreground",
                     )}
                   >
-                    Con layout
+                    {t("withLayout")}
                   </button>
                 </div>
               </div>
@@ -831,12 +834,12 @@ export default function AdminStudiosPage() {
                 <div className="space-y-2">
                   {roomForm.layout.spots.length > 0 && (
                     <span className="rounded-full bg-admin/10 px-2.5 py-0.5 text-[11px] font-semibold text-admin tabular-nums">
-                      {roomForm.layout.spots.length} lugares
-                      {!roomForm.layout.coachPosition && " · sin posición de coach"}
+                      {t("spotsCountLabel", { count: roomForm.layout.spots.length })}
+                      {!roomForm.layout.coachPosition && ` · ${t("noCoachPositionLabel")}`}
                     </span>
                   )}
                   <p className="text-[11px] text-muted">
-                    Haz clic en las celdas para colocar lugares y la posición del coach. El lugar del coach no se puede reservar.
+                    {t("layoutInstructions")}
                   </p>
                   <RoomLayoutEditor
                     value={roomForm.layout}
@@ -851,16 +854,16 @@ export default function AdminStudiosPage() {
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted">Lugares máximos</label>
+                  <label className="text-xs font-medium text-muted">{t("maxSpots")}</label>
                   <Input
                     type="number"
                     min={1}
-                    placeholder="Ej: 20"
+                    placeholder={t("capacityPlaceholder")}
                     value={roomForm.maxCapacity}
                     onChange={(e) => setRoomForm((f) => ({ ...f, maxCapacity: e.target.value }))}
                   />
                   <p className="text-[11px] text-muted">
-                    Sin distribución visual. Los clientes reservan lugar sin seleccionar posición.
+                    {t("noLayoutDesc")}
                   </p>
                 </div>
               )}
@@ -872,7 +875,7 @@ export default function AdminStudiosPage() {
                 className="flex-1"
                 onClick={() => setRoomDialogOpen(false)}
               >
-                Cancelar
+                {tc("cancel")}
               </Button>
               <Button
                 className="flex-1 bg-admin text-white hover:bg-admin/90"
@@ -885,7 +888,7 @@ export default function AdminStudiosPage() {
                 onClick={handleRoomSubmit}
               >
                 {roomSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingRoom ? "Guardar" : "Crear"}
+                {editingRoom ? tc("save") : tc("create")}
               </Button>
             </div>
           </div>

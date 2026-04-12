@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { getIconComponent } from "@/components/admin/icon-picker";
+import { useTranslations } from "next-intl";
 
 interface ClassTypeData {
   id: string;
@@ -28,33 +29,7 @@ interface ClassTypeData {
   icon: string | null;
 }
 
-const LEVEL_LABELS: Record<string, string> = {
-  ALL: "Todos los niveles",
-  BEGINNER: "Principiante",
-  INTERMEDIATE: "Intermedio",
-  ADVANCED: "Avanzado",
-};
-
-const steps = [
-  {
-    number: "01",
-    title: "Elige tu clase",
-    description:
-      "Explora nuestro horario y encuentra la clase perfecta para ti.",
-  },
-  {
-    number: "02",
-    title: "Reserva en segundos",
-    description:
-      "Asegura tu lugar con un tap. Sin complicaciones, sin llamadas.",
-  },
-  {
-    number: "03",
-    title: "Muévete con nosotras",
-    description:
-      "Llega al studio, respira profundo y disfruta cada movimiento.",
-  },
-];
+// LEVEL_LABELS and steps defined inside component to access translations
 
 interface CoachData {
   id: string;
@@ -101,6 +76,30 @@ const stagger = {
 };
 
 export default function LandingPage() {
+  const t = useTranslations("public");
+  const LEVEL_LABELS: Record<string, string> = {
+    ALL: t("allLevels"),
+    BEGINNER: t("beginner"),
+    INTERMEDIATE: t("intermediate"),
+    ADVANCED: t("advanced"),
+  };
+  const steps = [
+    {
+      number: "01",
+      title: t("step1Title"),
+      description: t("step1Desc"),
+    },
+    {
+      number: "02",
+      title: t("step2Title"),
+      description: t("step2Desc"),
+    },
+    {
+      number: "03",
+      title: t("step3Title"),
+      description: t("step3Desc"),
+    },
+  ];
   const scrollRef = useRef<HTMLDivElement>(null);
   const [coaches, setCoaches] = useState<CoachData[]>([]);
   const [packages, setPackages] = useState<PackageData[]>([]);
@@ -202,7 +201,7 @@ export default function LandingPage() {
               className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
             >
               <Button asChild size="lg" className="px-10 text-base">
-                <Link href="/schedule">Reserva tu clase</Link>
+                <Link href="/schedule">{t("bookYourClass")}</Link>
               </Button>
               <Button
                 asChild
@@ -211,7 +210,7 @@ export default function LandingPage() {
                 className="hover:border-accent hover:bg-accent hover:text-white"
                 style={{ borderColor: heroBorder, color: heroText }}
               >
-                <Link href="/packages">Ver paquetes</Link>
+                <Link href="/packages">{t("viewPackages")}</Link>
               </Button>
             </motion.div>
           </motion.div>
@@ -253,10 +252,10 @@ export default function LandingPage() {
             className="mb-16 text-center"
           >
             <h2 className="font-display text-3xl font-bold text-foreground sm:text-5xl">
-              Encuentra tu práctica
+              {t("findYourPractice")}
             </h2>
             <p className="mt-4 text-muted">
-              {classTypes.length} disciplina{classTypes.length !== 1 ? "s" : ""}, un objetivo: que te sientas increíble.
+              {t("disciplinesGoal", { count: classTypes.length })}
             </p>
           </motion.div>
 
@@ -321,10 +320,10 @@ export default function LandingPage() {
             className="mb-16 text-center"
           >
             <h2 className="font-display text-3xl font-bold text-foreground sm:text-5xl">
-              Así de fácil
+              {t("howItWorks")}
             </h2>
             <p className="mt-4 text-muted">
-              De tu celular al reformer en tres pasos.
+              {t("howItWorksSubtitle")}
             </p>
           </motion.div>
 
@@ -366,10 +365,10 @@ export default function LandingPage() {
             className="mb-16 text-center"
           >
             <h2 className="font-display text-3xl font-bold sm:text-5xl" style={{ color: heroText }}>
-              Nuestro equipo
+              {t("ourTeam")}
             </h2>
             <p className="mt-4" style={{ color: heroTextMuted }}>
-              Coaches que te inspiran en cada sesión.
+              {t("coachesSubtitle")}
             </p>
           </motion.div>
 
@@ -425,7 +424,7 @@ export default function LandingPage() {
                         href="/schedule"
                         className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-white"
                       >
-                        Ver clases <ArrowRight className="h-3.5 w-3.5" />
+                        {t("viewClasses")} <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     </div>
                   </div>
@@ -447,7 +446,7 @@ export default function LandingPage() {
                 className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-accent"
                 style={{ color: heroTextMuted }}
               >
-                Ver los {coaches.length} coaches <ArrowRight className="h-3.5 w-3.5" />
+                {t("viewAllCoaches", { count: coaches.length })} <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </motion.div>
           )}
@@ -470,10 +469,10 @@ export default function LandingPage() {
             className="mb-16 text-center"
           >
             <h2 className="font-display text-3xl font-bold text-foreground sm:text-5xl">
-              Paquetes
+              {t("packages")}
             </h2>
             <p className="mt-4 text-muted">
-              Elige el plan que se adapte a tu ritmo.
+              {t("packagesSubtitle")}
             </p>
           </motion.div>
 
@@ -506,7 +505,7 @@ export default function LandingPage() {
                   {isHighlight && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge className="bg-accent text-white shadow-[var(--shadow-warm)]">
-                        <Star className="mr-1 h-3 w-3" /> Más popular
+                        <Star className="mr-1 h-3 w-3" /> {t("mostPopular")}
                       </Badge>
                     </div>
                   )}
@@ -544,12 +543,12 @@ export default function LandingPage() {
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-accent" />
                       {pkg.credits
-                        ? `${pkg.credits} ${pkg.credits === 1 ? "clase" : "clases"}`
-                        : "Clases ilimitadas"}
+                        ? `${pkg.credits} ${pkg.credits === 1 ? t("classUnit") : t("classesUnit")}`
+                        : t("unlimitedClasses")}
                     </div>
                     <div className="flex items-center gap-2">
                       <CalendarCheck className="h-4 w-4 text-accent" />
-                      Vigencia: {validity}
+                      {t("validity")}: {validity}
                     </div>
                   </div>
                   <div className="mt-8">
@@ -558,7 +557,7 @@ export default function LandingPage() {
                       className="w-full"
                       variant={isHighlight ? "default" : "secondary"}
                     >
-                      <Link href="/packages">Comprar</Link>
+                      <Link href="/packages">{t("buy")}</Link>
                     </Button>
                   </div>
                 </div>
@@ -616,7 +615,7 @@ export default function LandingPage() {
               style={{ borderColor: heroBorder, color: heroText }}
             >
               <Link href="/packages">
-                Ver paquetes <ArrowRight className="ml-2 h-4 w-4" />
+                {t("viewPackages")} <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>

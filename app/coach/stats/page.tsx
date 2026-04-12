@@ -20,6 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatTime } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface PeriodStats {
   total: number;
@@ -77,11 +78,7 @@ interface MonthGroup {
 
 type Period = "week" | "month" | "year";
 
-const periodLabels: Record<Period, string> = {
-  week: "Semana",
-  month: "Mes",
-  year: "Año",
-};
+// Period labels are handled via translations below
 
 const fadeUp = {
   hidden: { opacity: 0, y: 10 },
@@ -140,6 +137,12 @@ function groupByMonth(classes: HistoryEntry[]): MonthGroup[] {
 }
 
 export default function CoachStatsPage() {
+  const t = useTranslations("coach");
+  const periodLabels: Record<Period, string> = {
+    week: t("periodWeek"),
+    month: t("periodMonth"),
+    year: t("periodYear"),
+  };
   const [period, setPeriod] = useState<Period>("month");
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   const [showAllClasses, setShowAllClasses] = useState(false);
@@ -185,9 +188,9 @@ export default function CoachStatsPage() {
       </Link>
 
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="font-display text-2xl font-bold">Mi Historial</h1>
+        <h1 className="font-display text-2xl font-bold">{t("myHistory")}</h1>
         <p className="mt-1 text-sm text-muted">
-          Resumen de clases, estadísticas y ganancias
+          {t("statsSummary")}
         </p>
       </motion.div>
 
@@ -203,7 +206,7 @@ export default function CoachStatsPage() {
                   {data?.allTime.given ?? 0}
                 </p>
               )}
-              <p className="mt-1 text-xs text-muted">Clases impartidas</p>
+              <p className="mt-1 text-xs text-muted">{t("classesGiven")}</p>
             </div>
             <div className="h-10 w-px bg-border/50" />
             <div className="text-center">
@@ -214,7 +217,7 @@ export default function CoachStatsPage() {
                   {data?.allTime.students ?? 0}
                 </p>
               )}
-              <p className="mt-1 text-xs text-muted">Alumnas atendidas</p>
+              <p className="mt-1 text-xs text-muted">{t("studentsServed")}</p>
             </div>
           </CardContent>
         </Card>
@@ -226,7 +229,7 @@ export default function CoachStatsPage() {
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 font-display text-lg font-bold">
               <Banknote className="h-5 w-5 text-green-600" />
-              Mis ganancias
+              {t("myEarnings")}
             </h2>
             <div className="inline-flex items-center gap-0.5 rounded-lg bg-surface p-0.5">
               <button
@@ -238,7 +241,7 @@ export default function CoachStatsPage() {
                     : "text-muted hover:text-foreground",
                 )}
               >
-                Semana
+                {t("periodWeek")}
               </button>
               <button
                 onClick={() => setEarningsView("month")}
@@ -249,7 +252,7 @@ export default function CoachStatsPage() {
                     : "text-muted hover:text-foreground",
                 )}
               >
-                Mes
+                {t("periodMonth")}
               </button>
             </div>
           </div>
@@ -265,7 +268,7 @@ export default function CoachStatsPage() {
                   {fmt(earnings.total, earnings.currency)}
                 </p>
                 <p className="mt-0.5 text-xs text-green-600/70">
-                  {earningsView === "week" ? "Esta semana" : "Este mes"}
+                  {earningsView === "week" ? t("thisWeek") : t("thisMonth")}
                 </p>
                 {earnings.breakdown.length > 0 && (
                   <div className="mt-4 space-y-2">
@@ -279,7 +282,7 @@ export default function CoachStatsPage() {
                     ))}
                     {earnings.breakdown.length > 1 && (
                       <div className="border-t border-green-200/50 pt-2 flex items-center justify-between">
-                        <span className="text-sm font-semibold text-green-700">Total</span>
+                        <span className="text-sm font-semibold text-green-700">{t("totalLabel")}</span>
                         <span className="font-mono text-sm font-bold text-green-800">
                           {fmt(earnings.total, earnings.currency)}
                         </span>
@@ -298,7 +301,7 @@ export default function CoachStatsPage() {
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Coins className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-semibold">Ganancia por clase</span>
+                    <span className="text-sm font-semibold">{t("earningsPerClass")}</span>
                     <Badge variant="secondary" className="text-[10px]">
                       {classEarnings.length}
                     </Badge>
@@ -308,7 +311,7 @@ export default function CoachStatsPage() {
                       onClick={() => setShowAllClasses(!showAllClasses)}
                       className="text-xs font-medium text-coach hover:underline"
                     >
-                      {showAllClasses ? "Ver menos" : `Ver todas (${classEarnings.length})`}
+                      {showAllClasses ? t("showLess") : t("showAll", { count: classEarnings.length })}
                     </button>
                   )}
                 </div>
@@ -350,7 +353,7 @@ export default function CoachStatsPage() {
       <div>
         <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-bold">
           <BarChart3 className="h-5 w-5 text-coach" />
-          Actividad
+          {t("activity")}
         </h2>
 
         <div className="flex gap-1 rounded-lg bg-surface p-1">
@@ -386,7 +389,7 @@ export default function CoachStatsPage() {
                   {current?.total ?? 0}
                 </span>
               )}
-              <span className="text-[11px] text-muted">Programadas</span>
+              <span className="text-[11px] text-muted">{t("scheduled")}</span>
             </CardContent>
           </Card>
           <Card className="border-coach/15">
@@ -399,7 +402,7 @@ export default function CoachStatsPage() {
                   {current?.given ?? 0}
                 </span>
               )}
-              <span className="text-[11px] text-muted">Impartidas</span>
+              <span className="text-[11px] text-muted">{t("given")}</span>
             </CardContent>
           </Card>
           <Card>
@@ -412,7 +415,7 @@ export default function CoachStatsPage() {
                   {current?.students ?? 0}
                 </span>
               )}
-              <span className="text-[11px] text-muted">Alumnas</span>
+              <span className="text-[11px] text-muted">{t("students")}</span>
             </CardContent>
           </Card>
         </motion.div>
@@ -422,7 +425,7 @@ export default function CoachStatsPage() {
       <div>
         <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-bold">
           <Clock className="h-5 w-5 text-muted" />
-          Resumen mensual
+          {t("monthlySummary")}
         </h2>
 
         {isLoading ? (
@@ -435,7 +438,7 @@ export default function CoachStatsPage() {
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
               <Clock className="h-8 w-8 text-muted/30" />
-              <p className="text-sm text-muted">Aún no hay clases pasadas</p>
+              <p className="text-sm text-muted">{t("noPastClasses")}</p>
             </CardContent>
           </Card>
         ) : (
@@ -464,18 +467,18 @@ export default function CoachStatsPage() {
                             </p>
                             {isCurrent && (
                               <Badge variant="coach" className="text-[10px] px-1.5 py-0">
-                                Actual
+                                {t("current")}
                               </Badge>
                             )}
                           </div>
                           <div className="mt-1 flex items-center gap-4 text-xs text-muted">
                             <span className="flex items-center gap-1">
                               <CalendarDays className="h-3 w-3" />
-                              {group.classes.length} clase{group.classes.length !== 1 ? "s" : ""}
+                              {t("classCount", { count: group.classes.length })}
                             </span>
                             <span className="flex items-center gap-1">
                               <Users className="h-3 w-3" />
-                              {group.totalStudents} alumna{group.totalStudents !== 1 ? "s" : ""}
+                              {t("studentCount", { count: group.totalStudents })}
                             </span>
                           </div>
                         </div>
@@ -517,25 +520,25 @@ export default function CoachStatsPage() {
                           >
                             <div className="border-t border-border/50 px-4 py-3">
                               <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
-                                Desglose por tipo
+                                {t("breakdownByType")}
                               </p>
                               <div className="space-y-1.5">
-                                {group.byType.map((t) => {
-                                  const avgStudents = Math.round(t.students / t.count);
+                                {group.byType.map((bt) => {
+                                  const avgStudents = Math.round(bt.students / bt.count);
                                   return (
-                                    <div key={t.name} className="flex items-center gap-2">
+                                    <div key={bt.name} className="flex items-center gap-2">
                                       <span
                                         className="h-2.5 w-2.5 shrink-0 rounded-full"
-                                        style={{ backgroundColor: t.color }}
+                                        style={{ backgroundColor: bt.color }}
                                       />
                                       <span className="flex-1 text-sm font-medium">
-                                        {t.name}
+                                        {bt.name}
                                       </span>
                                       <span className="font-mono text-sm font-semibold">
-                                        {t.count}
+                                        {bt.count}
                                       </span>
                                       <span className="text-[11px] text-muted">
-                                        · ~{avgStudents} alumnas/clase
+                                        · ~{avgStudents} {t("studentsPerClass")}
                                       </span>
                                     </div>
                                   );
@@ -545,7 +548,7 @@ export default function CoachStatsPage() {
 
                             <div className="border-t border-border/50 px-4 py-3">
                               <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
-                                Detalle de clases
+                                {t("classDetails")}
                               </p>
                               <div className="space-y-1">
                                 {group.classes.map((cls) => (

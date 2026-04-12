@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { usePosStore, type PosPaymentMethod } from "@/store/pos-store";
 import { cn, formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface SavedCard {
   id: string;
@@ -24,28 +25,30 @@ interface SavedCard {
   expYear: number;
 }
 
-const PAYMENT_METHODS: {
+type PaymentMethodDef = {
   key: PosPaymentMethod;
-  label: string;
-  description: string;
+  labelKey: "savedCard" | "bankTerminal" | "cashPayment";
+  descKey: "chargeWithClientCard" | "chargeWithTerminal" | "registerCashPayment";
   icon: typeof CreditCard;
-}[] = [
+};
+
+const PAYMENT_METHODS: PaymentMethodDef[] = [
   {
     key: "saved_card",
-    label: "Tarjeta guardada",
-    description: "Cobrar con tarjeta registrada del cliente",
+    labelKey: "savedCard",
+    descKey: "chargeWithClientCard",
     icon: CreditCard,
   },
   {
     key: "terminal",
-    label: "Terminal bancaria",
-    description: "Cobrar con terminal física (TPV)",
+    labelKey: "bankTerminal",
+    descKey: "chargeWithTerminal",
     icon: Smartphone,
   },
   {
     key: "cash",
-    label: "Efectivo",
-    description: "Registrar pago en efectivo",
+    labelKey: "cashPayment",
+    descKey: "registerCashPayment",
     icon: Banknote,
   },
 ];
@@ -61,6 +64,8 @@ function formatBrand(brand: string): string {
 }
 
 export function PaymentStep() {
+  const t = useTranslations("pos");
+  const tc = useTranslations("common");
   const {
     customer,
     cart,
@@ -140,13 +145,13 @@ export function PaymentStep() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Error al procesar la venta");
+        throw new Error(data.error ?? t("saleProcessError"));
       }
       return res.json();
     },
     onSuccess: (data) => {
       if (data.requiresConfirmation) {
-        toast.info("El pago requiere confirmación adicional del cliente.");
+        toast.info(t("paymentRequiresConfirmation"));
         return;
       }
 
@@ -158,10 +163,10 @@ export function PaymentStep() {
         items: cart,
         selectedClass,
         paymentMethod: hasPaidItems ? selectedMethod : "cash",
-        customerName: data.customerName ?? customer?.name ?? "Cliente",
+        customerName: data.customerName ?? customer?.name ?? t("customer"),
       });
       setStep("confirmation");
-      toast.success("Venta procesada correctamente");
+      toast.success(t("saleProcessed"));
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -176,26 +181,26 @@ export function PaymentStep() {
 
   return (
     <div className="space-y-5">
-      <h3 className="font-display text-base font-bold">Método de pago</h3>
+      <h3 className="font-display text-base font-bold">{t("paymentMethod")}</h3>
 
       {/* Order summary */}
       <div className="rounded-lg border border-border/60 bg-surface/30 px-4 py-3 space-y-1">
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted">
             {cart.length > 0
-              ? `${cart.length} artículo${cart.length !== 1 ? "s" : ""} para `
-              : "Venta para "}
+              ? `${t("itemsFor", { count: cart.length })} `
+              : `${t("saleFor")} `}
             <span className="font-medium text-foreground">
-              {customer?.name ?? "Cliente"}
+              {customer?.name ?? t("customer")}
             </span>
           </span>
           <span className="text-lg font-bold">
-            {total > 0 ? formatCurrency(total, currency) : "Gratis"}
+            {total > 0 ? formatCurrency(total, currency) : tc("free")}
           </span>
         </div>
         {selectedClass && (
           <p className="text-xs text-muted">
-            + Reserva: {selectedClass.label}
+            + {t("reservation")}: {selectedClass.label}
           </p>
         )}
       </div>
@@ -244,19 +249,19 @@ export function PaymentStep() {
                           isSelected && "text-admin",
                         )}
                       >
-                        {method.label}
+                        {t(method.labelKey)}
                       </p>
                       {cardDisabled ? (
                         <p className="text-xs text-orange-600">
-                          Este cliente no tiene tarjetas guardadas
+                          {t("noCardsSaved")}
                         </p>
                       ) : isCardOption && cardsLoading ? (
                         <p className="flex items-center gap-1.5 text-xs text-muted">
                           <Loader2 className="h-3 w-3 animate-spin" />
-                          Verificando tarjetas...
+                          {t("checkingCards")}
                         </p>
                       ) : (
-                        <p className="text-xs text-muted">{method.description}</p>
+                        <p className="text-xs text-muted">{t(method.descKey)}</p>
                       )}
                     </div>
                     <div
@@ -304,7 +309,7 @@ export function PaymentStep() {
                               {formatBrand(card.brand)} •••• {card.last4}
                             </p>
                             <p className="text-xs text-muted">
-                              Expira {card.expMonth}/{card.expYear}
+                              {t("expires", { month: card.expMonth, year: card.expYear })}
                             </p>
                           </div>
                           {selectedCardId === card.id && (
@@ -323,7 +328,7 @@ export function PaymentStep() {
         <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50/60 px-3 py-2.5">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
           <p className="text-xs text-green-700">
-            Todos los artículos son reservas con créditos. No se requiere pago.
+            {t("allCreditsNoPayment")}
           </p>
         </div>
       )}
@@ -331,7 +336,7 @@ export function PaymentStep() {
       {/* Actions */}
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" size="sm" onClick={() => setStep("cart")}>
-          Volver al carrito
+          {t("backToCart")}
         </Button>
         <Button
           size="sm"
@@ -345,8 +350,8 @@ export function PaymentStep() {
             <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
           )}
           {hasPaidItems
-            ? `Cobrar ${formatCurrency(total, currency)}`
-            : "Confirmar reserva"}
+            ? `${t("charge")} ${formatCurrency(total, currency)}`
+            : t("confirmReservation")}
         </Button>
       </div>
     </div>

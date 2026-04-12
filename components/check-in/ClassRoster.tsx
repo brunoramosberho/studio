@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useOptimistic, useCallback, useEffect, useRef, startTransition } from "react";
+import { useTranslations } from "next-intl";
 import {
   Search,
   QrCode,
@@ -112,35 +113,36 @@ function getAvatarColor(memberId: string) {
 // ── Attendee Tags (matches class detail page) ──
 
 function AttendeeTags({ stats }: { stats: AttendeeStats }) {
+  const t = useTranslations("checkin");
   const tags: { label: string; icon: React.ReactNode; className: string }[] = [];
 
   if (stats.birthdayLabel === "today") {
-    tags.push({ label: "Cumpleaños hoy!", icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-200 text-pink-800 border-pink-300 animate-pulse" });
+    tags.push({ label: t("birthdayToday"), icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-200 text-pink-800 border-pink-300 animate-pulse" });
   } else if (stats.birthdayLabel === "yesterday") {
-    tags.push({ label: "Cumpleaños ayer", icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-100 text-pink-700 border-pink-200" });
+    tags.push({ label: t("birthdayYesterday"), icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-100 text-pink-700 border-pink-200" });
   } else if (stats.birthdayLabel === "this_week") {
-    tags.push({ label: "Cumple esta semana", icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-50 text-pink-600 border-pink-200" });
+    tags.push({ label: t("birthdayThisWeek"), icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-50 text-pink-600 border-pink-200" });
   }
 
   if (stats.isFirstEver) {
-    tags.push({ label: "Primera clase", icon: <Sparkles className="h-2.5 w-2.5" />, className: "bg-amber-100 text-amber-700 border-amber-200" });
+    tags.push({ label: t("firstClass"), icon: <Sparkles className="h-2.5 w-2.5" />, className: "bg-amber-100 text-amber-700 border-amber-200" });
   } else if (stats.isFirstWithCoach) {
-    tags.push({ label: "Primera con coach", icon: <UserPlus className="h-2.5 w-2.5" />, className: "bg-violet-100 text-violet-700 border-violet-200" });
+    tags.push({ label: t("firstWithCoach"), icon: <UserPlus className="h-2.5 w-2.5" />, className: "bg-violet-100 text-violet-700 border-violet-200" });
   }
 
   if (stats.isTopClient) {
-    tags.push({ label: "Top client", icon: <Crown className="h-2.5 w-2.5" />, className: "bg-yellow-100 text-yellow-700 border-yellow-200" });
+    tags.push({ label: t("topClient"), icon: <Crown className="h-2.5 w-2.5" />, className: "bg-yellow-100 text-yellow-700 border-yellow-200" });
   } else if (stats.isNewMember) {
-    tags.push({ label: "Nuevo", icon: <Star className="h-2.5 w-2.5" />, className: "bg-blue-100 text-blue-700 border-blue-200" });
+    tags.push({ label: t("newMember"), icon: <Star className="h-2.5 w-2.5" />, className: "bg-blue-100 text-blue-700 border-blue-200" });
   }
 
   if (stats.totalClasses > 1) {
-    tags.push({ label: `${stats.totalClasses} clases`, icon: <Trophy className="h-2.5 w-2.5" />, className: "bg-stone-100 text-stone-600 border-stone-200" });
+    tags.push({ label: t("classesCount", { num: stats.totalClasses }), icon: <Trophy className="h-2.5 w-2.5" />, className: "bg-stone-100 text-stone-600 border-stone-200" });
   }
 
   if (stats.cancelRate != null && stats.cancelRate >= 20) {
     tags.push({
-      label: `${stats.cancelRate}% cancela`,
+      label: t("cancellationRate", { num: stats.cancelRate }),
       icon: <AlertTriangle className="h-2.5 w-2.5" />,
       className: stats.cancelRate >= 50
         ? "bg-red-100 text-red-700 border-red-200"
@@ -174,6 +176,7 @@ function AttendeeTags({ stats }: { stats: AttendeeStats }) {
 
 export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const queryClient = useQueryClient();
+  const t = useTranslations("checkin");
   const [searchQuery, setSearchQuery] = useState("");
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [walkInQuery, setWalkInQuery] = useState("");
@@ -223,7 +226,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? "Error al hacer check-in");
+        throw new Error(err.error ?? t("checkInError"));
       }
       return res.json();
     },
@@ -243,7 +246,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? "Error al deshacer check-in");
+        throw new Error(err.error ?? t("undoCheckInError"));
       }
       return res.json();
     },
@@ -330,10 +333,10 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           </div>
           <div className="flex gap-1.5 sm:gap-2 text-[10px] shrink-0">
             <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-              {enrolledCount} <span className="hidden sm:inline">inscritos</span><span className="sm:hidden">insc.</span>
+              {enrolledCount} <span className="hidden sm:inline">{t("enrolled")}</span><span className="sm:hidden">{t("enrolledShort")}</span>
             </span>
             <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-              {presentCount} <span className="hidden sm:inline">confirmados</span><span className="sm:hidden">conf.</span>
+              {presentCount} <span className="hidden sm:inline">{t("confirmed")}</span><span className="sm:hidden">{t("confirmedShort")}</span>
             </span>
           </div>
         </div>
@@ -342,7 +345,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       {/* Finished banner */}
       {classInfo.isFinished && (
         <div className="px-4 py-2 bg-stone-100 text-stone-500 text-xs text-center border-b border-stone-100">
-          Esta clase ya terminó · Modo solo lectura
+          {t("classFinished")}
         </div>
       )}
 
@@ -352,7 +355,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-300" size={14} />
           <input
             type="text"
-            placeholder="Buscar miembro..."
+            placeholder={t("searchMember")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-stone-200 bg-stone-50 focus:outline-none focus:ring-1 focus:ring-[#3730B8] focus:border-[#3730B8]"
@@ -363,18 +366,18 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-stone-200 text-stone-400 opacity-50 cursor-not-allowed"
         >
           <QrCode size={14} />
-          Escanear QR
-          <span className="text-[9px] bg-stone-100 rounded px-1">próximamente</span>
+          {t("scanQR")}
+          <span className="text-[9px] bg-stone-100 rounded px-1">{t("comingSoon")}</span>
         </button>
       </div>
 
       {/* Stats bar */}
       <div className="grid grid-cols-4 border-b border-stone-100">
         {[
-          { value: presentCount, label: "Presentes", highlight: false },
-          { value: enrolledCount, label: "Inscritos", highlight: false },
-          { value: pendingCount, label: "Pendientes", highlight: pendingCount > 0 },
-          { value: waitlist.length, label: "Espera", highlight: false },
+          { value: presentCount, label: t("present"), highlight: false },
+          { value: enrolledCount, label: t("enrolled"), highlight: false },
+          { value: pendingCount, label: t("pending"), highlight: pendingCount > 0 },
+          { value: waitlist.length, label: t("waitlist"), highlight: false },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -398,7 +401,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-xs text-stone-400">
-            {searchQuery ? "No se encontraron miembros" : "No hay inscritos en esta clase"}
+            {searchQuery ? t("noMembersFound") : t("noEnrollees")}
           </div>
         ) : (
           filtered.map((member) => (
@@ -432,7 +435,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
               onClick={() => setWalkInOpen(true)}
               className="w-full border border-dashed border-stone-200 rounded-xl py-2.5 text-xs text-stone-400 hover:bg-stone-50 active:bg-stone-100 transition-colors"
             >
-              + Añadir walk-in
+              + {t("addWalkIn")}
             </button>
           </div>
         )}
@@ -459,9 +462,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       {paymentConfirm && (
         <ConfirmDialog
           icon={<AlertCircle className="text-red-500 shrink-0 mt-0.5" size={18} />}
-          title="Pago pendiente"
-          description="Este miembro tiene un pago pendiente. ¿Deseas hacer check-in igualmente?"
-          confirmLabel="Confirmar check-in"
+          title={t("paymentPending")}
+          description={t("paymentPendingDesc")}
+          confirmLabel={t("confirmCheckIn")}
           confirmClassName="bg-red-50 text-red-600 hover:bg-red-100"
           onConfirm={confirmPaymentCheckIn}
           onCancel={() => setPaymentConfirm(null)}
@@ -472,9 +475,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       {undoConfirm && (
         <ConfirmDialog
           icon={<Undo2 className="text-amber-500 shrink-0 mt-0.5" size={18} />}
-          title="Deshacer check-in"
-          description={`¿Seguro que deseas deshacer el check-in de ${optimisticRoster.find((m) => m.memberId === undoConfirm)?.memberName ?? "este miembro"}?`}
-          confirmLabel="Sí, deshacer"
+          title={t("undoCheckIn")}
+          description={t("undoCheckInConfirm", { name: optimisticRoster.find((m) => m.memberId === undoConfirm)?.memberName ?? t("thisMember") })}
+          confirmLabel={t("yesUndo")}
           confirmClassName="bg-amber-50 text-amber-700 hover:bg-amber-100"
           onConfirm={confirmUndo}
           onCancel={() => setUndoConfirm(null)}
@@ -549,6 +552,7 @@ function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const tc = useTranslations("common");
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
       <div className="bg-white rounded-xl shadow-xl p-4 mx-4 max-w-sm w-full">
@@ -562,7 +566,7 @@ function ConfirmDialog({
                 onClick={onCancel}
                 className="px-3 py-1.5 text-xs rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50"
               >
-                Cancelar
+                {tc("cancel")}
               </button>
               <button
                 onClick={onConfirm}
@@ -607,12 +611,13 @@ function RosterRow({
     prevCheckedIn.current = isCheckedIn;
   }, [isCheckedIn]);
 
+  const tc = useTranslations("checkin");
   const packageLabel = member.hasPaymentPending
-    ? "Pago pendiente"
+    ? tc("paymentPending")
     : member.isUnlimited
-      ? `${member.membershipType} · Ilimitado`
+      ? `${member.membershipType} · ${tc("unlimited")}`
       : member.remainingClasses != null
-        ? `${member.membershipType} · ${member.remainingClasses} clases`
+        ? `${member.membershipType} · ${tc("remainingClasses", { num: member.remainingClasses })}`
         : member.membershipType;
 
   return (
@@ -688,9 +693,9 @@ function RosterRow({
               )}
             >
               {isLate ? (
-                <><Clock size={12} /> Tarde</>
+                <><Clock size={12} /> {tc("late")}</>
               ) : (
-                <><CircleCheckIcon ref={circleCheckRef} size={12} /> Presente</>
+                <><CircleCheckIcon ref={circleCheckRef} size={12} /> {tc("presentLabel")}</>
               )}
             </span>
             {!isFinished && (
@@ -743,6 +748,7 @@ function WaitlistSection({
 }) {
   const queryClient = useQueryClient();
 
+  const t = useTranslations("checkin");
   const promoteMutation = useMutation({
     mutationFn: async (memberId: string) => {
       const res = await fetch("/api/check-in/walkin", {
@@ -752,13 +758,13 @@ function WaitlistSection({
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? "Error al promover");
+        throw new Error(err.error ?? t("promoteError"));
       }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["check-in-roster", classId] });
-      toast.success("Miembro promovido de la lista de espera");
+      toast.success(t("memberPromoted"));
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -766,7 +772,7 @@ function WaitlistSection({
   return (
     <div className="bg-stone-50 border-t border-stone-100 px-4 py-3">
       <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-2">
-        Lista de espera
+        {t("waitlist")}
       </p>
       {waitlist.map((w) => (
         <div key={w.memberId} className="flex items-center gap-3 py-1.5">
@@ -781,7 +787,7 @@ function WaitlistSection({
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-stone-700 truncate">{w.memberName}</p>
             <p className="text-[10px] text-stone-400">
-              en espera desde {format(new Date(w.since), "HH:mm", { locale: es })}
+              {t("waitingSince")} {format(new Date(w.since), "HH:mm", { locale: es })}
             </p>
           </div>
           {!isFinished && (
@@ -790,7 +796,7 @@ function WaitlistSection({
               disabled={promoteMutation.isPending}
               className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
             >
-              Promover
+              {t("promote")}
             </button>
           )}
         </div>
@@ -813,6 +819,8 @@ function WaiverConfirmDialog({
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
+  const t = useTranslations("checkin");
+
   async function handleSendEmail() {
     setSending(true);
     try {
@@ -823,13 +831,13 @@ function WaiverConfirmDialog({
       });
       if (!res.ok) {
         const err = await res.json();
-        toast.error(err.error ?? "Error al enviar correo");
+        toast.error(err.error ?? t("emailSendError"));
       } else {
         setSent(true);
-        toast.success("Correo enviado");
+        toast.success(t("emailSent"));
       }
     } catch {
-      toast.error("Error al enviar correo");
+      toast.error(t("emailSendError"));
     } finally {
       setSending(false);
     }
@@ -841,9 +849,9 @@ function WaiverConfirmDialog({
         <div className="flex items-start gap-3">
           <FileText className="text-amber-600 shrink-0 mt-0.5" size={18} />
           <div className="flex-1">
-            <p className="text-sm font-medium text-stone-900">Waiver no firmado</p>
+            <p className="text-sm font-medium text-stone-900">{t("waiverUnsigned")}</p>
             <p className="text-xs text-stone-500 mt-1">
-              Este miembro no ha firmado el acuerdo de responsabilidad.
+              {t("waiverUnsignedDesc")}
             </p>
 
             <div className="flex flex-col gap-2 mt-3">
@@ -865,7 +873,7 @@ function WaiverConfirmDialog({
                 ) : (
                   <Mail size={13} />
                 )}
-                {sent ? "Correo enviado" : "Enviar link por correo"}
+                {sent ? t("emailSent") : t("sendEmailLink")}
               </button>
 
               <div className="flex gap-2">
@@ -873,13 +881,13 @@ function WaiverConfirmDialog({
                   onClick={onCancel}
                   className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50"
                 >
-                  Cancelar
+                  {t("cancelLabel")}
                 </button>
                 <button
                   onClick={onForceCheckIn}
                   className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100"
                 >
-                  Check-in de todas formas
+                  {t("forceCheckIn")}
                 </button>
               </div>
             </div>
@@ -910,6 +918,7 @@ function WalkInModal({
   query: string;
   setQuery: (q: string) => void;
 }) {
+  const t = useTranslations("checkin");
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [noCreditInfo, setNoCreditInfo] = useState<NoCreditInfo | null>(null);
   const [waiverBlock, setWaiverBlock] = useState<string | null>(null);
@@ -975,7 +984,7 @@ function WalkInModal({
         if (data.noCredits && data.member) {
           return { noCredits: true, member: data.member, classInfo: data.classInfo };
         }
-        throw new Error(data.error ?? "Error al añadir walk-in");
+        throw new Error(data.error ?? t("walkInError"));
       }
       return data;
     },
@@ -988,7 +997,7 @@ function WalkInModal({
         setNoCreditInfo({ member: data.member, classInfo: data.classInfo });
         return;
       }
-      toast.success("Walk-in añadido y check-in realizado");
+      toast.success(t("walkInAdded"));
       onAdded();
     },
     onError: (err: Error) => toast.error(err.message),
@@ -1038,7 +1047,7 @@ function WalkInModal({
       <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
         <div className="bg-white rounded-xl shadow-xl mx-4 max-w-sm w-full overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
-            <p className="text-sm font-medium text-stone-900">Sin créditos</p>
+            <p className="text-sm font-medium text-stone-900">{t("noCredits")}</p>
             <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
               <X size={16} />
             </button>
@@ -1049,8 +1058,7 @@ function WalkInModal({
               <div className="text-xs text-amber-800">
                 <p className="font-semibold">{noCreditInfo.member.name ?? noCreditInfo.member.email}</p>
                 <p className="mt-0.5">
-                  No tiene créditos disponibles para {noCreditInfo.classInfo.classTypeName}.
-                  Necesita comprar un paquete o membresía para poder reservar.
+                  {t("noCreditsDesc", { className: noCreditInfo.classInfo.classTypeName })}
                 </p>
               </div>
             </div>
@@ -1060,13 +1068,13 @@ function WalkInModal({
                 onClick={onClose}
                 className="flex-1 px-3 py-2 text-xs rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50"
               >
-                Cancelar
+                {t("cancelLabel")}
               </button>
               <button
                 onClick={handleOpenPOS}
                 className="flex-1 px-3 py-2 text-xs font-medium rounded-lg bg-[#3730B8] text-white hover:bg-[#2d28a0]"
               >
-                Abrir punto de venta
+                {t("openPOS")}
               </button>
             </div>
           </div>
@@ -1079,7 +1087,7 @@ function WalkInModal({
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
       <div className="bg-white rounded-xl shadow-xl mx-4 max-w-sm w-full overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
-          <p className="text-sm font-medium text-stone-900">Añadir walk-in</p>
+          <p className="text-sm font-medium text-stone-900">{t("addWalkIn")}</p>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
             <X size={16} />
           </button>
@@ -1090,7 +1098,7 @@ function WalkInModal({
             <input
               autoFocus
               type="text"
-              placeholder="Buscar por nombre o email..."
+              placeholder={t("searchByNameOrEmail")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50 focus:outline-none focus:ring-1 focus:ring-[#3730B8]"
@@ -1103,7 +1111,7 @@ function WalkInModal({
               <Loader2 className="animate-spin text-stone-300" size={16} />
             </div>
           ) : results.length === 0 && debouncedQuery.length >= 2 ? (
-            <p className="text-center py-4 text-xs text-stone-400">Sin resultados</p>
+            <p className="text-center py-4 text-xs text-stone-400">{t("noResults")}</p>
           ) : (
             results.map((r) => (
               <button
@@ -1128,9 +1136,9 @@ function WalkInModal({
                   <p className="text-[10px] text-stone-400 truncate">{r.email}</p>
                 </div>
                 {r.classStatus === "enrolled" ? (
-                  <span className="text-[10px] text-stone-400">Ya inscrito</span>
+                  <span className="text-[10px] text-stone-400">{t("alreadyEnrolled")}</span>
                 ) : r.classStatus === "waitlist" ? (
-                  <span className="text-[10px] text-amber-600">En espera</span>
+                  <span className="text-[10px] text-amber-600">{t("inWaitlist")}</span>
                 ) : (
                   <UserPlus size={14} className="text-stone-400" />
                 )}

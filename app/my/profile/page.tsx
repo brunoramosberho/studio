@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
 import { useBranding } from "@/components/branding-provider";
+import { useTranslations } from "next-intl";
 
 interface UserPackageInfo {
   id: string;
@@ -86,15 +87,17 @@ interface ReferralSheetData {
   stats: { total: number; delivered: number; pending: number };
 }
 
-const TRIGGER_LABELS: Record<string, string> = {
-  installed: "instale la app",
-  purchased: "haga su primera compra",
-  booked: "reserve su primera clase",
-  attended: "vaya a su primera clase",
-  member: "active su membresía",
-};
+// TRIGGER_LABELS defined in component for translation access
 
 export default function ProfilePage() {
+  const t = useTranslations("member");
+  const TRIGGER_LABELS: Record<string, string> = {
+    installed: t("triggerInstalled"),
+    purchased: t("triggerPurchased"),
+    booked: t("triggerBooked"),
+    attended: t("triggerAttended"),
+    member: t("triggerMember"),
+  };
   const { data: session, update } = useSession();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -344,8 +347,8 @@ export default function ProfilePage() {
     if (!referralData || !navigator.share) return;
     try {
       await navigator.share({
-        title: `Únete a ${brand.studioName}`,
-        text: `Te invito a ${brand.studioName}`,
+        title: t("joinStudio", { studio: brand.studioName }),
+        text: t("inviteToStudio", { studio: brand.studioName }),
         url: referralData.shareUrl,
       });
     } catch {}
@@ -452,13 +455,13 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                      Clases disponibles
+                      {t("availableClasses")}
                     </p>
                     <p className="mt-1 font-display text-3xl font-bold text-foreground">
                       {loadingPkgs ? (
                         <Loader2 className="h-6 w-6 animate-spin text-muted" />
                       ) : creditsLeft === -1 ? (
-                        "Ilimitado"
+                        t("unlimited")
                       ) : (
                         creditsLeft
                       )}
@@ -466,8 +469,8 @@ export default function ProfilePage() {
                     {soonestPackage && (
                       <p className="mt-0.5 text-[12px] text-muted">
                         {activePackages.length === 1
-                          ? `${soonestPackage.package.name} · Expira `
-                          : `${activePackages.length} paquetes · Próx. expira `}
+                          ? `${soonestPackage.package.name} · ${t("expires")} `
+                          : `${activePackages.length} ${t("packagesLabel")} · ${t("nextExpires")} `}
                         {new Date(soonestPackage.expiresAt).toLocaleDateString(
                           "es-MX",
                           { day: "numeric", month: "short" },
@@ -476,7 +479,7 @@ export default function ProfilePage() {
                     )}
                     {!loadingPkgs && !soonestPackage && (
                       <p className="mt-0.5 text-[12px] text-muted">
-                        Sin paquete activo
+                        {t("noActivePackage")}
                       </p>
                     )}
                   </div>
@@ -520,7 +523,7 @@ export default function ProfilePage() {
                 >
                   <Trophy className="h-4 w-4 text-accent" />
                   <span className="text-[13px] font-semibold text-foreground">
-                    Logros
+                    {t("achievements")}
                   </span>
                   <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
                     {earned.length}/{gamification.achievements.length}
@@ -604,7 +607,7 @@ export default function ProfilePage() {
                 <Gift className="h-4 w-4" style={{ color: brand.colorAccent }} />
               </div>
               <span className="flex-1 text-[15px] font-medium text-foreground">
-                Invita a un amigo
+                {t("inviteFriend")}
               </span>
               <ChevronRight className="h-4 w-4 text-muted" />
             </button>
@@ -619,7 +622,7 @@ export default function ProfilePage() {
                   <UserPen className="h-4 w-4 text-foreground" />
                 </div>
                 <span className="flex-1 text-[15px] font-medium text-foreground">
-                  Editar perfil
+                  {t("editProfile")}
                 </span>
                 <ChevronRight
                   className={cn(
@@ -642,18 +645,18 @@ export default function ProfilePage() {
                         <form onSubmit={handleSave} className="space-y-4">
                           <div>
                             <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                              Nombre
+                              {t("name")}
                             </label>
                             <Input
                               value={name}
                               onChange={(e) => setName(e.target.value)}
-                              placeholder="Tu nombre completo"
+                              placeholder={t("fullNamePlaceholder")}
                               className="mt-1.5"
                             />
                           </div>
                           <div>
                             <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                              Teléfono
+                              {t("phone")}
                             </label>
                             <div className="mt-1.5">
                               <PhoneInput
@@ -664,14 +667,14 @@ export default function ProfilePage() {
                               />
                               {phone && !isValidPhoneNumber(phone) && (
                                 <p className="mt-1 text-[11px] text-destructive">
-                                  Número de teléfono inválido
+                                  {t("invalidPhone")}
                                 </p>
                               )}
                             </div>
                           </div>
                           <div>
                             <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                              Correo electrónico
+                              {t("email")}
                             </label>
                             <Input
                               value={session?.user?.email ?? ""}
@@ -681,7 +684,7 @@ export default function ProfilePage() {
                           </div>
                           <div className="space-y-3 rounded-xl bg-surface/50 p-3">
                             <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
-                              Redes sociales
+                              {t("socialNetworks")}
                             </p>
                             <div className="flex items-center gap-2">
                               <svg className="h-4.5 w-4.5 shrink-0 text-muted" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
@@ -713,7 +716,7 @@ export default function ProfilePage() {
                             ) : saved ? (
                               <Check className="mr-2 h-4 w-4" />
                             ) : null}
-                            {saved ? "Guardado" : "Guardar cambios"}
+                            {saved ? t("saved") : t("saveChanges")}
                           </Button>
                         </form>
                       </CardContent>
@@ -731,7 +734,7 @@ export default function ProfilePage() {
                 <CreditCard className="h-4 w-4 text-foreground" />
               </div>
               <span className="flex-1 text-[15px] font-medium text-foreground">
-                Métodos de pago
+                {t("paymentMethods")}
               </span>
               <ChevronRight className="h-4 w-4 text-muted" />
             </Link>
@@ -744,7 +747,7 @@ export default function ProfilePage() {
                 <Package className="h-4 w-4 text-foreground" />
               </div>
               <span className="flex-1 text-[15px] font-medium text-foreground">
-                Comprar paquetes
+                {t("buyPackages")}
               </span>
               <ChevronRight className="h-4 w-4 text-muted" />
             </Link>
@@ -763,7 +766,7 @@ export default function ProfilePage() {
               <div className="mb-3 flex items-center gap-2">
                 <Package className="h-4 w-4 text-accent" />
                 <span className="text-[13px] font-semibold text-foreground">
-                  Mis premios
+                  {t("myRewards")}
                 </span>
               </div>
               <div className="space-y-2">
@@ -834,7 +837,7 @@ export default function ProfilePage() {
             onClick={async () => { await signOut({ redirect: false }); window.location.href = window.location.origin; }}
           >
             <LogOut className="mr-2 h-4 w-4" />
-            Cerrar sesión
+            {t("logout")}
           </Button>
         </motion.div>
 
@@ -934,6 +937,14 @@ function ReferralSheet({
   onViewAll: () => void;
   brand: ReturnType<typeof useBranding>;
 }) {
+  const t = useTranslations("member");
+  const TRIGGER_LABELS: Record<string, string> = {
+    installed: t("triggerInstalled"),
+    purchased: t("triggerPurchased"),
+    booked: t("triggerBooked"),
+    attended: t("triggerAttended"),
+    member: t("triggerMember"),
+  };
   const dragY = useMotionValue(0);
   const backdropOpacity = useTransform(dragY, [0, 300], [1, 0]);
 
@@ -994,7 +1005,7 @@ function ReferralSheet({
               {/* Header */}
               <div className="flex items-center justify-between py-3">
                 <h2 className="font-display text-lg font-bold text-foreground">
-                  Invita a un amigo
+                  {t("inviteFriend")}
                 </h2>
                 <button
                   onClick={onClose}
@@ -1021,18 +1032,18 @@ function ReferralSheet({
                   >
                     <div className="mb-1.5 flex items-center justify-between">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                        Tu link personal
+                        {t("yourPersonalLink")}
                       </span>
                       <span className="flex items-center gap-1 text-[11px] font-medium text-muted">
                         {copied ? (
                           <>
                             <Check className="h-3 w-3 text-green-500" />
-                            <span className="text-green-600">Copiado</span>
+                            <span className="text-green-600">{t("copied")}</span>
                           </>
                         ) : (
                           <>
                             <Copy className="h-3 w-3" />
-                            Copiar
+                            {t("copy")}
                           </>
                         )}
                       </span>
@@ -1055,7 +1066,7 @@ function ReferralSheet({
                           </div>
                           <div className="min-w-0">
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                              Tu amigo recibe
+                              {t("friendReceives")}
                             </p>
                             <p className="mt-0.5 text-[14px] font-semibold text-foreground">
                               {config.refereeRewardText}
@@ -1070,9 +1081,9 @@ function ReferralSheet({
                           </div>
                           <div className="min-w-0">
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                              Tú recibes
+                              {t("youReceive")}
                               {config.triggerStage
-                                ? ` · cuando ${TRIGGER_LABELS[config.triggerStage] ?? "complete el paso"}`
+                                ? ` · ${t("when")} ${TRIGGER_LABELS[config.triggerStage] ?? t("completesStep")}`
                                 : ""}
                             </p>
                             <p className="mt-0.5 text-[14px] font-semibold text-foreground">
@@ -1092,7 +1103,7 @@ function ReferralSheet({
                       style={{ background: brand.colorAccent }}
                     >
                       <IosShareIcon className="h-[18px] w-[18px]" />
-                      Compartir
+                      {t("share")}
                     </button>
                     <button
                       onClick={onCopy}
@@ -1103,7 +1114,7 @@ function ReferralSheet({
                       ) : (
                         <Copy className="h-4 w-4" />
                       )}
-                      {copied ? "Copiado" : "Copiar"}
+                      {copied ? t("copied") : t("copy")}
                     </button>
                   </div>
 
@@ -1119,13 +1130,13 @@ function ReferralSheet({
                       <div className="min-w-0 flex-1">
                         <p className="text-[15px] font-semibold text-foreground">
                           {data.stats.total === 0
-                            ? "Aún no has invitado a nadie"
-                            : `${data.stats.total} amigo${data.stats.total !== 1 ? "s" : ""} invitado${data.stats.total !== 1 ? "s" : ""}`}
+                            ? t("noInvitesYet")
+                            : t("friendsInvited", { count: data.stats.total })}
                         </p>
                         <p className="text-[12px] text-muted">
                           {data.stats.total === 0
-                            ? "Comparte tu link para empezar"
-                            : "Ver detalles y progreso"}
+                            ? t("shareToStart")
+                            : t("viewDetailsAndProgress")}
                         </p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted" />

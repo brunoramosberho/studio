@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { QRCodeCanvas } from "qrcode.react";
 import {
@@ -1430,6 +1431,7 @@ function PixelsTab() {
 // ─── Main Page ──────────────────────────────────────────
 
 export default function MarketingPage() {
+  const t = useTranslations("admin");
   const [activeTab, setActiveTab] = useState("links");
   const [utmDestination, setUtmDestination] = useState<string | undefined>();
 
@@ -1445,11 +1447,10 @@ export default function MarketingPage() {
         animate={{ opacity: 1, y: 0 }}
       >
         <h1 className="font-display text-2xl font-bold sm:text-3xl">
-          Marketing
+          {t("marketing")}
         </h1>
         <p className="mt-1 text-sm text-stone-500">
-          Comparte links de tu estudio, mide de dónde vienen tus clientes y
-          conecta tus herramientas de analítica.
+          {t("marketingSubtitle")}
         </p>
       </motion.div>
 
@@ -1461,7 +1462,7 @@ export default function MarketingPage() {
           </TabsTrigger>
           <TabsTrigger value="utm">
             <MousePointerClick className="mr-1.5 h-3.5 w-3.5" />
-            Generador UTM
+            {t("utmGenerator")}
           </TabsTrigger>
           <TabsTrigger value="pixels">
             <TrendingUp className="mr-1.5 h-3.5 w-3.5" />

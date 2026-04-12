@@ -22,6 +22,7 @@ import { CreateClientDialog } from "@/components/admin/create-client-dialog";
 import { CustomerPreview } from "./customer-preview";
 import { usePosStore, type PosCustomer } from "@/store/pos-store";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface ClientResult {
   id: string;
@@ -32,6 +33,7 @@ interface ClientResult {
 }
 
 export function CustomerStep() {
+  const t = useTranslations("pos");
   const {
     customer,
     setCustomer,
@@ -108,7 +110,7 @@ export function CustomerStep() {
 
   return (
     <div className="space-y-5">
-      <h3 className="font-display text-lg font-bold">Cliente</h3>
+      <h3 className="font-display text-lg font-bold">{t("customer")}</h3>
 
       {/* Customer selector */}
       <div className="flex items-center gap-2.5">
@@ -130,7 +132,7 @@ export function CustomerStep() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">
-                  {customer.name ?? "Sin nombre"}
+                  {customer.name ?? t("noName")}
                 </p>
                 <p className="truncate text-xs text-muted">{customer.email}</p>
               </div>
@@ -164,7 +166,7 @@ export function CustomerStep() {
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Seleccionar cliente..."
+                placeholder={t("selectCustomer")}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -186,7 +188,7 @@ export function CustomerStep() {
                 </div>
               ) : filtered.length === 0 ? (
                 <p className="px-4 py-4 text-center text-sm text-muted">
-                  No se encontraron clientes
+                  {t("noClientsFound")}
                 </p>
               ) : (
                 filtered.slice(0, 25).map((client) => (
@@ -208,7 +210,7 @@ export function CustomerStep() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
-                        {client.name ?? "Sin nombre"}
+                        {client.name ?? t("noName")}
                       </p>
                       <p className="truncate text-xs text-muted">
                         {client.email}
@@ -227,7 +229,7 @@ export function CustomerStep() {
                   className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface"
                 >
                   <UserCircle className="h-4.5 w-4.5 text-muted/50" />
-                  Nuevo cliente
+                  {t("newCustomer")}
                 </button>
               </div>
             </div>
@@ -246,7 +248,7 @@ export function CustomerStep() {
         {customer && (
           <button
             onClick={() => setShowPreview(true)}
-            title="Ver perfil del cliente"
+            title={t("viewCustomerProfile")}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-muted transition-colors hover:bg-surface hover:text-foreground"
           >
             <Eye className="h-4.5 w-4.5" />

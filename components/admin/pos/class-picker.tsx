@@ -25,6 +25,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { format, isAfter, isBefore } from "date-fns";
 import { es } from "date-fns/locale";
 import type { PosCustomer } from "@/store/pos-store";
+import { useTranslations } from "next-intl";
 
 interface ClassRaw {
   id: string;
@@ -72,6 +73,7 @@ export function ClassPicker({
   customer,
   onClassSelected,
 }: ClassPickerProps) {
+  const t = useTranslations("pos");
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
@@ -110,7 +112,7 @@ export function ClassPicker({
     const map = new Map<string, string>();
     classes.forEach((c) => {
       if (c.room?.studio) {
-        map.set(c.room.studio.id, c.room.studio.name ?? "Sin nombre");
+        map.set(c.room.studio.id, c.room.studio.name ?? t("noName"));
       }
     });
     return Array.from(map, ([id, name]) => ({ id, name }));
@@ -159,7 +161,7 @@ export function ClassPicker({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Seleccionar una clase</DialogTitle>
+          <DialogTitle>{t("selectClassTitle")}</DialogTitle>
         </DialogHeader>
 
         {/* Filters */}
@@ -168,7 +170,7 @@ export function ClassPicker({
             <Search className="h-4 w-4 shrink-0 text-muted/50" />
             <input
               type="text"
-              placeholder="Buscar clase..."
+              placeholder={t("searchClass")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/50"
@@ -182,7 +184,7 @@ export function ClassPicker({
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
               className="bg-transparent text-xs text-foreground outline-none"
-              placeholder="Fecha de inicio"
+              placeholder={t("startDate")}
             />
           </div>
           {locations.length > 1 && (
@@ -193,7 +195,7 @@ export function ClassPicker({
                 onChange={(e) => setLocationFilter(e.target.value)}
                 className="bg-transparent text-xs text-foreground outline-none"
               >
-                <option value="">Ubicación</option>
+                <option value="">{t("location")}</option>
                 {locations.map((loc) => (
                   <option key={loc.id} value={loc.id}>
                     {loc.name}
@@ -216,7 +218,7 @@ export function ClassPicker({
             )}
           >
             <ArrowRight className="h-3 w-3" />
-            Próximas
+            {t("upcoming")}
           </button>
           <button
             onClick={() => setTab("past")}
@@ -228,7 +230,7 @@ export function ClassPicker({
             )}
           >
             <ArrowLeft className="h-3 w-3" />
-            Pasadas
+            {t("past")}
           </button>
         </div>
 
@@ -240,7 +242,7 @@ export function ClassPicker({
             </div>
           ) : filtered.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted">
-              No se encontraron clases
+              {t("noClassesFound")}
             </p>
           ) : (
             <div className="space-y-1">
@@ -273,7 +275,7 @@ export function ClassPicker({
                           locale: es,
                         })}
                         {" · "}
-                        {cls.coach?.name ?? cls.coach?.user?.name ?? "Sin coach"}
+                        {cls.coach?.name ?? cls.coach?.user?.name ?? t("noCoach")}
                         {cls.room?.studio?.name && ` · ${cls.room.studio.name}`}
                       </p>
                     </div>
@@ -289,8 +291,8 @@ export function ClassPicker({
                         )}
                       >
                         {cls.spotsLeft <= 0
-                          ? "Llena"
-                          : `${cls.spotsLeft} lugares`}
+                          ? t("full")
+                          : `${cls.spotsLeft} ${t("spots")}`}
                       </p>
                     </div>
                     {isSelected && checkingCredits && (

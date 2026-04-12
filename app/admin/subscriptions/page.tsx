@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import {
@@ -46,14 +47,17 @@ interface SubData {
   };
 }
 
-const STATUS_BADGE: Record<string, { label: string; variant: "success" | "warning" | "secondary" | "danger" }> = {
-  active: { label: "Activa", variant: "success" },
-  past_due: { label: "Pago pendiente", variant: "warning" },
-  paused: { label: "Pausada", variant: "secondary" },
-  canceled: { label: "Cancelada", variant: "danger" },
-  trialing: { label: "Prueba", variant: "secondary" },
-  incomplete: { label: "Incompleta", variant: "warning" },
-};
+function useStatusBadge() {
+  const t = useTranslations("admin");
+  return {
+    active: { label: t("subStatusActive"), variant: "success" as const },
+    past_due: { label: t("subStatusPastDue"), variant: "warning" as const },
+    paused: { label: t("subStatusPaused"), variant: "secondary" as const },
+    canceled: { label: t("subStatusCanceled"), variant: "danger" as const },
+    trialing: { label: t("subStatusTrialing"), variant: "secondary" as const },
+    incomplete: { label: t("subStatusIncomplete"), variant: "warning" as const },
+  };
+}
 
 const fadeUp = {
   hidden: { opacity: 0, y: 10 },
@@ -61,6 +65,8 @@ const fadeUp = {
 };
 
 export default function AdminSubscriptionsPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
   const [pauseDialog, setPauseDialog] = useState<SubData | null>(null);
   const [pauseDays, setPauseDays] = useState("14");
@@ -93,10 +99,10 @@ export default function AdminSubscriptionsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "subscriptions"] });
-      toast.success("Suscripción actualizada");
+      toast.success(t("subscriptionUpdated"));
       setPauseDialog(null);
     },
-    onError: () => toast.error("Error al actualizar"),
+    onError: () => toast.error(t("subscriptionUpdateError")),
   });
 
   function handlePause(sub: SubData) {
@@ -118,10 +124,10 @@ export default function AdminSubscriptionsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-bold text-foreground">
-          Suscripciones
+          {t("subscriptions")}
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Gestiona las suscripciones recurrentes de tus miembros
+          {t("subscriptionsSubtitle")}
         </p>
       </div>
 
@@ -134,10 +140,10 @@ export default function AdminSubscriptionsPage() {
           <CardContent className="flex flex-col items-center py-12 text-center">
             <CalendarSync className="h-10 w-10 text-muted/30" />
             <p className="mt-4 font-medium text-foreground">
-              Sin suscripciones activas
+              {t("noActiveSubscriptions")}
             </p>
             <p className="mt-1 text-sm text-muted">
-              Cuando un miembro se suscriba a un plan recurrente, aparecerá aquí
+              {t("noActiveSubscriptionsDesc")}
             </p>
           </CardContent>
         </Card>
@@ -177,7 +183,7 @@ export default function AdminSubscriptionsPage() {
           {canceled.length > 0 && (
             <>
               <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                Canceladas
+                {t("cancelled")}
               </p>
               <div className="space-y-3 opacity-60">
                 {canceled.map((sub) => (
@@ -196,7 +202,7 @@ export default function AdminSubscriptionsPage() {
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Pausar suscripción</DialogTitle>
+            <DialogTitle>{t("pauseSubscription")}</DialogTitle>
           </DialogHeader>
           {pauseDialog && (
             <div className="space-y-4">
@@ -205,7 +211,7 @@ export default function AdminSubscriptionsPage() {
               </p>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-muted">
-                  Días de pausa
+                  {t("pauseDays")}
                 </label>
                 <Input
                   type="number"
@@ -215,7 +221,7 @@ export default function AdminSubscriptionsPage() {
                   onChange={(e) => setPauseDays(e.target.value)}
                 />
                 <p className="mt-1 text-[11px] text-muted">
-                  Se reanudará automáticamente después
+                  {t("pauseAutoResume")}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -224,7 +230,7 @@ export default function AdminSubscriptionsPage() {
                   className="flex-1"
                   onClick={() => setPauseDialog(null)}
                 >
-                  Cancelar
+                  {tc("cancel")}
                 </Button>
                 <Button
                   className="flex-1"
@@ -236,7 +242,7 @@ export default function AdminSubscriptionsPage() {
                   ) : (
                     <Pause className="mr-2 h-4 w-4" />
                   )}
-                  Pausar
+                  {t("pauseAction")}
                 </Button>
               </div>
             </div>
@@ -260,7 +266,9 @@ function SubCard({
   onCancel?: () => void;
   loading: boolean;
 }) {
-  const badge = STATUS_BADGE[sub.status] ?? {
+  const t = useTranslations("admin");
+  const STATUS_BADGE = useStatusBadge();
+  const badge = STATUS_BADGE[sub.status as keyof typeof STATUS_BADGE] ?? {
     label: sub.status,
     variant: "secondary" as const,
   };
@@ -291,7 +299,7 @@ function SubCard({
             </Badge>
             {sub.cancelAtPeriodEnd && sub.status !== "canceled" && (
               <Badge variant="warning" className="shrink-0 text-[10px]">
-                Cancela {periodEnd}
+                {t("cancelsOn", { date: periodEnd })}
               </Badge>
             )}
           </div>
@@ -300,7 +308,7 @@ function SubCard({
           </p>
           {sub.status === "paused" && sub.resumesAt && (
             <p className="mt-0.5 text-[11px] text-amber-600">
-              Reanuda{" "}
+              {t("resumesOn")}{" "}
               {new Date(sub.resumesAt).toLocaleDateString("es-ES", {
                 day: "numeric",
                 month: "short",

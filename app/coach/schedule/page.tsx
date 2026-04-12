@@ -2,9 +2,11 @@
 
 import { Suspense } from "react";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { ScheduleClient } from "@/app/(public)/schedule/schedule-client";
 
 export default function CoachSchedulePage() {
+  const t = useTranslations("coach");
   const { data: session } = useSession();
 
   return (
@@ -12,7 +14,7 @@ export default function CoachSchedulePage() {
       <ScheduleClient
         coachUserId={session?.user?.id}
         classLinkPrefix="/coach/class"
-        title="Mi Horario"
+        title={t("mySchedule")}
         hideCoachFilter
         hideCredits
       />

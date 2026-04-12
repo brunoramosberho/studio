@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -46,6 +47,8 @@ function ChartTooltip({ active, payload, label }: Record<string, unknown>) {
 }
 
 export default function AdminReportsPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -66,8 +69,8 @@ export default function AdminReportsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Reportes</h1>
-          <p className="mt-1 text-muted">Métricas y análisis del estudio</p>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("reports")}</h1>
+          <p className="mt-1 text-muted">{t("reportsSubtitle")}</p>
         </motion.div>
 
         <div className="flex items-center gap-2">
@@ -90,10 +93,10 @@ export default function AdminReportsPage() {
 
       <Tabs defaultValue="revenue">
         <TabsList>
-          <TabsTrigger value="revenue">Ingresos</TabsTrigger>
-          <TabsTrigger value="attendance">Asistencia</TabsTrigger>
-          <TabsTrigger value="popular">Popularidad</TabsTrigger>
-          <TabsTrigger value="retention">Retención</TabsTrigger>
+          <TabsTrigger value="revenue">{t("revenueTab")}</TabsTrigger>
+          <TabsTrigger value="attendance">{t("attendanceTab")}</TabsTrigger>
+          <TabsTrigger value="popular">{t("popularityTab")}</TabsTrigger>
+          <TabsTrigger value="retention">{t("retentionTab")}</TabsTrigger>
         </TabsList>
 
         {/* Revenue Tab */}
@@ -101,7 +104,7 @@ export default function AdminReportsPage() {
           {isLoading ? (
             <Skeleton className="h-96 rounded-2xl" />
           ) : (
-            <RevenueChart data={data?.revenueChart ?? []} title="Ingresos por período" />
+            <RevenueChart data={data?.revenueChart ?? []} title={t("revenueByPeriod")} />
           )}
         </TabsContent>
 
@@ -112,8 +115,8 @@ export default function AdminReportsPage() {
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>Tasa de asistencia</CardTitle>
-                <CardDescription>Porcentaje de asistencia por período</CardDescription>
+                <CardTitle>{t("attendanceRate")}</CardTitle>
+                <CardDescription>{t("attendanceByPeriod")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-80">
@@ -157,8 +160,8 @@ export default function AdminReportsPage() {
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>Clases más populares</CardTitle>
-                <CardDescription>Distribución de reservas por tipo de clase</CardDescription>
+                <CardTitle>{t("mostPopularClasses")}</CardTitle>
+                <CardDescription>{t("bookingDistribution")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-6 sm:grid-cols-2">
@@ -217,9 +220,9 @@ export default function AdminReportsPage() {
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>Retención por cohorte</CardTitle>
+                <CardTitle>{t("retentionByCohort")}</CardTitle>
                 <CardDescription>
-                  Porcentaje de miembros que siguen activos (asistieron en los últimos 30 días), agrupados por antigüedad
+                  {t("retentionDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -250,7 +253,7 @@ export default function AdminReportsPage() {
                             <div className="rounded-xl border border-border bg-white px-3 py-2 shadow-warm">
                               <p className="text-xs text-muted">{d.month}</p>
                               <p className="font-mono text-sm font-bold text-foreground">{d.rate}%</p>
-                              <p className="text-xs text-muted">{d.active} de {d.total} miembros</p>
+                              <p className="text-xs text-muted">{d.active} / {d.total}</p>
                             </div>
                           );
                         }}
@@ -267,7 +270,7 @@ export default function AdminReportsPage() {
                 </div>
                 {data?.retention && data.retention.some((r) => r.rate < 60) && (
                   <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    Algún cohorte está por debajo del 60% de retención. El benchmark saludable es &gt;60% a 90 días.
+                    {t("retentionWarning")}
                   </div>
                 )}
               </CardContent>

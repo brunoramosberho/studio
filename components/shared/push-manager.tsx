@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { Bell, X, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBranding } from "@/components/branding-provider";
@@ -20,6 +21,7 @@ function urlBase64ToUint8Array(base64String: string) {
 export function PushManager() {
   const { data: session } = useSession();
   const { colorAccent: accent } = useBranding();
+  const t = useTranslations("push");
   const [showPrompt, setShowPrompt] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [desktopLayout, setDesktopLayout] = useState(false);
@@ -103,7 +105,7 @@ export function PushManager() {
           {/* Backdrop: tap to dismiss, blocks interaction with app behind */}
           <motion.button
             type="button"
-            aria-label="Cerrar"
+            aria-label={t("closePrompt")}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -190,7 +192,7 @@ export function PushManager() {
                   <div className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1">
                     <Sparkles className="h-3.5 w-3.5 text-accent" />
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                      No te pierdas nada
+                      {t("dontMissOut")}
                     </span>
                   </div>
 
@@ -198,16 +200,13 @@ export function PushManager() {
                     id="push-prompt-title"
                     className="font-display text-[1.35rem] font-bold leading-tight tracking-tight text-foreground md:text-2xl"
                   >
-                    ¿Activamos avisos en tu pantalla?
+                    {t("enableNotificationsTitle")}
                   </h2>
                   <p
                     id="push-prompt-desc"
                     className="mt-3 max-w-[20rem] text-[15px] leading-relaxed text-muted md:max-w-none md:text-base"
                   >
-                    Te avisamos de{" "}
-                    <span className="font-medium text-foreground/90">clases y recordatorios</span>,{" "}
-                    <span className="font-medium text-foreground/90">amigos</span> y novedades del
-                    estudio. Solo tú decides; puedes apagarlos cuando quieras en Ajustes.
+                    {t("enableNotificationsDesc")}
                   </p>
                 </div>
 
@@ -222,19 +221,19 @@ export function PushManager() {
                       boxShadow: `0 8px 24px ${accent}40`,
                     }}
                   >
-                    Permitir notificaciones
+                    {t("allowNotifications")}
                   </motion.button>
                   <button
                     type="button"
                     onClick={handleDismiss}
                     className="min-h-11 w-full rounded-xl py-2.5 text-[15px] font-medium text-muted transition-colors active:bg-surface md:min-h-12"
                   >
-                    Ahora no
+                    {t("notNow")}
                   </button>
                 </div>
 
                 <p className="mt-4 pb-1 text-center text-[11px] leading-snug text-muted/75 md:mt-5">
-                  En iPhone, confirma también en el mensaje del sistema para activar los avisos.
+                  {t("iphoneHint")}
                 </p>
               </div>
             </div>

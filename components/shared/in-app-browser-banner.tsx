@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { ExternalLink, ArrowUpRight, X } from "lucide-react";
 import { getInAppBrowser, type InAppBrowser } from "@/lib/pwa-install";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ const appNames: Record<NonNullable<InAppBrowser>, string> = {
 };
 
 export function InAppBrowserBanner() {
+  const t = useTranslations("common");
   const [browser, setBrowser] = useState<InAppBrowser>(null);
   const [dismissed, setDismissed] = useState(true);
 
@@ -61,17 +63,17 @@ export function InAppBrowserBanner() {
           className="flex flex-1 items-center gap-1.5 text-left"
         >
           <span className="text-[13px] font-medium leading-tight text-background">
-            Abrir en navegador externo
+            {t("openInBrowser")}
           </span>
           <span className="text-[13px] leading-tight text-background/60">
-            para una mejor experiencia
+            {t("forBetterExperience")}
           </span>
           <ArrowUpRight className="ml-auto h-4 w-4 shrink-0 text-background/70" />
         </button>
         <button
           onClick={handleDismiss}
           className="shrink-0 rounded-full p-1 text-background/50 transition-colors active:bg-background/10"
-          aria-label="Cerrar"
+          aria-label={t("close")}
         >
           <X className="h-3.5 w-3.5" />
         </button>

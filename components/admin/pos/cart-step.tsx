@@ -25,6 +25,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 type CartCategory = "class" | "membership" | "package" | "product";
 
@@ -55,18 +56,22 @@ interface ProductItem {
   imageUrl: string | null;
 }
 
-const CATEGORIES: {
+type CategoryDef = {
   key: CartCategory;
-  label: string;
+  labelKey: "classLabel" | "membership" | "package" | "product";
   icon: typeof CalendarDays;
-}[] = [
-  { key: "class", label: "Clase", icon: CalendarDays },
-  { key: "membership", label: "Membresía", icon: CalendarSync },
-  { key: "package", label: "Paquete", icon: Package },
-  { key: "product", label: "Producto", icon: ShoppingBag },
+};
+
+const CATEGORIES: CategoryDef[] = [
+  { key: "class", labelKey: "classLabel", icon: CalendarDays },
+  { key: "membership", labelKey: "membership", icon: CalendarSync },
+  { key: "package", labelKey: "package", icon: Package },
+  { key: "product", labelKey: "product", icon: ShoppingBag },
 ];
 
 export function CartStep() {
+  const t = useTranslations("pos");
+  const tc = useTranslations("common");
   const {
     customer,
     cart,
@@ -159,7 +164,7 @@ export function CartStep() {
       quantity: 1,
       metadata: { packageType: pkg.type },
     });
-    toast.success(`${pkg.name} agregado al carrito`);
+    toast.success(t("addedToCart", { name: pkg.name }));
   }
 
   function handleAddProduct(product: ProductItem) {
@@ -171,7 +176,7 @@ export function CartStep() {
       currency: product.currency,
       quantity: 1,
     });
-    toast.success(`${product.name} agregado al carrito`);
+    toast.success(t("addedToCart", { name: product.name }));
   }
 
   const total = cartTotal();
@@ -179,7 +184,7 @@ export function CartStep() {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-display text-base font-bold">Carrito</h3>
+      <h3 className="font-display text-base font-bold">{t("cart")}</h3>
 
       {/* Selected class context banner */}
       {selectedClass && (
@@ -201,19 +206,19 @@ export function CartStep() {
               {selectedClass.label}
               {selectedClass.spotNumber != null && (
                 <span className="ml-1.5 text-muted">
-                  · Lugar #{selectedClass.spotNumber}
+                  · {t("spotLabel", { num: selectedClass.spotNumber })}
                 </span>
               )}
             </p>
             {selectedClass.hasCredits ? (
               <p className="text-green-700">
-                Tiene créditos con{" "}
-                <span className="font-medium">{selectedClass.packageName}</span>
-                . Se reservará sin costo.
+                {t("hasCreditsMsg", {
+                  packageName: selectedClass.packageName ?? "",
+                })}
               </p>
             ) : (
               <p className="text-orange-700">
-                Sin créditos disponibles. Agrega un paquete o membresía para reservar.
+                {t("noCreditsMsg")}
               </p>
             )}
           </div>
@@ -246,7 +251,7 @@ export function CartStep() {
                   activeCategory === cat.key ? "text-admin" : "text-muted/50",
                 )}
               />
-              {cat.label}
+              {t(cat.labelKey)}
             </button>
           ))}
         </div>
@@ -256,10 +261,10 @@ export function CartStep() {
           {/* Class */}
           {activeCategory === "class" && (
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold">Clase</h4>
+              <h4 className="text-sm font-semibold">{t("classLabel")}</h4>
               <div className="flex items-center gap-2">
                 <div className="flex-1 rounded-lg border border-border bg-surface/50 px-3 py-2.5 text-sm text-muted">
-                  {selectedClass ? selectedClass.label : "Selecciona una clase..."}
+                  {selectedClass ? selectedClass.label : t("selectAClass")}
                 </div>
                 <button
                   onClick={() => setShowClassPicker(true)}
@@ -277,7 +282,7 @@ export function CartStep() {
 
               {!selectedClass && (
                 <p className="text-xs text-muted">
-                  Seleccionar una clase es opcional. Puedes vender paquetes, membresías o productos directamente.
+                  {t("selectClassOptional")}
                 </p>
               )}
             </div>
@@ -286,14 +291,14 @@ export function CartStep() {
           {/* Memberships */}
           {activeCategory === "membership" && (
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold">Membresía</h4>
+              <h4 className="text-sm font-semibold">{t("membership")}</h4>
               {packagesLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-4 w-4 animate-spin text-muted" />
                 </div>
               ) : memberships.length === 0 ? (
                 <p className="py-4 text-sm text-muted">
-                  No tienes membresías creadas aún.
+                  {t("noMembershipsYet")}
                 </p>
               ) : (
                 <div className="space-y-1.5">
@@ -307,9 +312,9 @@ export function CartStep() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">{pkg.name}</p>
                         <p className="text-xs text-muted">
-                          {pkg.credits ? `${pkg.credits} créditos` : "Ilimitado"}
+                          {pkg.credits ? t("credits", { num: pkg.credits }) : t("unlimited")}
                           {" · "}
-                          {pkg.validDays} días
+                          {t("days", { num: pkg.validDays })}
                         </p>
                       </div>
                       <span className="text-sm font-semibold text-foreground">
@@ -325,14 +330,14 @@ export function CartStep() {
           {/* Packages */}
           {activeCategory === "package" && (
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold">Paquetes y créditos</h4>
+              <h4 className="text-sm font-semibold">{t("packagesAndCredits")}</h4>
               {packagesLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-4 w-4 animate-spin text-muted" />
                 </div>
               ) : packs.length === 0 ? (
                 <p className="py-4 text-sm text-muted">
-                  No hay paquetes disponibles.
+                  {t("noPackagesAvailable")}
                 </p>
               ) : (
                 <div className="space-y-1.5">
@@ -346,9 +351,9 @@ export function CartStep() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">{pkg.name}</p>
                         <p className="text-xs text-muted">
-                          {pkg.credits ? `${pkg.credits} créditos` : "Ilimitado"}
+                          {pkg.credits ? t("credits", { num: pkg.credits }) : t("unlimited")}
                           {" · "}
-                          {pkg.validDays} días
+                          {t("days", { num: pkg.validDays })}
                           {pkg.classTypes.length > 0 &&
                             ` · ${pkg.classTypes.map((ct) => ct.name).join(", ")}`}
                         </p>
@@ -366,12 +371,12 @@ export function CartStep() {
           {/* Products */}
           {activeCategory === "product" && (
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold">Producto</h4>
+              <h4 className="text-sm font-semibold">{t("product")}</h4>
               <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2">
                 <Search className="h-4 w-4 shrink-0 text-muted/50" />
                 <input
                   type="text"
-                  placeholder="Buscar producto..."
+                  placeholder={t("searchProduct")}
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
                   className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/50"
@@ -383,7 +388,7 @@ export function CartStep() {
                 </div>
               ) : filteredProducts.length === 0 ? (
                 <p className="py-4 text-sm text-muted">
-                  No hay productos disponibles.
+                  {t("noProductsAvailable")}
                 </p>
               ) : (
                 <div className="space-y-1.5">
@@ -428,7 +433,7 @@ export function CartStep() {
       <div className="rounded-lg border border-border/60 bg-surface/30">
         {cart.length === 0 && !selectedClass?.hasCredits ? (
           <p className="px-4 py-6 text-center text-sm text-muted">
-            Agrega productos al carrito para continuar
+            {t("addProductsToCart")}
           </p>
         ) : (
           <div className="divide-y divide-border/40">
@@ -483,20 +488,20 @@ export function CartStep() {
               <div className="flex items-center gap-3 px-4 py-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{selectedClass.label}</p>
-                  <p className="text-xs text-green-600">Reserva con créditos</p>
+                  <p className="text-xs text-green-600">{t("reserveWithCredits")}</p>
                 </div>
                 <span className="text-sm font-semibold tabular-nums text-green-600">
-                  Gratis
+                  {tc("free")}
                 </span>
               </div>
             )}
 
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm font-semibold">Total</span>
+              <span className="text-sm font-semibold">{t("total")}</span>
               <span className="text-base font-bold">
                 {total > 0
                   ? formatCurrency(total, cart[0]?.currency ?? "EUR")
-                  : "Gratis"}
+                  : tc("free")}
               </span>
             </div>
           </div>
@@ -506,7 +511,7 @@ export function CartStep() {
       {/* Actions */}
       <div className="flex justify-end gap-2">
         <Button variant="outline" size="sm" onClick={() => setStep("customer")}>
-          Cancelar
+          {tc("cancel")}
         </Button>
         <Button
           size="sm"
@@ -515,7 +520,7 @@ export function CartStep() {
           disabled={!canProceed}
         >
           <Banknote className="mr-1.5 h-3.5 w-3.5" />
-          Cobrar
+          {t("charge")}
         </Button>
       </div>
 
@@ -539,7 +544,7 @@ export function CartStep() {
           onSpotSelected={(spotNumber) => {
             setSelectedClass({ ...selectedClass, spotNumber });
             setShowSpotPicker(false);
-            toast.success(`Lugar #${spotNumber} seleccionado`);
+            toast.success(t("spotLabel", { num: spotNumber }));
           }}
           onSkip={() => {
             setSelectedClass({ ...selectedClass, spotNumber: null });

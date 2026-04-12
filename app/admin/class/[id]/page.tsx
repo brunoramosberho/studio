@@ -36,6 +36,7 @@ import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import type { BookingStatus } from "@/types";
 
 interface AttendeeStats {
@@ -103,35 +104,36 @@ const fadeUp = {
 };
 
 function AttendeeTags({ stats }: { stats: AttendeeStats }) {
+  const tc = useTranslations("checkin");
   const tags: { label: string; icon: React.ReactNode; className: string }[] = [];
 
   if (stats.birthdayLabel === "today") {
-    tags.push({ label: "Cumpleaños hoy!", icon: <Cake className="h-3 w-3" />, className: "bg-pink-200 text-pink-800 border-pink-300 animate-pulse" });
+    tags.push({ label: tc("birthdayToday"), icon: <Cake className="h-3 w-3" />, className: "bg-pink-200 text-pink-800 border-pink-300 animate-pulse" });
   } else if (stats.birthdayLabel === "yesterday") {
-    tags.push({ label: "Cumpleaños ayer", icon: <Cake className="h-3 w-3" />, className: "bg-pink-100 text-pink-700 border-pink-200" });
+    tags.push({ label: tc("birthdayYesterday"), icon: <Cake className="h-3 w-3" />, className: "bg-pink-100 text-pink-700 border-pink-200" });
   } else if (stats.birthdayLabel === "this_week") {
-    tags.push({ label: "Cumple esta semana", icon: <Cake className="h-3 w-3" />, className: "bg-pink-50 text-pink-600 border-pink-200" });
+    tags.push({ label: tc("birthdayThisWeek"), icon: <Cake className="h-3 w-3" />, className: "bg-pink-50 text-pink-600 border-pink-200" });
   }
 
   if (stats.isFirstEver) {
-    tags.push({ label: "Primera clase", icon: <Sparkles className="h-3 w-3" />, className: "bg-amber-100 text-amber-700 border-amber-200" });
+    tags.push({ label: tc("firstClass"), icon: <Sparkles className="h-3 w-3" />, className: "bg-amber-100 text-amber-700 border-amber-200" });
   } else if (stats.isFirstWithCoach) {
-    tags.push({ label: "Primera con coach", icon: <UserPlus className="h-3 w-3" />, className: "bg-violet-100 text-violet-700 border-violet-200" });
+    tags.push({ label: tc("firstWithCoach"), icon: <UserPlus className="h-3 w-3" />, className: "bg-violet-100 text-violet-700 border-violet-200" });
   }
 
   if (stats.isTopClient) {
-    tags.push({ label: "Top client", icon: <Crown className="h-3 w-3" />, className: "bg-yellow-100 text-yellow-700 border-yellow-200" });
+    tags.push({ label: tc("topClient"), icon: <Crown className="h-3 w-3" />, className: "bg-yellow-100 text-yellow-700 border-yellow-200" });
   } else if (stats.isNewMember) {
-    tags.push({ label: "Nuevo", icon: <Star className="h-3 w-3" />, className: "bg-blue-100 text-blue-700 border-blue-200" });
+    tags.push({ label: tc("newMember"), icon: <Star className="h-3 w-3" />, className: "bg-blue-100 text-blue-700 border-blue-200" });
   }
 
   if (stats.totalClasses > 1) {
-    tags.push({ label: `${stats.totalClasses} clases`, icon: <Trophy className="h-3 w-3" />, className: "bg-stone-100 text-stone-600 border-stone-200" });
+    tags.push({ label: tc("classesCount", { num: stats.totalClasses }), icon: <Trophy className="h-3 w-3" />, className: "bg-stone-100 text-stone-600 border-stone-200" });
   }
 
   if (stats.cancelRate != null && stats.cancelRate >= 20) {
     tags.push({
-      label: `${stats.cancelRate}% cancela`,
+      label: tc("cancellationRate", { num: stats.cancelRate }),
       icon: <AlertTriangle className="h-3 w-3" />,
       className: stats.cancelRate >= 50 ? "bg-red-100 text-red-700 border-red-200" : stats.cancelRate >= 35 ? "bg-orange-100 text-orange-700 border-orange-200" : "bg-amber-50 text-amber-600 border-amber-200",
     });
@@ -155,6 +157,8 @@ export default function AdminClassDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const t = useTranslations("admin");
+  const tc = useTranslations("checkin");
 
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [blockingMode, setBlockingMode] = useState(false);
@@ -343,7 +347,7 @@ export default function AdminClassDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["class-detail", id] });
-      toast.success("Asistencia guardada");
+      toast.success(t("attendanceSaved"));
     },
   });
 
@@ -373,7 +377,7 @@ export default function AdminClassDetailPage() {
       const isOccupied = classData.spotMap[spotNumber] && classData.spotMap[spotNumber].status !== "blocked";
 
       if (isOccupied) {
-        toast.error("Ese lugar tiene una reserva activa");
+        toast.error(t("spotHasBooking"));
         return;
       }
 
@@ -419,9 +423,9 @@ export default function AdminClassDetailPage() {
   if (!classData) {
     return (
       <div className="flex flex-col items-center gap-4 py-20 text-center">
-        <p className="text-muted">Clase no encontrada</p>
+        <p className="text-muted">{t("classNotFound")}</p>
         <Button variant="ghost" onClick={() => router.back()}>
-          Volver
+          {t("backToClasses")}
         </Button>
       </div>
     );
@@ -441,7 +445,7 @@ export default function AdminClassDetailPage() {
         className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Volver a clases
+        {t("backToClasses")}
       </Link>
 
       {/* Class header */}
@@ -456,10 +460,10 @@ export default function AdminClassDetailPage() {
               </div>
               <div className="flex items-center gap-2">
                 {classData.status === "COMPLETED" && (
-                  <Badge className="border-green-200 bg-green-50 text-green-700">Completada</Badge>
+                  <Badge className="border-green-200 bg-green-50 text-green-700">{t("completedStatus")}</Badge>
                 )}
                 {classData.status === "CANCELLED" && (
-                  <Badge variant="danger">Cancelada</Badge>
+                  <Badge variant="danger">{t("cancelledStatus")}</Badge>
                 )}
                 <Badge className="border-admin/20 bg-admin/10 text-admin text-base">
                   {enrolled}/{capacity}
@@ -473,9 +477,9 @@ export default function AdminClassDetailPage() {
               </span>
               <span className="flex items-center gap-1.5">
                 <Users className="h-4 w-4" />
-                {capacity - enrolled - blockedCount} disponibles
+                {capacity - enrolled - blockedCount} {t("available")}
                 {blockedCount > 0 && (
-                  <span className="text-red-500">· {blockedCount} bloqueado{blockedCount !== 1 ? "s" : ""}</span>
+                  <span className="text-red-500">· {blockedCount} {blockedCount !== 1 ? t("blockedPlural") : t("blocked")}</span>
                 )}
               </span>
               <span className="flex items-center gap-1.5">
@@ -484,7 +488,7 @@ export default function AdminClassDetailPage() {
               </span>
             </div>
             <div className="mt-2 text-sm text-muted">
-              Coach: <span className="font-medium text-foreground">{classData.coach.name}</span>
+              {t("coachLabelDetail")}: <span className="font-medium text-foreground">{classData.coach.name}</span>
             </div>
           </CardContent>
         </Card>
@@ -497,7 +501,7 @@ export default function AdminClassDetailPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Lock className="h-4 w-4 text-red-500" />
-                Bloqueo de lugares
+                {t("spotBlocking")}
               </CardTitle>
               {hasLayout && (
                 <Button
@@ -510,9 +514,9 @@ export default function AdminClassDetailPage() {
                   )}
                 >
                   {blockingMode ? (
-                    <><Unlock className="h-3.5 w-3.5" /> Salir de modo bloqueo</>
+                    <><Unlock className="h-3.5 w-3.5" /> {t("exitBlockingMode")}</>
                   ) : (
-                    <><Lock className="h-3.5 w-3.5" /> Modo bloqueo</>
+                    <><Lock className="h-3.5 w-3.5" /> {t("blockingMode")}</>
                   )}
                 </Button>
               )}
@@ -520,9 +524,9 @@ export default function AdminClassDetailPage() {
             <p className="text-xs text-muted">
               {hasLayout
                 ? blockingMode
-                  ? "Toca un lugar para bloquearlo o desbloquearlo"
-                  : "Activa el modo bloqueo para seleccionar lugares en el mapa"
-                : "Bloquea lugares genéricos para reducir la capacidad disponible"}
+                  ? t("tapToBlockUnblock")
+                  : t("activateBlockingMode")
+                : t("genericBlockingDesc")}
             </p>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
@@ -547,10 +551,10 @@ export default function AdminClassDetailPage() {
                 <div className="flex items-center justify-between rounded-xl bg-red-50/60 p-4">
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      Lugares bloqueados: <span className="font-bold text-red-600">{genericBlockedSpots.length}</span>
+                      {t("blockedSpotsCount")}: <span className="font-bold text-red-600">{genericBlockedSpots.length}</span>
                     </p>
                     <p className="text-xs text-muted">
-                      Capacidad efectiva: {capacity - genericBlockedSpots.length} de {capacity}
+                      {t("effectiveCapacity", { current: capacity - genericBlockedSpots.length, total: capacity })}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -566,7 +570,7 @@ export default function AdminClassDetailPage() {
                       ) : (
                         <Lock className="h-3.5 w-3.5" />
                       )}
-                      +1 bloqueado
+                      {t("plusOneBlocked")}
                     </Button>
                   </div>
                 </div>
@@ -580,14 +584,14 @@ export default function AdminClassDetailPage() {
                       >
                         <div className="flex items-center gap-2">
                           <Ban className="h-3.5 w-3.5 text-red-400" />
-                          <span className="text-sm text-foreground">Lugar bloqueado #{idx + 1}</span>
+                          <span className="text-sm text-foreground">{t("blockedSpotNumber", { num: idx + 1 })}</span>
                         </div>
                         <button
                           onClick={() => unblockGenericMutation.mutate(bs.id)}
                           disabled={unblockGenericMutation.isPending}
                           className="rounded-lg px-2.5 py-1 text-xs font-medium text-red-500 transition-colors hover:bg-red-100"
                         >
-                          Desbloquear
+                          {t("unblock")}
                         </button>
                       </div>
                     ))}
@@ -600,8 +604,8 @@ export default function AdminClassDetailPage() {
             {hasLayout && blockedCount > 0 && (
               <div className="rounded-lg bg-red-50/60 px-3 py-2">
                 <p className="text-xs font-medium text-red-600">
-                  {blockedCount} lugar{blockedCount !== 1 ? "es" : ""} bloqueado{blockedCount !== 1 ? "s" : ""}
-                  {" "}— Lugares: {classData.blockedSpots.filter((bs) => bs.spotNumber != null).map((bs) => `#${bs.spotNumber}`).join(", ")}
+                  {blockedCount} {t("blockedSpotsLabel")}
+                  {" "}— {t("spotsLabel")}: {classData.blockedSpots.filter((bs) => bs.spotNumber != null).map((bs) => `#${bs.spotNumber}`).join(", ")}
                 </p>
               </div>
             )}
@@ -610,12 +614,12 @@ export default function AdminClassDetailPage() {
             <div className="relative">
               <div className="mb-1.5 flex items-center gap-1.5">
                 <StickyNote className="h-3.5 w-3.5 text-muted" />
-                <span className="text-xs font-medium text-muted">Notas de bloqueo</span>
+                <span className="text-xs font-medium text-muted">{t("blockingNotes")}</span>
               </div>
               <textarea
                 value={blockingNotes}
                 onChange={(e) => handleNotesChange(e.target.value)}
-                placeholder="Ej: Lugar 5 reservado para invitada especial María García. Lugar 8 fuera de servicio por mantenimiento..."
+                placeholder={t("blockingNotesPlaceholder")}
                 className="w-full resize-none rounded-lg border border-border/60 bg-white p-3 pr-20 text-sm transition-colors focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30"
                 rows={2}
               />
@@ -626,7 +630,7 @@ export default function AdminClassDetailPage() {
                     notesSaved ? "text-green-600" : "text-muted/50",
                   )}
                 >
-                  {notesSaved ? "✓ Guardado" : "Guardando..."}
+                  {notesSaved ? `✓ ${t("notesAutoSaved")}` : t("notesAutoSaving")}
                 </span>
               )}
             </div>
@@ -636,13 +640,13 @@ export default function AdminClassDetailPage() {
 
       {/* ─── ROSTER ─── */}
       <div>
-        <h2 className="mb-4 font-display text-xl font-bold">Lista de asistencia</h2>
+        <h2 className="mb-4 font-display text-xl font-bold">{t("attendanceList")}</h2>
 
         {classData.bookings.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
               <Users className="h-8 w-8 text-muted/30" />
-              <p className="text-sm text-muted">No hay reservaciones aún</p>
+              <p className="text-sm text-muted">{t("noBookingsYet")}</p>
             </CardContent>
           </Card>
         ) : (
@@ -677,7 +681,7 @@ export default function AdminClassDetailPage() {
                           <div className="flex items-center gap-1.5">
                             <p className="truncate text-sm font-semibold">{name}</p>
                             {!booking.user && booking.guestEmail && (
-                              <Badge variant="outline" className="text-[10px]">Invitado</Badge>
+                              <Badge variant="outline" className="text-[10px]">{t("guest")}</Badge>
                             )}
                             {booking.spotNumber != null && (
                               <span className="text-[11px] font-mono text-muted">#{booking.spotNumber}</span>
@@ -705,9 +709,9 @@ export default function AdminClassDetailPage() {
                               status === "CONFIRMED" && "bg-surface text-muted",
                             )}
                           >
-                            {status === "ATTENDED" && (<><CheckCircle2 className="h-3.5 w-3.5" /> Asistió</>)}
-                            {status === "NO_SHOW" && (<><XCircle className="h-3.5 w-3.5" /> No show</>)}
-                            {status === "CONFIRMED" && "Confirmado"}
+                            {status === "ATTENDED" && (<><CheckCircle2 className="h-3.5 w-3.5" /> {t("attended")}</>)}
+                            {status === "NO_SHOW" && (<><XCircle className="h-3.5 w-3.5" /> {t("noShow")}</>)}
+                            {status === "CONFIRMED" && t("confirmedStatus")}
                           </button>
                         </div>
                       </div>
@@ -720,7 +724,7 @@ export default function AdminClassDetailPage() {
                         >
                           <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted">
                             <Music className="h-3 w-3" />
-                            Canciones favoritas
+                            {t("favoriteSongs")}
                           </p>
                           <div className="space-y-1">
                             {booking.user!.favoriteSongs!.map((song) => (
@@ -759,7 +763,7 @@ export default function AdminClassDetailPage() {
             ) : (
               <Save className="h-4 w-4" />
             )}
-            Guardar asistencia
+            {t("saveAttendance")}
           </Button>
         </div>
       )}

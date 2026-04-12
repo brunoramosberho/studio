@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
@@ -53,6 +54,7 @@ export function SubscribeSheet({
   onSuccess,
 }: SubscribeSheetProps) {
   const { data: session } = useSession();
+  const t = useTranslations("checkout");
   const [step, setStep] = useState<Step>("confirm");
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [selectedCard, setSelectedCard] = useState<SavedCard | null>(null);
@@ -107,7 +109,7 @@ export function SubscribeSheet({
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Error al procesar");
+        setError(data.error || t("processingError"));
         setStep("confirm");
         setLoading(false);
         return;
@@ -129,10 +131,10 @@ export function SubscribeSheet({
         return;
       }
 
-      setError("Estado inesperado: " + data.status);
+      setError(t("unexpectedStatus") + ": " + data.status);
       setStep("confirm");
     } catch {
-      setError("Error de conexión");
+      setError(t("connectionError"));
       setStep("confirm");
     } finally {
       setLoading(false);
@@ -155,7 +157,7 @@ export function SubscribeSheet({
 
   if (!open) return null;
 
-  const interval = pkg.recurringInterval === "year" ? "año" : "mes";
+  const interval = pkg.recurringInterval === "year" ? t("year") : t("month");
   const formatted = formatCurrency(pkg.price, pkg.currency);
 
   return (
@@ -194,10 +196,10 @@ export function SubscribeSheet({
             {step === "confirm" && (
               <motion.div key="confirm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <h2 className="font-display text-xl font-bold text-foreground">
-                  Suscribirme
+                  {t("subscribe")}
                 </h2>
                 <p className="mt-1 text-sm text-muted">
-                  Revisa los detalles de tu suscripción
+                  {t("reviewDetails")}
                 </p>
 
                 {error && (
@@ -212,8 +214,8 @@ export function SubscribeSheet({
                   </p>
                   <div className="mt-3 flex items-end justify-between">
                     <div className="text-sm text-muted">
-                      <p>{pkg.credits === null ? "Clases ilimitadas" : `${pkg.credits} clases`}</p>
-                      <p>Renovación {pkg.recurringInterval === "year" ? "anual" : "mensual"}</p>
+                      <p>{pkg.credits === null ? t("unlimitedClasses") : t("classesCount", { num: pkg.credits })}</p>
+                      <p>{t("renewal")} {pkg.recurringInterval === "year" ? t("annual") : t("monthly")}</p>
                     </div>
                     <p className="font-display text-2xl font-bold text-foreground">
                       {formatted}<span className="text-sm font-normal text-muted">/{interval}</span>
@@ -239,7 +241,7 @@ export function SubscribeSheet({
                       </button>
                     ) : (
                       <p className="text-center text-xs text-muted">
-                        Se te pedirá un método de pago
+                        {t("paymentMethodRequired")}
                       </p>
                     )}
                   </div>
@@ -258,10 +260,10 @@ export function SubscribeSheet({
                   className="mt-5 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
                 >
                   <CalendarSync className="h-4 w-4" />
-                  Suscribirme por {formatted}/{interval}
+                  {t("subscribeFor", { price: formatted, interval })}
                 </Button>
                 <p className="mt-2 text-center text-[10px] text-muted/60">
-                  Puedes cancelar en cualquier momento
+                  {t("cancelAnytime")}
                 </p>
               </motion.div>
             )}
@@ -269,17 +271,17 @@ export function SubscribeSheet({
             {step === "processing" && (
               <motion.div key="processing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-accent" />
-                <p className="mt-4 text-sm font-medium text-muted">Procesando suscripción...</p>
+                <p className="mt-4 text-sm font-medium text-muted">{t("processing")}</p>
               </motion.div>
             )}
 
             {step === "select-card" && (
               <motion.div key="select-card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <h2 className="font-display text-xl font-bold text-foreground">
-                  Método de pago
+                  {t("paymentMethod")}
                 </h2>
                 <p className="mt-1 mb-5 text-sm text-muted">
-                  Elige la tarjeta para esta suscripción
+                  {t("chooseCard")}
                 </p>
 
                 <div className="space-y-2">
@@ -317,7 +319,7 @@ export function SubscribeSheet({
                   className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/60 py-3.5 text-[13px] font-medium text-muted transition-colors active:bg-surface"
                 >
                   <Plus className="h-4 w-4" />
-                  Usar otra tarjeta
+                  {t("useAnotherCard")}
                 </button>
               </motion.div>
             )}
@@ -325,7 +327,7 @@ export function SubscribeSheet({
             {step === "payment" && paymentData && (
               <motion.div key="payment" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <h2 className="font-display text-xl font-bold text-foreground">
-                  Datos de pago
+                  {t("paymentDetails")}
                 </h2>
                 <p className="mt-1 mb-5 text-sm text-muted">
                   {pkg.name} · {formatted}/{interval}
@@ -360,7 +362,7 @@ export function SubscribeSheet({
                   <Check className="h-8 w-8 text-green-600" />
                 </motion.div>
                 <h2 className="mt-5 font-display text-xl font-bold text-foreground">
-                  ¡Suscripción activa!
+                  {t("subscriptionActive")}
                 </h2>
                 <p className="mt-1 text-sm text-muted">
                   {pkg.name} · {formatted}/{interval}
@@ -370,7 +372,7 @@ export function SubscribeSheet({
                   className="mt-8 w-full rounded-full bg-foreground text-background hover:bg-foreground/90"
                   size="lg"
                 >
-                  Listo
+                  {t("done")}
                 </Button>
               </motion.div>
             )}

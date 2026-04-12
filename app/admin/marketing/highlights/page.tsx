@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { motion, Reorder } from "framer-motion";
 import {
   ImagePlus,
@@ -131,6 +132,7 @@ function ImageUploader({
   currentUrl?: string;
   onUpload: (url: string) => void;
 }) {
+  const t = useTranslations("admin");
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentUrl || null);
@@ -160,7 +162,7 @@ function ImageUploader({
         setPreview(data.url);
       } catch (e) {
         setPreview(currentUrl || null);
-        setError(e instanceof Error ? e.message : "Error al subir imagen");
+        setError(e instanceof Error ? e.message : "Upload error");
       }
       setUploading(false);
     },
@@ -202,7 +204,7 @@ function ImageUploader({
             ) : (
               <>
                 <ImagePlus className="h-8 w-8" />
-                <span className="text-xs font-medium">Subir imagen</span>
+                <span className="text-xs font-medium">{t("hlUploadImage")}</span>
                 <span className="text-[10px]">
                   Se recorta a {TARGET_W}×{TARGET_H}px (4:5)
                 </span>
@@ -215,7 +217,7 @@ function ImageUploader({
         <p className="mt-1.5 text-xs font-medium text-red-600">{error}</p>
       )}
       <p className="mt-1.5 text-[10px] text-stone-400">
-        La imagen se recorta al centro y comprime automáticamente a {TARGET_W}×{TARGET_H}px.
+        {t("hlImageCropHint", { width: TARGET_W, height: TARGET_H })}
       </p>
     </div>
   );
@@ -238,6 +240,8 @@ function HighlightForm({
   onCancel: () => void;
   saving: boolean;
 }) {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const [title, setTitle] = useState(initial?.title || "");
   const [subtitle, setSubtitle] = useState(initial?.subtitle || "");
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl || "");
@@ -252,33 +256,33 @@ function HighlightForm({
 
       <div>
         <label className="mb-1 block text-xs font-medium text-stone-600">
-          Título{" "}
-          <span className="text-stone-400">(opcional)</span>
+          {t("titleLabel")}{" "}
+          <span className="text-stone-400">({t("optionalLabel")})</span>
         </label>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Déjalo vacío para un look limpio"
+          placeholder={t("hlTitlePlaceholder")}
           className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400"
         />
       </div>
 
       <div>
         <label className="mb-1 block text-xs font-medium text-stone-600">
-          Subtítulo{" "}
-          <span className="text-stone-400">(opcional)</span>
+          {t("hlSubtitleLabel")}{" "}
+          <span className="text-stone-400">({t("optionalLabel")})</span>
         </label>
         <input
           value={subtitle}
           onChange={(e) => setSubtitle(e.target.value)}
-          placeholder="Texto secundario sobre la imagen"
+          placeholder={t("hlSubtitlePlaceholder")}
           className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400"
         />
       </div>
 
       <div>
         <label className="mb-1 block text-xs font-medium text-stone-600">
-          Link de destino
+          {t("hlDestinationLink")}
         </label>
         <input
           value={linkUrl}
@@ -295,7 +299,7 @@ function HighlightForm({
           onChange={(e) => setIsExternal(e.target.checked)}
           className="rounded border-stone-300"
         />
-        Link externo (abre en nueva pestaña)
+        {t("hlExternalLink")}
       </label>
 
       <div className="flex justify-end gap-2 pt-2">
@@ -304,7 +308,7 @@ function HighlightForm({
           onClick={onCancel}
           className="rounded-lg px-4 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100"
         >
-          Cancelar
+          {tc("cancel")}
         </button>
         <button
           type="button"
@@ -315,7 +319,7 @@ function HighlightForm({
           className="flex items-center gap-2 rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:bg-stone-300 disabled:text-stone-500"
         >
           {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {initial?.id ? "Guardar" : "Crear"}
+          {initial?.id ? tc("save") : tc("create")}
         </button>
       </div>
     </div>
@@ -333,6 +337,7 @@ function HighlightCard({
   onToggle: () => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations("admin");
   return (
     <Reorder.Item
       value={item}
@@ -357,7 +362,7 @@ function HighlightCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-stone-900">
-              {item.title || <span className="italic text-stone-400">Sin título</span>}
+              {item.title || <span className="italic text-stone-400">{t("hlNoTitle")}</span>}
             </p>
             {item.subtitle && (
               <p className="truncate text-xs text-stone-500">
@@ -412,6 +417,8 @@ function HighlightCard({
 }
 
 export default function HighlightsPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const qc = useQueryClient();
   const { data, isLoading } = useHighlights();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -506,11 +513,10 @@ export default function HighlightsPage() {
         animate={{ opacity: 1, y: 0 }}
       >
         <h1 className="font-display text-2xl font-bold sm:text-3xl">
-          Highlights
+          {t("highlights")}
         </h1>
         <p className="mt-1 text-sm text-stone-500">
-          Banners destacados que aparecen en el feed de tus miembros. Sube
-          imágenes y enlaza a cualquier destino.
+          {t("hlPageSubtitle")}
         </p>
       </motion.div>
 
@@ -522,12 +528,12 @@ export default function HighlightsPage() {
           </div>
           <div>
             <p className="text-sm font-semibold text-stone-900">
-              Mostrar Highlights en el feed
+              {t("hlShowInFeed")}
             </p>
             <p className="text-xs text-stone-500">
               {enabled
-                ? "Los miembros ven la sección en su feed"
-                : "La sección está oculta para todos"}
+                ? t("hlVisibleToMembers")
+                : t("hlHiddenFromAll")}
             </p>
           </div>
         </div>
@@ -552,7 +558,7 @@ export default function HighlightsPage() {
             className="flex items-center gap-1.5 rounded-lg bg-stone-900 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-stone-800"
           >
             <Plus className="h-3.5 w-3.5" />
-            Nuevo highlight
+            {t("hlNew")}
           </button>
         </div>
 
@@ -560,11 +566,10 @@ export default function HighlightsPage() {
           <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-stone-200 py-12 text-center">
             <ImagePlus className="mb-2 h-10 w-10 text-stone-300" />
             <p className="text-sm font-medium text-stone-500">
-              Aún no tienes highlights
+              {t("hlNoHighlights")}
             </p>
             <p className="mt-1 max-w-xs text-xs text-stone-400">
-              Crea tu primer highlight con una imagen y un link. Tus miembros lo
-              verán en su feed.
+              {t("hlNoHighlightsDesc")}
             </p>
             <button
               onClick={() => {
@@ -574,7 +579,7 @@ export default function HighlightsPage() {
               className="mt-4 flex items-center gap-1.5 rounded-lg bg-stone-900 px-4 py-2 text-xs font-medium text-white"
             >
               <Plus className="h-3.5 w-3.5" />
-              Crear highlight
+              {t("hlCreate")}
             </button>
           </div>
         ) : (
@@ -599,7 +604,7 @@ export default function HighlightsPage() {
                   })
                 }
                 onDelete={() => {
-                  if (confirm("¿Eliminar este highlight?")) {
+                  if (confirm(t("hlDeleteConfirm"))) {
                     deleteHighlight.mutate(h.id);
                   }
                 }}
@@ -622,7 +627,7 @@ export default function HighlightsPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Editar highlight" : "Nuevo highlight"}
+              {editing ? t("hlEdit") : t("hlNew")}
             </DialogTitle>
           </DialogHeader>
           <HighlightForm

@@ -38,7 +38,7 @@ function useCountdown(targetDate: Date | null) {
     const tick = () => {
       const diff = targetDate.getTime() - Date.now();
       if (diff <= 0) {
-        setTimeLeft("¡Ahora!");
+        setTimeLeft("now!");
         return;
       }
       const h = Math.floor(diff / 3_600_000);
@@ -195,7 +195,7 @@ export default function CoachDashboard() {
                 </div>
                 {statsData.weekEarnings && statsData.weekEarnings.total > 0 && (
                   <div className="shrink-0 rounded-lg bg-green-50 px-3 py-1.5 text-center">
-                    <p className="text-[10px] font-medium text-green-600">Semana</p>
+                    <p className="text-[10px] font-medium text-green-600">{t("week")}</p>
                     <p className="font-mono text-sm font-bold text-green-700">
                       {new Intl.NumberFormat("es-MX", {
                         style: "currency",
@@ -222,19 +222,19 @@ export default function CoachDashboard() {
                   <Clock className="h-6 w-6 text-coach" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-coach">Siguiente clase</p>
+                  <p className="text-xs font-medium text-coach">{t("nextClass")}</p>
                   <p className="truncate font-display text-lg font-bold">
                     {nextClass.classType.name}
                   </p>
                   <p className="text-sm text-muted">
                     {formatTime(nextClass.startsAt)} ·{" "}
                     {nextClass._count?.bookings ?? nextClass.bookings.length}/
-                    {nextClass.room?.maxCapacity ?? "?"} inscritos
+                    {nextClass.room?.maxCapacity ?? "?"} {t("enrolled")}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-[10px] font-medium uppercase tracking-wide text-coach/70">
-                    Empieza en
+                    {t("startsIn")}
                   </p>
                   <span className="font-mono text-xl font-bold text-coach">
                     {countdown}
@@ -249,7 +249,7 @@ export default function CoachDashboard() {
 
       {/* Today's schedule */}
       <motion.div variants={stagger} initial="hidden" animate="show">
-        <h2 className="mb-4 font-display text-xl font-bold">Horario de hoy</h2>
+        <h2 className="mb-4 font-display text-xl font-bold">{t("todaySchedule")}</h2>
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -260,8 +260,8 @@ export default function CoachDashboard() {
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
               <CalendarDays className="h-10 w-10 text-muted/40" />
-              <p className="font-medium text-muted">No tienes clases hoy</p>
-              <p className="text-sm text-muted/70">Disfruta tu día libre</p>
+              <p className="font-medium text-muted">{t("noClassesToday")}</p>
+              <p className="text-sm text-muted/70">{t("enjoyYourDayOff")}</p>
             </CardContent>
           </Card>
         ) : (
@@ -302,7 +302,7 @@ export default function CoachDashboard() {
                         <Badge
                           variant={past ? "secondary" : enrolled >= capacity ? "danger" : "success"}
                         >
-                          {past ? "Terminada" : enrolled >= capacity ? "Llena" : "Abierta"}
+                          {past ? t("finished") : enrolled >= capacity ? t("full") : t("open")}
                         </Badge>
                         <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
                       </CardContent>
@@ -317,7 +317,7 @@ export default function CoachDashboard() {
       {/* Upcoming this week */}
       {weekClasses && weekClasses.length > 0 && (
         <motion.div variants={stagger} initial="hidden" animate="show">
-          <h2 className="mb-4 font-display text-xl font-bold">Próximos días</h2>
+          <h2 className="mb-4 font-display text-xl font-bold">{t("upcomingDays")}</h2>
           <div className="space-y-3">
             {weekClasses.slice(0, 10).map((cls) => {
               const enrolled = cls._count?.bookings ?? cls.bookings.length;
@@ -355,7 +355,7 @@ export default function CoachDashboard() {
                         <Badge
                           variant={enrolled >= capacity ? "danger" : "success"}
                         >
-                          {enrolled >= capacity ? "Llena" : "Abierta"}
+                          {enrolled >= capacity ? t("full") : t("open")}
                         </Badge>
                         <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
                       </CardContent>

@@ -21,15 +21,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { type StudioBranding, DEFAULTS, FONT_PAIRINGS, deriveAccentSoft, withDerivedColors } from "@/lib/branding";
 import { useBranding, applyTheme } from "@/components/branding-provider";
 
-const colorFields: { key: keyof StudioBranding; label: string; hint: string }[] = [
-  { key: "colorAccent", label: "Color de marca", hint: "Botones, links y elementos destacados" },
-  { key: "colorHeroBg", label: "Fondo Landing", hint: "Secciones oscuras de tu landing page" },
+const colorFields: { key: keyof StudioBranding; labelKey: string; hintKey: string }[] = [
+  { key: "colorAccent", labelKey: "brandColorLabel", hintKey: "brandColorHint" },
+  { key: "colorHeroBg", labelKey: "landingBgLabel", hintKey: "landingBgHint" },
 ];
 
 export default function BrandingPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const brandingCtx = useBranding();
   const [settings, setSettings] = useState<StudioBranding>(DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -150,9 +153,9 @@ export default function BrandingPage() {
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl font-bold sm:text-3xl">Marca</h1>
+            <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("brandingTitle")}</h1>
             <p className="mt-1 text-sm text-muted">
-              Personaliza la identidad visual de tu estudio
+              {t("brandingSubtitle")}
             </p>
           </div>
           <Button
@@ -167,14 +170,14 @@ export default function BrandingPage() {
             ) : (
               <Save className="h-4 w-4" />
             )}
-            {saved ? "Guardado" : saveMutation.isError ? "Error al guardar" : "Guardar cambios"}
+            {saved ? tc("saved") : saveMutation.isError ? t("saveErrorLabel") : t("saveChanges")}
           </Button>
         </div>
       </motion.div>
 
       {saveMutation.isError && (
         <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {saveMutation.error?.message || "No se pudieron guardar los cambios. Verifica que tengas permisos de admin."}
+          {saveMutation.error?.message || t("saveErrorDesc")}
         </div>
       )}
 
@@ -184,12 +187,12 @@ export default function BrandingPage() {
           <CardContent className="p-6">
             <div className="mb-5 flex items-center gap-2 text-sm font-semibold text-foreground">
               <FileText className="h-4 w-4 text-admin" />
-              Identidad
+              {t("identitySection")}
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted">Nombre del estudio</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted">{t("studioNameLabel")}</label>
                 <Input
                   value={settings.studioName}
                   onChange={(e) => update("studioName", e.target.value)}
@@ -197,7 +200,7 @@ export default function BrandingPage() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted">Tagline</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted">{t("taglineLabel")}</label>
                 <Input
                   value={settings.tagline}
                   onChange={(e) => update("tagline", e.target.value)}
@@ -205,15 +208,15 @@ export default function BrandingPage() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-xs font-medium text-muted">Slogan</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted">{t("sloganLabel")}</label>
                 <Input
                   value={settings.slogan}
                   onChange={(e) => update("slogan", e.target.value)}
-                  placeholder="Muévete. Respira. Floréce."
+                  placeholder={t("sloganPlaceholder")}
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-xs font-medium text-muted">Descripción SEO</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted">{t("seoDescription")}</label>
                 <Textarea
                   value={settings.metaDescription}
                   onChange={(e) => update("metaDescription", e.target.value)}
@@ -222,28 +225,28 @@ export default function BrandingPage() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-xs font-medium text-muted">Home Headline</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted">{t("homeHeadline")}</label>
                 <Input
                   value={settings.communityHeadline}
                   onChange={(e) => update("communityHeadline", e.target.value)}
-                  placeholder="Tu comunidad en movimiento"
+                  placeholder={t("communityHeadlinePlaceholder")}
                 />
                 <p className="mt-1.5 text-[11px] text-muted">
-                  Aparece debajo del "Hola, nombre" en el home de tus miembros.
+                  {t("homeHeadlineDesc")}
                 </p>
               </div>
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs font-medium text-muted">
                   <Globe className="mr-1 inline h-3 w-3" />
-                  Landing page
+                  {t("landingPageLabel")}
                 </label>
                 <Input
                   value={settings.landingUrl ?? ""}
                   onChange={(e) => update("landingUrl", e.target.value || null)}
-                  placeholder="https://tusitio.com"
+                  placeholder={t("landingUrlPlaceholder")}
                 />
                 <p className="mt-1.5 text-[11px] text-muted">
-                  Si tienes tu propia página web, ponla aquí. El logo del navbar redirigirá a esa URL. Deja vacío para usar la landing integrada.
+                  {t("landingPageDesc")}
                 </p>
               </div>
             </div>
@@ -257,7 +260,7 @@ export default function BrandingPage() {
           <CardContent className="p-6">
             <div className="mb-5 flex items-center gap-2 text-sm font-semibold text-foreground">
               <ImageIcon className="h-4 w-4 text-admin" />
-              Logo
+              {t("logoSection")}
             </div>
 
             <div className="flex items-center gap-6">
@@ -286,7 +289,7 @@ export default function BrandingPage() {
                   className="gap-2"
                 >
                   <Upload className="h-3.5 w-3.5" />
-                  Subir logo
+                  {t("uploadLogo")}
                 </Button>
                 {settings.logoUrl && (
                   <Button
@@ -296,10 +299,10 @@ export default function BrandingPage() {
                     className="gap-2 text-destructive"
                   >
                     <X className="h-3.5 w-3.5" />
-                    Eliminar
+                    {tc("delete")}
                   </Button>
                 )}
-                <p className="text-xs text-muted">PNG, SVG o JPG. Se recomienda fondo transparente.</p>
+                <p className="text-xs text-muted">{t("logoHint")}</p>
               </div>
             </div>
           </CardContent>
@@ -312,13 +315,13 @@ export default function BrandingPage() {
           <CardContent className="p-6">
             <div className="mb-5 flex items-center gap-2 text-sm font-semibold text-foreground">
               <Smartphone className="h-4 w-4 text-admin" />
-              Ícono de App
+              {t("appIconSection")}
             </div>
 
             <div className="flex items-center gap-6">
               <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[18px] border-2 border-dashed border-border bg-surface shadow-sm">
                 {settings.appIconUrl ? (
-                  <img src={settings.appIconUrl} alt="App Icon" className="h-full w-full object-cover" />
+                  <img src={settings.appIconUrl} alt={t("appIconSection")} className="h-full w-full object-cover" />
                 ) : (
                   <span className="font-display text-2xl font-bold text-muted/30">
                     {settings.studioName.charAt(0)}
@@ -341,7 +344,7 @@ export default function BrandingPage() {
                   className="gap-2"
                 >
                   <Upload className="h-3.5 w-3.5" />
-                  Subir ícono
+                  {t("uploadIcon")}
                 </Button>
                 {settings.appIconUrl && (
                   <Button
@@ -351,17 +354,17 @@ export default function BrandingPage() {
                     className="gap-2 text-destructive"
                   >
                     <X className="h-3.5 w-3.5" />
-                    Eliminar
+                    {tc("delete")}
                   </Button>
                 )}
                 <p className="text-xs text-muted">
-                  PNG cuadrado, mínimo 512×512px. Aparece al instalar como app.
+                  {t("appIconHint")}
                 </p>
               </div>
             </div>
 
             <div className="mt-4 rounded-md border border-border bg-surface/50 p-4">
-              <p className="mb-2 text-xs font-medium text-muted">Vista previa</p>
+              <p className="mb-2 text-xs font-medium text-muted">{t("previewLabel")}</p>
               <div className="flex items-center gap-4">
                 <div className="text-center">
                   <div
@@ -411,7 +414,7 @@ export default function BrandingPage() {
           <CardContent className="p-6">
             <div className="mb-5 flex items-center gap-2 text-sm font-semibold text-foreground">
               <ImageIcon className="h-4 w-4 text-admin" />
-              Ícono de Coach (Mapa de clase)
+              {t("coachIconSection")}
             </div>
 
             <div className="flex items-center gap-6">
@@ -444,7 +447,7 @@ export default function BrandingPage() {
                   className="gap-2"
                 >
                   <Upload className="h-3.5 w-3.5" />
-                  Subir SVG
+                  {t("uploadSvg")}
                 </Button>
                 {settings.coachIconSvg && (
                   <Button
@@ -454,18 +457,18 @@ export default function BrandingPage() {
                     className="gap-2 text-destructive"
                   >
                     <X className="h-3.5 w-3.5" />
-                    Eliminar
+                    {tc("delete")}
                   </Button>
                 )}
                 <p className="text-xs text-muted">
-                  SVG monocromático. Se usa en el lugar del coach dentro del mapa de clase. Toma el color automáticamente.
+                  {t("coachIconHint")}
                 </p>
               </div>
             </div>
 
             {settings.coachIconSvg && (
               <div className="mt-4 rounded-md border border-border bg-surface/50 p-4">
-                <p className="mb-3 text-xs font-medium text-muted">Vista previa en mapa</p>
+                <p className="mb-3 text-xs font-medium text-muted">{t("previewInMap")}</p>
                 <div className="flex items-center gap-3">
                   <div
                     className="flex h-[38px] w-[38px] items-center justify-center rounded-md"
@@ -476,7 +479,7 @@ export default function BrandingPage() {
                       dangerouslySetInnerHTML={{ __html: settings.coachIconSvg }}
                     />
                   </div>
-                  <span className="text-xs text-muted">Así se verá en el mapa de clase</span>
+                  <span className="text-xs text-muted">{t("classMapPreview")}</span>
                 </div>
               </div>
             )}
@@ -490,7 +493,7 @@ export default function BrandingPage() {
           <CardContent className="p-6">
             <div className="mb-5 flex items-center gap-2 text-sm font-semibold text-foreground">
               <Type className="h-4 w-4 text-admin" />
-              Tipografía
+              {t("typographySection")}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -535,7 +538,7 @@ export default function BrandingPage() {
               const activeFp = FONT_PAIRINGS.find((fp) => fp.id === settings.fontPairing) ?? FONT_PAIRINGS[0];
               return (
                 <div className="mt-6 rounded-md border border-border p-4">
-                  <p className="mb-3 text-xs font-medium text-muted">Vista previa — {activeFp.label}</p>
+                  <p className="mb-3 text-xs font-medium text-muted">{t("fontPreviewLabel", { name: activeFp.label })}</p>
                   <div
                     className="overflow-hidden rounded-md p-6"
                     style={{ backgroundColor: settings.colorBg, color: settings.colorFg }}
@@ -550,26 +553,26 @@ export default function BrandingPage() {
                       className="mt-1 text-sm"
                       style={{ fontFamily: activeFp.bodyVar, color: settings.colorMuted }}
                     >
-                      {settings.tagline || "Descripción de ejemplo"}
+                      {settings.tagline || t("exampleDescription")}
                     </p>
                     <p
                       className="mt-3 text-base leading-relaxed"
                       style={{ fontFamily: activeFp.bodyVar }}
                     >
-                      Descubre nuestras clases, reserva tu lugar y transforma tu rutina.
+                      {t("discoverClasses")}
                     </p>
                     <div className="mt-4 flex gap-2">
                       <span
                         className="rounded-md px-3 py-1.5 text-sm font-semibold text-white"
                         style={{ backgroundColor: settings.colorAccent, fontFamily: activeFp.displayVar }}
                       >
-                        Reservar
+                        {t("bookAction")}
                       </span>
                       <span
                         className="rounded-md px-3 py-1.5 text-sm font-medium"
                         style={{ backgroundColor: settings.colorAccentSoft, color: settings.colorFg, fontFamily: activeFp.bodyVar }}
                       >
-                        Ver horarios
+                        {t("viewSchedules")}
                       </span>
                     </div>
                   </div>
@@ -586,12 +589,14 @@ export default function BrandingPage() {
           <CardContent className="p-6">
             <div className="mb-5 flex items-center gap-2 text-sm font-semibold text-foreground">
               <Palette className="h-4 w-4 text-admin" />
-              Colores
+              {t("colorsSection")}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              {colorFields.map(({ key, label, hint }) => {
+              {colorFields.map(({ key, labelKey, hintKey }) => {
                 const hex = (settings[key] as string) ?? (DEFAULTS[key] as string) ?? "#000000";
+                const label = t(labelKey);
+                const hint = t(hintKey);
                 return (
                 <div key={key} className="flex items-center gap-3 rounded-md border border-border bg-white p-3 shadow-sm">
                   <label className="relative">
@@ -609,7 +614,7 @@ export default function BrandingPage() {
                   </label>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{label}</p>
-                    <p className="text-xs text-muted">{hint || "Click en el color para cambiarlo"}</p>
+                    <p className="text-xs text-muted">{hint || t("clickToChangeColor")}</p>
                   </div>
                   <Input
                     value={hex.toUpperCase()}
@@ -623,25 +628,25 @@ export default function BrandingPage() {
             </div>
 
             <div className="mt-6 rounded-md border border-border p-4">
-              <p className="mb-3 text-xs font-medium text-muted">Vista previa</p>
+              <p className="mb-3 text-xs font-medium text-muted">{t("previewLabel")}</p>
               <div className="overflow-hidden rounded-md">
                 <div className="p-6" style={{ backgroundColor: settings.colorBg, color: settings.colorFg }}>
                   <h3 className="font-display text-xl font-bold">{settings.studioName}</h3>
                   <p className="mt-1 text-sm" style={{ color: settings.colorMuted }}>
-                    {settings.tagline || "Tu estudio"}
+                    {settings.tagline || t("yourStudio")}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span
                       className="rounded-md px-3 py-1.5 text-xs font-semibold text-white"
                       style={{ backgroundColor: settings.colorAccent }}
                     >
-                      Reservar clase
+                      {t("bookClass")}
                     </span>
                     <span
                       className="rounded-md px-3 py-1.5 text-xs font-medium"
                       style={{ backgroundColor: settings.colorAccentSoft, color: settings.colorFg }}
                     >
-                      Ver horarios
+                      {t("viewSchedules")}
                     </span>
                   </div>
                   <div
@@ -649,20 +654,20 @@ export default function BrandingPage() {
                     style={{ borderColor: settings.colorBorder, backgroundColor: settings.colorSurface }}
                   >
                     <p className="text-xs" style={{ color: settings.colorMuted }}>
-                      Los colores de fondo, texto, bordes y superficie se ajustan automáticamente.
+                      {t("colorsAutoAdjust")}
                     </p>
                   </div>
                 </div>
                 <div className="p-6" style={{ backgroundColor: settings.colorHeroBg, color: "#FFFFFF" }}>
-                  <h3 className="font-display text-lg font-bold">Tu Landing Page</h3>
+                  <h3 className="font-display text-lg font-bold">{t("yourLandingPage")}</h3>
                   <p className="mt-1 text-sm opacity-70">
-                    Así se ven las secciones oscuras
+                    {t("darkSectionsPreview")}
                   </p>
                   <span
                     className="mt-3 inline-block rounded-md px-3 py-1.5 text-xs font-semibold text-white"
                     style={{ backgroundColor: settings.colorAccent }}
                   >
-                    Empieza hoy
+                    {t("startToday")}
                   </span>
                 </div>
               </div>

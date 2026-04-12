@@ -15,6 +15,7 @@ import {
   type SpotInfo,
   type RoomLayoutData,
 } from "@/components/shared/studio-map";
+import { useTranslations } from "next-intl";
 
 interface SpotPickerProps {
   open: boolean;
@@ -33,6 +34,7 @@ export function SpotPicker({
   onSpotSelected,
   onSkip,
 }: SpotPickerProps) {
+  const t = useTranslations("pos");
   const [selectedSpot, setSelectedSpot] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery<{
@@ -66,7 +68,7 @@ export function SpotPicker({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
-            Seleccionar lugar
+            {t("selectSpot")}
           </DialogTitle>
         </DialogHeader>
 
@@ -80,7 +82,7 @@ export function SpotPicker({
           </div>
         ) : !data?.hasLayout ? (
           <p className="py-8 text-center text-sm text-muted">
-            Esta sala no tiene layout configurado.
+            {t("roomNoLayout")}
           </p>
         ) : (
           <div className="py-2">
@@ -101,7 +103,7 @@ export function SpotPicker({
             size="sm"
             onClick={onSkip}
           >
-            Sin lugar asignado
+            {t("noAssignedSpot")}
           </Button>
           <Button
             size="sm"
@@ -109,7 +111,7 @@ export function SpotPicker({
             onClick={handleConfirm}
             disabled={!selectedSpot}
           >
-            Confirmar lugar {selectedSpot && `#${selectedSpot}`}
+            {selectedSpot ? t("confirmSpot", { num: selectedSpot }) : t("confirmSpotLabel")}
           </Button>
         </div>
       </DialogContent>

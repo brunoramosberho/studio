@@ -6,6 +6,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MapPin } from "lucide-
 import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { ClassRoster } from "@/components/check-in/ClassRoster";
 
 interface ClassItem {
@@ -28,23 +29,25 @@ interface ClassItem {
   isFinished: boolean;
 }
 
-function formatDateLabel(date: Date): string {
-  if (isToday(date)) return "Hoy";
-  if (isTomorrow(date)) return "Mañana";
-  if (isYesterday(date)) return "Ayer";
+function formatDateLabel(date: Date, td: (key: string) => string): string {
+  if (isToday(date)) return td("today");
+  if (isTomorrow(date)) return td("tomorrow");
+  if (isYesterday(date)) return td("yesterday");
   return format(date, "EEE d MMM", { locale: es });
 }
 
-function formatHeaderDate(date: Date): string {
-  const label = formatDateLabel(date);
+function formatHeaderDate(date: Date, td: (key: string) => string): string {
+  const label = formatDateLabel(date, td);
   const full = format(date, "EEEE, d 'de' MMMM", { locale: es });
-  if (label === "Hoy" || label === "Mañana" || label === "Ayer") {
+  if (isToday(date) || isTomorrow(date) || isYesterday(date)) {
     return `${label} · ${full.charAt(0).toUpperCase() + full.slice(1)}`;
   }
   return full.charAt(0).toUpperCase() + full.slice(1);
 }
 
 export default function CheckInPage() {
+  const t = useTranslations("admin");
+  const td = useTranslations("dates");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [filterStudioId, setFilterStudioId] = useState<string>("all");
@@ -132,9 +135,9 @@ export default function CheckInPage() {
     <div className="space-y-3 md:space-y-4">
       {/* Page header — hidden on mobile when viewing roster */}
       <div className={cn(showMobileRoster && "hidden md:block")}>
-        <h1 className="text-xl font-semibold text-stone-900">Check-in</h1>
+        <h1 className="text-xl font-semibold text-stone-900">{t("checkIn")}</h1>
         <p className="text-xs text-stone-400 mt-0.5">
-          Gestiona la asistencia de las clases
+          {t("checkInSubtitle")}
         </p>
       </div>
 
@@ -159,10 +162,10 @@ export default function CheckInPage() {
                 : "border-stone-200 text-stone-600 hover:bg-stone-50",
             )}
           >
-            Hoy
+            {td("today")}
           </button>
           <span className="text-xs sm:text-sm font-medium text-stone-700 truncate max-w-[160px] sm:max-w-none">
-            {formatHeaderDate(selectedDate)}
+            {formatHeaderDate(selectedDate, td)}
           </span>
           <button
             onClick={() => setSelectedDate((d) => addDays(d, 1))}
@@ -180,7 +183,7 @@ export default function CheckInPage() {
               onChange={(e) => setFilterStudioId(e.target.value)}
               className="appearance-none bg-white border border-stone-200 rounded-lg px-2.5 py-1 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-[#3730B8] focus:border-[#3730B8] cursor-pointer"
             >
-              <option value="all">Todos los estudios</option>
+              <option value="all">{t("allStudios")}</option>
               {studios.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -198,7 +201,7 @@ export default function CheckInPage() {
         )}>
           <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-stone-100">
             <span className="text-xs font-medium text-stone-900">
-              {isPastDate ? "Clases del día" : "Clases de hoy"}
+              {isPastDate ? t("dayClasses") : t("todayClasses")}
             </span>
             <span className="text-xs text-stone-400">
               {format(selectedDate, "EEE d MMM", { locale: es })}
@@ -211,7 +214,7 @@ export default function CheckInPage() {
               </div>
             ) : classes.length === 0 ? (
               <div className="text-center py-12 text-xs text-stone-400">
-                No hay clases programadas
+                {t("noClassesScheduled")}
               </div>
             ) : (
               <>
@@ -229,11 +232,11 @@ export default function CheckInPage() {
                         )}
                       />
                       <span className="flex-1 text-[11px] font-medium text-stone-500">
-                        Terminadas ({finishedClasses.length})
+                        {t("finishedClasses")} ({finishedClasses.length})
                       </span>
                       {!showFinished && finishedClasses.some((c) => c.enrolledCount > c.checkedInCount) && (
                         <span className="text-[10px] rounded-full bg-amber-50 px-1.5 py-0.5 text-amber-600">
-                          Sin check-in
+                          {t("noCheckInLabel")}
                         </span>
                       )}
                     </button>
@@ -277,7 +280,7 @@ export default function CheckInPage() {
             <ChevronLeft size={14} />
             {selectedClass
               ? `${format(new Date(selectedClass.startTime), "HH:mm")} · ${selectedClass.className}`
-              : "Volver a clases"}
+              : t("backToClasses")}
           </button>
 
           {selectedClass ? (
@@ -301,7 +304,7 @@ export default function CheckInPage() {
               {isLoading ? (
                 <Loader2 className="animate-spin text-stone-300" size={20} />
               ) : (
-                "Selecciona una clase para ver el roster"
+                t("selectClassRoster")
               )}
             </div>
           )}
@@ -322,6 +325,7 @@ function ClassListItem({
   occupancy: { label: string; className: string };
   onSelect: () => void;
 }) {
+  const t = useTranslations("admin");
   const unchecked = c.isFinished && c.enrolledCount > c.checkedInCount;
   return (
     <button
@@ -341,11 +345,11 @@ function ClassListItem({
         {c.isLive && (
           <span className="flex items-center gap-1 text-[10px] font-medium text-red-500">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-            EN CURSO
+            {t("inProgressLabel")}
           </span>
         )}
         {c.isFinished && (
-          <span className="text-[10px] text-stone-400">Terminada</span>
+          <span className="text-[10px] text-stone-400">{t("finishedLabel")}</span>
         )}
       </div>
       <p className="text-[13px] font-medium text-stone-900 truncate">
@@ -363,12 +367,12 @@ function ClassListItem({
         )}
         {unchecked && (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">
-            {c.enrolledCount - c.checkedInCount} sin check-in
+            {t("withoutCheckIn", { count: c.enrolledCount - c.checkedInCount })}
           </span>
         )}
         {c.waitlistCount > 0 && (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">
-            {c.waitlistCount} en espera
+            {t("onWaitlistCount", { count: c.waitlistCount })}
           </span>
         )}
       </div>

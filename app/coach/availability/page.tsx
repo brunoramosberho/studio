@@ -27,6 +27,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { getZone, type Zone, type ZoneThresholds } from "@/lib/availability";
 import {
   Dialog,
@@ -63,6 +64,7 @@ interface AvailabilityBlock {
 
 type ViewMode = "month" | "week";
 
+// Day labels are generated via translations in the component
 const DAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
 const DAY_LABELS_FULL = [
   "Lunes",
@@ -143,6 +145,7 @@ async function deleteBlock(id: string): Promise<void> {
 // ── Main page ──
 
 export default function CoachAvailabilityPage() {
+  const t = useTranslations("coach");
   const queryClient = useQueryClient();
   const [view, setView] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -213,7 +216,7 @@ export default function CoachAvailabilityPage() {
                         : "text-stone-500 hover:text-stone-700",
                     )}
                   >
-                    {v === "month" ? "Mes" : "Semana"}
+                    {v === "month" ? t("periodMonth") : t("periodWeek")}
                   </button>
                 ))}
               </div>
@@ -257,7 +260,7 @@ export default function CoachAvailabilityPage() {
 
             {isLoading ? (
               <div className="flex h-64 items-center justify-center text-stone-400">
-                Cargando…
+                {t("loading")}
               </div>
             ) : view === "month" ? (
               <MonthView
@@ -275,9 +278,9 @@ export default function CoachAvailabilityPage() {
 
             {/* Legend */}
             <div className="mt-4 flex flex-wrap gap-4 border-t border-stone-100 pt-4">
-              <LegendDot className="bg-blue-100" label="Recurrente" />
-              <LegendDot className="bg-stone-200" label="Confirmado" />
-              <LegendDot className="bg-amber-100" label="Pendiente" />
+              <LegendDot className="bg-blue-100" label={t("recurring")} />
+              <LegendDot className="bg-stone-200" label={t("confirmed")} />
+              <LegendDot className="bg-amber-100" label={t("pending")} />
             </div>
           </div>
         </div>
@@ -286,10 +289,10 @@ export default function CoachAvailabilityPage() {
         <div className="w-full lg:w-80">
           <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-6">
             <h2 className="mb-5 text-lg font-semibold text-stone-900">
-              Mi disponibilidad
+              {t("myAvailability")}
             </h2>
 
-            <SidebarSection title="Recurrentes" blocks={recurring}>
+            <SidebarSection title={t("recurringBlocks")} blocks={recurring}>
               {recurring.map((b) => (
                 <RecurringCard
                   key={b.id}
@@ -299,13 +302,13 @@ export default function CoachAvailabilityPage() {
               ))}
             </SidebarSection>
 
-            <SidebarSection title="Pendientes de aprobación" blocks={pending}>
+            <SidebarSection title={t("pendingApproval")} blocks={pending}>
               {pending.map((b) => (
                 <PendingCard key={b.id} block={b} />
               ))}
             </SidebarSection>
 
-            <SidebarSection title="Confirmados" blocks={confirmed}>
+            <SidebarSection title={t("confirmedBlocks")} blocks={confirmed}>
               {confirmed.map((b) => (
                 <ConfirmedCard
                   key={b.id}
@@ -321,7 +324,7 @@ export default function CoachAvailabilityPage() {
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C2340] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1C2340]/90"
             >
               <Plus className="h-4 w-4" />
-              Añadir bloqueo
+              {t("addBlock")}
             </button>
           </div>
         </div>
@@ -581,6 +584,7 @@ function NewBlockModal({
   error?: string;
   zoneThresholds?: ZoneThresholds;
 }) {
+  const t = useTranslations("coach");
   const [type, setType] = useState<"one_time" | "recurring">("one_time");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -667,9 +671,9 @@ function NewBlockModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Nuevo bloqueo</DialogTitle>
+          <DialogTitle>{t("newBlock")}</DialogTitle>
           <DialogDescription>
-            Marca los horarios o fechas en los que no estás disponible.
+            {t("newBlockDesc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -677,7 +681,7 @@ function NewBlockModal({
           {/* Type */}
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700">
-              Tipo
+              {t("blockType")}
             </label>
             <Select
               value={type}
@@ -687,8 +691,8 @@ function NewBlockModal({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="one_time">Fechas específicas</SelectItem>
-                <SelectItem value="recurring">Horario recurrente</SelectItem>
+                <SelectItem value="one_time">{t("specificDates")}</SelectItem>
+                <SelectItem value="recurring">{t("recurringSchedule")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -698,7 +702,7 @@ function NewBlockModal({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-stone-700">
-                    Desde
+                    {t("from")}
                   </label>
                   <Input
                     type="date"
@@ -708,7 +712,7 @@ function NewBlockModal({
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-stone-700">
-                    Hasta
+                    {t("until")}
                   </label>
                   <Input
                     type="date"
@@ -719,7 +723,7 @@ function NewBlockModal({
               </div>
               <div>
                 <label className="mb-1 block text-xs text-stone-500">
-                  Horario (opcional, dejar vacío = todo el día)
+                  {t("timeOptional")}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <Input
@@ -741,7 +745,7 @@ function NewBlockModal({
             <>
               <div>
                 <label className="mb-2 block text-sm font-medium text-stone-700">
-                  Días
+                  {t("days")}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {DAY_LABELS.map((label, i) => (
@@ -763,7 +767,7 @@ function NewBlockModal({
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-stone-700">
-                  No disponible de
+                  {t("unavailableFrom")}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <Input
@@ -784,41 +788,41 @@ function NewBlockModal({
           {/* Reason */}
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700">
-              Motivo
+              {t("reason")}
             </label>
             <Select value={reasonType} onValueChange={setReasonType}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="vacation">Vacaciones</SelectItem>
-                <SelectItem value="personal">Personal</SelectItem>
-                <SelectItem value="training">Formación</SelectItem>
-                <SelectItem value="other">Otro</SelectItem>
+                <SelectItem value="vacation">{t("reasonVacation")}</SelectItem>
+                <SelectItem value="personal">{t("reasonPersonal")}</SelectItem>
+                <SelectItem value="training">{t("reasonTraining")}</SelectItem>
+                <SelectItem value="other">{t("reasonOther")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700">
-              Nota
+              {t("note")}
             </label>
             <Input
               value={reasonNote}
               onChange={(e) => setReasonNote(e.target.value)}
-              placeholder="Opcional"
+              placeholder={t("optional")}
             />
           </div>
 
           {/* Zone warnings */}
           {zone === "yellow" && (
             <div className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
-              Este bloqueo requiere aprobación del administrador
+              {t("blockNeedsApproval")}
             </div>
           )}
           {zone === "red" && (
             <div className="rounded-lg bg-red-50 p-2 text-xs text-red-800">
-              Para cambios en las próximas 2 semanas, contacta al administrador
+              {t("contactAdminForChanges")}
             </div>
           )}
 
@@ -835,7 +839,7 @@ function NewBlockModal({
               onClick={() => onOpenChange(false)}
               className="flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
             >
-              Cancelar
+              {t("cancelAction")}
             </button>
             <button
               type="button"
@@ -843,7 +847,7 @@ function NewBlockModal({
               onClick={handleSubmit}
               className="flex-1 rounded-xl bg-[#1C2340] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1C2340]/90 disabled:opacity-50"
             >
-              {isSubmitting ? "Guardando…" : "Guardar bloqueo"}
+              {isSubmitting ? t("saving") : t("saveBlock")}
             </button>
           </div>
         </div>
@@ -881,12 +885,13 @@ function RecurringCard({
   block: AvailabilityBlock;
   onDelete: () => void;
 }) {
+  const t = useTranslations("coach");
   const days = block.dayOfWeek.map((d) => DAY_LABELS[d]).join(", ");
   return (
     <div className="group relative rounded-xl border border-stone-100 bg-stone-50 p-3">
       <div className="mb-1 flex items-center gap-2">
         <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-800">
-          Recurrente
+          {t("recurring")}
         </span>
       </div>
       <div className="flex items-center gap-1.5 text-sm text-stone-700">
@@ -907,11 +912,12 @@ function RecurringCard({
 }
 
 function PendingCard({ block }: { block: AvailabilityBlock }) {
+  const t = useTranslations("coach");
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
       <div className="mb-1 flex items-center gap-2">
         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
-          Pendiente
+          {t("pending")}
         </span>
       </div>
       <div className="flex items-center gap-1.5 text-sm text-stone-700">
@@ -926,7 +932,7 @@ function PendingCard({ block }: { block: AvailabilityBlock }) {
         {block.reasonNote ? ` · ${block.reasonNote}` : ""}
       </div>
       <div className="mt-2 text-[10px] text-amber-700">
-        Pendiente de aprobación (hasta 48h)
+        {t("pendingApproval48h")}
       </div>
     </div>
   );
@@ -941,6 +947,7 @@ function ConfirmedCard({
   onDelete: () => void;
   zoneThresholds?: ZoneThresholds;
 }) {
+  const t = useTranslations("coach");
   const zone: Zone | null =
     block.startDate ? getZone(new Date(block.startDate), zoneThresholds) : null;
 
@@ -948,7 +955,7 @@ function ConfirmedCard({
     <div className="group relative rounded-xl border border-stone-100 bg-stone-50 p-3">
       <div className="mb-1 flex items-center gap-2">
         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
-          Confirmado
+          {t("confirmed")}
         </span>
       </div>
       <div className="flex items-center gap-1.5 text-sm text-stone-700">

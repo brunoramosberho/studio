@@ -23,6 +23,7 @@ import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { BookingWithDetails } from "@/types";
 import { BiometricsCard } from "@/components/booking/biometrics-card";
+import { useTranslations } from "next-intl";
 
 interface FriendInfo {
   id: string;
@@ -81,6 +82,7 @@ function hoursUntilClass(classStartsAt: string | Date): number {
 }
 
 export default function BookingsPage() {
+  const t = useTranslations("member");
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
@@ -167,28 +169,28 @@ export default function BookingsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="font-display text-2xl font-bold text-foreground">
-            Mis Reservas
+            {t("myBookings")}
           </h1>
           <Button asChild size="sm" className="rounded-full">
-            <Link href="/schedule">+ Reservar</Link>
+            <Link href="/schedule">+ {t("book")}</Link>
           </Button>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-xl bg-surface p-1">
-          {(["upcoming", "past"] as const).map((t) => (
+          {(["upcoming", "past"] as const).map((tabKey) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
               className={cn(
                 "flex-1 rounded-lg py-2 text-sm font-medium transition-all",
-                tab === t
+                tab === tabKey
                   ? "bg-white text-foreground shadow-sm"
                   : "text-muted hover:text-foreground",
               )}
             >
-              {t === "upcoming" ? "Próximas" : "Pasadas"}
-              {t === "upcoming" && totalUpcoming > 0 && (
+              {tabKey === "upcoming" ? t("upcoming") : t("past")}
+              {tabKey === "upcoming" && totalUpcoming > 0 && (
                 <span className="ml-1.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent/10 px-1.5 text-[11px] font-bold text-accent">
                   {totalUpcoming}
                 </span>
@@ -210,13 +212,13 @@ export default function BookingsPage() {
               <AutoAnimatedCalendarDays size={28} className="text-muted/40" />
             </div>
             <p className="mt-4 font-display text-lg font-bold text-foreground">
-              Sin clases próximas
+              {t("noUpcomingClasses")}
             </p>
             <p className="mt-1 text-sm text-muted">
-              Reserva una clase para empezar
+              {t("bookToStart")}
             </p>
             <Button asChild className="mt-6 rounded-full" size="sm">
-              <Link href="/schedule">Explorar clases</Link>
+              <Link href="/schedule">{t("exploreClasses")}</Link>
             </Button>
           </div>
         ) : tab === "past" && past.length === 0 ? (
@@ -225,10 +227,10 @@ export default function BookingsPage() {
               <AutoAnimatedCalendarDays size={28} className="text-muted/40" />
             </div>
             <p className="mt-4 font-display text-lg font-bold text-foreground">
-              Sin historial aún
+              {t("noHistoryYet")}
             </p>
             <p className="mt-1 text-sm text-muted">
-              Tus clases pasadas aparecerán aquí
+              {t("pastClassesWillAppear")}
             </p>
           </div>
         ) : tab === "upcoming" ? (
@@ -357,7 +359,7 @@ export default function BookingsPage() {
                   </div>
 
                   <h3 className="mt-4 font-display text-lg font-bold text-foreground">
-                    Cancelar reserva
+                    {t("cancelBooking")}
                   </h3>
 
                   <p className="mt-1 text-sm text-muted">
@@ -367,20 +369,19 @@ export default function BookingsPage() {
                   {canCancelFreely(cancelTarget.class.startsAt) ? (
                     <div className="mt-4 rounded-xl bg-green-50 px-4 py-3">
                       <p className="text-[13px] font-medium text-green-700">
-                        Tu crédito será devuelto
+                        {t("creditWillBeReturned")}
                       </p>
                       <p className="mt-0.5 text-[12px] text-green-600">
-                        Faltan más de 12 horas para la clase
+                        {t("moreThan12Hours")}
                       </p>
                     </div>
                   ) : (
                     <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
                       <p className="text-[13px] font-medium text-red-700">
-                        Tu crédito NO será devuelto
+                        {t("creditWillNotBeReturned")}
                       </p>
                       <p className="mt-0.5 text-[12px] text-red-600">
-                        Faltan menos de 12 horas ({hoursUntilClass(cancelTarget.class.startsAt)}h).
-                        Las cancelaciones tardías no reembolsan créditos.
+                        {t("lessThan12Hours", { hours: hoursUntilClass(cancelTarget.class.startsAt) })}
                       </p>
                     </div>
                   )}
@@ -393,7 +394,7 @@ export default function BookingsPage() {
                       disabled={cancelMutation.isPending}
                     >
                       {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {canCancelFreely(cancelTarget.class.startsAt) ? "Cancelar reserva" : "Cancelar sin reembolso"}
+                      {canCancelFreely(cancelTarget.class.startsAt) ? t("cancelBooking") : t("cancelNoRefund")}
                     </Button>
                     <Button
                       variant="ghost"
@@ -401,7 +402,7 @@ export default function BookingsPage() {
                       onClick={() => setCancelTarget(null)}
                       disabled={cancelMutation.isPending}
                     >
-                      Volver
+                      {t("goBack")}
                     </Button>
                   </div>
                 </div>
@@ -438,7 +439,7 @@ export default function BookingsPage() {
                   </div>
 
                   <h3 className="mt-4 font-display text-lg font-bold text-foreground">
-                    Salir de la lista de espera
+                    {t("leaveWaitlist")}
                   </h3>
 
                   <p className="mt-1 text-sm text-muted">
@@ -447,10 +448,10 @@ export default function BookingsPage() {
 
                   <div className="mt-4 rounded-xl bg-green-50 px-4 py-3">
                     <p className="text-[13px] font-medium text-green-700">
-                      Tu crédito será devuelto
+                      {t("creditWillBeReturned")}
                     </p>
                     <p className="mt-0.5 text-[12px] text-green-600">
-                      Al salir de la lista de espera siempre se devuelve tu crédito
+                      {t("waitlistCreditReturn")}
                     </p>
                   </div>
 
@@ -462,7 +463,7 @@ export default function BookingsPage() {
                       disabled={leaveWaitlistMutation.isPending}
                     >
                       {leaveWaitlistMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Salir de la lista
+                      {t("leaveList")}
                     </Button>
                     <Button
                       variant="ghost"
@@ -470,7 +471,7 @@ export default function BookingsPage() {
                       onClick={() => setWaitlistLeaveTarget(null)}
                       disabled={leaveWaitlistMutation.isPending}
                     >
-                      Volver
+                      {t("goBack")}
                     </Button>
                   </div>
                 </div>
@@ -494,6 +495,7 @@ function BookingCard({
   onShare: (b: EnrichedBooking) => void;
   onCancel: (b: EnrichedBooking) => void;
 }) {
+  const t = useTranslations("member");
   const studioName = (booking.class as unknown as { room?: { studio?: { name?: string } } }).room?.studio?.name;
 
   const startDate = new Date(booking.class.startsAt);
@@ -574,8 +576,8 @@ function BookingCard({
                   </div>
                   <span className="text-[10px] font-medium text-accent">
                     {booking.friendsGoing.length === 1
-                      ? `${booking.friendsGoing[0].name?.split(" ")[0]} va`
-                      : `${booking.friendsGoing.length} amigos van`}
+                      ? t("friendGoing", { name: booking.friendsGoing[0].name?.split(" ")[0] ?? "" })
+                      : t("friendsGoing", { count: booking.friendsGoing.length })}
                   </span>
                 </>
               )}
@@ -585,7 +587,7 @@ function BookingCard({
                 onClick={(e) => { e.preventDefault(); onCancel(booking); }}
                 className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
               >
-                Cancelar
+                {t("cancel")}
               </button>
             )}
           </div>
@@ -602,6 +604,7 @@ function WaitlistCard({
   entry: WaitlistEntry;
   onLeave: (e: WaitlistEntry) => void;
 }) {
+  const t = useTranslations("member");
   const studioName = (entry.class as unknown as { room?: { studio?: { name?: string } } }).room?.studio?.name;
 
   return (
@@ -644,7 +647,7 @@ function WaitlistCard({
                 </p>
                 <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
                   <Clock className="mr-0.5 inline h-2.5 w-2.5" />
-                  #{entry.position} en espera
+                  #{entry.position} {t("inWaitlist")}
                 </span>
               </div>
               <p className="truncate text-[13px] text-muted">
@@ -664,7 +667,7 @@ function WaitlistCard({
               onClick={(e) => { e.preventDefault(); onLeave(entry); }}
               className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-semibold text-amber-700 transition-colors hover:bg-amber-200 active:scale-95"
             >
-              Salir
+              {t("leave")}
             </button>
           </div>
         </div>
@@ -683,11 +686,12 @@ function AutoAnimatedCalendarDays({ size, className }: { size: number; className
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations("member");
   const config: Record<string, { label: string; color: string; bg: string }> = {
-    CONFIRMED: { label: "Completada", color: "text-green-700", bg: "bg-green-50" },
-    ATTENDED: { label: "Asistió", color: "text-green-700", bg: "bg-green-50" },
-    NO_SHOW: { label: "Crédito perdido", color: "text-red-600", bg: "bg-red-50" },
-    CANCELLED: { label: "Cancelación tardía", color: "text-red-600", bg: "bg-red-50" },
+    CONFIRMED: { label: t("statusCompleted"), color: "text-green-700", bg: "bg-green-50" },
+    ATTENDED: { label: t("statusAttended"), color: "text-green-700", bg: "bg-green-50" },
+    NO_SHOW: { label: t("statusCreditLost"), color: "text-red-600", bg: "bg-red-50" },
+    CANCELLED: { label: t("statusLateCancellation"), color: "text-red-600", bg: "bg-red-50" },
   };
   const s = config[status] ?? config.CONFIRMED;
   return (

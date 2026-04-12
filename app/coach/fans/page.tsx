@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface TopClient {
   user: {
@@ -40,6 +41,7 @@ const fadeUp = {
 };
 
 export default function CoachFansPage() {
+  const t = useTranslations("coach");
   const { data: session } = useSession();
 
   const { data: topClients, isLoading } = useQuery<TopClient[]>({
@@ -57,10 +59,10 @@ export default function CoachFansPage() {
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="flex items-center gap-2.5 font-display text-2xl font-bold sm:text-3xl">
           <Heart className="h-6 w-6 text-coach" />
-          Mis Fans
+          {t("myFans")}
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Las alumnas que más asisten a tus clases
+          {t("fansDescription")}
         </p>
       </motion.div>
 
@@ -74,9 +76,9 @@ export default function CoachFansPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
             <Users className="h-10 w-10 text-muted/30" />
-            <p className="font-medium text-muted">Aún no hay datos de alumnas</p>
+            <p className="font-medium text-muted">{t("noStudentData")}</p>
             <p className="text-sm text-muted/70">
-              Cuando tus alumnas reserven clases contigo aparecerán aquí
+              {t("noStudentDataDesc")}
             </p>
           </CardContent>
         </Card>
@@ -139,7 +141,7 @@ export default function CoachFansPage() {
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted">
                         <span className="flex items-center gap-1">
                           <Star className="h-3 w-3" />
-                          {client.classesWithCoach} contigo
+                          {client.classesWithCoach} {t("withYou")}
                         </span>
                         <span>{client.totalClasses} total</span>
                         {memberMonths > 0 && (
@@ -147,21 +149,21 @@ export default function CoachFansPage() {
                             {memberMonths >= 12
                               ? `${Math.floor(memberMonths / 12)}a ${memberMonths % 12}m`
                               : `${memberMonths}m`}{" "}
-                            miembro
+                            {t("memberLabel")}
                           </span>
                         )}
                       </div>
                       {client.noShows > 0 && (
                         <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] text-orange-600">
                           <AlertTriangle className="h-2.5 w-2.5" />
-                          {client.noShows} cancelación{client.noShows > 1 ? "es" : ""}
+                          {t("cancellationCount", { count: client.noShows })}
                         </span>
                       )}
                     </div>
 
                     <div className="shrink-0 text-right">
                       {lastDate && (
-                        <p className="text-[10px] text-muted">Última: {lastDate}</p>
+                        <p className="text-[10px] text-muted">{t("lastClass")}: {lastDate}</p>
                       )}
                       {client.lastClass && (
                         <p className="text-[11px] font-medium text-foreground">

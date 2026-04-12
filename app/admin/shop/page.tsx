@@ -30,6 +30,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface Category {
   id: string;
@@ -64,6 +65,8 @@ const emptyProduct = {
 };
 
 export default function AdminShopPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -251,8 +254,8 @@ export default function AdminShopPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Tienda</h1>
-          <p className="mt-1 text-sm text-muted">Administra productos y categorías</p>
+          <h1 className="font-display text-2xl font-bold text-foreground">{t("shopTitle")}</h1>
+          <p className="mt-1 text-sm text-muted">{t("manageProductsAndCategories")}</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -265,11 +268,11 @@ export default function AdminShopPage() {
             }}
           >
             <FolderPlus className="mr-1.5 h-4 w-4" />
-            Categoría
+            {t("category")}
           </Button>
           <Button size="sm" onClick={openCreateProduct} disabled={categories.length === 0}>
             <Plus className="mr-1.5 h-4 w-4" />
-            Producto
+            {t("product")}
           </Button>
         </div>
       </div>
@@ -277,9 +280,9 @@ export default function AdminShopPage() {
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         {[
-          { label: "Productos", value: totalProducts, icon: ShoppingBag },
-          { label: "Visibles para clientes", value: visibleProducts, icon: Eye },
-          { label: "Con link externo", value: externalProducts, icon: ExternalLink },
+          { label: t("products"), value: totalProducts, icon: ShoppingBag },
+          { label: t("visibleToClients"), value: visibleProducts, icon: Eye },
+          { label: t("withExternalLink"), value: externalProducts, icon: ExternalLink },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-3 p-4">
@@ -301,7 +304,7 @@ export default function AdminShopPage() {
           <CardContent className="p-6">
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
               <Tag className="h-4 w-4 text-admin" />
-              Categorías
+              {t("categories")}
             </div>
             {catsLoading ? (
               <div className="space-y-2">
@@ -310,7 +313,7 @@ export default function AdminShopPage() {
               </div>
             ) : categories.length === 0 ? (
               <p className="text-sm text-muted">
-                No hay categorías. Crea una para empezar a agregar productos.
+                {t("noCategoriesCreateOne")}
               </p>
             ) : (
               <div className="space-y-2">
@@ -322,7 +325,7 @@ export default function AdminShopPage() {
                     <div>
                       <p className="text-sm font-medium">{cat.name}</p>
                       <p className="text-xs text-muted">
-                        {cat._count.products} producto{cat._count.products !== 1 ? "s" : ""}
+                        {t("productCount", { count: cat._count.products })}
                       </p>
                     </div>
                     <div className="flex gap-1">
@@ -343,7 +346,7 @@ export default function AdminShopPage() {
                         variant="ghost"
                         className="h-8 w-8 text-red-500 hover:text-red-600"
                         onClick={() => {
-                          if (confirm(`¿Eliminar "${cat.name}" y todos sus productos?`)) {
+                          if (confirm(t("deleteCategoryConfirm", { name: cat.name }))) {
                             deleteCatMut.mutate(cat.id);
                           }
                         }}
@@ -366,7 +369,7 @@ export default function AdminShopPage() {
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <ShoppingBag className="h-4 w-4 text-admin" />
-                Productos
+                {t("products")}
               </div>
               {categories.length > 1 && (
                 <div className="flex gap-1">
@@ -379,7 +382,7 @@ export default function AdminShopPage() {
                         : "text-muted hover:bg-surface",
                     )}
                   >
-                    Todos
+                    {t("allFilter")}
                   </button>
                   {categories.map((cat) => (
                     <button
@@ -408,8 +411,8 @@ export default function AdminShopPage() {
             ) : filteredProducts.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted">
                 {categories.length === 0
-                  ? "Crea una categoría primero"
-                  : "No hay productos en esta categoría"}
+                  ? t("createCategoryFirst")
+                  : t("noProductsInCategory")}
               </p>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -450,13 +453,13 @@ export default function AdminShopPage() {
                         {!prod.isVisible && (
                           <Badge variant="secondary" className="text-[10px]">
                             <EyeOff className="mr-0.5 h-2.5 w-2.5" />
-                            Solo interno
+                            {t("internalOnly")}
                           </Badge>
                         )}
                         {prod.externalUrl && (
                           <Badge variant="secondary" className="text-[10px]">
                             <ExternalLink className="mr-0.5 h-2.5 w-2.5" />
-                            Link externo
+                            {t("externalLinkBadge")}
                           </Badge>
                         )}
                       </div>
@@ -469,14 +472,14 @@ export default function AdminShopPage() {
                           onClick={() => openEditProduct(prod)}
                         >
                           <Pencil className="mr-1 h-3 w-3" />
-                          Editar
+                          {tc("edit")}
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
                           className="h-7 w-7 text-red-500 hover:text-red-600"
                           onClick={() => {
-                            if (confirm(`¿Eliminar "${prod.name}"?`)) {
+                            if (confirm(t("deleteProductConfirm", { name: prod.name }))) {
                               deleteProdMut.mutate(prod.id);
                             }
                           }}
@@ -506,13 +509,13 @@ export default function AdminShopPage() {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editingCat ? "Editar categoría" : "Nueva categoría"}</DialogTitle>
+            <DialogTitle>{editingCat ? t("editCategory") : t("newCategory")}</DialogTitle>
             <DialogDescription>
-              Las categorías agrupan productos en la tienda.
+              {t("categoriesGroupProducts")}
             </DialogDescription>
           </DialogHeader>
           <Input
-            placeholder="Ej: Ropa, Bebidas, Accesorios"
+            placeholder={t("categoryPlaceholder")}
             value={catName}
             onChange={(e) => setCatName(e.target.value)}
           />
@@ -529,7 +532,7 @@ export default function AdminShopPage() {
             {createCatMut.isPending || updateCatMut.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : null}
-            {editingCat ? "Guardar" : "Crear"}
+            {editingCat ? tc("save") : tc("create")}
           </Button>
         </DialogContent>
       </Dialog>
@@ -538,18 +541,18 @@ export default function AdminShopPage() {
       <Dialog open={prodDialog} onOpenChange={(open) => !open && closeProdDialog()}>
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingProd ? "Editar producto" : "Nuevo producto"}</DialogTitle>
+            <DialogTitle>{editingProd ? t("editProduct") : t("newProduct")}</DialogTitle>
             <DialogDescription>
               {editingProd
-                ? "Modifica los detalles del producto"
-                : "Agrega un nuevo producto a tu tienda"}
+                ? t("modifyProductDetails")
+                : t("addNewProductToStore")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             {/* Image */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">Imagen</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted">{t("imageLabel")}</label>
               {form.imageUrl ? (
                 <div className="relative w-full overflow-hidden rounded-xl">
                   <img
@@ -575,7 +578,7 @@ export default function AdminShopPage() {
                   ) : (
                     <ImagePlus className="h-5 w-5" />
                   )}
-                  {uploading ? "Subiendo..." : "Subir imagen"}
+                  {uploading ? t("uploading") : t("uploadImage")}
                 </button>
               )}
               <input
@@ -587,7 +590,7 @@ export default function AdminShopPage() {
               />
               <div className="mt-1.5">
                 <Input
-                  placeholder="O pega una URL de imagen"
+                  placeholder={t("pasteImageUrl")}
                   value={form.imageUrl}
                   onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
                   className="text-xs"
@@ -596,18 +599,18 @@ export default function AdminShopPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">Nombre *</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted">{t("nameRequired")}</label>
               <Input
-                placeholder="Ej: Essential Leggings"
+                placeholder={t("productNamePlaceholder")}
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">Descripción</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted">{t("description")}</label>
               <Input
-                placeholder="Descripción corta del producto"
+                placeholder={t("shortDescription")}
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               />
@@ -615,7 +618,7 @@ export default function AdminShopPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted">Precio *</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted">{t("priceRequired")}</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -626,7 +629,7 @@ export default function AdminShopPage() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted">Moneda</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted">{t("currency")}</label>
                 <select
                   value={form.currency}
                   onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
@@ -640,13 +643,13 @@ export default function AdminShopPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">Categoría *</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted">{t("categoryRequired")}</label>
               <select
                 value={form.categoryId}
                 onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
                 className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-admin/30"
               >
-                <option value="">Selecciona...</option>
+                <option value="">{t("selectOption")}</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -657,15 +660,15 @@ export default function AdminShopPage() {
 
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted">
-                Link de compra externo (opcional)
+                {t("externalPurchaseLink")}
               </label>
               <Input
-                placeholder="https://tienda.com/producto"
+                placeholder={t("externalPurchasePlaceholder")}
                 value={form.externalUrl}
                 onChange={(e) => setForm((f) => ({ ...f, externalUrl: e.target.value }))}
               />
               <p className="mt-1 text-[11px] text-muted">
-                Si se llena, el cliente será redirigido a este link en vez de comprar en la plataforma.
+                {t("externalLinkHint")}
               </p>
             </div>
 
@@ -687,12 +690,12 @@ export default function AdminShopPage() {
               </button>
               <div>
                 <p className="text-sm font-medium">
-                  {form.isVisible ? "Visible para clientes" : "Solo uso interno"}
+                  {form.isVisible ? t("visibleForClients") : t("internalUseOnly")}
                 </p>
                 <p className="text-[11px] text-muted">
                   {form.isVisible
-                    ? "Los clientes pueden ver y comprar este producto"
-                    : "Solo se puede vender desde el estudio"}
+                    ? t("clientsCanBuy")
+                    : t("onlySellFromStudio")}
                 </p>
               </div>
             </div>
@@ -704,7 +707,7 @@ export default function AdminShopPage() {
             className="mt-2 w-full"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {editingProd ? "Guardar cambios" : "Crear producto"}
+            {editingProd ? t("saveChanges") : t("createProduct")}
           </Button>
         </DialogContent>
       </Dialog>

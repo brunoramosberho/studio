@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -101,13 +102,16 @@ interface SubscriptionPackage {
 
 // ── Helpers ──
 
-const NUDGE_LABELS: Record<string, string> = {
-  booking_flow: "Opciones en reserva",
-  intro_offer: "Intro Offer",
-  savings_email: "Email de ahorro",
-  package_upgrade: "Upgrade paquete",
-  post_class: "Post clase",
-};
+function useNudgeLabels() {
+  const t = useTranslations("admin");
+  return {
+    booking_flow: t("nudgeBookingFlow"),
+    intro_offer: t("nudgeIntroOffer"),
+    savings_email: t("nudgeSavingsEmail"),
+    package_upgrade: t("nudgePackageUpgrade"),
+    post_class: t("nudgePostClass"),
+  } as Record<string, string>;
+}
 
 const NUDGE_ICONS: Record<string, React.ReactNode> = {
   booking_flow: <Zap className="h-4 w-4" />,
@@ -154,6 +158,7 @@ function trendIndicator(value: number) {
 // ── Main Page ──
 
 export default function ConversionPage() {
+  const t = useTranslations("admin");
   const [range, setRange] = useState("30d");
 
   return (
@@ -161,17 +166,17 @@ export default function ConversionPage() {
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-stone-900">
-            Conversión a membresía
+            {t("conversionToMembership")}
           </h1>
           <p className="mt-1 text-sm text-stone-500">
-            Automatizaciones para convertir clientes a membresías mensuales.
+            {t("conversionSubtitle")}
           </p>
         </div>
 
         <Tabs defaultValue="resultados" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="resultados">Resultados</TabsTrigger>
-            <TabsTrigger value="configuracion">Configuración</TabsTrigger>
+            <TabsTrigger value="resultados">{t("resultsTab")}</TabsTrigger>
+            <TabsTrigger value="configuracion">{t("configTab")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="resultados">
@@ -196,6 +201,8 @@ function ResultsTab({
   range: string;
   onRangeChange: (r: string) => void;
 }) {
+  const t = useTranslations("admin");
+  const NUDGE_LABELS = useNudgeLabels();
   const { data: stats, isLoading } = useQuery<ConversionStats>({
     queryKey: ["conversion-stats", range],
     queryFn: async () => {
@@ -230,9 +237,9 @@ function ResultsTab({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="7d">Últimos 7 días</SelectItem>
-            <SelectItem value="30d">Últimos 30 días</SelectItem>
-            <SelectItem value="90d">Últimos 90 días</SelectItem>
+            <SelectItem value="7d">{t("last7days")}</SelectItem>
+            <SelectItem value="30d">{t("last30days")}</SelectItem>
+            <SelectItem value="90d">{t("last90days")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -240,27 +247,27 @@ function ResultsTab({
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
-          label="Usuarios alcanzados"
+          label={t("usersReached")}
           value={totals.nudgesShown.toLocaleString()}
           subtitle={totals.nudgesShownTotal > totals.nudgesShown ? `${totals.nudgesShownTotal} impresiones` : undefined}
           icon={<Eye className="h-5 w-5 text-stone-400" />}
           trend={trendIndicator(trends.vsLastPeriod.nudges)}
         />
         <StatCard
-          label="Conversiones"
+          label={t("conversions")}
           value={totals.conversions.toLocaleString()}
           subtitle={totals.conversionsTotal > totals.conversions ? `${totals.conversionsTotal} totales` : undefined}
           icon={<ArrowRightLeft className="h-5 w-5 text-stone-400" />}
           trend={trendIndicator(trends.vsLastPeriod.conversions)}
         />
         <StatCard
-          label="Tasa conversión"
+          label={t("conversionRate")}
           value={`${(totals.conversionRate * 100).toFixed(1)}%`}
           icon={<Target className="h-5 w-5 text-stone-400" />}
           valueClassName={rateColor(totals.conversionRate)}
         />
         <StatCard
-          label="MRR generado"
+          label={t("mrrGenerated")}
           value={formatCurrency(totals.mrr)}
           icon={<DollarSign className="h-5 w-5 text-stone-400" />}
           valueClassName="text-emerald-700"
@@ -271,7 +278,7 @@ function ResultsTab({
       {/* Funnel */}
       <div className="rounded-2xl border border-stone-200 bg-white p-6">
         <h3 className="mb-4 text-sm font-semibold text-stone-900">
-          Funnel de conversión
+          {t("conversionFunnel")}
         </h3>
         <FunnelRow funnel={funnel} />
       </div>
@@ -279,7 +286,7 @@ function ResultsTab({
       {/* By Automation */}
       <div className="rounded-2xl border border-stone-200 bg-white p-6">
         <h3 className="mb-4 text-sm font-semibold text-stone-900">
-          Por automatización
+          {t("byAutomation")}
         </h3>
         <div className="space-y-3">
           {byAutomation
@@ -300,15 +307,15 @@ function ResultsTab({
                 </span>
                 <div className="flex flex-1 items-center justify-end gap-6 text-sm">
                   <div className="text-center">
-                    <p className="text-xs text-stone-400">Mostrado</p>
+                    <p className="text-xs text-stone-400">{t("shown")}</p>
                     <p className="font-medium">{a.shown}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-stone-400">Conversiones</p>
+                    <p className="text-xs text-stone-400">{t("conversions")}</p>
                     <p className="font-medium">{a.converted}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-stone-400">Tasa</p>
+                    <p className="text-xs text-stone-400">{t("conversionRate")}</p>
                     <p className={cn("font-medium", rateColor(a.conversionRate))}>
                       {(a.conversionRate * 100).toFixed(1)}%
                     </p>
@@ -324,7 +331,7 @@ function ResultsTab({
             ))}
           {byAutomation.every((a) => a.shown === 0) && (
             <p className="text-sm text-stone-400 text-center py-4">
-              Aún no hay datos para este período.
+              {t("noDataForPeriod")}
             </p>
           )}
         </div>
@@ -333,11 +340,11 @@ function ResultsTab({
       {/* Recent Conversions */}
       <div className="rounded-2xl border border-stone-200 bg-white p-6">
         <h3 className="mb-4 text-sm font-semibold text-stone-900">
-          Conversiones recientes
+          {t("recentConversions")}
         </h3>
         {recentConversions.length === 0 ? (
           <p className="text-sm text-stone-400 text-center py-4">
-            Aún no hay conversiones.
+            {t("noConversionsYet")}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -345,13 +352,13 @@ function ResultsTab({
               <thead>
                 <tr className="border-b border-stone-100">
                   <th className="pb-2 text-left font-medium text-stone-400">
-                    Miembro
+                    {t("memberLabel")}
                   </th>
                   <th className="pb-2 text-left font-medium text-stone-400">
-                    Automatización
+                    {t("automationLabel")}
                   </th>
                   <th className="pb-2 text-left font-medium text-stone-400">
-                    Membresía
+                    {t("membershipLabel")}
                   </th>
                   <th className="pb-2 text-right font-medium text-stone-400">
                     Revenue
@@ -442,11 +449,12 @@ function FunnelRow({
 }: {
   funnel: ConversionStats["funnel"];
 }) {
+  const t = useTranslations("admin");
   const steps = [
-    { label: "Reservas sin membresía", value: funnel.reservasWithoutMembership },
-    { label: "Nudge mostrado", value: funnel.nudgesShown, total: funnel.nudgesShownTotal },
-    { label: "Interactuaron", value: funnel.interacted, total: funnel.interactedTotal },
-    { label: "Compraron", value: funnel.converted, total: funnel.convertedTotal },
+    { label: t("funnelBookingsNoMembership"), value: funnel.reservasWithoutMembership },
+    { label: t("funnelNudgeShown"), value: funnel.nudgesShown, total: funnel.nudgesShownTotal },
+    { label: t("funnelInteracted"), value: funnel.interacted, total: funnel.interactedTotal },
+    { label: t("funnelConverted"), value: funnel.converted, total: funnel.convertedTotal },
   ];
 
   return (
@@ -551,6 +559,7 @@ function ConfigCard({
   saving: boolean;
   onSave: () => void;
 }) {
+  const tc = useTranslations("common");
   return (
     <div className="rounded-2xl border border-stone-200 bg-white">
       <div className="flex items-center gap-4 px-6 py-5">
@@ -588,7 +597,7 @@ function ConfigCard({
                 ) : (
                   <Save className="mr-2 h-3.5 w-3.5" />
                 )}
-                Guardar
+                {tc("save")}
               </Button>
             </div>
           </div>
@@ -607,6 +616,7 @@ function BookingFlowConfig({
   config: ConversionConfig;
   memberships: SubscriptionPackage[];
 }) {
+  const t = useTranslations("admin");
   const queryClient = useQueryClient();
   const [featured, setFeatured] = useState(config.featuredMembershipId ?? "__none__");
   const [savingsBanner, setSavingsBanner] = useState(config.showSavingsBanner);
@@ -641,8 +651,8 @@ function BookingFlowConfig({
 
   return (
     <ConfigCard
-      title="Opciones en reserva"
-      description="Muestra opciones de membresía durante el flujo de reserva"
+      title={t("nudgeBookingFlow")}
+      description={t("bookingFlowDesc")}
       icon={<Zap className="h-5 w-5 text-blue-600" />}
       enabled={config.showInBookingFlow}
       onToggle={handleToggle}
@@ -652,14 +662,14 @@ function BookingFlowConfig({
       <div className="space-y-4">
         <div>
           <label className="mb-1.5 block text-xs font-medium text-stone-600">
-            Membresía destacada como &quot;Recomendada&quot;
+            {t("featuredMembership")}
           </label>
           <Select value={featured} onValueChange={setFeatured}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Seleccionar membresía" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__none__">Ninguna</SelectItem>
+              <SelectItem value="__none__">{t("none")}</SelectItem>
               {memberships.map((m) => (
                 <SelectItem key={m.id} value={m.id}>
                   {m.name} — {formatCurrency(m.price, m.currency)}
@@ -670,16 +680,16 @@ function BookingFlowConfig({
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-stone-600">
-            Mostrar banner de ahorro
+            {t("showSavingsBanner")}
           </label>
           <Select value={savingsBanner} onValueChange={setSavingsBanner}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="always">Siempre</SelectItem>
-              <SelectItem value="if_real">Solo si hay ahorro real</SelectItem>
-              <SelectItem value="never">Nunca</SelectItem>
+              <SelectItem value="always">{t("always")}</SelectItem>
+              <SelectItem value="if_real">{t("onlyIfRealSavings")}</SelectItem>
+              <SelectItem value="never">{t("never")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -697,6 +707,7 @@ function IntroOfferConfig({
   config: ConversionConfig;
   memberships: SubscriptionPackage[];
 }) {
+  const t = useTranslations("admin");
   const queryClient = useQueryClient();
   const [price, setPrice] = useState(config.introOfferPrice);
   const [membershipId, setMembershipId] = useState(
@@ -742,8 +753,8 @@ function IntroOfferConfig({
 
   return (
     <ConfigCard
-      title="Intro Offer"
-      description="Oferta especial para la primera visita de un cliente"
+      title={t("nudgeIntroOffer")}
+      description={t("introOfferDesc")}
       icon={<Gift className="h-5 w-5 text-purple-600" />}
       enabled={config.introOfferEnabled}
       onToggle={handleToggle}
@@ -753,7 +764,7 @@ function IntroOfferConfig({
       <div className="space-y-4">
         <div>
           <label className="mb-1.5 block text-xs font-medium text-stone-600">
-            Precio primer mes (€)
+            {t("introOfferPrice")}
           </label>
           <Input
             type="number"
@@ -765,7 +776,7 @@ function IntroOfferConfig({
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-stone-600">
-            Membresía a la que aplica
+            {t("membershipApplied")}
           </label>
           <Select value={membershipId} onValueChange={setMembershipId}>
             <SelectTrigger className="w-full">
@@ -782,7 +793,7 @@ function IntroOfferConfig({
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-stone-600">
-            Duración del timer
+            {t("timerDuration")}
           </label>
           <Select
             value={String(timerHours)}
@@ -811,6 +822,7 @@ function IntroOfferConfig({
 // ── Automation 3: Savings Email ──
 
 function SavingsEmailConfig({ config }: { config: ConversionConfig }) {
+  const t = useTranslations("admin");
   const queryClient = useQueryClient();
   const [triggerClasses, setTriggerClasses] = useState(
     config.savingsEmailTriggerClasses,
@@ -847,8 +859,8 @@ function SavingsEmailConfig({ config }: { config: ConversionConfig }) {
 
   return (
     <ConfigCard
-      title="Email de ahorro"
-      description="Email automático con el ahorro acumulado del miembro"
+      title={t("nudgeSavingsEmail")}
+      description={t("savingsEmailDesc")}
       icon={<Mail className="h-5 w-5 text-amber-600" />}
       enabled={config.savingsEmailEnabled}
       onToggle={handleToggle}
@@ -858,7 +870,7 @@ function SavingsEmailConfig({ config }: { config: ConversionConfig }) {
       <div className="space-y-4">
         <div>
           <label className="mb-1.5 block text-xs font-medium text-stone-600">
-            Trigger: clases sueltas este mes
+            {t("triggerClassesThisMonth")}
           </label>
           <Select
             value={String(triggerClasses)}
@@ -878,7 +890,7 @@ function SavingsEmailConfig({ config }: { config: ConversionConfig }) {
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-stone-600">
-            Delay de envío
+            {t("sendDelay")}
           </label>
           <Select
             value={String(delayHours)}
@@ -888,7 +900,7 @@ function SavingsEmailConfig({ config }: { config: ConversionConfig }) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="0">Inmediato</SelectItem>
+              <SelectItem value="0">{t("immediate")}</SelectItem>
               <SelectItem value="24">24 horas</SelectItem>
               <SelectItem value="48">48 horas</SelectItem>
             </SelectContent>
@@ -909,6 +921,7 @@ function SavingsEmailConfig({ config }: { config: ConversionConfig }) {
 // ── Automation 4: Package Upgrade ──
 
 function PackageUpgradeConfig({ config }: { config: ConversionConfig }) {
+  const t = useTranslations("admin");
   const queryClient = useQueryClient();
   const [trigger, setTrigger] = useState(config.packageUpgradeTrigger);
   const [timing, setTiming] = useState(config.packageUpgradeTiming);
@@ -945,8 +958,8 @@ function PackageUpgradeConfig({ config }: { config: ConversionConfig }) {
 
   return (
     <ConfigCard
-      title="Upgrade paquete"
-      description="Ofrecer upgrade a membresía cuando el paquete está por acabarse"
+      title={t("nudgePackageUpgrade")}
+      description={t("packageUpgradeDesc")}
       icon={<ArrowUpCircle className="h-5 w-5 text-emerald-600" />}
       enabled={config.packageUpgradeEnabled}
       onToggle={handleToggle}
@@ -956,7 +969,7 @@ function PackageUpgradeConfig({ config }: { config: ConversionConfig }) {
       <div className="space-y-4">
         <div>
           <label className="mb-1.5 block text-xs font-medium text-stone-600">
-            Clases restantes que activan el nudge
+            {t("remainingClassesTrigger")}
           </label>
           <Select
             value={String(trigger)}
@@ -983,8 +996,8 @@ function PackageUpgradeConfig({ config }: { config: ConversionConfig }) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="post_booking">Post-reserva</SelectItem>
-              <SelectItem value="pre_booking">Pre-reserva</SelectItem>
+              <SelectItem value="post_booking">{t("postBooking")}</SelectItem>
+              <SelectItem value="pre_booking">{t("preBooking")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -995,7 +1008,7 @@ function PackageUpgradeConfig({ config }: { config: ConversionConfig }) {
             className="data-[state=checked]:bg-[#3730B8] data-[state=unchecked]:bg-stone-300"
           />
           <label className="text-sm text-stone-700">
-            Aplicar crédito proporcional del paquete restante
+            {t("applyProportionalCredit")}
           </label>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { FeedEventCard } from "./feed-event-card";
 import { FeedPwaHint } from "./feed-pwa-hint";
 import { DiscoverDisciplines } from "./discover-disciplines";
@@ -91,15 +92,15 @@ function FeedSkeleton() {
   );
 }
 
-function EmptyFeed() {
+function EmptyFeed({ t }: { t: (key: string) => string }) {
   return (
     <div className="flex flex-col items-center py-16 text-center">
       <span className="text-4xl">👋</span>
       <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
-        El feed está vacío
+        {t("emptyTitle")}
       </h3>
       <p className="mt-1 max-w-xs text-sm text-muted">
-        Agrega amigos para ver sus reservas y logros aquí. Las clases completadas del estudio también aparecerán.
+        {t("emptyDesc")}
       </p>
     </div>
   );
@@ -110,6 +111,7 @@ export function SocialFeed() {
   const scrolledRef = useRef(false);
   const searchParams = useSearchParams();
   const highlightPostId = searchParams.get("post");
+  const t = useTranslations("feed");
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
@@ -169,14 +171,14 @@ export function SocialFeed() {
 
       {!isLoading && allEvents.length > 0 && (
         <h2 className="font-display text-[17px] font-bold text-foreground">
-          Actividad de la comunidad
+          {t("communityActivity")}
         </h2>
       )}
 
       {isLoading ? (
         <FeedSkeleton />
       ) : allEvents.length === 0 ? (
-        <EmptyFeed />
+        <EmptyFeed t={t} />
       ) : (
         <div className="-mx-4 sm:mx-0">
           <div className="space-y-2 sm:space-y-4">

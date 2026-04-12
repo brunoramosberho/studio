@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -335,6 +336,8 @@ function PlatformDot({ platform }: { platform: string }) {
 // ─── Page ───────────────────────────────────────────────
 
 export default function AdminPlatformsPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const { data: configs, isLoading } = useQuery<PlatformConfig[]>({
     queryKey: ["platform-configs"],
     queryFn: async () => {
@@ -356,10 +359,10 @@ export default function AdminPlatformsPage() {
       >
         <div>
           <h1 className="font-display text-2xl font-bold sm:text-3xl">
-            Plataformas
+            {t("platforms")}
           </h1>
           <p className="mt-1 text-sm text-muted">
-            ClassPass y Gympass — quotas, reservas y exportación
+            {t("platformsSubtitle")}
           </p>
         </div>
         <ConfigButtons />
@@ -369,11 +372,11 @@ export default function AdminPlatformsPage() {
 
       <Tabs defaultValue="resumen">
         <TabsList>
-          <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          <TabsTrigger value="resumen">{t("summaryTab")}</TabsTrigger>
           <TabsTrigger value="quotas">Quotas</TabsTrigger>
-          <TabsTrigger value="reservas">Reservas</TabsTrigger>
-          <TabsTrigger value="exportar">Exportar</TabsTrigger>
-          <TabsTrigger value="liquidacion">Liquidación</TabsTrigger>
+          <TabsTrigger value="reservas">{t("bookingsTab")}</TabsTrigger>
+          <TabsTrigger value="exportar">{t("exportTab")}</TabsTrigger>
+          <TabsTrigger value="liquidacion">{t("settlementTab")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumen"><ResumenTab demo={isDemo} /></TabsContent>
@@ -389,6 +392,7 @@ export default function AdminPlatformsPage() {
 // ─── Config Buttons ─────────────────────────────────────
 
 function ConfigButtons() {
+  const t = useTranslations("admin");
   const { data: configs } = useQuery<PlatformConfig[]>({
     queryKey: ["platform-configs"],
     queryFn: async () => {
@@ -413,7 +417,7 @@ function ConfigButtons() {
         <Link href="/admin/platforms/setup/classpass">
           <Button variant="outline" size="sm" className="gap-1.5">
             <Plus className="h-3.5 w-3.5" />
-            Añadir plataforma
+            {t("addPlatform")}
           </Button>
         </Link>
       )}

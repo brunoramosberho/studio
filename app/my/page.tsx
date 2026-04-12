@@ -15,6 +15,7 @@ import { FeedHighlights } from "@/components/feed/feed-highlights";
 import { useQuery } from "@tanstack/react-query";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { useBranding } from "@/components/branding-provider";
+import { useTranslations } from "next-intl";
 
 interface FeedHeaderData {
   hasActiveMembership: boolean;
@@ -22,6 +23,7 @@ interface FeedHeaderData {
 }
 
 export default function DashboardPage() {
+  const t = useTranslations("member");
   const { data: session } = useSession();
   const { communityHeadline } = useBranding();
   const firstName = session?.user?.name?.split(" ")[0] ?? "";
@@ -82,7 +84,7 @@ export default function DashboardPage() {
           {/* Greeting */}
           <div className="min-w-0 flex-1">
             <h1 className="truncate font-display text-lg font-bold text-foreground">
-              {firstName ? `Hola, ${firstName}` : "Feed"}
+              {firstName ? t("greeting", { name: firstName }) : t("feed")}
             </h1>
             <p className="text-xs text-muted">
               {communityHeadline}
@@ -116,12 +118,12 @@ export default function DashboardPage() {
           <Button asChild size="sm">
             <Link href="/schedule">
               <Calendar className="mr-2 h-4 w-4" />
-              Reserva
+              {t("book")}
             </Link>
           </Button>
           <Button asChild variant="secondary" size="sm">
             <Link href="/my/bookings">
-              Mis reservas
+              {t("myBookings")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

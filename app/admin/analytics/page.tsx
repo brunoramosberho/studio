@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { BarChart3, Clock, UserCog, GitCompareArrows } from "lucide-react";
 import {
@@ -23,13 +24,19 @@ import { ScheduleHeatmap } from "@/components/analytics/schedule-heatmap";
 import { InstructorTab } from "@/components/analytics/instructor-tab";
 import { CrossAnalysisTab } from "@/components/analytics/cross-analysis-tab";
 
-const PERIODS: { value: Period; label: string }[] = [
-  { value: "week", label: "Esta semana" },
-  { value: "month", label: "Este mes" },
-  { value: "quarter", label: "Últimos 3 meses" },
-];
+function usePeriodLabels() {
+  const t = useTranslations("admin");
+  return [
+    { value: "week" as Period, label: t("periodWeek") },
+    { value: "month" as Period, label: t("periodMonth") },
+    { value: "quarter" as Period, label: t("periodQuarter") },
+  ];
+}
 
 export default function AnalyticsPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
+  const PERIODS = usePeriodLabels();
   const [disciplineId, setDisciplineId] = useState<string | undefined>(
     undefined,
   );
@@ -62,7 +69,7 @@ export default function AnalyticsPage() {
               className="flex items-center gap-3"
             >
               <h1 className="font-display text-2xl font-bold sm:text-3xl">
-                Rendimiento
+                {t("performance")}
               </h1>
               {selectedDiscipline && (
                 <Badge
@@ -89,10 +96,10 @@ export default function AnalyticsPage() {
                 onValueChange={handleDisciplineChange}
               >
                 <SelectTrigger ref={disciplineSelectRef} className="h-9 w-48 text-xs">
-                  <SelectValue placeholder="Todas las disciplinas" />
+                  <SelectValue placeholder={t("allDisciplines")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas las disciplinas</SelectItem>
+                  <SelectItem value="all">{t("allDisciplines")}</SelectItem>
                   {data?.disciplines.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
                       <span className="flex items-center gap-2">
@@ -155,15 +162,15 @@ export default function AnalyticsPage() {
             <TabsList>
               <TabsTrigger value="schedule" className="gap-1.5">
                 <Clock className="h-3.5 w-3.5" />
-                Por Horario
+                {t("bySchedule")}
               </TabsTrigger>
               <TabsTrigger value="instructors" className="gap-1.5">
                 <UserCog className="h-3.5 w-3.5" />
-                Por Instructor
+                {t("byInstructor")}
               </TabsTrigger>
               <TabsTrigger value="cross" className="gap-1.5">
                 <GitCompareArrows className="h-3.5 w-3.5" />
-                Análisis cruzado
+                {t("crossAnalysis")}
               </TabsTrigger>
             </TabsList>
 

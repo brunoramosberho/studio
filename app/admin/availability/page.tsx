@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft,
@@ -125,12 +126,15 @@ interface AvailabilitySettings {
 
 type TabId = "requests" | "coverage" | "hourly" | "settings";
 
-const REASON_LABELS: Record<string, string> = {
-  vacation: "Vacaciones",
-  personal: "Personal",
-  training: "Formación",
-  other: "Otro",
-};
+function useReasonLabels() {
+  const t = useTranslations("admin");
+  return {
+    vacation: t("reasonVacation"),
+    personal: t("reasonPersonal"),
+    training: t("reasonTraining"),
+    other: t("reasonOther"),
+  } as Record<string, string>;
+}
 
 // ── Data fetching ──
 
@@ -191,6 +195,7 @@ async function reviewBlock(
 // ── Page ──
 
 export default function AdminAvailabilityPage() {
+  const t = useTranslations("admin");
   const [tab, setTab] = useState<TabId>("requests");
 
   const { data: pending = [] } = useQuery({
@@ -205,10 +210,10 @@ export default function AdminAvailabilityPage() {
       <div className="mx-auto max-w-5xl space-y-6 p-4 lg:p-6">
         <div>
           <h1 className="text-2xl font-bold text-stone-900">
-            Disponibilidad
+            {t("availability")}
           </h1>
           <p className="mt-1 text-sm text-stone-500">
-            Gestiona la disponibilidad del equipo
+            {t("availabilitySubtitle")}
           </p>
         </div>
 
@@ -218,25 +223,25 @@ export default function AdminAvailabilityPage() {
             onClick={() => setTab("requests")}
             badge={pendingCount > 0 ? pendingCount : undefined}
           >
-            Solicitudes
+            {t("availRequests")}
           </TabButton>
           <TabButton
             active={tab === "coverage"}
             onClick={() => setTab("coverage")}
           >
-            Cobertura del equipo
+            {t("availTeamCoverage")}
           </TabButton>
           <TabButton
             active={tab === "hourly"}
             onClick={() => setTab("hourly")}
           >
-            Vista por horas
+            {t("availHourlyView")}
           </TabButton>
           <TabButton
             active={tab === "settings"}
             onClick={() => setTab("settings")}
           >
-            Configuración
+            {t("settings")}
           </TabButton>
         </div>
 
@@ -334,6 +339,7 @@ function RequestsTab({ pending }: { pending: PendingBlock[] }) {
 
 function RequestCard({ block }: { block: PendingBlock }) {
   const queryClient = useQueryClient();
+  const REASON_LABELS = useReasonLabels();
   const [status, setStatus] = useState<
     "pending" | "approved" | "rejected" | "rejecting"
   >("pending");

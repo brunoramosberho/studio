@@ -7,6 +7,7 @@ import { BellIcon } from "lucide-animated";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface NotificationItem {
   id: string;
@@ -43,30 +44,17 @@ function getNotificationHref(n: NotificationItem): string | null {
   }
 }
 
-const typeLabels: Record<string, string> = {
-  FRIEND_REQUEST: "te envió solicitud de amistad",
-  FRIEND_ACCEPTED: "aceptó tu solicitud",
-  LIKE: "le dio like a tu post",
-  KUDOS: "te dio kudos 🙌",
-  REFERRAL_JOINED: "se unió con tu invitación 🎉",
-  REFERRAL_REWARD: "desbloqueó tu premio de referido 🎁",
-  REFERRAL_MANUAL_REWARD: "desbloqueó un premio — pendiente de entregar",
-  COMMENT: "comentó en tu post",
-  ACHIEVEMENT: "desbloqueó un logro",
-  CLASS_REMINDER: "Tu clase empieza pronto",
-  WAITLIST_PROMOTED: "¡Entraste a la clase desde la lista de espera!",
-  SPOT_AVAILABLE: "¡Se abrió un lugar en una clase que te interesa!",
-};
+// typeLabels is defined inside the component to access translations
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "ahora";
-  if (mins < 60) return `hace ${mins}m`;
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `hace ${hours}h`;
+  if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `hace ${days}d`;
+  if (days < 7) return `${days}d`;
   return new Date(dateStr).toLocaleDateString("es-ES", {
     day: "numeric",
     month: "short",
@@ -74,6 +62,21 @@ function timeAgo(dateStr: string) {
 }
 
 export default function NotificationsPage() {
+  const t = useTranslations("member");
+  const typeLabels: Record<string, string> = {
+    FRIEND_REQUEST: t("notifFriendRequest"),
+    FRIEND_ACCEPTED: t("notifFriendAccepted"),
+    LIKE: t("notifLike"),
+    KUDOS: t("notifKudos"),
+    REFERRAL_JOINED: t("notifReferralJoined"),
+    REFERRAL_REWARD: t("notifReferralReward"),
+    REFERRAL_MANUAL_REWARD: t("notifReferralManualReward"),
+    COMMENT: t("notifComment"),
+    ACHIEVEMENT: t("notifAchievement"),
+    CLASS_REMINDER: t("notifClassReminder"),
+    WAITLIST_PROMOTED: t("notifWaitlistPromoted"),
+    SPOT_AVAILABLE: t("notifSpotAvailable"),
+  };
   const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +110,7 @@ export default function NotificationsPage() {
             <ChevronLeft className="h-5 w-5 text-foreground" />
           </button>
           <h1 className="font-display text-xl font-bold text-foreground">
-            Notificaciones
+            {t("notifications")}
           </h1>
         </div>
 
@@ -119,10 +122,10 @@ export default function NotificationsPage() {
           <div className="rounded-2xl border border-border/50 bg-white py-16 text-center">
             <div className="mx-auto w-fit"><BellIcon size={40} className="text-muted/20" /></div>
             <p className="mt-3 text-[15px] font-medium text-foreground">
-              Sin notificaciones
+              {t("noNotifications")}
             </p>
             <p className="mt-1 text-[13px] text-muted">
-              Aquí aparecerán tus likes, comentarios y solicitudes
+              {t("noNotificationsDesc")}
             </p>
           </div>
         ) : (

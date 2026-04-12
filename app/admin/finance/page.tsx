@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatCurrency } from "@/lib/utils";
 import { format, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
+import { useTranslations } from "next-intl";
 
 // ── Types ──
 
@@ -110,12 +111,12 @@ const sourceColors: Record<string, string> = {
   classpass: "#7F77DD",
 };
 
-const sourceLabels: Record<string, string> = {
-  subscriptions: "Suscripciones",
-  packages: "Bonos y paquetes",
-  products: "Tienda",
-  penalties: "Penalizaciones",
-  classpass: "Plataformas externas",
+const sourceLabelKeys: Record<string, string> = {
+  subscriptions: "subscriptionsLabel",
+  packages: "packagesLabel",
+  products: "productsLabel",
+  penalties: "penalties",
+  classpass: "externalPlatforms",
 };
 
 const methodStyles: Record<string, string> = {
@@ -126,12 +127,12 @@ const methodStyles: Record<string, string> = {
   gympass: "bg-purple-50 text-purple-700",
 };
 
-const methodLabels: Record<string, string> = {
-  stripe: "Stripe",
-  tpv: "TPV banco",
-  cash: "Efectivo",
-  classpass: "ClassPass",
-  gympass: "Gympass",
+const methodLabelKeys: Record<string, string> = {
+  stripe: "stripe",
+  tpv: "tpv",
+  cash: "cash",
+  classpass: "externalPlatforms",
+  gympass: "gympass",
 };
 
 const conceptTypeStyles: Record<string, string> = {
@@ -141,41 +142,41 @@ const conceptTypeStyles: Record<string, string> = {
   penalty: "bg-red-50 text-red-700",
 };
 
-const conceptTypeLabels: Record<string, string> = {
-  subscription: "Suscripción",
-  package: "Bono / Paquete",
-  product: "Producto",
-  penalty: "Penalización",
+const conceptTypeLabelKeys: Record<string, string> = {
+  subscription: "subscription",
+  package: "packageLabel",
+  product: "productLabel",
+  penalty: "penalty",
 };
 
 const periods = [
-  { value: "today", label: "Hoy" },
-  { value: "month", label: "Este mes" },
-  { value: "last30", label: "Últimos 30 días" },
-  { value: "last90", label: "Últimos 90 días" },
-  { value: "year", label: "Este año" },
+  { value: "today", labelKey: "periodToday" },
+  { value: "month", labelKey: "periodMonth" },
+  { value: "last30", labelKey: "periodLast30" },
+  { value: "last90", labelKey: "periodLast90" },
+  { value: "year", labelKey: "periodYear" },
 ] as const;
 
 const methodFilters = [
-  { value: "all", label: "Todos" },
-  { value: "stripe", label: "Stripe" },
-  { value: "tpv", label: "TPV" },
-  { value: "cash", label: "Efectivo" },
-  { value: "failed", label: "Fallidos" },
+  { value: "all", labelKey: "methodAll" },
+  { value: "stripe", labelKey: "methodStripe" },
+  { value: "tpv", labelKey: "methodTpv" },
+  { value: "cash", labelKey: "methodCash" },
+  { value: "failed", labelKey: "methodFailed" },
 ] as const;
 
 // ── Helpers ──
 
-function formatTransactionDate(dateStr: string) {
+function formatTransactionDate(dateStr: string, t: (key: string) => string) {
   const d = new Date(dateStr);
-  if (isToday(d)) return `Hoy ${format(d, "HH:mm")}`;
-  if (isYesterday(d)) return `Ayer ${format(d, "HH:mm")}`;
+  if (isToday(d)) return `${t("todayDate")} ${format(d, "HH:mm")}`;
+  if (isYesterday(d)) return `${t("yesterdayDate")} ${format(d, "HH:mm")}`;
   return format(d, "d MMM", { locale: es });
 }
 
-function formatAvailableOn(dateStr: string | null, source: string) {
+function formatAvailableOn(dateStr: string | null, source: string, t: (key: string) => string) {
   if (!dateStr) {
-    if (source === "cash") return "En el momento";
+    if (source === "cash") return t("atTheMoment");
     return "—";
   }
   const d = new Date(dateStr);
@@ -198,6 +199,8 @@ const fadeUp = {
 // ── Component ──
 
 export default function FinancePage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const [range, setRange] = useState<string>("month");
   const [method, setMethod] = useState("all");
   const [search, setSearch] = useState("");
@@ -238,9 +241,9 @@ export default function FinancePage() {
   const summary = finance?.summary;
   const allTx = txData?.transactions ?? [];
   const tx = hideAbandoned
-    ? allTx.filter((t) => {
-        if (t.status !== "pending") return true;
-        return Date.now() - new Date(t.createdAt).getTime() < 60 * 60 * 1000;
+    ? allTx.filter((txn) => {
+        if (txn.status !== "pending") return true;
+        return Date.now() - new Date(txn.createdAt).getTime() < 60 * 60 * 1000;
       })
     : allTx;
   const pagination = txData?.pagination;
@@ -254,9 +257,9 @@ export default function FinancePage() {
         className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Finanzas</h1>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("financeTitle")}</h1>
           <p className="mt-1 text-sm text-stone-400">
-            Resumen financiero del studio
+            {t("financeSummary")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -266,7 +269,7 @@ export default function FinancePage() {
             className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-700 outline-none focus:border-stone-400"
           >
             {periods.map((p) => (
-              <option key={p.value} value={p.value}>{p.label}</option>
+              <option key={p.value} value={p.value}>{t(p.labelKey)}</option>
             ))}
           </select>
           <button
@@ -274,7 +277,7 @@ export default function FinancePage() {
             className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
           >
             <Download className="h-3.5 w-3.5" />
-            Exportar CSV
+            {t("exportCsv")}
           </button>
         </div>
       </motion.div>
@@ -293,15 +296,15 @@ export default function FinancePage() {
             <motion.div variants={fadeUp}>
               <div className="bg-white border border-stone-100 rounded-2xl p-4">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <DollarSign className="h-3 w-3" /> Ingresos brutos
+                  <DollarSign className="h-3 w-3" /> {t("grossRevenue")}
                 </p>
                 <p className="text-[22px] font-medium leading-none">
                   {formatCurrency(summary?.grossRevenue ?? 0)}
                 </p>
                 <p className="text-[11px] text-stone-400 mt-1">
-                  Fees de Stripe en dashboard.stripe.com
+                  {t("stripeFeesDashboard")}
                 </p>
-                <TrendBadge value={summary?.vsPreviousPeriod.grossRevenue ?? 0} label="vs período anterior" />
+                <TrendBadge value={summary?.vsPreviousPeriod.grossRevenue ?? 0} label={t("vsPrevPeriod")} />
               </div>
             </motion.div>
 
@@ -309,17 +312,17 @@ export default function FinancePage() {
             <motion.div variants={fadeUp}>
               <div className="bg-white border border-stone-100 rounded-2xl p-4">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <RefreshCw className="h-3 w-3" /> MRR activo
+                  <RefreshCw className="h-3 w-3" /> {t("mrrActive")}
                 </p>
                 <p className="text-[22px] font-medium leading-none text-[#3730B8]">
                   {formatCurrency(summary?.mrr ?? 0)}
                 </p>
                 <p className="text-[11px] text-stone-400 mt-1">
-                  {summary?.activeMemberships ?? 0} membresías activas
+                  {summary?.activeMemberships ?? 0} {t("activeMembershipsCount")}
                 </p>
                 <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
                   <TrendingUp className="h-3 w-3" />
-                  +{summary?.newMembershipsThisMonth ?? 0} nuevas este mes
+                  +{summary?.newMembershipsThisMonth ?? 0} {t("newThisMonth")}
                 </p>
               </div>
             </motion.div>
@@ -328,7 +331,7 @@ export default function FinancePage() {
             <motion.div variants={fadeUp}>
               <div className="bg-white border border-stone-100 rounded-2xl p-4">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" /> Pagos fallidos
+                  <AlertTriangle className="h-3 w-3" /> {t("failedPayments")}
                 </p>
                 <p className={cn(
                   "text-[22px] font-medium leading-none",
@@ -337,15 +340,15 @@ export default function FinancePage() {
                   {formatCurrency(summary?.failedPaymentsAmount ?? 0)}
                 </p>
                 <p className="text-[11px] text-stone-400 mt-1">
-                  {summary?.failedPaymentsCount ?? 0} tarjetas rechazadas
+                  {summary?.failedPaymentsCount ?? 0} {t("declinedCards")}
                 </p>
                 {(summary?.failedPaymentsCount ?? 0) > 0 ? (
                   <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> Requieren acción
+                    <AlertTriangle className="h-3 w-3" /> {t("requireAction")}
                   </p>
                 ) : (
                   <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> Sin pagos fallidos
+                    <TrendingUp className="h-3 w-3" /> {t("noFailedPaymentsMsg")}
                   </p>
                 )}
               </div>
@@ -355,16 +358,16 @@ export default function FinancePage() {
             <motion.div variants={fadeUp}>
               <div className="bg-white border border-stone-100 rounded-2xl p-4">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> Próximos cobros
+                  <Clock className="h-3 w-3" /> {t("upcomingCharges")}
                 </p>
                 <p className="text-[22px] font-medium leading-none">
                   {formatCurrency(summary?.upcomingRenewalsAmount ?? 0)}
                 </p>
                 <p className="text-[11px] text-stone-400 mt-1">
-                  {summary?.upcomingRenewalsCount ?? 0} renovaciones esta semana
+                  {summary?.upcomingRenewalsCount ?? 0} {t("renewalsCount")}
                 </p>
                 <p className="text-[11px] text-stone-400 mt-1 flex items-center gap-1">
-                  Próximos 7 días
+                  {t("next7Days")}
                 </p>
               </div>
             </motion.div>
@@ -376,21 +379,21 @@ export default function FinancePage() {
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Daily Revenue Bar Chart */}
         <div className="lg:col-span-2 bg-white border border-stone-100 rounded-2xl p-4">
-          <p className="text-xs font-medium text-stone-600 mb-3">Ingresos diarios</p>
+          <p className="text-xs font-medium text-stone-600 mb-3">{t("dailyRevenue")}</p>
           {financeLd ? (
             <Skeleton className="h-[100px]" />
           ) : (
-            <DailyRevenueChart data={finance?.dailyRevenue ?? []} />
+            <DailyRevenueChart data={finance?.dailyRevenue ?? []} t={t} />
           )}
         </div>
 
         {/* Source Breakdown */}
         <div className="bg-white border border-stone-100 rounded-2xl p-4">
-          <p className="text-xs font-medium text-stone-600 mb-3">Desglose por fuente</p>
+          <p className="text-xs font-medium text-stone-600 mb-3">{t("sourceBreakdown")}</p>
           {financeLd ? (
             <Skeleton className="h-[100px]" />
           ) : (
-            <SourceBreakdown sources={finance?.bySource ?? []} />
+            <SourceBreakdown sources={finance?.bySource ?? []} t={t} />
           )}
         </div>
       </div>
@@ -402,7 +405,7 @@ export default function FinancePage() {
             <AlertTriangle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-red-900">
-                {summary!.failedPaymentsCount} pagos fallidos — {formatCurrency(summary!.failedPaymentsAmount)} pendientes
+                {summary!.failedPaymentsCount} {t("failedPayments").toLowerCase()} — {formatCurrency(summary!.failedPaymentsAmount)} {t("pendingAmount")}
               </p>
               <p className="text-xs text-red-700 mt-1">
                 {finance!.failedPayments
@@ -418,7 +421,7 @@ export default function FinancePage() {
               className="text-xs font-medium px-2.5 py-1.5 bg-red-200 text-red-900 rounded-lg hover:bg-red-300 flex-shrink-0"
             >
               <Bell className="h-3 w-3 inline mr-1" />
-              Notificar
+              {t("notify")}
             </button>
           </div>
         </motion.div>
@@ -430,14 +433,14 @@ export default function FinancePage() {
             <Clock className="h-4 w-4 text-amber-700 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-amber-900">
-                {summary!.upcomingRenewalsCount} renovaciones esta semana — {formatCurrency(summary!.upcomingRenewalsAmount)}
+                {summary!.upcomingRenewalsCount} {t("renewalsThisWeek")} — {formatCurrency(summary!.upcomingRenewalsAmount)}
               </p>
             </div>
             <button
               onClick={() => renewalsRef.current?.scrollIntoView({ behavior: "smooth" })}
               className="text-xs font-medium px-2.5 py-1.5 bg-amber-200 text-amber-900 rounded-lg hover:bg-amber-300 flex-shrink-0"
             >
-              Ver todas
+              {t("viewAll")}
             </button>
           </div>
         </motion.div>
@@ -451,7 +454,7 @@ export default function FinancePage() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
             <input
               type="text"
-              placeholder="Buscar por nombre, monto o método..."
+              placeholder={t("searchTransactions")}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-stone-200 text-sm outline-none focus:border-stone-400 placeholder:text-stone-300"
@@ -469,7 +472,7 @@ export default function FinancePage() {
                     : "bg-stone-100 text-stone-500 hover:bg-stone-200",
                 )}
               >
-                {f.label}
+                {t(f.labelKey)}
               </button>
             ))}
             <label className="ml-2 flex items-center gap-1.5 text-xs text-stone-400 cursor-pointer select-none">
@@ -479,7 +482,7 @@ export default function FinancePage() {
                 onChange={(e) => setHideAbandoned(e.target.checked)}
                 className="rounded border-stone-300 text-stone-600 focus:ring-stone-400 h-3 w-3"
               />
-              Ocultar abandonados
+              {t("hideAbandoned")}
             </label>
           </div>
         </div>
@@ -489,15 +492,15 @@ export default function FinancePage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-stone-100">
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left">Cliente</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left">Concepto</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left">Método</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-right">Monto</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left hidden lg:table-cell">Fee / Neto</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left hidden xl:table-cell">Llega al banco</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-center">Estado</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left hidden lg:table-cell">Cobrado por</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-right">Fecha</th>
+                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left">{t("clientColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left">{t("conceptColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left">{t("methodColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-right">{t("amountColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left hidden lg:table-cell">{t("feeNetColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left hidden xl:table-cell">{t("arrivesBankColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-center">{t("statusColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left hidden lg:table-cell">{t("processedByColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-right">{t("dateColumn")}</th>
               </tr>
             </thead>
             <tbody>
@@ -510,71 +513,71 @@ export default function FinancePage() {
               ) : tx.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-8 text-center text-sm text-stone-400">
-                    Sin transacciones en este período
+                    {t("noTransactionsInPeriod")}
                   </td>
                 </tr>
               ) : (
-                tx.map((t) => (
-                  <tr key={t.id} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
+                tx.map((txn) => (
+                  <tr key={txn.id} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
                     {/* Client */}
                     <td className="px-4 py-2.5">
-                      {t.memberId ? (
-                        <Link href={`/admin/clients/${t.memberId}`} className="group block">
-                          <p className="text-xs font-medium text-stone-700 truncate max-w-[140px] group-hover:text-stone-900 group-hover:underline">{t.memberName}</p>
-                          <p className="text-[10px] text-stone-400 truncate max-w-[140px]">{t.memberEmail}</p>
+                      {txn.memberId ? (
+                        <Link href={`/admin/clients/${txn.memberId}`} className="group block">
+                          <p className="text-xs font-medium text-stone-700 truncate max-w-[140px] group-hover:text-stone-900 group-hover:underline">{txn.memberName}</p>
+                          <p className="text-[10px] text-stone-400 truncate max-w-[140px]">{txn.memberEmail}</p>
                         </Link>
                       ) : (
                         <div>
-                          <p className="text-xs font-medium text-stone-700 truncate max-w-[140px]">{t.memberName}</p>
-                          <p className="text-[10px] text-stone-400 truncate max-w-[140px]">{t.memberEmail}</p>
+                          <p className="text-xs font-medium text-stone-700 truncate max-w-[140px]">{txn.memberName}</p>
+                          <p className="text-[10px] text-stone-400 truncate max-w-[140px]">{txn.memberEmail}</p>
                         </div>
                       )}
                     </td>
                     {/* Concept */}
                     <td className="px-4 py-2.5">
-                      {t.itemName && t.itemHref ? (
-                        <Link href={t.itemHref} className="text-xs font-medium text-stone-700 hover:text-stone-900 hover:underline truncate block max-w-[170px]">
-                          {t.itemName}
+                      {txn.itemName && txn.itemHref ? (
+                        <Link href={txn.itemHref} className="text-xs font-medium text-stone-700 hover:text-stone-900 hover:underline truncate block max-w-[170px]">
+                          {txn.itemName}
                         </Link>
                       ) : (
-                        <p className="text-xs font-medium text-stone-600 truncate max-w-[170px]">{t.concept ?? "—"}</p>
+                        <p className="text-xs font-medium text-stone-600 truncate max-w-[170px]">{txn.concept ?? "—"}</p>
                       )}
-                      <p className="text-[10px] text-stone-400 truncate max-w-[170px]">{t.conceptSub}</p>
-                      <span className={cn("inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium", conceptTypeStyles[t.conceptType] ?? "bg-stone-100 text-stone-500")}>
-                        {conceptTypeLabels[t.conceptType] ?? t.conceptType}
+                      <p className="text-[10px] text-stone-400 truncate max-w-[170px]">{txn.conceptSub}</p>
+                      <span className={cn("inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium", conceptTypeStyles[txn.conceptType] ?? "bg-stone-100 text-stone-500")}>
+                        {conceptTypeLabelKeys[txn.conceptType] ? t(conceptTypeLabelKeys[txn.conceptType]) : txn.conceptType}
                       </span>
                     </td>
                     {/* Method */}
                     <td className="px-4 py-2.5">
-                      <span className={cn("inline-block px-2 py-0.5 rounded-full text-[10px] font-medium", methodStyles[t.source] ?? "bg-stone-100 text-stone-500")}>
-                        {methodLabels[t.source] ?? t.source}
+                      <span className={cn("inline-block px-2 py-0.5 rounded-full text-[10px] font-medium", methodStyles[txn.source] ?? "bg-stone-100 text-stone-500")}>
+                        {methodLabelKeys[txn.source] ? t(methodLabelKeys[txn.source]) : txn.source}
                       </span>
                     </td>
                     {/* Amount */}
                     <td className="px-4 py-2.5 text-right">
-                      <p className="text-xs font-medium text-stone-700">{formatCurrency(t.grossAmount)}</p>
+                      <p className="text-xs font-medium text-stone-700">{formatCurrency(txn.grossAmount)}</p>
                     </td>
                     {/* Fee / Net */}
                     <td className="px-4 py-2.5 hidden lg:table-cell">
-                      <FeeNetCell transaction={t} />
+                      <FeeNetCell transaction={txn} t={t} />
                     </td>
                     {/* Available On */}
                     <td className="px-4 py-2.5 hidden xl:table-cell">
                       <p className="text-[10px] text-stone-400">
-                        {formatAvailableOn(t.availableOn, t.source)}
+                        {formatAvailableOn(txn.availableOn, txn.source, t)}
                       </p>
                     </td>
                     {/* Status */}
                     <td className="px-4 py-2.5 text-center">
-                      <StatusBadge status={t.status} createdAt={t.createdAt} />
+                      <StatusBadge status={txn.status} createdAt={txn.createdAt} t={t} />
                     </td>
                     {/* Processed By */}
                     <td className="px-4 py-2.5 hidden lg:table-cell">
-                      <ProcessedByCell transaction={t} />
+                      <ProcessedByCell transaction={txn} t={t} />
                     </td>
                     {/* Date */}
                     <td className="px-4 py-2.5 text-right">
-                      <p className="text-[10px] text-stone-400">{formatTransactionDate(t.createdAt)}</p>
+                      <p className="text-[10px] text-stone-400">{formatTransactionDate(txn.createdAt, t)}</p>
                     </td>
                   </tr>
                 ))
@@ -587,7 +590,7 @@ export default function FinancePage() {
         {pagination && pagination.totalPages > 1 && (
           <div className="px-4 py-3 border-t border-stone-50 flex items-center justify-between">
             <p className="text-[10px] text-stone-400">
-              Mostrando {((pagination.page - 1) * pagination.limit) + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} transacciones
+              {t("showingPagination", { from: ((pagination.page - 1) * pagination.limit) + 1, to: Math.min(pagination.page * pagination.limit, pagination.total), total: pagination.total })}
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -615,15 +618,15 @@ export default function FinancePage() {
       {/* Upcoming Renewals */}
       {!financeLd && finance?.upcomingRenewals && finance.upcomingRenewals.length > 0 && (
         <div ref={renewalsRef}>
-          <h2 className="font-display text-lg font-bold mb-3">Próximas renovaciones</h2>
+          <h2 className="font-display text-lg font-bold mb-3">{t("upcomingRenewalsTitle")}</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {finance.upcomingRenewals.map((r) => {
-              const dayLabel = formatRenewalDay(r.date);
+              const dayLabel = formatRenewalDay(r.date, t);
               const grouped = groupMemberships(r.memberships);
               return (
                 <div key={r.date} className="bg-white border border-stone-100 rounded-xl p-3">
-                  <p className="text-[10px] text-stone-400">{dayLabel} · {r.count} cobros</p>
-                  <p className="text-sm font-medium text-stone-900">Renovaciones de membresía</p>
+                  <p className="text-[10px] text-stone-400">{dayLabel} · {r.count} {t("chargesCount")}</p>
+                  <p className="text-sm font-medium text-stone-900">{t("membershipRenewals")}</p>
                   <p className="text-[13px] font-medium text-[#3730B8] mt-1">{formatCurrency(r.totalAmount)}</p>
                   <p className="text-[10px] text-stone-400">{grouped}</p>
                 </div>
@@ -649,8 +652,8 @@ function TrendBadge({ value, label }: { value: number; label: string }) {
   );
 }
 
-function DailyRevenueChart({ data }: { data: DailyRevenue[] }) {
-  if (data.length === 0) return <p className="text-xs text-stone-400">Sin datos</p>;
+function DailyRevenueChart({ data, t }: { data: DailyRevenue[]; t: (key: string) => string }) {
+  if (data.length === 0) return <p className="text-xs text-stone-400">{t("noData")}</p>;
 
   const maxAmount = Math.max(...data.map((d) => d.amount), 1);
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -684,16 +687,16 @@ function DailyRevenueChart({ data }: { data: DailyRevenue[] }) {
   );
 }
 
-function SourceBreakdown({ sources }: { sources: BySource[] }) {
+function SourceBreakdown({ sources, t }: { sources: BySource[]; t: (key: string) => string }) {
   const filtered = sources.filter((s) => s.amount > 0);
-  if (filtered.length === 0) return <p className="text-xs text-stone-400">Sin datos</p>;
+  if (filtered.length === 0) return <p className="text-xs text-stone-400">{t("noData")}</p>;
 
   return (
     <div className="space-y-2.5">
       {filtered.map((s) => (
         <div key={s.source} className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: sourceColors[s.source] ?? "#999" }} />
-          <span className="text-xs text-stone-600 flex-1">{sourceLabels[s.source] ?? s.source}</span>
+          <span className="text-xs text-stone-600 flex-1">{sourceLabelKeys[s.source] ? t(sourceLabelKeys[s.source]) : s.source}</span>
           <span className="text-xs font-medium text-stone-700">{formatCurrency(s.amount)}</span>
           <span className="text-[10px] text-stone-400 w-8 text-right">{s.percent}%</span>
         </div>
@@ -702,49 +705,49 @@ function SourceBreakdown({ sources }: { sources: BySource[] }) {
   );
 }
 
-function FeeNetCell({ transaction: t }: { transaction: Transaction }) {
-  if (t.source === "cash") {
-    return <span className="text-[10px] text-stone-400">Sin fee</span>;
+function FeeNetCell({ transaction: txn, t }: { transaction: Transaction; t: (key: string) => string }) {
+  if (txn.source === "cash") {
+    return <span className="text-[10px] text-stone-400">{t("noFee")}</span>;
   }
-  if (t.fee == null) {
+  if (txn.fee == null) {
     return <span className="text-[10px] text-stone-400">—</span>;
   }
-  const prefix = t.isFeesEstimated ? "~" : "";
+  const prefix = txn.isFeesEstimated ? "~" : "";
   return (
-    <div className="text-[10px] text-stone-400" title={t.isFeesEstimated ? "Estimado según config TPV" : undefined}>
-      <span>{prefix}{formatCurrency(t.fee)} fee</span>
+    <div className="text-[10px] text-stone-400" title={txn.isFeesEstimated ? t("estimated") : undefined}>
+      <span>{prefix}{formatCurrency(txn.fee)} {t("fee")}</span>
       <span className="mx-0.5">·</span>
-      <span>{prefix}{formatCurrency(t.netAmount ?? 0)} neto</span>
+      <span>{prefix}{formatCurrency(txn.netAmount ?? 0)} {t("net")}</span>
     </div>
   );
 }
 
-function StatusBadge({ status, createdAt }: { status: string; createdAt: string }) {
+function StatusBadge({ status, createdAt, t }: { status: string; createdAt: string; t: (key: string) => string }) {
   if (status === "succeeded") {
-    return <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-700 font-medium">✓ Cobrado</span>;
+    return <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-700 font-medium">✓ {t("statusSucceeded")}</span>;
   }
   if (status === "failed") {
-    return <span className="inline-flex items-center gap-0.5 text-[10px] text-red-700 font-medium">✗ Fallido</span>;
+    return <span className="inline-flex items-center gap-0.5 text-[10px] text-red-700 font-medium">✗ {t("statusFailed")}</span>;
   }
   if (status === "refunded") {
-    return <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-500 font-medium">↩ Reembolsado</span>;
+    return <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-500 font-medium">↩ {t("statusRefunded")}</span>;
   }
   const ageMs = Date.now() - new Date(createdAt).getTime();
   const isAbandoned = ageMs > 60 * 60 * 1000;
   if (isAbandoned) {
-    return <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-400 font-medium">○ Abandonado</span>;
+    return <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-400 font-medium">○ {t("statusAbandoned")}</span>;
   }
-  return <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 font-medium">● Pendiente</span>;
+  return <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 font-medium">● {t("statusPending")}</span>;
 }
 
-function ProcessedByCell({ transaction: t }: { transaction: Transaction }) {
-  if (t.processedByType === "system" || !t.processedBy) {
+function ProcessedByCell({ transaction: txn, t }: { transaction: Transaction; t: (key: string) => string }) {
+  if (txn.processedByType === "system" || !txn.processedBy) {
     return (
       <div className="flex items-center gap-1.5">
         <div className="w-5 h-5 rounded-full bg-stone-100 flex items-center justify-center">
           <Zap className="w-3 h-3 text-stone-400" />
         </div>
-        <span className="text-xs text-stone-400">Sistema</span>
+        <span className="text-xs text-stone-400">{t("systemLabel")}</span>
       </div>
     );
   }
@@ -752,18 +755,18 @@ function ProcessedByCell({ transaction: t }: { transaction: Transaction }) {
     <div className="flex items-center gap-1.5">
       <div
         className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium text-white"
-        style={{ backgroundColor: t.processedBy.avatarColor }}
+        style={{ backgroundColor: txn.processedBy.avatarColor }}
       >
-        {t.processedBy.initials}
+        {txn.processedBy.initials}
       </div>
-      <span className="text-xs text-stone-600">{t.processedBy.name}</span>
+      <span className="text-xs text-stone-600">{txn.processedBy.name}</span>
     </div>
   );
 }
 
-function formatRenewalDay(dateStr: string) {
+function formatRenewalDay(dateStr: string, t: (key: string) => string) {
   const d = new Date(dateStr + "T00:00:00");
-  if (isToday(d)) return "Hoy";
+  if (isToday(d)) return t("todayDate");
   return format(d, "EEEE d MMM", { locale: es });
 }
 

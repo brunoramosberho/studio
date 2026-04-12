@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, X } from "lucide-react";
@@ -14,6 +15,7 @@ const SKIP_PREFIXES = ["/login", "/admin", "/coach", "/dev", "/waiver", "/super-
 export function WaiverGate() {
   const pathname = usePathname();
   const { data: session, status: authStatus } = useSession();
+  const t = useTranslations("booking");
   const [show, setShow] = useState(false);
   const iconRef = useRef<FileTextIconHandle>(null);
 
@@ -64,10 +66,10 @@ export function WaiverGate() {
 
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold text-stone-800">
-                Tienes un acuerdo pendiente
+                {t("waiverPending")}
               </p>
               <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
-                Antes de asistir a tu clase, necesitas firmar el acuerdo de responsabilidad. Es rápido y solo lo haces una vez.
+                {t("waiverGateDesc")}
               </p>
 
               <div className="mt-3 flex items-center gap-2">
@@ -76,14 +78,14 @@ export function WaiverGate() {
                   onClick={handleDismiss}
                   className="flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-medium text-white transition-opacity active:opacity-80"
                 >
-                  Firmar ahora
+                  {t("signNow")}
                   <ArrowRight size={13} />
                 </Link>
                 <button
                   onClick={handleDismiss}
                   className="rounded-full px-3 py-1.5 text-xs text-stone-400 transition-colors hover:text-stone-600"
                 >
-                  Después
+                  {t("later")}
                 </button>
               </div>
             </div>

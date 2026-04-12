@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { PageTransition } from "@/components/shared/page-transition";
 import { SubscribeSheet } from "@/components/checkout/SubscribeSheet";
 import { formatCurrency } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import type { UserPackageWithDetails } from "@/types";
 
 interface MemberSub {
@@ -62,15 +63,17 @@ function daysUntil(date: Date | string): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-const STATUS_LABEL: Record<string, { text: string; variant: "success" | "warning" | "secondary" | "danger" }> = {
-  active: { text: "Activa", variant: "success" },
-  past_due: { text: "Pago pendiente", variant: "warning" },
-  paused: { text: "Pausada", variant: "secondary" },
-  canceled: { text: "Cancelada", variant: "danger" },
-  trialing: { text: "Prueba", variant: "success" },
-};
+// STATUS_LABEL is defined inside the component to access translations
 
 export default function PackagesPage() {
+  const t = useTranslations("member");
+  const STATUS_LABEL: Record<string, { text: string; variant: "success" | "warning" | "secondary" | "danger" }> = {
+    active: { text: t("subActive"), variant: "success" },
+    past_due: { text: t("subPastDue"), variant: "warning" },
+    paused: { text: t("subPaused"), variant: "secondary" },
+    canceled: { text: t("subCanceled"), variant: "danger" },
+    trialing: { text: t("subTrialing"), variant: "success" },
+  };
   const router = useRouter();
   const [packages, setPackages] = useState<UserPackageWithDetails[]>([]);
   const [subscriptions, setSubscriptions] = useState<MemberSub[]>([]);
@@ -118,7 +121,7 @@ export default function PackagesPage() {
       month: "long",
       year: "numeric",
     });
-    const interval = sub.package.recurringInterval === "year" ? "año" : "mes";
+    const interval = sub.package.recurringInterval === "year" ? t("year") : t("month");
 
     return (
       <motion.div key={sub.id} variants={fadeUp}>
@@ -129,10 +132,10 @@ export default function PackagesPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={isCanceled ? "danger" : badge.variant}>
-                      {isCanceled ? "Cancelada" : badge.text}
+                      {isCanceled ? t("subCanceled") : badge.text}
                     </Badge>
                     {sub.cancelAtPeriodEnd && sub.status !== "canceled" && (
-                      <Badge variant="warning">Cancela {new Date(sub.currentPeriodEnd).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</Badge>
+                      <Badge variant="warning">{t("cancelsOn")} {new Date(sub.currentPeriodEnd).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</Badge>
                     )}
                   </div>
                   <CardTitle className="mt-2 truncate">{sub.package.name}</CardTitle>
@@ -147,16 +150,16 @@ export default function PackagesPage() {
               {sub.status === "paused" && sub.resumesAt && (
                 <div className="mb-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
                   <Pause className="h-4 w-4" />
-                  Pausada — reanuda el{" "}
+                  {t("pausedResumesOn")}{" "}
                   {new Date(sub.resumesAt).toLocaleDateString("es-ES", { day: "numeric", month: "long" })}
                 </div>
               )}
               <p className="text-xs text-muted">
                 {isCanceled
-                  ? `Finalizó el ${periodEnd}`
+                  ? `${t("endedOn")} ${periodEnd}`
                   : sub.cancelAtPeriodEnd
-                    ? `Acceso hasta: ${periodEnd}`
-                    : `Renueve ${periodEnd}`}
+                    ? `${t("accessUntil")}: ${periodEnd}`
+                    : `${t("renewsOn")} ${periodEnd}`}
               </p>
             </CardContent>
           </Card>
@@ -187,7 +190,7 @@ export default function PackagesPage() {
               <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
                   <Badge variant={isExpired ? "secondary" : "success"}>
-                    {noCreditsLeft && !dateExpired ? "Sin créditos" : isExpired ? "Expirado" : "Activo"}
+                    {noCreditsLeft && !dateExpired ? t("noCredits") : isExpired ? t("expired") : t("activeLabel")}
                   </Badge>
                   <CardTitle className="mt-2 truncate">{pkg.package.name}</CardTitle>
                   {pkg.package.description && (
@@ -197,7 +200,7 @@ export default function PackagesPage() {
                   )}
                   {(pkg.package.classTypes?.length ?? 0) > 0 && (
                     <p className="mt-1.5 text-xs text-muted">
-                      Válido para: {pkg.package.classTypes!.map((ct) => ct.name).join(", ")}
+                      {t("validFor")}: {pkg.package.classTypes!.map((ct) => ct.name).join(", ")}
                     </p>
                   )}
                 </div>
@@ -229,7 +232,7 @@ export default function PackagesPage() {
                   })}
                   {!isExpired && (
                     <p className="text-[10px] text-muted">
-                      {days} {days === 1 ? "día restante" : "días restantes"}
+                      {days} {t("daysRemaining", { count: days })}
                     </p>
                   )}
                 </div>
@@ -241,7 +244,7 @@ export default function PackagesPage() {
                         <div className="flex items-center gap-2">
                           <InfinityIcon className="h-6 w-6 text-accent" />
                           <p className="font-mono text-2xl font-bold text-accent">
-                            Ilimitado
+                            {t("unlimited")}
                           </p>
                         </div>
                       ) : (
@@ -252,7 +255,7 @@ export default function PackagesPage() {
                               /{pkg.creditsTotal}
                             </span>
                           </p>
-                          <p className="text-xs text-muted">créditos restantes</p>
+                          <p className="text-xs text-muted">{t("creditsRemaining")}</p>
                         </>
                       )}
                     </div>
@@ -262,7 +265,7 @@ export default function PackagesPage() {
                           {days}
                         </p>
                         <p className="text-[10px] text-muted">
-                          {days === 1 ? "día restante" : "días restantes"}
+                          {t("daysRemaining", { count: days })}
                         </p>
                       </div>
                     )}
@@ -296,11 +299,11 @@ export default function PackagesPage() {
             <ChevronLeft className="h-5 w-5 text-foreground" />
           </button>
           <h1 className="flex-1 font-display text-xl font-bold text-foreground">
-            Mis Paquetes
+            {t("myPackages")}
           </h1>
           <Button asChild size="sm" variant="outline" className="rounded-full">
             <Link href="/packages">
-              Ver planes
+              {t("viewPlans")}
               <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
             </Link>
           </Button>
@@ -317,13 +320,13 @@ export default function PackagesPage() {
             <CardContent className="flex flex-col items-center py-12 text-center">
               <Package className="h-12 w-12 text-accent/40" />
               <p className="mt-4 font-display text-xl font-bold text-foreground">
-                Sin paquetes
+                {t("noPackages")}
               </p>
               <p className="mt-2 text-sm text-muted">
-                Adquiere un paquete para comenzar a reservar tus clases
+                {t("noPackagesDesc")}
               </p>
               <Button asChild className="mt-6">
-                <Link href="/packages">Ver paquetes disponibles</Link>
+                <Link href="/packages">{t("viewAvailablePackages")}</Link>
               </Button>
             </CardContent>
           </Card>
@@ -344,7 +347,7 @@ export default function PackagesPage() {
               <>
                 <Separator className="my-6" />
                 <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                  Expirados
+                  {t("expired")}
                 </p>
 
                 {canceledSubs.map((sub) => renderSubscriptionCard(sub, true))}

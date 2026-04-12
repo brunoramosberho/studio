@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { PosCustomer } from "@/store/pos-store";
+import { useTranslations } from "next-intl";
 
 interface CustomerPreviewProps {
   customer: PosCustomer;
@@ -11,6 +12,8 @@ interface CustomerPreviewProps {
 }
 
 export function CustomerPreview({ customer, onClose }: CustomerPreviewProps) {
+  const t = useTranslations("pos");
+  const tc = useTranslations("common");
   const initials = (customer.name ?? customer.email[0])
     .split(" ")
     .map((n) => n[0])
@@ -21,17 +24,17 @@ export function CustomerPreview({ customer, onClose }: CustomerPreviewProps) {
   return (
     <div className="space-y-4">
       <h3 className="font-display text-lg font-bold pr-6">
-        Cliente: {customer.name ?? "Sin nombre"}
+        {t("customer")}: {customer.name ?? t("noName")}
       </h3>
 
       <div className="space-y-3">
         <div>
-          <p className="text-xs text-muted">Nombre del cliente</p>
-          <p className="text-sm font-medium">{customer.name ?? "Sin nombre"}</p>
+          <p className="text-xs text-muted">{t("customerName")}</p>
+          <p className="text-sm font-medium">{customer.name ?? t("noName")}</p>
         </div>
 
         <div>
-          <p className="text-xs text-muted">Email del cliente</p>
+          <p className="text-xs text-muted">{t("customerEmailLabel")}</p>
           <a
             href={`mailto:${customer.email}`}
             className="text-sm font-medium text-admin hover:underline"
@@ -42,7 +45,7 @@ export function CustomerPreview({ customer, onClose }: CustomerPreviewProps) {
 
         {customer.phone && (
           <div>
-            <p className="text-xs text-muted">Número de contacto</p>
+            <p className="text-xs text-muted">{t("contactNumber")}</p>
             <a
               href={`tel:${customer.phone}`}
               className="text-sm font-medium text-admin hover:underline"
@@ -57,11 +60,11 @@ export function CustomerPreview({ customer, onClose }: CustomerPreviewProps) {
         <Button variant="outline" size="sm" asChild>
           <Link href={`/admin/clients/${customer.id}`}>
             <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-            Abrir perfil del cliente
+            {t("openClientProfile")}
           </Link>
         </Button>
         <Button variant="ghost" size="sm" onClick={onClose}>
-          Cerrar
+          {tc("close")}
         </Button>
       </div>
     </div>
