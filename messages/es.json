@@ -797,7 +797,9 @@
     "hlExternalLink": "Link externo (abre en nueva pestana)",
     "hlNoTitle": "Sin titulo",
     "cancelImmediately": "Cancelar inmediatamente",
-    "resumeAction": "Reanudar"
+    "resumeAction": "Reanudar",
+    "yearInterval": "ano",
+    "monthInterval": "mes"
   },
   "coach": {
     "portal": "Coach Portal",

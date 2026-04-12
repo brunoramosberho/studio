@@ -11,6 +11,7 @@ import { IosSafariIPadScreen } from "@/components/install/ios-safari-ipad-screen
 import { IosChromeScreen } from "@/components/install/ios-chrome-screen";
 import { AndroidScreen } from "@/components/install/android-screen";
 import { OtherScreen } from "@/components/install/other-screen";
+import { useTranslations } from "next-intl";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -31,6 +32,7 @@ export default function InstallPage() {
 }
 
 function InstallPageInner() {
+  const t = useTranslations("public");
   const brand = useBranding();
   const searchParams = useSearchParams();
   const [device, setDevice] = useState<DeviceInfo | null>(null);

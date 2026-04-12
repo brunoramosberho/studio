@@ -61,53 +61,11 @@ interface UserPackageSummary {
 
 type TabType = "OFFER" | "PACK" | "SUBSCRIPTION";
 
-const TABS: { type: TabType; label: string; icon: typeof Gift }[] = [
-  { type: "OFFER", label: "Ofertas", icon: Gift },
-  { type: "PACK", label: "Paquetes", icon: Layers },
-  { type: "SUBSCRIPTION", label: "Suscripciones", icon: CalendarSync },
-];
+// TABS defined inside component for translation access
 
-function validDaysShort(days: number): string {
-  if (days <= 7) return `${days} días`;
-  if (days <= 31) {
-    const w = Math.round(days / 7);
-    return `${w} sem`;
-  }
-  if (days <= 365) {
-    const m = Math.round(days / 30);
-    return `${m} ${m === 1 ? "mes" : "meses"}`;
-  }
-  const y = Math.round(days / 365);
-  return `${y} año${y > 1 ? "s" : ""}`;
-}
+// validDaysShort is defined inside component for translation access
 
-function buildFeatures(pkg: PackageData): string[] {
-  const features: string[] = [];
-
-  if (pkg.creditAllocations && pkg.creditAllocations.length > 0) {
-    pkg.creditAllocations.forEach((a) => {
-      features.push(`${a.credits} ${a.classType.name}`);
-    });
-  } else if (pkg.credits) {
-    features.push(`${pkg.credits} ${pkg.credits === 1 ? "clase" : "clases"}`);
-  } else {
-    features.push("Clases ilimitadas");
-  }
-
-  if (pkg.type === "SUBSCRIPTION") {
-    features.push(pkg.recurringInterval === "year" ? "Renovación anual" : "Renovación mensual");
-  } else {
-    features.push(`Válido por ${validDaysShort(pkg.validDays)}`);
-  }
-
-  if (pkg.classTypes.length > 0) {
-    features.push(pkg.classTypes.map((c) => c.name).join(", "));
-  } else {
-    features.push("Cualquier disciplina");
-  }
-
-  return features;
-}
+// buildFeatures is defined inside component for translation access
 
 const stagger = {
   hidden: {},
@@ -120,6 +78,56 @@ const fadeUp = {
 };
 
 export default function PackagesPage() {
+  const t = useTranslations("public");
+
+  const TABS: { type: TabType; label: string; icon: typeof Gift }[] = [
+    { type: "OFFER", label: t("offers"), icon: Gift },
+    { type: "PACK", label: t("packages"), icon: Layers },
+    { type: "SUBSCRIPTION", label: t("subscriptions"), icon: CalendarSync },
+  ];
+
+  function validDaysShort(days: number): string {
+    if (days <= 7) return `${days} ${t("daysUnit")}`;
+    if (days <= 31) {
+      const w = Math.round(days / 7);
+      return `${w} ${t("weeksUnit")}`;
+    }
+    if (days <= 365) {
+      const m = Math.round(days / 30);
+      return `${m} ${m === 1 ? t("monthUnit") : t("monthsUnit")}`;
+    }
+    const y = Math.round(days / 365);
+    return `${y} ${y > 1 ? t("yearsUnit") : t("yearUnit")}`;
+  }
+
+  function buildFeatures(pkg: PackageData): string[] {
+    const features: string[] = [];
+
+    if (pkg.creditAllocations && pkg.creditAllocations.length > 0) {
+      pkg.creditAllocations.forEach((a) => {
+        features.push(`${a.credits} ${a.classType.name}`);
+      });
+    } else if (pkg.credits) {
+      features.push(`${pkg.credits} ${pkg.credits === 1 ? t("classUnit") : t("classesUnit")}`);
+    } else {
+      features.push(t("unlimitedClasses"));
+    }
+
+    if (pkg.type === "SUBSCRIPTION") {
+      features.push(pkg.recurringInterval === "year" ? t("annualRenewal") : t("monthlyRenewal"));
+    } else {
+      features.push(`${t("validFor")} ${validDaysShort(pkg.validDays)}`);
+    }
+
+    if (pkg.classTypes.length > 0) {
+      features.push(pkg.classTypes.map((c) => c.name).join(", "));
+    } else {
+      features.push(t("anyDiscipline"));
+    }
+
+    return features;
+  }
+
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
   const isLoggedIn = authStatus === "authenticated";
@@ -194,11 +202,11 @@ export default function PackagesPage() {
               <ChevronLeft className="h-5 w-5 text-foreground" />
             </button>
             <h1 className="font-display text-2xl font-bold text-foreground sm:text-4xl">
-              Precios
+              {t("pricing")}
             </h1>
           </div>
           <p className="mt-1 text-sm text-muted sm:mx-auto sm:max-w-lg sm:mt-3 sm:text-center sm:text-base">
-            Ofertas, paquetes y suscripciones para tu ritmo.
+            {t("pricingSubtitle")}
           </p>
         </div>
 
@@ -211,13 +219,13 @@ export default function PackagesPage() {
           >
             <Ticket className="h-4 w-4 text-accent" />
             <span className="text-sm text-foreground">
-              Tienes{" "}
+              {t("youHave")}{" "}
               <span className="font-bold text-accent">
                 {activeCredits === Infinity
-                  ? "créditos ilimitados"
-                  : `${activeCredits} crédito${activeCredits !== 1 ? "s" : ""}`}
+                  ? t("unlimitedCredits")
+                  : t("creditsCount", { count: activeCredits })}
               </span>{" "}
-              disponibles
+              {t("available")}
             </span>
           </motion.div>
         )}
@@ -282,7 +290,7 @@ export default function PackagesPage() {
                       <div className="absolute -top-0 right-3 rounded-b-lg bg-accent/10 px-2.5 py-0.5 sm:right-4 sm:px-3 sm:py-1">
                         <span className="flex items-center gap-1 text-[10px] font-semibold text-accent sm:text-[11px]">
                           <Gift className="h-3 w-3" />
-                          Primera vez
+                          {t("firstTime")}
                         </span>
                       </div>
                     )}
@@ -290,10 +298,10 @@ export default function PackagesPage() {
                     <div className="mb-3 sm:mb-4">
                       <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wider text-muted sm:mb-1 sm:text-[11px]">
                         {pkg.type === "OFFER"
-                          ? "Oferta"
+                          ? t("offer")
                           : pkg.type === "SUBSCRIPTION"
-                            ? "Suscripción"
-                            : "Paquete"}
+                            ? t("subscription")
+                            : t("package")}
                       </p>
                       <h3 className="font-display text-lg font-bold text-foreground sm:text-xl">
                         {pkg.name}
@@ -338,10 +346,10 @@ export default function PackagesPage() {
                         onClick={(e) => handleBuy(e, pkg)}
                       >
                         {pkg.isPromo
-                          ? "Probar ahora"
+                          ? t("tryNow")
                           : pkg.type === "SUBSCRIPTION"
-                            ? "Suscribirme"
-                            : `Comprar por ${formatCurrency(pkg.price, pkg.currency)}`}
+                            ? t("subscribe")
+                            : t("buyFor", { price: formatCurrency(pkg.price, pkg.currency) })}
                       </Button>
                       <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/50 text-muted transition-colors sm:hidden">
                         <ChevronRight className="h-4 w-4" />

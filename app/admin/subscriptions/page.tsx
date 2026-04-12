@@ -304,7 +304,7 @@ function SubCard({
             )}
           </div>
           <p className="mt-0.5 text-xs text-muted">
-            {sub.package.name} · {formatCurrency(sub.package.price, sub.package.currency)}/{sub.package.recurringInterval === "year" ? "año" : "mes"}
+            {sub.package.name} · {formatCurrency(sub.package.price, sub.package.currency)}/{sub.package.recurringInterval === "year" ? t("yearInterval") : t("monthInterval")}
           </p>
           {sub.status === "paused" && sub.resumesAt && (
             <p className="mt-0.5 text-[11px] text-amber-600">
