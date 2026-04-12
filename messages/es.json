@@ -1020,7 +1020,11 @@
     "triggerBooked": "reserve su primera clase",
     "triggerAttended": "vaya a su primera clase",
     "triggerMember": "active su membresía",
-    "withCoach": "con"
+    "withCoach": "con",
+    "location": "Ubicación",
+    "selectOption": "Seleccionar",
+    "specialReward": "Premio especial",
+    "fromYourStudio": "De tu estudio"
   },
   "public": {
     "bookYourClass": "Reserva tu clase",

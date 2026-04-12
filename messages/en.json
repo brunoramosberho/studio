@@ -1020,7 +1020,11 @@
     "triggerBooked": "books their first class",
     "triggerAttended": "attends their first class",
     "triggerMember": "activates their membership",
-    "withCoach": "with"
+    "withCoach": "with",
+    "location": "Location",
+    "selectOption": "Select",
+    "specialReward": "Special reward",
+    "fromYourStudio": "From your studio"
   },
   "public": {
     "bookYourClass": "Book your class",
