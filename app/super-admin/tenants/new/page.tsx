@@ -19,6 +19,7 @@ interface OnboardingState {
     brandbookFile: File | null;
     instagramFiles: File[];
     scheduleFiles: File[];
+    scheduleText: string;
   };
   analyzing: boolean;
   analyzeError: string | null;
@@ -104,7 +105,7 @@ export default function NewTenantPage() {
 
   const [state, setState] = useState<OnboardingState>({
     step: 1,
-    sources: { websiteUrl: "", brandbookFile: null, instagramFiles: [], scheduleFiles: [] },
+    sources: { websiteUrl: "", brandbookFile: null, instagramFiles: [], scheduleFiles: [], scheduleText: "" },
     analyzing: false,
     analyzeError: null,
     extracted: null,
@@ -171,6 +172,7 @@ export default function NewTenantPage() {
           brandbookBase64,
           instagramScreenshots,
           scheduleScreenshots,
+          scheduleText: state.sources.scheduleText || null,
         }),
       });
 
@@ -312,7 +314,7 @@ export default function NewTenantPage() {
           websiteUrl={state.sources.websiteUrl}
           hasBrandbook={!!state.sources.brandbookFile}
           hasInstagram={state.sources.instagramFiles.length > 0}
-          hasSchedule={state.sources.scheduleFiles.length > 0}
+          hasSchedule={state.sources.scheduleFiles.length > 0 || !!state.sources.scheduleText.trim()}
           error={state.analyzeError}
           onRetry={() => setState((s) => ({ ...s, step: 1 }))}
         />

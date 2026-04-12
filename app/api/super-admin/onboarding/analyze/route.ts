@@ -10,6 +10,7 @@ interface AnalyzeBody {
   brandbookBase64?: string | null;
   instagramScreenshots?: { data: string; mediaType: string }[];
   scheduleScreenshots?: { data: string; mediaType: string }[];
+  scheduleText?: string | null;
 }
 
 function normalizeUrl(raw: string): string {
@@ -18,7 +19,7 @@ function normalizeUrl(raw: string): string {
   return url.replace(/\/+$/, "");
 }
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(req: Request) {
   try {
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
     const brandbookBase64 = body.brandbookBase64 || null;
     const instagramBase64List = (body.instagramScreenshots || []).slice(0, 5);
     const scheduleBase64List = (body.scheduleScreenshots || []).slice(0, 5);
+    const scheduleText = body.scheduleText?.trim() || null;
 
     // 4. Build Claude message content
     const content: Anthropic.Messages.ContentBlockParam[] = [
@@ -109,6 +111,13 @@ export async function POST(req: Request) {
           },
         });
       }
+    }
+
+    if (scheduleText) {
+      content.push({
+        type: "text",
+        text: `A continuación el HORARIO SEMANAL de clases del estudio en texto. Extrae cada clase con su día, hora, disciplina, coach y duración. Estos datos van al campo "schedule" del JSON:\n\n${scheduleText}`,
+      });
     }
 
     if (scheduleBase64List.length > 0) {
@@ -235,7 +244,7 @@ export async function POST(req: Request) {
       extracted.schedule = [];
     }
     if (extracted.sources) {
-      extracted.sources.scheduleScreenshotsAnalyzed = scheduleBase64List.length > 0;
+      extracted.sources.scheduleScreenshotsAnalyzed = scheduleBase64List.length > 0 || !!scheduleText;
       extracted.sources.scheduleScreenshotsCount = scheduleBase64List.length;
     }
     if (extracted.manualRequired) {
