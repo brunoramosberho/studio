@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import {
   ChevronLeft,
@@ -41,6 +42,8 @@ import type { ClassWithDetails } from "@/types";
 type ColorMode = "coach" | "classType";
 
 export default function AdminSchedulePage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [colorMode, setColorMode] = useState<ColorMode>("classType");
 
@@ -161,8 +164,8 @@ export default function AdminSchedulePage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Horario</h1>
-          <p className="mt-1 text-sm text-muted">Vista semanal — click en clase para ver detalles, click en celda vacía para crear</p>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("schedule")}</h1>
+          <p className="mt-1 text-sm text-muted">{t("scheduleSubtitle")}</p>
         </motion.div>
 
         <div className="flex items-center gap-2">
@@ -173,11 +176,11 @@ export default function AdminSchedulePage() {
             onClick={() => setColorMode(colorMode === "coach" ? "classType" : "coach")}
           >
             <Palette className="h-4 w-4" />
-            {colorMode === "coach" ? "Por tipo" : "Por coach"}
+            {colorMode === "coach" ? t("byType") : t("byCoach")}
           </Button>
           <Button onClick={handleCreate} size="sm" className="gap-1.5 bg-admin hover:bg-admin/90">
             <Plus className="h-4 w-4" />
-            Crear clase
+            {t("createClass")}
           </Button>
         </div>
       </div>
@@ -187,10 +190,10 @@ export default function AdminSchedulePage() {
         <Filter className="h-4 w-4 text-muted" />
         <Select value={filterStudio} onValueChange={setFilterStudio}>
           <SelectTrigger className="h-8 w-[160px] text-xs">
-            <SelectValue placeholder="Estudio" />
+            <SelectValue placeholder={t("studio")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos los estudios</SelectItem>
+            <SelectItem value="all">{t("allStudios")}</SelectItem>
             {filterOptions.studios.map(([id, name]) => (
               <SelectItem key={id} value={id}>{name}</SelectItem>
             ))}
@@ -199,10 +202,10 @@ export default function AdminSchedulePage() {
 
         <Select value={filterCoach} onValueChange={setFilterCoach}>
           <SelectTrigger className="h-8 w-[160px] text-xs">
-            <SelectValue placeholder="Coach" />
+            <SelectValue placeholder={t("coachLabel")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos los coaches</SelectItem>
+            <SelectItem value="all">{t("allCoaches")}</SelectItem>
             {filterOptions.coaches.map(([id, name]) => (
               <SelectItem key={id} value={id}>{name}</SelectItem>
             ))}
@@ -211,10 +214,10 @@ export default function AdminSchedulePage() {
 
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="h-8 w-[160px] text-xs">
-            <SelectValue placeholder="Disciplina" />
+            <SelectValue placeholder={t("discipline")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas las disciplinas</SelectItem>
+            <SelectItem value="all">{t("allDisciplines")}</SelectItem>
             {filterOptions.types.map(([id, name]) => (
               <SelectItem key={id} value={id}>{name}</SelectItem>
             ))}
@@ -224,13 +227,13 @@ export default function AdminSchedulePage() {
         {hasFilters && (
           <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-muted" onClick={clearFilters}>
             <X className="h-3.5 w-3.5" />
-            Limpiar
+            {t("clearFilters")}
           </Button>
         )}
 
         {hasFilters && (
           <Badge variant="outline" className="text-[10px]">
-            {filtered.length} clase{filtered.length !== 1 ? "s" : ""}
+            {filtered.length} {t("classesCount")}
           </Badge>
         )}
       </div>
@@ -333,7 +336,7 @@ export default function AdminSchedulePage() {
                               </p>
                               <p className="text-[8px] opacity-60">
                                 {booked}/{maxCap}
-                                {isCancelled && " · Cancelada"}
+                                {isCancelled && ` · ${t("cancelled")}`}
                               </p>
                             </div>
                           );

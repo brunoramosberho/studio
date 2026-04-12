@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -64,6 +65,8 @@ const fadeUp = {
 };
 
 export default function AdminClassesPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassWithDetails | null>(null);
@@ -110,9 +113,9 @@ export default function AdminClassesPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-classes"] });
       queryClient.invalidateQueries({ queryKey: ["classes"] });
       setCancelTarget(null);
-      toast.success("Clase cancelada");
+      toast.success(t("classCancelled"));
     },
-    onError: (err: Error) => toast.error(err.message || "No se pudo cancelar"),
+    onError: (err: Error) => toast.error(err.message || t("classCancelError")),
   });
 
   const filtered = useMemo(() => {
@@ -166,15 +169,15 @@ export default function AdminClassesPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Clases</h1>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("classes")}</h1>
           <p className="mt-1 text-sm text-muted">
-            {upcomingCount} clase{upcomingCount !== 1 ? "s" : ""} programada{upcomingCount !== 1 ? "s" : ""}
+            {t("classesScheduled", { count: upcomingCount })}
           </p>
         </motion.div>
 
         <Button onClick={openCreateDialog} className="gap-2 bg-admin hover:bg-admin/90">
           <Plus className="h-4 w-4" />
-          Crear clase
+          {t("createClass")}
         </Button>
       </div>
 
@@ -184,7 +187,7 @@ export default function AdminClassesPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <Input
             className="pl-10"
-            placeholder="Buscar por tipo, coach o tag..."
+            placeholder={t("searchClasses")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -194,10 +197,10 @@ export default function AdminClassesPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="upcoming">Próximas</SelectItem>
-            <SelectItem value="past">Pasadas</SelectItem>
-            <SelectItem value="CANCELLED">Canceladas</SelectItem>
-            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="upcoming">{t("upcoming")}</SelectItem>
+            <SelectItem value="past">{t("past")}</SelectItem>
+            <SelectItem value="CANCELLED">{t("cancelled")}</SelectItem>
+            <SelectItem value="all">{t("all")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -213,11 +216,11 @@ export default function AdminClassesPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
             <CalendarDays className="h-10 w-10 text-muted/30" />
-            <p className="font-medium text-muted">No se encontraron clases</p>
+            <p className="font-medium text-muted">{t("notFoundClasses")}</p>
             {statusFilter === "upcoming" && (
               <Button onClick={openCreateDialog} variant="outline" size="sm" className="mt-2 gap-2">
                 <Plus className="h-3.5 w-3.5" />
-                Crear primera clase
+                {t("createFirstClass")}
               </Button>
             )}
           </CardContent>
@@ -238,7 +241,7 @@ export default function AdminClassesPage() {
                           className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
                           onClick={() => toggleSort("startsAt")}
                         >
-                          Fecha
+                          {t("date")}
                           {sort.key === "startsAt" && (sort.dir === "asc" ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />)}
                         </Button>
                       </TableHead>
@@ -249,7 +252,7 @@ export default function AdminClassesPage() {
                           className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
                           onClick={() => toggleSort("classType")}
                         >
-                          Disciplina
+                          {t("discipline")}
                           {sort.key === "classType" && (sort.dir === "asc" ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />)}
                         </Button>
                       </TableHead>
@@ -260,7 +263,7 @@ export default function AdminClassesPage() {
                           className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
                           onClick={() => toggleSort("coach")}
                         >
-                          Coach
+                          {t("coachLabel")}
                           {sort.key === "coach" && (sort.dir === "asc" ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />)}
                         </Button>
                       </TableHead>
@@ -271,7 +274,7 @@ export default function AdminClassesPage() {
                           className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
                           onClick={() => toggleSort("studio")}
                         >
-                          Estudio
+                          {t("studio")}
                           {sort.key === "studio" && (sort.dir === "asc" ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />)}
                         </Button>
                       </TableHead>
@@ -282,11 +285,11 @@ export default function AdminClassesPage() {
                           className="h-auto px-0 text-xs font-semibold uppercase text-muted hover:bg-transparent"
                           onClick={() => toggleSort("enrolled")}
                         >
-                          Lugares
+                          {t("spots")}
                           {sort.key === "enrolled" && (sort.dir === "asc" ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />)}
                         </Button>
                       </TableHead>
-                      <TableHead className="text-right text-xs font-semibold uppercase">Acciones</TableHead>
+                      <TableHead className="text-right text-xs font-semibold uppercase">{t("actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -310,7 +313,7 @@ export default function AdminClassesPage() {
                               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cls.classType.color || "#1A2C4E" }} />
                               <span className="text-sm font-semibold">{cls.classType.name}</span>
                               {cls.tag && <Badge variant="outline" className="text-[10px]">{cls.tag}</Badge>}
-                              {isCancelled && <Badge variant="danger">Cancelada</Badge>}
+                              {isCancelled && <Badge variant="danger">{t("cancelled")}</Badge>}
                             </div>
                           </TableCell>
                           <TableCell className="py-3 text-sm">{cls.coach.name}</TableCell>
@@ -334,13 +337,13 @@ export default function AdminClassesPage() {
                               <Link href={`/admin/class/${cls.id}`}>
                                 <Button variant="ghost" size="sm" className="gap-1">
                                   <Eye className="h-3.5 w-3.5" />
-                                  Ver
+                                  {tc("view")}
                                 </Button>
                               </Link>
                               {!isCancelled && (
                                 <Button variant="ghost" size="sm" className="gap-1" onClick={() => openEditDialog(cls)}>
                                   <Pencil className="h-3.5 w-3.5" />
-                                  Editar
+                                  {tc("edit")}
                                 </Button>
                               )}
                               {cls.status === "SCHEDULED" && !past && (
@@ -351,7 +354,7 @@ export default function AdminClassesPage() {
                                   onClick={() => setCancelTarget(cls)}
                                 >
                                   <XCircle className="h-3.5 w-3.5" />
-                                  Cancelar
+                                  {tc("cancel")}
                                 </Button>
                               )}
                             </div>
@@ -364,7 +367,7 @@ export default function AdminClassesPage() {
 
                 <div className="flex items-center justify-between gap-3 border-t border-border/50 px-4 py-3">
                   <p className="text-sm text-muted">
-                    Página {pageSafe} de {totalPages}
+                    {tc("page", { current: pageSafe, total: totalPages })}
                   </p>
                   <div className="flex items-center gap-2">
                     <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(parseInt(v, 10) || 12); setPage(1); }}>
@@ -373,15 +376,15 @@ export default function AdminClassesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {[8, 12, 20, 40].map((n) => (
-                          <SelectItem key={n} value={String(n)}>{n} / pág</SelectItem>
+                          <SelectItem key={n} value={String(n)}>{tc("perPage", { num: n })}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe <= 1}>
-                      Anterior
+                      {tc("previous")}
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={pageSafe >= totalPages}>
-                      Siguiente
+                      {tc("next")}
                     </Button>
                   </div>
                 </div>
@@ -419,7 +422,7 @@ export default function AdminClassesPage() {
                             {cls.tag}
                           </Badge>
                         )}
-                        {isCancelled && <Badge variant="danger">Cancelada</Badge>}
+                        {isCancelled && <Badge variant="danger">{t("cancelled")}</Badge>}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
                         <span className="flex items-center gap-1 capitalize">
@@ -462,7 +465,7 @@ export default function AdminClassesPage() {
                           onClick={() => openEditDialog(cls)}
                         >
                           <Pencil className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Editar</span>
+                          <span className="hidden sm:inline">{tc("edit")}</span>
                         </Button>
                       )}
                       {cls.status === "SCHEDULED" && !past && (
@@ -473,7 +476,7 @@ export default function AdminClassesPage() {
                           onClick={() => setCancelTarget(cls)}
                         >
                           <XCircle className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Cancelar</span>
+                          <span className="hidden sm:inline">{tc("cancel")}</span>
                         </Button>
                       )}
                     </div>
@@ -497,22 +500,17 @@ export default function AdminClassesPage() {
       <Dialog open={!!cancelTarget} onOpenChange={() => setCancelTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancelar clase</DialogTitle>
+            <DialogTitle>{t("cancelClass")}</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de cancelar{" "}
-              <span className="font-medium text-foreground">
-                {cancelTarget?.classType.name}
-              </span>{" "}
-              del{" "}
-              <span className="font-medium text-foreground">
-                {cancelTarget && format(new Date(cancelTarget.startsAt), "EEE d MMM", { locale: es })}
-              </span>
-              ? Los alumnos inscritos serán notificados y sus créditos devueltos.
+              {t("cancelClassConfirm", {
+                className: cancelTarget?.classType.name ?? "",
+                date: cancelTarget ? format(new Date(cancelTarget.startsAt), "EEE d MMM", { locale: es }) : "",
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCancelTarget(null)}>
-              Volver
+              {tc("back")}
             </Button>
             <Button
               variant="destructive"
@@ -520,7 +518,7 @@ export default function AdminClassesPage() {
               disabled={cancelMutation.isPending}
             >
               {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirmar cancelación
+              {tc("confirmCancel")}
             </Button>
           </DialogFooter>
         </DialogContent>

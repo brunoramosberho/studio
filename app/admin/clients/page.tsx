@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, timeAgo } from "@/lib/utils";
 import { CreateClientDialog } from "@/components/admin/create-client-dialog";
+import { useTranslations } from "next-intl";
 
 interface ClientData {
   id: string;
@@ -76,15 +77,6 @@ interface InsightsData {
 
 type Filter = "all" | "active" | "expiring" | "inactive" | "new" | "pwa";
 
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "Todos" },
-  { key: "active", label: "Activos" },
-  { key: "expiring", label: "Por vencer" },
-  { key: "inactive", label: "Inactivos" },
-  { key: "new", label: "Nuevos" },
-  { key: "pwa", label: "Con PWA" },
-];
-
 const stagger = {
   hidden: {},
   show: { transition: { staggerChildren: 0.04 } },
@@ -132,10 +124,21 @@ function MemberAvatar({
 
 export default function AdminClientsPage() {
   const router = useRouter();
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const [showInsights, setShowInsights] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  const FILTERS: { key: Filter; label: string }[] = [
+    { key: "all", label: t("filterAll") },
+    { key: "active", label: t("filterActive") },
+    { key: "expiring", label: t("filterExpiring") },
+    { key: "inactive", label: t("filterInactive") },
+    { key: "new", label: t("filterNew") },
+    { key: "pwa", label: t("filterPWA") },
+  ];
 
   const { data: clients, isLoading } = useQuery<ClientData[]>({
     queryKey: ["admin-clients", activeFilter],
@@ -173,10 +176,10 @@ export default function AdminClientsPage() {
           animate={{ opacity: 1, y: 0 }}
         >
           <h1 className="font-display text-2xl font-bold sm:text-3xl">
-            Clientes
+            {t("clients")}
           </h1>
           <p className="mt-1 text-muted">
-            {clients?.length ?? 0} clientes del estudio
+            {t("clientsCount", { num: clients?.length ?? 0 })}
           </p>
         </motion.div>
         <Button
@@ -185,7 +188,7 @@ export default function AdminClientsPage() {
           onClick={() => setShowCreateDialog(true)}
         >
           <UserPlus className="mr-2 h-4 w-4" />
-          Crear cliente
+          {t("createClient")}
         </Button>
       </div>
 
@@ -209,7 +212,7 @@ export default function AdminClientsPage() {
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5 text-orange-500" />
                     <CardTitle className="text-base text-orange-900">
-                      En riesgo de irse
+                      {t("atRiskTitle")}
                     </CardTitle>
                     <Badge className="bg-orange-100 text-orange-700">
                       {insights.atRisk.length}
@@ -221,12 +224,11 @@ export default function AdminClientsPage() {
                     onClick={() => setShowInsights(false)}
                     className="text-xs text-orange-600"
                   >
-                    Ocultar
+                    {t("hide")}
                   </Button>
                 </div>
                 <p className="text-xs text-orange-700">
-                  Miembros con actividad previa que no asisten hace más de 14
-                  días
+                  {t("atRiskDescription")}
                 </p>
               </CardHeader>
               <CardContent>
@@ -243,7 +245,7 @@ export default function AdminClientsPage() {
                           {m.name ?? m.email}
                         </p>
                         <p className="truncate text-xs text-orange-600">
-                          {m.lastClass ?? "Sin historial"}
+                          {m.lastClass ?? t("noHistory")}
                         </p>
                       </div>
                       <Badge
@@ -257,7 +259,7 @@ export default function AdminClientsPage() {
                 </div>
                 {insights.atRisk.length > 6 && (
                   <p className="mt-3 text-center text-xs text-orange-600">
-                    y {insights.atRisk.length - 6} más
+                    {t("andMore", { count: insights.atRisk.length - 6 })}
                   </p>
                 )}
               </CardContent>
@@ -272,7 +274,7 @@ export default function AdminClientsPage() {
                 <div className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-amber-500" />
                   <CardTitle className="text-base">
-                    Miembros más comprometidos
+                    {t("topMembers")}
                   </CardTitle>
                 </div>
               </CardHeader>
@@ -283,7 +285,7 @@ export default function AdminClientsPage() {
                     <div className="mb-2 flex items-center gap-1.5">
                       <Star className="h-3.5 w-3.5 text-accent" />
                       <span className="text-xs font-semibold text-muted uppercase tracking-wide">
-                        Este mes
+                        {t("thisMonth")}
                       </span>
                     </div>
                     <div className="space-y-1.5">
@@ -318,7 +320,7 @@ export default function AdminClientsPage() {
                     <div className="mb-2 flex items-center gap-1.5">
                       <CalendarDays className="h-3.5 w-3.5 text-accent" />
                       <span className="text-xs font-semibold text-muted uppercase tracking-wide">
-                        Histórico
+                        {t("allTime")}
                       </span>
                     </div>
                     <div className="space-y-1.5">
@@ -353,7 +355,7 @@ export default function AdminClientsPage() {
                     <div className="mb-2 flex items-center gap-1.5">
                       <Heart className="h-3.5 w-3.5 text-pink-500" />
                       <span className="text-xs font-semibold text-muted uppercase tracking-wide">
-                        Social
+                        {t("social")}
                       </span>
                     </div>
                     <div className="space-y-1.5">
@@ -412,7 +414,7 @@ export default function AdminClientsPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
         <Input
           className="pl-10"
-          placeholder="Buscar por nombre o email..."
+          placeholder={tc("search")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -430,7 +432,7 @@ export default function AdminClientsPage() {
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
             <Users className="h-10 w-10 text-muted/30" />
             <p className="font-medium text-muted">
-              No se encontraron clientes
+              {t("noClientsFound")}
             </p>
           </CardContent>
         </Card>
@@ -456,10 +458,10 @@ export default function AdminClientsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <p className="truncate text-sm font-semibold">
-                          {client.name ?? "Sin nombre"}
+                          {client.name ?? tc("noName")}
                         </p>
                         {client.pwaInstalledAt && (
-                          <span title="PWA instalada">
+                          <span title={t("pwaInstalled")}>
                             <Smartphone className="h-3.5 w-3.5 shrink-0 text-accent" />
                           </span>
                         )}
@@ -478,13 +480,13 @@ export default function AdminClientsPage() {
                         <p className="font-mono text-sm font-semibold">
                           {client.classesThisMonth}
                         </p>
-                        <p className="text-[10px] text-muted">este mes</p>
+                        <p className="text-[10px] text-muted">{t("thisMonthLabel")}</p>
                       </div>
                       <div className="text-right">
                         <p className="font-mono text-sm font-semibold">
                           {client.bookingsCount}
                         </p>
-                        <p className="text-[10px] text-muted">total</p>
+                        <p className="text-[10px] text-muted">{tc("total")}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-muted">

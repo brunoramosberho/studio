@@ -25,6 +25,7 @@ import { KpiCard } from "@/components/admin/kpi-card";
 import { useBranding } from "@/components/branding-provider";
 import { RevenueChart } from "@/components/admin/revenue-chart";
 import { MgicAIBriefing } from "@/components/admin/MgicAI/BriefingCard";
+import { useTranslations } from "next-intl";
 import { cn, formatCurrency, timeAgo, formatDate } from "@/lib/utils";
 
 interface DashboardData {
@@ -88,6 +89,8 @@ const fadeUp = {
 
 export default function AdminDashboard() {
   const { studioName } = useBranding();
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["admin-reports"],
     queryFn: async () => {
@@ -104,8 +107,8 @@ export default function AdminDashboard() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="font-display text-2xl font-bold sm:text-3xl">Dashboard</h1>
-        <p className="mt-1 text-muted">Resumen general de {studioName} Studio</p>
+        <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("dashboard")}</h1>
+        <p className="mt-1 text-muted">{t("dashboardSummary", { studioName })}</p>
       </motion.div>
 
       <MgicAIBriefing />
@@ -128,7 +131,7 @@ export default function AdminDashboard() {
             <motion.div variants={fadeUp}>
               <KpiCard
                 icon={CalendarCheck}
-                label="Reservas hoy"
+                label={t("bookingsToday")}
                 value={data?.bookingsToday ?? 0}
                 change={data?.bookingsTodayChange}
                 accentColor="var(--color-admin)"
@@ -137,7 +140,7 @@ export default function AdminDashboard() {
             <motion.div variants={fadeUp}>
               <KpiCard
                 icon={DollarSign}
-                label="Ingresos esta semana"
+                label={t("revenueThisWeek")}
                 value={formatCurrency(data?.revenueThisWeek ?? 0)}
                 change={data?.revenueWeekChange}
                 accentColor="var(--color-accent)"
@@ -146,7 +149,7 @@ export default function AdminDashboard() {
             <motion.div variants={fadeUp}>
               <KpiCard
                 icon={PieChart}
-                label="Ocupación promedio"
+                label={t("avgOccupancy")}
                 value={`${data?.avgOccupancy ?? 0}%`}
                 change={data?.occupancyChange}
                 accentColor="#7C6D5D"
@@ -155,7 +158,7 @@ export default function AdminDashboard() {
             <motion.div variants={fadeUp}>
               <KpiCard
                 icon={UserPlus}
-                label="Nuevos clientes"
+                label={t("newClients")}
                 value={data?.newClientsThisWeek ?? 0}
                 change={data?.newClientsChange}
                 accentColor="var(--color-coach)"
@@ -185,7 +188,7 @@ export default function AdminDashboard() {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 text-muted">
                     <DollarSign className="h-4 w-4" />
-                    <span className="text-xs">Ingresos del mes</span>
+                    <span className="text-xs">{t("revenueThisMonth")}</span>
                   </div>
                   <p className="mt-1 font-mono text-lg font-bold">
                     {formatCurrency(data?.revenueThisMonth ?? 0)}
@@ -200,7 +203,7 @@ export default function AdminDashboard() {
                       )}
                     >
                       {data.revenueMonthChange >= 0 ? "+" : ""}
-                      {data.revenueMonthChange}% vs mes anterior
+                      {data.revenueMonthChange}{t("vsLastMonth")}
                     </span>
                   )}
                 </CardContent>
@@ -211,12 +214,12 @@ export default function AdminDashboard() {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 text-muted">
                     <CheckCircle className="h-4 w-4" />
-                    <span className="text-xs">Clases impartidas</span>
+                    <span className="text-xs">{t("classesCompleted")}</span>
                   </div>
                   <p className="mt-1 font-mono text-lg font-bold">
                     {data?.completedClassesMonth ?? 0}
                   </p>
-                  <span className="text-xs text-muted">este mes</span>
+                  <span className="text-xs text-muted">{t("classesThisMonth")}</span>
                 </CardContent>
               </Card>
             </motion.div>
@@ -225,13 +228,13 @@ export default function AdminDashboard() {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 text-muted">
                     <Users className="h-4 w-4" />
-                    <span className="text-xs">Miembros activos</span>
+                    <span className="text-xs">{t("activeMembers")}</span>
                   </div>
                   <p className="mt-1 font-mono text-lg font-bold">
                     {data?.activeMembersCount ?? 0}
                   </p>
                   <span className="text-xs text-muted">
-                    asistieron en 30 días
+                    {t("attendedIn30Days")}
                   </span>
                 </CardContent>
               </Card>
@@ -241,16 +244,16 @@ export default function AdminDashboard() {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 text-muted">
                     <Calendar className="h-4 w-4" />
-                    <span className="text-xs">Hoy</span>
+                    <span className="text-xs">{t("today")}</span>
                   </div>
                   <p className="mt-1 font-mono text-lg font-bold">
                     {data?.classesToday ?? 0}{" "}
                     <span className="text-sm font-normal text-muted">
-                      clases
+                      {t("classesCount")}
                     </span>
                   </p>
                   <span className="text-xs text-muted">
-                    {data?.attendanceToday ?? 0} check-ins
+                    {data?.attendanceToday ?? 0} {t("checkIns")}
                   </span>
                 </CardContent>
               </Card>
@@ -272,7 +275,7 @@ export default function AdminDashboard() {
           ) : (
             <RevenueChart
               data={data?.revenueChart ?? []}
-              title="Ingresos semanales"
+              title={t("weeklyRevenue")}
             />
           )}
         </motion.div>
@@ -288,7 +291,7 @@ export default function AdminDashboard() {
             <CardContent className="p-5">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-accent" />
-                <span className="text-xs font-medium text-accent">Más popular</span>
+                <span className="text-xs font-medium text-accent">{t("mostPopular")}</span>
               </div>
               {isLoading ? (
                 <Skeleton className="mt-2 h-6 w-32" />
@@ -303,7 +306,7 @@ export default function AdminDashboard() {
           {/* Recent bookings */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Reservas recientes</CardTitle>
+              <CardTitle className="text-base">{t("recentBookings")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {isLoading
@@ -332,7 +335,7 @@ export default function AdminDashboard() {
                       </div>
                     ))
                   : (
-                      <p className="text-sm text-muted/60">Sin reservas recientes</p>
+                      <p className="text-sm text-muted/60">{t("noRecentBookings")}</p>
                     )}
             </CardContent>
           </Card>
@@ -349,7 +352,7 @@ export default function AdminDashboard() {
           <div className="mb-4 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-orange-500" />
             <h2 className="font-display text-lg font-bold">
-              Alertas
+              {t("alerts")}
             </h2>
             <Badge variant="danger" className="ml-1 text-xs">
               {totalAlerts}
@@ -364,14 +367,14 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-orange-600" />
                     <span className="text-sm font-semibold text-orange-900">
-                      Baja ocupación
+                      {t("lowOccupancy")}
                     </span>
                     <Badge className="ml-auto bg-orange-100 text-orange-700">
                       {data.lowOccupancyClasses.length}
                     </Badge>
                   </div>
                   <p className="mt-2 text-xs text-orange-700">
-                    Clases en las próximas 24h con menos del 30% de ocupación
+                    {t("lowOccupancyDesc")}
                   </p>
                   <div className="mt-3 space-y-2">
                     {data.lowOccupancyClasses.slice(0, 3).map((c) => (
@@ -384,7 +387,7 @@ export default function AdminDashboard() {
                             {c.name}
                           </p>
                           <p className="text-xs text-orange-600">
-                            {c.enrolled}/{c.capacity} lugares
+                            {c.enrolled}/{c.capacity} {t("spots")}
                           </p>
                         </div>
                         <span className="font-mono text-sm font-bold text-orange-700">
@@ -399,7 +402,7 @@ export default function AdminDashboard() {
                     asChild
                     className="mt-3 w-full text-orange-700 hover:bg-orange-100"
                   >
-                    <Link href="/admin/classes">Ver clases</Link>
+                    <Link href="/admin/classes">{t("viewClasses")}</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -412,14 +415,14 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-amber-600" />
                     <span className="text-sm font-semibold text-amber-900">
-                      Paquetes por vencer
+                      {t("expiringPackages")}
                     </span>
                     <Badge className="ml-auto bg-amber-100 text-amber-700">
                       {data.expiringPackages.length}
                     </Badge>
                   </div>
                   <p className="mt-2 text-xs text-amber-700">
-                    Vencen en los próximos 7 días
+                    {t("expiringInWeek")}
                   </p>
                   <div className="mt-3 space-y-2">
                     {data.expiringPackages.slice(0, 3).map((p, i) => (
@@ -429,7 +432,7 @@ export default function AdminDashboard() {
                       >
                         <div>
                           <p className="text-sm font-medium text-amber-900">
-                            {p.userName ?? "Sin nombre"}
+                            {p.userName ?? tc("noName")}
                           </p>
                           <p className="text-xs text-amber-600">
                             {p.packageName}
@@ -447,7 +450,7 @@ export default function AdminDashboard() {
                     asChild
                     className="mt-3 w-full text-amber-700 hover:bg-amber-100"
                   >
-                    <Link href="/admin/clients">Ver clientes</Link>
+                    <Link href="/admin/clients">{t("clients")}</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -471,7 +474,7 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-2">
                   <Cake className="h-5 w-5 text-pink-500" />
                   <CardTitle className="text-base">
-                    Cumpleaños de la semana
+                    {t("birthdaysThisWeek")}
                   </CardTitle>
                 </div>
               </CardHeader>
@@ -494,7 +497,7 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <p className="text-sm font-medium">
-                          {u.name ?? "Sin nombre"}
+                          {u.name ?? tc("noName")}
                         </p>
                         <p className="text-xs text-muted">
                           {new Date(u.birthday).toLocaleDateString("es", {

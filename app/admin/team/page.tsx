@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,6 +31,8 @@ const fadeUp = {
 };
 
 export default function AdminTeamPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const { data: session } = useSession();
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
@@ -60,7 +63,7 @@ export default function AdminTeamPage() {
           setConfirmUser(data.existingUser);
           throw new Error(data.error);
         }
-        throw new Error(data.error || "Error al invitar");
+        throw new Error(data.error || t("inviteError"));
       }
       return data;
     },
@@ -70,7 +73,7 @@ export default function AdminTeamPage() {
       setName("");
       setError("");
       setConfirmUser(null);
-      setSuccessMsg("Invitación enviada correctamente");
+      setSuccessMsg(t("inviteSent"));
       setTimeout(() => setSuccessMsg(""), 4000);
     },
     onError: (err: Error) => setError(err.message),
@@ -83,7 +86,7 @@ export default function AdminTeamPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
       });
-      if (!res.ok) throw new Error("Error al promover");
+      if (!res.ok) throw new Error(t("inviteError"));
       return res.json();
     },
     onSuccess: () => {
@@ -91,7 +94,7 @@ export default function AdminTeamPage() {
       setEmail("");
       setError("");
       setConfirmUser(null);
-      setSuccessMsg("Usuario promovido a administrador");
+      setSuccessMsg(t("promotedToAdmin"));
       setTimeout(() => setSuccessMsg(""), 4000);
     },
   });
@@ -104,7 +107,7 @@ export default function AdminTeamPage() {
         body: JSON.stringify({ userId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al remover");
+      if (!res.ok) throw new Error(data.error || t("inviteError"));
       return data;
     },
     onSuccess: () => {
@@ -124,8 +127,8 @@ export default function AdminTeamPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="font-display text-2xl font-bold sm:text-3xl">Equipo</h1>
-        <p className="mt-1 text-muted">Administradores con acceso al panel</p>
+        <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("teamTitle")}</h1>
+        <p className="mt-1 text-muted">{t("teamSubtitle")}</p>
       </motion.div>
 
       {/* Invite form */}
@@ -134,13 +137,13 @@ export default function AdminTeamPage() {
           <CardContent className="p-5">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
               <Plus className="h-4 w-4 text-admin" />
-              Invitar administrador
+              {t("inviteAdmin")}
             </div>
             <form onSubmit={handleInvite} className="space-y-2">
               <div className="flex gap-2">
                 <Input
                   type="text"
-                  placeholder="Nombre completo"
+                  placeholder={t("fullName")}
                   value={name}
                   onChange={(e) => { setName(e.target.value); setError(""); setConfirmUser(null); }}
                   className="flex-1"
@@ -148,7 +151,7 @@ export default function AdminTeamPage() {
                 />
                 <Input
                   type="email"
-                  placeholder="correo@ejemplo.com"
+                  placeholder={t("emailPlaceholder")}
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError(""); setConfirmUser(null); }}
                   className="flex-1"
@@ -164,7 +167,7 @@ export default function AdminTeamPage() {
                   ) : (
                     <Mail className="h-4 w-4" />
                   )}
-                  Invitar
+                  {t("invite")}
                 </Button>
               </div>
             </form>
@@ -199,14 +202,14 @@ export default function AdminTeamPage() {
                           disabled={promoteMutation.isPending}
                           className="bg-admin text-white hover:bg-admin/90"
                         >
-                          {promoteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Sí, hacer admin"}
+                          {promoteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : t("confirmMakeAdmin")}
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => { setConfirmUser(null); setError(""); }}
                         >
-                          Cancelar
+                          {tc("cancel")}
                         </Button>
                       </div>
                     </div>
@@ -262,11 +265,11 @@ export default function AdminTeamPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="truncate font-display text-sm font-bold">{name}</h3>
                         {isMe && (
-                          <Badge variant="secondary" className="text-[10px]">Tú</Badge>
+                          <Badge variant="secondary" className="text-[10px]">{t("you")}</Badge>
                         )}
                         {!admin.name && (
                           <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
-                            Pendiente
+                            {t("pendingStatus")}
                           </Badge>
                         )}
                       </div>
@@ -283,7 +286,7 @@ export default function AdminTeamPage() {
                           onClick={() => removeMutation.mutate(admin.id)}
                           disabled={removeMutation.isPending}
                           className="h-8 w-8 p-0 text-muted hover:text-destructive"
-                          title="Remover admin"
+                          title={t("removeAdmin")}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

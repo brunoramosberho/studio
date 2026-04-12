@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatTime } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import type { ClassWithDetails } from "@/types";
 
 const stagger = {
@@ -54,6 +55,7 @@ function useCountdown(targetDate: Date | null) {
 }
 
 export default function CoachDashboard() {
+  const t = useTranslations("coach");
   const { data: session } = useSession();
   const coachName = session?.user?.name?.split(" ")[0] ?? "Coach";
 
@@ -115,9 +117,9 @@ export default function CoachDashboard() {
       {/* Greeting */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="font-display text-2xl font-bold sm:text-3xl">
-          Hola, Coach {coachName}
+          {t("greeting", { name: coachName })}
         </h1>
-        <p className="mt-1 text-muted">Aquí está tu día de un vistazo</p>
+        <p className="mt-1 text-muted">{t("dayAtAGlance")}</p>
       </motion.div>
 
       {/* Quick stats */}
@@ -138,7 +140,7 @@ export default function CoachDashboard() {
                   {classesToday}
                 </span>
               )}
-              <span className="text-xs text-muted">Clases hoy</span>
+              <span className="text-xs text-muted">{t("classesToday")}</span>
             </CardContent>
           </Card>
         </motion.div>
@@ -153,7 +155,7 @@ export default function CoachDashboard() {
                   {studentsToday}
                 </span>
               )}
-              <span className="text-xs text-muted">Alumnas hoy</span>
+              <span className="text-xs text-muted">{t("studentsToday")}</span>
             </CardContent>
           </Card>
         </motion.div>
@@ -163,7 +165,7 @@ export default function CoachDashboard() {
               <CardContent className="flex h-full flex-col items-center justify-center gap-1 p-4 text-center">
                 <TrendingUp className="h-5 w-5 text-coach/60" />
                 <span className="text-xs font-semibold text-coach">
-                  Mi historial
+                  {t("myHistory")}
                 </span>
                 <ChevronRight className="h-3.5 w-3.5 text-muted" />
               </CardContent>
@@ -182,7 +184,7 @@ export default function CoachDashboard() {
                   <Banknote className="h-5 w-5 text-green-700" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-medium text-green-600">Ganancias este mes</p>
+                  <p className="text-xs font-medium text-green-600">{t("earningsThisMonth")}</p>
                   <p className="font-display text-xl font-bold text-green-700">
                     {new Intl.NumberFormat("es-MX", {
                       style: "currency",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   FileText,
   Users,
@@ -54,6 +55,8 @@ interface Stats {
 }
 
 export default function AdminWaiverPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const [tab, setTab] = useState<Tab>("editor");
   const [waiver, setWaiver] = useState<WaiverData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,7 +84,7 @@ export default function AdminWaiverPage() {
     try {
       const res = await fetch("/api/admin/waiver");
       if (!res.ok) {
-        toast.error("No se pudo cargar el waiver");
+        toast.error(t("waiverLoadError"));
         setLoading(false);
         return;
       }
@@ -92,7 +95,7 @@ export default function AdminWaiverPage() {
         setContent(data.waiver.content);
       }
     } catch {
-      toast.error("Error de conexión al cargar el waiver");
+      toast.error(t("connectionErrorLoading"));
     }
     setLoading(false);
   }, []);
@@ -109,7 +112,7 @@ export default function AdminWaiverPage() {
       if (sigSearch) params.set("search", sigSearch);
       const res = await fetch(`/api/admin/waiver/signatures?${params}`);
       if (!res.ok) {
-        toast.error("No se pudieron cargar las firmas");
+        toast.error(t("signaturesError"));
         setSigLoading(false);
         return;
       }
@@ -117,7 +120,7 @@ export default function AdminWaiverPage() {
       setSignatures(data.signatures || []);
       setStats(data.stats || { signed: 0, pending: 0, needsResign: 0, total: 0 });
     } catch {
-      toast.error("Error de conexión al cargar firmas");
+      toast.error(t("connectionErrorSignatures"));
     }
     setSigLoading(false);
   }, [sigFilter, sigSearch]);
@@ -132,11 +135,11 @@ export default function AdminWaiverPage() {
       const res = await fetch("/api/admin/waiver", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Acuerdo de responsabilidad", content: "" }),
+        body: JSON.stringify({ title: t("liabilityAgreement"), content: "" }),
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "No se pudo crear el waiver");
+        toast.error(data.error || t("waiverCreateError"));
         setSaving(false);
         return;
       }
@@ -144,10 +147,10 @@ export default function AdminWaiverPage() {
         setWaiver(data.waiver);
         setTitle(data.waiver.title);
         setContent(data.waiver.content);
-        toast.success("Waiver creado");
+        toast.success(t("waiverCreated"));
       }
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("connectionErrorGeneric"));
     }
     setSaving(false);
   };
@@ -163,7 +166,7 @@ export default function AdminWaiverPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "No se pudo guardar");
+        toast.error(data.error || t("waiverSaveError"));
         setSaving(false);
         return;
       }
@@ -172,7 +175,7 @@ export default function AdminWaiverPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
-      toast.error("Error de conexión al guardar");
+      toast.error(t("connectionErrorSaving"));
     }
     setSaving(false);
   };
@@ -187,15 +190,15 @@ export default function AdminWaiverPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.error || "No se pudo publicar el waiver");
+        toast.error(data.error || t("waiverPublishError"));
         setPublishing(false);
         return;
       }
       setShowPublish(false);
-      toast.success(`Waiver v${data.version} publicado`);
+      toast.success(t("waiverPublished", { version: data.version }));
       fetchWaiver();
     } catch {
-      toast.error("Error de conexión al publicar");
+      toast.error(t("connectionErrorPublishing"));
     }
     setPublishing(false);
   };
@@ -210,13 +213,13 @@ export default function AdminWaiverPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "No se pudo guardar la configuración");
+        toast.error(data.error || t("configError"));
         setSaving(false);
         return;
       }
       setWaiver((prev) => (prev ? { ...prev, ...updates } : prev));
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("connectionErrorGeneric"));
     }
     setSaving(false);
   };
@@ -231,13 +234,13 @@ export default function AdminWaiverPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.error || "No se pudo enviar recordatorios");
+        toast.error(data.error || t("remindersError"));
         setReminding(false);
         return;
       }
-      toast.success(data.sent ? `${data.sent} recordatorios enviados` : "Recordatorios enviados");
+      toast.success(data.sent ? t("remindersSuccess", { count: data.sent }) : t("remindersGenericSuccess"));
     } catch {
-      toast.error("Error de conexión");
+      toast.error(t("connectionErrorGeneric"));
     }
     setReminding(false);
   };

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -102,6 +103,8 @@ const fadeUp = {
 
 export default function AdminCoachesPage() {
   const router = useRouter();
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [coachName, setCoachName] = useState("");
@@ -137,7 +140,7 @@ export default function AdminCoachesPage() {
       setEmail("");
       setError("");
       setShowCreate(false);
-      const msg = email.trim() ? "Coach creado e invitación enviada" : "Coach creado correctamente";
+      const msg = email.trim() ? t("coachCreatedInvited") : t("coachCreated");
       setSuccessMsg(msg);
       setTimeout(() => setSuccessMsg(""), 4000);
     },
@@ -181,8 +184,8 @@ export default function AdminCoachesPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Coaches</h1>
-          <p className="mt-1 text-muted">Administra el equipo y revisa su desempeño</p>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("coaches")}</h1>
+          <p className="mt-1 text-muted">{t("coachesSubtitle")}</p>
         </motion.div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
           <Button
@@ -190,7 +193,7 @@ export default function AdminCoachesPage() {
             className="gap-2 bg-admin text-white hover:bg-admin/90"
           >
             {showCreate ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {showCreate ? "Cancelar" : "Nuevo coach"}
+            {showCreate ? tc("cancel") : t("newCoach")}
           </Button>
         </motion.div>
       </div>
@@ -205,7 +208,7 @@ export default function AdminCoachesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold tabular-nums">{coaches.length}</p>
-                <p className="text-xs text-muted">Coaches</p>
+                <p className="text-xs text-muted">{t("coachesCount")}</p>
               </div>
             </CardContent>
           </Card>
@@ -216,7 +219,7 @@ export default function AdminCoachesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold tabular-nums">{totalClasses}</p>
-                <p className="text-xs text-muted">Clases este mes</p>
+                <p className="text-xs text-muted">{t("classesThisMonth")}</p>
               </div>
             </CardContent>
           </Card>
@@ -227,7 +230,7 @@ export default function AdminCoachesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold tabular-nums">{avgOccupancyAll}%</p>
-                <p className="text-xs text-muted">Ocupación promedio</p>
+                <p className="text-xs text-muted">{t("avgOccupancy")}</p>
               </div>
             </CardContent>
           </Card>
@@ -240,7 +243,7 @@ export default function AdminCoachesPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <Input
             className="pl-10"
-            placeholder="Buscar por nombre o email..."
+            placeholder={t("searchCoaches")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -259,16 +262,16 @@ export default function AdminCoachesPage() {
               <CardContent className="p-5">
                 <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
                   <UserCog className="h-4 w-4 text-coach" />
-                  Nuevo coach
+                  {t("newCoach")}
                 </div>
                 <p className="mb-3 text-xs text-muted">
-                  El email es opcional. Si lo proporcionas, se le enviará una invitación para acceder al portal de coach.
+                  {t("coachEmailOptional")}
                 </p>
                 <form onSubmit={handleCreate} className="space-y-3">
                   <div className="flex gap-2">
                     <Input
                       type="text"
-                      placeholder="Nombre del coach *"
+                      placeholder={t("coachNamePlaceholder")}
                       value={coachName}
                       onChange={(e) => { setCoachName(e.target.value); setError(""); }}
                       className="flex-1"
@@ -276,7 +279,7 @@ export default function AdminCoachesPage() {
                     />
                     <Input
                       type="email"
-                      placeholder="correo@ejemplo.com (opcional)"
+                      placeholder={t("coachEmailPlaceholder")}
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); setError(""); }}
                       className="flex-1"
@@ -294,7 +297,7 @@ export default function AdminCoachesPage() {
                       ) : (
                         <Plus className="h-4 w-4" />
                       )}
-                      {email.trim() ? "Crear e invitar" : "Crear"}
+                      {email.trim() ? t("createAndInvite") : tc("create")}
                     </Button>
                   </div>
                   {error && <p className="text-sm text-destructive">{error}</p>}
@@ -324,9 +327,9 @@ export default function AdminCoachesPage() {
         <div className="flex items-center gap-2">
           <Trophy className="h-4 w-4 text-amber-500" />
           <h2 className="text-sm font-semibold text-foreground">
-            Ranking por ocupación promedio
+            {t("rankingByOccupancy")}
           </h2>
-          <span className="text-xs text-muted">(mayor a menor)</span>
+          <span className="text-xs text-muted">{t("higherToLower")}</span>
         </div>
       )}
 
@@ -341,10 +344,10 @@ export default function AdminCoachesPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
             <UserCog className="h-10 w-10 text-muted/30" />
-            <p className="font-medium text-muted">No hay coaches registrados</p>
+            <p className="font-medium text-muted">{t("noCoaches")}</p>
             <Button onClick={() => setShowCreate(true)} variant="outline" className="mt-2 gap-2">
               <Plus className="h-4 w-4" />
-              Crear primer coach
+              {t("createFirstCoach")}
             </Button>
           </CardContent>
         </Card>
@@ -393,7 +396,7 @@ export default function AdminCoachesPage() {
                           <h3 className="truncate font-display text-base font-bold">{coach.name}</h3>
                           {!hasAccount && (
                             <Badge variant="outline" className="text-[10px] text-gray-500 border-gray-300">
-                              Sin cuenta
+                              {t("noAccount")}
                             </Badge>
                           )}
                           {hasAccount && (
@@ -431,7 +434,7 @@ export default function AdminCoachesPage() {
                         </div>
                         <div className="text-center">
                           <p className="text-lg font-bold tabular-nums text-foreground">{s.upcomingClasses.length}</p>
-                          <p className="text-[10px] text-muted">Próximas</p>
+                          <p className="text-[10px] text-muted">{t("upcomingClasses")}</p>
                         </div>
                       </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -42,6 +43,8 @@ const fadeUp = {
 };
 
 export default function AdminWaitlistPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
 
   const { data: waitlistClasses, isLoading } = useQuery<WaitlistClass[]>({
@@ -69,8 +72,8 @@ export default function AdminWaitlistPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="font-display text-2xl font-bold sm:text-3xl">Lista de espera</h1>
-        <p className="mt-1 text-muted">Clases con lista de espera activa</p>
+        <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("waitlistTitle")}</h1>
+        <p className="mt-1 text-muted">{t("waitlistSubtitle")}</p>
       </motion.div>
 
       {isLoading ? (
@@ -83,9 +86,9 @@ export default function AdminWaitlistPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
             <ListOrdered className="h-10 w-10 text-muted/30" />
-            <p className="font-medium text-muted">No hay listas de espera activas</p>
+            <p className="font-medium text-muted">{t("noActiveWaitlist")}</p>
             <p className="text-sm text-muted/70">
-              Las listas aparecen cuando una clase alcanza su capacidad máxima
+              {t("waitlistAppearsWhen")}
             </p>
           </CardContent>
         </Card>
@@ -108,7 +111,7 @@ export default function AdminWaitlistPage() {
                         {cls.enrolled}/{cls.capacity}
                       </Badge>
                       <Badge variant="warning">
-                        {cls.waitlist.length} en espera
+                        {cls.waitlist.length} {t("inWaitlist")}
                       </Badge>
                     </div>
                   </div>
@@ -146,7 +149,7 @@ export default function AdminWaitlistPage() {
                         ) : (
                           <ArrowUpRight className="h-3.5 w-3.5" />
                         )}
-                        Mover a reserva
+                        {t("promoteToBooking")}
                       </Button>
                     </div>
                   ))}
