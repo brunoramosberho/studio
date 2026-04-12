@@ -24,6 +24,8 @@ const TOOL_LABELS: Record<string, string> = {
   get_revenue_summary: "Calculando ingresos",
   get_schedule: "Consultando horario",
   create_class: "Creando clase",
+  create_class_batch: "Armando el horario",
+  update_class: "Actualizando clase",
   cancel_class: "Cancelando clase",
   send_announcement: "Enviando anuncio",
   create_studio: "Creando estudio",
@@ -46,7 +48,48 @@ const TOOL_LABELS: Record<string, string> = {
   get_ratings_summary: "Analizando ratings de clases",
   get_gamification_overview: "Revisando gamificación",
   get_referral_metrics: "Analizando programa de referidos",
+  propose_weekly_schedule: "Diseñando el horario ideal",
 };
+
+const FITNESS_THINKING_PHRASES = [
+  "Haciendo burpees mentales",
+  "En posición de plancha",
+  "Estirando las neuronas",
+  "Calentando motores",
+  "En el reformer de datos",
+  "Haciendo jumping jacks",
+  "Sosteniendo la postura",
+  "En clase de HIIT cerebral",
+  "Respirando profundo",
+  "Cargando las pesas",
+  "Haciendo crunches de números",
+  "Sudando la respuesta",
+  "En el mat pensando",
+  "Sprint final",
+  "Flexionando ideas",
+  "Pedaleando fuerte",
+  "Agarrando el ritmo",
+  "En equilibrio",
+  "Elongando la respuesta",
+  "Activando el core",
+  "Escalando la wall",
+  "Boxeando con los datos",
+  "En modo barre",
+  "Flow de vinyasa",
+  "Saltando la cuerda",
+  "Remando en el erg",
+  "Haciendo sentadillas",
+  "Push-ups de análisis",
+  "En el spin de datos",
+  "Kettlebell swing mental",
+];
+
+// Tools that should show a fun fitness phrase instead of a label
+const SILENT_TOOLS = new Set(["log_feature_request"]);
+
+function getThinkingPhrase(): string {
+  return FITNESS_THINKING_PHRASES[Math.floor(Math.random() * FITNESS_THINKING_PHRASES.length)];
+}
 
 export function MessageList({ messages, isStreaming, activeTools }: MessageListProps) {
   return (
@@ -323,6 +366,12 @@ function TypingDots() {
 }
 
 function ToolCallIndicator({ tools }: { tools: string[] }) {
+  const visibleTools = tools.filter((t) => !SILENT_TOOLS.has(t));
+  const hasSilentOnly = visibleTools.length === 0 && tools.length > 0;
+
+  const label = hasSilentOnly
+    ? getThinkingPhrase()
+    : visibleTools.map((t) => TOOL_LABELS[t] ?? t).join(", ");
 
   return (
     <motion.div
@@ -338,7 +387,7 @@ function ToolCallIndicator({ tools }: { tools: string[] }) {
         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
       />
       <span className="text-[13px] font-medium text-muted">
-        {tools.map((t) => TOOL_LABELS[t] ?? t).join(", ")}...
+        {label}...
       </span>
     </motion.div>
   );
