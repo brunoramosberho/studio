@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Globe, Upload, Instagram, X, FileText, Sparkles, CalendarDays } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 interface SourcesState {
   websiteUrl: string;
   brandbookFile: File | null;
   instagramFiles: File[];
   scheduleFiles: File[];
+  scheduleText: string;
 }
 
 interface Props {
@@ -147,13 +149,25 @@ export function SourcesStep({ sources, onChange, onAnalyze }: Props) {
         />
       </section>
 
-      {/* Schedule Screenshots */}
+      {/* Schedule */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-5 w-5 text-indigo-500" />
-          <Label className="text-base font-semibold text-gray-900">Screenshots de horarios</Label>
-          <span className="text-xs text-gray-400">(opcional, máx. 5)</span>
+          <Label className="text-base font-semibold text-gray-900">Horarios de clases</Label>
+          <span className="text-xs text-gray-400">(opcional)</span>
         </div>
+        <Textarea
+          placeholder={"Lunes\n7:00 - Yoga (Coach Ana, 50 min)\n8:00 - Pilates Reformer (Coach María)\n\nMartes\n7:00 - HIIT (Coach Pedro, 45 min)\n..."}
+          value={sources.scheduleText}
+          onChange={(e) => onChange({ ...sources, scheduleText: e.target.value })}
+          rows={6}
+          className="font-mono text-sm"
+        />
+        <p className="text-xs text-gray-400">
+          Pega el horario semanal como texto. Formato libre: la IA lo interpreta.
+        </p>
+
+        {/* Optional schedule screenshots */}
         {sources.scheduleFiles.length > 0 && (
           <div className="grid grid-cols-5 gap-2">
             {sources.scheduleFiles.map((file, i) => (
@@ -181,10 +195,10 @@ export function SourcesStep({ sources, onChange, onAnalyze }: Props) {
         {sources.scheduleFiles.length < 5 && (
           <button
             onClick={() => scheduleRef.current?.click()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500 transition-colors hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 px-4 py-4 text-xs text-gray-400 transition-colors hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600"
           >
-            <Upload className="h-4 w-4" />
-            Subir screenshots de horarios ({sources.scheduleFiles.length}/5)
+            <Upload className="h-3.5 w-3.5" />
+            O sube screenshots del horario ({sources.scheduleFiles.length}/5)
           </button>
         )}
         <input
@@ -200,9 +214,6 @@ export function SourcesStep({ sources, onChange, onAnalyze }: Props) {
             e.target.value = "";
           }}
         />
-        <p className="text-xs text-gray-400">
-          Sube capturas del horario semanal para extraer clases, horarios y coaches automáticamente
-        </p>
       </section>
 
       {(sources.instagramFiles.length > 0 || sources.scheduleFiles.length > 0) && (
