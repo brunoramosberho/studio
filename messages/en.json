@@ -795,7 +795,9 @@
     "hlSubtitlePlaceholder": "Secondary text over the image",
     "hlDestinationLink": "Destination link",
     "hlExternalLink": "External link (opens in new tab)",
-    "hlNoTitle": "No title"
+    "hlNoTitle": "No title",
+    "cancelImmediately": "Cancel immediately",
+    "resumeAction": "Resume"
   },
   "coach": {
     "portal": "Coach Portal",

@@ -325,7 +325,7 @@ function SubCard({
                 size="icon"
                 disabled={loading}
                 onClick={onResume}
-                title="Reanudar"
+                title={t("resumeAction")}
               >
                 <Play className="h-4 w-4" />
               </Button>
@@ -335,7 +335,7 @@ function SubCard({
                 size="icon"
                 disabled={loading}
                 onClick={onPause}
-                title="Pausar"
+                title={t("pauseAction")}
               >
                 <Pause className="h-4 w-4" />
               </Button>
@@ -346,7 +346,7 @@ function SubCard({
                 size="icon"
                 disabled={loading}
                 onClick={onCancel}
-                title="Cancelar inmediatamente"
+                title={t("cancelImmediately")}
                 className="text-destructive hover:text-destructive"
               >
                 <XCircle className="h-4 w-4" />

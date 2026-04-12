@@ -21,6 +21,7 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { PurchaseSheet } from "@/components/booking/purchase-sheet";
 import { SubscribeSheet } from "@/components/checkout/SubscribeSheet";
 import { formatCurrency, cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface ClassTypeRef {
   id: string;

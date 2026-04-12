@@ -578,7 +578,7 @@ export default function LandingPage() {
                 href="/packages"
                 className="inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-accent/80"
               >
-                Ver todos los paquetes <ArrowRight className="h-3.5 w-3.5" />
+                {t("viewAllPackages")} <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </motion.div>
           )}
@@ -598,14 +598,14 @@ export default function LandingPage() {
         >
           <Zap className="mx-auto mb-6 h-8 w-8 text-accent" />
           <h2 className="font-display text-4xl font-bold sm:text-5xl md:text-6xl" style={{ color: heroText }}>
-            ¿Listo para empezar?
+            {t("readyToStart")}
           </h2>
           <p className="mx-auto mt-6 max-w-md text-lg" style={{ color: heroTextMuted }}>
-            Reserva hoy y descubre lo que tu cuerpo puede lograr.
+            {t("ctaSubtitle")}
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Button asChild size="lg" className="px-10 text-base">
-              <Link href="/schedule">Reserva tu clase</Link>
+              <Link href="/schedule">{t("bookYourClass")}</Link>
             </Button>
             <Button
               asChild

@@ -9,16 +9,18 @@ import { auth } from "@/lib/auth";
 import { getTenant } from "@/lib/tenant";
 import { getServerBranding } from "@/lib/branding.server";
 import { cn } from "@/lib/utils";
+import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const b = await getServerBranding();
   return {
-    title: "Nuestros Coaches",
-    description: `Conoce a las coaches de ${b.studioName} Studio.`,
+    title: "Our Coaches",
+    description: `Meet the coaches of ${b.studioName} Studio.`,
   };
 }
 
 export default async function CoachesPage() {
+  const t = await getTranslations("public");
   const [tenant, session] = await Promise.all([getTenant(), auth()]);
 
   const coaches = tenant
@@ -43,7 +45,7 @@ export default async function CoachesPage() {
             className="inline-flex min-h-11 min-w-11 items-center gap-1 rounded-xl px-1.5 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground active:bg-surface md:-ml-1"
           >
             <ChevronLeft className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
-            <span>Volver a horarios</span>
+            <span>{t("backToSchedule")}</span>
           </Link>
         </div>
         )}
@@ -51,19 +53,19 @@ export default async function CoachesPage() {
         {/* Header: compact on mobile (portal style), hero on desktop */}
         <div className="mb-8 text-left md:mb-14 md:text-center">
           <p className="mb-1 hidden font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-accent md:mb-2 md:block md:text-xs">
-            Equipo
+            {t("team")}
           </p>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground md:text-4xl lg:text-5xl">
-            Nuestros coaches
+            {t("ourCoaches")}
           </h1>
           <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted md:mx-auto md:mt-4 md:text-lg">
-            Expertas certificadas que te guían en cada sesión. Toca una para ver su perfil y reservar sus clases.
+            {t("coachesPageDesc")}
           </p>
         </div>
 
         {coaches.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border/60 bg-surface/40 py-12 text-center text-sm text-muted">
-            Aún no hay coaches publicados.
+            {t("noCoachesPublished")}
           </p>
         ) : (
           <>
@@ -123,7 +125,7 @@ export default async function CoachesPage() {
                             ) : null}
                           </div>
                         ) : (
-                          <p className="mt-1 text-xs text-muted">Ver horarios y bio</p>
+                          <p className="mt-1 text-xs text-muted">{t("viewScheduleAndBio")}</p>
                         )}
                         {coach.bio ? (
                           <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted">
@@ -201,7 +203,7 @@ export default async function CoachesPage() {
                         href={profileHref}
                         className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-accent transition-colors hover:text-accent/80"
                       >
-                        Ver perfil <ArrowRight className="h-3.5 w-3.5" />
+                        {t("viewProfile")} <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     </CardContent>
                   </Card>
