@@ -58,7 +58,11 @@ export default function GiftPackagesPage() {
 
   const { data: gifts, isLoading } = useQuery<GiftData[]>({
     queryKey: ["admin-gift-packages"],
-    queryFn: () => fetch("/api/admin/gift-packages").then((r) => r.json()),
+    queryFn: async () => {
+      const r = await fetch("/api/admin/gift-packages");
+      if (!r.ok) throw new Error("Failed to fetch gift packages");
+      return r.json();
+    },
   });
 
   // Compute stats
