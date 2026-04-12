@@ -8,6 +8,7 @@ interface Props {
   websiteUrl: string;
   hasBrandbook: boolean;
   hasInstagram: boolean;
+  hasSchedule: boolean;
   error: string | null;
   onRetry: () => void;
 }
@@ -18,11 +19,12 @@ const BASE_STEPS = [
   "Extrayendo colores y marca...",
 ];
 
-export function AnalyzingStep({ websiteUrl, hasBrandbook, hasInstagram, error, onRetry }: Props) {
+export function AnalyzingStep({ websiteUrl, hasBrandbook, hasInstagram, hasSchedule, error, onRetry }: Props) {
   const allSteps = [
     ...BASE_STEPS,
     ...(hasBrandbook ? ["Analizando brandbook..."] : []),
     ...(hasInstagram ? ["Analizando Instagram..."] : []),
+    ...(hasSchedule ? ["Extrayendo horarios de clases..."] : []),
     "Detectando disciplinas...",
     "Procesando paquetes y precios...",
     "Generando configuración...",

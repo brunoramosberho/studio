@@ -4,12 +4,13 @@ import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Globe, Upload, Instagram, X, FileText, Sparkles } from "lucide-react";
+import { Globe, Upload, Instagram, X, FileText, Sparkles, CalendarDays } from "lucide-react";
 
 interface SourcesState {
   websiteUrl: string;
   brandbookFile: File | null;
   instagramFiles: File[];
+  scheduleFiles: File[];
 }
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
 export function SourcesStep({ sources, onChange, onAnalyze }: Props) {
   const brandbookRef = useRef<HTMLInputElement>(null);
   const igRef = useRef<HTMLInputElement>(null);
+  const scheduleRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -145,7 +147,65 @@ export function SourcesStep({ sources, onChange, onAnalyze }: Props) {
         />
       </section>
 
-      {sources.instagramFiles.length > 0 && (
+      {/* Schedule Screenshots */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-5 w-5 text-indigo-500" />
+          <Label className="text-base font-semibold text-gray-900">Screenshots de horarios</Label>
+          <span className="text-xs text-gray-400">(opcional, máx. 5)</span>
+        </div>
+        {sources.scheduleFiles.length > 0 && (
+          <div className="grid grid-cols-5 gap-2">
+            {sources.scheduleFiles.map((file, i) => (
+              <div key={i} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200">
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt={`Horario ${i + 1}`}
+                  className="h-full w-full object-cover"
+                />
+                <button
+                  onClick={() =>
+                    onChange({
+                      ...sources,
+                      scheduleFiles: sources.scheduleFiles.filter((_, j) => j !== i),
+                    })
+                  }
+                  className="absolute right-1 top-1 rounded-full bg-black/50 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {sources.scheduleFiles.length < 5 && (
+          <button
+            onClick={() => scheduleRef.current?.click()}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500 transition-colors hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600"
+          >
+            <Upload className="h-4 w-4" />
+            Subir screenshots de horarios ({sources.scheduleFiles.length}/5)
+          </button>
+        )}
+        <input
+          ref={scheduleRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const newFiles = Array.from(e.target.files || []);
+            const combined = [...sources.scheduleFiles, ...newFiles].slice(0, 5);
+            onChange({ ...sources, scheduleFiles: combined });
+            e.target.value = "";
+          }}
+        />
+        <p className="text-xs text-gray-400">
+          Sube capturas del horario semanal para extraer clases, horarios y coaches automáticamente
+        </p>
+      </section>
+
+      {(sources.instagramFiles.length > 0 || sources.scheduleFiles.length > 0) && (
         <p className="text-xs text-gray-400">
           Las imágenes se comprimen automáticamente antes del análisis
         </p>

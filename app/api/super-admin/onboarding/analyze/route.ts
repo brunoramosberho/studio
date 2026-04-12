@@ -9,6 +9,7 @@ interface AnalyzeBody {
   websiteUrl: string;
   brandbookBase64?: string | null;
   instagramScreenshots?: { data: string; mediaType: string }[];
+  scheduleScreenshots?: { data: string; mediaType: string }[];
 }
 
 function normalizeUrl(raw: string): string {
@@ -61,6 +62,7 @@ export async function POST(req: Request) {
     // 2. Files arrive as base64 from the client
     const brandbookBase64 = body.brandbookBase64 || null;
     const instagramBase64List = (body.instagramScreenshots || []).slice(0, 5);
+    const scheduleBase64List = (body.scheduleScreenshots || []).slice(0, 5);
 
     // 4. Build Claude message content
     const content: Anthropic.Messages.ContentBlockParam[] = [
@@ -98,6 +100,23 @@ export async function POST(req: Request) {
         text: `A continuación ${instagramBase64List.length} screenshots del Instagram del estudio. Analiza VISUALMENTE: colores de marca (fondos, acentos, textos), estilo visual, disciplinas mencionadas, y cualquier información sobre el estudio. Los colores que ves repetidamente en estas imágenes SON los colores de la marca:`,
       });
       for (const img of instagramBase64List) {
+        content.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: img.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+            data: img.data,
+          },
+        });
+      }
+    }
+
+    if (scheduleBase64List.length > 0) {
+      content.push({
+        type: "text",
+        text: `A continuación ${scheduleBase64List.length} screenshots del HORARIO SEMANAL de clases del estudio. Analiza VISUALMENTE la tabla/grid: identifica cada clase, su día, hora, nombre de disciplina, y coach si aparece. Estos datos van al campo "schedule" del JSON:`,
+      });
+      for (const img of scheduleBase64List) {
         content.push({
           type: "image",
           source: {
@@ -211,6 +230,16 @@ export async function POST(req: Request) {
 
     if (!Array.isArray(extracted.coaches)) {
       extracted.coaches = [];
+    }
+    if (!Array.isArray(extracted.schedule)) {
+      extracted.schedule = [];
+    }
+    if (extracted.sources) {
+      extracted.sources.scheduleScreenshotsAnalyzed = scheduleBase64List.length > 0;
+      extracted.sources.scheduleScreenshotsCount = scheduleBase64List.length;
+    }
+    if (extracted.manualRequired) {
+      extracted.manualRequired.schedule = extracted.schedule.length === 0;
     }
     for (const coach of extracted.coaches) {
       if (coach.photoUrl && !coach.photoUrl.startsWith("http")) {

@@ -65,16 +65,28 @@ El JSON debe seguir exactamente este schema:
       "confidence": "high" | "medium" | "low"
     }
   ],
+  "schedule": [
+    {
+      "dayOfWeek": number,               // 1=Lunes, 2=Martes, ..., 7=Domingo (ISO)
+      "startTime": string,               // "07:00" formato HH:mm
+      "disciplineName": string,           // nombre EXACTO que coincida con una disciplina extraída
+      "coachName": string | null,         // nombre del coach si es visible, null si no
+      "durationMinutes": number | null,   // duración en minutos si se ve, null si no
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
   "manualRequired": {
     "rooms": true,
-    "schedule": true,
+    "schedule": boolean,                  // false si se extrajeron slots del horario
     "notes": string
   },
   "sources": {
     "websiteAnalyzed": boolean,
     "brandbookAnalyzed": boolean,
     "instagramAnalyzed": boolean,
-    "instagramScreenshotsCount": number
+    "instagramScreenshotsCount": number,
+    "scheduleScreenshotsAnalyzed": boolean,
+    "scheduleScreenshotsCount": number
   }
 }
 
@@ -175,6 +187,36 @@ Para brand.logoUrl:
 - Convertir URLs relativas a absolutas usando el dominio del sitio
 - Si el sitio web está vacío y solo hay screenshots de Instagram, dejar null
   (no inventar URLs)
+
+=== INSTRUCCIONES PARA EXTRACCIÓN DE HORARIOS/SCHEDULE ===
+
+Si se incluyen screenshots de horarios (imágenes de la programación semanal de clases):
+
+1. **ANALIZA VISUALMENTE** cada imagen de horario:
+   - Identifica la estructura de la tabla/grid (días como columnas, horas como filas o viceversa)
+   - Para cada celda/bloque que contenga una clase, extrae:
+     - Día de la semana (convertir a ISO: 1=Lunes, 2=Martes, ..., 7=Domingo)
+     - Hora de inicio en formato HH:mm (24 horas)
+     - Nombre de la clase/disciplina — DEBE coincidir exactamente con una disciplina del array "disciplines"
+     - Nombre del coach si aparece visible
+     - Duración si se muestra o se puede inferir del bloque de tiempo
+
+2. **NOMBRES DE DISCIPLINAS:**
+   - El campo disciplineName DEBE coincidir EXACTAMENTE con el name de una disciplina en el array "disciplines"
+   - Si ves un nombre en el horario que no has incluido en disciplines, PRIMERO agrégalo a disciplines
+   - Ejemplo: si el horario dice "Power Yoga" y en disciplines tienes "Power Yoga", usa "Power Yoga"
+
+3. **NOMBRES DE COACHES:**
+   - Si ves nombres de coaches en el horario que no has incluido en coaches, PRIMERO agrégalos al array "coaches"
+   - Si solo se ve el primer nombre, úsalo tal cual
+
+4. **Si NO hay screenshots de horarios:**
+   - Devolver schedule como array vacío []
+   - manualRequired.schedule debe ser true
+
+5. **Si SÍ hay screenshots de horarios con datos extraídos:**
+   - Llenar schedule con todos los slots detectados
+   - manualRequired.schedule debe ser false
 
 === REGLAS GENERALES ===
 
