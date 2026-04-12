@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils";
+import { usePolicies, getCancellationWindowMs } from "@/hooks/usePolicies";
 
 interface FriendInfo {
   id: string;
@@ -33,12 +34,6 @@ interface UpcomingBooking {
   };
 }
 
-const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
-
-function canCancelFreely(startsAt: string | Date) {
-  return new Date(startsAt).getTime() - Date.now() > CANCELLATION_WINDOW_MS;
-}
-
 function hoursUntilClass(startsAt: string | Date) {
   return Math.max(0, Math.round((new Date(startsAt).getTime() - Date.now()) / 3_600_000));
 }
@@ -46,8 +41,14 @@ function hoursUntilClass(startsAt: string | Date) {
 export function UpcomingClasses() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+  const policies = usePolicies();
+  const cancellationWindowMs = getCancellationWindowMs(policies.cancellationWindowHours);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<UpcomingBooking | null>(null);
+
+  function canCancelFreely(startsAt: string | Date) {
+    return new Date(startsAt).getTime() - Date.now() > cancellationWindowMs;
+  }
 
   const { data: bookings = [] } = useQuery<UpcomingBooking[]>({
     queryKey: ["bookings", "upcoming"],
@@ -241,13 +242,13 @@ export function UpcomingClasses() {
                 {canCancelFreely(cancelTarget.class.startsAt) ? (
                   <div className="mt-4 rounded-xl bg-green-50 px-4 py-3">
                     <p className="text-[13px] font-medium text-green-700">Tu crédito será devuelto</p>
-                    <p className="mt-0.5 text-[12px] text-green-600">Faltan más de 12 horas para la clase</p>
+                    <p className="mt-0.5 text-[12px] text-green-600">Faltan más de {policies.cancellationWindowHours}h para la clase</p>
                   </div>
                 ) : (
                   <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
                     <p className="text-[13px] font-medium text-red-700">Tu crédito NO será devuelto</p>
                     <p className="mt-0.5 text-[12px] text-red-600">
-                      Faltan menos de 12 horas ({hoursUntilClass(cancelTarget.class.startsAt)}h).
+                      Faltan {hoursUntilClass(cancelTarget.class.startsAt)}h — la ventana de cancelación es {policies.cancellationWindowHours}h.
                       Las cancelaciones tardías no reembolsan créditos.
                     </p>
                   </div>

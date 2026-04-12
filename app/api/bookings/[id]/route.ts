@@ -7,7 +7,13 @@ import { restoreCredit } from "@/lib/credits";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
+async function getCancellationWindowMs(tenantId: string): Promise<number> {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { cancellationWindowHours: true },
+  });
+  return (tenant?.cancellationWindowHours ?? 12) * 60 * 60 * 1000;
+}
 
 async function syncCompletedClassFeedEvent(classId: string, tenantId: string) {
   const cls = await prisma.class.findFirst({
@@ -78,15 +84,18 @@ async function syncCompletedClassFeedEvent(classId: string, tenantId: string) {
 }
 
 /** Returns true if credit was restored, false if it was lost */
-async function restoreCreditIfEligible(booking: {
-  packageUsed: string | null;
-  class: { startsAt: Date; classTypeId: string };
-}): Promise<boolean> {
+async function restoreCreditIfEligible(
+  booking: {
+    packageUsed: string | null;
+    class: { startsAt: Date; classTypeId: string };
+  },
+  cancellationWindowMs: number,
+): Promise<boolean> {
   if (!booking.packageUsed) return true;
 
   const hoursUntilClass =
     new Date(booking.class.startsAt).getTime() - Date.now();
-  if (hoursUntilClass <= CANCELLATION_WINDOW_MS) return false;
+  if (hoursUntilClass <= cancellationWindowMs) return false;
 
   await restoreCredit(booking.packageUsed, booking.class.classTypeId);
   return true;
@@ -131,8 +140,20 @@ export async function PUT(
 
     let creditLost = false;
     if (status === "CANCELLED") {
-      const restored = await restoreCreditIfEligible(booking);
+      const windowMs = await getCancellationWindowMs(tenant.id);
+      const restored = await restoreCreditIfEligible(booking, windowMs);
       creditLost = !restored;
+    }
+
+    // No-show penalty: credit is always consumed (not returned)
+    if (status === "NO_SHOW") {
+      const tenantConfig = await prisma.tenant.findUnique({
+        where: { id: tenant.id },
+        select: { noShowPenaltyEnabled: true, noShowPenaltyType: true, noShowPenaltyAmount: true },
+      });
+      if (tenantConfig?.noShowPenaltyEnabled) {
+        creditLost = true; // Credit used for this class is lost
+      }
     }
 
     const updated = await prisma.booking.update({
@@ -140,6 +161,7 @@ export async function PUT(
       data: {
         status,
         ...(status === "CANCELLED" ? { spotNumber: null, creditLost } : {}),
+        ...(status === "NO_SHOW" ? { creditLost } : {}),
       },
       include: {
         class: {
@@ -229,7 +251,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const restored = await restoreCreditIfEligible(booking);
+    const windowMs = await getCancellationWindowMs(tenant.id);
+    const restored = await restoreCreditIfEligible(booking, windowMs);
 
     const cancelled = await prisma.booking.update({
       where: { id, tenantId: tenant.id },

@@ -35,6 +35,7 @@ export type AdminPermission =
   | "referrals"
   // Configuration
   | "billing"
+  | "policies"
   | "waiver"
   | "branding"
   | "team"
@@ -48,7 +49,7 @@ const ALL_PERMISSIONS: AdminPermission[] = [
   "finance", "packages", "subscriptions", "shop", "platforms",
   "reports", "analytics", "conversion",
   "marketing", "highlights", "referrals",
-  "billing", "waiver", "branding", "team", "studios", "language",
+  "billing", "policies", "waiver", "branding", "team", "studios", "language",
 ];
 
 const FRONT_DESK_PERMISSIONS: Set<AdminPermission> = new Set([

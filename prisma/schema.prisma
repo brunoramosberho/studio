@@ -114,6 +114,12 @@ model Tenant {
   nudgeEvents           NudgeEvent[]
   introOfferClaims      IntroOfferClaim[]
 
+  // Cancellation & no-show policies
+  cancellationWindowHours Int      @default(12)
+  noShowPenaltyEnabled    Boolean  @default(false)
+  noShowPenaltyType       String   @default("CREDIT_LOSS") // CREDIT_LOSS | FEE
+  noShowPenaltyAmount     Float?   // Fee amount (e.g., 5.00 EUR) when type = FEE
+
   taxRate               Float     @default(0.21)
   tpvFeePercent         Float?
   tpvFeeFixed           Float?

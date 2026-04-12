@@ -30,6 +30,7 @@ import {
 import { es, enUS } from "date-fns/locale";
 import { cn, formatTime, formatRelativeDay } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
+import { usePolicies, getCancellationWindowMs } from "@/hooks/usePolicies";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,17 @@ export function ScheduleClient({
 }: ScheduleClientProps = {}) {
   const tf = useTranslations("footer");
   const t = useTranslations("schedule");
+  const policies = usePolicies();
+  const cancellationWindowMs = getCancellationWindowMs(policies.cancellationWindowHours);
   const title = titleProp ?? t("weekSchedule");
+
+  function canCancelClassFreely(cls: ClassWithDetails): boolean {
+    return new Date(cls.startsAt).getTime() - Date.now() > cancellationWindowMs;
+  }
+
+  function hoursUntilClass(cls: ClassWithDetails): number {
+    return Math.max(0, Math.round((new Date(cls.startsAt).getTime() - Date.now()) / 3_600_000));
+  }
   const locale = useLocale();
   const dateFnsLocale = locale === "en" ? enUS : es;
   const { data: session } = useSession();
@@ -895,7 +906,7 @@ export function ScheduleClient({
                       {t("creditRefunded")}
                     </p>
                     <p className="mt-0.5 text-[12px] text-green-600">
-                      {t("moreThan12h")}
+                      Faltan más de {policies.cancellationWindowHours}h para la clase
                     </p>
                   </div>
                 ) : (
@@ -904,7 +915,7 @@ export function ScheduleClient({
                       {t("creditNotRefunded")}
                     </p>
                     <p className="mt-0.5 text-[12px] text-red-600">
-                      {t("lessThan12h", { hours: hoursUntilClass(cancelTarget) })}
+                      Faltan {hoursUntilClass(cancelTarget)}h — la ventana de cancelación es {policies.cancellationWindowHours}h
                     </p>
                   </div>
                 )}
@@ -958,15 +969,7 @@ export function ScheduleClient({
   );
 }
 
-const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
-
-function canCancelClassFreely(cls: ClassWithDetails): boolean {
-  return new Date(cls.startsAt).getTime() - Date.now() > CANCELLATION_WINDOW_MS;
-}
-
-function hoursUntilClass(cls: ClassWithDetails): number {
-  return Math.max(0, Math.round((new Date(cls.startsAt).getTime() - Date.now()) / 3_600_000));
-}
+/* cancellation helpers moved inside ScheduleClient to use tenant config */
 
 /* ── Collapsible past classes section ── */
 function CollapsiblePastClasses({

@@ -24,6 +24,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { BookingWithDetails } from "@/types";
 import { BiometricsCard } from "@/components/booking/biometrics-card";
 import { useTranslations } from "next-intl";
+import { usePolicies, getCancellationWindowMs } from "@/hooks/usePolicies";
 
 interface FriendInfo {
   id: string;
@@ -48,8 +49,6 @@ type UpcomingItem =
   | { kind: "booking"; data: EnrichedBooking }
   | { kind: "waitlist"; data: WaitlistEntry };
 
-const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000;
-
 const stagger = {
   hidden: {},
   show: { transition: { staggerChildren: 0.06 } },
@@ -72,11 +71,6 @@ async function fetchMyWaitlist(): Promise<WaitlistEntry[]> {
   return res.json();
 }
 
-function canCancelFreely(classStartsAt: string | Date): boolean {
-  const timeUntil = new Date(classStartsAt).getTime() - Date.now();
-  return timeUntil > CANCELLATION_WINDOW_MS;
-}
-
 function hoursUntilClass(classStartsAt: string | Date): number {
   return Math.max(0, Math.round((new Date(classStartsAt).getTime() - Date.now()) / 3_600_000));
 }
@@ -85,10 +79,17 @@ export default function BookingsPage() {
   const t = useTranslations("member");
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+  const policies = usePolicies();
+  const cancellationWindowMs = getCancellationWindowMs(policies.cancellationWindowHours);
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [cancelTarget, setCancelTarget] = useState<EnrichedBooking | null>(null);
   const [waitlistLeaveTarget, setWaitlistLeaveTarget] = useState<WaitlistEntry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  function canCancelFreely(classStartsAt: string | Date): boolean {
+    const timeUntil = new Date(classStartsAt).getTime() - Date.now();
+    return timeUntil > cancellationWindowMs;
+  }
 
   const { data: upcoming = [], isLoading: loadingUpcoming } = useQuery({
     queryKey: ["bookings", "upcoming"],
@@ -372,7 +373,7 @@ export default function BookingsPage() {
                         {t("creditWillBeReturned")}
                       </p>
                       <p className="mt-0.5 text-[12px] text-green-600">
-                        {t("moreThan12Hours")}
+                        Faltan más de {policies.cancellationWindowHours}h para la clase
                       </p>
                     </div>
                   ) : (
@@ -381,7 +382,7 @@ export default function BookingsPage() {
                         {t("creditWillNotBeReturned")}
                       </p>
                       <p className="mt-0.5 text-[12px] text-red-600">
-                        {t("lessThan12Hours", { hours: hoursUntilClass(cancelTarget.class.startsAt) })}
+                        Faltan {hoursUntilClass(cancelTarget.class.startsAt)}h — la ventana de cancelación es {policies.cancellationWindowHours}h
                       </p>
                     </div>
                   )}

@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addMinutes, format } from "date-fns";
-import { Loader2, Music } from "lucide-react";
+import { addMinutes, addWeeks, format, setDay, startOfDay, isBefore, isAfter } from "date-fns";
+import { Loader2, Music, CalendarRange, Repeat, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -44,14 +45,31 @@ const SONG_CRITERIA_OPTIONS = [
   { value: "CLASS_MILESTONE", label: "Hito de clases (10, 25, 50, 100…)" },
 ];
 
+const DAY_LABELS = [
+  { index: 0, short: "L", full: "Lunes" },
+  { index: 1, short: "M", full: "Martes" },
+  { index: 2, short: "Mi", full: "Miércoles" },
+  { index: 3, short: "J", full: "Jueves" },
+  { index: 4, short: "V", full: "Viernes" },
+  { index: 5, short: "S", full: "Sábado" },
+  { index: 6, short: "D", full: "Domingo" },
+];
+
+type ScheduleMode = "single" | "recurring";
+
 interface ClassFormData {
   classTypeId: string;
   coachProfileId: string;
   roomId: string;
+  // Single mode
   date: string;
+  // Recurring mode
+  dateFrom: string;
+  dateTo: string;
+  days: number[];
+  // Shared
   time: string;
   duration: number;
-  recurring: boolean;
   tag: string;
   songRequestsEnabled: boolean;
   songRequestCriteria: string[];
@@ -62,9 +80,11 @@ const emptyForm: ClassFormData = {
   coachProfileId: "",
   roomId: "",
   date: "",
+  dateFrom: "",
+  dateTo: "",
+  days: [],
   time: "",
   duration: 50,
-  recurring: false,
   tag: "",
   songRequestsEnabled: true,
   songRequestCriteria: ["ALL"],
@@ -89,6 +109,7 @@ export function ClassFormDialog({
 }: ClassFormDialogProps) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<ClassFormData>(emptyForm);
+  const [mode, setMode] = useState<ScheduleMode>("single");
 
   const { data: classTypes } = useQuery<ClassType[]>({
     queryKey: ["class-types"],
@@ -120,6 +141,7 @@ export function ClassFormDialog({
   useEffect(() => {
     if (!open) return;
     if (editingClass) {
+      setMode("single");
       const start = new Date(editingClass.startsAt);
       const end = new Date(editingClass.endsAt);
       const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
@@ -128,9 +150,11 @@ export function ClassFormDialog({
         coachProfileId: editingClass.coach.id,
         roomId: editingClass.room?.id ?? "",
         date: format(start, "yyyy-MM-dd"),
+        dateFrom: "",
+        dateTo: "",
+        days: [],
         time: format(start, "HH:mm"),
         duration: durationMin,
-        recurring: editingClass.isRecurring,
         tag: editingClass.tag ?? "",
         songRequestsEnabled: editingClass.songRequestsEnabled ?? false,
         songRequestCriteria: editingClass.songRequestCriteria?.length
@@ -138,6 +162,7 @@ export function ClassFormDialog({
           : ["ALL"],
       });
     } else {
+      setMode("single");
       setFormData({
         ...emptyForm,
         date: defaultDate ?? "",
@@ -152,7 +177,31 @@ export function ClassFormDialog({
       .map((r) => ({ ...r, studioName: s.name })),
   ) ?? [];
 
-  const saveMutation = useMutation({
+  // Preview class count for recurring mode
+  const previewCount = useMemo(() => {
+    if (mode !== "recurring" || !formData.dateFrom || !formData.dateTo || formData.days.length === 0) return 0;
+
+    const dateFnsDayMap: Record<number, number> = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 0 };
+    const startDate = startOfDay(new Date(formData.dateFrom));
+    const endDate = startOfDay(new Date(formData.dateTo));
+
+    if (isAfter(startDate, endDate)) return 0;
+
+    let count = 0;
+    for (const dayIndex of formData.days) {
+      const dateFnsDay = dateFnsDayMap[dayIndex];
+      if (dateFnsDay === undefined) continue;
+      let current = setDay(startDate, dateFnsDay, { weekStartsOn: 1 });
+      if (isBefore(current, startDate)) current = addWeeks(current, 1);
+      while (!isAfter(current, endDate)) {
+        count++;
+        current = addWeeks(current, 1);
+      }
+    }
+    return count;
+  }, [mode, formData.dateFrom, formData.dateTo, formData.days]);
+
+  const saveSingleMutation = useMutation({
     mutationFn: async () => {
       const startsAt = new Date(`${formData.date}T${formData.time}`);
       const endsAt = addMinutes(startsAt, formData.duration);
@@ -162,7 +211,6 @@ export function ClassFormDialog({
         startsAt: startsAt.toISOString(),
         endsAt: endsAt.toISOString(),
         roomId: formData.roomId,
-        isRecurring: formData.recurring,
         tag: formData.tag || null,
         songRequestsEnabled: formData.songRequestsEnabled,
         songRequestCriteria: formData.songRequestsEnabled ? formData.songRequestCriteria : [],
@@ -191,19 +239,107 @@ export function ClassFormDialog({
     onError: (err: Error) => toast.error(err.message || "No se pudo guardar"),
   });
 
-  const isFormValid = formData.classTypeId && formData.coachProfileId && formData.roomId && formData.date && formData.time;
+  const saveBulkMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        classTypeId: formData.classTypeId,
+        coachId: formData.coachProfileId,
+        roomId: formData.roomId,
+        time: formData.time,
+        duration: formData.duration,
+        days: formData.days,
+        dateFrom: formData.dateFrom,
+        dateTo: formData.dateTo,
+        tag: formData.tag || null,
+        songRequestsEnabled: formData.songRequestsEnabled,
+        songRequestCriteria: formData.songRequestsEnabled ? formData.songRequestCriteria : [],
+      };
+      const res = await fetch("/api/classes/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-classes"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-schedule"] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      onOpenChange(false);
+      toast.success(`${data.count} clases creadas`);
+      onSaved?.();
+    },
+    onError: (err: Error) => toast.error(err.message || "No se pudo crear la serie"),
+  });
+
+  const isPending = saveSingleMutation.isPending || saveBulkMutation.isPending;
+
+  const isFormValid = useMemo(() => {
+    const base = formData.classTypeId && formData.coachProfileId && formData.roomId && formData.time;
+    if (mode === "single") return base && formData.date;
+    return base && formData.dateFrom && formData.dateTo && formData.days.length > 0;
+  }, [formData, mode]);
+
+  function handleSave() {
+    if (mode === "single") saveSingleMutation.mutate();
+    else saveBulkMutation.mutate();
+  }
+
+  function toggleDay(dayIndex: number) {
+    setFormData((prev) => ({
+      ...prev,
+      days: prev.days.includes(dayIndex)
+        ? prev.days.filter((d) => d !== dayIndex)
+        : [...prev.days, dayIndex].sort(),
+    }));
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editingClass ? "Editar clase" : "Crear nueva clase"}</DialogTitle>
+          <DialogTitle>{editingClass ? "Editar clase" : "Programar clases"}</DialogTitle>
           <DialogDescription>
-            {editingClass ? "Modifica los datos de la clase" : "Programa una nueva clase para el estudio"}
+            {editingClass ? "Modifica los datos de la clase" : "Crea una clase o programa una serie recurrente"}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
+          {/* Mode selector - only for create */}
+          {!editingClass && (
+            <div className="flex gap-1 rounded-xl bg-surface p-1">
+              <button
+                type="button"
+                onClick={() => setMode("single")}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-all ${
+                  mode === "single"
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                Clase única
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("recurring")}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-all ${
+                  mode === "recurring"
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <Repeat className="h-3.5 w-3.5" />
+                Serie recurrente
+              </button>
+            </div>
+          )}
+
+          {/* Class type + Coach */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted">Tipo de clase</label>
@@ -240,6 +376,7 @@ export function ClassFormDialog({
             </div>
           </div>
 
+          {/* Room */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted">Sala</label>
             <Select
@@ -259,36 +396,127 @@ export function ClassFormDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">Fecha</label>
-              <Input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              />
+          {/* Schedule section */}
+          {mode === "single" ? (
+            /* Single: date + time + duration */
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted">Fecha</label>
+                <Input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted">Hora</label>
+                <Input
+                  type="time"
+                  value={formData.time}
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted">Duración (min)</label>
+                <Input
+                  type="number"
+                  min={15}
+                  max={120}
+                  step={5}
+                  value={formData.duration}
+                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 50 })}
+                />
+              </div>
             </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">Hora</label>
-              <Input
-                type="time"
-                value={formData.time}
-                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">Duración (min)</label>
-              <Input
-                type="number"
-                min={15}
-                max={120}
-                step={5}
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 50 })}
-              />
-            </div>
-          </div>
+          ) : (
+            /* Recurring: days selector + date range + time + duration */
+            <div className="space-y-3">
+              {/* Day-of-week selector */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted">Días de la semana</label>
+                <div className="flex gap-1.5">
+                  {DAY_LABELS.map((day) => (
+                    <button
+                      key={day.index}
+                      type="button"
+                      onClick={() => toggleDay(day.index)}
+                      title={day.full}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold transition-all ${
+                        formData.days.includes(day.index)
+                          ? "bg-admin text-white shadow-sm"
+                          : "bg-surface text-muted hover:bg-surface/80 hover:text-foreground"
+                      }`}
+                    >
+                      {day.short}
+                    </button>
+                  ))}
+                </div>
+                {formData.days.length > 0 && (
+                  <p className="mt-1 text-[11px] text-muted">
+                    {formData.days.map((d) => DAY_LABELS[d].full).join(", ")}
+                  </p>
+                )}
+              </div>
 
+              {/* Date range */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-muted">Desde</label>
+                  <Input
+                    type="date"
+                    value={formData.dateFrom}
+                    onChange={(e) => setFormData({ ...formData, dateFrom: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-muted">Hasta</label>
+                  <Input
+                    type="date"
+                    value={formData.dateTo}
+                    onChange={(e) => setFormData({ ...formData, dateTo: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Time + Duration */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-muted">Hora</label>
+                  <Input
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-muted">Duración (min)</label>
+                  <Input
+                    type="number"
+                    min={15}
+                    max={120}
+                    step={5}
+                    value={formData.duration}
+                    onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 50 })}
+                  />
+                </div>
+              </div>
+
+              {/* Preview */}
+              {previewCount > 0 && (
+                <div className="flex items-center gap-2 rounded-lg bg-admin/5 px-3 py-2">
+                  <CalendarRange className="h-4 w-4 text-admin" />
+                  <span className="text-sm font-medium text-admin">
+                    Se crearán {previewCount} clases
+                  </span>
+                  <span className="text-xs text-muted">
+                    ({formData.days.map((d) => DAY_LABELS[d].short).join(", ")} · {formData.dateFrom} → {formData.dateTo})
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tag */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted">
               Tag especial <span className="font-normal">(opcional)</span>
@@ -300,6 +528,7 @@ export function ClassFormDialog({
             />
           </div>
 
+          {/* Song requests */}
           <div className="space-y-3 rounded-md border border-border/50 bg-surface/20 p-3">
             <div className="flex items-center gap-2">
               <Checkbox
@@ -343,22 +572,9 @@ export function ClassFormDialog({
             )}
           </div>
 
-          {!editingClass && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="recurring"
-                checked={formData.recurring}
-                onCheckedChange={(checked) => setFormData({ ...formData, recurring: checked === true })}
-              />
-              <Label htmlFor="recurring" className="text-sm font-normal">
-                Repetir semanalmente
-              </Label>
-            </div>
-          )}
-
-          {saveMutation.isError && (
+          {(saveSingleMutation.isError || saveBulkMutation.isError) && (
             <p className="text-sm text-destructive">
-              {saveMutation.error?.message || "Error al guardar la clase"}
+              {saveSingleMutation.error?.message || saveBulkMutation.error?.message || "Error al guardar"}
             </p>
           )}
 
@@ -369,12 +585,16 @@ export function ClassFormDialog({
               Cancelar
             </Button>
             <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || !isFormValid}
+              onClick={handleSave}
+              disabled={isPending || !isFormValid}
               className="gap-2 bg-admin hover:bg-admin/90"
             >
-              {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              {editingClass ? "Guardar cambios" : "Crear clase"}
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {editingClass
+                ? "Guardar cambios"
+                : mode === "single"
+                  ? "Crear clase"
+                  : `Crear ${previewCount || ""} clases`}
             </Button>
           </DialogFooter>
         </div>

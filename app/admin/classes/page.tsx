@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
+  Repeat,
 } from "lucide-react";
 import Link from "next/link";
 import { format, isPast } from "date-fns";
@@ -114,6 +115,23 @@ export default function AdminClassesPage() {
       queryClient.invalidateQueries({ queryKey: ["classes"] });
       setCancelTarget(null);
       toast.success(t("classCancelled"));
+    },
+    onError: (err: Error) => toast.error(err.message || t("classCancelError")),
+  });
+
+  const cancelSeriesMutation = useMutation({
+    mutationFn: async (recurringId: string) => {
+      const res = await fetch(`/api/classes/series/${recurringId}?futureOnly=true`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-classes"] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      setCancelTarget(null);
+      toast.success(`${data.count} clases canceladas`);
     },
     onError: (err: Error) => toast.error(err.message || t("classCancelError")),
   });
@@ -312,6 +330,9 @@ export default function AdminClassesPage() {
                             <div className="flex items-center gap-2">
                               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cls.classType.color || "#1A2C4E" }} />
                               <span className="text-sm font-semibold">{cls.classType.name}</span>
+                              {cls.recurringId && (
+                                <span title="Serie recurrente" className="text-muted"><Repeat className="h-3 w-3" /></span>
+                              )}
                               {cls.tag && <Badge variant="outline" className="text-[10px]">{cls.tag}</Badge>}
                               {isCancelled && <Badge variant="danger">{t("cancelled")}</Badge>}
                             </div>
@@ -508,19 +529,31 @@ export default function AdminClassesPage() {
               })}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCancelTarget(null)}>
-              {tc("back")}
-            </Button>
+          <div className="flex flex-col gap-2">
             <Button
               variant="destructive"
+              className="w-full"
               onClick={() => cancelTarget && cancelMutation.mutate(cancelTarget.id)}
-              disabled={cancelMutation.isPending}
+              disabled={cancelMutation.isPending || cancelSeriesMutation.isPending}
             >
               {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {tc("confirmCancel")}
             </Button>
-          </DialogFooter>
+            {cancelTarget?.recurringId && (
+              <Button
+                variant="outline"
+                className="w-full border-destructive text-destructive hover:bg-destructive/5"
+                onClick={() => cancelTarget.recurringId && cancelSeriesMutation.mutate(cancelTarget.recurringId)}
+                disabled={cancelMutation.isPending || cancelSeriesMutation.isPending}
+              >
+                {cancelSeriesMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Cancelar toda la serie (futuras)
+              </Button>
+            )}
+            <Button variant="ghost" className="w-full" onClick={() => setCancelTarget(null)}>
+              {tc("back")}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

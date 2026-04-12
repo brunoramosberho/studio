@@ -48,6 +48,7 @@ import {
   CreditCard,
   CalendarSync,
   Wallet,
+  ShieldAlert,
 } from "lucide-react";
 import { SparklesIcon, type SparklesIconHandle } from "lucide-animated";
 import { useTranslations } from "next-intl";
@@ -137,6 +138,7 @@ const flyoutGroups: FlyoutGroup[] = [
     permission: "billing",
     items: [
       { href: "/admin/settings/billing", labelKey: "billing", icon: CreditCard, permission: "billing" },
+      { href: "/admin/settings/policies", labelKey: "policies", icon: ShieldAlert, permission: "policies" },
       { href: "/admin/waiver", labelKey: "waiver", icon: FileSignature, permission: "waiver" },
       { href: "/admin/branding", labelKey: "branding", icon: Palette, permission: "branding" },
       { href: "/admin/team", labelKey: "team", icon: ShieldCheck, permission: "team" },
