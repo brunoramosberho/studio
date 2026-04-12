@@ -108,8 +108,6 @@ const MODE_KEY = "mgic-ai-mode";
 const WIDTH_KEY = "mgic-ai-width";
 const MAX_CONVERSATIONS = 50;
 
-const DAILY_PROMPT =
-  "Dame un resumen rápido del estado del studio hoy — ocupación, algo destacable y si hay algo que debería revisar.";
 
 function generateTitle(messages: AiMessage[]): string {
   const first = messages.find((m) => m.role === "user");
@@ -165,7 +163,6 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
   const [currentConvId, setCurrentConvId] = useState<string>(crypto.randomUUID());
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
-  const hasAutoSent = useRef(false);
   const { studioName } = useBranding();
   const abortRef = useRef<AbortController | null>(null);
 
@@ -450,35 +447,7 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
 
   const open = useCallback(() => {
     setIsOpen(true);
-
-    if (!hasAutoSent.current && messages.length === 0) {
-      hasAutoSent.current = true;
-      const todayKey = `mgic-ai-daily-${new Date().toISOString().slice(0, 10)}`;
-      const alreadySentToday = localStorage.getItem(todayKey);
-      if (!alreadySentToday) {
-        localStorage.setItem(todayKey, "1");
-        setTimeout(() => {
-          const userMsg: AiMessage = {
-            id: crypto.randomUUID(),
-            role: "user",
-            content: DAILY_PROMPT,
-            timestamp: Date.now(),
-          };
-          const assistantMsg: AiMessage = {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: "",
-            timestamp: Date.now(),
-          };
-          setMessages([userMsg, assistantMsg]);
-          processStream(
-            [{ role: "user" as const, content: DAILY_PROMPT }],
-            assistantMsg.id,
-          );
-        }, 100);
-      }
-    }
-  }, [messages.length, processStream]);
+  }, []);
 
   const close = useCallback(() => {
     if (messages.length > 0) saveCurrentToHistory();
@@ -874,10 +843,10 @@ function ConversationListView({
 const DEFAULT_SUGGESTIONS = [
   "¿Cómo va la ocupación esta semana?",
   "¿Quiénes son mis clientes en riesgo?",
-  "¿Cuál es mi clase más rentable?",
+  "Proponme el horario de la próxima semana",
   "Resumen de ingresos del mes",
-  "Crea un nuevo post para el feed",
-  "Da de alta un nuevo cliente",
+  "Crea una clase recurrente de Yoga",
+  "¿Qué coach tiene mejor rendimiento?",
 ];
 
 const PAGE_SUGGESTIONS: Record<string, string[]> = {
@@ -890,12 +859,12 @@ const PAGE_SUGGESTIONS: Record<string, string[]> = {
     "¿Qué coach tiene menos carga esta semana para cubrir un hueco?",
   ],
   "/admin/schedule": [
+    "Proponme el horario de la próxima semana",
     "¿Qué clases tienen más lista de espera esta semana?",
-    "¿Hay huecos sin clase en el horario de esta semana?",
     "¿Cuál es el mejor horario para añadir una clase nueva?",
-    "Crea una clase de Pilates Reformer para el lunes a las 10am",
+    "Crea 5 clases de Yoga para toda la semana",
     "¿Qué coach está disponible el viernes en la mañana?",
-    "Muéstrame el horario de la próxima semana",
+    "Mueve la clase de las 10am al jueves a las 11am",
   ],
   "/admin/coaches": [
     "¿Cuál es el coach con mejor fill rate este mes?",

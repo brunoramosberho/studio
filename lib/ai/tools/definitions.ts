@@ -431,6 +431,26 @@ export const tools: Anthropic.Tool[] = [
     },
   },
 
+  {
+    name: "propose_weekly_schedule",
+    description:
+      "Analiza datos históricos de fill rate, disponibilidad de coaches, y demanda para proponer un horario semanal optimizado. Devuelve una propuesta con slots, disciplinas, coaches y salas sugeridas. Úsalo cuando el admin pida armar el horario de una semana.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        week_start: {
+          type: "string",
+          description: "Fecha de inicio de la semana (ISO 8601, ej: 2025-01-20). Si no se da, usa el próximo lunes.",
+        },
+        preferences: {
+          type: "string",
+          description: "Preferencias del admin en texto libre (ej: 'más yoga por las mañanas', 'no clases después de las 8pm'). Opcional.",
+        },
+      },
+      required: [],
+    },
+  },
+
   // ─── WRITE TOOLS ──────────────────────────────────────────────
 
   {
@@ -449,6 +469,50 @@ export const tools: Anthropic.Tool[] = [
         recurring_id: { type: "string", description: "ID de recurrencia si aplica" },
       },
       required: ["class_type_id", "coach_id", "room_id", "starts_at", "ends_at"],
+    },
+  },
+
+  {
+    name: "create_class_batch",
+    description:
+      "Crea múltiples clases de una vez (para armar un horario semanal completo o clases recurrentes). Requiere confirmación del admin. Cada clase necesita tipo, coach, sala, inicio y fin.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        classes: {
+          type: "array",
+          description: "Array de clases a crear",
+          items: {
+            type: "object",
+            properties: {
+              class_type_id: { type: "string", description: "ID del tipo de clase" },
+              coach_id: { type: "string", description: "ID del coach profile" },
+              room_id: { type: "string", description: "ID de la sala" },
+              starts_at: { type: "string", description: "ISO 8601 datetime" },
+              ends_at: { type: "string", description: "ISO 8601 datetime" },
+            },
+            required: ["class_type_id", "coach_id", "room_id", "starts_at", "ends_at"],
+          },
+        },
+      },
+      required: ["classes"],
+    },
+  },
+
+  {
+    name: "update_class",
+    description:
+      "Reagenda o modifica una clase existente: cambiar horario, coach o sala. Requiere confirmación del admin. Si hay miembros inscritos, incluye esa info en la respuesta.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        class_id: { type: "string", description: "ID de la clase a modificar" },
+        starts_at: { type: "string", description: "Nuevo horario de inicio (ISO 8601). Opcional." },
+        ends_at: { type: "string", description: "Nuevo horario de fin (ISO 8601). Opcional." },
+        coach_id: { type: "string", description: "Nuevo coach (ID). Opcional." },
+        room_id: { type: "string", description: "Nueva sala (ID). Opcional." },
+      },
+      required: ["class_id"],
     },
   },
 
@@ -626,6 +690,8 @@ export const tools: Anthropic.Tool[] = [
 
 export const WRITE_TOOLS = new Set([
   "create_class",
+  "create_class_batch",
+  "update_class",
   "cancel_class",
   "send_announcement",
   "create_studio",
