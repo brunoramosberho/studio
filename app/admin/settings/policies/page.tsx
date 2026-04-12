@@ -17,7 +17,7 @@ interface PoliciesConfig {
 }
 
 export default function PoliciesSettingsPage() {
-  const t = useTranslations("admin.policies");
+  const t = useTranslations("admin.policiesPage");
   const [config, setConfig] = useState<PoliciesConfig | null>(null);
   const [saving, setSaving] = useState(false);
 

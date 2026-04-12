@@ -74,6 +74,7 @@ export default function AdminClassesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("upcoming");
   const [searchQuery, setSearchQuery] = useState("");
   const [cancelTarget, setCancelTarget] = useState<ClassWithDetails | null>(null);
+  const [showCancelAllFuture, setShowCancelAllFuture] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [sort, setSort] = useState<{ key: "startsAt" | "classType" | "coach" | "studio" | "enrolled"; dir: "asc" | "desc" }>({
@@ -136,6 +137,25 @@ export default function AdminClassesPage() {
     onError: (err: Error) => toast.error(err.message || t("classCancelError")),
   });
 
+  const cancelAllFutureMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/classes/cancel-future", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-classes"] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      setShowCancelAllFuture(false);
+      toast.success(t("allFutureCancelled", { count: data.count }));
+    },
+    onError: (err: Error) => toast.error(err.message || t("classCancelError")),
+  });
+
   const filtered = useMemo(() => {
     const base = (classes ?? [])
       .filter((c) => {
@@ -193,10 +213,23 @@ export default function AdminClassesPage() {
           </p>
         </motion.div>
 
-        <Button onClick={openCreateDialog} className="gap-2 bg-admin hover:bg-admin/90">
-          <Plus className="h-4 w-4" />
-          {t("createClass")}
-        </Button>
+        <div className="flex items-center gap-2">
+          {upcomingCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/5"
+              onClick={() => setShowCancelAllFuture(true)}
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              {t("cancelAllFuture")}
+            </Button>
+          )}
+          <Button onClick={openCreateDialog} className="gap-2 bg-admin hover:bg-admin/90">
+            <Plus className="h-4 w-4" />
+            {t("createClass")}
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -554,6 +587,31 @@ export default function AdminClassesPage() {
               {tc("back")}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel all future classes dialog */}
+      <Dialog open={showCancelAllFuture} onOpenChange={setShowCancelAllFuture}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("cancelAllFuture")}</DialogTitle>
+            <DialogDescription>
+              {t("cancelAllFutureConfirm", { count: upcomingCount })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowCancelAllFuture(false)}>
+              {tc("back")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => cancelAllFutureMutation.mutate()}
+              disabled={cancelAllFutureMutation.isPending}
+            >
+              {cancelAllFutureMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("cancelAllFuture")} ({upcomingCount})
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

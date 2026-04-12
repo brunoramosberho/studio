@@ -177,6 +177,9 @@
     "classCancelError": "No se pudo cancelar",
     "classSeriesCancelled": "{count} clases canceladas",
     "cancelSeries": "Cancelar toda la serie (futuras)",
+    "cancelAllFuture": "Cancelar todas las futuras",
+    "cancelAllFutureConfirm": "¿Estás seguro de cancelar todas las {count} clases futuras? Los alumnos inscritos serán notificados y sus créditos devueltos.",
+    "allFutureCancelled": "{count} clases futuras canceladas",
     "classForm": {
       "scheduleClasses": "Programar clases",
       "editClass": "Editar clase",
@@ -237,7 +240,7 @@
       "daySatFull": "Sábado",
       "daySunFull": "Domingo"
     },
-    "policies": {
+    "policiesPage": {
       "title": "Políticas de reserva",
       "subtitle": "Configura las reglas de cancelación y penalización por no-show",
       "cancellationTitle": "Política de cancelación",

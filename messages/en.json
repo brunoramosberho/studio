@@ -177,6 +177,9 @@
     "classCancelError": "Could not cancel class",
     "classSeriesCancelled": "{count} classes cancelled",
     "cancelSeries": "Cancel entire series (future)",
+    "cancelAllFuture": "Cancel all future",
+    "cancelAllFutureConfirm": "Are you sure you want to cancel all {count} future classes? Enrolled students will be notified and their credits refunded.",
+    "allFutureCancelled": "{count} future classes cancelled",
     "classForm": {
       "scheduleClasses": "Schedule classes",
       "editClass": "Edit class",
@@ -237,7 +240,7 @@
       "daySatFull": "Saturday",
       "daySunFull": "Sunday"
     },
-    "policies": {
+    "policiesPage": {
       "title": "Booking policies",
       "subtitle": "Configure cancellation rules and no-show penalties",
       "cancellationTitle": "Cancellation policy",
