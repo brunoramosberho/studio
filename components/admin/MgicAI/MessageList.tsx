@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
@@ -367,11 +367,47 @@ function TypingDots() {
 
 function ToolCallIndicator({ tools }: { tools: string[] }) {
   const visibleTools = tools.filter((t) => !SILENT_TOOLS.has(t));
-  const hasSilentOnly = visibleTools.length === 0 && tools.length > 0;
+  const realLabel = visibleTools.length > 0
+    ? visibleTools.map((t) => TOOL_LABELS[t] ?? t).join(", ")
+    : null;
 
-  const label = hasSilentOnly
-    ? getThinkingPhrase()
-    : visibleTools.map((t) => TOOL_LABELS[t] ?? t).join(", ");
+  const [phase, setPhase] = useState<"real" | "fitness">("real");
+  const [fitnessPhrase, setFitnessPhrase] = useState(() => getThinkingPhrase());
+  const usedPhrases = useRef(new Set<string>());
+
+  // After 3s on real label, switch to cycling fitness phrases
+  useEffect(() => {
+    if (!realLabel) {
+      setPhase("fitness");
+      return;
+    }
+    setPhase("real");
+    usedPhrases.current.clear();
+    const timer = setTimeout(() => setPhase("fitness"), 3000);
+    return () => clearTimeout(timer);
+  }, [realLabel]);
+
+  // Cycle fitness phrases every 2.5s
+  useEffect(() => {
+    if (phase !== "fitness") return;
+    const interval = setInterval(() => {
+      let next = getThinkingPhrase();
+      let attempts = 0;
+      while (usedPhrases.current.has(next) && attempts < 10) {
+        next = getThinkingPhrase();
+        attempts++;
+      }
+      // Reset pool if we've used most of them
+      if (usedPhrases.current.size > FITNESS_THINKING_PHRASES.length - 5) {
+        usedPhrases.current.clear();
+      }
+      usedPhrases.current.add(next);
+      setFitnessPhrase(next);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [phase]);
+
+  const label = phase === "real" && realLabel ? realLabel : fitnessPhrase;
 
   return (
     <motion.div
@@ -386,9 +422,15 @@ function ToolCallIndicator({ tools }: { tools: string[] }) {
         animate={{ scale: [1, 1.1, 1] }}
         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
       />
-      <span className="text-[13px] font-medium text-muted">
+      <motion.span
+        key={label}
+        initial={{ opacity: 0, y: 2 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="text-[13px] font-medium text-muted"
+      >
         {label}...
-      </span>
+      </motion.span>
     </motion.div>
   );
 }
