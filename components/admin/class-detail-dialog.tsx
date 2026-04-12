@@ -215,25 +215,26 @@ export function ClassDetailDialog({
         )}
 
         {confirmMode === "none" && (
-          <DialogFooter className="flex-col gap-2 pt-4 sm:flex-row">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              asChild
-            >
-              <a href={`/class/${cls.id}`} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3.5 w-3.5" />
-                {t("viewClass")}
-              </a>
-            </Button>
+          <div className="space-y-2 pt-4">
+            {/* Primary actions */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-1.5"
+                asChild
+              >
+                <a href={`/class/${cls.id}`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  {t("viewClass")}
+                </a>
+              </Button>
 
-            {!isCancelled && !past && (
-              <>
+              {!isCancelled && !past && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5"
+                  className="flex-1 gap-1.5"
                   onClick={() => {
                     onOpenChange(false);
                     setTimeout(() => onEdit(cls), 150);
@@ -242,10 +243,16 @@ export function ClassDetailDialog({
                   <Pencil className="h-3.5 w-3.5" />
                   {t("edit")}
                 </Button>
+              )}
+            </div>
+
+            {/* Destructive actions */}
+            {!isCancelled && !past && (
+              <div className="flex gap-2">
                 <Button
                   variant="destructive"
                   size="sm"
-                  className="gap-1.5"
+                  className="flex-1 gap-1.5"
                   onClick={() => setConfirmMode("single")}
                 >
                   <XCircle className="h-3.5 w-3.5" />
@@ -255,16 +262,16 @@ export function ClassDetailDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/5"
+                    className="flex-1 gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/5"
                     onClick={() => setConfirmMode("series")}
                   >
                     <Repeat className="h-3.5 w-3.5" />
                     {t("cancelSeries")}
                   </Button>
                 )}
-              </>
+              </div>
             )}
-          </DialogFooter>
+          </div>
         )}
       </DialogContent>
     </Dialog>
