@@ -267,6 +267,23 @@
       "saved": "Policies updated",
       "saveError": "Failed to save"
     },
+    "classDetail": {
+      "cancelled": "Cancelled",
+      "past": "Past",
+      "recurringSeries": "Recurring series",
+      "bookings": "bookings",
+      "viewClass": "View class",
+      "edit": "Edit",
+      "cancelClass": "Cancel class",
+      "cancelSeries": "Cancel series",
+      "confirmCancelSingle": "Cancel this class? Enrolled students will be notified and their credits refunded.",
+      "confirmCancelSeries": "Cancel all future classes in this series? Enrolled students will be notified and their credits refunded.",
+      "confirm": "Confirm",
+      "goBack": "Go back",
+      "classCancelled": "Class cancelled",
+      "seriesCancelled": "{count} series classes cancelled",
+      "cancelError": "Could not cancel"
+    },
     "scheduleSubtitle": "Weekly view — click on class for details, click on empty cell to create",
     "colorBy": "By {mode}",
     "byCoach": "coach",

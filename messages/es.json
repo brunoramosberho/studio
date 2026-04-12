@@ -267,6 +267,23 @@
       "saved": "Políticas actualizadas",
       "saveError": "Error al guardar"
     },
+    "classDetail": {
+      "cancelled": "Cancelada",
+      "past": "Pasada",
+      "recurringSeries": "Serie recurrente",
+      "bookings": "reservas",
+      "viewClass": "Ver clase",
+      "edit": "Editar",
+      "cancelClass": "Cancelar clase",
+      "cancelSeries": "Cancelar serie",
+      "confirmCancelSingle": "¿Cancelar esta clase? Los alumnos inscritos serán notificados y sus créditos devueltos.",
+      "confirmCancelSeries": "¿Cancelar todas las clases futuras de esta serie? Los alumnos inscritos serán notificados y sus créditos devueltos.",
+      "confirm": "Confirmar",
+      "goBack": "Volver",
+      "classCancelled": "Clase cancelada",
+      "seriesCancelled": "{count} clases de la serie canceladas",
+      "cancelError": "No se pudo cancelar"
+    },
     "scheduleSubtitle": "Vista semanal — click en clase para ver detalles, click en celda vacia para crear",
     "colorBy": "Por {mode}",
     "byCoach": "coach",

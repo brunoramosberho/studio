@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { format, isPast } from "date-fns";
-import { es } from "date-fns/locale";
+import { es, enUS } from "date-fns/locale";
 import {
   Clock,
   Users,
@@ -12,6 +14,7 @@ import {
   ExternalLink,
   Loader2,
   Tag,
+  Repeat,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,7 +43,9 @@ export function ClassDetailDialog({
   onOpenChange,
   onEdit,
 }: ClassDetailDialogProps) {
+  const t = useTranslations("admin.classDetail");
   const queryClient = useQueryClient();
+  const [confirmMode, setConfirmMode] = useState<"none" | "single" | "series">("none");
 
   const cancelMutation = useMutation({
     mutationFn: async (classId: string) => {
@@ -57,9 +62,29 @@ export function ClassDetailDialog({
       queryClient.invalidateQueries({ queryKey: ["admin-schedule"] });
       queryClient.invalidateQueries({ queryKey: ["classes"] });
       onOpenChange(false);
-      toast.success("Clase cancelada");
+      setConfirmMode("none");
+      toast.success(t("classCancelled"));
     },
-    onError: (err: Error) => toast.error(err.message || "No se pudo cancelar"),
+    onError: (err: Error) => toast.error(err.message || t("cancelError")),
+  });
+
+  const cancelSeriesMutation = useMutation({
+    mutationFn: async (recurringId: string) => {
+      const res = await fetch(`/api/classes/series/${recurringId}?futureOnly=true`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-classes"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-schedule"] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      onOpenChange(false);
+      setConfirmMode("none");
+      toast.success(t("seriesCancelled", { count: data.count }));
+    },
+    onError: (err: Error) => toast.error(err.message || t("cancelError")),
   });
 
   if (!cls) return null;
@@ -70,9 +95,16 @@ export function ClassDetailDialog({
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.room?.maxCapacity ?? 0;
   const occupancy = maxCap > 0 ? Math.round((booked / maxCap) * 100) : 0;
+  const isPending = cancelMutation.isPending || cancelSeriesMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        onOpenChange(v);
+        if (!v) setConfirmMode("none");
+      }}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
@@ -81,11 +113,16 @@ export function ClassDetailDialog({
               style={{ backgroundColor: cls.classType.color }}
             />
             <DialogTitle className="text-lg">{cls.classType.name}</DialogTitle>
+            {cls.recurringId && (
+              <span title={t("recurringSeries")} className="text-muted">
+                <Repeat className="h-3 w-3" />
+              </span>
+            )}
             {isCancelled && (
-              <Badge variant="danger" className="text-[10px]">Cancelada</Badge>
+              <Badge variant="danger" className="text-[10px]">{t("cancelled")}</Badge>
             )}
             {past && !isCancelled && (
-              <Badge variant="outline" className="text-[10px] text-muted">Pasada</Badge>
+              <Badge variant="outline" className="text-[10px] text-muted">{t("past")}</Badge>
             )}
           </div>
           <DialogDescription>
@@ -102,7 +139,7 @@ export function ClassDetailDialog({
           <div className="flex items-center gap-2.5 text-sm">
             <Users className="h-4 w-4 text-muted" />
             <span>
-              {booked}/{maxCap} reservas
+              {booked}/{maxCap} {t("bookings")}
               <span className={cn(
                 "ml-1.5 text-xs font-medium",
                 occupancy >= 80 ? "text-green-600" : occupancy >= 40 ? "text-amber-600" : "text-muted",
@@ -142,50 +179,93 @@ export function ClassDetailDialog({
           )}
         </div>
 
-        <DialogFooter className="flex-col gap-2 pt-4 sm:flex-row">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            asChild
-          >
-            <a href={`/class/${cls.id}`} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-3.5 w-3.5" />
-              Ver clase
-            </a>
-          </Button>
-
-          {!isCancelled && !past && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  onOpenChange(false);
-                  setTimeout(() => onEdit(cls), 150);
-                }}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Editar
-              </Button>
+        {/* Confirmation step */}
+        {confirmMode !== "none" && (
+          <div className="rounded-lg border border-destructive/20 bg-red-50 p-4 space-y-3">
+            <p className="text-sm font-medium text-red-700">
+              {confirmMode === "single" ? t("confirmCancelSingle") : t("confirmCancelSeries")}
+            </p>
+            <div className="flex gap-2">
               <Button
                 variant="destructive"
                 size="sm"
-                className="gap-1.5"
-                onClick={() => cancelMutation.mutate(cls.id)}
-                disabled={cancelMutation.isPending}
+                className="flex-1"
+                disabled={isPending}
+                onClick={() => {
+                  if (confirmMode === "single") {
+                    cancelMutation.mutate(cls.id);
+                  } else if (cls.recurringId) {
+                    cancelSeriesMutation.mutate(cls.recurringId);
+                  }
+                }}
               >
-                {cancelMutation.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <XCircle className="h-3.5 w-3.5" />
-                )}
-                Cancelar clase
+                {isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                {t("confirm")}
               </Button>
-            </>
-          )}
-        </DialogFooter>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmMode("none")}
+                disabled={isPending}
+              >
+                {t("goBack")}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {confirmMode === "none" && (
+          <DialogFooter className="flex-col gap-2 pt-4 sm:flex-row">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              asChild
+            >
+              <a href={`/class/${cls.id}`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5" />
+                {t("viewClass")}
+              </a>
+            </Button>
+
+            {!isCancelled && !past && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    onOpenChange(false);
+                    setTimeout(() => onEdit(cls), 150);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  {t("edit")}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setConfirmMode("single")}
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  {t("cancelClass")}
+                </Button>
+                {cls.recurringId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/5"
+                    onClick={() => setConfirmMode("series")}
+                  >
+                    <Repeat className="h-3.5 w-3.5" />
+                    {t("cancelSeries")}
+                  </Button>
+                )}
+              </>
+            )}
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
