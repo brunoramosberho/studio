@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/tenant";
 
 export async function GET() {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const tenantId = ctx.tenant.id;
 
     const now = new Date();

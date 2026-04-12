@@ -6,7 +6,7 @@ import type { Prisma } from "@prisma/client";
 
 export async function POST(request: NextRequest) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const body = (await request.json()) as {
       userId?: string;
       achievementKey?: string;

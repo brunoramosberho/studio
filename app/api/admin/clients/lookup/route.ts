@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const tenantId = ctx.tenant.id;
 
     const email = request.nextUrl.searchParams.get("email")?.toLowerCase().trim();

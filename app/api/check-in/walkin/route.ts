@@ -9,7 +9,7 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const { classId, memberId, force, skipCreditCheck, skipWaiverCheck, spotNumber } = await request.json();
 
     if (!classId || !memberId) {

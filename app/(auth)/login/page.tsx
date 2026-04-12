@@ -458,10 +458,10 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
             <p className="mt-8 text-center text-[11px] leading-relaxed text-muted/60">
               {t.rich("termsNotice", {
                 terms: (chunks) => (
-                  <a href="#" className="underline underline-offset-2 hover:text-muted">{t("termsOfService")}</a>
+                  <a href="/terms" className="underline underline-offset-2 hover:text-muted">{t("termsOfService")}</a>
                 ),
                 privacy: (chunks) => (
-                  <a href="#" className="underline underline-offset-2 hover:text-muted">{t("privacyPolicy")}</a>
+                  <a href="/privacy" className="underline underline-offset-2 hover:text-muted">{t("privacyPolicy")}</a>
                 ),
               })}
             </p>

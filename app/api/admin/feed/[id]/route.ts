@@ -7,7 +7,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const { id } = await params;
     const body = await request.json();
     const { isPinned } = body;
@@ -45,7 +45,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const { id } = await params;
 
     const event = await prisma.feedEvent.findFirst({

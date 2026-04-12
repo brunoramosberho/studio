@@ -94,7 +94,16 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-border pt-6 space-y-1">
+        <div className="mt-12 border-t border-border pt-6 space-y-2">
+          <div className="flex items-center justify-center gap-3 text-xs text-muted">
+            <Link href="/privacy" className="transition-colors hover:text-foreground">
+              {t("privacy")}
+            </Link>
+            <span className="text-border">·</span>
+            <Link href="/terms" className="transition-colors hover:text-foreground">
+              {t("terms")}
+            </Link>
+          </div>
           <p className="text-center text-xs text-muted">
             {studioName} Studio © {new Date().getFullYear()}
           </p>

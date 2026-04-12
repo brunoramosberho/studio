@@ -37,7 +37,9 @@ export default function AdminTeamPage() {
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [inviteRole, setInviteRole] = useState<"ADMIN" | "FRONT_DESK">("ADMIN");
   const [error, setError] = useState("");
+  const tr = useTranslations("roles");
   const [confirmUser, setConfirmUser] = useState<{ id: string; name: string | null; email: string } | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -51,11 +53,11 @@ export default function AdminTeamPage() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: async ({ email: emailToInvite, name: nameToSet }: { email: string; name: string }) => {
+    mutationFn: async ({ email: emailToInvite, name: nameToSet, role: roleToSet }: { email: string; name: string; role: string }) => {
       const res = await fetch("/api/admin/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailToInvite, name: nameToSet }),
+        body: JSON.stringify({ email: emailToInvite, name: nameToSet, role: roleToSet }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -121,7 +123,7 @@ export default function AdminTeamPage() {
     setError("");
     setConfirmUser(null);
     if (!email.trim() || !name.trim()) return;
-    inviteMutation.mutate({ email: email.trim(), name: name.trim() });
+    inviteMutation.mutate({ email: email.trim(), name: name.trim(), role: inviteRole });
   }
 
   return (
@@ -157,6 +159,14 @@ export default function AdminTeamPage() {
                   className="flex-1"
                   required
                 />
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as "ADMIN" | "FRONT_DESK")}
+                  className="rounded-md border border-border bg-white px-3 py-2 text-sm font-medium outline-none"
+                >
+                  <option value="ADMIN">{tr("admin")}</option>
+                  <option value="FRONT_DESK">{tr("frontDesk")}</option>
+                </select>
                 <Button
                   type="submit"
                   disabled={inviteMutation.isPending || !name.trim() || !email.trim()}
@@ -170,6 +180,9 @@ export default function AdminTeamPage() {
                   {t("invite")}
                 </Button>
               </div>
+              {inviteRole === "FRONT_DESK" && (
+                <p className="text-xs text-muted">{tr("frontDeskDescription")}</p>
+              )}
             </form>
 
             <AnimatePresence>

@@ -21,6 +21,7 @@ import { InAppBrowserBanner } from "@/components/shared/in-app-browser-banner";
 import { SplashScreen } from "@/components/shared/splash-screen";
 import { RatingSheet } from "@/components/rating/RatingSheet";
 import { WaiverGate } from "@/components/waiver/waiver-gate";
+import { CookieConsent } from "@/components/shared/cookie-consent";
 import "./globals.css";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dmsans", display: "swap" });
@@ -146,6 +147,7 @@ export default async function RootLayout({
             <WaiverGate />
             <RatingSheet />
             <InstallPrompt />
+            <CookieConsent />
           </Providers>
         </NextIntlClientProvider>
       </body>

@@ -4,7 +4,7 @@ import { listSavedPaymentMethods } from "@/lib/stripe/payments";
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const memberId = request.nextUrl.searchParams.get("memberId");
 
     if (!memberId) {

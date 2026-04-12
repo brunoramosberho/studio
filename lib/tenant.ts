@@ -31,7 +31,7 @@ export const requireTenant = cache(async (): Promise<Tenant> => {
 
 // ── Role hierarchy ──
 
-const ROLE_RANK: Record<Role, number> = { CLIENT: 0, COACH: 1, ADMIN: 2 };
+const ROLE_RANK: Record<Role, number> = { CLIENT: 0, COACH: 1, FRONT_DESK: 2, ADMIN: 3 };
 
 export function roleAtLeast(userRole: Role, minimumRole: Role): boolean {
   return ROLE_RANK[userRole] >= ROLE_RANK[minimumRole];

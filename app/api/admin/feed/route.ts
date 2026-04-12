@@ -6,7 +6,7 @@ import { sendPushToUser, type PushPayload } from "@/lib/push";
 
 export async function GET(request: NextRequest) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const { searchParams } = request.nextUrl;
     const cursor = searchParams.get("cursor");
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "30"), 50);
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { tenant, session } = await requireRole("ADMIN");
+    const { tenant, session } = await requireRole("ADMIN", "FRONT_DESK");
     const body = await request.json();
     const { title, body: postBody, category, targetCityIds, sendPush, postAsAdmin, isPinned, linkedClassId, polls } = body;
 

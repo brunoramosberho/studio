@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
-  const ctx = await requireRole("ADMIN");
+  const ctx = await requireRole("ADMIN", "FRONT_DESK");
   const tenantId = ctx.tenant.id;
   const filter = request.nextUrl.searchParams.get("filter") ?? "all";
 

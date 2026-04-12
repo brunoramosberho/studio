@@ -9,7 +9,7 @@ export async function POST(
   { params }: { params: Promise<{ classId: string }> },
 ) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const { classId } = await params;
     const { memberId, method = "manual", force = false } = await request.json();
 
@@ -86,7 +86,7 @@ export async function DELETE(
   { params }: { params: Promise<{ classId: string }> },
 ) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const { classId } = await params;
     const { memberId } = await request.json();
 

@@ -33,7 +33,7 @@ interface SelectedClassInfo {
 
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const tenantId = ctx.tenant.id;
     const adminUserId = ctx.session.user.id;
 

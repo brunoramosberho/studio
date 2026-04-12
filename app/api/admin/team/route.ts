@@ -8,14 +8,14 @@ export async function GET() {
     const ctx = await requireRole("ADMIN");
 
     const memberships = await prisma.membership.findMany({
-      where: { tenantId: ctx.tenant.id, role: "ADMIN" },
+      where: { tenantId: ctx.tenant.id, role: { in: ["ADMIN", "FRONT_DESK"] } },
       include: {
         user: { select: { id: true, name: true, email: true, image: true, createdAt: true } },
       },
       orderBy: { createdAt: "asc" },
     });
 
-    const admins = memberships.map((m) => m.user);
+    const admins = memberships.map((m) => ({ ...m.user, role: m.role }));
 
     return NextResponse.json(admins);
   } catch (error) {
@@ -29,13 +29,14 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const ctx = await requireRole("ADMIN");
 
-  const { email, name } = await request.json();
+  const { email, name, role: requestedRole } = await request.json();
   if (!email || typeof email !== "string") {
     return NextResponse.json({ error: "Email requerido" }, { status: 400 });
   }
 
   const normalizedEmail = email.toLowerCase().trim();
   const trimmedName = typeof name === "string" ? name.trim() : null;
+  const targetRole = requestedRole === "FRONT_DESK" ? "FRONT_DESK" as const : "ADMIN" as const;
 
   const existing = await prisma.user.findUnique({
     where: { email: normalizedEmail },
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     if (!membership) {
       await prisma.membership.create({
-        data: { userId: existing.id, tenantId: ctx.tenant.id, role: "ADMIN" },
+        data: { userId: existing.id, tenantId: ctx.tenant.id, role: targetRole },
       });
     }
 
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     const origin = request.nextUrl.origin;
     await sendRoleInvitation({
       to: normalizedEmail,
-      role: "ADMIN",
+      role: targetRole,
       invitedBy: ctx.session.user.name || "Un administrador",
       loginUrl: `${origin}/login`,
     });
@@ -107,13 +108,13 @@ export async function POST(request: NextRequest) {
   });
 
   await prisma.membership.create({
-    data: { userId: user.id, tenantId: ctx.tenant.id, role: "ADMIN" },
+    data: { userId: user.id, tenantId: ctx.tenant.id, role: targetRole },
   });
 
   const origin = request.nextUrl.origin;
   await sendRoleInvitation({
     to: normalizedEmail,
-    role: "ADMIN",
+    role: targetRole,
     invitedBy: ctx.session.user.name || "Un administrador",
     loginUrl: `${origin}/login`,
   });

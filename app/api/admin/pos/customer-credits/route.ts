@@ -8,7 +8,7 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const tenantId = ctx.tenant.id;
 
     const customerId = request.nextUrl.searchParams.get("customerId");

@@ -449,7 +449,7 @@ export async function sendRoleInvitation({
   loginUrl,
 }: {
   to: string;
-  role: "ADMIN" | "COACH";
+  role: "ADMIN" | "FRONT_DESK" | "COACH";
   invitedBy: string;
   loginUrl: string;
 }) {

@@ -25,7 +25,7 @@ function pctChange(current: number, previous: number): number {
 
 export async function GET() {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const tenantId = ctx.tenant.id;
 
     const now = new Date();

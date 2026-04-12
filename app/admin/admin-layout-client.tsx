@@ -58,11 +58,14 @@ import { CreateClientDialog } from "@/components/admin/create-client-dialog";
 import { MgicAIProvider, useMgicAI } from "@/components/admin/MgicAI";
 import { PosDialog } from "@/components/admin/pos/pos-dialog";
 import { usePosStore } from "@/store/pos-store";
+import { type AdminPermission, hasPermission } from "@/lib/permissions";
+import type { Role } from "@prisma/client";
 
 interface NavItem {
   href: string;
   labelKey: string;
   icon: LucideIcon;
+  permission?: AdminPermission;
   badgeKey?: "pendingWaitlist" | "newClients" | "recentFeed";
   contextKey?: "activeClasses";
 }
@@ -70,69 +73,75 @@ interface NavItem {
 interface FlyoutGroup {
   labelKey: string;
   icon: LucideIcon;
+  permission?: AdminPermission;
   items: NavItem[];
 }
 
 const directItems: NavItem[] = [
-  { href: "/admin", labelKey: "dashboard", icon: LayoutDashboard },
-  { href: "/admin/schedule", labelKey: "schedule", icon: CalendarDays, badgeKey: "pendingWaitlist" },
-  { href: "/admin/classes", labelKey: "classes", icon: ClipboardList, contextKey: "activeClasses" },
-  { href: "/admin/check-in", labelKey: "checkIn", icon: ClipboardCheck },
-  { href: "/admin/clients", labelKey: "clients", icon: Users, badgeKey: "newClients" },
-  { href: "/admin/feed", labelKey: "feed", icon: Megaphone, badgeKey: "recentFeed" },
-  { href: "/admin/gamification", labelKey: "achievements", icon: Trophy },
-  { href: "#pos", labelKey: "pos", icon: ShoppingBag },
+  { href: "/admin", labelKey: "dashboard", icon: LayoutDashboard, permission: "dashboard" },
+  { href: "/admin/schedule", labelKey: "schedule", icon: CalendarDays, permission: "schedule", badgeKey: "pendingWaitlist" },
+  { href: "/admin/classes", labelKey: "classes", icon: ClipboardList, permission: "classes", contextKey: "activeClasses" },
+  { href: "/admin/check-in", labelKey: "checkIn", icon: ClipboardCheck, permission: "checkIn" },
+  { href: "/admin/clients", labelKey: "clients", icon: Users, permission: "clients", badgeKey: "newClients" },
+  { href: "/admin/feed", labelKey: "feed", icon: Megaphone, permission: "feed", badgeKey: "recentFeed" },
+  { href: "/admin/gamification", labelKey: "achievements", icon: Trophy, permission: "achievements" },
+  { href: "#pos", labelKey: "pos", icon: ShoppingBag, permission: "pos" },
 ];
 
 const flyoutGroups: FlyoutGroup[] = [
   {
     labelKey: "team",
     icon: Users,
+    permission: "coaches",
     items: [
-      { href: "/admin/coaches", labelKey: "coaches", icon: UserCog },
-      { href: "/admin/availability", labelKey: "availability", icon: CalendarOff },
-      { href: "/admin/class-types", labelKey: "disciplines", icon: Dumbbell },
+      { href: "/admin/coaches", labelKey: "coaches", icon: UserCog, permission: "coaches" },
+      { href: "/admin/availability", labelKey: "availability", icon: CalendarOff, permission: "availability" },
+      { href: "/admin/class-types", labelKey: "disciplines", icon: Dumbbell, permission: "disciplines" },
     ],
   },
   {
     labelKey: "business",
     icon: Briefcase,
+    permission: "finance",
     items: [
-      { href: "/admin/finance", labelKey: "finance", icon: Wallet },
-      { href: "/admin/packages", labelKey: "packages", icon: Package },
-      { href: "/admin/subscriptions", labelKey: "subscriptions", icon: CalendarSync },
-      { href: "/admin/shop", labelKey: "store", icon: ShoppingBag },
-      { href: "/admin/platforms", labelKey: "platforms", icon: Globe2 },
+      { href: "/admin/finance", labelKey: "finance", icon: Wallet, permission: "finance" },
+      { href: "/admin/packages", labelKey: "packages", icon: Package, permission: "packages" },
+      { href: "/admin/subscriptions", labelKey: "subscriptions", icon: CalendarSync, permission: "subscriptions" },
+      { href: "/admin/shop", labelKey: "store", icon: ShoppingBag, permission: "shop" },
+      { href: "/admin/platforms", labelKey: "platforms", icon: Globe2, permission: "platforms" },
     ],
   },
   {
     labelKey: "metrics",
     icon: TrendingUp,
+    permission: "reports",
     items: [
-      { href: "/admin/reports", labelKey: "reports", icon: BarChart3 },
-      { href: "/admin/analytics", labelKey: "performance", icon: Activity },
-      { href: "/admin/conversion", labelKey: "conversion", icon: ArrowRightLeft },
+      { href: "/admin/reports", labelKey: "reports", icon: BarChart3, permission: "reports" },
+      { href: "/admin/analytics", labelKey: "performance", icon: Activity, permission: "analytics" },
+      { href: "/admin/conversion", labelKey: "conversion", icon: ArrowRightLeft, permission: "conversion" },
     ],
   },
   {
     labelKey: "marketing",
     icon: Target,
+    permission: "marketing",
     items: [
-      { href: "/admin/marketing", labelKey: "linksUtm", icon: Link2 },
-      { href: "/admin/marketing/highlights", labelKey: "highlights", icon: Sparkles },
-      { href: "/admin/settings/referrals", labelKey: "referrals", icon: Users },
+      { href: "/admin/marketing", labelKey: "linksUtm", icon: Link2, permission: "marketing" },
+      { href: "/admin/marketing/highlights", labelKey: "highlights", icon: Sparkles, permission: "highlights" },
+      { href: "/admin/settings/referrals", labelKey: "referrals", icon: Users, permission: "referrals" },
     ],
   },
   {
     labelKey: "settings",
     icon: Settings,
+    permission: "billing",
     items: [
-      { href: "/admin/settings/billing", labelKey: "billing", icon: CreditCard },
-      { href: "/admin/waiver", labelKey: "waiver", icon: FileSignature },
-      { href: "/admin/branding", labelKey: "branding", icon: Palette },
-      { href: "/admin/team", labelKey: "team", icon: ShieldCheck },
-      { href: "/admin/studios", labelKey: "studios", icon: Building2 },
-      { href: "/admin/settings/language", labelKey: "language", icon: Globe2 },
+      { href: "/admin/settings/billing", labelKey: "billing", icon: CreditCard, permission: "billing" },
+      { href: "/admin/waiver", labelKey: "waiver", icon: FileSignature, permission: "waiver" },
+      { href: "/admin/branding", labelKey: "branding", icon: Palette, permission: "branding" },
+      { href: "/admin/team", labelKey: "team", icon: ShieldCheck, permission: "team" },
+      { href: "/admin/studios", labelKey: "studios", icon: Building2, permission: "studios" },
+      { href: "/admin/settings/language", labelKey: "language", icon: Globe2, permission: "language" },
     ],
   },
 ];
@@ -142,6 +151,17 @@ interface SidebarStats {
   pendingWaitlist: number;
   newClients: number;
   recentFeed: number;
+}
+
+function useAdminRole() {
+  const [role, setRole] = useState<Role>("ADMIN");
+  useEffect(() => {
+    fetch("/api/admin/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.role && setRole(d.role as Role))
+      .catch(() => {});
+  }, []);
+  return role;
 }
 
 function useSidebarStats() {
@@ -484,11 +504,13 @@ function SidebarNav({
   pathname,
   onNavigate,
   mobile,
+  role,
 }: {
   stats: SidebarStats | null;
   pathname: string;
   onNavigate?: () => void;
   mobile?: boolean;
+  role: Role;
 }) {
   const t = useTranslations("admin");
   const isActive = (href: string) =>
@@ -520,7 +542,7 @@ function SidebarNav({
   return (
     <>
       <div className="space-y-px">
-        {directItems.map((item) => {
+        {directItems.filter((item) => !item.permission || hasPermission(role, item.permission)).map((item) => {
           const active = isActive(item.href);
           const badgeVal = item.badgeKey && stats ? stats[item.badgeKey] : 0;
           const contextVal =
@@ -567,7 +589,7 @@ function SidebarNav({
       </div>
 
       <div className="mt-4 space-y-px">
-        {flyoutGroups.map((group) =>
+        {flyoutGroups.filter((g) => !g.permission || hasPermission(role, g.permission)).map((group) =>
           mobile ? (
             <MobileAccordionGroup
               key={group.labelKey}
@@ -637,6 +659,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const stats = useSidebarStats();
   const t = useTranslations("admin");
   const tc = useTranslations("common");
+  const role = useAdminRole();
 
   const [locations, setLocations] = useState<LocCountry[]>([]);
   const [locValue, setLocValue] = useState("");
@@ -836,7 +859,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
             {/* Scrollable nav sections */}
             <nav className="flex-1 overflow-y-auto p-3 pt-4">
-              <SidebarNav stats={stats} pathname={pathname} />
+              <SidebarNav stats={stats} pathname={pathname} role={role} />
             </nav>
 
             {/* Bottom: profile + location */}
@@ -890,6 +913,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     pathname={pathname}
                     onNavigate={() => setSidebarOpen(false)}
                     mobile
+                    role={role}
                   />
                 </nav>
 

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 
 export async function POST(request: NextRequest) {
-  const ctx = await requireRole("ADMIN");
+  const ctx = await requireRole("ADMIN", "FRONT_DESK");
 
   const { userPackageId, delta } = await request.json();
 

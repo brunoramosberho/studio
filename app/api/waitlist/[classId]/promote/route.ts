@@ -7,7 +7,7 @@ export async function POST(
   { params }: { params: Promise<{ classId: string }> },
 ) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const { classId } = await params;
 
     const booking = await promoteFromWaitlist(classId, tenant.id);

@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client";
 
 export async function GET() {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
 
     const [
       loyaltyLevels,
@@ -133,7 +133,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const body = await request.json();
 
     const {

@@ -5,7 +5,7 @@ import { createGroupedAchievementEvents, grantAchievementManually } from "@/lib/
 
 export async function POST(request: NextRequest) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const body = (await request.json()) as { userId?: string; achievementKey?: string };
     const userId = body.userId?.trim();
     const achievementKey = body.achievementKey?.trim();

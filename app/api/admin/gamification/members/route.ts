@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const q = request.nextUrl.searchParams.get("q")?.trim().toLowerCase() ?? "";
 
     const memberships = await prisma.membership.findMany({

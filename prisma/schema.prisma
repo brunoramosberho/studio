@@ -373,6 +373,7 @@ model FavoriteSong {
 enum Role {
   CLIENT
   COACH
+  FRONT_DESK
   ADMIN
 }
 

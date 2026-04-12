@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/tenant";
 
 export async function GET() {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
 
     const waitlistEntries = await prisma.waitlist.findMany({
       where: {
