@@ -7,13 +7,7 @@ import { X, Clock, BarChart3, ArrowRight } from "lucide-react";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { Dumbbell } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const LEVEL_LABELS: Record<string, string> = {
-  ALL: "Todos los niveles",
-  BEGINNER: "Principiante",
-  INTERMEDIATE: "Intermedio",
-  ADVANCED: "Avanzado",
-};
+import { useTranslations } from "next-intl";
 
 export interface DisciplineData {
   name: string;
@@ -37,6 +31,7 @@ function isVideo(url: string) {
 }
 
 export function DisciplineSheet({ open, onClose, discipline }: DisciplineSheetProps) {
+  const t = useTranslations("feed");
   const videoRef = useRef<HTMLVideoElement>(null);
   const dragY = useMotionValue(0);
   const backdropOpacity = useTransform(dragY, [0, 300], [1, 0]);
@@ -189,7 +184,7 @@ export function DisciplineSheet({ open, onClose, discipline }: DisciplineSheetPr
                 {d.level && (
                   <div className="flex items-center gap-1 rounded-full bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium text-foreground">
                     <BarChart3 className="h-3 w-3 text-muted" />
-                    {LEVEL_LABELS[d.level] ?? d.level}
+                    {t(`levelLabels.${d.level}`) ?? d.level}
                   </div>
                 )}
                 {tags.map((tag) => (
@@ -217,7 +212,7 @@ export function DisciplineSheet({ open, onClose, discipline }: DisciplineSheetPr
                 className="group flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[15px] font-bold text-white transition-all hover:brightness-110 active:scale-[0.98]"
                 style={{ backgroundColor: accent }}
               >
-                Reserva {d.name}
+                {t("bookDiscipline", { name: d.name })}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>

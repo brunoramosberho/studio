@@ -20,6 +20,7 @@ import { cn, maskLastName } from "@/lib/utils";
 import { feedAchievementTypeFromKey } from "@/lib/gamification/catalog";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { FriendBiometrics } from "@/components/booking/friend-biometrics";
+import { useTranslations } from "next-intl";
 
 interface Attendee {
   id: string;
@@ -58,19 +59,22 @@ interface FeedEventCardProps {
   event: FeedItem;
 }
 
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "ahora";
-  if (mins < 60) return `hace ${mins}m`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `hace ${hours}h`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `hace ${days}d`;
-  return new Date(dateStr).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-  });
+function useTimeAgo() {
+  const t = useTranslations("feed");
+  return (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return t("timeNow");
+    if (mins < 60) return t("timeMinutes", { mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t("timeHours", { hours });
+    const days = Math.floor(hours / 24);
+    if (days < 7) return t("timeDays", { days });
+    return new Date(dateStr).toLocaleDateString(undefined, {
+      day: "numeric",
+      month: "short",
+    });
+  };
 }
 
 function DisciplinePill({
@@ -150,6 +154,7 @@ function AttendeesRow({
   attendees: Attendee[];
   onTap: () => void;
 }) {
+  const t = useTranslations("feed");
   const shown = attendees.slice(0, 8);
   const extra = attendees.length - shown.length;
 
@@ -168,8 +173,8 @@ function AttendeesRow({
       <span className="text-[12px] text-muted">
         {attendees.length === 1
           ? maskLastName(attendees[0].name)
-          : `${attendees.length} asistentes`}
-        {extra > 0 && ` +${extra} más`}
+          : `${attendees.length} ${t("attendees")}`}
+        {extra > 0 && ` ${t("moreCount", { count: extra })}`}
       </span>
     </button>
   );
@@ -183,6 +188,8 @@ interface PlaylistTrackItem {
 }
 
 function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { onOpenDiscipline?: () => void }) {
+  const t = useTranslations("feed");
+  const timeAgo = useTimeAgo();
   const p = event.payload;
   const attendees = (p.attendees as Attendee[]) ?? [];
   const caption = (p.caption as string) ?? null;
@@ -233,13 +240,13 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-1.5 text-[14px] leading-snug">
             <DisciplinePill
-              name={(p.className as string) ?? "Clase"}
+              name={(p.className as string) ?? t("classLabel")}
               iconId={p.classTypeIcon as string | null}
               color={p.classTypeColor as string | null}
               onTap={onOpenDiscipline}
             />
             <span className="text-muted">
-              con{" "}
+              {t("with")}{" "}
               {p.coachUserId ? (
                 <Link href={`/my/user/${p.coachUserId}`} className="font-medium text-foreground/70 hover:underline">
                   {(p.coachName as string) ?? event.user.name}
@@ -319,7 +326,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
               <Lock className="h-3 w-3 text-white" />
             </div>
             <span className="flex-1 text-[13px] font-medium text-neutral-400">
-              Playlist disponible para asistentes
+              {t("playlistAvailable")}
             </span>
           </div>
         </div>
@@ -339,7 +346,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
               <ListMusic className="h-3.5 w-3.5 text-white" />
             </div>
             <span className="flex-1 text-[13px] font-semibold text-foreground/85">
-              Playlist de la clase
+              {t("classPlaylist")}
             </span>
             <ChevronUp className={cn(
               "h-4 w-4 text-neutral-400 transition-transform duration-200",
@@ -353,7 +360,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-200 border-t-emerald-500" />
                 </div>
               ) : playlistTracks.length === 0 ? (
-                <p className="py-4 text-center text-xs text-muted">Sin canciones</p>
+                <p className="py-4 text-center text-xs text-muted">{t("noSongs")}</p>
               ) : (
                 playlistTracks.map((track, idx) => (
                   <div
@@ -417,7 +424,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
       <PeopleListSheet
         open={showPeople}
         onClose={() => setShowPeople(false)}
-        title="Asistentes"
+        title={t("attendeesTitle")}
         people={peopleList}
       />
     </div>
@@ -433,6 +440,8 @@ interface AchievementEntry {
 }
 
 function AchievementCard({ event }: FeedEventCardProps) {
+  const t = useTranslations("feed");
+  const timeAgo = useTimeAgo();
   const p = event.payload;
   const rawAchievements = p.achievements as AchievementEntry[] | undefined;
 
@@ -454,17 +463,17 @@ function AchievementCard({ event }: FeedEventCardProps) {
         ];
 
   const users = (p.users as Attendee[]) ?? [
-    { id: event.user.id, name: event.user.name ?? "Miembro", image: event.user.image },
+    { id: event.user.id, name: event.user.name ?? t("member"), image: event.user.image },
   ];
   const isSingleUser = users.length === 1;
   const isMultiAchievement = achievements.length > 1;
   const [showPeople, setShowPeople] = useState(false);
 
   function formatNames(list: Attendee[]) {
-    const names = list.map((u) => u.name?.split(" ")[0] ?? "Alguien");
+    const names = list.map((u) => u.name?.split(" ")[0] ?? t("someone"));
     if (names.length === 1) return names[0];
-    if (names.length === 2) return `${names[0]} y ${names[1]}`;
-    return `${names[0]}, ${names[1]} y ${names.length - 2} más`;
+    if (names.length === 2) return `${names[0]}${t("and")}${names[1]}`;
+    return `${names[0]}, ${names[1]}${t("and")}${names.length - 2}${t("more")}`;
   }
 
   const peopleList: PersonItem[] = users.map((u) => ({
@@ -493,10 +502,10 @@ function AchievementCard({ event }: FeedEventCardProps) {
             )}
             <span className="text-muted">
               {isMultiAchievement
-                ? ` desbloqueó ${achievements.length} logros`
+                ? ` ${t("unlockedAchievements", { count: achievements.length })}`
                 : isSingleUser
-                  ? " desbloqueó un logro"
-                  : " desbloquearon un logro"}
+                  ? ` ${t("unlockedAnAchievement")}`
+                  : ` ${t("unlockedAchievementsPlural")}`}
             </span>
           </p>
           <span className="text-[11px] text-muted/70">
@@ -534,21 +543,16 @@ function AchievementCard({ event }: FeedEventCardProps) {
       <PeopleListSheet
         open={showPeople}
         onClose={() => setShowPeople(false)}
-        title="Logro desbloqueado"
+        title={t("achievementUnlocked")}
         people={peopleList}
       />
     </div>
   );
 }
 
-function formatReservedNames(people: { name: string | null }[]) {
-  const names = people.map((p) => p.name?.split(" ")[0] ?? "Alguien");
-  if (names.length === 1) return names[0];
-  if (names.length === 2) return `${names[0]} y ${names[1]}`;
-  return `${names[0]}, ${names[1]} y ${names.length - 2} más`;
-}
-
 function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { onOpenDiscipline?: () => void }) {
+  const t = useTranslations("feed");
+  const timeAgo = useTimeAgo();
   const p = event.payload;
   const classId = p.classId as string | undefined;
   const classDate = p.date ? new Date(p.date as string) : null;
@@ -561,8 +565,15 @@ function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { o
     : [event.user];
   const isGroup = people.length > 1;
 
+  function formatReservedNames(ppl: { name: string | null }[]) {
+    const names = ppl.map((p) => p.name?.split(" ")[0] ?? t("someone"));
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]}${t("and")}${names[1]}`;
+    return `${names[0]}, ${names[1]}${t("and")}${names.length - 2}${t("more")}`;
+  }
+
   const timeStr = classDate
-    ? classDate.toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true })
+    ? classDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })
     : null;
 
   const peopleList: PersonItem[] = people.map((u) => ({
@@ -591,11 +602,11 @@ function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { o
             )}
             <span className="text-muted">
               {alreadyBooked
-                ? (isGroup ? "también reservaron" : "también reservó")
-                : (isGroup ? "reservaron" : "reservó")}
+                ? (isGroup ? t("alsoBooked") : t("alsoBookedSingular"))
+                : (isGroup ? t("booked") : t("bookedSingular"))}
             </span>
             <DisciplinePill
-              name={(p.className as string) ?? "una clase"}
+              name={(p.className as string) ?? t("aClass")}
               iconId={p.classTypeIcon as string | null}
               color={p.classTypeColor as string | null}
               onTap={onOpenDiscipline}
@@ -604,7 +615,7 @@ function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { o
           <p className="mt-0.5 text-[12px] text-muted">
             {p.coachName ? (
               <>
-                con{" "}
+                {t("with")}{" "}
                 {p.coachUserId ? (
                   <Link href={`/my/user/${p.coachUserId}`} className="font-medium text-foreground/70 hover:underline">
                     {p.coachName as string}
@@ -615,7 +626,7 @@ function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { o
               </>
             ) : ""}
             {classDate
-              ? ` · ${classDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })}`
+              ? ` · ${classDate.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" })}`
               : ""}
             {timeStr ? ` · ${timeStr}` : ""}
             {event.studioName && (
@@ -635,7 +646,7 @@ function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { o
             className="group flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 transition-all hover:brightness-105 active:scale-[0.98]"
           >
             <span className="text-[13px] font-bold text-white">
-              Reserva tú también
+              {t("bookYouToo")}
             </span>
             <ArrowRight className="h-3.5 w-3.5 text-white transition-transform group-hover:translate-x-0.5" />
           </Link>
@@ -645,7 +656,7 @@ function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { o
       {alreadyBooked && isFuture && (
         <div className="mx-4 mb-1 rounded-lg bg-accent/8 px-3 py-1.5">
           <span className="text-[12px] font-medium text-accent">
-            Ya estás en esta clase
+            {t("alreadyInClass")}
           </span>
         </div>
       )}
@@ -662,7 +673,7 @@ function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { o
       <PeopleListSheet
         open={showPeople}
         onClose={() => setShowPeople(false)}
-        title="Reservaron"
+        title={t("bookedTitle")}
         people={peopleList}
       />
     </div>
@@ -670,8 +681,9 @@ function ClassReservedCard({ event, onOpenDiscipline }: FeedEventCardProps & { o
 }
 
 function ClassPromoBlock({ payload }: { payload: Record<string, unknown> }) {
+  const t = useTranslations("feed");
   const classId = payload.linkedClassId as string;
-  const className = (payload.className as string) ?? "Clase";
+  const className = (payload.className as string) ?? t("classLabel");
   const classTypeIcon = payload.classTypeIcon as string | null;
   const classTypeColor = (payload.classTypeColor as string) ?? "#6366f1";
   const coachName = payload.coachName as string | null;
@@ -687,10 +699,10 @@ function ClassPromoBlock({ payload }: { payload: Record<string, unknown> }) {
   if (!isFuture) return null;
 
   const dateStr = classStartsAt
-    ? classStartsAt.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })
+    ? classStartsAt.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" })
     : "";
   const timeStr = classStartsAt
-    ? classStartsAt.toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true })
+    ? classStartsAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })
     : "";
 
   return (
@@ -714,7 +726,7 @@ function ClassPromoBlock({ payload }: { payload: Record<string, unknown> }) {
             <p className="text-[15px] font-bold text-foreground">{className}</p>
             {coachName && (
               <p className="text-[12px] text-muted">
-                con{" "}
+                {t("with")}{" "}
                 {coachUserId ? (
                   <Link href={`/my/user/${coachUserId}`} className="font-medium text-foreground/70 hover:underline">
                     {coachName}
@@ -743,7 +755,7 @@ function ClassPromoBlock({ payload }: { payload: Record<string, unknown> }) {
           style={{ borderColor: `${classTypeColor}20`, backgroundColor: classTypeColor }}
         >
           <span className="text-[13px] font-bold text-white">
-            Reservar clase
+            {t("bookClass")}
           </span>
           <ArrowRight className="h-3.5 w-3.5 text-white transition-transform group-hover:translate-x-0.5" />
         </Link>
@@ -753,6 +765,8 @@ function ClassPromoBlock({ payload }: { payload: Record<string, unknown> }) {
 }
 
 function StudioPostCard({ event }: FeedEventCardProps) {
+  const t = useTranslations("feed");
+  const timeAgo = useTimeAgo();
   const p = event.payload;
   const { studioName, appIconUrl } = useBranding();
   const title = p.title as string | null;
@@ -770,7 +784,7 @@ function StudioPostCard({ event }: FeedEventCardProps) {
           <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 16 16">
             <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" />
           </svg>
-          Publicación fijada
+          {t("pinnedPost")}
         </div>
       )}
       <div className="flex items-center gap-3 px-4 py-3">
@@ -798,7 +812,7 @@ function StudioPostCard({ event }: FeedEventCardProps) {
             {provider === "instagram" && (
               <span className="inline-flex items-center gap-1 text-muted/70">
                 <Instagram className="h-3.5 w-3.5" />
-                Instagram
+                {t("instagram")}
               </span>
             )}
             {provider === "instagram" && permalink && (
@@ -808,7 +822,7 @@ function StudioPostCard({ event }: FeedEventCardProps) {
                 rel="noreferrer"
                 className="ml-auto text-[12px] font-medium text-accent hover:underline"
               >
-                Ver post
+                {t("viewPost")}
               </a>
             )}
           </p>
@@ -848,8 +862,10 @@ function StudioPostCard({ event }: FeedEventCardProps) {
 }
 
 function LevelUpCard({ event }: FeedEventCardProps) {
+  const t = useTranslations("feed");
+  const timeAgo = useTimeAgo();
   const p = event.payload;
-  const levelName = (p.levelName as string) ?? "Nuevo nivel";
+  const levelName = (p.levelName as string) ?? t("newLevel");
   const { coachIconSvg } = useBranding();
   const tier = getLoyaltyTierVisual(levelName);
 
@@ -862,9 +878,9 @@ function LevelUpCard({ event }: FeedEventCardProps) {
         <div className="min-w-0 flex-1">
           <p className="text-[14px] leading-snug">
             <Link href={`/my/user/${event.user.id}`} className="font-bold text-foreground hover:underline">
-              {event.user.name?.split(" ")[0] ?? "Alguien"}
+              {event.user.name?.split(" ")[0] ?? t("someone")}
             </Link>
-            <span className="text-muted"> subió de nivel</span>
+            <span className="text-muted"> {t("leveledUp")}</span>
           </p>
           <span className="text-[11px] text-muted/70">{timeAgo(event.createdAt)}</span>
         </div>
@@ -872,7 +888,7 @@ function LevelUpCard({ event }: FeedEventCardProps) {
       <div className="flex flex-col items-center gap-1 py-3">
         <HexBadge tier={tier} size={64} coachIconSvg={coachIconSvg} active />
         <p className="mt-1 font-display text-lg font-bold text-foreground">{levelName}</p>
-        <p className="text-xs text-muted">Nivel de lealtad desbloqueado</p>
+        <p className="text-xs text-muted">{t("loyaltyLevelUnlocked")}</p>
       </div>
       <div className="flex items-center gap-1 border-t border-border/30 px-2 pt-1 pb-1">
         <LikeButton eventId={event.id} initialLiked={event.liked} initialCount={event.likeCount} />

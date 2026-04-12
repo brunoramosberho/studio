@@ -3,11 +3,11 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
 import { FeedEventCard } from "./feed-event-card";
 import { FeedPwaHint } from "./feed-pwa-hint";
 import { DiscoverDisciplines } from "./discover-disciplines";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface FeedItem {
   id: string;
@@ -92,7 +92,8 @@ function FeedSkeleton() {
   );
 }
 
-function EmptyFeed({ t }: { t: (key: string) => string }) {
+function EmptyFeed() {
+  const t = useTranslations("feed");
   return (
     <div className="flex flex-col items-center py-16 text-center">
       <span className="text-4xl">👋</span>
@@ -107,11 +108,11 @@ function EmptyFeed({ t }: { t: (key: string) => string }) {
 }
 
 export function SocialFeed() {
+  const t = useTranslations("feed");
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrolledRef = useRef(false);
   const searchParams = useSearchParams();
   const highlightPostId = searchParams.get("post");
-  const t = useTranslations("feed");
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
@@ -178,7 +179,7 @@ export function SocialFeed() {
       {isLoading ? (
         <FeedSkeleton />
       ) : allEvents.length === 0 ? (
-        <EmptyFeed t={t} />
+        <EmptyFeed />
       ) : (
         <div className="-mx-4 sm:mx-0">
           <div className="space-y-2 sm:space-y-4">

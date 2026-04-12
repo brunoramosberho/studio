@@ -5,24 +5,26 @@ import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Asterisk } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
-
-const footerLinks = {
-  studio: [
-    { href: "/schedule", label: "Horarios" },
-    { href: "/coaches", label: "Coaches" },
-    { href: "/packages", label: "Paquetes" },
-  ],
-  account: [
-    { href: "/login", label: "Iniciar sesión" },
-    { href: "/my", label: "Mi cuenta" },
-    { href: "/my/bookings", label: "Mis reservas" },
-  ],
-};
+import { useTranslations } from "next-intl";
 
 export function Footer() {
+  const t = useTranslations("footer");
   const { data: session } = useSession();
   const pathname = usePathname();
   const { studioName, slogan, logoUrl } = useBranding();
+
+  const footerLinks = {
+    studio: [
+      { href: "/schedule", label: t("schedule") },
+      { href: "/coaches", label: t("coaches") },
+      { href: "/packages", label: t("packages") },
+    ],
+    account: [
+      { href: "/login", label: t("login") },
+      { href: "/my", label: t("myAccount") },
+      { href: "/my/bookings", label: t("myBookings") },
+    ],
+  };
 
   const hideForLoggedIn =
     pathname === "/schedule" ||
@@ -63,7 +65,7 @@ export function Footer() {
 
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-foreground">
-              Studio
+              {t("studioSection")}
             </h3>
             <ul className="space-y-2">
               {footerLinks.studio.map((link) => (
@@ -78,7 +80,7 @@ export function Footer() {
 
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-foreground">
-              Cuenta
+              {t("accountSection")}
             </h3>
             <ul className="space-y-2">
               {footerLinks.account.map((link) => (
@@ -97,7 +99,7 @@ export function Footer() {
             {studioName} Studio © {new Date().getFullYear()}
           </p>
           <div className="flex items-center justify-center gap-1 text-[10px] text-muted/40">
-            Desarrollado por
+            {t("developedBy")}
             <a
               href="https://mgic.app"
               target="_blank"

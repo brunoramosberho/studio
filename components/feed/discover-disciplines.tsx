@@ -5,6 +5,7 @@ import { getIconComponent } from "@/components/admin/icon-picker";
 import { Dumbbell, Flame } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
 import { DisciplineSheet, type DisciplineData } from "./discipline-sheet";
+import { useTranslations } from "next-intl";
 
 interface Discipline {
   id: string;
@@ -34,6 +35,7 @@ function isVideo(url: string) {
 }
 
 export function DiscoverDisciplines({ disciplines }: DiscoverDisciplinesProps) {
+  const t = useTranslations("feed");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selected, setSelected] = useState<DisciplineData | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -58,7 +60,7 @@ export function DiscoverDisciplines({ disciplines }: DiscoverDisciplinesProps) {
   return (
     <section>
       <h2 className="mb-3 font-display text-[17px] font-bold text-foreground">
-        Descubre nuestras disciplinas
+        {t("discoverDisciplines")}
       </h2>
 
       <div
@@ -140,7 +142,7 @@ export function DiscoverDisciplines({ disciplines }: DiscoverDisciplinesProps) {
                   {d.name}
                 </p>
                 <span className="shrink-0 text-[12px] text-muted">
-                  {d.duration} min
+                  {d.duration} {t("min")}
                 </span>
               </div>
 

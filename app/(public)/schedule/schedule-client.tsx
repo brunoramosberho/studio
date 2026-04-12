@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo, useCallback, type MouseEvent } fr
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import {
   ChevronDown,
   Loader2,
@@ -57,6 +58,7 @@ export function ScheduleClient({
   hideCoachFilter = false,
   hideCredits = false,
 }: ScheduleClientProps = {}) {
+  const tf = useTranslations("footer");
   const { data: session } = useSession();
   const [selectedDay, setSelectedDay] = useState(startOfDay(new Date()));
   const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set());
@@ -936,7 +938,7 @@ export function ScheduleClient({
       />
 
       <div className="hidden py-6 md:flex items-center justify-center gap-1 text-[10px] text-muted/40">
-        Desarrollado por
+        {tf("developedBy")}
         <a
           href="https://mgic.app"
           target="_blank"

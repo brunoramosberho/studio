@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { BarChart3, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export interface PollOption {
   id: string;
@@ -26,6 +27,7 @@ interface PollCardProps {
 
 export function PollCard({ poll, eventId }: PollCardProps) {
   const [myVote, setMyVote] = useState(poll.myVote);
+  const t = useTranslations("feed");
   const [totalVotes, setTotalVotes] = useState(poll.totalVotes);
   const [options, setOptions] = useState(poll.options);
   const [isPending, startTransition] = useTransition();
@@ -145,7 +147,7 @@ export function PollCard({ poll, eventId }: PollCardProps) {
       </div>
 
       <p className="mt-2.5 text-[11px] text-muted">
-        {totalVotes} {totalVotes === 1 ? "voto" : "votos"}
+        {totalVotes} {totalVotes === 1 ? t("vote") : t("votes")}
         {hasVoted && " · Toca para cambiar tu voto"}
       </p>
     </div>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { PageTransition } from "@/components/shared/page-transition";
 import { AddCardSheet } from "@/components/checkout/AddCardSheet";
+import { useTranslations } from "next-intl";
 
 interface SavedCard {
   id: string;
@@ -40,6 +41,7 @@ function BrandIcon({ brand }: { brand: string }) {
 }
 
 export default function PaymentMethodsPage() {
+  const t = useTranslations("paymentMethods");
   const router = useRouter();
   const queryClient = useQueryClient();
   const [showAddCard, setShowAddCard] = useState(false);
@@ -61,7 +63,7 @@ export default function PaymentMethodsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paymentMethodId }),
       });
-      if (!res.ok) throw new Error("Failed to remove");
+      if (!res.ok) throw new Error(t("removeError"));
     },
     onMutate: (id) => setRemovingId(id),
     onSettled: () => setRemovingId(null),
@@ -82,7 +84,7 @@ export default function PaymentMethodsPage() {
             <ChevronLeft className="h-5 w-5 text-foreground" />
           </button>
           <h1 className="font-display text-xl font-bold text-foreground">
-            Métodos de pago
+            {t("title")}
           </h1>
         </div>
 
@@ -97,10 +99,10 @@ export default function PaymentMethodsPage() {
               <CreditCard className="h-7 w-7 text-muted" />
             </div>
             <p className="mt-4 text-sm font-medium text-foreground">
-              Sin tarjetas guardadas
+              {t("noCards")}
             </p>
             <p className="mt-1 text-xs text-muted">
-              Añade una tarjeta para agilizar tus próximos pagos
+              {t("noCardsDesc")}
             </p>
           </div>
         ) : (
@@ -147,7 +149,7 @@ export default function PaymentMethodsPage() {
           className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/60 py-4 text-[14px] font-medium text-muted transition-colors active:bg-surface"
         >
           <Plus className="h-4 w-4" />
-          Añadir nueva tarjeta
+          {t("addNewCard")}
         </button>
 
         <AddCardSheet

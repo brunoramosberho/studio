@@ -91,6 +91,7 @@ interface ReferralSheetData {
 
 export default function ProfilePage() {
   const t = useTranslations("member");
+  const tf = useTranslations("footer");
   const TRIGGER_LABELS: Record<string, string> = {
     installed: t("triggerInstalled"),
     purchased: t("triggerPurchased"),
@@ -849,8 +850,8 @@ export default function ProfilePage() {
           animate="show"
           className="pt-6 text-center text-xs text-muted/60"
         >
-          Hecho con <Heart className="inline h-3 w-3 fill-current text-red-400" /> para{" "}
-          {session?.user?.name?.split(" ")[0] ?? "ti"}
+          {tf("madeWithLove")} <Heart className="inline h-3 w-3 fill-current text-red-400" /> {tf("forYou")}{" "}
+          {session?.user?.name?.split(" ")[0] ?? tf("you")}
         </motion.p>
         <motion.div
           custom={8}
@@ -859,7 +860,7 @@ export default function ProfilePage() {
           animate="show"
           className="flex items-center justify-center gap-1 pb-2 pt-1 text-[10px] text-muted/40"
         >
-          Desarrollado por
+          {tf("developedBy")}
           <a
             href="https://mgic.app"
             target="_blank"

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface WearableStatus {
   connected: boolean;
@@ -28,6 +29,7 @@ function StravaLogo({ className, style }: { className?: string; style?: React.CS
 }
 
 export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
+  const t = useTranslations("wearables");
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState(false);
@@ -48,23 +50,23 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wearables", "status"] });
-      toast.success("Strava desconectado");
+      toast.success(t("stravaDisconnected"));
     },
     onError: () => {
-      toast.error("No se pudo desconectar Strava");
+      toast.error(t("stravaDisconnectError"));
     },
   });
 
   useEffect(() => {
     const stravaParam = searchParams.get("strava");
     if (stravaParam === "connected") {
-      toast.success("Strava conectado correctamente");
+      toast.success(t("stravaConnected"));
       queryClient.invalidateQueries({ queryKey: ["wearables", "status"] });
       setExpanded(true);
     } else if (stravaParam === "denied") {
-      toast.error("Conexión con Strava cancelada");
+      toast.error(t("stravaDenied"));
     } else if (stravaParam === "error") {
-      toast.error("Error al conectar con Strava");
+      toast.error(t("stravaError"));
     }
   }, [searchParams, queryClient]);
 
@@ -84,7 +86,7 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
           <Watch className="h-4 w-4 text-foreground" />
         </div>
         <span className="flex-1 text-[15px] font-medium text-foreground">
-          Apps conectadas
+          {t("connectedApps")}
         </span>
         {isConnected && (
           <span className="mr-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-green-100 px-1.5 text-[11px] font-semibold text-green-700">
@@ -123,11 +125,11 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
                   ) : isConnected ? (
                     <p className="text-[11px] text-green-600 font-medium flex items-center gap-1">
                       <Check className="h-3 w-3" />
-                      Conectado
+                      {t("connected")}
                     </p>
                   ) : (
                     <p className="text-[11px] text-muted">
-                      Sincroniza tu actividad
+                      {t("syncActivity")}
                     </p>
                   )}
                 </div>
@@ -148,7 +150,7 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
                     ) : (
                       <>
                         <Unplug className="mr-1 h-3 w-3" />
-                        Desconectar
+                        {t("disconnect")}
                       </>
                     )}
                   </Button>
@@ -162,14 +164,14 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
                       window.location.href = "/api/auth/strava";
                     }}
                   >
-                    Conectar
+                    {t("connect")}
                   </Button>
                 )}
               </div>
 
               {isConnected && (
                 <p className="mt-2 text-[10px] text-muted pl-[52px]">
-                  Tus datos de frecuencia cardíaca y calorías se sincronizarán automáticamente después de cada clase
+                  {t("syncDescription")}
                 </p>
               )}
             </div>

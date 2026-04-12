@@ -5,6 +5,7 @@ import { MessageCircle, Send, X } from "lucide-react";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 
 interface CommentData {
   id: string;
@@ -26,17 +27,18 @@ interface CommentsSheetProps {
 
 const QUICK_EMOJIS = ["❤️", "🙌", "🔥", "👏", "😢", "😍", "😮", "😂"];
 
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "ahora";
-  if (mins < 60) return `${mins}m`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
-}
-
 export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
+  const t = useTranslations("feed");
+
+  function timeAgo(dateStr: string) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return t("timeNow");
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+  }
   const [open, setOpen] = useState(false);
   const [comments, setComments] = useState<CommentData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -167,7 +169,7 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
                 <div className="flex items-center justify-between px-5 pb-3 pt-1 sm:pt-4">
                   <div className="w-8" />
                   <h2 className="font-display text-[15px] font-bold text-foreground">
-                    Comentarios
+                    {t("comments")}
                   </h2>
                   <button
                     onClick={() => setOpen(false)}
@@ -201,10 +203,10 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
                 ) : comments.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12">
                     <p className="text-[15px] font-semibold text-foreground">
-                      Sin comentarios aún
+                      {t("noCommentsYet")}
                     </p>
                     <p className="mt-1 text-[13px] text-muted">
-                      Sé el primero en comentar
+                      {t("beFirstToComment")}
                     </p>
                   </div>
                 ) : (
@@ -272,7 +274,7 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
                   type="text"
                   className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground placeholder:text-muted/50 focus:outline-none"
                   style={{ fontSize: "16px" }}
-                  placeholder="Añade un comentario..."
+                  placeholder={t("addComment")}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && submit()}

@@ -7,6 +7,7 @@ import { X, UserPlus, Check, Loader2 } from "lucide-react";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { maskLastName } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export interface PersonItem {
   id: string;
@@ -27,6 +28,7 @@ interface PeopleListSheetProps {
 type FriendState = "friend" | "pending" | "idle" | "sending" | "sent" | "self";
 
 export function PeopleListSheet({ open, onClose, title, people: rawPeople }: PeopleListSheetProps) {
+  const tf = useTranslations("feed");
   const router = useRouter();
   const { data: session } = useSession();
   const dragControls = useDragControls();
@@ -190,7 +192,7 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
                           onClick={() => handleAddFriend(person.id)}
                           className="shrink-0 rounded-full border border-accent px-3 py-1.5 text-[12px] font-semibold text-accent transition-colors active:bg-accent/10"
                         >
-                          Agregar
+                          {tf("addFriend")}
                         </button>
                       )}
                       {state === "sending" && (
@@ -201,12 +203,12 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
                       {state === "sent" && (
                         <span className="shrink-0 flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1.5 text-[12px] font-medium text-accent">
                           <Check className="h-3 w-3" />
-                          Enviada
+                          {tf("requestSent")}
                         </span>
                       )}
                       {state === "pending" && (
                         <span className="shrink-0 rounded-full bg-surface px-3 py-1.5 text-[12px] font-medium text-muted">
-                          Pendiente
+                          {tf("requestPending")}
                         </span>
                       )}
                     </div>
