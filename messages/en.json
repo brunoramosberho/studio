@@ -1051,6 +1051,7 @@
     "statusAttended": "Attended",
     "statusCreditLost": "Credit lost",
     "statusLateCancellation": "Late cancellation",
+    "statusCancelled": "Cancelled",
     "myPackages": "My Packages",
     "viewPlans": "View plans",
     "noPackages": "No packages",

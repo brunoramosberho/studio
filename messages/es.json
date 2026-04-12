@@ -1051,6 +1051,7 @@
     "statusAttended": "Asistió",
     "statusCreditLost": "Crédito perdido",
     "statusLateCancellation": "Cancelación tardía",
+    "statusCancelled": "Cancelada",
     "myPackages": "Mis Paquetes",
     "viewPlans": "Ver planes",
     "noPackages": "Sin paquetes",

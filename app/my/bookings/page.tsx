@@ -310,7 +310,7 @@ export default function BookingsPage() {
                               {studioName && <span className="text-muted/50"> · {studioName}</span>}
                             </p>
                           </div>
-                          <StatusBadge status={booking.status} />
+                          <StatusBadge status={booking.status} creditLost={booking.creditLost} />
                         </div>
                       </div>
                     </Link>
@@ -686,15 +686,20 @@ function AutoAnimatedCalendarDays({ size, className }: { size: number; className
   return <CalendarDaysIcon ref={ref} size={size} className={className} />;
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, creditLost }: { status: string; creditLost?: boolean }) {
   const t = useTranslations("member");
   const config: Record<string, { label: string; color: string; bg: string }> = {
     CONFIRMED: { label: t("statusCompleted"), color: "text-green-700", bg: "bg-green-50" },
     ATTENDED: { label: t("statusAttended"), color: "text-green-700", bg: "bg-green-50" },
     NO_SHOW: { label: t("statusCreditLost"), color: "text-red-600", bg: "bg-red-50" },
-    CANCELLED: { label: t("statusLateCancellation"), color: "text-red-600", bg: "bg-red-50" },
+    CANCELLED_LATE: { label: t("statusLateCancellation"), color: "text-red-600", bg: "bg-red-50" },
+    CANCELLED_REFUNDED: { label: t("statusCancelled"), color: "text-muted", bg: "bg-surface" },
   };
-  const s = config[status] ?? config.CONFIRMED;
+  let key = status;
+  if (status === "CANCELLED") {
+    key = creditLost ? "CANCELLED_LATE" : "CANCELLED_REFUNDED";
+  }
+  const s = config[key] ?? config.CONFIRMED;
   return (
     <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", s.bg, s.color)}>
       {s.label}
