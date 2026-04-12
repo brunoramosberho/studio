@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, requireRole, getAuthContext } from "@/lib/tenant";
-import { refundAndClearWaitlist } from "@/lib/waitlist";
+import { cancelClassWithRefunds } from "@/lib/class-cancel";
 import { BookingStatus } from "@prisma/client";
 
 export async function GET(
@@ -268,6 +268,12 @@ export async function PUT(
     const body = await request.json();
     const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag, songRequestsEnabled, songRequestCriteria, blockingNotes } = body;
 
+    // If cancelling via PUT, use the full cancel flow (refund + email)
+    if (status === "CANCELLED" && existing.status !== "CANCELLED") {
+      const refundedCount = await cancelClassWithRefunds(id, ctx.tenant.id);
+      return NextResponse.json({ id, status: "CANCELLED", refundedBookings: refundedCount });
+    }
+
     const updated = await prisma.class.update({
       where: { id },
       data: {
@@ -324,16 +330,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    const cancelled = await prisma.class.update({
-      where: { id },
-      data: { status: "CANCELLED" },
-    });
+    const refundedCount = await cancelClassWithRefunds(id, ctx.tenant.id);
 
-    refundAndClearWaitlist(id, ctx.tenant.id).catch((err) =>
-      console.error("Waitlist refund on class cancel failed:", err),
-    );
-
-    return NextResponse.json(cancelled);
+    return NextResponse.json({ id, status: "CANCELLED", refundedBookings: refundedCount });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
-import { refundAndClearWaitlist } from "@/lib/waitlist";
+import { cancelClassWithRefunds } from "@/lib/class-cancel";
 
 /**
  * GET /api/classes/series/[recurringId]
@@ -144,20 +144,14 @@ export async function DELETE(
       return NextResponse.json({ count: 0 });
     }
 
-    // Cancel all matching classes
-    const result = await prisma.class.updateMany({
-      where: { id: { in: classesToCancel.map((c) => c.id) } },
-      data: { status: "CANCELLED" },
-    });
-
-    // Refund waitlists asynchronously
+    // Cancel each class with full refund + email flow
+    let totalRefunded = 0;
     for (const cls of classesToCancel) {
-      refundAndClearWaitlist(cls.id, ctx.tenant.id).catch((err) =>
-        console.error(`Waitlist refund for class ${cls.id} failed:`, err),
-      );
+      const refunded = await cancelClassWithRefunds(cls.id, ctx.tenant.id);
+      totalRefunded += refunded;
     }
 
-    return NextResponse.json({ count: result.count });
+    return NextResponse.json({ count: classesToCancel.length, refundedBookings: totalRefunded });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: 403 });

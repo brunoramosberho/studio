@@ -67,7 +67,7 @@ export default function AdminSchedulePage() {
   const { data: classes, isLoading } = useQuery<ClassWithDetails[]>({
     queryKey: ["admin-schedule", from, to],
     queryFn: async () => {
-      const res = await fetch(`/api/classes?from=${from}&to=${to}`);
+      const res = await fetch(`/api/classes?from=${from}&to=${to}&includeCancelled=true`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
@@ -95,7 +95,8 @@ export default function AdminSchedulePage() {
 
   const filtered = useMemo(() => {
     return (classes ?? []).filter((c) => {
-      if (c.status === "CANCELLED") return false;
+      // Hide cancelled classes unless they had bookings (so admin sees them)
+      if (c.status === "CANCELLED" && (c._count?.bookings ?? 0) === 0) return false;
       if (filterStudio !== "all" && c.room?.studio?.id !== filterStudio) return false;
       if (filterCoach !== "all" && c.coach.id !== filterCoach) return false;
       if (filterType !== "all" && c.classType.id !== filterType) return false;

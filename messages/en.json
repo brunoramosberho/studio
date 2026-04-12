@@ -1555,6 +1555,11 @@
     "approveLogin": "Approve login",
     "clickToLogin": "Click the button to log in to {studioName}",
     "ignoreEmail": "If you did not request this, you can ignore this email.",
+    "classCancelledTitle": "Class cancelled",
+    "classCancelledMsg": "your class has been cancelled by the studio.",
+    "classCancelledSubject": "Class cancelled: {className}",
+    "creditRefundedMsg": "Your credit has been automatically refunded.",
+    "creditNotRefundedMsg": "This class did not use a credit, no refund needed.",
     "waiverSubject": "Waiver pending",
     "waiverMsg": "Before continuing, you must sign our informed consent."
   },

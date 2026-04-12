@@ -1555,6 +1555,11 @@
     "approveLogin": "Aprobar inicio de sesion",
     "clickToLogin": "Haz clic en el boton para iniciar sesion en {studioName}",
     "ignoreEmail": "Si no solicitaste esto, puedes ignorar este correo.",
+    "classCancelledTitle": "Clase cancelada",
+    "classCancelledMsg": "tu clase ha sido cancelada por el estudio.",
+    "classCancelledSubject": "Clase cancelada: {className}",
+    "creditRefundedMsg": "Tu crédito ha sido devuelto automáticamente.",
+    "creditNotRefundedMsg": "Esta clase no consumía crédito, no se requiere devolución.",
     "waiverSubject": "Consentimiento pendiente",
     "waiverMsg": "Antes de continuar, debes firmar nuestro consentimiento informado."
   },

@@ -131,6 +131,87 @@ export async function sendBookingConfirmation({
   }
 }
 
+export async function sendClassCancelled({
+  to,
+  name,
+  className,
+  coachName,
+  date,
+  startTime,
+  location,
+  timezone,
+  creditRefunded,
+  locale,
+}: {
+  to: string;
+  name: string;
+  className: string;
+  coachName: string;
+  date: Date;
+  startTime: Date;
+  location?: string;
+  timezone?: string;
+  creditRefunded: boolean;
+  locale?: string;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+    const loc = locale || "es";
+    const t = await getTranslations({ locale: loc, namespace: "email" });
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#fef2f2;line-height:56px;font-size:28px;">&#10007;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ${t("classCancelledTitle")}
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};">
+          ${t("hello", { name })}, ${t("classCancelledMsg")}
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:#dc2626;">${className}</h2>
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>${t("date")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date, loc)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>${t("time")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>${t("coach")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${coachName}</td>
+            </tr>
+            ${location ? `<tr>
+              <td style="padding:3px 0;"><strong>${t("location")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${location}</td>
+            </tr>` : ""}
+          </table>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;padding:16px;background:${creditRefunded ? "#dcfce7" : "#fef9c3"};border-radius:12px;margin-bottom:16px;">
+        <p style="margin:0;font-size:13px;font-weight:600;color:${creditRefunded ? "#15803d" : "#a16207"};">
+          ${creditRefunded ? t("creditRefundedMsg") : t("creditNotRefundedMsg")}
+        </p>
+      </div>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: t("classCancelledSubject", { className }),
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send class cancelled email:", error);
+  }
+}
+
 export function getTenantBaseUrl(tenantSlug: string) {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
   const protocol = rootDomain.includes("localhost") ? "http" : "https";
