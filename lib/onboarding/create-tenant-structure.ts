@@ -241,7 +241,7 @@ export async function createTenantStructure(
       data: {
         tenantId,
         name: pkg.name,
-        type: pkg.type === "subscription" ? "SUBSCRIPTION" : pkg.type === "offer" ? "OFFER" : "PACKAGE",
+        type: pkg.type === "subscription" ? "SUBSCRIPTION" : pkg.type === "offer" ? "OFFER" : "PACK",
         credits: pkg.unlimited ? null : (pkg.credits || 1),
         validDays: pkg.validityDays || 30,
         price: pkg.price || 0,
