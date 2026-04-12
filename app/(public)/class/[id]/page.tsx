@@ -54,6 +54,7 @@ import { FriendBiometrics } from "@/components/booking/friend-biometrics";
 import { MembershipNudge } from "@/components/booking/MembershipNudge";
 import { RatingSection } from "@/components/rating/RatingSection";
 import type { NudgeDecision } from "@/lib/conversion/nudge-engine";
+import { useTranslations } from "next-intl";
 
 interface ClassData {
   id: string;
@@ -132,6 +133,7 @@ interface ClassFeedEvent {
 
 export default function ClassDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const t = useTranslations("classDetail");
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
   const queryClient = useQueryClient();
@@ -338,7 +340,7 @@ export default function ClassDetailPage() {
       setSelectedSpot(null);
       queryClient.invalidateQueries({ queryKey: ["classes", id] });
     } catch (err: any) {
-      setError(err.error || "No se pudo completar la reserva");
+      setError(err.error || t("couldNotBook"));
     }
   }
 
@@ -371,10 +373,10 @@ export default function ClassDetailPage() {
           setNotifyMeId(null);
         }
       } else {
-        setError(data.error || "No se pudo unir a la lista de espera");
+        setError(data.error || t("couldNotJoinWaitlist"));
       }
     } catch {
-      setError("No se pudo unir a la lista de espera");
+      setError(t("couldNotJoinWaitlist"));
     } finally {
       setJoiningWaitlist(false);
     }
@@ -401,11 +403,11 @@ export default function ClassDetailPage() {
           setNotifyMeActive(true);
           setNotifyMeId(data.id);
         } else {
-          setError(data.error || "No se pudo activar la notificación");
+          setError(data.error || t("couldNotActivateNotif"));
         }
       }
     } catch {
-      setError("No se pudo procesar tu solicitud");
+      setError(t("couldNotProcessRequest"));
     } finally {
       setTogglingNotifyMe(false);
     }
@@ -455,9 +457,9 @@ export default function ClassDetailPage() {
     if (!cls) return;
     const classUrl = `${window.location.origin}/class/${id}`;
     const date = new Date(cls.startsAt);
-    const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+    const dayStr = date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
     const time = formatTime(cls.startsAt);
-    const text = `${cls.classType.name} con ${cls.coach.name}\n${dayStr}, ${time}\n${cls.room.studio.name}\n¡Reserva tu lugar!`;
+    const text = `${cls.classType.name} con ${cls.coach.name}\n${dayStr}, ${time}\n${cls.room.studio.name}\n${t("reserveYourSpot")}`;
 
     if (navigator.share) {
       try {
@@ -484,13 +486,13 @@ export default function ClassDetailPage() {
         <div className="mx-auto max-w-2xl px-4 py-32 text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-muted/30" />
           <h1 className="mt-4 font-display text-2xl font-bold text-foreground">
-            Clase no encontrada
+            {t("classNotFound")}
           </h1>
           <p className="mt-2 text-sm text-muted">
-            Esta clase no existe o ya no está disponible.
+            {t("classNotFoundDesc")}
           </p>
           <Button asChild variant="secondary" className="mt-8">
-            <Link href="/schedule">Ver horarios</Link>
+            <Link href="/schedule">{t("viewSchedule")}</Link>
           </Button>
         </div>
       </PageTransition>
@@ -523,14 +525,14 @@ export default function ClassDetailPage() {
               <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
                 <Ticket className="h-3.5 w-3.5 text-accent" />
                 <span className="text-[12px] font-semibold text-accent">
-                  {creditsRemaining === -1 ? "Ilimitado" : `${creditsRemaining} clases`}
+                  {creditsRemaining === -1 ? t("unlimited") : t("classesCount", { count: creditsRemaining })}
                 </span>
               </div>
             )}
             <button
               onClick={handleShare}
               className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-muted transition-colors hover:text-foreground active:scale-95"
-              title="Compartir clase"
+              title={t("shareClass")}
             >
               {copied ? (
                 <Check className="h-4 w-4 text-green-600" />
@@ -556,7 +558,7 @@ export default function ClassDetailPage() {
             {cls.classType.name}
             {cls.coach.name && (
               <span className="font-normal text-muted">
-                {" "}con {cls.coach.name}
+                {t("with")}{cls.coach.name}
               </span>
             )}
           </h1>
@@ -566,11 +568,11 @@ export default function ClassDetailPage() {
           <div className="flex items-center gap-2 text-sm text-muted">
             {!isPast && (bookedSpotNumber ?? myBookedSpot) ? (
               <span className="font-semibold text-foreground">
-                Lugar: {bookedSpotNumber ?? myBookedSpot}
+                {t("spotLabel")} {bookedSpotNumber ?? myBookedSpot}
               </span>
             ) : !isPast && selectedSpot ? (
               <span className="font-semibold text-foreground">
-                Lugar: {selectedSpot}
+                {t("spotLabel")} {selectedSpot}
               </span>
             ) : null}
             {cls.tag && (
@@ -578,12 +580,12 @@ export default function ClassDetailPage() {
             )}
           </div>
           <p className="text-sm uppercase tracking-wide text-muted">
-            {new Date(cls.startsAt).toLocaleDateString("es-MX", {
+            {new Date(cls.startsAt).toLocaleDateString(undefined, {
               day: "2-digit",
               month: "short",
             }).toUpperCase()}
             {" / "}
-            {new Date(cls.startsAt).toLocaleDateString("es-MX", {
+            {new Date(cls.startsAt).toLocaleDateString(undefined, {
               weekday: "short",
             }).toUpperCase()}
             {"  "}
@@ -609,7 +611,7 @@ export default function ClassDetailPage() {
                   : "bg-surface text-muted",
             )}>
               <Users className="h-3 w-3" />
-              {classFull ? "Llena" : `${bookedCount}/${totalSpots}`}
+              {classFull ? t("full") : `${bookedCount}/${totalSpots}`}
             </div>
           )}
         </div>
@@ -622,10 +624,10 @@ export default function ClassDetailPage() {
             {/* Clase terminada badge */}
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-700">Clase terminada</span>
+              <span className="text-sm font-medium text-green-700">{t("classFinished")}</span>
               {feedAttendees.length > 0 && (
                 <span className="text-xs text-muted">
-                  · {feedAttendees.length} asistente{feedAttendees.length !== 1 ? "s" : ""}
+                  · {feedAttendees.length !== 1 ? t("attendeesCount", { count: feedAttendees.length }) : t("attendeeCount", { count: feedAttendees.length })}
                 </span>
               )}
             </div>
@@ -677,7 +679,7 @@ export default function ClassDetailPage() {
                 >
                   <ListMusic className="h-4 w-4 text-green-600" />
                   <span className="flex-1 text-[13px] font-medium text-green-800">
-                    Ver playlist de la clase
+                    {t("viewPlaylist")}
                   </span>
                   <ChevronUp className={cn(
                     "h-4 w-4 text-green-600 transition-transform",
@@ -691,7 +693,7 @@ export default function ClassDetailPage() {
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-300 border-t-green-600" />
                       </div>
                     ) : playlistTracks.length === 0 ? (
-                      <p className="py-3 text-center text-xs text-muted">Sin canciones</p>
+                      <p className="py-3 text-center text-xs text-muted">{t("noSongs")}</p>
                     ) : (
                       playlistTracks.map((track, idx) => (
                         <div
@@ -749,7 +751,7 @@ export default function ClassDetailPage() {
                       ))}
                     </div>
                     <span className="text-[12px] text-muted">
-                      {feedAttendees.length} asistentes
+                      {t("attendeesCount", { count: feedAttendees.length })}
                       {feedAttendees.length > 8 && ` +${feedAttendees.length - 8} más`}
                     </span>
                   </button>
@@ -760,7 +762,7 @@ export default function ClassDetailPage() {
             <PeopleListSheet
               open={showPeople}
               onClose={() => setShowPeople(false)}
-              title="Asistentes"
+              title={t("attendeesTitle")}
               people={feedAttendees.map((a): PersonItem => ({
                 id: a.id,
                 name: a.name,
@@ -779,7 +781,7 @@ export default function ClassDetailPage() {
             {/* ── Book Again CTA ── */}
             <div className="mt-2 space-y-2.5">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted/60">
-                Reservar de nuevo
+                {t("bookAgain")}
               </p>
               <div className="flex flex-col gap-2">
                 <Button
@@ -796,7 +798,7 @@ export default function ClassDetailPage() {
                       />
                     )}
                     <span className="truncate">
-                      Clases con {cls.coach.name?.split(" ")[0] ?? "coach"}
+                      {t("classesWithCoach", { coach: cls.coach.name?.split(" ")[0] ?? "coach" })}
                     </span>
                     <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted" />
                   </Link>
@@ -807,7 +809,7 @@ export default function ClassDetailPage() {
                 >
                   <Link href={`/schedule?discipline=${encodeURIComponent(cls.classType.name)}`}>
                     <CalendarDays className="h-3.5 w-3.5" />
-                    <span className="truncate">Más {cls.classType.name}</span>
+                    <span className="truncate">{t("moreOfType", { type: cls.classType.name })}</span>
                     <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                   </Link>
                 </Button>
@@ -849,7 +851,7 @@ export default function ClassDetailPage() {
                     }`}
                   >
                     <Eye className="h-3 w-3" />
-                    <span>Visible</span>
+                    <span>{t("visible")}</span>
                   </button>
                   <button
                     onClick={() => setPrivacy("PRIVATE")}
@@ -860,13 +862,13 @@ export default function ClassDetailPage() {
                     }`}
                   >
                     <EyeOff className="h-3 w-3" />
-                    <span>Privada</span>
+                    <span>{t("private")}</span>
                   </button>
                 </div>
                 <p className="text-[11px] text-muted/60">
                   {privacy === "PUBLIC"
-                    ? "Tus amigos podrán ver que asistirás a esta clase"
-                    : "Nadie verá que reservaste esta clase"}
+                    ? t("visibleDesc")
+                    : t("privateDesc")}
                 </p>
               </div>
             )}
@@ -905,10 +907,10 @@ export default function ClassDetailPage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-amber-800">
-                        Firma el acuerdo de responsabilidad
+                        {t("signWaiver")}
                       </p>
                       <p className="text-xs text-amber-600">
-                        Requerido para asistir a tu clase
+                        {t("waiverRequired")}
                       </p>
                     </div>
                     <ArrowRight className="h-4 w-4 text-amber-500" />
@@ -932,10 +934,10 @@ export default function ClassDetailPage() {
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-green-800">
-                          Reserva confirmada
+                          {t("bookingConfirmed")}
                         </p>
                         <p className="text-xs text-green-600">
-                          {bookedSpotNumber ? `Lugar #${bookedSpotNumber} · ` : ""}{formatTime(cls.startsAt)}
+                          {bookedSpotNumber ? `${t("spotNumber", { number: bookedSpotNumber })} · ` : ""}{formatTime(cls.startsAt)}
                         </p>
                       </div>
                     </div>
@@ -976,7 +978,7 @@ export default function ClassDetailPage() {
                         <Share className="h-3.5 w-3.5 text-accent" />
                       </div>
                       <p className="text-xs text-muted">
-                        <strong className="text-foreground">Tip:</strong> Agrega esta app a tu pantalla de inicio para reservar más rápido.
+                        <strong className="text-foreground">Tip:</strong> {t("pwaTip")}
                       </p>
                     </div>
                   )}
@@ -1008,17 +1010,17 @@ export default function ClassDetailPage() {
                             <Mail className="h-4 w-4 text-accent" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-foreground">Revisa tu correo</p>
-                            <p className="text-xs text-muted">Enviamos un enlace a {guestEmail}</p>
+                            <p className="text-sm font-medium text-foreground">{t("checkEmail")}</p>
+                            <p className="text-xs text-muted">{t("linkSentTo", { email: guestEmail })}</p>
                           </div>
                         </div>
                       ) : (
                         <>
                           <p className="text-sm font-medium text-foreground">
-                            Accede a tu cuenta
+                            {t("accessAccount")}
                           </p>
                           <p className="mt-0.5 text-xs text-muted">
-                            Gestiona reservas, acumula logros y conecta con tu comunidad.
+                            {t("accessAccountDesc")}
                           </p>
                           <div className="mt-3 flex gap-2">
                             <Button
@@ -1064,18 +1066,18 @@ export default function ClassDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      Estas en la lista de espera
+                      {t("onWaitlist")}
                     </p>
                     {waitlistPosition && (
-                      <p className="text-xs text-accent">Posición #{waitlistPosition}</p>
+                      <p className="text-xs text-accent">{t("positionNumber", { pos: waitlistPosition })}</p>
                     )}
                   </div>
                 </div>
                 <p className="text-xs text-muted leading-relaxed">
-                  Se te descontó un crédito. Si se libera un lugar, entrarás automáticamente y te notificaremos. Si no entras, se te devuelve el crédito.
+                  {t("waitlistDesc")}
                 </p>
                 <Button asChild variant="secondary" size="sm" className="rounded-full">
-                  <Link href="/my/bookings">Ver mis reservas</Link>
+                  <Link href="/my/bookings">{t("viewMyBookings")}</Link>
                 </Button>
               </div>
             )}
@@ -1089,16 +1091,15 @@ export default function ClassDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      Te notificaremos si se abre un lugar
+                      {t("notifyIfSpotOpens")}
                     </p>
                     <p className="text-xs text-muted">
-                      Recibirás una notificación por push y correo
+                      {t("pushAndEmail")}
                     </p>
                   </div>
                 </div>
                 <p className="text-xs text-muted leading-relaxed">
-                  Si se libera un espacio, te notificaremos para que lo reserves antes que alguien más.
-                  No se te descuenta ningún crédito.
+                  {t("notifySpotDesc")}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -1106,7 +1107,7 @@ export default function ClassDetailPage() {
                     disabled={togglingNotifyMe}
                     className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-muted transition-colors hover:bg-surface hover:text-foreground disabled:opacity-50"
                   >
-                    {togglingNotifyMe ? "Cancelando..." : "Cancelar notificación"}
+                    {togglingNotifyMe ? t("cancellingNotif") : t("cancelNotification")}
                   </button>
                   {hasCredits && (
                     <Button
@@ -1116,7 +1117,7 @@ export default function ClassDetailPage() {
                       disabled={joiningWaitlist}
                     >
                       {joiningWaitlist && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                      Unirme a la lista de espera
+                      {t("joinWaitlist")}
                     </Button>
                   )}
                 </div>
@@ -1133,17 +1134,17 @@ export default function ClassDetailPage() {
                         <div className="flex items-center gap-2 text-sm">
                           <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
                             <Users className="h-3 w-3" />
-                            Clase llena
+                            {t("classFull")}
                           </span>
                           {waitlistCount > 0 && (
                             <span className="text-xs text-muted">
-                              {waitlistCount} {waitlistCount === 1 ? "persona" : "personas"} en lista de espera
+                              {waitlistCount === 1 ? t("personOnWaitlist", { count: waitlistCount }) : t("peopleOnWaitlist", { count: waitlistCount })}
                             </span>
                           )}
                         </div>
                         <div className="rounded-xl border border-[#C9A96E]/20 bg-[#C9A96E]/5 px-4 py-3">
                           <p className="text-xs text-muted leading-relaxed">
-                            Se te descontará un crédito al unirte. Si se libera un lugar, entrarás automáticamente. Si no logras entrar, se te devuelve el crédito.
+                            {t("waitlistCreditDesc")}
                           </p>
                         </div>
                         <Button
@@ -1153,7 +1154,7 @@ export default function ClassDetailPage() {
                           disabled={joiningWaitlist}
                         >
                           {joiningWaitlist && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Unirme a la lista de espera
+                          {t("joinWaitlist")}
                           {waitlistCount > 0 && (
                             <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs">
                               {waitlistCount}
@@ -1171,12 +1172,12 @@ export default function ClassDetailPage() {
                             ) : (
                               <Bell className="h-3.5 w-3.5" />
                             )}
-                            Solo notifícame si se abre un lugar
+                            {t("justNotifyMe")}
                           </button>
                         ) : (
                           <div className="flex items-center justify-center gap-2 rounded-full bg-accent/10 py-2.5 text-sm font-medium text-accent">
                             <BellRing className="h-3.5 w-3.5" />
-                            Te notificaremos si se abre un lugar
+                            {t("notifyIfSpotOpens")}
                           </div>
                         )}
                       </div>
@@ -1185,21 +1186,21 @@ export default function ClassDetailPage() {
                         <div className="flex items-center justify-center gap-2 text-sm">
                           <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
                             <Users className="h-3 w-3" />
-                            Clase llena
+                            {t("classFull")}
                           </span>
                         </div>
                         {notifyMeActive ? (
                           <div className="space-y-2 text-center">
                             <div className="flex items-center justify-center gap-2 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
                               <BellRing className="h-4 w-4" />
-                              Te notificaremos si se abre un lugar
+                              {t("notifyIfSpotOpens")}
                             </div>
                             <button
                               onClick={handleToggleNotifyMe}
                               disabled={togglingNotifyMe}
                               className="text-xs text-muted hover:text-foreground transition-colors"
                             >
-                              Cancelar notificación
+                              {t("cancelNotification")}
                             </button>
                           </div>
                         ) : (
@@ -1216,17 +1217,17 @@ export default function ClassDetailPage() {
                               ) : (
                                 <Bell className="h-4 w-4" />
                               )}
-                              Notifícame si se libera un espacio
+                              {t("notifyMeIfSpotOpens")}
                             </Button>
                             <p className="text-center text-xs text-muted">
-                              Sin compromiso — solo te notificamos si hay lugar.
+                              {t("noCommitment")}
                             </p>
                           </>
                         )}
                         <div className="pt-1">
                           <Button asChild variant="ghost" size="sm" className="w-full rounded-full text-muted">
                             <Link href="/packages">
-                              Comprar paquete para lista de espera
+                              {t("buyPackageWaitlist")}
                             </Link>
                           </Button>
                         </div>
@@ -1237,14 +1238,14 @@ export default function ClassDetailPage() {
                       <div className="flex items-center justify-center gap-2 text-sm">
                         <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
                           <Users className="h-3 w-3" />
-                          Clase llena
+                          {t("classFull")}
                         </span>
                       </div>
-                      <p className="text-sm text-muted">Inicia sesión para unirte a la lista de espera o recibir una notificación si se abre un lugar.</p>
+                      <p className="text-sm text-muted">{t("loginForWaitlist")}</p>
                       <Button asChild size="lg" className="w-full rounded-full">
                         <Link href="/login">
                           <LogIn className="mr-2 h-4 w-4" />
-                          Iniciar sesión
+                          {t("login")}
                         </Link>
                       </Button>
                     </div>
@@ -1270,8 +1271,8 @@ export default function ClassDetailPage() {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
                     {hasLayout && !selectedSpot
-                      ? "Selecciona un lugar"
-                      : "Reservar clase"}
+                      ? t("selectSpot")
+                      : t("bookClass")}
                   </Button>
                 )}
               </div>
@@ -1287,10 +1288,10 @@ export default function ClassDetailPage() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">
-                        Reserva confirmada
+                        {t("bookingConfirmed")}
                       </p>
                       {myBookedSpot && (
-                        <p className="text-xs text-muted">Lugar #{myBookedSpot}</p>
+                        <p className="text-xs text-muted">{t("spotNumber", { number: myBookedSpot })}</p>
                       )}
                     </div>
                   </div>
@@ -1298,7 +1299,7 @@ export default function ClassDetailPage() {
                     onClick={() => setShowCancelConfirm(true)}
                     className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
                   >
-                    Cancelar
+                    {t("cancel")}
                   </button>
                 </div>
                 <div className="flex gap-2">
@@ -1326,8 +1327,7 @@ export default function ClassDetailPage() {
             <div className="mt-10 flex items-start gap-2.5">
               <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted/40" />
               <p className="text-[11px] leading-relaxed text-muted/60">
-                Puedes cancelar hasta 12 horas antes del inicio sin perder tu
-                crédito. Cancelaciones tardías o no-shows consumen el crédito.
+                {t("cancellationPolicy")}
               </p>
             </div>
           </>
@@ -1390,29 +1390,28 @@ export default function ClassDetailPage() {
                       </div>
 
                       <h3 className="mt-4 font-display text-lg font-bold text-foreground">
-                        Cancelar reserva
+                        {t("cancelBooking")}
                       </h3>
                       <p className="mt-1 text-sm text-muted">
-                        {cls.classType.name} · {new Date(cls.startsAt).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" })}
+                        {cls.classType.name} · {new Date(cls.startsAt).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" })}
                       </p>
 
                       {canRefund ? (
                         <div className="mt-4 rounded-xl bg-green-50 px-4 py-3">
                           <p className="text-[13px] font-medium text-green-700">
-                            Tu crédito será devuelto
+                            {t("creditRefunded")}
                           </p>
                           <p className="mt-0.5 text-[12px] text-green-600">
-                            Faltan más de 12 horas para la clase
+                            {t("moreThan12h")}
                           </p>
                         </div>
                       ) : (
                         <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
                           <p className="text-[13px] font-medium text-red-700">
-                            Tu crédito NO será devuelto
+                            {t("creditNotRefunded")}
                           </p>
                           <p className="mt-0.5 text-[12px] text-red-600">
-                            Faltan menos de 12 horas ({hoursLeft}h).
-                            Las cancelaciones tardías no reembolsan créditos.
+                            {t("lessThan12h", { hours: hoursLeft })}
                           </p>
                         </div>
                       )}
@@ -1425,7 +1424,7 @@ export default function ClassDetailPage() {
                           disabled={cancelMutation.isPending}
                         >
                           {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          {canRefund ? "Cancelar reserva" : "Cancelar sin reembolso"}
+                          {canRefund ? t("cancelBooking") : t("cancelWithoutRefund")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -1433,7 +1432,7 @@ export default function ClassDetailPage() {
                           onClick={() => setShowCancelConfirm(false)}
                           disabled={cancelMutation.isPending}
                         >
-                          Volver
+                          {t("goBack")}
                         </Button>
                       </div>
                     </>

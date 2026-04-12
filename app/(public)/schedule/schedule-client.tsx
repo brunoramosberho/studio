@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo, useCallback, type MouseEvent } fr
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import {
   ChevronDown,
   Loader2,
@@ -27,7 +27,7 @@ import {
   isToday,
   isPast,
 } from "date-fns";
-import { es } from "date-fns/locale";
+import { es, enUS } from "date-fns/locale";
 import { cn, formatTime, formatRelativeDay } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -54,11 +54,15 @@ interface LocationCountry { code: string; cities: { id: string; name: string }[]
 export function ScheduleClient({
   coachUserId,
   classLinkPrefix = "/class",
-  title = "Horarios esta semana",
+  title: titleProp,
   hideCoachFilter = false,
   hideCredits = false,
 }: ScheduleClientProps = {}) {
   const tf = useTranslations("footer");
+  const t = useTranslations("schedule");
+  const title = titleProp ?? t("weekSchedule");
+  const locale = useLocale();
+  const dateFnsLocale = locale === "en" ? enUS : es;
   const { data: session } = useSession();
   const [selectedDay, setSelectedDay] = useState(startOfDay(new Date()));
   const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set());
@@ -409,7 +413,7 @@ export function ScheduleClient({
               <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
                 <Ticket className="h-3.5 w-3.5 text-accent" />
                 <span className="text-[12px] font-semibold text-accent">
-                  {credits === -1 ? "Ilimitado" : `${credits} clases`}
+                  {credits === -1 ? t("unlimited") : t("classesCount", { count: credits })}
                 </span>
               </div>
             )}
@@ -455,7 +459,7 @@ export function ScheduleClient({
                 )}
               >
                 <span className="text-[10px] font-semibold uppercase tracking-wider">
-                  {format(day, "EEE", { locale: es })}
+                  {format(day, "EEE", { locale: dateFnsLocale })}
                 </span>
                 <span
                   className={cn(
@@ -524,7 +528,7 @@ export function ScheduleClient({
                   <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-surface transition-colors hover:bg-surface/80">
                     <ArrowRight className="h-4 w-4 text-muted" />
                   </div>
-                  <span className="text-[11px] font-medium text-muted">Todos</span>
+                  <span className="text-[11px] font-medium text-muted">{t("allCoaches")}</span>
                 </Link>
               </div>
             </div>
@@ -553,7 +557,7 @@ export function ScheduleClient({
                       {selectedCoach.name?.split(" ")[0]}
                     </span>
                     <span className="text-[12px] font-medium text-accent">
-                      Ver perfil
+                      {t("viewProfile")}
                     </span>
                     <ArrowRight className="h-3.5 w-3.5 text-accent" />
                   </Link>
@@ -574,7 +578,7 @@ export function ScheduleClient({
                     onChange={(e) => setFilterStudio(e.target.value)}
                     className="appearance-none rounded-full border border-border bg-white py-1 pl-2.5 pr-6 text-[11px] font-medium text-foreground focus:outline-none"
                   >
-                    <option value="all">Estudio</option>
+                    <option value="all">{t("studio")}</option>
                     {studios.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}
@@ -616,7 +620,7 @@ export function ScheduleClient({
         <div className="flex flex-col gap-3">
           {mobileDays.length === 0 ? (
             <p className="py-16 text-center text-sm text-muted">
-              Sin clases disponibles
+              {t("noClasses")}
             </p>
           ) : (
             mobileDays.map(({ day, classes: dayClasses }, groupIdx) => (
@@ -627,8 +631,8 @@ export function ScheduleClient({
                     <div className="h-px flex-1 bg-border/60" />
                     <span className="text-[12px] font-medium text-muted">
                       {isToday(day)
-                        ? "hoy"
-                        : format(day, "EEEE d", { locale: es })}
+                        ? t("today")
+                        : format(day, "EEEE d", { locale: dateFnsLocale })}
                     </span>
                     <div className="h-px flex-1 bg-border/60" />
                   </div>
@@ -668,22 +672,22 @@ export function ScheduleClient({
           <div className="flex items-center gap-2 ml-auto">
             {showCityFilter && (
               <FilterSelect
-                label="Ciudad"
+                label={t("city")}
                 value={filterCity}
                 onChange={(v) => { setFilterCity(v); setFilterStudio("all"); }}
                 options={[
-                  { value: "all", label: "Todas" },
+                  { value: "all", label: t("allCities") },
                   ...activeCities.map((c) => ({ value: c.id, label: `${countryFlag(c.countryCode)} ${c.name}` })),
                 ]}
               />
             )}
             {showStudioFilter && (
               <FilterSelect
-                label="Estudio"
+                label={t("studio")}
                 value={filterStudio}
                 onChange={setFilterStudio}
                 options={[
-                  { value: "all", label: "Todos" },
+                  { value: "all", label: t("allStudios") },
                   ...studios.map((s) => ({ value: s.id, label: s.name })),
                 ]}
               />
@@ -772,7 +776,7 @@ export function ScheduleClient({
                 <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border/60 bg-surface transition-colors hover:bg-surface/80">
                   <ArrowRight className="h-4 w-4 text-muted" />
                 </div>
-                <span className="text-[11px] font-medium text-muted">Todos</span>
+                <span className="text-[11px] font-medium text-muted">{t("allCoaches")}</span>
               </Link>
             </div>
 
@@ -800,7 +804,7 @@ export function ScheduleClient({
                       {selectedCoach.name?.split(" ")[0]}
                     </span>
                     <span className="text-[12px] font-medium text-accent">
-                      Ver perfil
+                      {t("viewProfile")}
                     </span>
                     <ArrowRight className="h-3.5 w-3.5 text-accent" />
                   </Link>
@@ -823,7 +827,7 @@ export function ScheduleClient({
                   )}
                 >
                   {today && "● "}
-                  {format(day, "EEE", { locale: es })} {format(day, "d")}
+                  {format(day, "EEE", { locale: dateFnsLocale })} {format(day, "d")}
                 </span>
               </div>
             );
@@ -879,7 +883,7 @@ export function ScheduleClient({
                 </div>
 
                 <h3 className="mt-4 font-display text-lg font-bold text-foreground">
-                  Cancelar reserva
+                  {t("cancelBooking")}
                 </h3>
                 <p className="mt-1 text-sm text-muted">
                   {cancelTarget.classType.name} · {formatRelativeDay(cancelTarget.startsAt)}
@@ -888,20 +892,19 @@ export function ScheduleClient({
                 {canCancelClassFreely(cancelTarget) ? (
                   <div className="mt-4 rounded-xl bg-green-50 px-4 py-3">
                     <p className="text-[13px] font-medium text-green-700">
-                      Tu crédito será devuelto
+                      {t("creditRefunded")}
                     </p>
                     <p className="mt-0.5 text-[12px] text-green-600">
-                      Faltan más de 12 horas para la clase
+                      {t("moreThan12h")}
                     </p>
                   </div>
                 ) : (
                   <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
                     <p className="text-[13px] font-medium text-red-700">
-                      Tu crédito NO será devuelto
+                      {t("creditNotRefunded")}
                     </p>
                     <p className="mt-0.5 text-[12px] text-red-600">
-                      Faltan menos de 12 horas ({hoursUntilClass(cancelTarget)}h).
-                      Las cancelaciones tardías no reembolsan créditos.
+                      {t("lessThan12h", { hours: hoursUntilClass(cancelTarget) })}
                     </p>
                   </div>
                 )}
@@ -914,7 +917,7 @@ export function ScheduleClient({
                     disabled={cancelMutation.isPending}
                   >
                     {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {canCancelClassFreely(cancelTarget) ? "Cancelar reserva" : "Cancelar sin reembolso"}
+                    {canCancelClassFreely(cancelTarget) ? t("cancelBooking") : t("cancelWithoutRefund")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -922,7 +925,7 @@ export function ScheduleClient({
                     onClick={() => setCancelTarget(null)}
                     disabled={cancelMutation.isPending}
                   >
-                    Volver
+                    {t("goBack")}
                   </Button>
                 </div>
               </div>
@@ -983,6 +986,7 @@ function CollapsiblePastClasses({
   notifyMeSet: Map<string, string>;
   onToggleNotifyMe?: (classId: string) => void;
 }) {
+  const t = useTranslations("schedule");
   const pastClasses = classes.filter((c) => isPast(new Date(c.startsAt)));
   const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startsAt)));
   const [showPast, setShowPast] = useState(false);
@@ -1026,8 +1030,8 @@ function CollapsiblePastClasses({
       >
         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showPast && "rotate-180")} />
         {showPast
-          ? "Ocultar anteriores"
-          : `${pastClasses.length} clase${pastClasses.length > 1 ? "s" : ""} anterior${pastClasses.length > 1 ? "es" : ""}`}
+          ? t("hidePast")
+          : pastClasses.length > 1 ? t("pastClassesPlural", { count: pastClasses.length }) : t("pastClasses", { count: pastClasses.length })}
       </button>
       {upcomingClasses.map((cls) => (
         <MobileClassCard
@@ -1089,6 +1093,9 @@ function MobileClassCard({
   isNotifyMe?: boolean;
   onToggleNotifyMe?: (classId: string) => void;
 }) {
+  const t = useTranslations("schedule");
+  const locale = useLocale();
+  const dateFnsLocale = locale === "en" ? enUS : es;
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.room?.maxCapacity ?? 0;
@@ -1114,7 +1121,7 @@ function MobileClassCard({
         {/* Time column */}
         <div className="w-[4.5rem] flex-shrink-0 text-center">
           <p className="text-[9px] font-semibold uppercase tracking-wide text-muted/60">
-            {format(new Date(cls.startsAt), "EEE d", { locale: es })}
+            {format(new Date(cls.startsAt), "EEE d", { locale: dateFnsLocale })}
           </p>
           <p
             className={cn(
@@ -1174,7 +1181,7 @@ function MobileClassCard({
               )}
             </div>
             <p className="truncate text-[13px] text-muted">
-              con {cls.coach.name?.split(" ")[0]}
+              {t("with")} {cls.coach.name?.split(" ")[0]}
               {cls.room?.studio?.name && (
                 <span className="text-muted/50"> · {cls.room.studio.name}</span>
               )}
@@ -1193,8 +1200,8 @@ function MobileClassCard({
                 </div>
                 <span className="text-[10px] text-accent">
                   {cls.friendsGoing.length === 1
-                    ? `${cls.friendsGoing[0].name?.split(" ")[0]} va`
-                    : `${cls.friendsGoing.length} amigos van`}
+                    ? t("friendGoing", { name: cls.friendsGoing[0].name?.split(" ")[0] })
+                    : t("friendsGoing", { count: cls.friendsGoing.length })}
                 </span>
               </div>
             )}
@@ -1209,12 +1216,12 @@ function MobileClassCard({
               disabled={isCancelling}
               className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95 disabled:opacity-50"
             >
-              {isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : "Cancelar"}
+              {isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : t("cancel")}
             </button>
           ) : !past && isFull ? (
             <>
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                {hasWaitlist ? "Lista de espera" : "Llena"}
+                {hasWaitlist ? t("waitlist") : t("full")}
               </span>
               {onToggleNotifyMe && (
                 <button
@@ -1231,13 +1238,13 @@ function MobileClassCard({
                   ) : (
                     <Bell className="h-2.5 w-2.5" />
                   )}
-                  {isNotifyMe ? "Notificado" : "Notifícame"}
+                  {isNotifyMe ? t("notified") : t("notifyMe")}
                 </button>
               )}
             </>
           ) : !past && spotsLeft <= 3 ? (
             <span className="text-[11px] font-medium text-rose-500">
-              {spotsLeft} {spotsLeft === 1 ? "lugar" : "lugares"}
+              {spotsLeft === 1 ? t("spotSingular", { count: spotsLeft }) : t("spotPlural", { count: spotsLeft })}
             </span>
           ) : null}
         </div>
@@ -1248,6 +1255,7 @@ function MobileClassCard({
 
 /* ── Desktop class card ── */
 function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId, onTapDiscipline, notifyMeSet, onToggleNotifyMe }: { classes: ClassWithDetails[]; classLinkPrefix: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null; onTapDiscipline: (cls: ClassWithDetails) => void; notifyMeSet: Map<string, string>; onToggleNotifyMe?: (classId: string) => void }) {
+  const t = useTranslations("schedule");
   const pastClasses = classes.filter((c) => isPast(new Date(c.startsAt)));
   const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startsAt)));
   const [showPast, setShowPast] = useState(false);
@@ -1272,7 +1280,7 @@ function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId, on
         className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-border/60 py-1.5 text-[10px] font-medium text-muted transition-colors hover:bg-surface/60"
       >
         <ChevronDown className={cn("h-3 w-3 transition-transform", showPast && "rotate-180")} />
-        {showPast ? "Ocultar" : `${pastClasses.length} anterior${pastClasses.length > 1 ? "es" : ""}`}
+        {showPast ? t("hideDesktop") : pastClasses.length > 1 ? t("pastDesktopPlural", { count: pastClasses.length }) : t("pastDesktop", { count: pastClasses.length })}
       </button>
       {upcomingClasses.map((cls) => (
         <DesktopClassCard key={cls.id} cls={cls} classLinkPrefix={classLinkPrefix} onCancel={onCancel} cancellingId={cancellingId} onTapDiscipline={onTapDiscipline} isNotifyMe={notifyMeSet.has(cls.id)} onToggleNotifyMe={onToggleNotifyMe} />
@@ -1282,6 +1290,7 @@ function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId, on
 }
 
 function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellingId, onTapDiscipline, isNotifyMe, onToggleNotifyMe }: { cls: ClassWithDetails; classLinkPrefix?: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null; onTapDiscipline: (cls: ClassWithDetails) => void; isNotifyMe?: boolean; onToggleNotifyMe?: (classId: string) => void }) {
+  const t = useTranslations("schedule");
   const past = isPast(new Date(cls.startsAt));
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.room?.maxCapacity ?? 0;
@@ -1376,12 +1385,12 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
             disabled={isCancelling}
             className="self-start rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95 disabled:opacity-50"
           >
-            {isCancelling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Cancelar"}
+            {isCancelling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : t("cancel")}
           </button>
         ) : !past && isFull ? (
           <div className="flex flex-col items-start gap-1">
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold text-amber-700">
-              {hasWaitlist ? "Lista de espera" : "Llena"}
+              {hasWaitlist ? t("waitlist") : t("full")}
             </span>
             {onToggleNotifyMe && (
               <button
@@ -1394,13 +1403,13 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
                 )}
               >
                 {isNotifyMe ? <BellOff className="h-2 w-2" /> : <Bell className="h-2 w-2" />}
-                {isNotifyMe ? "Notificado" : "Notifícame"}
+                {isNotifyMe ? t("notified") : t("notifyMe")}
               </button>
             )}
           </div>
         ) : !past && spotsLeft <= 3 ? (
           <span className="text-[10px] font-medium text-rose-500">
-            {spotsLeft} {spotsLeft === 1 ? "lugar" : "lugares"}
+            {spotsLeft === 1 ? t("spotSingular", { count: spotsLeft }) : t("spotPlural", { count: spotsLeft })}
           </span>
         ) : null}
       </div>

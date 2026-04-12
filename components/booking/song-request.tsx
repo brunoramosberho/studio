@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Music, Check } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
+import { useTranslations } from "next-intl";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
 
 interface SongRequestProps {
@@ -14,6 +15,7 @@ interface SongRequestProps {
 
 export function SongRequest({ classId, onComplete, onSkip }: SongRequestProps) {
   const { colorAccent: accent } = useBranding();
+  const t = useTranslations("songRequest");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -55,10 +57,10 @@ export function SongRequest({ classId, onComplete, onSkip }: SongRequestProps) {
           <Check className="h-8 w-8" style={{ color: accent }} strokeWidth={2.5} />
         </motion.div>
         <p className="mt-4 font-display text-lg font-bold text-foreground">
-          ¡Canción sugerida!
+          {t("songSuggested")}
         </p>
         <p className="mt-1 text-sm text-muted">
-          Se agregó a tus favoritos
+          {t("addedToFavorites")}
         </p>
       </motion.div>
     );
@@ -79,13 +81,13 @@ export function SongRequest({ classId, onComplete, onSkip }: SongRequestProps) {
         </div>
         <div>
           <h3 className="font-display text-lg font-bold text-foreground">
-            ¿Quieres escuchar tu canción?
+            {t("wantToHear")}
           </h3>
           <p className="text-[13px] text-muted">
-            Sugiere una canción para esta clase
+            {t("suggestSong")}
           </p>
           <p className="mt-2 max-w-[280px] text-[11px] leading-snug text-muted/85">
-            No garantiza que la pongan en clase: el coach podría considerarla al armar la sesión.
+            {t("disclaimer")}
           </p>
         </div>
       </div>
@@ -93,7 +95,9 @@ export function SongRequest({ classId, onComplete, onSkip }: SongRequestProps) {
       <SpotifyTrackPicker
         onConfirm={handleConfirm}
         isSubmitting={submitting}
-        confirmLabel="Sugerir canción"
+        confirmLabel={t("suggestButton")}
+        skipLabel={t("skip")}
+        searchPlaceholder={t("searchPlaceholder")}
         onSkip={onSkip}
       />
     </motion.div>

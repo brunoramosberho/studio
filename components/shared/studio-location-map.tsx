@@ -1,6 +1,7 @@
 "use client";
 
 import { Navigation } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface StudioLocationMapProps {
   name: string;
@@ -33,6 +34,8 @@ export function StudioLocationMap({
   latitude,
   longitude,
 }: StudioLocationMapProps) {
+  const t = useTranslations("map");
+
   if (!MAPBOX_TOKEN) return null;
 
   const directionsUrl = getDirectionsUrl(latitude, longitude);
@@ -47,7 +50,7 @@ export function StudioLocationMap({
       >
         <img
           src={getMapUrl(latitude, longitude)}
-          alt={`Mapa de ${name}`}
+          alt={t("mapOf", { name })}
           width={400}
           height={200}
           loading="lazy"
@@ -67,7 +70,7 @@ export function StudioLocationMap({
           className="flex shrink-0 items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-80 active:opacity-70"
         >
           <Navigation className="h-3.5 w-3.5" />
-          Cómo llegar
+          {t("directions")}
         </a>
       </div>
     </div>

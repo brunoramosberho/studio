@@ -1,6 +1,17 @@
 import { getRequestConfig } from "next-intl/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getTenant } from "@/lib/tenant";
+
+const SUPPORTED = new Set(["en", "es"]);
+
+function detectFromAcceptLanguage(header: string): string | undefined {
+  for (const part of header.split(",")) {
+    const lang = part.split(";")[0].trim().toLowerCase();
+    if (lang.startsWith("en")) return "en";
+    if (lang.startsWith("es")) return "es";
+  }
+  return undefined;
+}
 
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();
@@ -8,16 +19,22 @@ export default getRequestConfig(async () => {
 
   let locale = cookieLocale;
 
-  if (!locale) {
+  if (!locale || !SUPPORTED.has(locale)) {
     try {
       const tenant = await getTenant();
-      locale = tenant?.locale ?? "es";
+      locale = tenant?.locale ?? undefined;
     } catch {
-      locale = "es";
+      // ignore
     }
   }
 
-  if (locale !== "en" && locale !== "es") {
+  if (!locale || !SUPPORTED.has(locale)) {
+    const h = await headers();
+    const acceptLang = h.get("accept-language");
+    if (acceptLang) locale = detectFromAcceptLanguage(acceptLang);
+  }
+
+  if (!locale || !SUPPORTED.has(locale)) {
     locale = "es";
   }
 

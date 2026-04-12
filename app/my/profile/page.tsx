@@ -23,6 +23,7 @@ import {
   Copy,
   Users,
   X,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,6 +64,7 @@ interface ProfileData {
   cityId: string | null;
   instagramUser: string | null;
   stravaUser: string | null;
+  locale: string | null;
 }
 
 const fadeUp = {
@@ -86,8 +88,6 @@ interface ReferralSheetData {
   } | null;
   stats: { total: number; delivered: number; pending: number };
 }
-
-// TRIGGER_LABELS defined in component for translation access
 
 export default function ProfilePage() {
   const t = useTranslations("member");
@@ -129,6 +129,14 @@ export default function ProfilePage() {
   const [savingLocation, setSavingLocation] = useState(false);
   const [savedLocation, setSavedLocation] = useState(false);
 
+  const [currentLocale, setCurrentLocale] = useState(() =>
+    typeof document !== "undefined"
+      ? (document.cookie.match(/NEXT_LOCALE=(\w+)/)?.[1] ?? "es")
+      : "es"
+  );
+  const [savingLocale, setSavingLocale] = useState(false);
+  const [savedLocale, setSavedLocale] = useState(false);
+
   const { data: profile } = useQuery<ProfileData>({
     queryKey: ["profile"],
     queryFn: async () => {
@@ -147,6 +155,10 @@ export default function ProfilePage() {
       setStravaUser(profile.stravaUser ?? "");
       if (profile.countryId) setSelectedCountry(profile.countryId);
       if (profile.cityId) setSelectedCity(profile.cityId);
+      if (profile.locale && !document.cookie.includes("NEXT_LOCALE=")) {
+        document.cookie = `NEXT_LOCALE=${profile.locale}; path=/; max-age=${365 * 24 * 60 * 60}; samesite=lax`;
+        setCurrentLocale(profile.locale);
+      }
     } else if (session?.user?.name) {
       setName(session.user.name);
     }
@@ -267,6 +279,28 @@ export default function ProfilePage() {
     handleLocationChange(activeLocations[0].id, singleCity.id);
   }, [profile, activeCityCount, activeLocations]);
 
+  async function handleLocaleChange(newLocale: string) {
+    if (newLocale === currentLocale) return;
+    const prev = currentLocale;
+    setCurrentLocale(newLocale);
+    setSavingLocale(true);
+    setSavedLocale(false);
+    try {
+      await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: newLocale }),
+      });
+      document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=${365 * 24 * 60 * 60}; samesite=lax`;
+      setSavedLocale(true);
+      setTimeout(() => setSavedLocale(false), 2000);
+      router.refresh();
+    } catch {
+      setCurrentLocale(prev);
+    }
+    setSavingLocale(false);
+  }
+
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
@@ -348,8 +382,8 @@ export default function ProfilePage() {
     if (!referralData || !navigator.share) return;
     try {
       await navigator.share({
-        title: t("joinStudio", { studio: brand.studioName }),
-        text: t("inviteToStudio", { studio: brand.studioName }),
+        title: `Únete a ${brand.studioName}`,
+        text: `Te invito a ${brand.studioName}`,
         url: referralData.shareUrl,
       });
     } catch {}
@@ -456,13 +490,13 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                      {t("availableClasses")}
+                      Clases disponibles
                     </p>
                     <p className="mt-1 font-display text-3xl font-bold text-foreground">
                       {loadingPkgs ? (
                         <Loader2 className="h-6 w-6 animate-spin text-muted" />
                       ) : creditsLeft === -1 ? (
-                        t("unlimited")
+                        "Ilimitado"
                       ) : (
                         creditsLeft
                       )}
@@ -470,8 +504,8 @@ export default function ProfilePage() {
                     {soonestPackage && (
                       <p className="mt-0.5 text-[12px] text-muted">
                         {activePackages.length === 1
-                          ? `${soonestPackage.package.name} · ${t("expires")} `
-                          : `${activePackages.length} ${t("packagesLabel")} · ${t("nextExpires")} `}
+                          ? `${soonestPackage.package.name} · Expira `
+                          : `${activePackages.length} paquetes · Próx. expira `}
                         {new Date(soonestPackage.expiresAt).toLocaleDateString(
                           "es-MX",
                           { day: "numeric", month: "short" },
@@ -480,7 +514,7 @@ export default function ProfilePage() {
                     )}
                     {!loadingPkgs && !soonestPackage && (
                       <p className="mt-0.5 text-[12px] text-muted">
-                        {t("noActivePackage")}
+                        Sin paquete activo
                       </p>
                     )}
                   </div>
@@ -524,7 +558,7 @@ export default function ProfilePage() {
                 >
                   <Trophy className="h-4 w-4 text-accent" />
                   <span className="text-[13px] font-semibold text-foreground">
-                    {t("achievements")}
+                    Logros
                   </span>
                   <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
                     {earned.length}/{gamification.achievements.length}
@@ -608,7 +642,7 @@ export default function ProfilePage() {
                 <Gift className="h-4 w-4" style={{ color: brand.colorAccent }} />
               </div>
               <span className="flex-1 text-[15px] font-medium text-foreground">
-                {t("inviteFriend")}
+                Invita a un amigo
               </span>
               <ChevronRight className="h-4 w-4 text-muted" />
             </button>
@@ -623,7 +657,7 @@ export default function ProfilePage() {
                   <UserPen className="h-4 w-4 text-foreground" />
                 </div>
                 <span className="flex-1 text-[15px] font-medium text-foreground">
-                  {t("editProfile")}
+                  Editar perfil
                 </span>
                 <ChevronRight
                   className={cn(
@@ -646,18 +680,18 @@ export default function ProfilePage() {
                         <form onSubmit={handleSave} className="space-y-4">
                           <div>
                             <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                              {t("name")}
+                              Nombre
                             </label>
                             <Input
                               value={name}
                               onChange={(e) => setName(e.target.value)}
-                              placeholder={t("fullNamePlaceholder")}
+                              placeholder="Tu nombre completo"
                               className="mt-1.5"
                             />
                           </div>
                           <div>
                             <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                              {t("phone")}
+                              Teléfono
                             </label>
                             <div className="mt-1.5">
                               <PhoneInput
@@ -668,14 +702,14 @@ export default function ProfilePage() {
                               />
                               {phone && !isValidPhoneNumber(phone) && (
                                 <p className="mt-1 text-[11px] text-destructive">
-                                  {t("invalidPhone")}
+                                  Número de teléfono inválido
                                 </p>
                               )}
                             </div>
                           </div>
                           <div>
                             <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                              {t("email")}
+                              Correo electrónico
                             </label>
                             <Input
                               value={session?.user?.email ?? ""}
@@ -685,7 +719,7 @@ export default function ProfilePage() {
                           </div>
                           <div className="space-y-3 rounded-xl bg-surface/50 p-3">
                             <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
-                              {t("socialNetworks")}
+                              Redes sociales
                             </p>
                             <div className="flex items-center gap-2">
                               <svg className="h-4.5 w-4.5 shrink-0 text-muted" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
@@ -717,7 +751,7 @@ export default function ProfilePage() {
                             ) : saved ? (
                               <Check className="mr-2 h-4 w-4" />
                             ) : null}
-                            {saved ? t("saved") : t("saveChanges")}
+                            {saved ? "Guardado" : "Guardar cambios"}
                           </Button>
                         </form>
                       </CardContent>
@@ -735,7 +769,7 @@ export default function ProfilePage() {
                 <CreditCard className="h-4 w-4 text-foreground" />
               </div>
               <span className="flex-1 text-[15px] font-medium text-foreground">
-                {t("paymentMethods")}
+                Métodos de pago
               </span>
               <ChevronRight className="h-4 w-4 text-muted" />
             </Link>
@@ -748,7 +782,7 @@ export default function ProfilePage() {
                 <Package className="h-4 w-4 text-foreground" />
               </div>
               <span className="flex-1 text-[15px] font-medium text-foreground">
-                {t("buyPackages")}
+                Comprar paquetes
               </span>
               <ChevronRight className="h-4 w-4 text-muted" />
             </Link>
@@ -767,7 +801,7 @@ export default function ProfilePage() {
               <div className="mb-3 flex items-center gap-2">
                 <Package className="h-4 w-4 text-accent" />
                 <span className="text-[13px] font-semibold text-foreground">
-                  {t("myRewards")}
+                  Mis premios
                 </span>
               </div>
               <div className="space-y-2">
@@ -829,6 +863,34 @@ export default function ProfilePage() {
             </div>
           </motion.div>
         )}
+
+        {/* Language */}
+        <motion.div custom={5.5} variants={fadeUp} initial="hidden" animate="show">
+          <div className="flex items-center gap-3 px-4 py-2">
+            <div className="flex items-center gap-2 text-[13px] text-muted">
+              <Globe className="h-3.5 w-3.5" />
+              <span>{t("language")}</span>
+            </div>
+            <div className="relative ml-auto">
+              <select
+                value={currentLocale}
+                onChange={(e) => handleLocaleChange(e.target.value)}
+                disabled={savingLocale}
+                className="appearance-none rounded-full border border-border/60 bg-white py-1.5 pl-3 pr-7 text-[13px] font-medium text-foreground focus:border-accent focus:outline-none"
+              >
+                <option value="es">Español</option>
+                <option value="en">English</option>
+              </select>
+              {savingLocale ? (
+                <Loader2 className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 animate-spin text-muted" />
+              ) : savedLocale ? (
+                <Check className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-green-500" />
+              ) : (
+                <ChevronRight className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 rotate-90 text-muted" />
+              )}
+            </div>
+          </div>
+        </motion.div>
 
         {/* Sign out */}
         <motion.div custom={6} variants={fadeUp} initial="hidden" animate="show">
@@ -938,14 +1000,6 @@ function ReferralSheet({
   onViewAll: () => void;
   brand: ReturnType<typeof useBranding>;
 }) {
-  const t = useTranslations("member");
-  const TRIGGER_LABELS: Record<string, string> = {
-    installed: t("triggerInstalled"),
-    purchased: t("triggerPurchased"),
-    booked: t("triggerBooked"),
-    attended: t("triggerAttended"),
-    member: t("triggerMember"),
-  };
   const dragY = useMotionValue(0);
   const backdropOpacity = useTransform(dragY, [0, 300], [1, 0]);
 
@@ -1006,7 +1060,7 @@ function ReferralSheet({
               {/* Header */}
               <div className="flex items-center justify-between py-3">
                 <h2 className="font-display text-lg font-bold text-foreground">
-                  {t("inviteFriend")}
+                  Invita a un amigo
                 </h2>
                 <button
                   onClick={onClose}
@@ -1033,18 +1087,18 @@ function ReferralSheet({
                   >
                     <div className="mb-1.5 flex items-center justify-between">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                        {t("yourPersonalLink")}
+                        Tu link personal
                       </span>
                       <span className="flex items-center gap-1 text-[11px] font-medium text-muted">
                         {copied ? (
                           <>
                             <Check className="h-3 w-3 text-green-500" />
-                            <span className="text-green-600">{t("copied")}</span>
+                            <span className="text-green-600">Copiado</span>
                           </>
                         ) : (
                           <>
                             <Copy className="h-3 w-3" />
-                            {t("copy")}
+                            Copiar
                           </>
                         )}
                       </span>
@@ -1067,7 +1121,7 @@ function ReferralSheet({
                           </div>
                           <div className="min-w-0">
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                              {t("friendReceives")}
+                              Tu amigo recibe
                             </p>
                             <p className="mt-0.5 text-[14px] font-semibold text-foreground">
                               {config.refereeRewardText}
@@ -1082,9 +1136,9 @@ function ReferralSheet({
                           </div>
                           <div className="min-w-0">
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                              {t("youReceive")}
+                              Tú recibes
                               {config.triggerStage
-                                ? ` · ${t("when")} ${TRIGGER_LABELS[config.triggerStage] ?? t("completesStep")}`
+                                ? ` · cuando ${TRIGGER_LABELS[config.triggerStage] ?? "complete el paso"}`
                                 : ""}
                             </p>
                             <p className="mt-0.5 text-[14px] font-semibold text-foreground">
@@ -1104,7 +1158,7 @@ function ReferralSheet({
                       style={{ background: brand.colorAccent }}
                     >
                       <IosShareIcon className="h-[18px] w-[18px]" />
-                      {t("share")}
+                      Compartir
                     </button>
                     <button
                       onClick={onCopy}
@@ -1115,7 +1169,7 @@ function ReferralSheet({
                       ) : (
                         <Copy className="h-4 w-4" />
                       )}
-                      {copied ? t("copied") : t("copy")}
+                      {copied ? "Copiado" : "Copiar"}
                     </button>
                   </div>
 
@@ -1131,13 +1185,13 @@ function ReferralSheet({
                       <div className="min-w-0 flex-1">
                         <p className="text-[15px] font-semibold text-foreground">
                           {data.stats.total === 0
-                            ? t("noInvitesYet")
-                            : t("friendsInvited", { count: data.stats.total })}
+                            ? "Aún no has invitado a nadie"
+                            : `${data.stats.total} amigo${data.stats.total !== 1 ? "s" : ""} invitado${data.stats.total !== 1 ? "s" : ""}`}
                         </p>
                         <p className="text-[12px] text-muted">
                           {data.stats.total === 0
-                            ? t("shareToStart")
-                            : t("viewDetailsAndProgress")}
+                            ? "Comparte tu link para empezar"
+                            : "Ver detalles y progreso"}
                         </p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted" />
