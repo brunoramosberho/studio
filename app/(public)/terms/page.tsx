@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-const COMPANY = "Magic Payments España SA";
+const COMPANY = "Magic Payments España SL";
 
 export default async function TermsPage() {
   const t = await getTranslations("legal");
