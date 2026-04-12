@@ -18,6 +18,7 @@ interface OnboardingState {
     websiteUrl: string;
     brandbookFile: File | null;
     instagramFiles: File[];
+    scheduleFiles: File[];
   };
   analyzing: boolean;
   analyzeError: string | null;
@@ -26,7 +27,7 @@ interface OnboardingState {
   slug: string;
   slugAvailable: boolean | null;
   creating: boolean;
-  created: { studioId: string; slug: string } | null;
+  created: { studioId: string; slug: string; summary?: Record<string, number> } | null;
 }
 
 const STEP_LABELS = ["Fuentes", "Análisis", "Revisar", "Crear"];
@@ -90,7 +91,7 @@ export default function NewTenantPage() {
 
   const [state, setState] = useState<OnboardingState>({
     step: 1,
-    sources: { websiteUrl: "", brandbookFile: null, instagramFiles: [] },
+    sources: { websiteUrl: "", brandbookFile: null, instagramFiles: [], scheduleFiles: [] },
     analyzing: false,
     analyzeError: null,
     extracted: null,
@@ -143,6 +144,11 @@ export default function NewTenantPage() {
       instagramScreenshots.push(await compressImage(file));
     }
 
+    const scheduleScreenshots: { data: string; mediaType: string }[] = [];
+    for (const file of state.sources.scheduleFiles) {
+      scheduleScreenshots.push(await compressImage(file));
+    }
+
     try {
       const res = await fetch("/api/super-admin/onboarding/analyze", {
         method: "POST",
@@ -151,6 +157,7 @@ export default function NewTenantPage() {
           websiteUrl: state.sources.websiteUrl,
           brandbookBase64,
           instagramScreenshots,
+          scheduleScreenshots,
         }),
       });
 
@@ -214,7 +221,7 @@ export default function NewTenantPage() {
       setState((s) => ({
         ...s,
         creating: false,
-        created: { studioId: result.studioId, slug: result.slug || state.slug },
+        created: { studioId: result.studioId, slug: result.slug || state.slug, summary: result.summary },
       }));
     } catch {
       setState((s) => ({
@@ -292,6 +299,7 @@ export default function NewTenantPage() {
           websiteUrl={state.sources.websiteUrl}
           hasBrandbook={!!state.sources.brandbookFile}
           hasInstagram={state.sources.instagramFiles.length > 0}
+          hasSchedule={state.sources.scheduleFiles.length > 0}
           error={state.analyzeError}
           onRetry={() => setState((s) => ({ ...s, step: 1 }))}
         />
@@ -334,6 +342,7 @@ export default function NewTenantPage() {
           studioName={state.edited?.identity.name || ""}
           slug={state.created.slug}
           studioId={state.created.studioId}
+          summary={state.created.summary}
         />
       )}
 

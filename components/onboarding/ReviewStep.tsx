@@ -6,6 +6,7 @@ import { LocationsCard } from "./review/LocationsCard";
 import { DisciplinesCard } from "./review/DisciplinesCard";
 import { CoachesCard } from "./review/CoachesCard";
 import { PackagesCard } from "./review/PackagesCard";
+import { ScheduleCard } from "./review/ScheduleCard";
 import { PendingBanner } from "./review/PendingBanner";
 import type { ExtractedData } from "@/lib/onboarding/types";
 
@@ -31,6 +32,11 @@ export function ReviewStep({ data, slug, slugAvailable, onChange, onSlugChange }
         {data.sources.instagramAnalyzed && (
           <span className="rounded-full bg-pink-50 px-2.5 py-1 text-pink-600">
             Instagram ({data.sources.instagramScreenshotsCount} screenshots)
+          </span>
+        )}
+        {data.sources.scheduleScreenshotsAnalyzed && (
+          <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-600">
+            Horarios ({data.sources.scheduleScreenshotsCount} screenshots)
           </span>
         )}
       </div>
@@ -70,7 +76,17 @@ export function ReviewStep({ data, slug, slugAvailable, onChange, onSlugChange }
         </div>
       </div>
 
-      <PendingBanner notes={data.manualRequired.notes} />
+      <ScheduleCard
+        data={data.schedule}
+        disciplines={data.disciplines}
+        coaches={data.coaches}
+        onChange={(schedule) => onChange({ ...data, schedule })}
+      />
+
+      <PendingBanner
+        notes={data.manualRequired.notes}
+        hasSchedule={data.schedule.length > 0}
+      />
     </div>
   );
 }

@@ -58,6 +58,15 @@ export interface ExtractedPackage {
   confidence: Confidence;
 }
 
+export interface ExtractedScheduleSlot {
+  dayOfWeek: number; // 1=Monday ... 7=Sunday (ISO)
+  startTime: string; // "07:00" (HH:mm)
+  disciplineName: string; // should match an extracted discipline name
+  coachName: string | null; // should match an extracted coach name
+  durationMinutes: number | null;
+  confidence: Confidence;
+}
+
 export interface ExtractedData {
   identity: ExtractedIdentity;
   brand: ExtractedBrand;
@@ -65,9 +74,10 @@ export interface ExtractedData {
   disciplines: ExtractedDiscipline[];
   coaches: ExtractedCoach[];
   packages: ExtractedPackage[];
+  schedule: ExtractedScheduleSlot[];
   manualRequired: {
     rooms: true;
-    schedule: true;
+    schedule: boolean;
     notes: string;
   };
   sources: {
@@ -75,5 +85,7 @@ export interface ExtractedData {
     brandbookAnalyzed: boolean;
     instagramAnalyzed: boolean;
     instagramScreenshotsCount: number;
+    scheduleScreenshotsAnalyzed: boolean;
+    scheduleScreenshotsCount: number;
   };
 }
