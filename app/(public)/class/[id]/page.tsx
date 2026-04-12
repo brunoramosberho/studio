@@ -184,6 +184,7 @@ export default function ClassDetailPage() {
   });
 
   const isPast = cls ? new Date(cls.endsAt) < new Date() : false;
+  const isCancelled = cls?.status === "CANCELLED";
 
   const { data: feedData } = useQuery<{ feedEvent: ClassFeedEvent | null }>({
     queryKey: ["class-feed", id],
@@ -521,7 +522,7 @@ export default function ClassDetailPage() {
             <ChevronLeft className="h-5 w-5 text-foreground" />
           </button>
           <div className="flex items-center gap-2">
-            {!isPast && isAuthenticated && creditsRemaining !== null && (
+            {!isPast && !isCancelled && isAuthenticated && creditsRemaining !== null && (
               <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
                 <Ticket className="h-3.5 w-3.5 text-accent" />
                 <span className="text-[12px] font-semibold text-accent">
@@ -542,6 +543,17 @@ export default function ClassDetailPage() {
             </button>
           </div>
         </div>
+
+        {/* Cancelled banner */}
+        {cls.status === "CANCELLED" && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl bg-red-50 px-4 py-3">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
+            <div>
+              <p className="text-sm font-semibold text-red-700">{t("classCancelledTitle")}</p>
+              <p className="text-xs text-red-600">{t("classCancelledDesc")}</p>
+            </div>
+          </div>
+        )}
 
         {/* Title + coach */}
         <div className="flex items-center gap-3">
@@ -601,7 +613,7 @@ export default function ClassDetailPage() {
               {cls.room.studio.name} · {cls.room.name}
             </div>
           )}
-          {!isPast && (
+          {!isPast && !isCancelled && (
             <div className={cn(
               "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
               classFull
@@ -1348,7 +1360,7 @@ export default function ClassDetailPage() {
 
       {/* Cancel confirmation modal */}
       <AnimatePresence>
-        {!isPast && showCancelConfirm && myBooking && cls && (
+        {!isPast && !isCancelled && showCancelConfirm && myBooking && cls && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -1446,7 +1458,7 @@ export default function ClassDetailPage() {
 
       {/* Booking Sheet */}
       <AnimatePresence>
-        {!isPast && sheetOpen && (selectedSpot || !hasLayout) && (
+        {!isPast && !isCancelled && sheetOpen && (selectedSpot || !hasLayout) && (
           <BookingSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}

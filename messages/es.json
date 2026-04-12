@@ -1769,6 +1769,8 @@
   "classDetail": {
     "classNotFound": "Clase no encontrada",
     "classNotFoundDesc": "Esta clase no existe o ya no está disponible.",
+    "classCancelledTitle": "Esta clase fue cancelada",
+    "classCancelledDesc": "El estudio canceló esta clase. Si tenías una reserva, tu crédito fue devuelto.",
     "viewSchedule": "Ver horarios",
     "unlimited": "Ilimitado",
     "classesCount": "{count} clases",

@@ -1769,6 +1769,8 @@
   "classDetail": {
     "classNotFound": "Class not found",
     "classNotFoundDesc": "This class does not exist or is no longer available.",
+    "classCancelledTitle": "This class was cancelled",
+    "classCancelledDesc": "The studio cancelled this class. If you had a booking, your credit has been refunded.",
     "viewSchedule": "View schedule",
     "unlimited": "Unlimited",
     "classesCount": "{count} classes",
