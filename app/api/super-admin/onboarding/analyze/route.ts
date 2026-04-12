@@ -19,7 +19,7 @@ function normalizeUrl(raw: string): string {
   return url.replace(/\/+$/, "");
 }
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
@@ -155,15 +155,15 @@ export async function POST(req: Request) {
     try {
       message = await anthropic.messages.create({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [{ role: "user", content }],
       });
     } catch (e) {
       console.error("[onboarding/analyze] Claude API error:", e);
       const errMsg = e instanceof Error ? e.message : "Error de IA";
       return NextResponse.json(
-        { error: `Error al comunicarse con la IA: ${errMsg.slice(0, 200)}` },
-        { status: 502 },
+        { error: `Error al comunicarse con la IA: ${errMsg.slice(0, 300)}` },
+        { status: 422 },
       );
     }
 
@@ -179,7 +179,7 @@ export async function POST(req: Request) {
       try {
         const retryMessage = await anthropic.messages.create({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 4096,
+          max_tokens: 8192,
           messages: [
             { role: "user", content },
             { role: "assistant", content: responseText },
@@ -204,14 +204,14 @@ export async function POST(req: Request) {
               error: "No se pudo obtener una respuesta válida de la IA. Intenta de nuevo.",
               raw: retryText.slice(0, 500),
             },
-            { status: 502 },
+            { status: 422 },
           );
         }
       } catch (e) {
         console.error("[onboarding/analyze] Claude retry error:", e);
         return NextResponse.json(
           { error: "Error al reintentar con la IA. Intenta de nuevo." },
-          { status: 502 },
+          { status: 422 },
         );
       }
     }
