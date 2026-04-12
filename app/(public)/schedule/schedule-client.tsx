@@ -1200,7 +1200,7 @@ function MobileClassCard({
                 </div>
                 <span className="text-[10px] text-accent">
                   {cls.friendsGoing.length === 1
-                    ? t("friendGoing", { name: cls.friendsGoing[0].name?.split(" ")[0] })
+                    ? t("friendGoing", { name: cls.friendsGoing[0].name?.split(" ")[0] ?? "" })
                     : t("friendsGoing", { count: cls.friendsGoing.length })}
                 </span>
               </div>
