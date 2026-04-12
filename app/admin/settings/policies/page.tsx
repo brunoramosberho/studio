@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, Clock, AlertTriangle, ShieldAlert, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ interface PoliciesConfig {
 }
 
 export default function PoliciesSettingsPage() {
+  const t = useTranslations("admin.policies");
   const [config, setConfig] = useState<PoliciesConfig | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -45,9 +47,9 @@ export default function PoliciesSettingsPage() {
       if (!res.ok) throw new Error("Failed");
       const updated = await res.json();
       setConfig(updated);
-      toast.success("Políticas actualizadas");
+      toast.success(t("saved"));
     } catch {
-      toast.error("Error al guardar");
+      toast.error(t("saveError"));
     } finally {
       setSaving(false);
     }
@@ -64,10 +66,8 @@ export default function PoliciesSettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="font-display text-2xl font-bold">Políticas de reserva</h1>
-        <p className="mt-1 text-sm text-muted">
-          Configura las reglas de cancelación y penalización por no-show
-        </p>
+        <h1 className="font-display text-2xl font-bold">{t("title")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("subtitle")}</p>
       </div>
 
       {/* Cancellation policy */}
@@ -77,15 +77,13 @@ export default function PoliciesSettingsPage() {
             <Clock className="h-5 w-5 text-orange-500" />
           </div>
           <div>
-            <h2 className="font-display text-lg font-bold">Política de cancelación</h2>
-            <p className="text-sm text-muted">
-              Tiempo mínimo antes de la clase para cancelar sin perder el crédito
-            </p>
+            <h2 className="font-display text-lg font-bold">{t("cancellationTitle")}</h2>
+            <p className="text-sm text-muted">{t("cancellationDesc")}</p>
           </div>
         </div>
 
         <div className="space-y-3">
-          <Label className="text-sm font-medium">Ventana de cancelación (horas)</Label>
+          <Label className="text-sm font-medium">{t("windowLabel")}</Label>
           <div className="flex items-center gap-3">
             <Input
               type="number"
@@ -98,7 +96,7 @@ export default function PoliciesSettingsPage() {
               }
               className="w-24"
             />
-            <span className="text-sm text-muted">horas antes del inicio de la clase</span>
+            <span className="text-sm text-muted">{t("hoursBeforeClass")}</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {[0, 2, 4, 6, 8, 12, 24, 48].map((h) => (
@@ -112,21 +110,15 @@ export default function PoliciesSettingsPage() {
                     : "bg-surface text-muted hover:text-foreground"
                 }`}
               >
-                {h === 0 ? "Sin límite" : `${h}h`}
+                {h === 0 ? t("noLimit") : `${h}h`}
               </button>
             ))}
           </div>
           <div className="rounded-lg bg-surface/60 px-3 py-2.5">
             <p className="text-[13px] text-muted">
-              {config.cancellationWindowHours === 0 ? (
-                <>Los clientes pueden cancelar en cualquier momento y siempre recuperan su crédito.</>
-              ) : (
-                <>
-                  Si un cliente cancela con menos de{" "}
-                  <span className="font-semibold text-foreground">{config.cancellationWindowHours} horas</span>{" "}
-                  de anticipación, perderá el crédito usado para la reserva.
-                </>
-              )}
+              {config.cancellationWindowHours === 0
+                ? t("windowExplainNoLimit")
+                : t("windowExplain", { hours: config.cancellationWindowHours })}
             </p>
           </div>
         </div>
@@ -139,19 +131,15 @@ export default function PoliciesSettingsPage() {
             <ShieldAlert className="h-5 w-5 text-red-500" />
           </div>
           <div>
-            <h2 className="font-display text-lg font-bold">Penalización por no-show</h2>
-            <p className="text-sm text-muted">
-              Qué sucede cuando un cliente reserva pero no asiste a la clase
-            </p>
+            <h2 className="font-display text-lg font-bold">{t("noShowTitle")}</h2>
+            <p className="text-sm text-muted">{t("noShowDesc")}</p>
           </div>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-sm font-medium">Activar penalización por no-show</Label>
-            <p className="text-xs text-muted mt-0.5">
-              Al activar, se penalizará a los clientes que reserven y no asistan
-            </p>
+            <Label className="text-sm font-medium">{t("enableNoShow")}</Label>
+            <p className="text-xs text-muted mt-0.5">{t("enableNoShowDesc")}</p>
           </div>
           <Switch
             checked={config.noShowPenaltyEnabled}
@@ -161,30 +149,28 @@ export default function PoliciesSettingsPage() {
 
         {config.noShowPenaltyEnabled && (
           <div className="space-y-4 rounded-lg border border-border/30 bg-surface/20 p-4">
-            {/* Explanation of automatic behavior */}
             <div className="rounded-lg bg-surface/60 px-3 py-2.5 space-y-2">
-              <p className="text-[13px] font-medium text-foreground">Cómo funciona:</p>
+              <p className="text-[13px] font-medium text-foreground">{t("howItWorks")}</p>
               <div className="space-y-1.5">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-orange-500 mt-0.5 flex-shrink-0" />
                   <p className="text-[13px] text-muted">
-                    <span className="font-medium text-foreground">Paquetes con créditos:</span>{" "}
-                    El crédito se pierde automáticamente. El cliente ya pagó por esa clase.
+                    <span className="font-medium text-foreground">{t("creditPackages")}</span>{" "}
+                    {t("creditPackagesDesc")}
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
                   <DollarSign className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
                   <p className="text-[13px] text-muted">
-                    <span className="font-medium text-foreground">Membresías ilimitadas:</span>{" "}
-                    No hay crédito que perder, así que se aplica un cargo económico como incentivo a cancelar a tiempo.
+                    <span className="font-medium text-foreground">{t("unlimitedMemberships")}</span>{" "}
+                    {t("unlimitedMembershipsDesc")}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Fee amount for unlimited packages */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Cargo por no-show (membresías ilimitadas)</Label>
+              <Label className="text-sm font-medium">{t("feeLabel")}</Label>
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
@@ -200,17 +186,14 @@ export default function PoliciesSettingsPage() {
                   className="w-28"
                   placeholder="5.00"
                 />
-                <span className="text-sm text-muted">EUR por no-show</span>
+                <span className="text-sm text-muted">{t("feeUnit")}</span>
               </div>
               {config.noShowPenaltyAmount ? (
                 <p className="text-[12px] text-muted">
-                  Se registrará un cargo de <span className="font-semibold text-foreground">{config.noShowPenaltyAmount}€</span> cuando
-                  un cliente con membresía ilimitada no se presente
+                  {t("feeExplain", { amount: config.noShowPenaltyAmount })}
                 </p>
               ) : (
-                <p className="text-[12px] text-orange-600">
-                  Configura un monto para penalizar a clientes con membresías ilimitadas
-                </p>
+                <p className="text-[12px] text-orange-600">{t("feeRequired")}</p>
               )}
             </div>
           </div>
@@ -221,7 +204,7 @@ export default function PoliciesSettingsPage() {
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving} className="gap-2 bg-admin hover:bg-admin/90">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-          Guardar políticas
+          {t("save")}
         </Button>
       </div>
     </div>
