@@ -17,18 +17,19 @@ import {
   Check,
   ArrowRightLeft,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 import { useTenant } from "@/components/tenant-provider";
 
 const sidebarLinks = [
-  { href: "/my", icon: Home, label: "Feed" },
-  { href: "/schedule", icon: Dumbbell, label: "Clases" },
-  { href: "/coaches", icon: Users, label: "Coaches" },
-  { href: "/my/bookings", icon: CalendarCheck, label: "Mis Reservas" },
-  { href: "/my/packages", icon: Package, label: "Mis Paquetes" },
-  { href: "/shop", icon: ShoppingBag, label: "Shop" },
-  { href: "/my/profile", icon: User, label: "Perfil" },
+  { href: "/my", icon: Home, labelKey: "feed" },
+  { href: "/schedule", icon: Dumbbell, labelKey: "classes" },
+  { href: "/coaches", icon: Users, labelKey: "coaches" },
+  { href: "/my/bookings", icon: CalendarCheck, labelKey: "myBookings" },
+  { href: "/my/packages", icon: Package, labelKey: "myPackages" },
+  { href: "/shop", icon: ShoppingBag, labelKey: "shop" },
+  { href: "/my/profile", icon: User, labelKey: "profile" },
 ];
 
 interface LocCountry {
@@ -51,6 +52,8 @@ export function DesktopSidebar() {
   const { data: session } = useSession();
   const { studioName, logoUrl } = useBranding();
   const { hasCoachProfile } = useTenant();
+  const t = useTranslations("nav");
+  const tc = useTranslations("common");
 
   const [locations, setLocations] = useState<LocCountry[]>([]);
   const [locValue, setLocValue] = useState("");
@@ -111,7 +114,7 @@ export function DesktopSidebar() {
 
         {session?.user && (
           <div className="mx-4 mb-4 rounded-xl bg-surface p-4">
-            <p className="text-xs text-muted">Bienvenida de vuelta</p>
+            <p className="text-xs text-muted">{tc("welcomeBack")}</p>
             <p className="mt-0.5 font-display text-sm font-bold text-foreground">
               {session.user.name}
             </p>
@@ -139,7 +142,7 @@ export function DesktopSidebar() {
                 )}
               >
                 <link.icon className={cn("h-[18px] w-[18px]", isActive && "stroke-[2.5]")} />
-                {link.label}
+                {t(link.labelKey)}
               </Link>
             );
           })}
@@ -154,7 +157,7 @@ export function DesktopSidebar() {
                 onChange={(e) => handleLocChange(e.target.value)}
                 className="min-w-0 flex-1 appearance-none bg-transparent text-xs font-medium text-foreground outline-none"
               >
-                <option value="">Seleccionar ubicación</option>
+                <option value="">{tc("selectLocation")}</option>
                 {locations.map((c) =>
                   c.cities.map((city) => (
                     <option key={city.id} value={`${c.id}|${city.id}`}>
@@ -176,13 +179,13 @@ export function DesktopSidebar() {
               className="flex items-center gap-2.5 rounded-xl border border-coach/20 bg-coach/5 px-3 py-2.5 text-sm font-medium text-coach transition-colors hover:bg-coach/10"
             >
               <ArrowRightLeft className="h-4 w-4" />
-              Coach Portal
+              {t("coachPortal")}
             </Link>
           </div>
         )}
 
         <div className="border-t border-border/50 p-4">
-          <p className="text-[10px] text-muted/50">{studioName} Studio · Portal</p>
+          <p className="text-[10px] text-muted/50">{studioName} Studio · {tc("portal")}</p>
         </div>
       </div>
     </aside>

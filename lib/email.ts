@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { getTranslations } from "next-intl/server";
 import { formatDate, formatTime, formatCurrency } from "./utils";
 import { getServerBranding } from "./branding.server";
 import { type StudioBranding } from "./branding";
@@ -52,6 +53,7 @@ export async function sendBookingConfirmation({
   location,
   timezone,
   classUrl,
+  locale,
 }: {
   to: string;
   name: string;
@@ -62,19 +64,23 @@ export async function sendBookingConfirmation({
   location?: string;
   timezone?: string;
   classUrl?: string;
+  locale?: string;
 }) {
   try {
     const b = await getServerBranding();
     const studioFull = `${b.studioName} Studio`;
+    const loc = locale || "es";
+    const t = await getTranslations({ locale: loc, namespace: "email" });
+    const tb = await getTranslations({ locale: loc, namespace: "booking" });
 
     const content = `
       <div style="text-align:center;margin-bottom:24px;">
         <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#dcfce7;line-height:56px;font-size:28px;">&#10003;</div>
         <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
-          ¡Reserva confirmada!
+          ${t("bookingConfirmTitle")}
         </h1>
         <p style="margin:0;font-size:14px;color:${b.colorMuted};">
-          Hola ${name}, tu clase está lista.
+          ${t("hello", { name })}, ${t("classReady")}
         </p>
       </div>
 
@@ -83,19 +89,19 @@ export async function sendBookingConfirmation({
           <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
           <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
             <tr>
-              <td style="padding:3px 0;"><strong>Fecha</strong></td>
-              <td style="padding:3px 0 3px 16px;">${formatDate(date)}</td>
+              <td style="padding:3px 0;"><strong>${t("date")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date, loc)}</td>
             </tr>
             <tr>
-              <td style="padding:3px 0;"><strong>Hora</strong></td>
+              <td style="padding:3px 0;"><strong>${t("time")}</strong></td>
               <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
             </tr>
             <tr>
-              <td style="padding:3px 0;"><strong>Coach</strong></td>
+              <td style="padding:3px 0;"><strong>${t("coach")}</strong></td>
               <td style="padding:3px 0 3px 16px;">${coachName}</td>
             </tr>
             ${location ? `<tr>
-              <td style="padding:3px 0;"><strong>Estudio</strong></td>
+              <td style="padding:3px 0;"><strong>${t("location")}</strong></td>
               <td style="padding:3px 0 3px 16px;">${location}</td>
             </tr>` : ""}
           </table>
@@ -105,19 +111,19 @@ export async function sendBookingConfirmation({
       ${classUrl ? `
       <div style="text-align:center;margin-bottom:24px;">
         <a href="${classUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
-          Ver mi reserva
+          ${t("viewBooking")}
         </a>
       </div>
       ` : ""}
 
       <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
-        Puedes cancelar hasta 12 horas antes de tu clase para recuperar tu crédito.
+        ${t("cancellationPolicy")}
       </p>`;
 
     await getResend().emails.send({
       from: `${studioFull} <${FROM}>`,
       to,
-      subject: `Confirmación: ${className} — ${formatDate(date)}`,
+      subject: tb("confirmationSubject", { className, date: formatDate(date, loc) }),
       html: emailShell(b, content),
     });
   } catch (error) {

@@ -74,12 +74,16 @@ export function middleware(req: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // Inject tenant slug + auth portal header
+  // Inject tenant slug + auth portal + locale header
   const headers = new Headers(req.headers);
   if (subdomain) {
     headers.set("x-tenant-slug", subdomain);
   }
   headers.set("x-auth-portal", isAdminPortalPath(pathname) ? "admin" : "client");
+
+  // Locale: cookie override → default "es" (tenant locale resolved server-side in i18n/request.ts)
+  const localeCookie = req.cookies.get("NEXT_LOCALE")?.value;
+  headers.set("x-locale", localeCookie && (localeCookie === "en" || localeCookie === "es") ? localeCookie : "es");
 
   // Skip auth check for API routes (handled inside each route)
   if (pathname.startsWith("/api/")) {

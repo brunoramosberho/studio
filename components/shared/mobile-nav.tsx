@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Home, CalendarCheck, User, Mic, ShoppingBag, Dumbbell } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/tenant-provider";
 import { getIconComponent } from "@/components/admin/icon-picker";
@@ -16,16 +17,16 @@ const RESERVA_BTN_PX = 46;
 const RESERVA_PROTRUDE_PX = RESERVA_BTN_PX * 0.4;
 
 const leftTabs = [
-  { href: "/my", icon: Home, label: "Home" },
-  { href: "/my/bookings", icon: CalendarCheck, label: "Mis clases" },
+  { href: "/my", icon: Home, labelKey: "home" as const },
+  { href: "/my/bookings", icon: CalendarCheck, labelKey: "myClasses" as const },
 ];
 
 const rightTabsBase = [
-  { href: "/shop", icon: ShoppingBag, label: "Shop" },
-  { href: "/my/profile", icon: User, label: "Perfil" },
+  { href: "/shop", icon: ShoppingBag, labelKey: "shop" as const },
+  { href: "/my/profile", icon: User, labelKey: "profile" as const },
 ];
 
-const coachTab = { href: "/coach", icon: Mic, label: "Coach" };
+const coachTab = { href: "/coach", icon: Mic, labelKey: "coach" as const };
 
 const hiddenOnPaths = ["/login", "/admin", "/coach", "/dev", "/directory", "/install", "/waiver"];
 
@@ -78,6 +79,7 @@ export function MobileNav() {
   const router = useRouter();
   const { data: session } = useSession();
   const { role } = useTenant();
+  const t = useTranslations("nav");
   const [disciplines, setDisciplines] = useState<DisciplineIcon[]>([]);
 
   useEffect(() => {
@@ -109,7 +111,7 @@ export function MobileNav() {
       prevHeight = vv.height;
       if (!grew || !navRef.current) return;
 
-      // Keyboard just closed — force Safari to recalculate fixed positioning
+      // Keyboard just closed -- force Safari to recalculate fixed positioning
       // by nudging the scroll position, which resets the layout viewport.
       requestAnimationFrame(() => {
         window.scrollBy(0, 1);
@@ -157,7 +159,7 @@ export function MobileNav() {
                 <tab.icon
                   className={cn("h-5 w-5", isActive && "stroke-[2.5]")}
                 />
-                <span>{tab.label}</span>
+                <span>{t(tab.labelKey)}</span>
               </Link>
             );
           })}
@@ -169,9 +171,9 @@ export function MobileNav() {
             scheduleActive ? "text-accent" : "text-muted",
           )}
         >
-          {/* Same slot as tab icons so “Reserva” aligns with other labels */}
+          {/* Same slot as tab icons so "Reserva" aligns with other labels */}
           <span className="h-5 w-5 shrink-0" aria-hidden />
-          <span>Reserva</span>
+          <span>{t("book")}</span>
         </div>
 
         <div className="flex min-w-0 flex-1 justify-around">
@@ -200,7 +202,7 @@ export function MobileNav() {
                 <tab.icon
                   className={cn("h-5 w-5", isActive && "stroke-[2.5]")}
                 />
-                <span>{tab.label}</span>
+                <span>{t(tab.labelKey)}</span>
               </Link>
             );
           })}
@@ -209,7 +211,7 @@ export function MobileNav() {
 
       <Link
         href="/schedule"
-        aria-label="Reserva"
+        aria-label={t("book")}
         className={cn(
           "absolute left-1/2 z-[60] flex -translate-x-1/2 items-center justify-center rounded-full text-white shadow-[0_3px_12px_rgba(216,90,48,0.42),0_2px_5px_rgba(0,0,0,0.07)] active:scale-[0.97]",
           "transition-[transform,box-shadow,background-color] duration-700",

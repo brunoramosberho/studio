@@ -59,6 +59,8 @@ model Tenant {
   notifyWeeklySummary        Boolean @default(false)
   notifyAutoRejectTimeout    Boolean @default(false)
 
+  locale          String   @default("es")  // "en" | "es"
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -309,6 +311,7 @@ model User {
   city          City?     @relation(fields: [cityId], references: [id])
   instagramUser String?
   stravaUser    String?
+  locale        String?   // null = inherit from tenant
   createdAt     DateTime  @default(now())
 
   memberships  Membership[]

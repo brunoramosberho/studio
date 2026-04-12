@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Asterisk,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageTransition } from "@/components/shared/page-transition";
@@ -54,6 +55,7 @@ function SuperAdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const t = useTranslations("auth");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,13 +72,13 @@ function SuperAdminLoginForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Error al iniciar sesión");
+        setError(data.error || t("loginError"));
         return;
       }
 
       router.replace(callbackUrl);
     } catch {
-      setError("Error de conexión");
+      setError(t("connectionError"));
     } finally {
       setLoading(false);
     }
@@ -88,10 +90,10 @@ function SuperAdminLoginForm() {
         <div className="mb-10 text-center">
           <ShieldCheck className="mx-auto h-12 w-12 text-foreground" />
           <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
-            Panel de Administración
+            {t("adminPanel")}
           </h1>
           <p className="mt-2 text-sm text-muted">
-            Ingresa tus credenciales de super admin
+            {t("superAdminCredentials")}
           </p>
         </div>
 
@@ -111,7 +113,7 @@ function SuperAdminLoginForm() {
           />
           <Input
             type="password"
-            placeholder="Contraseña"
+            placeholder={t("password")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -129,7 +131,7 @@ function SuperAdminLoginForm() {
             ) : (
               <Lock className="mr-2 h-4 w-4" />
             )}
-            Iniciar sesión
+            {t("login")}
           </Button>
         </form>
       </div>
@@ -149,6 +151,8 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const { studioName, logoUrl } = useBranding();
+  const t = useTranslations("auth");
+  const tc = useTranslations("common");
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session } = useSession();
@@ -262,10 +266,10 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
     }
   }
 
-  const heading = isAdminPortal ? "Acceso Admin" : `Bienvenida a ${studioName}`;
+  const heading = isAdminPortal ? t("adminAccess") : t("welcomeTo", { studioName });
   const subheading = isAdminPortal
-    ? "Inicia sesión con tu cuenta de administrador"
-    : "Inicia sesión o crea tu cuenta";
+    ? t("adminLoginSubheading")
+    : t("loginOrRegister");
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -302,10 +306,10 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
             {step === "register" && (
               <>
                 <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
-                  Crea tu cuenta
+                  {t("createYourAccount")}
                 </h1>
                 <p className="mt-2 text-sm text-muted">
-                  Completa tus datos para continuar
+                  {t("completeYourDetails")}
                 </p>
               </>
             )}
@@ -321,7 +325,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
                 onClick={handleGoogleSignIn}
               >
                 <GoogleIcon className="h-5 w-5" />
-                Continuar con Google
+                {t("continueWithGoogle")}
               </Button>
 
               <div className="relative">
@@ -329,7 +333,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
                   <div className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-4 text-muted">o</span>
+                  <span className="bg-background px-4 text-muted">{tc("or")}</span>
                 </div>
               </div>
 
@@ -355,7 +359,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
                   ) : (
                     <Mail className="mr-2 h-4 w-4" />
                   )}
-                  Continuar con correo
+                  {t("continueWithEmail")}
                   {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
                 </Button>
               </form>
@@ -370,7 +374,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
               </div>
               <Input
                 type="text"
-                placeholder="Tu nombre"
+                placeholder={t("yourName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -380,7 +384,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
               <Input
                 type="tel"
                 inputMode="tel"
-                placeholder="Teléfono (ej. 55 1234 5678)"
+                placeholder={t("phonePlaceholder")}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 required
@@ -398,7 +402,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
                 ) : (
                   <ArrowRight className="mr-2 h-4 w-4" />
                 )}
-                Crear cuenta
+                {t("createAccount")}
               </Button>
               <button
                 type="button"
@@ -406,7 +410,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
                 className="flex w-full items-center justify-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
               >
                 <ArrowLeft className="h-3 w-3" />
-                Usar otro correo
+                {t("useOtherEmail")}
               </button>
             </form>
           )}
@@ -418,25 +422,22 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
                 <>
                   <CheckCircle2 className="mx-auto h-10 w-10 text-green-500" />
                   <h3 className="mt-4 font-display text-lg font-bold text-foreground">
-                    ¡Sesión iniciada!
+                    {t("sessionStarted")}
                   </h3>
-                  <p className="mt-2 text-sm text-muted">Redirigiendo...</p>
+                  <p className="mt-2 text-sm text-muted">{t("redirecting")}</p>
                 </>
               ) : (
                 <>
                   <Mail className="mx-auto h-10 w-10 text-accent" />
                   <h3 className="mt-4 font-display text-lg font-bold text-foreground">
-                    Revisa tu correo
+                    {t("checkYourEmail")}
                   </h3>
                   <p className="mt-2 text-sm text-muted">
-                    Te enviamos un enlace a{" "}
-                    <span className="font-medium text-foreground">{email}</span>
-                    . Ábrelo desde cualquier dispositivo para aprobar el inicio
-                    de sesión.
+                    {t("magicLinkSent", { email })}
                   </p>
                   <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted/60">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Esperando aprobación...
+                    {t("waitingApproval")}
                   </div>
                   <button
                     onClick={() => {
@@ -445,7 +446,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
                     }}
                     className="mt-4 text-xs text-accent hover:text-accent/80"
                   >
-                    Usar otro correo
+                    {t("useOtherEmail")}
                   </button>
                 </>
               )}
@@ -455,21 +456,14 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
           {/* Terms (hidden on magic-link-sent) */}
           {step !== "magic-link-sent" && (
             <p className="mt-8 text-center text-[11px] leading-relaxed text-muted/60">
-              Al continuar, aceptas nuestros{" "}
-              <a
-                href="#"
-                className="underline underline-offset-2 hover:text-muted"
-              >
-                términos de servicio
-              </a>{" "}
-              y{" "}
-              <a
-                href="#"
-                className="underline underline-offset-2 hover:text-muted"
-              >
-                política de privacidad
-              </a>
-              .
+              {t.rich("termsNotice", {
+                terms: (chunks) => (
+                  <a href="#" className="underline underline-offset-2 hover:text-muted">{t("termsOfService")}</a>
+                ),
+                privacy: (chunks) => (
+                  <a href="#" className="underline underline-offset-2 hover:text-muted">{t("privacyPolicy")}</a>
+                ),
+              })}
             </p>
           )}
         </div>
@@ -477,7 +471,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
 
       {/* Footer */}
       <div className="flex items-center justify-center gap-1 pb-6 text-[10px] text-muted/40">
-        Desarrollado por
+        {tc("developedBy")}
         <a
           href="https://mgic.app"
           target="_blank"

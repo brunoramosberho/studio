@@ -30,8 +30,10 @@ if (process.env.RESEND_API_KEY) {
       from: process.env.EMAIL_FROM || "hola@magicpay.mx",
       async sendVerificationRequest({ identifier: email, url, provider }) {
         const { headers } = await import("next/headers");
+        const { cookies } = await import("next/headers");
         const { getServerBranding } = await import("./branding.server");
         const { Resend: ResendClient } = await import("resend");
+        const { getTranslations } = await import("next-intl/server");
 
         const h = await headers();
         const host = h.get("host") || process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
@@ -45,11 +47,16 @@ if (process.env.RESEND_API_KEY) {
         const b = await getServerBranding();
         const studioFull = `${b.studioName} Studio`;
 
+        const cookieStore = await cookies();
+        const locale = cookieStore.get("NEXT_LOCALE")?.value || "es";
+        const t = await getTranslations({ locale, namespace: "email" });
+        const ta = await getTranslations({ locale, namespace: "auth" });
+
         const resend = new ResendClient(process.env.RESEND_API_KEY!);
         await resend.emails.send({
           from: `${studioFull} <${provider.from}>`,
           to: email,
-          subject: `Aprobar inicio de sesión — ${b.studioName}`,
+          subject: `${t("approveLogin")} — ${b.studioName}`,
           html: `
 <!DOCTYPE html>
 <html>
@@ -75,19 +82,19 @@ if (process.env.RESEND_API_KEY) {
               </div>
 
               <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${b.colorFg};">
-                Aprobar inicio de sesión
+                ${t("approveLogin")}
               </h1>
               <p style="margin:0 0 28px;font-size:14px;color:${b.colorMuted};line-height:1.5;">
-                Haz clic en el botón para iniciar sesión en <strong style="color:${b.colorFg};">${studioFull}</strong>
+                ${t("clickToLogin", { studioName: studioFull })}
               </p>
 
               <!-- CTA Button -->
               <a href="${magicUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
-                Iniciar sesión
+                ${ta("login")}
               </a>
 
               <p style="margin:24px 0 0;font-size:12px;color:${b.colorMuted};line-height:1.5;">
-                Si no solicitaste esto, puedes ignorar este correo.
+                ${t("ignoreEmail")}
               </p>
             </td></tr>
           </table>

@@ -40,6 +40,8 @@ const fontVars = [
 ].map((f) => f.variable).join(" ");
 
 import { headers } from "next/headers";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import { getServerBranding } from "@/lib/branding.server";
 import { DEFAULTS, getFontPairing } from "@/lib/branding";
 import { getTenantSlug } from "@/lib/tenant";
@@ -113,6 +115,8 @@ export default async function RootLayout({
 }) {
   const b = await getServerBranding();
   const fp = getFontPairing(b.fontPairing);
+  const locale = await getLocale();
+  const messages = await getMessages();
 
   const themeStyle = {
     "--color-background": b.colorBg,
@@ -131,17 +135,19 @@ export default async function RootLayout({
   } as React.CSSProperties;
 
   return (
-    <html lang="es" className={fontVars} style={themeStyle}>
+    <html lang={locale} className={fontVars} style={themeStyle}>
       <body className="min-h-dvh bg-background text-foreground antialiased">
-        <Providers>
-          <InAppBrowserBanner />
-          <SplashScreen />
-          {children}
-          <MobileNav />
-          <WaiverGate />
-          <RatingSheet />
-          <InstallPrompt />
-        </Providers>
+        <NextIntlClientProvider messages={messages}>
+          <Providers>
+            <InAppBrowserBanner />
+            <SplashScreen />
+            {children}
+            <MobileNav />
+            <WaiverGate />
+            <RatingSheet />
+            <InstallPrompt />
+          </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

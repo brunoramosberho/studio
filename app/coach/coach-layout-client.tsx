@@ -18,17 +18,18 @@ import {
   X,
   LogOut,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
 
 const navItems = [
-  { href: "/coach", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/coach/schedule", label: "Mi Horario", icon: CalendarDays },
-  { href: "/coach/availability", label: "Disponibilidad", icon: CalendarOff },
-  { href: "/coach/fans", label: "Mis Fans", icon: UserCircle },
-  { href: "/coach/stats", label: "Mi Historial", icon: BarChart3 },
-  { href: "/coach/profile", label: "Mi Perfil", icon: User },
+  { href: "/coach", labelKey: "dashboard" as const, icon: LayoutDashboard },
+  { href: "/coach/schedule", labelKey: "mySchedule" as const, icon: CalendarDays },
+  { href: "/coach/availability", labelKey: "availability" as const, icon: CalendarOff },
+  { href: "/coach/fans", labelKey: "myFans" as const, icon: UserCircle },
+  { href: "/coach/stats", labelKey: "myHistory" as const, icon: BarChart3 },
+  { href: "/coach/profile", labelKey: "myProfile" as const, icon: User },
 ];
 
 function CoachLayoutInner({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,8 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { studioName } = useBranding();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const t = useTranslations("coach");
+  const tc = useTranslations("common");
 
   const userName = session?.user?.name ?? "Coach";
   const initials = userName
@@ -60,7 +63,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2">
               <span className="font-display text-lg font-bold text-foreground">{studioName}</span>
               <span className="rounded-md bg-coach/10 px-2 py-0.5 text-xs font-semibold text-coach">
-                Coach Portal
+                {t("portal")}
               </span>
             </div>
           </div>
@@ -71,7 +74,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
               className="hidden items-center gap-1.5 rounded-lg border border-border/50 px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground sm:flex"
             >
               <ArrowRightLeft className="h-3.5 w-3.5" />
-              Vista de cliente
+              {t("clientView")}
             </Link>
             <Avatar className="h-8 w-8 ring-2 ring-coach/20">
               <AvatarImage src={session?.user?.image || undefined} />
@@ -82,7 +85,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
             <button
               onClick={async () => { await signOut({ redirect: false }); window.location.href = window.location.origin; }}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-red-50 hover:text-red-600"
-              title="Cerrar sesión"
+              title={tc("logout")}
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -111,7 +114,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
                   )}
                 >
                   <item.icon className="h-4.5 w-4.5" />
-                  {item.label}
+                  {t(item.labelKey)}
                 </Link>
               );
             })}
@@ -155,7 +158,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
                         )}
                       >
                         <item.icon className="h-5 w-5" />
-                        {item.label}
+                        {t(item.labelKey)}
                       </Link>
                     );
                   })}
@@ -165,7 +168,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
                     className="mt-4 flex items-center gap-3 rounded-xl border border-border/50 px-3 py-3 text-sm text-muted transition-colors hover:bg-surface"
                   >
                     <ArrowRightLeft className="h-5 w-5" />
-                    Vista de cliente
+                    {t("clientView")}
                   </Link>
                 </nav>
               </motion.aside>
