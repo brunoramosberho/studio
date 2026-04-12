@@ -137,7 +137,7 @@ export default function BookingsPage() {
     const date = new Date(booking.class.startsAt);
     const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
     const timeStr = formatTimeRange(booking.class.startsAt, booking.class.endsAt);
-    const text = `${booking.class.classType.name} con ${booking.class.coach.name}\n${dayStr}, ${timeStr}\n¡Reserva tu lugar!`;
+    const text = `${booking.class.classType.name} — ${booking.class.coach.name}\n${dayStr}, ${timeStr}`;
 
     if (navigator.share) {
       try {
@@ -305,7 +305,7 @@ export default function BookingsPage() {
                               {booking.class.classType.name}
                             </p>
                             <p className="truncate text-[13px] text-muted">
-                              con {booking.class.coach.name?.split(" ")[0]}
+                              {t("withCoach")} {booking.class.coach.name?.split(" ")[0]}
                               {studioName && <span className="text-muted/50"> · {studioName}</span>}
                             </p>
                           </div>
@@ -651,7 +651,7 @@ function WaitlistCard({
                 </span>
               </div>
               <p className="truncate text-[13px] text-muted">
-                con {entry.class.coach.name?.split(" ")[0]}
+                {t("withCoach")} {entry.class.coach.name?.split(" ")[0]}
                 {studioName && (
                   <span className="text-muted/50"> · {studioName}</span>
                 )}

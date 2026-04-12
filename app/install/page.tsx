@@ -106,7 +106,7 @@ function InstallPageInner() {
                   {referral.referrer.firstName} {referral.referrer.lastInitial}
                 </p>
                 <p className="text-xs text-muted">
-                  te invita a unirte a {brand.studioName}
+                  {t("invitesToJoin", { studio: brand.studioName })}
                 </p>
               </div>
             </div>
@@ -114,7 +114,7 @@ function InstallPageInner() {
             {referral.reward?.text && (
               <div className="mt-3 rounded-2xl p-3 px-4" style={{ background: "#1C1917" }}>
                 <p className="text-[10px] font-medium uppercase tracking-wider text-white/50">
-                  Regalo de bienvenida
+                  {t("welcomeGift")}
                 </p>
                 <p className="mt-0.5 text-base font-bold text-white">
                   {referral.reward.text}
