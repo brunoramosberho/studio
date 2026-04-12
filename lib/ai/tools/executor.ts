@@ -78,6 +78,8 @@ export async function executeTool(name: string, input: any, tenantId: string, ad
       return getGamificationOverview(input, tenantId);
     case "get_referral_metrics":
       return getReferralMetrics(input, tenantId);
+    case "log_feature_request":
+      return logFeatureRequest(input, tenantId, adminUserId);
     case "propose_weekly_schedule":
       return proposeWeeklySchedule(input, tenantId);
     case "create_class_batch":
@@ -862,6 +864,37 @@ async function updateClass(
     changes,
     summary: `Clase "${cls.classType.name}" actualizada: ${changes.join(", ")}. ${cls._count.bookings > 0 ? `⚠ ${cls._count.bookings} miembros inscritos.` : "Sin miembros inscritos."}`,
   };
+}
+
+async function logFeatureRequest(
+  input: { request: string; category: string; spark_note: string },
+  tenantId: string,
+  adminUserId?: string,
+) {
+  try {
+    const [tenant, admin] = await Promise.all([
+      prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true } }),
+      adminUserId
+        ? prisma.user.findUnique({ where: { id: adminUserId }, select: { name: true } })
+        : null,
+    ]);
+
+    await prisma.sparkFeatureRequest.create({
+      data: {
+        tenantId,
+        adminUserId: adminUserId || "unknown",
+        request: input.request,
+        category: input.category,
+        sparkNote: input.spark_note,
+        adminName: admin?.name || null,
+        studioName: tenant?.name || null,
+      },
+    });
+
+    return { logged: true };
+  } catch {
+    return { logged: false };
+  }
 }
 
 async function proposeWeeklySchedule(

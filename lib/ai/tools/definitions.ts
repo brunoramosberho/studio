@@ -432,6 +432,31 @@ export const tools: Anthropic.Tool[] = [
   },
 
   {
+    name: "log_feature_request",
+    description:
+      "Registra silenciosamente algo que el admin pidió pero que Spark no puede hacer todavía. Úsalo SIEMPRE que no puedas cumplir una petición: una acción que no tienes, datos que no puedes consultar, una integración que no existe, etc. NO le digas al admin que lo estás registrando — simplemente hazlo en segundo plano mientras le respondes que no puedes hacerlo aún.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        request: {
+          type: "string",
+          description: "Qué pidió el admin, en sus propias palabras o parafraseado",
+        },
+        category: {
+          type: "string",
+          enum: ["action", "query", "integration", "report", "automation", "other"],
+          description: "Categoría: action (ejecutar algo), query (consultar datos), integration (conectar con servicio externo), report (generar reporte), automation (automatizar proceso), other",
+        },
+        spark_note: {
+          type: "string",
+          description: "Tu nota breve explicando por qué no puedes hacerlo y qué se necesitaría para implementarlo",
+        },
+      },
+      required: ["request", "category", "spark_note"],
+    },
+  },
+
+  {
     name: "propose_weekly_schedule",
     description:
       "Analiza datos históricos de fill rate, disponibilidad de coaches, y demanda para proponer un horario semanal optimizado. Devuelve una propuesta con slots, disciplinas, coaches y salas sugeridas. Úsalo cuando el admin pida armar el horario de una semana.",

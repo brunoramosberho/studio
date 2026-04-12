@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { LayoutDashboard, Building2, Shield } from "lucide-react";
+import { LayoutDashboard, Building2, Shield, Sparkles } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tenants", label: "Tenants", icon: Building2 },
+  { href: "/spark-requests", label: "Spark Requests", icon: Sparkles },
 ];
 
 export default async function SuperAdminLayout({

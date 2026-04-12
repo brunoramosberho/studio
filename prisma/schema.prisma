@@ -140,6 +140,7 @@ model Tenant {
 
   discountCodes         DiscountCode[]
   giftPackages          GiftPackage[]
+  sparkFeatureRequests  SparkFeatureRequest[]
 }
 
 model InstagramIntegration {
@@ -1851,4 +1852,25 @@ model GiftPackage {
   @@index([recipientId])
   @@index([giftedById])
   @@index([tenantId, createdAt])
+}
+
+// ── Spark AI Feature Requests ──
+
+model SparkFeatureRequest {
+  id          String   @id @default(cuid())
+  tenantId    String
+  adminUserId String
+  request     String   @db.Text
+  category    String?
+  sparkNote   String?  @db.Text
+  adminName   String?
+  studioName  String?
+  isResolved  Boolean  @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([isResolved, createdAt])
 }
