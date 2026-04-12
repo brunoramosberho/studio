@@ -27,7 +27,20 @@ interface OnboardingState {
   slug: string;
   slugAvailable: boolean | null;
   creating: boolean;
-  created: { studioId: string; slug: string; summary?: Record<string, number> } | null;
+  created: {
+    studioId: string;
+    slug: string;
+    summary?: {
+      classTypes: number;
+      coaches: number;
+      rooms: number;
+      pastClasses: number;
+      futureClasses: number;
+      demoUsers: number;
+      bookings: number;
+      feedEvents: number;
+    };
+  } | null;
 }
 
 const STEP_LABELS = ["Fuentes", "Análisis", "Revisar", "Crear"];
