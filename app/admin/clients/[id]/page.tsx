@@ -50,6 +50,8 @@ import {
 import { cn, formatDate, formatCurrency, timeAgo } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { usePosStore } from "@/store/pos-store";
+import { ShoppingBag } from "lucide-react";
 
 interface ClientDetail {
   id: string;
@@ -198,6 +200,29 @@ function StatCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function NewSaleButton({ client }: { client: ClientDetail }) {
+  const { openPOS } = usePosStore();
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() =>
+        openPOS({
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          phone: client.phone,
+          image: client.image,
+        })
+      }
+      className="gap-1.5"
+    >
+      <ShoppingBag className="h-3.5 w-3.5" />
+      Nueva venta
+    </Button>
   );
 }
 
@@ -358,17 +383,20 @@ export default function ClientDetailPage() {
       <motion.div
         initial={{ opacity: 0, x: -8 }}
         animate={{ opacity: 1, x: 0 }}
-        className="flex items-center gap-2 text-sm"
+        className="flex items-center justify-between"
       >
-        <Link
-          href="/admin/clients"
-          className="flex items-center gap-1.5 text-muted transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Clientes
-        </Link>
-        <ChevronRight className="h-3 w-3 text-muted/50" />
-        <span className="font-medium text-foreground">{displayName}</span>
+        <div className="flex items-center gap-2 text-sm">
+          <Link
+            href="/admin/clients"
+            className="flex items-center gap-1.5 text-muted transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Clientes
+          </Link>
+          <ChevronRight className="h-3 w-3 text-muted/50" />
+          <span className="font-medium text-foreground">{displayName}</span>
+        </div>
+        <NewSaleButton client={client} />
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-3">

@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { usePosStore } from "@/store/pos-store";
+import { SpotPicker } from "@/components/admin/pos/spot-picker";
 
 // ── Types ──
 
@@ -890,6 +892,11 @@ function WaiverConfirmDialog({
 
 // ── Walk-in Modal ──
 
+interface NoCreditInfo {
+  member: { id: string; name: string | null; email: string; phone: string | null; image: string | null };
+  classInfo: { id: string; classTypeId: string; classTypeName: string; startsAt: string };
+}
+
 function WalkInModal({
   classId,
   onClose,
@@ -904,6 +911,11 @@ function WalkInModal({
   setQuery: (q: string) => void;
 }) {
   const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const [noCreditInfo, setNoCreditInfo] = useState<NoCreditInfo | null>(null);
+  const [waiverBlock, setWaiverBlock] = useState<string | null>(null);
+  const [pendingMember, setPendingMember] = useState<{ id: string } | null>(null);
+  const [showSpotPicker, setShowSpotPicker] = useState(false);
+  const { openPOS } = usePosStore();
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query), 300);
@@ -919,25 +931,149 @@ function WalkInModal({
     enabled: debouncedQuery.length >= 2,
   });
 
+  const { data: spotData } = useQuery<{ hasLayout: boolean }>({
+    queryKey: ["walkin-class-spots", classId],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/pos/class-spots?classId=${classId}`);
+      if (!res.ok) return { hasLayout: false };
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
+  const roomHasLayout = spotData?.hasLayout === true;
+
+  function handleMemberClick(memberId: string) {
+    if (roomHasLayout) {
+      setPendingMember({ id: memberId });
+      setShowSpotPicker(true);
+    } else {
+      walkInMutation.mutate({ memberId });
+    }
+  }
+
+  function handleSpotChosen(spotNumber: number | null) {
+    setShowSpotPicker(false);
+    if (pendingMember) {
+      walkInMutation.mutate({ memberId: pendingMember.id, spotNumber });
+    }
+    setPendingMember(null);
+  }
+
   const walkInMutation = useMutation({
-    mutationFn: async (memberId: string) => {
+    mutationFn: async ({ memberId, skipWaiverCheck, spotNumber }: { memberId: string; skipWaiverCheck?: boolean; spotNumber?: number | null }) => {
       const res = await fetch("/api/check-in/walkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ classId, memberId, force: true }),
+        body: JSON.stringify({ classId, memberId, force: true, skipWaiverCheck, spotNumber }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Error al añadir walk-in");
+        if (data.waiverPending) {
+          return { waiverPending: true, memberId: data.memberId };
+        }
+        if (data.noCredits && data.member) {
+          return { noCredits: true, member: data.member, classInfo: data.classInfo };
+        }
+        throw new Error(data.error ?? "Error al añadir walk-in");
       }
-      return res.json();
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.waiverPending) {
+        setWaiverBlock(data.memberId);
+        return;
+      }
+      if (data.noCredits) {
+        setNoCreditInfo({ member: data.member, classInfo: data.classInfo });
+        return;
+      }
       toast.success("Walk-in añadido y check-in realizado");
       onAdded();
     },
     onError: (err: Error) => toast.error(err.message),
   });
+
+  function handleOpenPOS() {
+    if (!noCreditInfo) return;
+    const { member, classInfo } = noCreditInfo;
+    const classLabel = `${classInfo.classTypeName} — ${format(new Date(classInfo.startsAt), "EEE d MMM HH:mm", { locale: es })}`;
+
+    openPOS({
+      customer: {
+        id: member.id,
+        name: member.name,
+        email: member.email,
+        phone: member.phone,
+        image: member.image,
+      },
+      selectedClass: {
+        classId: classInfo.id,
+        classTypeId: classInfo.classTypeId,
+        classTypeName: classInfo.classTypeName,
+        label: classLabel,
+        startsAt: classInfo.startsAt,
+        hasCredits: false,
+      },
+      onComplete: onAdded,
+    });
+    onClose();
+  }
+
+  if (waiverBlock) {
+    return (
+      <WaiverConfirmDialog
+        memberId={waiverBlock}
+        onForceCheckIn={() => {
+          walkInMutation.mutate({ memberId: waiverBlock, skipWaiverCheck: true });
+          setWaiverBlock(null);
+        }}
+        onCancel={() => setWaiverBlock(null)}
+      />
+    );
+  }
+
+  if (noCreditInfo) {
+    return (
+      <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
+        <div className="bg-white rounded-xl shadow-xl mx-4 max-w-sm w-full overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
+            <p className="text-sm font-medium text-stone-900">Sin créditos</p>
+            <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="p-4 space-y-3">
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <div className="text-xs text-amber-800">
+                <p className="font-semibold">{noCreditInfo.member.name ?? noCreditInfo.member.email}</p>
+                <p className="mt-0.5">
+                  No tiene créditos disponibles para {noCreditInfo.classInfo.classTypeName}.
+                  Necesita comprar un paquete o membresía para poder reservar.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={onClose}
+                className="flex-1 px-3 py-2 text-xs rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleOpenPOS}
+                className="flex-1 px-3 py-2 text-xs font-medium rounded-lg bg-[#3730B8] text-white hover:bg-[#2d28a0]"
+              >
+                Abrir punto de venta
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
@@ -973,7 +1109,7 @@ function WalkInModal({
               <button
                 key={r.id}
                 disabled={r.classStatus === "enrolled" || walkInMutation.isPending}
-                onClick={() => walkInMutation.mutate(r.id)}
+                onClick={() => handleMemberClick(r.id)}
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-stone-50 transition-colors border-b border-stone-50",
                   r.classStatus === "enrolled" && "opacity-50 cursor-not-allowed",
@@ -1003,6 +1139,18 @@ function WalkInModal({
           )}
         </div>
       </div>
+
+      {/* Spot picker for rooms with layout */}
+      <SpotPicker
+        open={showSpotPicker}
+        onOpenChange={(open) => {
+          setShowSpotPicker(open);
+          if (!open) setPendingMember(null);
+        }}
+        classId={classId}
+        onSpotSelected={(spot) => handleSpotChosen(spot)}
+        onSkip={() => handleSpotChosen(null)}
+      />
     </div>
   );
 }

@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
     const stripeWhere: Record<string, unknown> = {
       tenantId,
       createdAt: { gte: start, lte: end },
+      type: { not: "pos" },
     };
     const posWhere: Record<string, unknown> = {
       tenantId,
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
       stripeWhere.status = "failed";
     } else if (method !== "all") {
       if (method === "stripe") {
-        posWhere.id = "NONE";
+        posWhere.paymentMethod = "saved_card";
       } else if (method === "tpv") {
         stripeWhere.id = "NONE";
         posWhere.paymentMethod = "card";
@@ -105,6 +106,38 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
       }),
     ]);
+
+    // Build a map of Stripe PI ID → fee data for POS saved_card reconciliation
+    const savedCardPiIds = new Set<string>();
+    for (const pt of posTransactions) {
+      if (pt.paymentMethod === "saved_card") {
+        const meta = pt.metadata as Record<string, unknown> | null;
+        const piId = meta?.stripePaymentIntentId as string | undefined;
+        if (piId) savedCardPiIds.add(piId);
+      }
+    }
+
+    const stripePosPayments = savedCardPiIds.size > 0
+      ? await prisma.stripePayment.findMany({
+          where: {
+            tenantId,
+            type: "pos",
+            stripePaymentIntentId: { in: [...savedCardPiIds] },
+          },
+          select: {
+            stripePaymentIntentId: true,
+            amount: true,
+            stripeFee: true,
+            applicationFee: true,
+            netAmount: true,
+            availableOn: true,
+          },
+        })
+      : [];
+
+    const stripePosMap = new Map(
+      stripePosPayments.map((sp) => [sp.stripePaymentIntentId, sp]),
+    );
 
     // Resolve referenceIds to actual item names
     const allRefIds = [
@@ -200,7 +233,10 @@ export async function GET(request: NextRequest) {
     const hasTpvConfig = tenant.tpvFeePercent != null && tenant.tpvSettlementDays != null;
 
     for (const pt of posTransactions) {
-      const source = pt.paymentMethod === "cash" ? "cash" : "tpv";
+      const source =
+        pt.paymentMethod === "cash" ? "cash"
+        : pt.paymentMethod === "saved_card" ? "stripe"
+        : "tpv";
       const initials = pt.processedBy?.name
         ? pt.processedBy.name
             .split(" ")
@@ -220,6 +256,26 @@ export async function GET(request: NextRequest) {
         netAmount = pt.amount;
         availableOn = null;
         isFeesEstimated = false;
+      } else if (source === "stripe") {
+        const meta = pt.metadata as Record<string, unknown> | null;
+        const piId = meta?.stripePaymentIntentId as string | undefined;
+        const parentSp = piId ? stripePosMap.get(piId) : null;
+
+        if (parentSp && parentSp.stripeFee != null && parentSp.amount > 0) {
+          const share = pt.amount / parentSp.amount;
+          fee = Math.round(parentSp.stripeFee * share * 100) / 100;
+          const appFee = parentSp.applicationFee
+            ? Math.round(parentSp.applicationFee * share * 100) / 100
+            : null;
+          netAmount = Math.round((pt.amount - fee - (appFee ?? 0)) * 100) / 100;
+          availableOn = parentSp.availableOn?.toISOString() ?? null;
+          isFeesEstimated = false;
+        } else {
+          fee = null;
+          netAmount = null;
+          availableOn = null;
+          isFeesEstimated = false;
+        }
       } else if (fee == null && hasTpvConfig) {
         fee = pt.amount * (tenant.tpvFeePercent! / 100) + (tenant.tpvFeeFixed ?? 0);
         fee = Math.round(fee * 100) / 100;

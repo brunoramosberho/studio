@@ -55,6 +55,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
 import { CreateClientDialog } from "@/components/admin/create-client-dialog";
 import { MgicAIProvider, useMgicAI } from "@/components/admin/MgicAI";
+import { PosDialog } from "@/components/admin/pos/pos-dialog";
+import { usePosStore } from "@/store/pos-store";
 
 interface NavItem {
   href: string;
@@ -78,6 +80,7 @@ const directItems: NavItem[] = [
   { href: "/admin/clients", label: "Clientes", icon: Users, badgeKey: "newClients" },
   { href: "/admin/feed", label: "Feed", icon: Megaphone, badgeKey: "recentFeed" },
   { href: "/admin/gamification", label: "Logros", icon: Trophy },
+  { href: "#pos", label: "Punto de venta", icon: ShoppingBag },
 ];
 
 const flyoutGroups: FlyoutGroup[] = [
@@ -519,6 +522,10 @@ function SidebarNav({
               ? `${stats.activeClasses} activas`
               : null;
 
+          if (item.href === "#pos") {
+            return <PosSidebarButton key={item.href} py={py} onNavigate={onNavigate} />;
+          }
+
           return (
             <Link
               key={item.href}
@@ -578,6 +585,38 @@ function SidebarNav({
         )}
       </div>
     </>
+  );
+}
+
+function PosSidebarButton({ py, onNavigate }: { py: string; onNavigate?: () => void }) {
+  const { openPOS } = usePosStore();
+  return (
+    <button
+      onClick={() => {
+        openPOS();
+        onNavigate?.();
+      }}
+      className={cn(
+        "group flex w-full items-center gap-2.5 rounded-sm px-2.5 text-left text-[13px] font-medium transition-colors text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+        py,
+      )}
+    >
+      <ShoppingBag className="h-4 w-4 shrink-0 text-foreground/40 group-hover:text-foreground/60" strokeWidth={1.75} />
+      <span className="truncate">Punto de venta</span>
+    </button>
+  );
+}
+
+function PosHeaderButton() {
+  const { openPOS } = usePosStore();
+  return (
+    <button
+      onClick={() => openPOS()}
+      className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground sm:flex"
+    >
+      <ShoppingBag className="h-3.5 w-3.5" />
+      POS
+    </button>
   );
 }
 
@@ -742,13 +781,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
             <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block" />
 
-            <Link
-              href="/admin/shop"
-              className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground sm:flex"
-            >
-              <ShoppingBag className="h-3.5 w-3.5" />
-              POS
-            </Link>
+            <PosHeaderButton />
             <Link
               href="/admin/schedule"
               className={cn(
@@ -891,6 +924,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         open={showCreateClient}
         onOpenChange={setShowCreateClient}
       />
+      <PosDialog />
     </div>
     </MgicAIProvider>
   );

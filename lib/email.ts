@@ -803,3 +803,113 @@ export async function sendRatingRequestEmail({
     console.error("Failed to send rating request email:", error);
   }
 }
+
+export async function sendPosReceiptEmail({
+  to,
+  customerName,
+  items,
+  total,
+  currency,
+  paymentMethod,
+  studioUrl,
+}: {
+  to: string;
+  customerName: string;
+  items: { name: string; quantity: number; price: number; currency: string }[];
+  total: number;
+  currency: string;
+  paymentMethod: "saved_card" | "terminal" | "cash";
+  studioUrl: string;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = customerName.split(" ")[0];
+
+    const paymentLabels: Record<string, string> = {
+      saved_card: "Tarjeta guardada",
+      terminal: "Terminal bancaria",
+      cash: "Efectivo",
+    };
+
+    const itemsHtml = items
+      .map(
+        (item) => `
+        <tr>
+          <td style="padding:6px 0;font-size:14px;color:${b.colorFg};">
+            ${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ""}
+          </td>
+          <td style="padding:6px 0;font-size:14px;color:${b.colorFg};text-align:right;font-weight:600;">
+            ${item.price > 0 ? formatCurrency(item.price * item.quantity, item.currency) : "Gratis"}
+          </td>
+        </tr>`,
+      )
+      .join("");
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#dcfce7;line-height:56px;font-size:28px;">&#9989;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          Recibo de compra
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};">
+          Hola ${firstName}, aquí tienes el detalle de tu compra.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:16px;">
+        <tr><td style="padding:20px 24px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            ${itemsHtml}
+          </table>
+        </td></tr>
+      </table>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorFg};border-radius:14px;margin-bottom:16px;">
+        <tr><td style="padding:16px 24px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="font-size:16px;font-weight:700;color:${b.colorBg};">Total</td>
+              <td style="font-size:16px;font-weight:700;color:${b.colorBg};text-align:right;">
+                ${total > 0 ? formatCurrency(total, currency) : "Gratis"}
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr>
+          <td style="font-size:12px;color:${b.colorMuted};">Método de pago</td>
+          <td style="font-size:12px;color:${b.colorFg};text-align:right;font-weight:600;">
+            ${paymentLabels[paymentMethod] ?? paymentMethod}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-top:4px;font-size:12px;color:${b.colorMuted};">Fecha</td>
+          <td style="padding-top:4px;font-size:12px;color:${b.colorFg};text-align:right;font-weight:600;">
+            ${formatDate(new Date())}
+          </td>
+        </tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${studioUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Ir a ${b.studioName}
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:11px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Si tienes alguna pregunta sobre esta compra, contacta directamente al estudio.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Recibo de compra — ${studioFull}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send POS receipt email:", error);
+  }
+}

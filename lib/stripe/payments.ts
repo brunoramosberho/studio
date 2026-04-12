@@ -11,6 +11,7 @@ export interface CreateMemberPaymentParams {
   referenceId?: string;
   description?: string;
   paymentMethodId?: string;
+  concept?: string;
 }
 
 /**
@@ -26,6 +27,7 @@ export async function createMemberPayment({
   referenceId,
   description,
   paymentMethodId,
+  concept,
 }: CreateMemberPaymentParams): Promise<Stripe.PaymentIntent> {
   const stripe = getStripe();
 
@@ -83,6 +85,7 @@ export async function createMemberPayment({
         : "pending",
       type,
       referenceId,
+      concept,
     },
   });
 
