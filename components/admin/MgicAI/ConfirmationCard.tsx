@@ -6,6 +6,8 @@ import { useBranding } from "@/components/branding-provider";
 
 const TOOL_LABELS: Record<string, string> = {
   create_class: "Crear clase",
+  create_class_batch: "Crear múltiples clases",
+  update_class: "Modificar clase",
   cancel_class: "Cancelar clase",
   send_announcement: "Enviar anuncio",
   create_studio: "Crear estudio",
@@ -17,9 +19,10 @@ const TOOL_LABELS: Record<string, string> = {
   review_availability_request: "Revisar solicitud de disponibilidad",
 };
 
-function formatParamValue(value: unknown): string {
+function formatParamValue(key: string, value: unknown): string {
   if (value === null || value === undefined) return "—";
   if (typeof value === "boolean") return value ? "Sí" : "No";
+  if (key === "classes" && Array.isArray(value)) return `${value.length} clases`;
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
@@ -64,7 +67,7 @@ export function ConfirmationCard({ tools, onConfirm, onCancel }: ConfirmationCar
                       {key.replace(/_/g, " ")}:
                     </span>
                     <span className="text-foreground">
-                      {formatParamValue(value)}
+                      {formatParamValue(key, value)}
                     </span>
                   </div>
                 ))}

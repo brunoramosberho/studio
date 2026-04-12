@@ -78,6 +78,12 @@ export async function executeTool(name: string, input: any, tenantId: string, ad
       return getGamificationOverview(input, tenantId);
     case "get_referral_metrics":
       return getReferralMetrics(input, tenantId);
+    case "propose_weekly_schedule":
+      return proposeWeeklySchedule(input, tenantId);
+    case "create_class_batch":
+      return createClassBatch(input, tenantId);
+    case "update_class":
+      return updateClass(input, tenantId);
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -718,6 +724,278 @@ async function createClass(
     success: true,
     class_id: newClass.id,
     summary: `Clase "${newClass.classType.name}" creada para ${newClass.startsAt.toLocaleDateString("es")} con ${newClass.coach.name} en ${newClass.room.studio.name} - ${newClass.room.name}`,
+  };
+}
+
+async function createClassBatch(
+  input: {
+    classes: {
+      class_type_id: string;
+      coach_id: string;
+      room_id: string;
+      starts_at: string;
+      ends_at: string;
+    }[];
+  },
+  tenantId: string,
+) {
+  if (!input.classes || input.classes.length === 0) {
+    return { error: "No se proporcionaron clases para crear" };
+  }
+
+  if (input.classes.length > 50) {
+    return { error: "Máximo 50 clases por batch" };
+  }
+
+  const recurringId = crypto.randomUUID();
+  const results: { success: boolean; summary: string }[] = [];
+
+  for (const cls of input.classes) {
+    try {
+      const newClass = await prisma.class.create({
+        data: {
+          tenantId,
+          classTypeId: cls.class_type_id,
+          coachId: cls.coach_id,
+          roomId: cls.room_id,
+          startsAt: new Date(cls.starts_at),
+          endsAt: new Date(cls.ends_at),
+          isRecurring: true,
+          recurringId,
+        },
+        include: {
+          classType: { select: { name: true } },
+          coach: { select: { name: true, user: { select: { name: true } } } },
+          room: { select: { name: true, studio: { select: { name: true } } } },
+        },
+      });
+      results.push({
+        success: true,
+        summary: `${newClass.classType.name} — ${format(newClass.startsAt, "EEEE d MMM HH:mm", { locale: es })} con ${newClass.coach.name} en ${newClass.room.name}`,
+      });
+    } catch (err) {
+      results.push({
+        success: false,
+        summary: `Error creando clase ${cls.starts_at}: ${err instanceof Error ? err.message : "Error desconocido"}`,
+      });
+    }
+  }
+
+  const created = results.filter((r) => r.success).length;
+  const failed = results.filter((r) => !r.success).length;
+
+  return {
+    success: failed === 0,
+    recurring_id: recurringId,
+    total: input.classes.length,
+    created,
+    failed,
+    classes: results,
+    summary: `${created} clases creadas${failed > 0 ? `, ${failed} fallaron` : ""}. ID de recurrencia: ${recurringId}`,
+  };
+}
+
+async function updateClass(
+  input: {
+    class_id: string;
+    starts_at?: string;
+    ends_at?: string;
+    coach_id?: string;
+    room_id?: string;
+  },
+  tenantId: string,
+) {
+  const cls = await prisma.class.findFirst({
+    where: { id: input.class_id, tenantId },
+    include: {
+      classType: { select: { name: true } },
+      coach: { select: { name: true, user: { select: { name: true } } } },
+      room: { select: { name: true, studio: { select: { name: true } } } },
+      _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
+    },
+  });
+
+  if (!cls) return { error: "Clase no encontrada" };
+
+  const updateData: Record<string, unknown> = {};
+  const changes: string[] = [];
+
+  if (input.starts_at) {
+    updateData.startsAt = new Date(input.starts_at);
+    changes.push(`horario inicio → ${format(new Date(input.starts_at), "EEEE d MMM HH:mm", { locale: es })}`);
+  }
+  if (input.ends_at) {
+    updateData.endsAt = new Date(input.ends_at);
+    changes.push(`horario fin → ${format(new Date(input.ends_at), "HH:mm", { locale: es })}`);
+  }
+  if (input.coach_id) {
+    updateData.coachId = input.coach_id;
+    const newCoach = await prisma.coachProfile.findUnique({
+      where: { id: input.coach_id },
+      select: { name: true },
+    });
+    changes.push(`coach → ${newCoach?.name || input.coach_id}`);
+  }
+  if (input.room_id) {
+    updateData.roomId = input.room_id;
+    const newRoom = await prisma.room.findUnique({
+      where: { id: input.room_id },
+      select: { name: true },
+    });
+    changes.push(`sala → ${newRoom?.name || input.room_id}`);
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return { error: "No se proporcionaron cambios" };
+  }
+
+  await prisma.class.update({
+    where: { id: input.class_id },
+    data: updateData,
+  });
+
+  return {
+    success: true,
+    class_id: input.class_id,
+    class_name: cls.classType.name,
+    booked_members: cls._count.bookings,
+    changes,
+    summary: `Clase "${cls.classType.name}" actualizada: ${changes.join(", ")}. ${cls._count.bookings > 0 ? `⚠ ${cls._count.bookings} miembros inscritos.` : "Sin miembros inscritos."}`,
+  };
+}
+
+async function proposeWeeklySchedule(
+  input: { week_start?: string; preferences?: string },
+  tenantId: string,
+) {
+  // Determine the target week
+  const now = new Date();
+  let weekStart: Date;
+  if (input.week_start) {
+    weekStart = new Date(input.week_start);
+  } else {
+    // Next Monday
+    const dayOfWeek = now.getDay();
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+    weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() + daysUntilMonday);
+  }
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  // Get historical data: last 4 weeks of classes with fill rates
+  const historySince = daysAgo(28);
+  const [historicalClasses, classTypes, coaches, rooms] = await Promise.all([
+    prisma.class.findMany({
+      where: {
+        tenantId,
+        startsAt: { gte: historySince },
+        status: { not: "CANCELLED" },
+      },
+      include: {
+        classType: { select: { id: true, name: true, duration: true } },
+        coach: { select: { id: true, name: true, user: { select: { name: true } } } },
+        room: { select: { id: true, name: true, maxCapacity: true, studio: { select: { name: true } } } },
+        _count: {
+          select: {
+            bookings: { where: { status: { in: CONFIRMED_OR_ATTENDED } } },
+            waitlist: true,
+          },
+        },
+      },
+      orderBy: { startsAt: "asc" },
+    }),
+    prisma.classType.findMany({ where: { tenantId }, select: { id: true, name: true, duration: true } }),
+    prisma.coachProfile.findMany({
+      where: { tenantId },
+      select: { id: true, name: true, user: { select: { name: true } } },
+    }),
+    prisma.room.findMany({
+      where: { studio: { tenantId } },
+      include: { studio: { select: { name: true } } },
+    }),
+  ]);
+
+  // Analyze fill rates by day of week + time slot + class type
+  const slotPerformance = new Map<string, { total: number; fillRateSum: number; waitlistTotal: number; count: number }>();
+
+  for (const c of historicalClasses) {
+    const dayOfWeek = format(c.startsAt, "EEEE", { locale: es });
+    const hour = format(c.startsAt, "HH:mm");
+    const key = `${dayOfWeek}|${hour}|${c.classType.name}`;
+    const existing = slotPerformance.get(key) ?? { total: 0, fillRateSum: 0, waitlistTotal: 0, count: 0 };
+    const capacity = c.room.maxCapacity || 1;
+    existing.fillRateSum += (c._count.bookings / capacity) * 100;
+    existing.waitlistTotal += c._count.waitlist;
+    existing.count++;
+    slotPerformance.set(key, existing);
+  }
+
+  // Build top performing slots
+  const topSlots = Array.from(slotPerformance.entries())
+    .map(([key, data]) => {
+      const [day, time, classType] = key.split("|");
+      return {
+        day,
+        time,
+        class_type: classType,
+        avg_fill_rate: Math.round(data.fillRateSum / data.count),
+        avg_waitlist: Math.round(data.waitlistTotal / data.count),
+        sample_size: data.count,
+      };
+    })
+    .sort((a, b) => b.avg_fill_rate - a.avg_fill_rate);
+
+  // Analyze coach performance
+  const coachStats = new Map<string, { name: string; classes: number; avgFillRate: number; classTypes: Set<string> }>();
+  for (const c of historicalClasses) {
+    const coachId = c.coach.id;
+    const existing = coachStats.get(coachId) ?? {
+      name: c.coach.name ?? "Desconocido",
+      classes: 0,
+      avgFillRate: 0,
+      classTypes: new Set<string>(),
+    };
+    const capacity = c.room.maxCapacity || 1;
+    existing.avgFillRate = (existing.avgFillRate * existing.classes + (c._count.bookings / capacity) * 100) / (existing.classes + 1);
+    existing.classes++;
+    existing.classTypes.add(c.classType.name);
+    coachStats.set(coachId, existing);
+  }
+
+  return {
+    week: {
+      start: format(weekStart, "yyyy-MM-dd"),
+      end: format(weekEnd, "yyyy-MM-dd"),
+      label: `${format(weekStart, "d MMM", { locale: es })} – ${format(weekEnd, "d MMM yyyy", { locale: es })}`,
+    },
+    preferences: input.preferences || null,
+    historical_analysis: {
+      weeks_analyzed: 4,
+      total_classes_analyzed: historicalClasses.length,
+      top_performing_slots: topSlots.slice(0, 20),
+      underperforming_slots: topSlots.filter((s) => s.avg_fill_rate < 40).slice(0, 10),
+      high_demand_slots: topSlots.filter((s) => s.avg_waitlist > 0).slice(0, 10),
+    },
+    available_resources: {
+      class_types: classTypes.map((ct) => ({ id: ct.id, name: ct.name, duration: ct.duration })),
+      coaches: Array.from(coachStats.entries()).map(([id, stats]) => ({
+        id,
+        name: stats.name,
+        avg_fill_rate: Math.round(stats.avgFillRate),
+        class_count_last_4w: stats.classes,
+        disciplines: Array.from(stats.classTypes),
+      })),
+      rooms: rooms.map((r) => ({
+        id: r.id,
+        name: r.name,
+        studio: r.studio.name,
+        capacity: r.maxCapacity,
+      })),
+    },
+    instructions: "Con esta data, propón un horario semanal optimizado. Usa los IDs reales de class_type, coach y room. Presenta como tabla y después ofrece crear las clases con create_class_batch.",
   };
 }
 

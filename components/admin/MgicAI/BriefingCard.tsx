@@ -2,14 +2,23 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Sparkles, ArrowRight } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useBranding } from "@/components/branding-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMgicAI } from "./index";
 import type { StreamEvent } from "@/lib/ai/types";
 
-const BRIEFING_PROMPT =
-  "Dame 2-3 bullets de lo más importante que debo saber del studio esta semana. Sé muy conciso.";
+function getGreeting(firstName: string): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return `Buenos dias, ${firstName}`;
+  if (hour < 18) return `Buenas tardes, ${firstName}`;
+  return `Buenas noches, ${firstName}`;
+}
+
+function getBriefingPrompt(firstName: string): string {
+  return `${firstName} acaba de abrir el dashboard. Dame 2-3 bullets cortos de lo más relevante del studio hoy/esta semana. Sé directo y personal — háblale por su nombre. No uses encabezados. Solo bullets concisos y accionables.`;
+}
 
 function todayKey(prefix: string) {
   return `${prefix}-${new Date().toISOString().slice(0, 10)}`;
@@ -25,7 +34,12 @@ export function MgicAIBriefing() {
   const [error, setError] = useState(false);
   const { colorAdmin } = useBranding();
   const { open } = useMgicAI();
+  const { data: session } = useSession();
   const hasFetched = useRef(false);
+
+  const adminName = session?.user?.name || "Admin";
+  const firstName = adminName.split(" ")[0];
+  const greeting = getGreeting(firstName);
 
   useEffect(() => {
     if (localStorage.getItem(todayKey(DISMISS_KEY_PREFIX))) {
@@ -43,8 +57,8 @@ export function MgicAIBriefing() {
 
   const fetchBriefing = useCallback(async () => {
     if (hasFetched.current || dismissed) return;
-    // Skip fetch if we already have cached content
     if (content) return;
+    if (!session?.user?.name) return;
     hasFetched.current = true;
 
     try {
@@ -52,7 +66,7 @@ export function MgicAIBriefing() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [{ role: "user", content: BRIEFING_PROMPT }],
+          messages: [{ role: "user", content: getBriefingPrompt(firstName) }],
         }),
       });
 
@@ -97,7 +111,7 @@ export function MgicAIBriefing() {
       setError(true);
       setLoading(false);
     }
-  }, [dismissed, content]);
+  }, [dismissed, content, firstName, session?.user?.name]);
 
   useEffect(() => {
     fetchBriefing();
@@ -116,54 +130,90 @@ export function MgicAIBriefing() {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-        className="mb-6 overflow-hidden rounded-2xl bg-white shadow-[var(--shadow-warm)]"
+        className="mb-6 overflow-hidden rounded-2xl bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.08)]"
       >
+        {/* Gradient accent bar */}
         <div
-          className="h-0.5"
-          style={{ backgroundColor: colorAdmin, opacity: 0.3 }}
+          className="h-1"
+          style={{
+            background: `linear-gradient(90deg, ${colorAdmin}, ${colorAdmin}88, ${colorAdmin}44)`,
+          }}
         />
-        <div className="p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <img src="/spark-avatar.png" alt="Spark" className="h-5 w-5 rounded-full object-cover" />
-              Spark — Resumen de hoy
-            </span>
+        <div className="p-5 sm:p-6">
+          {/* Header: greeting + avatar + dismiss */}
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm"
+                style={{ backgroundColor: `${colorAdmin}15` }}
+              >
+                <img
+                  src="/spark-avatar.png"
+                  alt="Spark"
+                  className="h-7 w-7 rounded-lg object-cover"
+                />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-bold text-foreground leading-tight">
+                  {greeting} <span className="inline-block animate-pulse">&#x1F44B;</span>
+                </h3>
+                <p className="text-xs text-muted/70 mt-0.5">
+                  Spark te preparó un resumen rápido
+                </p>
+              </div>
+            </div>
             <button
               onClick={dismiss}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-muted/50 transition-colors hover:bg-surface hover:text-muted"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted/40 transition-colors hover:bg-surface hover:text-muted"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
 
+          {/* Content */}
           {loading && !content ? (
-            <div className="space-y-2.5">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-4/5" />
-              <Skeleton className="h-4 w-3/5" />
+            <div className="space-y-3 pl-[52px]">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 animate-pulse text-muted/30" />
+                <Skeleton className="h-4 w-4/5" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 animate-pulse text-muted/30" />
+                <Skeleton className="h-4 w-3/5" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 animate-pulse text-muted/30" />
+                <Skeleton className="h-4 w-2/5" />
+              </div>
             </div>
           ) : error ? (
-            <p className="text-sm text-muted">
-              No se pudo generar el resumen. Abre Spark para consultar.
+            <p className="pl-[52px] text-sm text-muted">
+              No pude preparar el resumen hoy. Abre Spark para consultar.
             </p>
           ) : (
-            <BriefingMarkdown content={content} />
+            <div className="pl-[52px]">
+              <BriefingMarkdown content={content} accentColor={colorAdmin} />
+            </div>
           )}
 
-          <button
-            onClick={open}
-            className="mt-4 text-xs font-semibold transition-colors hover:opacity-80"
-            style={{ color: colorAdmin }}
-          >
-            Hacer una pregunta →
-          </button>
+          {/* CTA */}
+          <div className="mt-4 pl-[52px]">
+            <button
+              onClick={open}
+              className="group inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:gap-2.5"
+              style={{ color: colorAdmin, backgroundColor: `${colorAdmin}10` }}
+            >
+              Preguntarle algo a Spark
+              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
         </div>
       </motion.div>
     </AnimatePresence>
   );
 }
 
-function BriefingMarkdown({ content }: { content: string }) {
+function BriefingMarkdown({ content, accentColor }: { content: string; accentColor: string }) {
   const lines = content.split("\n");
   const elements: React.ReactNode[] = [];
 
@@ -172,7 +222,7 @@ function BriefingMarkdown({ content }: { content: string }) {
 
     if (line.startsWith("### ")) {
       elements.push(
-        <p key={i} className="mb-1 mt-3 text-xs font-bold uppercase tracking-wide text-muted first:mt-0">
+        <p key={i} className="mb-1 mt-3 text-[11px] font-bold uppercase tracking-wider text-muted/60 first:mt-0">
           {formatInline(line.slice(4))}
         </p>,
       );
@@ -190,24 +240,32 @@ function BriefingMarkdown({ content }: { content: string }) {
       );
     } else if (/^[-•*]\s/.test(line)) {
       elements.push(
-        <div key={i} className="flex gap-2 py-0.5 text-sm leading-relaxed text-foreground/80">
-          <span className="mt-0.5 text-muted/50">•</span>
+        <div key={i} className="flex gap-2.5 py-1 text-[13px] leading-relaxed text-foreground/80">
+          <span
+            className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: accentColor }}
+          />
           <span className="flex-1">{formatInline(line.replace(/^[-•*]\s/, ""))}</span>
         </div>,
       );
     } else if (/^\d+[.)]\s/.test(line)) {
       const num = line.match(/^(\d+)/)?.[1];
       elements.push(
-        <div key={i} className="flex gap-2 py-0.5 text-sm leading-relaxed text-foreground/80">
-          <span className="mt-0.5 min-w-[1.2em] text-right font-medium text-muted/60">{num}.</span>
+        <div key={i} className="flex gap-2 py-1 text-[13px] leading-relaxed text-foreground/80">
+          <span
+            className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+            style={{ backgroundColor: accentColor }}
+          >
+            {num}
+          </span>
           <span className="flex-1">{formatInline(line.replace(/^\d+[.)]\s/, ""))}</span>
         </div>,
       );
     } else if (line.trim() === "") {
-      elements.push(<div key={i} className="h-1.5" />);
+      elements.push(<div key={i} className="h-1" />);
     } else {
       elements.push(
-        <p key={i} className="py-0.5 text-sm leading-relaxed text-foreground/80">
+        <p key={i} className="py-0.5 text-[13px] leading-relaxed text-foreground/80">
           {formatInline(line)}
         </p>,
       );

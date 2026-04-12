@@ -75,6 +75,8 @@ export async function POST(request: NextRequest) {
     }
     const tenantId = tenant.id;
     const adminUserId = ctx.session.user.id;
+    const adminFullName = ctx.session.user.name || "Admin";
+    const adminFirstName = adminFullName.split(" ")[0];
     const body: ChatRequest = await request.json();
 
     if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     const studioCtx = await getStudioContext(tenantId);
-    const systemPrompt = buildSystemPrompt(studioCtx);
+    const systemPrompt = buildSystemPrompt({ ...studioCtx, adminFirstName });
     const anthropic = getAnthropic();
 
     const confirmedTools = body.confirmed_tools;
