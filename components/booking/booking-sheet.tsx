@@ -528,11 +528,22 @@ export function BookingSheet({
                         </div>
                       )}
 
+                      <p className="mt-3 text-center text-[10px] leading-relaxed text-muted/60">
+                        {t.rich("legalNotice", {
+                          terms: (chunks) => (
+                            <a href="/terms" target="_blank" className="underline underline-offset-2 hover:text-muted">{chunks}</a>
+                          ),
+                          privacy: (chunks) => (
+                            <a href="/privacy" target="_blank" className="underline underline-offset-2 hover:text-muted">{chunks}</a>
+                          ),
+                        })}
+                      </p>
+
                       <Button
                         type="submit"
                         size="lg"
                         disabled={checkingEmail || !guestName.trim() || !guestEmail.trim() || (showPhoneField && (!guestPhone || !isValidPhoneNumber(guestPhone)))}
-                        className="mt-4 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                        className="mt-3 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
                       >
                         {t("choosePackage")}
                         <ArrowRight className="h-4 w-4" />

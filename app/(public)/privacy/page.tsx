@@ -1,12 +1,11 @@
 import { getTranslations } from "next-intl/server";
-import { getServerBranding } from "@/lib/branding.server";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+const COMPANY = "Magic Payments España SA";
+
 export default async function PrivacyPage() {
   const t = await getTranslations("legal");
-  const b = await getServerBranding();
-  const studioName = `${b.studioName} Studio`;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
@@ -27,7 +26,7 @@ export default async function PrivacyPage() {
 
       <div className="prose prose-sm prose-zinc mt-8 max-w-none [&_h2]:font-display [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-8 [&_h2]:mb-3 [&_p]:text-muted [&_p]:leading-relaxed [&_li]:text-muted [&_ul]:space-y-1">
         <h2>{t("privacyWhoWeAre")}</h2>
-        <p>{t("privacyWhoWeAreDesc", { studioName })}</p>
+        <p>{t("privacyWhoWeAreDesc", { company: COMPANY })}</p>
 
         <h2>{t("privacyDataCollected")}</h2>
         <p>{t("privacyDataCollectedDesc")}</p>
@@ -59,7 +58,7 @@ export default async function PrivacyPage() {
         <p>{t("privacyRightsDesc")}</p>
 
         <h2>{t("privacyContact")}</h2>
-        <p>{t("privacyContactDesc", { studioName })}</p>
+        <p>{t("privacyContactDesc", { company: COMPANY })}</p>
       </div>
     </div>
   );
