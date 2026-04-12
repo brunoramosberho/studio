@@ -7,13 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface PoliciesConfig {
   cancellationWindowHours: number;
@@ -157,7 +150,7 @@ export default function PoliciesSettingsPage() {
           <div>
             <Label className="text-sm font-medium">Activar penalización por no-show</Label>
             <p className="text-xs text-muted mt-0.5">
-              Al activar, se aplicará una consecuencia cuando el cliente no se presente
+              Al activar, se penalizará a los clientes que reserven y no asistan
             </p>
           </div>
           <Switch
@@ -168,74 +161,58 @@ export default function PoliciesSettingsPage() {
 
         {config.noShowPenaltyEnabled && (
           <div className="space-y-4 rounded-lg border border-border/30 bg-surface/20 p-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Tipo de penalización</Label>
-              <Select
-                value={config.noShowPenaltyType}
-                onValueChange={(v) =>
-                  setConfig({ ...config, noShowPenaltyType: v as "CREDIT_LOSS" | "FEE" })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CREDIT_LOSS">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
-                      Pérdida de crédito
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="FEE">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-3.5 w-3.5 text-red-500" />
-                      Cargo económico
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {config.noShowPenaltyType === "CREDIT_LOSS" ? (
-              <div className="rounded-lg bg-orange-50 px-3 py-2.5">
-                <p className="text-[13px] text-orange-700">
-                  El crédito utilizado para la reserva se marcará como perdido. El cliente no podrá recuperarlo.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-sm font-medium">Monto del cargo</Label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      step={0.5}
-                      value={config.noShowPenaltyAmount ?? ""}
-                      onChange={(e) =>
-                        setConfig({
-                          ...config,
-                          noShowPenaltyAmount: e.target.value ? parseFloat(e.target.value) : null,
-                        })
-                      }
-                      className="w-28"
-                      placeholder="5.00"
-                    />
-                    <span className="text-sm text-muted">EUR por no-show</span>
-                  </div>
+            {/* Explanation of automatic behavior */}
+            <div className="rounded-lg bg-surface/60 px-3 py-2.5 space-y-2">
+              <p className="text-[13px] font-medium text-foreground">Cómo funciona:</p>
+              <div className="space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-orange-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-[13px] text-muted">
+                    <span className="font-medium text-foreground">Paquetes con créditos:</span>{" "}
+                    El crédito se pierde automáticamente. El cliente ya pagó por esa clase.
+                  </p>
                 </div>
-                <div className="rounded-lg bg-red-50 px-3 py-2.5">
-                  <p className="text-[13px] text-red-700">
-                    Se registrará un cargo de{" "}
-                    <span className="font-semibold">
-                      {config.noShowPenaltyAmount ? `${config.noShowPenaltyAmount}€` : "—"}
-                    </span>{" "}
-                    cada vez que un cliente no se presente a una clase reservada.
-                    Útil para paquetes ilimitados donde no hay crédito que perder.
+                <div className="flex items-start gap-2">
+                  <DollarSign className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-[13px] text-muted">
+                    <span className="font-medium text-foreground">Membresías ilimitadas:</span>{" "}
+                    No hay crédito que perder, así que se aplica un cargo económico como incentivo a cancelar a tiempo.
                   </p>
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* Fee amount for unlimited packages */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Cargo por no-show (membresías ilimitadas)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={config.noShowPenaltyAmount ?? ""}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      noShowPenaltyAmount: e.target.value ? parseFloat(e.target.value) : null,
+                    })
+                  }
+                  className="w-28"
+                  placeholder="5.00"
+                />
+                <span className="text-sm text-muted">EUR por no-show</span>
+              </div>
+              {config.noShowPenaltyAmount ? (
+                <p className="text-[12px] text-muted">
+                  Se registrará un cargo de <span className="font-semibold text-foreground">{config.noShowPenaltyAmount}€</span> cuando
+                  un cliente con membresía ilimitada no se presente
+                </p>
+              ) : (
+                <p className="text-[12px] text-orange-600">
+                  Configura un monto para penalizar a clientes con membresías ilimitadas
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -48,6 +48,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Limit date range to 8 weeks (56 days)
+    const maxRangeMs = 56 * 24 * 60 * 60 * 1000;
+    if (endDate.getTime() - startDate.getTime() > maxRangeMs) {
+      return NextResponse.json(
+        { error: "El rango máximo es de 8 semanas. Crea otra serie para las siguientes semanas." },
+        { status: 400 },
+      );
+    }
+
     // Map our day index (0=Mon..6=Sun) to date-fns day (0=Sun, 1=Mon..6=Sat)
     const dateFnsDayMap: Record<number, number> = {
       0: 1, // Mon

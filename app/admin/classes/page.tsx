@@ -131,7 +131,7 @@ export default function AdminClassesPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-classes"] });
       queryClient.invalidateQueries({ queryKey: ["classes"] });
       setCancelTarget(null);
-      toast.success(`${data.count} clases canceladas`);
+      toast.success(t("classSeriesCancelled", { count: data.count }));
     },
     onError: (err: Error) => toast.error(err.message || t("classCancelError")),
   });
@@ -547,7 +547,7 @@ export default function AdminClassesPage() {
                 disabled={cancelMutation.isPending || cancelSeriesMutation.isPending}
               >
                 {cancelSeriesMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Cancelar toda la serie (futuras)
+                {t("cancelSeries")}
               </Button>
             )}
             <Button variant="ghost" className="w-full" onClick={() => setCancelTarget(null)}>

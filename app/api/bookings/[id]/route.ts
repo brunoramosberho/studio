@@ -145,14 +145,31 @@ export async function PUT(
       creditLost = !restored;
     }
 
-    // No-show penalty: credit is always consumed (not returned)
+    // No-show penalty logic depends on package type:
+    // - Limited credits: credit already consumed on booking → mark creditLost
+    // - Unlimited (null creditsTotal): no credit to lose → apply fee if configured
+    let noShowFeeApplied = false;
     if (status === "NO_SHOW") {
-      const tenantConfig = await prisma.tenant.findUnique({
-        where: { id: tenant.id },
-        select: { noShowPenaltyEnabled: true, noShowPenaltyType: true, noShowPenaltyAmount: true },
-      });
-      if (tenantConfig?.noShowPenaltyEnabled) {
-        creditLost = true; // Credit used for this class is lost
+      creditLost = true; // Credit used for this class is always lost on no-show
+
+      if (booking.packageUsed) {
+        const tenantConfig = await prisma.tenant.findUnique({
+          where: { id: tenant.id },
+          select: { noShowPenaltyEnabled: true, noShowPenaltyAmount: true },
+        });
+
+        // Check if user has an unlimited package (creditsTotal === null)
+        const userPkg = await prisma.userPackage.findUnique({
+          where: { id: booking.packageUsed },
+          select: { creditsTotal: true },
+        });
+
+        const isUnlimited = userPkg?.creditsTotal === null;
+
+        if (isUnlimited && tenantConfig?.noShowPenaltyEnabled && tenantConfig.noShowPenaltyAmount) {
+          noShowFeeApplied = true;
+          // The fee amount is stored in tenant config — actual charging handled externally
+        }
       }
     }
 
@@ -214,7 +231,7 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json(updated);
+    return NextResponse.json({ ...updated, noShowFeeApplied });
   } catch (error) {
     console.error("PUT /api/bookings/[id] error:", error);
     return NextResponse.json(
