@@ -4,10 +4,84 @@ import { requireAuth, requireTenant } from "@/lib/tenant";
 import { createMemberPayment } from "@/lib/stripe/payments";
 import { createCreditUsagesForPackage } from "@/lib/credits";
 
+async function validateAndApplyDiscount(
+  discountCode: string,
+  tenantId: string,
+  packageId: string,
+  packagePrice: number,
+  userId: string | null,
+): Promise<{
+  valid: boolean;
+  error?: string;
+  discountId?: string;
+  discountAmount?: number;
+  finalAmount?: number;
+  stripeCouponId?: string | null;
+}> {
+  const normalized = discountCode.trim().toUpperCase();
+
+  const discount = await prisma.discountCode.findUnique({
+    where: { tenantId_code: { tenantId, code: normalized } },
+  });
+
+  if (!discount || !discount.isActive) {
+    return { valid: false, error: "Código no válido" };
+  }
+
+  const now = new Date();
+
+  if (discount.validFrom && now < discount.validFrom) {
+    return { valid: false, error: "Este código aún no es válido" };
+  }
+  if (discount.validUntil && now > discount.validUntil) {
+    return { valid: false, error: "Este código ha expirado" };
+  }
+  if (discount.maxUses !== null && discount.usedCount >= discount.maxUses) {
+    return { valid: false, error: "Este código ha alcanzado su límite de usos" };
+  }
+
+  if (userId && discount.maxUsesPerUser !== null) {
+    const userUseCount = await prisma.discountRedemption.count({
+      where: { discountCodeId: discount.id, userId },
+    });
+    if (userUseCount >= discount.maxUsesPerUser) {
+      return { valid: false, error: "Ya usaste este código el máximo de veces" };
+    }
+  }
+
+  if (
+    discount.packageIds.length > 0 &&
+    !discount.packageIds.includes(packageId)
+  ) {
+    return { valid: false, error: "Este código no aplica para este paquete" };
+  }
+
+  if (discount.minPurchase !== null && packagePrice < discount.minPurchase) {
+    return { valid: false, error: `Compra mínima de ${discount.minPurchase} requerida` };
+  }
+
+  let discountAmount: number;
+  if (discount.type === "PERCENTAGE") {
+    discountAmount = Math.round(packagePrice * (discount.value / 100) * 100) / 100;
+  } else {
+    discountAmount = Math.min(discount.value, packagePrice);
+  }
+
+  const finalAmount = Math.max(0, Math.round((packagePrice - discountAmount) * 100) / 100);
+
+  return {
+    valid: true,
+    discountId: discount.id,
+    discountAmount,
+    finalAmount,
+    stripeCouponId: discount.stripeCouponId,
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { packageId, email, name, paymentMethodId } = body;
+    const { packageId, email, name, paymentMethodId, discountCode } = body;
 
     if (!packageId) {
       return NextResponse.json(
@@ -58,6 +132,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate discount code if provided
+    let discountResult: Awaited<ReturnType<typeof validateAndApplyDiscount>> | null = null;
+    let effectivePrice = pkg.price;
+
+    if (discountCode) {
+      discountResult = await validateAndApplyDiscount(
+        discountCode,
+        tenant.id,
+        packageId,
+        pkg.price,
+        userId,
+      );
+
+      if (!discountResult.valid) {
+        return NextResponse.json(
+          { error: discountResult.error },
+          { status: 400 },
+        );
+      }
+
+      effectivePrice = discountResult.finalAmount!;
+    }
+
     // Resolve user
     let finalUserId = userId;
     if (!finalUserId) {
@@ -73,7 +170,7 @@ export async function POST(request: NextRequest) {
     const hasAllocations = pkg.creditAllocations.length > 0;
 
     // If tenant has Stripe Connect, create a real PaymentIntent
-    if (tenant.stripeAccountId && pkg.price > 0) {
+    if (tenant.stripeAccountId && effectivePrice > 0) {
       try {
         const purchasedAt = new Date();
         const expiresAt = new Date(purchasedAt);
@@ -96,13 +193,33 @@ export async function POST(request: NextRequest) {
           await createCreditUsagesForPackage(userPackage.id, pkg.id);
         }
 
+        // Record discount redemption
+        if (discountResult?.discountId) {
+          await prisma.$transaction([
+            prisma.discountRedemption.create({
+              data: {
+                discountCodeId: discountResult.discountId,
+                userId: finalUserId,
+                userPackageId: userPackage.id,
+                originalAmount: pkg.price,
+                discountAmount: discountResult.discountAmount!,
+                finalAmount: effectivePrice,
+              },
+            }),
+            prisma.discountCode.update({
+              where: { id: discountResult.discountId },
+              data: { usedCount: { increment: 1 } },
+            }),
+          ]);
+        }
+
         const paymentIntent = await createMemberPayment({
           tenantId: tenant.id,
           memberId: finalUserId,
-          amountInCurrency: pkg.price,
+          amountInCurrency: effectivePrice,
           type: "membership",
           referenceId: userPackage.id,
-          description: `Paquete ${pkg.name}`,
+          description: `Paquete ${pkg.name}${discountCode ? ` (código: ${discountCode.toUpperCase()})` : ""}`,
           paymentMethodId,
         });
 
@@ -112,6 +229,14 @@ export async function POST(request: NextRequest) {
             requiresPayment: false,
             packageName: pkg.name,
             credits: pkg.credits,
+            discountApplied: discountResult
+              ? {
+                  code: discountCode,
+                  discountAmount: discountResult.discountAmount,
+                  originalPrice: pkg.price,
+                  finalPrice: effectivePrice,
+                }
+              : null,
           });
         }
 
@@ -122,14 +247,22 @@ export async function POST(request: NextRequest) {
           stripeAccountId: tenant.stripeAccountId,
           packageName: pkg.name,
           credits: pkg.credits,
-          amount: pkg.price,
+          amount: effectivePrice,
+          discountApplied: discountResult
+            ? {
+                code: discountCode,
+                discountAmount: discountResult.discountAmount,
+                originalPrice: pkg.price,
+                finalPrice: effectivePrice,
+              }
+            : null,
         });
       } catch (e) {
         console.error("Stripe payment failed, falling back to simulated:", e);
       }
     }
 
-    // Fallback: simulated purchase (no Stripe connected or free package)
+    // Fallback: simulated purchase (no Stripe connected or free/fully-discounted package)
     const purchasedAt = new Date();
     const expiresAt = new Date(purchasedAt);
     expiresAt.setDate(expiresAt.getDate() + pkg.validDays);
@@ -142,7 +275,7 @@ export async function POST(request: NextRequest) {
         creditsTotal: hasAllocations ? null : pkg.credits,
         creditsUsed: 0,
         expiresAt,
-        stripePaymentId: `sim_${Date.now()}`,
+        stripePaymentId: effectivePrice === 0 ? `discount_free_${Date.now()}` : `sim_${Date.now()}`,
         purchasedAt,
       },
     });
@@ -151,11 +284,39 @@ export async function POST(request: NextRequest) {
       await createCreditUsagesForPackage(simPkg.id, pkg.id);
     }
 
+    // Record discount redemption for free/simulated path
+    if (discountResult?.discountId) {
+      await prisma.$transaction([
+        prisma.discountRedemption.create({
+          data: {
+            discountCodeId: discountResult.discountId,
+            userId: finalUserId,
+            userPackageId: simPkg.id,
+            originalAmount: pkg.price,
+            discountAmount: discountResult.discountAmount!,
+            finalAmount: effectivePrice,
+          },
+        }),
+        prisma.discountCode.update({
+          where: { id: discountResult.discountId },
+          data: { usedCount: { increment: 1 } },
+        }),
+      ]);
+    }
+
     return NextResponse.json({
       success: true,
       requiresPayment: false,
       packageName: pkg.name,
       credits: pkg.credits,
+      discountApplied: discountResult
+        ? {
+            code: discountCode,
+            discountAmount: discountResult.discountAmount,
+            originalPrice: pkg.price,
+            finalPrice: effectivePrice,
+          }
+        : null,
     });
   } catch (error) {
     console.error("POST /api/packages/purchase error:", error);

@@ -48,6 +48,8 @@ import {
   CreditCard,
   CalendarSync,
   Wallet,
+  Ticket,
+  Gift,
 } from "lucide-react";
 import { SparklesIcon, type SparklesIconHandle } from "lucide-animated";
 import { useTranslations } from "next-intl";
@@ -106,6 +108,8 @@ const flyoutGroups: FlyoutGroup[] = [
     items: [
       { href: "/admin/finance", labelKey: "finance", icon: Wallet, permission: "finance" },
       { href: "/admin/packages", labelKey: "packages", icon: Package, permission: "packages" },
+      { href: "/admin/discounts", labelKey: "discounts", icon: Ticket, permission: "packages" },
+      { href: "/admin/gift-packages", labelKey: "giftPackages", icon: Gift, permission: "packages" },
       { href: "/admin/subscriptions", labelKey: "subscriptions", icon: CalendarSync, permission: "subscriptions" },
       { href: "/admin/shop", labelKey: "store", icon: ShoppingBag, permission: "shop" },
       { href: "/admin/platforms", labelKey: "platforms", icon: Globe2, permission: "platforms" },

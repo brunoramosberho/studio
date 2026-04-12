@@ -131,6 +131,9 @@ model Tenant {
 
   feedShowDisciplines      Boolean @default(true)
   feedDisciplineThreshold  Int?    @default(5)
+
+  discountCodes         DiscountCode[]
+  giftPackages          GiftPackage[]
 }
 
 model InstagramIntegration {
@@ -1770,4 +1773,76 @@ model HighlightClick {
   highlight Highlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
 
   @@index([highlightId, createdAt])
+}
+
+// ── Discount Codes ──
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+model DiscountCode {
+  id              String       @id @default(cuid())
+  tenantId        String
+  code            String       // e.g. "WELCOME20"
+  description     String?
+  type            DiscountType @default(PERCENTAGE)
+  value           Float        // percentage (0-100) or fixed amount
+  currency        String?      // required when type = FIXED_AMOUNT
+  maxUses         Int?         // null = unlimited
+  usedCount       Int          @default(0)
+  maxUsesPerUser  Int?         // null = unlimited per user
+  minPurchase     Float?       // minimum cart amount to apply
+  validFrom       DateTime     @default(now())
+  validUntil      DateTime?    // null = no expiry
+  isActive        Boolean      @default(true)
+  packageIds      String[]     @default([]) // empty = applies to all packages
+  stripeCouponId  String?      // Stripe coupon id for syncing
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  redemptions DiscountRedemption[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, isActive])
+  @@index([code])
+}
+
+model DiscountRedemption {
+  id              String   @id @default(cuid())
+  discountCodeId  String
+  userId          String?
+  userPackageId   String?  // the package purchase this was applied to
+  originalAmount  Float
+  discountAmount  Float
+  finalAmount     Float
+  createdAt       DateTime @default(now())
+
+  discountCode DiscountCode @relation(fields: [discountCodeId], references: [id], onDelete: Cascade)
+
+  @@index([discountCodeId])
+  @@index([userId])
+}
+
+// ── Gift Packages (admin-gifted) ──
+
+model GiftPackage {
+  id              String   @id @default(cuid())
+  tenantId        String
+  recipientId     String   // user who receives the gift
+  packageId       String   // the package template
+  userPackageId   String?  // the created UserPackage
+  giftedById      String   // admin who gifted it
+  reason          String?  // why it was gifted (tracking/audit)
+  notes           String?  // internal notes
+  createdAt       DateTime @default(now())
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([recipientId])
+  @@index([giftedById])
+  @@index([tenantId, createdAt])
 }

@@ -13,6 +13,7 @@ import {
   Ticket,
   X,
   Plus,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +70,17 @@ export function PurchaseSheet({
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [payingWithCard, setPayingWithCard] = useState<string | null>(null);
   const purchaseInFlight = useRef(false);
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountValidating, setDiscountValidating] = useState(false);
+  const [discountResult, setDiscountResult] = useState<{
+    valid: boolean;
+    discountAmount?: number;
+    finalAmount?: number;
+    code?: string;
+    type?: string;
+    value?: number;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (open && isLoggedIn) {
@@ -88,6 +100,28 @@ export function PurchaseSheet({
     setPayingWithCard(null);
     setLoading(false);
     purchaseInFlight.current = false;
+    setDiscountCode("");
+    setDiscountResult(null);
+    setDiscountValidating(false);
+  }
+
+  async function validateDiscount() {
+    if (!discountCode.trim()) return;
+    setDiscountValidating(true);
+    setDiscountResult(null);
+    try {
+      const res = await fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: discountCode, packageId: pkg.id }),
+      });
+      const data = await res.json();
+      setDiscountResult(data);
+    } catch {
+      setDiscountResult({ valid: false, error: "Error al validar" });
+    } finally {
+      setDiscountValidating(false);
+    }
   }
 
   async function executePurchase() {
@@ -107,6 +141,7 @@ export function PurchaseSheet({
         body: JSON.stringify({
           packageId: pkg.id,
           ...(!isLoggedIn && { email: guestEmail, name: guestName }),
+          ...(discountResult?.valid && discountCode && { discountCode }),
         }),
         signal: controller.signal,
       });
@@ -166,7 +201,11 @@ export function PurchaseSheet({
       const res = await fetch("/api/packages/purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packageId: pkg.id, paymentMethodId }),
+        body: JSON.stringify({
+          packageId: pkg.id,
+          paymentMethodId,
+          ...(discountResult?.valid && discountCode && { discountCode }),
+        }),
       });
 
       const data = await res.json();
@@ -283,9 +322,58 @@ export function PurchaseSheet({
                       <span>{pkg.validDays} días</span>
                     </div>
                     <p className="font-display text-2xl font-bold text-foreground">
-                      {formatPrice(pkg)}
+                      {discountResult?.valid && discountResult.finalAmount != null ? (
+                        <span className="flex items-center gap-2">
+                          <span className="text-base line-through text-muted">{formatPrice(pkg)}</span>
+                          {new Intl.NumberFormat("es", { style: "currency", currency: pkg.currency, minimumFractionDigits: 0 }).format(discountResult.finalAmount)}
+                        </span>
+                      ) : formatPrice(pkg)}
                     </p>
                   </div>
+                </div>
+
+                {/* Discount code */}
+                <div className="mt-4">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Tag className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+                      <Input
+                        value={discountCode}
+                        onChange={(e) => {
+                          setDiscountCode(e.target.value.toUpperCase());
+                          if (discountResult) setDiscountResult(null);
+                        }}
+                        placeholder="Codigo de descuento"
+                        className="pl-9 font-mono text-sm"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={validateDiscount}
+                      disabled={!discountCode.trim() || discountValidating}
+                    >
+                      {discountValidating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Aplicar"
+                      )}
+                    </Button>
+                  </div>
+                  {discountResult && (
+                    <div className={`mt-2 rounded-lg px-3 py-2 text-xs ${discountResult.valid ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                      {discountResult.valid ? (
+                        <span className="flex items-center gap-1">
+                          <Check className="h-3 w-3" />
+                          {discountResult.type === "PERCENTAGE"
+                            ? `${discountResult.value}% de descuento aplicado`
+                            : `${new Intl.NumberFormat("es", { style: "currency", currency: pkg.currency, minimumFractionDigits: 0 }).format(discountResult.discountAmount || 0)} de descuento aplicado`}
+                        </span>
+                      ) : (
+                        discountResult.error
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <Button
@@ -295,7 +383,9 @@ export function PurchaseSheet({
                   className="mt-6 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
                 >
                   <CreditCard className="h-4 w-4" />
-                  Pagar {formatPrice(pkg)}
+                  Pagar {discountResult?.valid && discountResult.finalAmount != null
+                    ? new Intl.NumberFormat("es", { style: "currency", currency: pkg.currency, minimumFractionDigits: 0 }).format(discountResult.finalAmount)
+                    : formatPrice(pkg)}
                 </Button>
                 <p className="mt-2 text-center text-[10px] text-muted/60">
                   Pago seguro · Los créditos se activan al instante
@@ -353,6 +443,51 @@ export function PurchaseSheet({
                     />
                   </div>
 
+                  {/* Discount code (guest step) */}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+                        <Input
+                          value={discountCode}
+                          onChange={(e) => {
+                            setDiscountCode(e.target.value.toUpperCase());
+                            if (discountResult) setDiscountResult(null);
+                          }}
+                          placeholder="Codigo de descuento"
+                          className="pl-9 font-mono text-sm"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={validateDiscount}
+                        disabled={!discountCode.trim() || discountValidating}
+                      >
+                        {discountValidating ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Aplicar"
+                        )}
+                      </Button>
+                    </div>
+                    {discountResult && (
+                      <div className={`mt-2 rounded-lg px-3 py-2 text-xs ${discountResult.valid ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                        {discountResult.valid ? (
+                          <span className="flex items-center gap-1">
+                            <Check className="h-3 w-3" />
+                            {discountResult.type === "PERCENTAGE"
+                              ? `${discountResult.value}% de descuento aplicado`
+                              : `Descuento aplicado`}
+                          </span>
+                        ) : (
+                          discountResult.error
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <Button
                     type="submit"
                     size="lg"
@@ -360,7 +495,9 @@ export function PurchaseSheet({
                     className="mt-4 w-full gap-2 rounded-full bg-foreground text-background hover:bg-foreground/90"
                   >
                     <CreditCard className="h-4 w-4" />
-                    Pagar {formatPrice(pkg)}
+                    Pagar {discountResult?.valid && discountResult.finalAmount != null
+                      ? new Intl.NumberFormat("es", { style: "currency", currency: pkg.currency, minimumFractionDigits: 0 }).format(discountResult.finalAmount)
+                      : formatPrice(pkg)}
                   </Button>
                   <p className="text-center text-[10px] text-muted/60">
                     Pago seguro · Podrás iniciar sesión después con este email
