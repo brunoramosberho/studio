@@ -12,7 +12,6 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
-  Sparkles,
   PanelRight,
   PanelRightClose,
   Plus,
@@ -20,7 +19,6 @@ import {
   Trash2,
   ArrowLeft,
 } from "lucide-react";
-import { SparklesIcon, type SparklesIconHandle } from "lucide-animated";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 import { MessageList } from "./MessageList";
@@ -526,8 +524,6 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
 
 function MgicAIButton() {
   const { toggle, isOpen } = useMgicAI();
-  const { colorAdmin } = useBranding();
-  const sparklesRef = useRef<SparklesIconHandle>(null);
 
   return (
     <AnimatePresence>
@@ -539,14 +535,15 @@ function MgicAIButton() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={toggle}
-          onMouseEnter={() => sparklesRef.current?.startAnimation()}
-          onMouseLeave={() => sparklesRef.current?.stopAnimation()}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl"
-          style={{ backgroundColor: colorAdmin }}
-          aria-label="Abrir Mgic AI"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-full bg-white pl-1.5 pr-5 py-1.5 text-sm font-semibold text-foreground shadow-lg ring-1 ring-border/50 transition-shadow hover:shadow-xl"
+          aria-label="Abrir Spark"
         >
-          <SparklesIcon ref={sparklesRef} size={16} />
-          <span className="hidden sm:inline">Mgic AI</span>
+          <img
+            src="/spark-avatar.png"
+            alt="Spark"
+            className="h-9 w-9 rounded-full object-cover"
+          />
+          <span className="hidden sm:inline">Spark</span>
         </motion.button>
       )}
     </AnimatePresence>
@@ -657,12 +654,14 @@ function MgicAIPanel() {
         style={{ backgroundColor: colorAdmin }}
       >
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20">
-            <Sparkles className="h-3.5 w-3.5 text-white" />
-          </div>
+          <img
+            src="/spark-avatar.png"
+            alt="Spark"
+            className="h-8 w-8 rounded-full object-cover ring-2 ring-white/20"
+          />
           <div>
-            <h3 className="text-sm font-bold text-white">Mgic AI</h3>
-            <p className="text-[10px] text-white/60">{studioName}</p>
+            <h3 className="text-sm font-bold text-white">Spark</h3>
+            <p className="text-[10px] text-white/60">COO de {studioName}</p>
           </div>
         </div>
         <div className="flex items-center gap-0.5">
@@ -992,21 +991,20 @@ function getSuggestionsForPath(pathname: string): string[] {
 }
 
 function EmptyState({ onSend }: { onSend: (msg: string) => void }) {
-  const { colorAdmin } = useBranding();
   const pathname = usePathname();
   const suggestions = getSuggestionsForPath(pathname);
 
   return (
     <div className="flex h-full flex-col items-center justify-center px-8 text-center">
-      <div
-        className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
-        style={{ backgroundColor: `${colorAdmin}15` }}
-      >
-        <Sparkles className="h-7 w-7" style={{ color: colorAdmin }} />
-      </div>
-      <h3 className="mb-2 text-lg font-bold text-foreground">Mgic AI</h3>
+      <img
+        src="/spark-avatar.png"
+        alt="Spark"
+        className="mb-5 h-16 w-16 rounded-2xl object-cover shadow-sm"
+      />
+      <h3 className="mb-1 text-lg font-bold text-foreground">Spark</h3>
+      <p className="mb-1 text-xs font-medium text-muted/70">Tu COO & copilot del studio</p>
       <p className="mb-8 text-sm leading-relaxed text-muted">
-        Tu COO inteligente. Analizo datos, detecto oportunidades y ejecuto acciones.
+        Conozco tu studio por dentro. Pregúntame lo que sea — datos, acciones, ideas.
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         {suggestions.map((s) => (

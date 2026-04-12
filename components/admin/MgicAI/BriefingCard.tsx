@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMgicAI } from "./index";
@@ -125,8 +125,8 @@ export function MgicAIBriefing() {
         <div className="p-5">
           <div className="mb-4 flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Sparkles className="h-3.5 w-3.5" style={{ color: colorAdmin }} />
-              Mgic AI — Resumen de hoy
+              <img src="/spark-avatar.png" alt="Spark" className="h-5 w-5 rounded-full object-cover" />
+              Spark — Resumen de hoy
             </span>
             <button
               onClick={dismiss}
@@ -144,7 +144,7 @@ export function MgicAIBriefing() {
             </div>
           ) : error ? (
             <p className="text-sm text-muted">
-              No se pudo generar el resumen. Abre Mgic AI para consultar.
+              No se pudo generar el resumen. Abre Spark para consultar.
             </p>
           ) : (
             <BriefingMarkdown content={content} />

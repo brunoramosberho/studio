@@ -3,7 +3,7 @@
 import { memo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Sparkles, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 import type { AiMessage } from "./index";
@@ -94,10 +94,16 @@ const MessageBubble = memo(function MessageBubble({
           {message.content}
         </div>
       ) : showTyping ? (
-        <TypingDots />
+        <div className="flex items-end gap-2.5">
+          <img src="/spark-avatar.png" alt="Spark" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+          <TypingDots />
+        </div>
       ) : (
-        <div className="max-w-[95%] text-[14px] leading-[1.7] text-foreground">
-          <MarkdownContent content={message.content} />
+        <div className="flex gap-2.5">
+          <img src="/spark-avatar.png" alt="Spark" className="mt-1 h-6 w-6 shrink-0 rounded-full object-cover" />
+          <div className="max-w-[90%] text-[14px] leading-[1.7] text-foreground">
+            <MarkdownContent content={message.content} />
+          </div>
         </div>
       )}
     </motion.div>
@@ -317,7 +323,6 @@ function TypingDots() {
 }
 
 function ToolCallIndicator({ tools }: { tools: string[] }) {
-  const { colorAdmin } = useBranding();
 
   return (
     <motion.div
@@ -325,12 +330,13 @@ function ToolCallIndicator({ tools }: { tools: string[] }) {
       animate={{ opacity: 1, y: 0 }}
       className="flex items-center gap-3 rounded-xl bg-surface px-4 py-3"
     >
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-      >
-        <Sparkles className="h-4 w-4" style={{ color: colorAdmin }} />
-      </motion.div>
+      <motion.img
+        src="/spark-avatar.png"
+        alt="Spark"
+        className="h-5 w-5 rounded-full object-cover"
+        animate={{ scale: [1, 1.1, 1] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+      />
       <span className="text-[13px] font-medium text-muted">
         {tools.map((t) => TOOL_LABELS[t] ?? t).join(", ")}...
       </span>

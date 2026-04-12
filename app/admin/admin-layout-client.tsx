@@ -48,12 +48,7 @@ import {
   CreditCard,
   CalendarSync,
   Wallet,
-  ShieldAlert,
-  Ticket,
-  Gift,
 } from "lucide-react";
-import { SparklesIcon, type SparklesIconHandle } from "lucide-animated";
-import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
@@ -61,93 +56,80 @@ import { CreateClientDialog } from "@/components/admin/create-client-dialog";
 import { MgicAIProvider, useMgicAI } from "@/components/admin/MgicAI";
 import { PosDialog } from "@/components/admin/pos/pos-dialog";
 import { usePosStore } from "@/store/pos-store";
-import { type AdminPermission, hasPermission } from "@/lib/permissions";
-import type { Role } from "@prisma/client";
 
 interface NavItem {
   href: string;
-  labelKey: string;
+  label: string;
   icon: LucideIcon;
-  permission?: AdminPermission;
   badgeKey?: "pendingWaitlist" | "newClients" | "recentFeed";
   contextKey?: "activeClasses";
 }
 
 interface FlyoutGroup {
-  labelKey: string;
+  label: string;
   icon: LucideIcon;
-  permission?: AdminPermission;
   items: NavItem[];
 }
 
 const directItems: NavItem[] = [
-  { href: "/admin", labelKey: "dashboard", icon: LayoutDashboard, permission: "dashboard" },
-  { href: "/admin/schedule", labelKey: "schedule", icon: CalendarDays, permission: "schedule", badgeKey: "pendingWaitlist" },
-  { href: "/admin/classes", labelKey: "classes", icon: ClipboardList, permission: "classes", contextKey: "activeClasses" },
-  { href: "/admin/check-in", labelKey: "checkIn", icon: ClipboardCheck, permission: "checkIn" },
-  { href: "/admin/clients", labelKey: "clients", icon: Users, permission: "clients", badgeKey: "newClients" },
-  { href: "/admin/feed", labelKey: "feed", icon: Megaphone, permission: "feed", badgeKey: "recentFeed" },
-  { href: "/admin/gamification", labelKey: "achievements", icon: Trophy, permission: "achievements" },
-  { href: "#pos", labelKey: "pos", icon: ShoppingBag, permission: "pos" },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/schedule", label: "Horario", icon: CalendarDays, badgeKey: "pendingWaitlist" },
+  { href: "/admin/classes", label: "Clases", icon: ClipboardList, contextKey: "activeClasses" },
+  { href: "/admin/check-in", label: "Check-in", icon: ClipboardCheck },
+  { href: "/admin/clients", label: "Clientes", icon: Users, badgeKey: "newClients" },
+  { href: "/admin/feed", label: "Feed", icon: Megaphone, badgeKey: "recentFeed" },
+  { href: "/admin/gamification", label: "Logros", icon: Trophy },
+  { href: "#pos", label: "Punto de venta", icon: ShoppingBag },
 ];
 
 const flyoutGroups: FlyoutGroup[] = [
   {
-    labelKey: "team",
+    label: "Equipo",
     icon: Users,
-    permission: "coaches",
     items: [
-      { href: "/admin/coaches", labelKey: "coaches", icon: UserCog, permission: "coaches" },
-      { href: "/admin/availability", labelKey: "availability", icon: CalendarOff, permission: "availability" },
-      { href: "/admin/class-types", labelKey: "disciplines", icon: Dumbbell, permission: "disciplines" },
+      { href: "/admin/coaches", label: "Coaches", icon: UserCog },
+      { href: "/admin/availability", label: "Disponibilidad", icon: CalendarOff },
+      { href: "/admin/class-types", label: "Disciplinas", icon: Dumbbell },
     ],
   },
   {
-    labelKey: "business",
+    label: "Negocio",
     icon: Briefcase,
-    permission: "finance",
     items: [
-      { href: "/admin/finance", labelKey: "finance", icon: Wallet, permission: "finance" },
-      { href: "/admin/packages", labelKey: "packages", icon: Package, permission: "packages" },
-      { href: "/admin/discounts", labelKey: "discounts", icon: Ticket, permission: "packages" },
-      { href: "/admin/gift-packages", labelKey: "giftPackages", icon: Gift, permission: "packages" },
-      { href: "/admin/subscriptions", labelKey: "subscriptions", icon: CalendarSync, permission: "subscriptions" },
-      { href: "/admin/shop", labelKey: "store", icon: ShoppingBag, permission: "shop" },
-      { href: "/admin/platforms", labelKey: "platforms", icon: Globe2, permission: "platforms" },
+      { href: "/admin/finance", label: "Finanzas", icon: Wallet },
+      { href: "/admin/packages", label: "Paquetes", icon: Package },
+      { href: "/admin/subscriptions", label: "Suscripciones", icon: CalendarSync },
+      { href: "/admin/shop", label: "Tienda", icon: ShoppingBag },
+      { href: "/admin/platforms", label: "Plataformas", icon: Globe2 },
     ],
   },
   {
-    labelKey: "metrics",
+    label: "Métricas",
     icon: TrendingUp,
-    permission: "reports",
     items: [
-      { href: "/admin/reports", labelKey: "reports", icon: BarChart3, permission: "reports" },
-      { href: "/admin/analytics", labelKey: "performance", icon: Activity, permission: "analytics" },
-      { href: "/admin/conversion", labelKey: "conversion", icon: ArrowRightLeft, permission: "conversion" },
+      { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
+      { href: "/admin/analytics", label: "Rendimiento", icon: Activity },
+      { href: "/admin/conversion", label: "Conversión", icon: ArrowRightLeft },
     ],
   },
   {
-    labelKey: "marketing",
+    label: "Marketing",
     icon: Target,
-    permission: "marketing",
     items: [
-      { href: "/admin/marketing", labelKey: "linksUtm", icon: Link2, permission: "marketing" },
-      { href: "/admin/marketing/highlights", labelKey: "highlights", icon: Sparkles, permission: "highlights" },
-      { href: "/admin/settings/referrals", labelKey: "referrals", icon: Users, permission: "referrals" },
+      { href: "/admin/marketing", label: "Links & UTM", icon: Link2 },
+      { href: "/admin/marketing/highlights", label: "Highlights", icon: Sparkles },
+      { href: "/admin/settings/referrals", label: "Referidos", icon: Users },
     ],
   },
   {
-    labelKey: "settings",
+    label: "Configuración",
     icon: Settings,
-    permission: "billing",
     items: [
-      { href: "/admin/settings/billing", labelKey: "billing", icon: CreditCard, permission: "billing" },
-      { href: "/admin/settings/policies", labelKey: "policies", icon: ShieldAlert, permission: "policies" },
-      { href: "/admin/waiver", labelKey: "waiver", icon: FileSignature, permission: "waiver" },
-      { href: "/admin/branding", labelKey: "branding", icon: Palette, permission: "branding" },
-      { href: "/admin/team", labelKey: "team", icon: ShieldCheck, permission: "team" },
-      { href: "/admin/studios", labelKey: "studios", icon: Building2, permission: "studios" },
-      { href: "/admin/settings/language", labelKey: "language", icon: Globe2, permission: "language" },
+      { href: "/admin/settings/billing", label: "Facturación", icon: CreditCard },
+      { href: "/admin/waiver", label: "Waiver", icon: FileSignature },
+      { href: "/admin/branding", label: "Marca", icon: Palette },
+      { href: "/admin/team", label: "Equipo", icon: ShieldCheck },
+      { href: "/admin/studios", label: "Estudios", icon: Building2 },
     ],
   },
 ];
@@ -157,17 +139,6 @@ interface SidebarStats {
   pendingWaitlist: number;
   newClients: number;
   recentFeed: number;
-}
-
-function useAdminRole() {
-  const [role, setRole] = useState<Role>("ADMIN");
-  useEffect(() => {
-    fetch("/api/admin/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d?.role && setRole(d.role as Role))
-      .catch(() => {});
-  }, []);
-  return role;
 }
 
 function useSidebarStats() {
@@ -256,7 +227,6 @@ function SidebarFlyoutGroup({
   onOpen: () => void;
   onClose: () => void;
 }) {
-  const t = useTranslations("admin");
   const triggerRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
@@ -292,7 +262,7 @@ function SidebarFlyoutGroup({
           )}
           strokeWidth={hasActiveChild ? 2.25 : 1.75}
         />
-        <span className="flex-1 truncate">{t(group.labelKey)}</span>
+        <span className="flex-1 truncate">{group.label}</span>
         <ChevronRight
           className={cn(
             "h-3 w-3 shrink-0 transition-transform",
@@ -311,7 +281,7 @@ function SidebarFlyoutGroup({
             onMouseLeave={onClose}
           >
             <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-muted/50">
-              {t(group.labelKey)}
+              {group.label}
             </p>
             {group.items.map((item) => {
               const active = isActive(item.href);
@@ -339,7 +309,7 @@ function SidebarFlyoutGroup({
                     )}
                     strokeWidth={active ? 2.25 : 1.75}
                   />
-                  <span className="flex-1 truncate">{t(item.labelKey)}</span>
+                  <span className="flex-1 truncate">{item.label}</span>
                   {badgeVal ? (
                     <Badge
                       count={badgeVal}
@@ -371,7 +341,6 @@ function MobileAccordionGroup({
   onNavigate?: () => void;
   py: string;
 }) {
-  const t = useTranslations("admin");
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
@@ -397,7 +366,7 @@ function MobileAccordionGroup({
           )}
           strokeWidth={hasActiveChild ? 2.25 : 1.75}
         />
-        <span className="flex-1 truncate">{t(group.labelKey)}</span>
+        <span className="flex-1 truncate">{group.label}</span>
         <ChevronDown
           className={cn(
             "h-3 w-3 shrink-0 transition-transform duration-200",
@@ -445,7 +414,7 @@ function MobileAccordionGroup({
                       )}
                       strokeWidth={active ? 2.25 : 1.75}
                     />
-                    <span className="flex-1 truncate">{t(item.labelKey)}</span>
+                    <span className="flex-1 truncate">{item.label}</span>
                     {badgeVal ? (
                       <Badge
                         count={badgeVal}
@@ -468,39 +437,24 @@ function MobileAccordionGroup({
 function MgicAIButton() {
   const { toggle, isOpen } = useMgicAI();
   const { colorAdmin } = useBranding();
-  const sparklesRef = useRef<SparklesIconHandle>(null);
-  const tc = useTranslations("common");
 
   return (
     <button
       onClick={toggle}
-      onMouseEnter={() => sparklesRef.current?.startAnimation()}
-      onMouseLeave={() => sparklesRef.current?.stopAnimation()}
       className={cn(
-        "group flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-[13px] font-semibold transition-all",
+        "group flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-[13px] font-semibold transition-all",
         isOpen
           ? "bg-admin/10 text-admin ring-1 ring-admin/20"
           : "text-white hover:brightness-110",
       )}
       style={isOpen ? undefined : { backgroundColor: colorAdmin }}
     >
-      <span
-        className={cn(
-          "flex h-6 w-6 shrink-0 items-center justify-center rounded-sm",
-          isOpen ? "bg-admin/10" : "bg-white/15",
-        )}
-      >
-        <SparklesIcon ref={sparklesRef} size={14} />
-      </span>
-      <span className="flex-1">Mgic AI</span>
-      <span
-        className={cn(
-          "rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
-          isOpen ? "bg-admin/10 text-admin" : "bg-white/20 text-white/90",
-        )}
-      >
-        {tc("new")}
-      </span>
+      <img
+        src="/spark-avatar.png"
+        alt="Spark"
+        className="h-7 w-7 shrink-0 rounded-full object-cover"
+      />
+      <span className="flex-1">Spark</span>
     </button>
   );
 }
@@ -510,15 +464,12 @@ function SidebarNav({
   pathname,
   onNavigate,
   mobile,
-  role,
 }: {
   stats: SidebarStats | null;
   pathname: string;
   onNavigate?: () => void;
   mobile?: boolean;
-  role: Role;
 }) {
-  const t = useTranslations("admin");
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
@@ -548,7 +499,7 @@ function SidebarNav({
   return (
     <>
       <div className="space-y-px">
-        {directItems.filter((item) => !item.permission || hasPermission(role, item.permission)).map((item) => {
+        {directItems.map((item) => {
           const active = isActive(item.href);
           const badgeVal = item.badgeKey && stats ? stats[item.badgeKey] : 0;
           const contextVal =
@@ -580,7 +531,7 @@ function SidebarNav({
                 )}
                 strokeWidth={active ? 2.25 : 1.75}
               />
-              <span className="flex-1 truncate">{t(item.labelKey)}</span>
+              <span className="flex-1 truncate">{item.label}</span>
               {badgeVal ? (
                 <Badge
                   count={badgeVal}
@@ -595,10 +546,10 @@ function SidebarNav({
       </div>
 
       <div className="mt-4 space-y-px">
-        {flyoutGroups.filter((g) => !g.permission || hasPermission(role, g.permission)).map((group) =>
+        {flyoutGroups.map((group) =>
           mobile ? (
             <MobileAccordionGroup
-              key={group.labelKey}
+              key={group.label}
               group={group}
               stats={stats}
               pathname={pathname}
@@ -607,12 +558,12 @@ function SidebarNav({
             />
           ) : (
             <SidebarFlyoutGroup
-              key={group.labelKey}
+              key={group.label}
               group={group}
               stats={stats}
               pathname={pathname}
-              isOpen={openGroup === group.labelKey}
-              onOpen={() => openFlyout(group.labelKey)}
+              isOpen={openGroup === group.label}
+              onOpen={() => openFlyout(group.label)}
               onClose={closeFlyout}
             />
           ),
@@ -624,7 +575,6 @@ function SidebarNav({
 
 function PosSidebarButton({ py, onNavigate }: { py: string; onNavigate?: () => void }) {
   const { openPOS } = usePosStore();
-  const t = useTranslations("admin");
   return (
     <button
       onClick={() => {
@@ -637,7 +587,7 @@ function PosSidebarButton({ py, onNavigate }: { py: string; onNavigate?: () => v
       )}
     >
       <ShoppingBag className="h-4 w-4 shrink-0 text-foreground/40 group-hover:text-foreground/60" strokeWidth={1.75} />
-      <span className="truncate">{t("pos")}</span>
+      <span className="truncate">Punto de venta</span>
     </button>
   );
 }
@@ -663,9 +613,6 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [showCreateClient, setShowCreateClient] = useState(false);
   const { studioName } = useBranding();
   const stats = useSidebarStats();
-  const t = useTranslations("admin");
-  const tc = useTranslations("common");
-  const role = useAdminRole();
 
   const [locations, setLocations] = useState<LocCountry[]>([]);
   const [locValue, setLocValue] = useState("");
@@ -724,7 +671,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-dvh items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-6 w-6 animate-spin text-admin" />
-          <p className="text-sm text-muted">{tc("loadingSession")}</p>
+          <p className="text-sm text-muted">Cargando sesión…</p>
         </div>
       </div>
     );
@@ -770,7 +717,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         onChange={(e) => handleLocChange(e.target.value)}
         className="min-w-0 flex-1 appearance-none bg-transparent text-xs font-medium text-foreground outline-none"
       >
-        <option value="">{tc("selectLocation")}</option>
+        <option value="">Seleccionar ubicación</option>
         {locations.map((c) =>
           c.cities.map((city) => (
             <option key={city.id} value={`${c.id}|${city.id}`}>
@@ -801,20 +748,20 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2">
               <span className="font-display text-lg font-bold text-foreground">{studioName}</span>
               <span className="rounded-sm bg-admin/10 px-2 py-0.5 text-xs font-semibold text-admin">
-                {t("portal")}
+                Admin Portal
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
             {/* Quick actions -- hidden on mobile */}
-            <span className="hidden text-xs text-muted/70 sm:inline">{t("addLabel")}</span>
+            <span className="hidden text-xs text-muted/70 sm:inline">Add:</span>
             <button
               onClick={() => setShowCreateClient(true)}
               className="hidden items-center gap-1.5 rounded-sm border border-border/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface sm:flex"
             >
               <UserPlus className="h-3.5 w-3.5 text-admin" />
-              {t("customer")}
+              Customer
             </button>
 
             <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block" />
@@ -835,7 +782,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
             <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block" />
 
-            <Link href="/admin/profile" title={t("myProfile")}>
+            <Link href="/admin/profile" title="Mi perfil">
               <Avatar className="h-8 w-8 ring-2 ring-admin/20 transition-shadow hover:ring-admin/40">
                 <AvatarImage src={session?.user?.image || undefined} />
                 <AvatarFallback className="bg-admin/10 text-xs text-admin">
@@ -846,7 +793,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             <button
               onClick={async () => { await signOut({ redirect: false }); window.location.href = window.location.origin; }}
               className="flex h-8 w-8 items-center justify-center rounded-sm text-muted transition-colors hover:bg-red-50 hover:text-red-600"
-              title={tc("logout")}
+              title="Cerrar sesión"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -858,14 +805,14 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         {/* Desktop sidebar */}
         <aside className="hidden w-56 shrink-0 border-r border-border/40 bg-white lg:block">
           <div className="sticky top-[calc(3.5rem+4px)] flex h-[calc(100dvh-3.5rem-4px)] flex-col">
-            {/* Mgic AI protagonist */}
+            {/* Spark AI protagonist */}
             <div className="p-3 pb-0">
               <MgicAIButton />
             </div>
 
             {/* Scrollable nav sections */}
             <nav className="flex-1 overflow-y-auto p-3 pt-4">
-              <SidebarNav stats={stats} pathname={pathname} role={role} />
+              <SidebarNav stats={stats} pathname={pathname} />
             </nav>
 
             {/* Bottom: profile + location */}
@@ -883,7 +830,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   className={cn("h-4 w-4", pathname === "/admin/profile" ? "text-admin" : "text-foreground/40")}
                   strokeWidth={pathname === "/admin/profile" ? 2.25 : 1.75}
                 />
-                {t("myProfile")}
+                Mi perfil
               </Link>
               {locationPicker}
             </div>
@@ -908,7 +855,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 transition={{ type: "spring", damping: 25, stiffness: 250 }}
                 className="fixed left-0 top-0 z-40 flex h-dvh w-64 flex-col border-r border-border/40 bg-white pt-16 shadow-warm-lg lg:hidden"
               >
-                {/* Mgic AI protagonist (mobile) */}
+                {/* Spark AI protagonist (mobile) */}
                 <div className="px-3 pt-4 pb-1">
                   <MgicAIButton />
                 </div>
@@ -919,7 +866,6 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     pathname={pathname}
                     onNavigate={() => setSidebarOpen(false)}
                     mobile
-                    role={role}
                   />
                 </nav>
 
@@ -938,7 +884,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                       className={cn("h-4 w-4", pathname === "/admin/profile" ? "text-admin" : "text-foreground/40")}
                       strokeWidth={pathname === "/admin/profile" ? 2.25 : 1.75}
                     />
-                    {t("myProfile")}
+                    Mi perfil
                   </Link>
                   {locationPicker}
                   <Link
@@ -947,7 +893,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     className="mt-2 flex items-center gap-2.5 rounded-sm border border-border/50 px-2.5 py-2 text-[13px] text-muted transition-colors hover:bg-foreground/[0.03]"
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    {tc("publicSite")}
+                    Sitio público
                   </Link>
                 </div>
               </motion.aside>

@@ -62,13 +62,13 @@ export async function POST(request: NextRequest) {
     const tenant = await requireTenant();
     const ctx = await getAuthContext();
     if (!ctx || !ctx.session?.user?.id) {
-      return new Response(JSON.stringify({ error: "Inicia sesión para usar Mgic AI" }), {
+      return new Response(JSON.stringify({ error: "Inicia sesión para usar Spark" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       });
     }
     if (ctx.membership.role !== "ADMIN") {
-      return new Response(JSON.stringify({ error: "Solo administradores pueden usar Mgic AI" }), {
+      return new Response(JSON.stringify({ error: "Solo administradores pueden usar Spark" }), {
         status: 403,
         headers: { "Content-Type": "application/json" },
       });
