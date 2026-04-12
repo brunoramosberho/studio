@@ -84,7 +84,7 @@ export default function AdminClassesPage() {
   const { data: classes, isLoading } = useQuery<ClassWithDetails[]>({
     queryKey: ["admin-classes"],
     queryFn: async () => {
-      const res = await fetch("/api/classes");
+      const res = await fetch("/api/classes?includeCancelled=true");
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },

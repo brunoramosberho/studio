@@ -13,7 +13,11 @@ export async function GET(request: NextRequest) {
     const level = searchParams.get("level");
     const studioId = searchParams.get("studioId");
 
-    const where: Record<string, unknown> = { tenantId: tenant.id };
+    const includeCancelled = searchParams.get("includeCancelled") === "true";
+    const where: Record<string, unknown> = {
+      tenantId: tenant.id,
+      ...(!includeCancelled && { status: { not: "CANCELLED" } }),
+    };
 
     if (from || to) {
       where.startsAt = {

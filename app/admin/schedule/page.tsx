@@ -95,6 +95,7 @@ export default function AdminSchedulePage() {
 
   const filtered = useMemo(() => {
     return (classes ?? []).filter((c) => {
+      if (c.status === "CANCELLED") return false;
       if (filterStudio !== "all" && c.room?.studio?.id !== filterStudio) return false;
       if (filterCoach !== "all" && c.coach.id !== filterCoach) return false;
       if (filterType !== "all" && c.classType.id !== filterType) return false;
