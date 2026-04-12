@@ -9,11 +9,51 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMgicAI } from "./index";
 import type { StreamEvent } from "@/lib/ai/types";
 
+const GREETINGS: [number, string[]][] = [
+  [5, [
+    "A estas horas, {name}? Respect.",
+    "Trasnochando, {name}? Yo tampoco dormí.",
+    "{name}, a estas horas solo estamos tú y yo.",
+  ]],
+  [7, [
+    "Arrancando temprano, {name}.",
+    "Madrugaste, {name} — ya somos dos.",
+    "Nadie como tú para madrugar, {name}.",
+  ]],
+  [12, [
+    "Buenos días, {name}.",
+    "Buen día, {name} — vamos a ver qué hay.",
+    "Hey {name}, buenos días.",
+  ]],
+  [14, [
+    "Mediodía, {name} — espero que ya hayas comido.",
+    "Hey {name}, ¿ya comiste o te gano el studio?",
+    "Buenas, {name} — pausa pa' comer, ¿no?",
+  ]],
+  [18, [
+    "Buenas tardes, {name}.",
+    "Hey {name}, ¿cómo va la tarde?",
+    "Buenas, {name} — te tengo al tanto.",
+  ]],
+  [21, [
+    "Cerrando el día, {name}?",
+    "Buenas noches, {name} — revisión rápida.",
+    "Ya casi, {name} — un vistazo antes de cerrar.",
+  ]],
+  [24, [
+    "Aún por aquí, {name}? Yo te acompaño.",
+    "Sesión nocturna, {name} — te tengo tu resumen.",
+    "Noche de trabajo, {name}? Aquí estoy.",
+  ]],
+];
+
 function getGreeting(firstName: string): string {
   const hour = new Date().getHours();
-  if (hour < 12) return `Buenos dias, ${firstName}`;
-  if (hour < 18) return `Buenas tardes, ${firstName}`;
-  return `Buenas noches, ${firstName}`;
+  const bracket = GREETINGS.find(([max]) => hour < max) ?? GREETINGS[GREETINGS.length - 1];
+  const options = bracket[1];
+  // Pick a deterministic-ish option based on the day so it doesn't change on re-render
+  const dayIndex = new Date().getDate() % options.length;
+  return options[dayIndex].replace("{name}", firstName);
 }
 
 function getBriefingPrompt(firstName: string): string {
@@ -155,7 +195,7 @@ export function MgicAIBriefing() {
               </div>
               <div>
                 <h3 className="text-[15px] font-bold text-foreground leading-tight">
-                  {greeting} <span className="inline-block animate-pulse">&#x1F44B;</span>
+                  {greeting}
                 </h3>
                 <p className="text-xs text-muted/70 mt-0.5">
                   Spark te preparó un resumen rápido
