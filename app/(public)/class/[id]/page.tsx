@@ -170,6 +170,8 @@ export default function ClassDetailPage() {
   const [playlistLoading, setPlaylistLoading] = useState(false);
   const [nudgeConverted, setNudgeConverted] = useState(false);
   const [guests, setGuests] = useState<GuestEntry[]>([]);
+  const [guestSpots, setGuestSpots] = useState<Record<number, number>>({}); // guestIndex → spotNumber
+  const [selectingGuestSpot, setSelectingGuestSpot] = useState<number | null>(null); // index of guest we're assigning a spot to
 
   const {
     data: cls,
@@ -261,7 +263,6 @@ export default function ClassDetailPage() {
   // Guest configuration from the first valid package
   const guestConfig = useMemo(() => {
     const pkg = validPackages[0]?.package as any;
-    console.log("[guests] validPackages:", validPackages.length, "pkg?.allowGuests:", pkg?.allowGuests);
     if (!pkg) return { allowGuests: false, maxGuests: null as number | null };
     return {
       allowGuests: pkg.allowGuests === true,
@@ -359,12 +360,19 @@ export default function ClassDetailPage() {
         spotNumber: selectedSpot ?? undefined,
         packageId: validPackages[0]?.id,
         privacy,
-        ...(guests.length > 0 && { guests }),
+        ...(guests.length > 0 && {
+          guests: guests.map((g, i) => ({
+            ...g,
+            ...(guestSpots[i] != null && { spotNumber: guestSpots[i] }),
+          })),
+        }),
       });
       setBookingSuccess(true);
       setBookedSpotNumber(selectedSpot);
       setSelectedSpot(null);
       setGuests([]);
+      setGuestSpots({});
+      setSelectingGuestSpot(null);
       queryClient.invalidateQueries({ queryKey: ["classes", id] });
     } catch (err: any) {
       setError(err.error || t("couldNotBook"));
@@ -527,7 +535,20 @@ export default function ClassDetailPage() {
   }
 
   const spotsLeft = cls.spotsLeft;
-  const spotMap = cls.spotMap ?? {};
+  const baseSpotMap: Record<number, SpotInfo> = cls.spotMap ?? {};
+
+  // Overlay guest spot assignments onto the map
+  const spotMap = useMemo(() => {
+    const merged = { ...baseSpotMap };
+    for (const [gIdx, sn] of Object.entries(guestSpots)) {
+      const guest = guests[Number(gIdx)];
+      if (guest && sn) {
+        merged[sn] = { status: "guest", userName: guest.name };
+      }
+    }
+    return merged;
+  }, [baseSpotMap, guestSpots, guests]);
+
   const needsPackage = !isAuthenticated || !hasCredits;
   const classFull = spotsLeft <= 0;
   const waitlistCount = cls._count?.waitlist ?? 0;
@@ -865,7 +886,25 @@ export default function ClassDetailPage() {
                   spotMap={spotMap}
                   selectedSpot={selectedSpot}
                   onSelectSpot={(spot) => {
-                    setSelectedSpot(spot === selectedSpot ? null : spot);
+                    if (selectingGuestSpot !== null) {
+                      // Assigning a spot to a guest
+                      // Don't allow selecting own spot or another guest's spot
+                      if (spot === selectedSpot) return;
+                      const otherGuestIdx = Object.entries(guestSpots).find(([, sn]) => sn === spot)?.[0];
+                      if (otherGuestIdx !== undefined && Number(otherGuestIdx) !== selectingGuestSpot) return;
+
+                      setGuestSpots((prev) => ({ ...prev, [selectingGuestSpot]: spot }));
+                      setSelectingGuestSpot(null);
+                    } else {
+                      // Selecting own spot — also clear if clicking same spot
+                      if (spot === selectedSpot) {
+                        setSelectedSpot(null);
+                      } else {
+                        // Don't allow selecting a spot already assigned to a guest
+                        const isGuestSpot = Object.values(guestSpots).includes(spot);
+                        if (!isGuestSpot) setSelectedSpot(spot);
+                      }
+                    }
                     setError(null);
                   }}
                   myBookedSpot={myBookedSpot}
@@ -873,6 +912,21 @@ export default function ClassDetailPage() {
                   layout={cls.room.layout}
                   coachName={cls.coach.name}
                 />
+
+                {/* Guest spot selection prompt */}
+                {selectingGuestSpot !== null && guests[selectingGuestSpot] && (
+                  <div className="mt-2 flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-2.5">
+                    <p className="text-sm font-medium text-emerald-800">
+                      Selecciona lugar para <span className="font-bold">{guests[selectingGuestSpot].name.split(" ")[0]}</span>
+                    </p>
+                    <button
+                      onClick={() => setSelectingGuestSpot(null)}
+                      className="text-xs text-emerald-600 hover:text-emerald-800"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1305,9 +1359,33 @@ export default function ClassDetailPage() {
                       <>
                         <GuestListInput
                           guests={guests}
-                          onChange={setGuests}
+                          onChange={(newGuests) => {
+                            setGuests(newGuests);
+                            // Clean up spots for removed guests
+                            setGuestSpots((prev) => {
+                              const cleaned: Record<number, number> = {};
+                              for (const [k, v] of Object.entries(prev)) {
+                                if (Number(k) < newGuests.length) cleaned[Number(k)] = v;
+                              }
+                              return cleaned;
+                            });
+                            if (selectingGuestSpot !== null && selectingGuestSpot >= newGuests.length) {
+                              setSelectingGuestSpot(null);
+                            }
+                          }}
                           maxGuests={guestConfig.maxGuests}
                           disabled={isBooking}
+                          hasLayout={!!hasLayout}
+                          guestSpots={guestSpots}
+                          selectingGuestSpot={selectingGuestSpot}
+                          onSelectGuestSpot={(idx) => setSelectingGuestSpot(idx)}
+                          onRemoveGuestSpot={(idx) => {
+                            setGuestSpots((prev) => {
+                              const next = { ...prev };
+                              delete next[idx];
+                              return next;
+                            });
+                          }}
                         />
 
                         {guests.length > 0 && (
