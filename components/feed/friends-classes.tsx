@@ -9,6 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatTime, formatTimeRange } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface FriendInfo {
   id: string;
@@ -31,6 +32,7 @@ interface FriendBookedClass {
 
 export function FriendsClasses() {
   const { data: session } = useSession();
+  const t = useTranslations("feed");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const { data: friendClasses = [] } = useQuery<FriendBookedClass[]>({
@@ -67,7 +69,7 @@ export function FriendsClasses() {
   return (
     <section>
       <h2 className="mb-3 font-display text-[17px] font-bold text-foreground">
-        Clases para ti
+        {t("classesForYou")}
       </h2>
 
       <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scrollbar-none">
