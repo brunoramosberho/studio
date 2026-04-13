@@ -4,9 +4,20 @@ import crypto from "crypto";
 
 const MAX_ATTEMPTS = 5;
 
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
+const rootHostname = ROOT_DOMAIN.split(":")[0];
+const isProduction = process.env.NODE_ENV === "production";
+
+function sessionCookieName(portal: string) {
+  const suffix = portal === "admin" ? ".admin" : "";
+  return isProduction
+    ? `__Secure-authjs.session-token${suffix}`
+    : `authjs.session-token${suffix}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { email, code } = await request.json();
+    const { email, code, portal = "client" } = await request.json();
     if (!email || !code) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
     }
@@ -75,7 +86,18 @@ export async function POST(request: NextRequest) {
     // Clean up pending login
     await prisma.pendingLogin.delete({ where: { id: pending.id } });
 
-    return NextResponse.json({ sessionToken });
+    // Set session cookie server-side (matching NextAuth's cookie config)
+    const response = NextResponse.json({ success: true });
+    response.cookies.set(sessionCookieName(portal), sessionToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      secure: isProduction,
+      domain: isProduction ? `.${rootHostname}` : undefined,
+      maxAge: 30 * 24 * 60 * 60,
+    });
+
+    return response;
   } catch (error) {
     console.error("POST /api/auth/verify-otp error:", error);
     return NextResponse.json({ error: "server_error" }, { status: 500 });

@@ -31,9 +31,6 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-const COOKIE_CLIENT = "authjs.session-token";
-const COOKIE_ADMIN = "authjs.session-token.admin";
-
 function useIsAdminSubdomain() {
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
@@ -262,7 +259,6 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
 
   const defaultCallback = isAdminPortal ? "/admin" : "/my";
   const callbackUrl = searchParams.get("callbackUrl") || defaultCallback;
-  const sessionCookie = isAdminPortal ? COOKIE_ADMIN : COOKIE_CLIENT;
 
   useEffect(() => {
     if (session?.user && !authenticated) {
@@ -337,7 +333,11 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
       const res = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), code }),
+        body: JSON.stringify({
+          email: email.trim(),
+          code,
+          portal: isAdminPortal ? "admin" : "client",
+        }),
       });
 
       const data = await res.json();
@@ -358,8 +358,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
         return;
       }
 
-      // Success — set session cookie and redirect
-      document.cookie = `${sessionCookie}=${data.sessionToken}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
+      // Success — cookie was set server-side, just redirect
       setAuthenticated(true);
       setTimeout(() => router.replace(callbackUrl), 400);
     } catch {
