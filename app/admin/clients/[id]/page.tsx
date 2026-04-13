@@ -638,9 +638,9 @@ export default function ClientDetailPage() {
               {client.pwaInstalledAt && (
                 <>
                   <Separator className="my-4" />
-                  <div className="flex items-center gap-2 text-xs text-muted" title={timeAgo(client.pwaInstalledAt, locale)}>
+                  <div className="flex items-center gap-2 text-xs text-muted">
                     <Smartphone className="h-3.5 w-3.5" />
-                    {t("appInstalledDate", { date: format(new Date(client.pwaInstalledAt), "d MMM yyyy", { locale: dateLocale }) })}
+                    {t("appInstalled")} {timeAgo(client.pwaInstalledAt, locale)}
                   </div>
                 </>
               )}
