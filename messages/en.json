@@ -1457,6 +1457,8 @@
     "alsoBookedSingular": "also booked",
     "booked": "booked",
     "bookedSingular": "booked",
+    "friendGoing": "{name} is going",
+    "friendsGoing": "{count} friends going",
     "bookYouToo": "Join them",
     "alreadyInClass": "You're already in this class",
     "bookedTitle": "Booked",
