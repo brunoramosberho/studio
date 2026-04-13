@@ -126,6 +126,7 @@ const flyoutGroups: FlyoutGroup[] = [
     icon: Settings,
     items: [
       { href: "/admin/settings/billing", label: "Facturación", icon: CreditCard },
+      { href: "/admin/settings/language", label: "Idioma", icon: Globe2 },
       { href: "/admin/waiver", label: "Waiver", icon: FileSignature },
       { href: "/admin/branding", label: "Marca", icon: Palette },
       { href: "/admin/team", label: "Equipo", icon: ShieldCheck },
