@@ -148,7 +148,7 @@ export function FriendsClasses() {
                       </span>
                     </div>
                     <span className="rounded-full bg-accent/10 px-3 py-1 text-[10px] font-semibold text-accent">
-                      Reserva tú también
+                      {t("bookYouToo")}
                     </span>
                   </div>
                 </div>
