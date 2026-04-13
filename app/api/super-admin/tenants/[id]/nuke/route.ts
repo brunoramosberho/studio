@@ -111,7 +111,6 @@ export async function POST(req: Request, { params }: Params) {
     try { await prisma.linkClick.deleteMany(tid); } catch { /* may not exist */ }
     try { await prisma.classRating.deleteMany(tid); } catch { /* may not exist */ }
     try { await prisma.memberSubscription.deleteMany(tid); } catch { /* may not exist */ }
-    try { await prisma.studioSettings.deleteMany(tid); } catch { /* may not exist */ }
     try { await prisma.instagramIntegration.deleteMany(tid); } catch { /* may not exist */ }
 
     // Delete only demo users (never real users)
