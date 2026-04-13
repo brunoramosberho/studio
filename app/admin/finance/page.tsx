@@ -25,6 +25,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { format, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { useTranslations } from "next-intl";
+import { FinanceBriefingCard } from "@/components/admin/MgicAI/FinanceBriefingCard";
 
 // ── Types ──
 
@@ -281,6 +282,9 @@ export default function FinancePage() {
           </button>
         </div>
       </motion.div>
+
+      {/* Spark CFO Briefing */}
+      <FinanceBriefingCard range={range} />
 
       {/* Summary Cards */}
       <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
