@@ -7,6 +7,7 @@ interface BookingPayload {
   guestEmail?: string;
   spotNumber?: number;
   privacy?: "PUBLIC" | "PRIVATE";
+  guests?: { name: string; email: string; spotNumber?: number }[];
 }
 
 interface BookingError {

@@ -14,7 +14,7 @@ import { User, Lock } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
 
 export interface SpotInfo {
-  status: "self" | "friend" | "occupied" | "blocked";
+  status: "self" | "friend" | "occupied" | "blocked" | "guest";
   userName?: string | null;
   userImage?: string | null;
 }
@@ -313,12 +313,13 @@ export function StudioMap({
   function renderSpotButton(num: number, key: string) {
     const info = spotMap[num];
     const isBlocked = info?.status === "blocked";
+    const isGuest = info?.status === "guest";
     const isOccupied = !!info && !isBlocked;
     const isSelf = info?.status === "self";
     const isFriend = info?.status === "friend";
     const isSelected = selectedSpot === num;
     const isAvailable = !isOccupied && !isBlocked;
-    const showTooltip = tapped === num && isFriend;
+    const showTooltip = tapped === num && (isFriend || isGuest);
 
     const initials = info?.userName
       ? info.userName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
@@ -333,11 +334,11 @@ export function StudioMap({
               return;
             }
             if (isAvailable && !disabled) onSelectSpot(num);
-            if (isFriend) setTapped(tapped === num ? null : num);
+            if (isFriend || isGuest) setTapped(tapped === num ? null : num);
           }}
-          onMouseEnter={() => isFriend && setTapped(num)}
-          onMouseLeave={() => isFriend && setTapped(null)}
-          disabled={!adminMode && ((!isFriend && (isOccupied || isBlocked)) || (disabled && isAvailable))}
+          onMouseEnter={() => (isFriend || isGuest) && setTapped(num)}
+          onMouseLeave={() => (isFriend || isGuest) && setTapped(null)}
+          disabled={!adminMode && ((!isFriend && !isGuest && (isOccupied || isBlocked)) || (disabled && isAvailable))}
           className={cn(
             "relative flex h-[38px] w-[38px] items-center justify-center rounded-full transition-all overflow-hidden",
             isAvailable && !isSelected &&
@@ -346,6 +347,8 @@ export function StudioMap({
               "bg-foreground text-background shadow-sm",
             isSelf &&
               "bg-accent text-white ring-2 ring-accent/30",
+            isGuest &&
+              "bg-emerald-500 text-white ring-2 ring-emerald-300/40",
             isFriend &&
               "ring-0 border-0",
             isBlocked &&
@@ -354,13 +357,15 @@ export function StudioMap({
               "cursor-pointer hover:bg-red-200",
             adminMode && isAvailable &&
               "cursor-pointer hover:border-red-400 hover:bg-red-50",
-            !isSelf && !isFriend && isOccupied &&
+            !isSelf && !isFriend && !isGuest && isOccupied &&
               "bg-neutral-100 text-neutral-300",
             !adminMode && disabled && isAvailable && "opacity-40 pointer-events-none",
           )}
         >
           {isBlocked ? (
             <Lock className="h-4 w-4" />
+          ) : isGuest ? (
+            <span className="text-[11px] font-semibold">{initials}</span>
           ) : isFriend ? (
             <Avatar className="h-full w-full">
               {info.userImage && <AvatarImage src={info.userImage} className="object-cover" />}

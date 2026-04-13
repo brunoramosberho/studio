@@ -92,7 +92,7 @@ export async function GET(
     }
 
     const spotMap: Record<number, {
-      status: "self" | "friend" | "occupied" | "blocked";
+      status: "self" | "friend" | "occupied" | "blocked" | "guest";
       userName?: string | null;
       userImage?: string | null;
     }> = {};
@@ -103,10 +103,23 @@ export async function GET(
       }
     }
 
+    // Find the current user's booking IDs so we can identify their guest bookings
+    const myBookingIds = new Set<string>();
+    if (currentUserId) {
+      for (const b of classData.bookings) {
+        if (b.userId === currentUserId) myBookingIds.add(b.id);
+      }
+    }
+
     for (const b of classData.bookings) {
       if (b.spotNumber == null) continue;
-      if (b.userId === currentUserId) {
+      const parentId = (b as any).parentBookingId as string | null;
+      const isMyGuest = parentId != null && myBookingIds.has(parentId);
+
+      if (b.userId === currentUserId && !parentId) {
         spotMap[b.spotNumber] = { status: "self", userName: b.user?.name, userImage: b.user?.image };
+      } else if (isMyGuest) {
+        spotMap[b.spotNumber] = { status: "guest", userName: b.guestName };
       } else if (b.userId && friendIds.has(b.userId) && b.privacy !== "PRIVATE") {
         spotMap[b.spotNumber] = { status: "friend", userName: b.user?.name, userImage: b.user?.image };
       } else {

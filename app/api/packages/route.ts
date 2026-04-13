@@ -178,6 +178,9 @@ export async function POST(request: NextRequest) {
             ? null
             : String(countryId),
         sortOrder: sortOrderVal,
+        allowGuests: Boolean(body.allowGuests),
+        maxGuestsPerBooking: body.maxGuestsPerBooking != null && !Number.isNaN(Number(body.maxGuestsPerBooking)) ? Number(body.maxGuestsPerBooking) : null,
+        monthlyGuestPasses: body.monthlyGuestPasses != null && !Number.isNaN(Number(body.monthlyGuestPasses)) ? Number(body.monthlyGuestPasses) : null,
         ...(Array.isArray(classTypeIds) && classTypeIds.length > 0
           ? {
               classTypes: {
