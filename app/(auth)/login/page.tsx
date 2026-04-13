@@ -358,9 +358,12 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
         return;
       }
 
-      // Success — cookie was set server-side, just redirect
+      // Success — cookie was set server-side, hard redirect so
+      // SessionProvider re-initialises with the new session
       setAuthenticated(true);
-      setTimeout(() => router.replace(callbackUrl), 400);
+      setTimeout(() => {
+        window.location.href = callbackUrl;
+      }, 400);
     } catch {
       setOtpError(t("connectionError"));
       setVerifying(false);
