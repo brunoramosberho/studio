@@ -11,7 +11,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, name: true, email: true, phone: true, image: true, countryId: true, cityId: true, instagramUser: true, stravaUser: true, locale: true },
+    select: { id: true, name: true, email: true, phone: true, image: true, countryId: true, cityId: true, instagramUser: true, stravaUser: true, locale: true, gender: true },
   });
 
   return NextResponse.json(user);
@@ -25,7 +25,7 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, phone, countryId, cityId, instagramUser, stravaUser, locale } = body;
+  const { name, phone, countryId, cityId, instagramUser, stravaUser, locale, gender } = body;
 
   const updated = await prisma.user.update({
     where: { id: session.user.id },
@@ -37,8 +37,9 @@ export async function PUT(request: NextRequest) {
       ...(instagramUser !== undefined && { instagramUser: instagramUser?.trim() || null }),
       ...(stravaUser !== undefined && { stravaUser: stravaUser?.trim() || null }),
       ...(locale !== undefined && { locale: locale === "en" || locale === "es" ? locale : null }),
+      ...(gender !== undefined && { gender: ["male", "female", "other"].includes(gender) ? gender : null }),
     },
-    select: { id: true, name: true, email: true, phone: true, image: true, countryId: true, cityId: true, instagramUser: true, stravaUser: true, locale: true },
+    select: { id: true, name: true, email: true, phone: true, image: true, countryId: true, cityId: true, instagramUser: true, stravaUser: true, locale: true, gender: true },
   });
 
   return NextResponse.json(updated);

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { findMembershipByReferralCode } from "@/lib/referrals/code";
 import { sendPushToUser } from "@/lib/push";
+import { guessGenderFromName } from "@/lib/ai/guess-gender";
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,6 +39,16 @@ export async function POST(request: NextRequest) {
           phone: phone || null,
         },
       });
+
+      // AI gender detection — fire-and-forget so it never blocks registration
+      if (name) {
+        const userId = user.id;
+        guessGenderFromName(name).then((gender) => {
+          if (gender) {
+            prisma.user.update({ where: { id: userId }, data: { gender } }).catch(() => {});
+          }
+        }).catch(() => {});
+      }
     }
 
     const existingMembership = await prisma.membership.findUnique({

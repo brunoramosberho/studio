@@ -65,6 +65,7 @@ interface ProfileData {
   instagramUser: string | null;
   stravaUser: string | null;
   locale: string | null;
+  gender: string | null;
 }
 
 const fadeUp = {
@@ -118,6 +119,7 @@ export default function ProfilePage() {
 
   const [instagramUser, setInstagramUser] = useState("");
   const [stravaUser, setStravaUser] = useState("");
+  const [gender, setGender] = useState("");
 
   const [showReferralSheet, setShowReferralSheet] = useState(false);
   const [referralData, setReferralData] = useState<ReferralSheetData | null>(null);
@@ -153,6 +155,7 @@ export default function ProfilePage() {
       setPhone(profile.phone ?? "");
       setInstagramUser(profile.instagramUser ?? "");
       setStravaUser(profile.stravaUser ?? "");
+      setGender(profile.gender ?? "");
       if (profile.countryId) setSelectedCountry(profile.countryId);
       if (profile.cityId) setSelectedCity(profile.cityId);
       if (profile.locale && !document.cookie.includes("NEXT_LOCALE=")) {
@@ -341,7 +344,7 @@ export default function ProfilePage() {
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), instagramUser: instagramUser.trim(), stravaUser: stravaUser.trim() }),
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), instagramUser: instagramUser.trim(), stravaUser: stravaUser.trim(), gender: gender || null }),
       });
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -704,6 +707,21 @@ export default function ProfilePage() {
                                 </p>
                               )}
                             </div>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium uppercase tracking-wider text-muted">
+                              {t("gender")}
+                            </label>
+                            <select
+                              value={gender}
+                              onChange={(e) => setGender(e.target.value)}
+                              className="mt-1.5 flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                            >
+                              <option value="">{t("genderNotSpecified")}</option>
+                              <option value="female">{t("genderFemale")}</option>
+                              <option value="male">{t("genderMale")}</option>
+                              <option value="other">{t("genderOther")}</option>
+                            </select>
                           </div>
                           <div>
                             <label className="text-xs font-medium uppercase tracking-wider text-muted">

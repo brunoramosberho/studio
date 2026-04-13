@@ -319,6 +319,7 @@ model User {
   country       Country?  @relation(fields: [countryId], references: [id])
   cityId        String?
   city          City?     @relation(fields: [cityId], references: [id])
+  gender        String?   // "male" | "female" | "other" | null — AI-guessed on signup, editable by user
   instagramUser String?
   stravaUser    String?
   locale        String?   // null = inherit from tenant
