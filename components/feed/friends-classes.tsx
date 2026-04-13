@@ -146,7 +146,7 @@ export function FriendsClasses() {
                       </div>
                       <span className="text-[10px] font-medium text-accent">
                         {c.friendsGoing.length === 1
-                          ? t("friendGoing", { name: firstFriend.name?.split(" ")[0] })
+                          ? t("friendGoing", { name: firstFriend.name?.split(" ")[0] ?? "" })
                           : t("friendsGoing", { count: c.friendsGoing.length })}
                       </span>
                     </div>
