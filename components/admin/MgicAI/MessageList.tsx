@@ -134,7 +134,7 @@ const MessageBubble = memo(function MessageBubble({
           className="max-w-[85%] rounded-2xl rounded-br-md px-4 py-3 text-[14px] leading-relaxed text-white"
           style={{ backgroundColor: colorAdmin }}
         >
-          {message.content}
+          {message.displayContent ?? message.content}
         </div>
       ) : showTyping ? (
         <div className="flex items-end gap-2.5">
