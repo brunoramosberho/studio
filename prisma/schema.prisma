@@ -296,6 +296,7 @@ model PendingLogin {
   token        String   @unique
   approved     Boolean  @default(false)
   sessionToken String?
+  attempts     Int      @default(0)
   expiresAt    DateTime
   createdAt    DateTime @default(now())
 
