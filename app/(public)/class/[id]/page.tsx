@@ -535,19 +535,15 @@ export default function ClassDetailPage() {
   }
 
   const spotsLeft = cls.spotsLeft;
-  const baseSpotMap: Record<number, SpotInfo> = cls.spotMap ?? {};
 
-  // Overlay guest spot assignments onto the map
-  const spotMap = useMemo(() => {
-    const merged = { ...baseSpotMap };
-    for (const [gIdx, sn] of Object.entries(guestSpots)) {
-      const guest = guests[Number(gIdx)];
-      if (guest && sn) {
-        merged[sn] = { status: "guest", userName: guest.name };
-      }
+  // Overlay guest spot assignments onto the base map from API
+  const spotMap: Record<number, SpotInfo> = { ...(cls.spotMap ?? {}) };
+  for (const [gIdx, sn] of Object.entries(guestSpots)) {
+    const guest = guests[Number(gIdx)];
+    if (guest && sn) {
+      spotMap[sn] = { status: "guest", userName: guest.name };
     }
-    return merged;
-  }, [baseSpotMap, guestSpots, guests]);
+  }
 
   const needsPackage = !isAuthenticated || !hasCredits;
   const classFull = spotsLeft <= 0;
