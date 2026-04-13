@@ -17,6 +17,11 @@ interface GuestListInputProps {
   onChange: (guests: GuestEntry[]) => void;
   maxGuests?: number | null;
   disabled?: boolean;
+  hasLayout?: boolean;
+  guestSpots?: Record<number, number>;
+  selectingGuestSpot?: number | null;
+  onSelectGuestSpot?: (guestIndex: number) => void;
+  onRemoveGuestSpot?: (guestIndex: number) => void;
 }
 
 export function GuestListInput({
@@ -24,6 +29,11 @@ export function GuestListInput({
   onChange,
   maxGuests,
   disabled,
+  hasLayout,
+  guestSpots,
+  selectingGuestSpot,
+  onSelectGuestSpot,
+  onRemoveGuestSpot,
 }: GuestListInputProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -84,13 +94,26 @@ export function GuestListInput({
       {/* Guest list */}
       {guests.length > 0 && (
         <div className="space-y-2">
-          {guests.map((guest, i) => (
+          {guests.map((guest, i) => {
+            const assignedSpot = guestSpots?.[i];
+            const isSelecting = selectingGuestSpot === i;
+            return (
             <div
               key={i}
-              className="flex items-center gap-3 rounded-xl border border-border bg-surface/50 px-3 py-2.5"
+              className={cn(
+                "flex items-center gap-3 rounded-xl border bg-surface/50 px-3 py-2.5",
+                isSelecting ? "border-emerald-400 bg-emerald-50/50" : "border-border",
+              )}
             >
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/10">
-                <User className="h-3.5 w-3.5 text-accent" />
+              <div className={cn(
+                "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full",
+                assignedSpot ? "bg-emerald-100" : "bg-accent/10",
+              )}>
+                {assignedSpot ? (
+                  <span className="text-xs font-bold text-emerald-700">{assignedSpot}</span>
+                ) : (
+                  <User className="h-3.5 w-3.5 text-accent" />
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">
@@ -98,6 +121,32 @@ export function GuestListInput({
                 </p>
                 <p className="truncate text-xs text-muted">{guest.email}</p>
               </div>
+              {hasLayout && onSelectGuestSpot && (
+                assignedSpot ? (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveGuestSpot?.(i)}
+                    disabled={disabled}
+                    className="flex-shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-200"
+                  >
+                    Lugar #{assignedSpot}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onSelectGuestSpot(i)}
+                    disabled={disabled || isSelecting}
+                    className={cn(
+                      "flex-shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-colors",
+                      isSelecting
+                        ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                        : "border-border text-muted hover:border-emerald-400 hover:text-emerald-700",
+                    )}
+                  >
+                    {isSelecting ? "Seleccionando..." : "Asignar lugar"}
+                  </button>
+                )
+              )}
               <button
                 type="button"
                 onClick={() => handleRemove(i)}
@@ -107,7 +156,8 @@ export function GuestListInput({
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
