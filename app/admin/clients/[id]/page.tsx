@@ -224,6 +224,156 @@ function NewSaleButton({ client }: { client: ClientDetail }) {
   );
 }
 
+interface GiftPkg {
+  id: string;
+  name: string;
+  credits: number | null;
+  validDays: number;
+  price: number;
+  currency: string;
+  type: string;
+}
+
+function GiftPackageButton({ clientId, clientName }: { clientId: string; clientName: string }) {
+  const [open, setOpen] = useState(false);
+  const [selectedPkg, setSelectedPkg] = useState<string>("");
+  const [reason, setReason] = useState("");
+  const [notes, setNotes] = useState("");
+  const queryClient = useQueryClient();
+
+  const { data: packages } = useQuery<GiftPkg[]>({
+    queryKey: ["gift-packages-list"],
+    queryFn: () =>
+      fetch("/api/packages?all=true")
+        .then((r) => r.json())
+        .then((pkgs: (GiftPkg & { isActive: boolean })[]) =>
+          pkgs.filter((p) => p.isActive),
+        ),
+    enabled: open,
+  });
+
+  const giftMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/gift-packages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientId: clientId,
+          packageId: selectedPkg,
+          reason,
+          notes,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Error");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast.success(`Paquete "${data.packageName}" regalado a ${clientName}`);
+      queryClient.invalidateQueries({ queryKey: ["admin-client", clientId] });
+      setOpen(false);
+      setSelectedPkg("");
+      setReason("");
+      setNotes("");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+        className="gap-1.5"
+      >
+        <Gift className="h-3.5 w-3.5" />
+        Regalar paquete
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-primary" />
+              Regalar paquete a {clientName}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium">Paquete</label>
+              <select
+                value={selectedPkg}
+                onChange={(e) => setSelectedPkg(e.target.value)}
+                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="">Seleccionar paquete...</option>
+                {packages?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — {p.credits === null ? "Ilimitado" : `${p.credits} clases`} ({p.validDays} dias)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Razon del regalo
+              </label>
+              <select
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="">Seleccionar razon...</option>
+                <option value="cortesia">Cortesia</option>
+                <option value="compensacion">Compensacion por inconveniente</option>
+                <option value="promocion">Promocion especial</option>
+                <option value="fidelidad">Programa de fidelidad</option>
+                <option value="cumpleanos">Cumpleanos</option>
+                <option value="referido">Referido</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Notas internas (opcional)
+              </label>
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Detalle adicional para el equipo..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => giftMutation.mutate()}
+                disabled={!selectedPkg || !reason || giftMutation.isPending}
+              >
+                {giftMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                <Gift className="mr-2 h-4 w-4" />
+                Regalar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
@@ -237,7 +387,6 @@ export default function ClientDetailPage() {
     },
     enabled: !!id,
   });
-
 
   const attendanceMutation = useMutation({
     mutationFn: async ({ bookingId, status }: { bookingId: string; status: "ATTENDED" | "NO_SHOW" }) => {
@@ -382,7 +531,10 @@ export default function ClientDetailPage() {
           <ChevronRight className="h-3 w-3 text-muted/50" />
           <span className="font-medium text-foreground">{displayName}</span>
         </div>
-        <NewSaleButton client={client} />
+        <div className="flex items-center gap-2">
+          <GiftPackageButton clientId={client.id} clientName={displayName} />
+          <NewSaleButton client={client} />
+        </div>
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -658,7 +810,6 @@ export default function ClientDetailPage() {
                               }}
                             />
                           </div>
-                          
                         </div>
                       )}
                     </div>
