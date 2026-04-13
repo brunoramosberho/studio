@@ -55,14 +55,16 @@ async function generateFromSchedule(
   todayStart: Date,
   allClasses: GeneratedClass[],
 ) {
-  // Map discipline names to class type IDs
   const ctByName = new Map(classTypes.map((ct) => [ct.name.toLowerCase(), ct]));
   const coachByName = new Map(coachProfiles.map((c) => [c.name.toLowerCase(), c]));
 
+  // Build a full 7-day weekly template from the provided schedule.
+  // If only some days are provided (e.g. Mon+Tue), replicate slots to fill the rest.
+  const fullWeek = buildFullWeekSchedule(schedule, classTypes);
+
   // Generate for 3 weeks: day -7 to day +14
   for (let weekOffset = -1; weekOffset <= 1; weekOffset++) {
-    for (const slot of schedule) {
-      // ISO dayOfWeek: 1=Mon..7=Sun → JS: 0=Sun..6=Sat
+    for (const slot of fullWeek) {
       const jsDow = slot.dayOfWeek === 7 ? 0 : slot.dayOfWeek;
       const currentDow = todayStart.getDay();
       let daysUntil = jsDow - currentDow;
@@ -107,6 +109,90 @@ async function generateFromSchedule(
       });
     }
   }
+}
+
+/**
+ * Build a full 7-day weekly schedule from partial input.
+ * If the user only provided Mon+Tue, replicate those slots across the remaining
+ * weekdays (Wed-Fri) with rotated disciplines. Weekends get fewer slots.
+ */
+function buildFullWeekSchedule(
+  schedule: ExtractedScheduleSlot[],
+  classTypes: TenantStructure["classTypes"],
+): ExtractedScheduleSlot[] {
+  // Group provided slots by day
+  const byDay = new Map<number, ExtractedScheduleSlot[]>();
+  for (const slot of schedule) {
+    const list = byDay.get(slot.dayOfWeek) ?? [];
+    list.push(slot);
+    byDay.set(slot.dayOfWeek, list);
+  }
+
+  const providedDays = [...byDay.keys()].sort();
+  // If we already have 5+ days covered, no need to fill
+  if (providedDays.length >= 5) return schedule;
+
+  // Collect all unique time slots and disciplines from provided data
+  const templateSlots = schedule.map((s) => ({
+    startTime: s.startTime,
+    durationMinutes: s.durationMinutes,
+    disciplineName: s.disciplineName,
+    coachName: s.coachName,
+    confidence: "medium" as const,
+  }));
+
+  // All weekdays (1=Mon..5=Fri) and weekends (6=Sat, 7=Sun)
+  const weekdays = [1, 2, 3, 4, 5];
+  const weekendDays = [6, 7];
+
+  const result: ExtractedScheduleSlot[] = [...schedule];
+
+  // Fill missing weekdays by replicating provided slots with rotated disciplines
+  const missingWeekdays = weekdays.filter((d) => !byDay.has(d));
+  const allDisciplineNames = classTypes.map((ct) => ct.name);
+
+  for (let i = 0; i < missingWeekdays.length; i++) {
+    const day = missingWeekdays[i];
+    // Use the template but rotate disciplines so it's not identical every day
+    for (let j = 0; j < templateSlots.length; j++) {
+      const tmpl = templateSlots[j];
+      const rotatedDiscipline = allDisciplineNames.length > 0
+        ? allDisciplineNames[(j + i) % allDisciplineNames.length]
+        : tmpl.disciplineName;
+      result.push({
+        dayOfWeek: day,
+        startTime: tmpl.startTime,
+        durationMinutes: tmpl.durationMinutes,
+        disciplineName: rotatedDiscipline,
+        coachName: tmpl.coachName,
+        confidence: "medium",
+      });
+    }
+  }
+
+  // Fill missing weekends with fewer slots (take first 60% of template)
+  const missingWeekends = weekendDays.filter((d) => !byDay.has(d));
+  const weekendSlotCount = Math.max(2, Math.ceil(templateSlots.length * 0.6));
+
+  for (let i = 0; i < missingWeekends.length; i++) {
+    const day = missingWeekends[i];
+    for (let j = 0; j < weekendSlotCount && j < templateSlots.length; j++) {
+      const tmpl = templateSlots[j];
+      const rotatedDiscipline = allDisciplineNames.length > 0
+        ? allDisciplineNames[(j + i + 2) % allDisciplineNames.length]
+        : tmpl.disciplineName;
+      result.push({
+        dayOfWeek: day,
+        startTime: tmpl.startTime,
+        durationMinutes: tmpl.durationMinutes,
+        disciplineName: rotatedDiscipline,
+        coachName: tmpl.coachName,
+        confidence: "medium",
+      });
+    }
+  }
+
+  return result;
 }
 
 async function generateStandard(
