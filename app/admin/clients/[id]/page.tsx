@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -21,6 +21,7 @@ import {
   XCircle,
   AlertCircle,
   ChevronRight,
+  ChevronDown,
   Mail,
   Phone,
   Cake,
@@ -45,11 +46,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn, formatDate, formatCurrency, timeAgo } from "@/lib/utils";
+import { cn, formatDate, formatCurrency, timeAgo, getDateLocale } from "@/lib/utils";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { usePosStore } from "@/store/pos-store";
 import { ShoppingBag } from "lucide-react";
+import { useTranslations, useLocale } from "next-intl";
 
 interface ClientDetail {
   id: string;
@@ -157,21 +158,25 @@ interface ClientDetail {
   };
 }
 
-const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  ATTENDED: { label: "Asistió", color: "text-green-600 bg-green-50", icon: CheckCircle2 },
-  CONFIRMED: { label: "Confirmado", color: "text-blue-600 bg-blue-50", icon: CalendarDays },
-  NO_SHOW: { label: "No asistió", color: "text-red-600 bg-red-50", icon: XCircle },
-  CANCELLED: { label: "Cancelado", color: "text-gray-500 bg-gray-50", icon: AlertCircle },
-};
+function useStatusMap(t: ReturnType<typeof useTranslations<"admin.clientProfile">>) {
+  return {
+    ATTENDED: { label: t("attended"), color: "text-green-600 bg-green-50", icon: CheckCircle2 },
+    CONFIRMED: { label: t("confirmed"), color: "text-blue-600 bg-blue-50", icon: CalendarDays },
+    NO_SHOW: { label: t("noShow"), color: "text-red-600 bg-red-50", icon: XCircle },
+    CANCELLED: { label: t("cancelled"), color: "text-gray-500 bg-gray-50", icon: AlertCircle },
+  } as Record<string, { label: string; color: string; icon: typeof CheckCircle2 }>;
+}
 
-const SUB_STATUS_BADGE: Record<string, { label: string; variant: "success" | "warning" | "secondary" | "danger" }> = {
-  active: { label: "Activa", variant: "success" },
-  past_due: { label: "Pago pendiente", variant: "warning" },
-  paused: { label: "Pausada", variant: "secondary" },
-  canceled: { label: "Cancelada", variant: "danger" },
-  trialing: { label: "Prueba", variant: "secondary" },
-  incomplete: { label: "Incompleta", variant: "warning" },
-};
+function useSubStatusBadge(t: ReturnType<typeof useTranslations<"admin.clientProfile">>) {
+  return {
+    active: { label: t("subActive"), variant: "success" },
+    past_due: { label: t("subPastDue"), variant: "warning" },
+    paused: { label: t("subPaused"), variant: "secondary" },
+    canceled: { label: t("subCanceled"), variant: "danger" },
+    trialing: { label: t("subTrialing"), variant: "secondary" },
+    incomplete: { label: t("subIncomplete"), variant: "warning" },
+  } as Record<string, { label: string; variant: "success" | "warning" | "secondary" | "danger" }>;
+}
 
 function StatCard({
   label,
@@ -201,7 +206,7 @@ function StatCard({
   );
 }
 
-function NewSaleButton({ client }: { client: ClientDetail }) {
+function NewSaleButton({ client, label }: { client: ClientDetail; label: string }) {
   const { openPOS } = usePosStore();
   return (
     <Button
@@ -219,7 +224,7 @@ function NewSaleButton({ client }: { client: ClientDetail }) {
       className="gap-1.5"
     >
       <ShoppingBag className="h-3.5 w-3.5" />
-      Nueva venta
+      {label}
     </Button>
   );
 }
@@ -234,7 +239,7 @@ interface GiftPkg {
   type: string;
 }
 
-function GiftPackageButton({ clientId, clientName }: { clientId: string; clientName: string }) {
+function GiftPackageButton({ clientId, clientName, t, tc }: { clientId: string; clientName: string; t: ReturnType<typeof useTranslations<"admin.clientProfile">>; tc: ReturnType<typeof useTranslations<"common">> }) {
   const [open, setOpen] = useState(false);
   const [selectedPkg, setSelectedPkg] = useState<string>("");
   const [reason, setReason] = useState("");
@@ -271,7 +276,7 @@ function GiftPackageButton({ clientId, clientName }: { clientId: string; clientN
       return res.json();
     },
     onSuccess: (data) => {
-      toast.success(`Paquete "${data.packageName}" regalado a ${clientName}`);
+      toast.success(t("giftSuccess", { packageName: data.packageName, clientName }));
       queryClient.invalidateQueries({ queryKey: ["admin-client", clientId] });
       setOpen(false);
       setSelectedPkg("");
@@ -292,7 +297,7 @@ function GiftPackageButton({ clientId, clientName }: { clientId: string; clientN
         className="gap-1.5"
       >
         <Gift className="h-3.5 w-3.5" />
-        Regalar paquete
+        {t("giftPackage")}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -300,22 +305,22 @@ function GiftPackageButton({ clientId, clientName }: { clientId: string; clientN
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Gift className="h-5 w-5 text-primary" />
-              Regalar paquete a {clientName}
+              {t("giftPackageTo", { name: clientName })}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 pt-2">
             <div>
-              <label className="mb-1 block text-sm font-medium">Paquete</label>
+              <label className="mb-1 block text-sm font-medium">{t("package")}</label>
               <select
                 value={selectedPkg}
                 onChange={(e) => setSelectedPkg(e.target.value)}
                 className="h-9 w-full rounded-md border bg-background px-2 text-sm"
               >
-                <option value="">Seleccionar paquete...</option>
+                <option value="">{t("selectPackage")}</option>
                 {packages?.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} — {p.credits === null ? "Ilimitado" : `${p.credits} clases`} ({p.validDays} dias)
+                    {p.name} — {p.credits === null ? t("unlimited") : `${p.credits} ${t("classes")}`} ({p.validDays} {t("days")})
                   </option>
                 ))}
               </select>
@@ -323,38 +328,38 @@ function GiftPackageButton({ clientId, clientName }: { clientId: string; clientN
 
             <div>
               <label className="mb-1 block text-sm font-medium">
-                Razon del regalo
+                {t("giftReason")}
               </label>
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 className="h-9 w-full rounded-md border bg-background px-2 text-sm"
               >
-                <option value="">Seleccionar razon...</option>
-                <option value="cortesia">Cortesia</option>
-                <option value="compensacion">Compensacion por inconveniente</option>
-                <option value="promocion">Promocion especial</option>
-                <option value="fidelidad">Programa de fidelidad</option>
-                <option value="cumpleanos">Cumpleanos</option>
-                <option value="referido">Referido</option>
-                <option value="otro">Otro</option>
+                <option value="">{t("selectReason")}</option>
+                <option value="cortesia">{t("reasonCourtesy")}</option>
+                <option value="compensacion">{t("reasonCompensation")}</option>
+                <option value="promocion">{t("reasonPromotion")}</option>
+                <option value="fidelidad">{t("reasonLoyalty")}</option>
+                <option value="cumpleanos">{t("reasonBirthday")}</option>
+                <option value="referido">{t("reasonReferral")}</option>
+                <option value="otro">{t("reasonOther")}</option>
               </select>
             </div>
 
             <div>
               <label className="mb-1 block text-sm font-medium">
-                Notas internas (opcional)
+                {t("internalNotes")}
               </label>
               <Input
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Detalle adicional para el equipo..."
+                placeholder={t("internalNotesPlaceholder")}
               />
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
+                {tc("cancel")}
               </Button>
               <Button
                 onClick={() => giftMutation.mutate()}
@@ -364,7 +369,7 @@ function GiftPackageButton({ clientId, clientName }: { clientId: string; clientN
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 <Gift className="mr-2 h-4 w-4" />
-                Regalar
+                {t("gift")}
               </Button>
             </div>
           </div>
@@ -377,6 +382,18 @@ function GiftPackageButton({ clientId, clientName }: { clientId: string; clientN
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const t = useTranslations("admin.clientProfile");
+  const ta = useTranslations("admin");
+  const tc = useTranslations("common");
+  const locale = useLocale();
+  const dateLocale = getDateLocale(locale);
+  const STATUS_MAP = useStatusMap(t);
+  const SUB_STATUS_BADGE = useSubStatusBadge(t);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ behavior: "instant" });
+  }, [id]);
 
   const { data: client, isLoading, error } = useQuery<ClientDetail>({
     queryKey: ["admin-client", id],
@@ -400,9 +417,9 @@ export default function ClientDetailPage() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-client", id] });
-      toast.success(variables.status === "ATTENDED" ? "Marcado como asistió" : "Marcado como no asistió");
+      toast.success(variables.status === "ATTENDED" ? t("markedAttended") : t("markedNoShow"));
     },
-    onError: () => toast.error("Error al actualizar asistencia"),
+    onError: () => toast.error(t("attendanceError")),
   });
 
   const subActionMutation = useMutation({
@@ -424,10 +441,10 @@ export default function ClientDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-client", id] });
-      toast.success("Suscripción actualizada");
+      toast.success(t("subscriptionUpdated"));
       setPauseSubDialog(null);
     },
-    onError: () => toast.error("Error al actualizar suscripción"),
+    onError: () => toast.error(t("subscriptionError")),
   });
 
   const grantPrizeMutation = useMutation({
@@ -449,11 +466,11 @@ export default function ClientDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-client", id] });
-      toast.success("Premio otorgado correctamente");
+      toast.success(t("prizeGranted"));
       setPrizeDialog(null);
       setPrizeText("");
     },
-    onError: (err: Error) => toast.error(err.message || "Error al otorgar premio"),
+    onError: (err: Error) => toast.error(err.message || t("prizeError")),
   });
 
   const [prizeDialog, setPrizeDialog] = useState<ClientDetail["achievements"][number] | null>(null);
@@ -464,6 +481,7 @@ export default function ClientDetailPage() {
   const [showExpiredPkgs, setShowExpiredPkgs] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [showAllPayments, setShowAllPayments] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
 
   if (isLoading) {
     return (
@@ -492,9 +510,9 @@ export default function ClientDetailPage() {
   if (error || !client) {
     return (
       <div className="mx-auto max-w-5xl py-12 text-center">
-        <p className="text-muted">Cliente no encontrado</p>
+        <p className="text-muted">{t("clientNotFound")}</p>
         <Link href="/admin/clients">
-          <Button variant="ghost" className="mt-4">Volver a clientes</Button>
+          <Button variant="ghost" className="mt-4">{t("backToClientsList")}</Button>
         </Link>
       </div>
     );
@@ -513,7 +531,7 @@ export default function ClientDetailPage() {
   const activePackage = client.packages.find((p) => p.isActive);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-12">
+    <div ref={topRef} className="mx-auto max-w-5xl space-y-6 pb-12">
       {/* Back + breadcrumb */}
       <motion.div
         initial={{ opacity: 0, x: -8 }}
@@ -526,14 +544,14 @@ export default function ClientDetailPage() {
             className="flex items-center gap-1.5 text-muted transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-            Clientes
+            {t("backToClients")}
           </Link>
           <ChevronRight className="h-3 w-3 text-muted/50" />
           <span className="font-medium text-foreground">{displayName}</span>
         </div>
         <div className="flex items-center gap-2">
-          <GiftPackageButton clientId={client.id} clientName={displayName} />
-          <NewSaleButton client={client} />
+          <GiftPackageButton clientId={client.id} clientName={displayName} t={t} tc={tc} />
+          <NewSaleButton client={client} label={t("newSale")} />
         </div>
       </motion.div>
 
@@ -586,21 +604,21 @@ export default function ClientDetailPage() {
                   <div className="flex items-center gap-3 text-sm">
                     <Cake className="h-4 w-4 shrink-0 text-muted" />
                     <span className="text-foreground">
-                      {format(new Date(client.birthday), "d 'de' MMMM, yyyy", { locale: es })}
+                      {formatDate(client.birthday, locale)}
                     </span>
                   </div>
                 )}
                 <div className="flex items-center gap-3 text-sm">
                   <Clock className="h-4 w-4 shrink-0 text-muted" />
                   <span className="text-muted">
-                    Miembro desde {format(new Date(client.memberSince), "MMM yyyy", { locale: es })}
+                    {t("memberSince", { date: format(new Date(client.memberSince), "MMM yyyy", { locale: dateLocale }) })}
                   </span>
                 </div>
                 {client.lastSeenAt && (
                   <div className="flex items-center gap-3 text-sm">
                     <Eye className="h-4 w-4 shrink-0 text-muted" />
                     <span className="text-muted">
-                      Activo {timeAgo(client.lastSeenAt)}
+                      {t("activeSince", { timeAgo: timeAgo(client.lastSeenAt, locale) })}
                     </span>
                   </div>
                 )}
@@ -620,9 +638,9 @@ export default function ClientDetailPage() {
               {client.pwaInstalledAt && (
                 <>
                   <Separator className="my-4" />
-                  <div className="flex items-center gap-2 text-xs text-muted">
+                  <div className="flex items-center gap-2 text-xs text-muted" title={timeAgo(client.pwaInstalledAt, locale)}>
                     <Smartphone className="h-3.5 w-3.5" />
-                    App instalada {timeAgo(client.pwaInstalledAt)}
+                    {t("appInstalledDate", { date: format(new Date(client.pwaInstalledAt), "d MMM yyyy", { locale: dateLocale }) })}
                   </div>
                 </>
               )}
@@ -641,10 +659,10 @@ export default function ClientDetailPage() {
                     </p>
                     {client.nextLevel ? (
                       <p className="text-[11px] text-muted">
-                        {client.classesToNext} clases para {client.nextLevel.name}
+                        {t("classesToNext", { count: client.classesToNext, level: client.nextLevel.name })}
                       </p>
                     ) : (
-                      <p className="text-[11px] text-muted">Nivel máximo</p>
+                      <p className="text-[11px] text-muted">{t("maxLevel")}</p>
                     )}
                   </div>
                 </div>
@@ -672,52 +690,61 @@ export default function ClientDetailPage() {
             </Card>
           )}
 
-          {/* Achievements — click earned ones to grant a manual prize */}
+          {/* Achievements — collapsible, click earned ones to grant a manual prize */}
           {client.achievements.length > 0 && (
             <Card>
               <CardContent className="p-5">
-                <div className="mb-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowAchievements(!showAchievements)}
+                  className="flex w-full items-center justify-between"
+                >
                   <div className="flex items-center gap-2">
                     <Trophy className="h-4 w-4 text-amber-500" />
-                    <span className="text-sm font-semibold">Logros</span>
+                    <span className="text-sm font-semibold">{t("achievements")}</span>
+                    <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
+                      {earnedAchievements.length}/{client.achievements.length}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
-                    {earnedAchievements.length}/{client.achievements.length}
-                  </span>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {earnedAchievements.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => setPrizeDialog(a)}
-                      className="group flex flex-col items-center gap-0.5 rounded-lg bg-surface px-1 py-2 text-center transition-colors hover:bg-amber-50"
-                      title={`${a.name} — Clic para otorgar premio`}
-                    >
-                      <span className="text-lg">{a.icon}</span>
-                      <span className="text-[8px] font-semibold leading-tight text-foreground">
-                        {a.name}
-                      </span>
-                      <Gift className="h-3 w-3 text-amber-500 opacity-0 transition-opacity group-hover:opacity-100" />
-                    </button>
-                  ))}
-                  {lockedAchievements.map((a) => (
-                    <div
-                      key={a.id}
-                      className="flex flex-col items-center gap-0.5 rounded-lg bg-surface/40 px-1 py-2 text-center opacity-30 grayscale"
-                      title={a.description || a.name}
-                    >
-                      <span className="text-lg">{a.icon}</span>
-                      <span className="text-[8px] font-semibold leading-tight text-foreground">
-                        {a.name}
-                      </span>
+                  <ChevronDown className={cn("h-4 w-4 text-muted transition-transform", showAchievements && "rotate-180")} />
+                </button>
+                {showAchievements && (
+                  <div className="mt-3">
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {earnedAchievements.map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setPrizeDialog(a)}
+                          className="group flex flex-col items-center gap-0.5 rounded-lg bg-surface px-1 py-2 text-center transition-colors hover:bg-amber-50"
+                          title={`${a.name} — ${t("clickToGrant")}`}
+                        >
+                          <span className="text-lg">{a.icon}</span>
+                          <span className="text-[8px] font-semibold leading-tight text-foreground">
+                            {a.name}
+                          </span>
+                          <Gift className="h-3 w-3 text-amber-500 opacity-0 transition-opacity group-hover:opacity-100" />
+                        </button>
+                      ))}
+                      {lockedAchievements.map((a) => (
+                        <div
+                          key={a.id}
+                          className="flex flex-col items-center gap-0.5 rounded-lg bg-surface/40 px-1 py-2 text-center opacity-30 grayscale"
+                          title={a.description || a.name}
+                        >
+                          <span className="text-lg">{a.icon}</span>
+                          <span className="text-[8px] font-semibold leading-tight text-foreground">
+                            {a.name}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                {earnedAchievements.length > 0 && (
-                  <p className="mt-2 text-center text-[10px] text-muted">
-                    Toca un logro desbloqueado para otorgar un premio manual
-                  </p>
+                    {earnedAchievements.length > 0 && (
+                      <p className="mt-2 text-center text-[10px] text-muted">
+                        {t("tapToGrant")}
+                      </p>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -733,15 +760,15 @@ export default function ClientDetailPage() {
         >
           {/* KPI cards */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard label="Total clases" value={client.stats.totalClasses} icon={CalendarDays} />
-            <StatCard label="Este mes" value={client.stats.classesThisMonth} icon={TrendingUp} />
-            <StatCard label="Racha actual" value={client.stats.currentStreak} icon={Flame} />
+            <StatCard label={t("totalClasses")} value={client.stats.totalClasses} icon={CalendarDays} />
+            <StatCard label={t("thisMonth")} value={client.stats.classesThisMonth} icon={TrendingUp} />
+            <StatCard label={t("currentStreak")} value={client.stats.currentStreak} icon={Flame} />
             <StatCard
-              label="Última visita"
+              label={t("lastVisit")}
               value={
                 client.stats.daysSinceLastVisit !== null
                   ? client.stats.daysSinceLastVisit === 0
-                    ? "Hoy"
+                    ? t("today")
                     : `${client.stats.daysSinceLastVisit}d`
                   : "—"
               }
@@ -755,14 +782,14 @@ export default function ClientDetailPage() {
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-admin" />
-                  <span className="text-sm font-semibold">Paquetes activos</span>
+                  <span className="text-sm font-semibold">{t("activePackages")}</span>
                 </div>
                 {client.packages.some((p) => !p.isActive) && (
                   <button
                     onClick={() => setShowExpiredPkgs(!showExpiredPkgs)}
                     className="text-xs font-medium text-admin hover:underline"
                   >
-                    {showExpiredPkgs ? "Ocultar anteriores" : "Ver anteriores"}
+                    {showExpiredPkgs ? t("hideExpired") : t("showExpired")}
                   </button>
                 )}
               </div>
@@ -783,21 +810,21 @@ export default function ClientDetailPage() {
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-semibold">{pkg.name}</p>
                             {pkg.isActive && (
-                              <Badge className="bg-green-100 text-[10px] text-green-700">Activo</Badge>
+                              <Badge className="bg-green-100 text-[10px] text-green-700">{tc("active")}</Badge>
                             )}
                             {!pkg.isActive && (
-                              <Badge variant="secondary" className="text-[10px]">Expirado</Badge>
+                              <Badge variant="secondary" className="text-[10px]">{t("expired")}</Badge>
                             )}
                           </div>
                           <p className="mt-0.5 text-xs text-muted">
-                            {pkg.isActive ? "Expira" : "Expiró"} {formatDate(pkg.expiresAt)}
+                            {pkg.isActive ? t("expires") : t("expired")} {formatDate(pkg.expiresAt, locale)}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="font-mono text-lg font-bold">
                             {pkg.creditsRemaining === -1 ? "∞" : pkg.creditsRemaining}
                           </p>
-                          <p className="text-[10px] text-muted">créditos</p>
+                          <p className="text-[10px] text-muted">{t("credits")}</p>
                         </div>
                       </div>
                       {pkg.isActive && pkg.creditsRemaining !== -1 && (
@@ -816,7 +843,7 @@ export default function ClientDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted/60">Sin paquetes</p>
+                <p className="text-sm text-muted/60">{t("noPackages")}</p>
               )}
             </CardContent>
           </Card>
@@ -827,12 +854,12 @@ export default function ClientDetailPage() {
               <CardContent className="p-5">
                 <div className="mb-3 flex items-center gap-2">
                   <CalendarSync className="h-4 w-4 text-admin" />
-                  <span className="text-sm font-semibold">Suscripciones</span>
+                  <span className="text-sm font-semibold">{t("subscriptions")}</span>
                 </div>
                 <div className="space-y-2.5">
                   {client.subscriptions.map((sub) => {
                     const badge = SUB_STATUS_BADGE[sub.status] ?? { label: sub.status, variant: "secondary" as const };
-                    const periodEnd = new Date(sub.currentPeriodEnd).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+                    const periodEnd = format(new Date(sub.currentPeriodEnd), "d MMM yyyy", { locale: dateLocale });
 
                     return (
                       <div
@@ -850,16 +877,16 @@ export default function ClientDetailPage() {
                               <p className="text-sm font-semibold">{sub.package.name}</p>
                               <Badge variant={badge.variant} className="text-[10px]">{badge.label}</Badge>
                               {sub.cancelAtPeriodEnd && sub.status !== "canceled" && (
-                                <Badge variant="warning" className="text-[10px]">Cancela {periodEnd}</Badge>
+                                <Badge variant="warning" className="text-[10px]">{t("cancelsOn", { date: periodEnd })}</Badge>
                               )}
                             </div>
                             <p className="mt-0.5 text-xs text-muted">
-                              {formatCurrency(sub.package.price, sub.package.currency)}/{sub.package.recurringInterval === "year" ? "año" : "mes"}
-                              {" · "}Próx. cobro: {periodEnd}
+                              {formatCurrency(sub.package.price, sub.package.currency, locale)}/{sub.package.recurringInterval === "year" ? ta("yearInterval") : ta("monthInterval")}
+                              {" · "}{t("nextCharge")}: {periodEnd}
                             </p>
                             {sub.status === "paused" && sub.resumesAt && (
                               <p className="mt-0.5 text-[11px] text-amber-600">
-                                Reanuda {new Date(sub.resumesAt).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                                {t("resumesOn", { date: format(new Date(sub.resumesAt), "d MMM", { locale: dateLocale }) })}
                               </p>
                             )}
                           </div>
@@ -872,7 +899,7 @@ export default function ClientDetailPage() {
                                   className="h-7 w-7"
                                   disabled={subActionMutation.isPending}
                                   onClick={() => subActionMutation.mutate({ subscriptionId: sub.stripeSubscriptionId, action: "resume" })}
-                                  title="Reanudar"
+                                  title={t("resume")}
                                 >
                                   <Play className="h-3.5 w-3.5" />
                                 </Button>
@@ -883,7 +910,7 @@ export default function ClientDetailPage() {
                                   className="h-7 w-7"
                                   disabled={subActionMutation.isPending}
                                   onClick={() => setPauseSubDialog(sub)}
-                                  title="Pausar"
+                                  title={t("pause")}
                                 >
                                   <Pause className="h-3.5 w-3.5" />
                                 </Button>
@@ -895,7 +922,7 @@ export default function ClientDetailPage() {
                                   className="h-7 w-7 text-destructive hover:text-destructive"
                                   disabled={subActionMutation.isPending}
                                   onClick={() => subActionMutation.mutate({ subscriptionId: sub.stripeSubscriptionId, action: "cancel" })}
-                                  title="Cancelar"
+                                  title={t("cancelSub")}
                                 >
                                   <XCircle className="h-3.5 w-3.5" />
                                 </Button>
@@ -916,7 +943,7 @@ export default function ClientDetailPage() {
             <CardContent className="p-5">
               <div className="mb-3 flex items-center gap-2">
                 <CalendarDays className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-semibold">Próximas clases</span>
+                <span className="text-sm font-semibold">{t("upcomingClasses")}</span>
                 {client.upcomingBookings.length > 0 && (
                   <Badge variant="secondary" className="text-[10px]">
                     {client.upcomingBookings.length}
@@ -944,7 +971,7 @@ export default function ClientDetailPage() {
                       </div>
                       <div className="shrink-0 text-right">
                         <p className="text-sm font-medium">
-                          {format(new Date(b.startsAt), "d MMM", { locale: es })}
+                          {format(new Date(b.startsAt), "d MMM", { locale: dateLocale })}
                         </p>
                         <p className="text-xs text-muted">
                           {format(new Date(b.startsAt), "h:mm a")}
@@ -955,7 +982,7 @@ export default function ClientDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted/60">Sin reservas próximas</p>
+                <p className="text-sm text-muted/60">{t("noUpcomingBookings")}</p>
               )}
             </CardContent>
           </Card>
@@ -966,28 +993,28 @@ export default function ClientDetailPage() {
               <CardContent className="p-5">
                 <div className="mb-3 flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-emerald-600" />
-                  <span className="text-sm font-semibold">Resumen de ingresos</span>
+                  <span className="text-sm font-semibold">{t("revenueSummary")}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="rounded-lg border border-border/40 bg-surface/30 p-3 text-center">
                     <p className="font-mono text-lg font-bold text-emerald-700">
                       {formatCurrency(client.revenueSummary.totalHistoric)}
                     </p>
-                    <p className="text-[10px] text-muted">Total histórico</p>
-                    <p className="text-[10px] text-muted">{client.revenueSummary.transactionsCount} pagos</p>
+                    <p className="text-[10px] text-muted">{t("totalHistoric")}</p>
+                    <p className="text-[10px] text-muted">{client.revenueSummary.transactionsCount} {t("payments")}</p>
                   </div>
                   <div className="rounded-lg border border-border/40 bg-surface/30 p-3 text-center">
                     <p className="font-mono text-lg font-bold">
                       {formatCurrency(client.revenueSummary.totalThisYear)}
                     </p>
-                    <p className="text-[10px] text-muted">Este año</p>
-                    <p className="text-[10px] text-muted">{client.revenueSummary.transactionsThisYear} pagos</p>
+                    <p className="text-[10px] text-muted">{t("thisYear")}</p>
+                    <p className="text-[10px] text-muted">{client.revenueSummary.transactionsThisYear} {t("payments")}</p>
                   </div>
                   <div className="rounded-lg border border-border/40 bg-surface/30 p-3 text-center">
                     <p className="font-mono text-lg font-bold">
                       {formatCurrency(client.revenueSummary.totalThisMonth)}
                     </p>
-                    <p className="text-[10px] text-muted">Este mes</p>
+                    <p className="text-[10px] text-muted">{t("thisMonth")}</p>
                   </div>
                 </div>
                 {client.revenueSummary.byType.length > 0 && (
@@ -1011,7 +1038,7 @@ export default function ClientDetailPage() {
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Receipt className="h-4 w-4 text-admin" />
-                    <span className="text-sm font-semibold">Historial de pagos</span>
+                    <span className="text-sm font-semibold">{t("paymentHistory")}</span>
                     <Badge variant="secondary" className="text-[10px]">
                       {client.paymentHistory.length}
                     </Badge>
@@ -1021,7 +1048,7 @@ export default function ClientDetailPage() {
                       onClick={() => setShowAllPayments(!showAllPayments)}
                       className="text-xs font-medium text-admin hover:underline"
                     >
-                      {showAllPayments ? "Ver recientes" : `Ver todo (${client.paymentHistory.length})`}
+                      {showAllPayments ? t("showRecent") : t("showAll", { count: client.paymentHistory.length })}
                     </button>
                   )}
                 </div>
@@ -1029,11 +1056,11 @@ export default function ClientDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border/50 bg-surface/50">
-                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted">Concepto</th>
-                        <th className="hidden px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted sm:table-cell">Método</th>
-                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted">Monto</th>
-                        <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted">Estado</th>
-                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted">Fecha</th>
+                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted">{t("concept")}</th>
+                        <th className="hidden px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted sm:table-cell">{t("method")}</th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted">{t("amount")}</th>
+                        <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted">{t("status")}</th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted">{t("date")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1070,17 +1097,17 @@ export default function ClientDetailPage() {
                           </td>
                           <td className="px-4 py-2.5 text-center">
                             {p.status === "succeeded" ? (
-                              <span className="text-[10px] font-medium text-emerald-700">✓ Cobrado</span>
+                              <span className="text-[10px] font-medium text-emerald-700">✓ {t("paid")}</span>
                             ) : p.status === "failed" ? (
-                              <span className="text-[10px] font-medium text-red-700">✗ Fallido</span>
+                              <span className="text-[10px] font-medium text-red-700">✗ {t("failed")}</span>
                             ) : p.status === "refunded" ? (
-                              <span className="text-[10px] font-medium text-stone-500">↩ Reembolsado</span>
+                              <span className="text-[10px] font-medium text-stone-500">↩ {t("refunded")}</span>
                             ) : (
-                              <span className="text-[10px] font-medium text-amber-700">● Pendiente</span>
+                              <span className="text-[10px] font-medium text-amber-700">● {t("pending")}</span>
                             )}
                           </td>
                           <td className="px-4 py-2.5 text-right text-muted">
-                            {format(new Date(p.createdAt), "d MMM yyyy", { locale: es })}
+                            {format(new Date(p.createdAt), "d MMM yyyy", { locale: dateLocale })}
                           </td>
                         </tr>
                       ))}
@@ -1097,14 +1124,14 @@ export default function ClientDetailPage() {
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Star className="h-4 w-4 text-muted" />
-                  <span className="text-sm font-semibold">Historial de actividad</span>
+                  <span className="text-sm font-semibold">{t("activityHistory")}</span>
                 </div>
                 {client.pastBookings.length > 10 && (
                   <button
                     onClick={() => setShowAllHistory(!showAllHistory)}
                     className="text-xs font-medium text-admin hover:underline"
                   >
-                    {showAllHistory ? "Ver recientes" : `Ver todo (${client.pastBookings.length})`}
+                    {showAllHistory ? t("showRecent") : t("showAll", { count: client.pastBookings.length })}
                   </button>
                 )}
               </div>
@@ -1114,16 +1141,16 @@ export default function ClientDetailPage() {
                     <thead>
                       <tr className="border-b border-border/50 bg-surface/50">
                         <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Clase
+                          {t("class")}
                         </th>
                         <th className="hidden px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted sm:table-cell">
-                          Coach
+                          {t("coach")}
                         </th>
                         <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Fecha
+                          {t("date")}
                         </th>
                         <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Asistencia
+                          {t("attendance")}
                         </th>
                       </tr>
                     </thead>
@@ -1156,7 +1183,7 @@ export default function ClientDetailPage() {
                               {b.coachName || "—"}
                             </td>
                             <td className="px-4 py-2.5 text-muted">
-                              {format(new Date(b.startsAt), "d MMM yyyy", { locale: es })}
+                              {format(new Date(b.startsAt), "d MMM yyyy", { locale: dateLocale })}
                             </td>
                             <td className="px-4 py-2.5">
                               <div className="flex items-center justify-end gap-1">
@@ -1171,10 +1198,10 @@ export default function ClientDetailPage() {
                                           ? "bg-green-100 text-green-700"
                                           : "bg-surface text-muted hover:bg-green-50 hover:text-green-600",
                                       )}
-                                      title="Marcar asistencia"
+                                      title={t("markAttended")}
                                     >
                                       <CheckCircle2 className="h-3 w-3" />
-                                      Sí
+                                      {tc("yes")}
                                     </button>
                                     <button
                                       onClick={() => attendanceMutation.mutate({ bookingId: b.id, status: "NO_SHOW" })}
@@ -1185,10 +1212,10 @@ export default function ClientDetailPage() {
                                           ? "bg-red-50 text-red-600"
                                           : "bg-surface text-muted hover:bg-red-50 hover:text-red-500",
                                       )}
-                                      title="Marcar como no asistió"
+                                      title={t("markNoShow")}
                                     >
                                       <XCircle className="h-3 w-3" />
-                                      No
+                                      {tc("no")}
                                     </button>
                                   </>
                                 ) : (
@@ -1206,7 +1233,7 @@ export default function ClientDetailPage() {
                   </table>
                 </div>
               ) : (
-                <p className="text-sm text-muted/60">Sin historial de actividad</p>
+                <p className="text-sm text-muted/60">{t("noActivityHistory")}</p>
               )}
             </CardContent>
           </Card>
@@ -1217,18 +1244,18 @@ export default function ClientDetailPage() {
       <Dialog open={!!pauseSubDialog} onOpenChange={(o) => !o && setPauseSubDialog(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Pausar suscripción</DialogTitle>
+            <DialogTitle>{t("pauseSubscription")}</DialogTitle>
           </DialogHeader>
           {pauseSubDialog && (
             <div className="space-y-4">
               <p className="text-sm text-muted">{pauseSubDialog.package.name}</p>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted">Días de pausa</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted">{t("pauseDays")}</label>
                 <Input type="number" min={1} max={90} value={pauseDays} onChange={(e) => setPauseDays(e.target.value)} />
-                <p className="mt-1 text-[11px] text-muted">Se reanudará automáticamente después</p>
+                <p className="mt-1 text-[11px] text-muted">{t("autoResume")}</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setPauseSubDialog(null)}>Cancelar</Button>
+                <Button variant="outline" className="flex-1" onClick={() => setPauseSubDialog(null)}>{tc("cancel")}</Button>
                 <Button
                   className="flex-1"
                   disabled={subActionMutation.isPending}
@@ -1239,7 +1266,7 @@ export default function ClientDetailPage() {
                   }}
                 >
                   {subActionMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pause className="mr-2 h-4 w-4" />}
-                  Pausar
+                  {t("pause")}
                 </Button>
               </div>
             </div>
@@ -1253,7 +1280,7 @@ export default function ClientDetailPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Gift className="h-5 w-5 text-amber-500" />
-              Otorgar premio
+              {t("grantPrize")}
             </DialogTitle>
           </DialogHeader>
           {prizeDialog && (
@@ -1267,20 +1294,20 @@ export default function ClientDetailPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-muted">
-                  ¿Qué premio le quieres dar?
+                  {t("prizeLabel")}
                 </label>
                 <Input
                   value={prizeText}
                   onChange={(e) => setPrizeText(e.target.value)}
-                  placeholder="Ej: Neceser de la marca, clase gratis, 20% descuento…"
+                  placeholder={t("prizePlaceholder")}
                 />
                 <p className="mt-1 text-[11px] text-muted">
-                  Este texto se mostrará al cliente como premio asociado a este logro.
+                  {t("prizeHelp")}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => { setPrizeDialog(null); setPrizeText(""); }}>
-                  Cancelar
+                  {tc("cancel")}
                 </Button>
                 <Button
                   className="flex-1 bg-amber-500 hover:bg-amber-600"
@@ -1297,7 +1324,7 @@ export default function ClientDetailPage() {
                   ) : (
                     <Gift className="mr-2 h-4 w-4" />
                   )}
-                  Otorgar
+                  {t("grant")}
                 </Button>
               </div>
             </div>
