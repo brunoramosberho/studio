@@ -1,7 +1,7 @@
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { cache } from "react";
 import { prisma } from "./db";
-import { auth, adminAuth } from "./auth";
+import { auth, adminAuth, SUPER_SESSION_COOKIE } from "./auth";
 import type { Session } from "next-auth";
 import type { Tenant, Membership, Role } from "@prisma/client";
 
@@ -166,15 +166,19 @@ export async function requireRole(...roles: Role[]): Promise<AuthContext> {
 }
 
 export async function requireSuperAdmin() {
-  const session = await resolveSession();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SUPER_SESSION_COOKIE)?.value;
+  if (!token) throw new Error("Unauthorized");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { isSuperAdmin: true },
+  const dbSession = await prisma.session.findUnique({
+    where: { sessionToken: token },
+    include: { user: { select: { id: true, email: true, isSuperAdmin: true } } },
   });
 
-  if (!user?.isSuperAdmin) throw new Error("Forbidden");
+  if (!dbSession || dbSession.expires < new Date()) throw new Error("Unauthorized");
+  if (!dbSession.user.isSuperAdmin) throw new Error("Forbidden");
 
-  return session;
+  return {
+    user: { id: dbSession.user.id, email: dbSession.user.email },
+  } as Session;
 }
