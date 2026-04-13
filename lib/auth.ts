@@ -244,3 +244,4 @@ export const {
 // Cookie name constants for client-side / middleware use
 export const CLIENT_SESSION_COOKIE = makeCookies().sessionToken.name;
 export const ADMIN_SESSION_COOKIE = makeCookies("admin").sessionToken.name;
+export const SUPER_SESSION_COOKIE = makeCookies("super").sessionToken.name;

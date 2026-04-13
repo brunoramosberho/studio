@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
+import { SUPER_SESSION_COOKIE } from "@/lib/auth";
 import Link from "next/link";
 import { LayoutDashboard, Building2, Shield, Sparkles } from "lucide-react";
 
@@ -10,20 +11,29 @@ const navItems = [
   { href: "/spark-requests", label: "Spark Requests", icon: Sparkles },
 ];
 
+async function getSuperAdminSession() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SUPER_SESSION_COOKIE)?.value;
+  if (!token) return null;
+
+  const session = await prisma.session.findUnique({
+    where: { sessionToken: token },
+    include: { user: { select: { id: true, email: true, isSuperAdmin: true } } },
+  });
+
+  if (!session || session.expires < new Date()) return null;
+  if (!session.user.isSuperAdmin) return null;
+
+  return session;
+}
+
 export default async function SuperAdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { isSuperAdmin: true },
-  });
-
-  if (!user?.isSuperAdmin) redirect("/login");
+  const session = await getSuperAdminSession();
+  if (!session) redirect("/login");
 
   return (
     <div className="flex min-h-dvh bg-white">

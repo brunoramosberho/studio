@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
     const rootHostname = ROOT_DOMAIN.split(":")[0];
     const isSecure = request.url.startsWith("https://");
     const cookieName = isSecure
-      ? "__Secure-authjs.session-token"
-      : "authjs.session-token";
+      ? "__Secure-authjs.session-token.super"
+      : "authjs.session-token.super";
 
     const response = NextResponse.json({ success: true });
 
