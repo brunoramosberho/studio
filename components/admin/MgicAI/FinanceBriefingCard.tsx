@@ -6,7 +6,6 @@ import { X, Sparkles, ArrowRight, TrendingUp, TrendingDown, Telescope } from "lu
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { useBranding } from "@/components/branding-provider";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useMgicAI } from "./index";
 import { formatCurrency } from "@/lib/utils";
 import type { StreamEvent } from "@/lib/ai/types";
@@ -434,11 +433,9 @@ export function FinanceBriefingCard({ range }: { range: string }) {
       year: "este año",
     };
     const label = rangeLabel[range] ?? range;
-    open();
-    // Let the panel mount before dispatching the message.
-    setTimeout(() => {
-      sendMessage(
-        `Hazme un análisis profundo de la situación financiera y operativa de ${studioName} (${label}) como CFO del studio.
+
+    // Full prompt sent to the model (includes tone/name directives).
+    const fullPrompt = `Hazme un análisis profundo de la situación financiera y operativa de ${studioName} (${label}) como CFO del studio.
 
 Usa las herramientas que tengas para cruzar datos reales:
 1. Rentabilidad por tipo de clase — fill rate, capacidad desperdiciada y cómo se relaciona con el tipo de pago del coach (MONTHLY_FIXED = coste fijo, PER_CLASS = coste por clase aunque haya pocos alumnos).
@@ -448,8 +445,15 @@ Usa las herramientas que tengas para cruzar datos reales:
 5. Retención por cohorte de los últimos meses.
 6. Composición de ingresos (suscripciones vs paquetes vs productos) y qué señales de salud/riesgo muestra.
 
-Al final dame 3 recomendaciones priorizadas: qué hacer YA, qué observar esta semana, qué investigar a fondo. Tono directo, como un CFO con skin in the game. Háblame por mi nombre (${firstName}).`,
-      );
+Al final dame 3 recomendaciones priorizadas: qué hacer YA, qué observar esta semana, qué investigar a fondo. Tono directo, como un CFO con skin in the game. Háblame por mi nombre (${firstName}).`;
+
+    // Cleaner text shown in the chat bubble — the user doesn't need to see the meta directives.
+    const displayPrompt = `Profundiza en la situación financiera y operativa de ${studioName} (${label}).`;
+
+    open();
+    // Let the panel mount before dispatching the message.
+    setTimeout(() => {
+      sendMessage(fullPrompt, displayPrompt);
     }, 50);
   };
 
@@ -508,19 +512,31 @@ Al final dame 3 recomendaciones priorizadas: qué hacer YA, qué observar esta s
             {/* Content */}
             <div>
               {loading && !content ? (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-muted/30" />
-                    <Skeleton className="h-4 w-4/5" />
+                    <Sparkles className="h-3.5 w-3.5 animate-pulse" style={{ color: colorAdmin }} />
+                    <div className="shimmer-line h-3 w-[85%] rounded-full" />
                   </div>
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-muted/30" />
-                    <Skeleton className="h-4 w-3/5" />
+                    <Sparkles
+                      className="h-3.5 w-3.5 animate-pulse"
+                      style={{ color: colorAdmin, animationDelay: "150ms" }}
+                    />
+                    <div className="shimmer-line h-3 w-[65%] rounded-full" style={{ animationDelay: "200ms" }} />
                   </div>
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-muted/30" />
-                    <Skeleton className="h-4 w-2/5" />
+                    <Sparkles
+                      className="h-3.5 w-3.5 animate-pulse"
+                      style={{ color: colorAdmin, animationDelay: "300ms" }}
+                    />
+                    <div className="shimmer-line h-3 w-[45%] rounded-full" style={{ animationDelay: "400ms" }} />
                   </div>
+                  <p
+                    className="pt-1 text-[11px] italic text-muted/60"
+                    aria-live="polite"
+                  >
+                    Spark está cruzando datos financieros y operativos…
+                  </p>
                 </div>
               ) : error ? (
                 <p className="text-sm text-muted">
@@ -557,9 +573,9 @@ Al final dame 3 recomendaciones priorizadas: qué hacer YA, qué observar esta s
             <div className="lg:w-[280px] rounded-xl border border-stone-100 bg-stone-50/40 p-3">
               {financeLd || !finance ? (
                 <div className="space-y-3">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-3 w-full" />
+                  <div className="shimmer-line h-4 w-full rounded-full" />
+                  <div className="shimmer-line h-12 w-full rounded-lg" />
+                  <div className="shimmer-line h-3 w-full rounded-full" />
                 </div>
               ) : (
                 <>

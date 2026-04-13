@@ -74,6 +74,24 @@
   to { transform: translateY(0); }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-line {
+  background: linear-gradient(
+    90deg,
+    rgba(231, 229, 228, 0.6) 0%,
+    rgba(231, 229, 228, 0.9) 25%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(231, 229, 228, 0.9) 75%,
+    rgba(231, 229, 228, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
 /* ── Loyalty tier metallic badges (animated conic border) ── */
 @property --loyalty-angle {
   syntax: "<angle>";

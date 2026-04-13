@@ -29,7 +29,10 @@ import type { StreamEvent, ConfirmedTool } from "@/lib/ai/types";
 export interface AiMessage {
   id: string;
   role: "user" | "assistant";
+  /** Text sent to the model. Contains full prompt including tone/format directives. */
   content: string;
+  /** Optional cleaner version shown in the UI. Falls back to `content` when unset. */
+  displayContent?: string;
   timestamp: number;
   toolsUsed?: string[];
 }
@@ -55,7 +58,7 @@ interface MgicAIContextValue {
   close: () => void;
   toggle: () => void;
   messages: AiMessage[];
-  sendMessage: (content: string) => void;
+  sendMessage: (content: string, displayContent?: string) => void;
   isStreaming: boolean;
   activeTools: string[];
   clearChat: () => void;
@@ -112,9 +115,8 @@ const MAX_CONVERSATIONS = 50;
 function generateTitle(messages: AiMessage[]): string {
   const first = messages.find((m) => m.role === "user");
   if (!first) return "Conversación";
-  return first.content.length > 50
-    ? first.content.slice(0, 50) + "…"
-    : first.content;
+  const text = first.displayContent ?? first.content;
+  return text.length > 50 ? text.slice(0, 50) + "…" : text;
 }
 
 function loadConversations(): Conversation[] {
@@ -333,13 +335,15 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
   );
 
   const sendMessage = useCallback(
-    (content: string) => {
+    (content: string, displayContent?: string) => {
       if (isStreaming || !content.trim()) return;
 
+      const trimmedDisplay = displayContent?.trim();
       const userMsg: AiMessage = {
         id: crypto.randomUUID(),
         role: "user",
         content: content.trim(),
+        displayContent: trimmedDisplay && trimmedDisplay !== content.trim() ? trimmedDisplay : undefined,
         timestamp: Date.now(),
       };
 
@@ -921,6 +925,16 @@ const PAGE_SUGGESTIONS: Record<string, string[]> = {
     "¿Cuál es la ocupación promedio del trimestre?",
     "Top 5 clases más populares del mes",
     "Resumen de ingresos del trimestre",
+  ],
+  "/admin/finance": [
+    "¿Qué tipo de clase es más rentable hoy?",
+    "¿Qué coach genera más ingresos y cuál tiene capacidad desperdiciada?",
+    "¿Quiénes son los miembros que pagan pero no vienen? Cuánto MRR hay en riesgo",
+    "¿Cuál es la concentración del MRR en mis top 10 miembros?",
+    "Analiza la retención por cohortes de los últimos 3 meses",
+    "¿En qué horarios debería abrir más clases por demanda insatisfecha?",
+    "Proyección de ingresos para cerrar el mes",
+    "Revisa los pagos fallidos y sugiere cómo recuperarlos",
   ],
   "/admin/gamification": [
     "¿Cuántos miembros han subido de nivel este mes?",
