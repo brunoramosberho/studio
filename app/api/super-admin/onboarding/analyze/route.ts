@@ -19,7 +19,7 @@ function normalizeUrl(raw: string): string {
   return url.replace(/\/+$/, "");
 }
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   try {
