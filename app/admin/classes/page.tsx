@@ -16,10 +16,9 @@ import {
   MapPin,
   ChevronDown,
   ChevronUp,
-  Eye,
   Repeat,
 } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format, isPast } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,6 +67,7 @@ const fadeUp = {
 export default function AdminClassesPage() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassWithDetails | null>(null);
@@ -324,7 +324,7 @@ export default function AdminClassesPage() {
                       const past = isPast(new Date(cls.endsAt));
                       const isCancelled = cls.status === "CANCELLED";
                       return (
-                        <TableRow key={cls.id} className={cn((past || isCancelled) && "opacity-60")}>
+                        <TableRow key={cls.id} className={cn("cursor-pointer hover:bg-surface/60", (past || isCancelled) && "opacity-60")} onClick={() => router.push(`/admin/class/${cls.id}`)}>
                           <TableCell className="py-3">
                             <div className="text-sm font-medium text-foreground">
                               {format(new Date(cls.startsAt), "EEE d MMM", { locale: es })}
@@ -362,14 +362,8 @@ export default function AdminClassesPage() {
                           </TableCell>
                           <TableCell className="py-3 text-right">
                             <div className="inline-flex items-center justify-end gap-2">
-                              <Link href={`/admin/class/${cls.id}`}>
-                                <Button variant="ghost" size="sm" className="gap-1">
-                                  <Eye className="h-3.5 w-3.5" />
-                                  {tc("view")}
-                                </Button>
-                              </Link>
                               {!isCancelled && (
-                                <Button variant="ghost" size="sm" className="gap-1" onClick={() => openEditDialog(cls)}>
+                                <Button variant="ghost" size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); openEditDialog(cls); }}>
                                   <Pencil className="h-3.5 w-3.5" />
                                   {tc("edit")}
                                 </Button>
@@ -379,7 +373,7 @@ export default function AdminClassesPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="gap-1 text-destructive hover:text-destructive"
-                                  onClick={() => setCancelTarget(cls)}
+                                  onClick={(e) => { e.stopPropagation(); setCancelTarget(cls); }}
                                 >
                                   <XCircle className="h-3.5 w-3.5" />
                                   {tc("cancel")}
@@ -430,11 +424,14 @@ export default function AdminClassesPage() {
 
             return (
               <motion.div key={cls.id} variants={fadeUp}>
-                <Card className={cn(
-                  "transition-shadow",
-                  !past && !isCancelled && "hover:shadow-warm",
-                  (past || isCancelled) && "opacity-60",
-                )}>
+                <Card
+                  className={cn(
+                    "cursor-pointer transition-shadow",
+                    !past && !isCancelled && "hover:shadow-warm",
+                    (past || isCancelled) && "opacity-60",
+                  )}
+                  onClick={() => router.push(`/admin/class/${cls.id}`)}
+                >
                   <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                     <div
                       className="hidden h-12 w-1 shrink-0 rounded-full sm:block"
@@ -480,17 +477,12 @@ export default function AdminClassesPage() {
                           {enrolled}/{maxCap}
                         </span>
                       </div>
-                      <Link href={`/admin/class/${cls.id}`}>
-                        <Button variant="ghost" size="sm" className="gap-1">
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                      </Link>
                       {!isCancelled && (
                         <Button
                           variant="ghost"
                           size="sm"
                           className="gap-1"
-                          onClick={() => openEditDialog(cls)}
+                          onClick={(e) => { e.stopPropagation(); openEditDialog(cls); }}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           <span className="hidden sm:inline">{tc("edit")}</span>
@@ -501,7 +493,7 @@ export default function AdminClassesPage() {
                           variant="ghost"
                           size="sm"
                           className="gap-1 text-destructive hover:text-destructive"
-                          onClick={() => setCancelTarget(cls)}
+                          onClick={(e) => { e.stopPropagation(); setCancelTarget(cls); }}
                         >
                           <XCircle className="h-3.5 w-3.5" />
                           <span className="hidden sm:inline">{tc("cancel")}</span>

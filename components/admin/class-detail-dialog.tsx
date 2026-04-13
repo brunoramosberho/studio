@@ -11,7 +11,7 @@ import {
   MapPin,
   Pencil,
   XCircle,
-  ExternalLink,
+  Eye,
   Loader2,
   Tag,
   Repeat,
@@ -224,8 +224,8 @@ export function ClassDetailDialog({
                 className="flex-1 gap-1.5"
                 asChild
               >
-                <a href={`/class/${cls.id}`} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-3.5 w-3.5" />
+                <a href={`/admin/class/${cls.id}`}>
+                  <Eye className="h-3.5 w-3.5" />
                   {t("viewClass")}
                 </a>
               </Button>
