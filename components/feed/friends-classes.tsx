@@ -7,9 +7,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Share, Check } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { es, enUS } from "date-fns/locale";
 import { formatTime, formatTimeRange } from "@/lib/utils";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface FriendInfo {
   id: string;
@@ -33,6 +33,7 @@ interface FriendBookedClass {
 export function FriendsClasses() {
   const { data: session } = useSession();
   const t = useTranslations("feed");
+  const locale = useLocale();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const { data: friendClasses = [] } = useQuery<FriendBookedClass[]>({
@@ -49,9 +50,9 @@ export function FriendsClasses() {
   const handleShare = useCallback(async (c: FriendBookedClass) => {
     const classUrl = `${window.location.origin}/class/${c.classId}`;
     const date = new Date(c.class.startsAt);
-    const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+    const dayStr = date.toLocaleDateString(locale === "en" ? "en-US" : "es-MX", { weekday: "long", day: "numeric", month: "long" });
     const timeStr = formatTimeRange(c.class.startsAt, c.class.endsAt);
-    const text = `${c.class.classType.name} con ${c.class.coach.name}\n${dayStr}, ${timeStr}\n¡Reserva tu lugar!`;
+    const text = `${c.class.classType.name} ${t("with")} ${c.class.coach.name}\n${dayStr}, ${timeStr}\n${t("bookYourSpot")}`;
 
     if (navigator.share) {
       try {
@@ -62,7 +63,7 @@ export function FriendsClasses() {
       setCopiedId(c.classId);
       setTimeout(() => setCopiedId(null), 2000);
     }
-  }, []);
+  }, [locale, t]);
 
   if (friendClasses.length === 0) return null;
 
@@ -76,7 +77,9 @@ export function FriendsClasses() {
         {friendClasses.map((c) => {
           const studioName = c.class.room?.studio?.name;
           const startDate = new Date(c.class.startsAt);
-          const dayLabel = format(startDate, "EEE d 'de' MMM", { locale: es });
+          const dayLabel = locale === "en"
+            ? format(startDate, "EEE, MMM d", { locale: enUS })
+            : format(startDate, "EEE d 'de' MMM", { locale: es });
           const firstFriend = c.friendsGoing[0];
 
           return (
@@ -112,7 +115,7 @@ export function FriendsClasses() {
                         {c.class.classType.name}
                       </p>
                       <p className="truncate text-[13px] text-muted">
-                        con {c.class.coach.name?.split(" ")[0]}
+                        {t("with")} {c.class.coach.name?.split(" ")[0]}
                         {studioName && <span className="text-muted/50"> · {studioName}</span>}
                       </p>
                     </div>
@@ -143,8 +146,8 @@ export function FriendsClasses() {
                       </div>
                       <span className="text-[10px] font-medium text-accent">
                         {c.friendsGoing.length === 1
-                          ? `${firstFriend.name?.split(" ")[0]} va`
-                          : `${c.friendsGoing.length} amigos van`}
+                          ? t("friendGoing", { name: firstFriend.name?.split(" ")[0] })
+                          : t("friendsGoing", { count: c.friendsGoing.length })}
                       </span>
                     </div>
                     <span className="rounded-full bg-accent/10 px-3 py-1 text-[10px] font-semibold text-accent">

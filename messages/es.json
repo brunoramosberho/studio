@@ -1457,6 +1457,8 @@
     "alsoBookedSingular": "tambien reservo",
     "booked": "reservaron",
     "bookedSingular": "reservo",
+    "friendGoing": "{name} va",
+    "friendsGoing": "{count} amigos van",
     "bookYouToo": "Reserva tú también",
     "alreadyInClass": "Ya estas en esta clase",
     "bookedTitle": "Reservaron",
