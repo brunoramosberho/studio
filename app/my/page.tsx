@@ -61,6 +61,17 @@ export default function DashboardPage() {
     enabled: !!session?.user,
   });
 
+  const { data: upcomingBookings = [] } = useQuery<unknown[]>({
+    queryKey: ["bookings", "upcoming"],
+    queryFn: async () => {
+      const res = await fetch("/api/bookings?status=upcoming");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!session?.user,
+    staleTime: 30_000,
+  });
+
   const hasActiveMembership = headerData?.hasActiveMembership ?? false;
   const level = headerData?.level ?? null;
 
@@ -131,7 +142,7 @@ export default function DashboardPage() {
 
         {/* Upcoming booked classes — or friends' classes as fallback */}
         <UpcomingClasses />
-        <FriendsClasses />
+        {upcomingBookings.length === 0 && <FriendsClasses />}
 
         {/* Highlighted banners from admin */}
         <FeedHighlights />

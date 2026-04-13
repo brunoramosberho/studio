@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils";
 import { usePolicies, getCancellationWindowMs } from "@/hooks/usePolicies";
+import { useTranslations } from "next-intl";
 
 interface FriendInfo {
   id: string;
@@ -41,6 +42,7 @@ function hoursUntilClass(startsAt: string | Date) {
 export function UpcomingClasses() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+  const t = useTranslations("feed");
   const policies = usePolicies();
   const cancellationWindowMs = getCancellationWindowMs(policies.cancellationWindowHours);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -96,7 +98,7 @@ export function UpcomingClasses() {
   return (
     <section>
       <h2 className="mb-3 font-display text-[17px] font-bold text-foreground">
-        Próximamente para ti
+        {t("upcomingForYou")}
       </h2>
 
       <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scrollbar-none">
