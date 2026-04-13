@@ -17,6 +17,8 @@ import {
   Package,
   Power,
   Save,
+  Trash2,
+  GraduationCap,
 } from "lucide-react";
 
 interface TenantDetail {
@@ -78,6 +80,9 @@ export default function TenantDetailPage({
   const [saved, setSaved] = useState(false);
   const [savingColors, setSavingColors] = useState(false);
   const [savedColors, setSavedColors] = useState(false);
+  const [nukeConfirm, setNukeConfirm] = useState("");
+  const [nuking, setNuking] = useState(false);
+  const [graduating, setGraduating] = useState(false);
 
   useEffect(() => {
     fetch(`/api/super-admin/tenants/${id}`)
@@ -148,6 +153,47 @@ export default function TenantDetailPage({
       const { url } = await res.json();
       window.open(url, "_blank");
     }
+  }
+
+  async function handleNuke() {
+    if (!tenant || nukeConfirm !== tenant.slug) return;
+    setNuking(true);
+    const res = await fetch(`/api/super-admin/tenants/${id}/nuke`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmSlug: nukeConfirm }),
+    });
+    if (res.ok) {
+      router.push("/tenants");
+    } else {
+      const data = await res.json();
+      alert(data.error || "Error al eliminar");
+      setNuking(false);
+    }
+  }
+
+  async function handleGraduate() {
+    if (!tenant) return;
+    setGraduating(true);
+    const res = await fetch("/api/super-admin/onboarding/graduate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tenantId: id }),
+    });
+    if (res.ok) {
+      const result = await res.json();
+      alert(
+        `Limpiado: ${result.demoUsersDeleted} usuarios demo, ${result.classesDeleted} clases, ${result.feedEventsDeleted} eventos. Config preservada.`,
+      );
+      // Refresh tenant data
+      const r = await fetch(`/api/super-admin/tenants/${id}`);
+      const data = await r.json();
+      setTenant(data);
+    } else {
+      const data = await res.json();
+      alert(data.error || "Error al graduar");
+    }
+    setGraduating(false);
   }
 
   if (!tenant) {
@@ -365,6 +411,64 @@ export default function TenantDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Danger zone */}
+      <Card className="border border-red-200 bg-red-50/30">
+        <CardHeader>
+          <CardTitle className="text-base text-red-700">Zona peligrosa</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Graduate */}
+          <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-white p-4">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Graduar a producción</p>
+              <p className="text-xs text-gray-500">
+                Elimina usuarios demo, clases y feed. Preserva config, disciplinas, paquetes y salas.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGraduate}
+              disabled={graduating}
+              className="shrink-0 gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+            >
+              <GraduationCap className="h-3.5 w-3.5" />
+              {graduating ? "Limpiando..." : "Graduar"}
+            </Button>
+          </div>
+
+          {/* Nuke */}
+          <div className="rounded-lg border border-red-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-red-700">Eliminar permanentemente</p>
+                <p className="text-xs text-gray-500">
+                  Borra el tenant y TODOS sus datos. No se puede deshacer.
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <Input
+                placeholder={`Escribe "${tenant.slug}" para confirmar`}
+                value={nukeConfirm}
+                onChange={(e) => setNukeConfirm(e.target.value)}
+                className="flex-1 text-sm"
+              />
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleNuke}
+                disabled={nuking || nukeConfirm !== tenant.slug}
+                className="shrink-0 gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {nuking ? "Eliminando..." : "Eliminar"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
