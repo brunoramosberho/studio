@@ -261,6 +261,7 @@ export default function ClassDetailPage() {
   // Guest configuration from the first valid package
   const guestConfig = useMemo(() => {
     const pkg = validPackages[0]?.package as any;
+    console.log("[guests] validPackages:", validPackages.length, "pkg?.allowGuests:", pkg?.allowGuests);
     if (!pkg) return { allowGuests: false, maxGuests: null as number | null };
     return {
       allowGuests: pkg.allowGuests === true,
