@@ -17,8 +17,6 @@ import {
   Clock,
   Eye,
   Smartphone,
-  Plus,
-  Minus,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -388,19 +386,6 @@ export default function ClientDetailPage() {
       return res.json();
     },
     enabled: !!id,
-  });
-
-  const creditMutation = useMutation({
-    mutationFn: async ({ userPackageId, delta }: { userPackageId: string; delta: number }) => {
-      const res = await fetch("/api/admin/credits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userPackageId, delta }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-client", id] }),
   });
 
   const attendanceMutation = useMutation({
@@ -824,26 +809,6 @@ export default function ClientDetailPage() {
                                 width: `${pkg.creditsTotal ? Math.max(2, (pkg.creditsRemaining / pkg.creditsTotal) * 100) : 0}%`,
                               }}
                             />
-                          </div>
-                          <div className="flex gap-0.5">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => creditMutation.mutate({ userPackageId: pkg.id, delta: -1 })}
-                              disabled={creditMutation.isPending}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => creditMutation.mutate({ userPackageId: pkg.id, delta: 1 })}
-                              disabled={creditMutation.isPending}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
                           </div>
                         </div>
                       )}
