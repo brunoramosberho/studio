@@ -47,11 +47,12 @@ export async function createTenantStructure(
       colorBg: "#FFFFFF",
       colorFg: "#18181B",
       colorSurface: "#FAFAFA",
-      colorAccent: data.brand.accentColor || data.brand.primaryColor || "#FF5A2C",
-      colorAccentSoft: deriveAccentSoft(data.brand.accentColor || data.brand.primaryColor),
+      // Brand color = primaryColor. All other colors stay as system defaults.
+      colorAccent: data.brand.primaryColor || "#FF5A2C",
+      colorAccentSoft: deriveAccentSoft(data.brand.primaryColor),
       colorMuted: "#71717A",
       colorBorder: "#E4E4E7",
-      colorHeroBg: data.brand.landingBgColor || data.brand.primaryColor || "#18181B",
+      colorHeroBg: data.brand.landingBgColor || "#18181B",
       colorCoach: "#15803D",
       colorAdmin: "#1E40AF",
       landingUrl: data.identity.websiteUrl,
@@ -66,8 +67,14 @@ export async function createTenantStructure(
   });
 
   // 3. Class types from disciplines
+  // Use secondaryColors as fallback palette for disciplines without a suggestedColor
+  const secondaryPalette = data.brand.secondaryColors || [];
   const classTypes = [];
-  for (const disc of data.disciplines) {
+  for (let i = 0; i < data.disciplines.length; i++) {
+    const disc = data.disciplines[i];
+    const fallbackColor = secondaryPalette[i % secondaryPalette.length]
+      || data.brand.primaryColor
+      || "#6366f1";
     const ct = await prisma.classType.create({
       data: {
         tenantId,
@@ -75,7 +82,7 @@ export async function createTenantStructure(
         description: disc.description,
         duration: disc.durationMinutes || 50,
         level: mapLevel(disc.level),
-        color: disc.suggestedColor || data.brand.primaryColor || "#6366f1",
+        color: disc.suggestedColor || fallbackColor,
         icon: disc.suggestedIcon || "dumbbell",
         tags: disc.tags,
       },

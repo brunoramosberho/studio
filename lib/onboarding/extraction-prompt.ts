@@ -15,10 +15,16 @@ El JSON debe seguir exactamente este schema:
     "websiteUrl": string
   },
   "brand": {
-    "primaryColor": string | null,       // hex #RRGGBB — color PRINCIPAL de la marca
-    "accentColor": string | null,        // hex #RRGGBB — color de acento para botones/CTAs en la app
-    "secondaryColors": string[],         // hex #RRGGBB[] — paleta de 2-4 colores secundarios de la marca
-    "landingBgColor": string | null,     // hex #RRGGBB — color de fondo oscuro de hero/secciones
+    "primaryColor": string | null,       // hex #RRGGBB — EL COLOR DE LA MARCA. Generalmente el color del logo.
+                                         // Este color se usa para botones, links, CTAs, elementos destacados en la app.
+    "accentColor": string | null,        // DEJAR IGUAL QUE primaryColor. Se usa el mismo valor.
+    "secondaryColors": string[],         // hex #RRGGBB[] — 2-6 colores ADICIONALES de la marca.
+                                         // Estos se usarán como colores de las DISCIPLINAS/clases.
+                                         // Derivar de: paleta del brandbook, colores recurrentes en Instagram,
+                                         // o colores complementarios al primaryColor.
+                                         // Cada uno debe ser visualmente distinto. Evitar colores muy claros.
+    "landingBgColor": string | null,     // hex #RRGGBB — color OSCURO para fondo de hero/secciones landing.
+                                         // Puede ser el primaryColor si es oscuro, o #18181B por defecto.
     "logoUrl": string | null,            // URL absoluta del logo (buscar en [logo-candidate] o [og:image])
     "currency": string                   // "EUR" | "MXN" | "BRL" | "USD" etc.
   },
@@ -122,30 +128,36 @@ la identidad REAL de la marca. Usa estas fuentes en orden de prioridad:
 
 === QUÉ SIGNIFICA CADA COLOR ===
 
-- **primaryColor**: El color que DEFINE la marca. El tono principal que ves repetidamente
-  en su identidad visual. Ejemplo: el rojo de Coca-Cola, el azul de Facebook.
-  Si en Instagram siempre usan un fondo marrón/olive/khaki, ese ES el primary.
+- **primaryColor**: EL COLOR DE LA MARCA. El color principal que identifica al negocio.
+  Generalmente es el color dominante del LOGO. Ejemplo: el rojo de Coca-Cola.
+  En la app se usa para: botones, links, CTAs, badges, elementos destacados.
+  Si en Instagram siempre usan un color recurrente, ese es candidato.
+  IMPORTANTE: Este es el ÚNICO color de marca que se configura en la app.
 
-- **accentColor**: Un color complementario que funcione como acento en una app.
-  Se usa para botones, CTAs, links, badges. Debe contrastar con primaryColor.
-  Si el primary es oscuro, el accent puede ser un tono más claro o un complementario.
-  Si solo hay un color de marca, derivar un acento que funcione bien con él.
+- **accentColor**: DEBE SER EL MISMO que primaryColor. No inventar un color diferente.
 
-- **secondaryColors**: Array de 2-4 colores adicionales que usa la marca.
-  Colores de textos, fondos alternativos, bordes, etc. Incluir variaciones
-  claras y oscuras del color primario si no hay más colores evidentes.
+- **secondaryColors**: Array de 2-6 colores ADICIONALES que usa la marca.
+  Estos colores se asignarán a las DISCIPLINAS/CLASES del estudio.
+  Cada disciplina necesita un color distinto. Buscar colores en:
+  1. Paleta del brandbook (si existe)
+  2. Colores recurrentes en Instagram (no el primary, los otros)
+  3. Colores complementarios/análogos al primaryColor
+  IMPORTANTE: Deben ser colores SATURADOS y MEDIOS (no muy claros, no muy oscuros).
+  Buscar al menos tantos colores como disciplinas haya. Si no hay suficientes colores
+  visibles, generar colores complementarios derivados del primaryColor.
 
-- **landingBgColor**: Color de fondo para secciones hero/oscuras de la landing.
-  Puede ser el mismo que primaryColor si es oscuro, o un tono más oscuro.
+- **landingBgColor**: Color OSCURO para fondo de hero sections. Si el primaryColor
+  es oscuro, puede ser el mismo. Si no, usar #18181B (negro suave).
 
 === INSTRUCCIONES PARA COLORES DE DISCIPLINAS ===
 
-Cada disciplina debe tener un suggestedColor DISTINTO. Generar una paleta derivada
-de los colores de marca (primaryColor, accentColor, secondaryColors):
-- Usar variaciones de tono (hue shift), saturación y luminosidad
-- Cada disciplina debe ser visualmente distinguible de las demás
-- Mantener la "familia" de colores coherente con la marca
-- Pueden basarse en los secondaryColors existentes si hay suficientes
+Cada disciplina DEBE tener un suggestedColor DISTINTO. Asignar en este orden:
+1. Si hay secondaryColors suficientes, asignar uno a cada disciplina
+2. Si no hay suficientes, derivar colores complementarios del primaryColor
+   variando el hue en incrementos de 30-60 grados
+3. Cada color debe ser visualmente distinguible de los demás
+4. Evitar colores muy claros (#F...) o muy oscuros (#1..., #2...)
+5. Rango ideal de luminosidad: 30%-70%
 
 === INSTRUCCIONES PARA ICONOS DE DISCIPLINAS ===
 
