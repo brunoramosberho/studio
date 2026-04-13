@@ -9,6 +9,8 @@ export const maxDuration = 60;
 /**
  * Permanently delete a tenant and ALL its data.
  * Requires the tenant slug in the body as confirmation.
+ * Deletes from every tenant-scoped table in safe dependency order.
+ * Only deletes @demo.mgic.app users, never real users.
  */
 export async function POST(req: Request, { params }: Params) {
   try {
@@ -34,53 +36,85 @@ export async function POST(req: Request, { params }: Params) {
 
     console.log(`[tenants/nuke] Deleting tenant "${tenant.slug}" (${id}) and ALL data...`);
 
-    // Delete in dependency order. Most relations cascade from Tenant,
-    // but some have user-level FKs that don't cascade from Tenant.
-    // Delete tenant-scoped user-linked data first.
+    const tid = { where: { tenantId: id } };
 
-    // Find all users with memberships in this tenant
+    // Collect demo user IDs before deleting memberships
     const memberships = await prisma.membership.findMany({
       where: { tenantId: id },
       select: { userId: true },
     });
     const userIds = memberships.map((m) => m.userId);
 
-    // Feed events (cascades: likes, comments, photos, polls)
-    await prisma.feedEvent.deleteMany({ where: { tenantId: id } });
+    // ── Delete all tenant-scoped data in dependency order ──
 
-    // Classes (cascades: bookings, waitlists, blocked spots, song requests, etc.)
-    await prisma.class.deleteMany({ where: { tenantId: id } });
+    // Waivers
+    await prisma.waiverSignature.deleteMany(tid);
+    await prisma.waiver.deleteMany(tid);
 
-    // Notifications
-    await prisma.notification.deleteMany({ where: { tenantId: id } });
+    // Platform integrations
+    await prisma.platformAlert.deleteMany(tid);
+    await prisma.platformBooking.deleteMany(tid);
+    await prisma.schedulePlatformQuota.deleteMany(tid);
+    await prisma.studioPlatformConfig.deleteMany(tid);
 
-    // Member progress & achievements
-    await prisma.memberProgress.deleteMany({ where: { tenantId: id } });
-    await prisma.memberAchievement.deleteMany({ where: { tenantId: id } });
-    await prisma.memberReward.deleteMany({ where: { tenantId: id } });
+    // Check-ins
+    await prisma.checkIn.deleteMany(tid);
 
-    // Friendships
-    await prisma.friendship.deleteMany({ where: { tenantId: id } });
+    // Feed (cascades: likes, comments, photos, polls)
+    await prisma.feedEvent.deleteMany(tid);
 
-    // User packages
-    await prisma.userPackage.deleteMany({ where: { tenantId: id } });
+    // Notifications & push
+    await prisma.notification.deleteMany(tid);
+    await prisma.pushSubscription.deleteMany(tid);
 
-    // Coach profiles & pay rates
-    await prisma.coachAvailabilityBlock.deleteMany({ where: { tenantId: id } });
-    await prisma.coachProfile.deleteMany({ where: { tenantId: id } });
+    // Classes (cascades: bookings, waitlists, blocked spots, song requests, playlists)
+    await prisma.class.deleteMany(tid);
 
-    // Rooms, studios
-    await prisma.room.deleteMany({ where: { tenantId: id } });
-    await prisma.studio.deleteMany({ where: { tenantId: id } });
+    // Coach
+    await prisma.coachAvailabilityBlock.deleteMany(tid);
+    await prisma.coachProfile.deleteMany(tid);
 
-    // Class types, packages
-    await prisma.classType.deleteMany({ where: { tenantId: id } });
-    await prisma.package.deleteMany({ where: { tenantId: id } });
+    // Class types
+    await prisma.classType.deleteMany(tid);
+
+    // Packages & user packages
+    await prisma.userPackage.deleteMany(tid);
+    await prisma.package.deleteMany(tid);
+
+    // Rooms & studios
+    await prisma.room.deleteMany(tid);
+    await prisma.studio.deleteMany(tid);
+
+    // Gamification
+    await prisma.memberProgress.deleteMany(tid);
+    await prisma.memberAchievement.deleteMany(tid);
+    await prisma.memberReward.deleteMany(tid);
+
+    // Social
+    await prisma.friendship.deleteMany(tid);
+
+    // Shop
+    await prisma.product.deleteMany(tid);
+    await prisma.productCategory.deleteMany(tid);
 
     // Memberships
-    await prisma.membership.deleteMany({ where: { tenantId: id } });
+    await prisma.membership.deleteMany(tid);
 
-    // Delete demo users (only @demo.mgic.app, not real users)
+    // Tenant-level configs
+    try { await prisma.tenantGamificationConfig.deleteMany(tid); } catch { /* may not exist */ }
+    try { await prisma.membershipConversionConfig.deleteMany({ where: { tenantId: id } }); } catch { /* may not exist */ }
+    try { await prisma.tenantAnalyticsConfig.deleteMany({ where: { tenantId: id } }); } catch { /* may not exist */ }
+    try { await prisma.referralConfig.deleteMany({ where: { tenantId: id } }); } catch { /* may not exist */ }
+    try { await prisma.referralReward.deleteMany(tid); } catch { /* may not exist */ }
+    try { await prisma.nudgeEvent.deleteMany(tid); } catch { /* may not exist */ }
+    try { await prisma.introOfferClaim.deleteMany(tid); } catch { /* may not exist */ }
+    try { await prisma.linkClick.deleteMany(tid); } catch { /* may not exist */ }
+    try { await prisma.classRating.deleteMany(tid); } catch { /* may not exist */ }
+    try { await prisma.memberSubscription.deleteMany(tid); } catch { /* may not exist */ }
+    try { await prisma.studioSettings.deleteMany(tid); } catch { /* may not exist */ }
+    try { await prisma.instagramIntegration.deleteMany(tid); } catch { /* may not exist */ }
+
+    // Delete only demo users (never real users)
     if (userIds.length > 0) {
       await prisma.user.deleteMany({
         where: {
