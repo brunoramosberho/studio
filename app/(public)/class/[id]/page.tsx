@@ -1409,16 +1409,24 @@ export default function ClassDetailPage() {
                       size="lg"
                       className="w-full min-h-[48px] rounded-full bg-foreground text-background hover:bg-foreground/90"
                       onClick={handleReserveClick}
-                      disabled={isBooking || (hasLayout && !selectedSpot) || (isAuthenticated && packagesLoading) || (guests.length > 0 && !hasEnoughCreditsForAll)}
+                      disabled={
+                        isBooking ||
+                        (hasLayout && !selectedSpot) ||
+                        (hasLayout && guests.length > 0 && Object.keys(guestSpots).length < guests.length) ||
+                        (isAuthenticated && packagesLoading) ||
+                        (guests.length > 0 && !hasEnoughCreditsForAll)
+                      }
                     >
                       {isBooking ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : null}
                       {hasLayout && !selectedSpot
                         ? t("selectSpot")
-                        : guests.length > 0
-                          ? `Reservar para ${totalPeople} persona${totalPeople > 1 ? "s" : ""}`
-                          : t("bookClass")}
+                        : hasLayout && guests.length > 0 && Object.keys(guestSpots).length < guests.length
+                          ? `Asigna lugar a ${guests.length - Object.keys(guestSpots).length} invitado${guests.length - Object.keys(guestSpots).length > 1 ? "s" : ""}`
+                          : guests.length > 0
+                            ? `Reservar para ${totalPeople} persona${totalPeople > 1 ? "s" : ""}`
+                            : t("bookClass")}
                     </Button>
                   </div>
                 )}
