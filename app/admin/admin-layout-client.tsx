@@ -17,6 +17,8 @@ import {
   Users,
   UserCog,
   Package,
+  Ticket,
+  Gift,
   BarChart3,
   Activity,
   Palette,
@@ -98,6 +100,8 @@ const flyoutGroups: FlyoutGroup[] = [
     items: [
       { href: "/admin/finance", label: "Finanzas", icon: Wallet },
       { href: "/admin/packages", label: "Paquetes", icon: Package },
+      { href: "/admin/discounts", label: "Descuentos", icon: Ticket },
+      { href: "/admin/gift-packages", label: "Regalar paquetes", icon: Gift },
       { href: "/admin/subscriptions", label: "Suscripciones", icon: CalendarSync },
       { href: "/admin/shop", label: "Tienda", icon: ShoppingBag },
       { href: "/admin/platforms", label: "Plataformas", icon: Globe2 },
@@ -126,6 +130,7 @@ const flyoutGroups: FlyoutGroup[] = [
     icon: Settings,
     items: [
       { href: "/admin/settings/billing", label: "Facturación", icon: CreditCard },
+      { href: "/admin/settings/language", label: "Idioma", icon: Globe2 },
       { href: "/admin/waiver", label: "Waiver", icon: FileSignature },
       { href: "/admin/branding", label: "Marca", icon: Palette },
       { href: "/admin/team", label: "Equipo", icon: ShieldCheck },
