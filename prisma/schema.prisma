@@ -573,12 +573,17 @@ model Booking {
   createdAt      DateTime       @default(now())
   reminderSentAt DateTime?
 
+  parentBookingId String?
+  parentBooking   Booking?  @relation("BookingGuests", fields: [parentBookingId], references: [id], onDelete: SetNull)
+  guestBookings   Booking[] @relation("BookingGuests")
+
   biometrics     ClassBiometrics[]
 
   @@unique([classId, spotNumber])
   @@index([classId])
   @@index([userId])
   @@index([tenantId])
+  @@index([parentBookingId])
 }
 
 enum BookingPrivacy {
@@ -666,6 +671,11 @@ model Package {
   classTypes    ClassType[]   @relation("PackageClassTypes")
   recurringInterval String?
   sortOrder     Int           @default(0)
+
+  allowGuests         Boolean @default(false)
+  maxGuestsPerBooking Int?
+  monthlyGuestPasses  Int?
+
   userPackages        UserPackage[]
   memberSubscriptions MemberSubscription[]
   creditAllocations   PackageCreditAllocation[]

@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
     const tenant = await requireTenant();
     const body = await request.json();
     const { classId, packageId, guestName, guestEmail, spotNumber, privacy } = body;
+    const guests: { name: string; email: string; spotNumber?: number }[] = body.guests ?? [];
 
     if (!classId) {
       return NextResponse.json(
@@ -121,6 +122,16 @@ export async function POST(request: NextRequest) {
         { error: "Guest bookings require guestName and guestEmail" },
         { status: 400 },
       );
+    }
+
+    // Validate guest entries
+    for (const g of guests) {
+      if (!g.name?.trim() || !g.email?.trim()) {
+        return NextResponse.json(
+          { error: "Cada invitado requiere nombre completo y correo electrónico" },
+          { status: 400 },
+        );
+      }
     }
 
     const classData = await prisma.class.findUnique({
@@ -145,38 +156,64 @@ export async function POST(request: NextRequest) {
     }
 
     const blockedCount = await prisma.blockedSpot.count({ where: { classId } });
+    const totalPeople = 1 + guests.length;
     const spotsLeft = classData.room.maxCapacity - classData._count.bookings - blockedCount;
-    if (spotsLeft <= 0) {
+    if (spotsLeft < totalPeople) {
+      if (spotsLeft <= 0) {
+        return NextResponse.json(
+          { error: "Class is full. Consider joining the waitlist.", full: true },
+          { status: 409 },
+        );
+      }
       return NextResponse.json(
-        { error: "Class is full. Consider joining the waitlist.", full: true },
+        { error: `No hay suficientes lugares. Solo quedan ${spotsLeft} lugar(es) disponible(s).` },
         { status: 409 },
       );
     }
 
-    if (spotNumber != null) {
-      if (spotNumber < 1 || spotNumber > classData.room.maxCapacity) {
+    // Validate all spot numbers (self + guests)
+    const allSpots: number[] = [];
+    if (spotNumber != null) allSpots.push(spotNumber);
+    for (const g of guests) {
+      if (g.spotNumber != null) allSpots.push(g.spotNumber);
+    }
+
+    for (const sn of allSpots) {
+      if (sn < 1 || sn > classData.room.maxCapacity) {
         return NextResponse.json(
           { error: "Número de lugar inválido" },
           { status: 400 },
         );
       }
+    }
 
+    // Check for duplicate spot selections
+    const uniqueSpots = new Set(allSpots);
+    if (uniqueSpots.size !== allSpots.length) {
+      return NextResponse.json(
+        { error: "No puedes seleccionar el mismo lugar para más de una persona" },
+        { status: 400 },
+      );
+    }
+
+    // Check all spots are available
+    for (const sn of allSpots) {
       const spotBlocked = await prisma.blockedSpot.findFirst({
-        where: { classId, spotNumber },
+        where: { classId, spotNumber: sn },
       });
       if (spotBlocked) {
         return NextResponse.json(
-          { error: "Ese lugar está bloqueado. Selecciona otro." },
+          { error: `El lugar ${sn} está bloqueado. Selecciona otro.` },
           { status: 409 },
         );
       }
 
       const spotTaken = await prisma.booking.findFirst({
-        where: { classId, tenantId: tenant.id, spotNumber, status: "CONFIRMED" },
+        where: { classId, tenantId: tenant.id, spotNumber: sn, status: "CONFIRMED" },
       });
       if (spotTaken) {
         return NextResponse.json(
-          { error: "Ese lugar ya está ocupado. Selecciona otro." },
+          { error: `El lugar ${sn} ya está ocupado. Selecciona otro.` },
           { status: 409 },
         );
       }
@@ -208,7 +245,15 @@ export async function POST(request: NextRequest) {
           tenantId: tenant.id,
           expiresAt: { gt: new Date() },
         },
-        include: userPackageIncludeForBooking,
+        include: {
+          ...userPackageIncludeForBooking,
+          package: {
+            include: {
+              classTypes: { select: { id: true } },
+              creditAllocations: { select: { classTypeId: true } },
+            },
+          },
+        },
         orderBy: { expiresAt: "asc" },
       });
 
@@ -222,10 +267,79 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await deductCredit(userPackage.id, classTypeId);
+      // Validate guests are allowed for this package
+      if (guests.length > 0) {
+        const pkg = userPackage.package as any;
+
+        if (!pkg.allowGuests) {
+          return NextResponse.json(
+            { error: "Tu paquete no permite agregar invitados" },
+            { status: 403 },
+          );
+        }
+
+        if (pkg.maxGuestsPerBooking != null && guests.length > pkg.maxGuestsPerBooking) {
+          return NextResponse.json(
+            { error: `Máximo ${pkg.maxGuestsPerBooking} invitado(s) por reserva` },
+            { status: 400 },
+          );
+        }
+
+        // For unlimited packages, check monthly guest pass limit
+        if (pkg.credits === null && pkg.monthlyGuestPasses != null) {
+          const now = new Date();
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          const guestBookingsThisMonth = await prisma.booking.count({
+            where: {
+              tenantId: tenant.id,
+              parentBookingId: { not: null },
+              status: { in: ["CONFIRMED", "ATTENDED"] },
+              createdAt: { gte: monthStart },
+              parentBooking: { userId: session.user.id },
+            },
+          });
+
+          if (guestBookingsThisMonth + guests.length > pkg.monthlyGuestPasses) {
+            const remaining = Math.max(0, pkg.monthlyGuestPasses - guestBookingsThisMonth);
+            return NextResponse.json(
+              { error: `Te quedan ${remaining} pase(s) de invitado este mes. Intentas agregar ${guests.length}.` },
+              { status: 400 },
+            );
+          }
+        }
+      }
+
+      // Check enough credits for self + all guests
+      const creditsNeeded = totalPeople;
+      const hasAllocations = userPackage.creditUsages.length > 0;
+      if (hasAllocations) {
+        const usage = userPackage.creditUsages.find((u) => u.classTypeId === classTypeId);
+        const available = usage ? usage.creditsTotal - usage.creditsUsed : 0;
+        if (available < creditsNeeded) {
+          return NextResponse.json(
+            { error: `Necesitas ${creditsNeeded} crédito(s) (tú + ${guests.length} invitado(s)), pero solo tienes ${available}.` },
+            { status: 402 },
+          );
+        }
+      } else if (userPackage.creditsTotal !== null) {
+        const available = userPackage.creditsTotal - userPackage.creditsUsed;
+        if (available < creditsNeeded) {
+          return NextResponse.json(
+            { error: `Necesitas ${creditsNeeded} crédito(s) (tú + ${guests.length} invitado(s)), pero solo tienes ${available}.` },
+            { status: 402 },
+          );
+        }
+      }
+      // If creditsTotal is null → unlimited, no check needed (unless monthlyGuestPasses applies, already checked above)
+
+      // Deduct credits: 1 for self + 1 per guest
+      for (let i = 0; i < creditsNeeded; i++) {
+        await deductCredit(userPackage.id, classTypeId);
+      }
       packageUsedId = userPackage.id;
     }
 
+    // Create main booking
     const booking = await prisma.booking.create({
       data: {
         tenantId: tenant.id,
@@ -248,17 +362,54 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Create guest bookings
+    const guestBookings = [];
+    for (const g of guests) {
+      const gb = await prisma.booking.create({
+        data: {
+          tenantId: tenant.id,
+          classId,
+          userId: null,
+          guestName: g.name.trim(),
+          guestEmail: g.email.trim().toLowerCase(),
+          spotNumber: g.spotNumber ?? null,
+          privacy: privacy === "PRIVATE" ? "PRIVATE" : "PUBLIC",
+          status: "CONFIRMED",
+          packageUsed: packageUsedId,
+          parentBookingId: booking.id,
+        },
+      });
+      guestBookings.push(gb);
+    }
+
     if (session?.user?.id) {
       removeSpotNotifyMe(classId, session.user.id);
     }
 
+    const baseUrl = getTenantBaseUrl(tenant.slug);
+
+    // Send confirmation to the main booker
     const recipientEmail = session?.user?.email ?? guestEmail;
     const recipientName = session?.user?.name ?? guestName;
     if (recipientEmail && recipientName) {
-      const baseUrl = getTenantBaseUrl(tenant.slug);
       sendBookingConfirmation({
         to: recipientEmail,
         name: recipientName,
+        className: classData.classType.name,
+        coachName: classData.coach.name ?? "Coach",
+        date: classData.startsAt,
+        startTime: classData.startsAt,
+        location: classData.room.studio.name ?? undefined,
+        timezone: classData.room.studio.city?.timezone,
+        classUrl: `${baseUrl}/class/${classId}`,
+      });
+    }
+
+    // Send confirmation emails to each guest
+    for (const g of guests) {
+      sendBookingConfirmation({
+        to: g.email.trim().toLowerCase(),
+        name: g.name.trim(),
         className: classData.classType.name,
         coachName: classData.coach.name ?? "Coach",
         date: classData.startsAt,
@@ -311,7 +462,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(booking, { status: 201 });
+    return NextResponse.json({ ...booking, guestBookings }, { status: 201 });
   } catch (error: any) {
     console.error("POST /api/bookings error:", error);
 

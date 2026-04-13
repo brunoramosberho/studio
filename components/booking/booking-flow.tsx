@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,6 +16,7 @@ import { useBooking } from "@/hooks/useBooking";
 import { usePackages } from "@/hooks/usePackages";
 import { PackageSelector } from "./package-selector";
 import { ConfirmationScreen } from "./confirmation-screen";
+import { GuestListInput } from "./guest-list-input";
 import type { ClassWithDetails } from "@/types";
 
 interface BookingFlowProps {
@@ -23,7 +24,7 @@ interface BookingFlowProps {
 }
 
 export function BookingFlow({ classId }: BookingFlowProps) {
-  const { data: session, status: authStatus } = useSession();
+  const { status: authStatus } = useSession();
   const store = useBookingStore();
   const { bookAsync, isBooking } = useBooking();
 
@@ -75,6 +76,40 @@ export function BookingFlow({ classId }: BookingFlowProps) {
     }
   }, [firstPackageId, store.selectedPackageId, store]);
 
+  // Guest configuration derived from selected package
+  const selectedPkg = validPackages.find((p) => p.id === (store.selectedPackageId ?? firstPackageId));
+  const guestConfig = useMemo(() => {
+    if (!selectedPkg) return { allowGuests: false, maxGuests: null as number | null, isUnlimited: false };
+    // The package object includes allowGuests/maxGuestsPerBooking/monthlyGuestPasses from the DB
+    const pkg = selectedPkg.package as typeof selectedPkg.package & {
+      allowGuests?: boolean;
+      maxGuestsPerBooking?: number | null;
+      monthlyGuestPasses?: number | null;
+    };
+    return {
+      allowGuests: pkg.allowGuests === true,
+      maxGuests: pkg.maxGuestsPerBooking ?? null,
+      isUnlimited: selectedPkg.creditsTotal === null,
+      monthlyGuestPasses: pkg.monthlyGuestPasses ?? null,
+    };
+  }, [selectedPkg]);
+
+  // Compute available credits for this class type
+  const availableCredits = useMemo(() => {
+    if (!selectedPkg) return 0;
+    if (selectedPkg.creditsTotal === null) return Infinity; // unlimited
+    const hasAllocations = (selectedPkg.creditUsages?.length ?? 0) > 0;
+    if (hasAllocations && classTypeId) {
+      const usage = selectedPkg.creditUsages!.find((u) => u.classTypeId === classTypeId);
+      return usage ? usage.creditsTotal - usage.creditsUsed : 0;
+    }
+    return (selectedPkg.creditsTotal ?? 0) - selectedPkg.creditsUsed;
+  }, [selectedPkg, classTypeId]);
+
+  const totalPeople = 1 + store.guests.length;
+  const creditsNeeded = totalPeople;
+  const hasEnoughCredits = availableCredits >= creditsNeeded;
+
   const classFull =
     isClassFull ||
     (classData?.spotsLeft != null && classData.spotsLeft <= 0);
@@ -89,6 +124,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
       await bookAsync({
         classId,
         packageId: store.selectedPackageId ?? firstPackageId,
+        ...(store.guests.length > 0 && { guests: store.guests }),
       });
     } catch (err: any) {
       store.setBookingSuccess(false);
@@ -423,15 +459,51 @@ export function BookingFlow({ classId }: BookingFlowProps) {
               )}
             </div>
           ) : validPackages.length === 1 ? (
-            <Button
-              size="lg"
-              className={cn("w-full min-h-[48px]")}
-              onClick={handleBookAuthenticated}
-              disabled={isBooking}
-            >
-              {isBooking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Reservar con {validPackages[0].package.name}
-            </Button>
+            <div className="space-y-4">
+              {/* Guest section */}
+              {guestConfig.allowGuests && (
+                <GuestListInput
+                  guests={store.guests}
+                  onChange={store.setGuests}
+                  maxGuests={guestConfig.maxGuests}
+                  disabled={isBooking}
+                />
+              )}
+
+              {/* Credit summary when guests are added */}
+              {store.guests.length > 0 && (
+                <Card className="rounded-2xl border-accent/20 bg-accent/5">
+                  <CardContent className="flex items-center gap-3 p-4">
+                    <Users className="h-5 w-5 text-accent" />
+                    <div className="flex-1 text-sm">
+                      <span className="font-medium text-foreground">
+                        {creditsNeeded} crédito{creditsNeeded > 1 ? "s" : ""}
+                      </span>
+                      <span className="text-muted">
+                        {" "}(tú + {store.guests.length} invitado{store.guests.length > 1 ? "s" : ""})
+                      </span>
+                    </div>
+                    {!hasEnoughCredits && availableCredits !== Infinity && (
+                      <span className="text-xs font-medium text-red-600">
+                        Solo tienes {availableCredits}
+                      </span>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              <Button
+                size="lg"
+                className={cn("w-full min-h-[48px]")}
+                onClick={handleBookAuthenticated}
+                disabled={isBooking || !hasEnoughCredits}
+              >
+                {isBooking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {store.guests.length > 0
+                  ? `Reservar para ${totalPeople} persona${totalPeople > 1 ? "s" : ""}`
+                  : `Reservar con ${validPackages[0].package.name}`}
+              </Button>
+            </div>
           ) : (
             <div className="space-y-4">
               <PackageSelector
@@ -440,14 +512,49 @@ export function BookingFlow({ classId }: BookingFlowProps) {
                 onSelect={store.setSelectedPackage}
                 classTypeId={classTypeId}
               />
+
+              {/* Guest section */}
+              {guestConfig.allowGuests && (
+                <GuestListInput
+                  guests={store.guests}
+                  onChange={store.setGuests}
+                  maxGuests={guestConfig.maxGuests}
+                  disabled={isBooking}
+                />
+              )}
+
+              {/* Credit summary when guests are added */}
+              {store.guests.length > 0 && (
+                <Card className="rounded-2xl border-accent/20 bg-accent/5">
+                  <CardContent className="flex items-center gap-3 p-4">
+                    <Users className="h-5 w-5 text-accent" />
+                    <div className="flex-1 text-sm">
+                      <span className="font-medium text-foreground">
+                        {creditsNeeded} crédito{creditsNeeded > 1 ? "s" : ""}
+                      </span>
+                      <span className="text-muted">
+                        {" "}(tú + {store.guests.length} invitado{store.guests.length > 1 ? "s" : ""})
+                      </span>
+                    </div>
+                    {!hasEnoughCredits && availableCredits !== Infinity && (
+                      <span className="text-xs font-medium text-red-600">
+                        Solo tienes {availableCredits}
+                      </span>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               <Button
                 size="lg"
                 className={cn("w-full min-h-[48px]")}
                 onClick={handleBookAuthenticated}
-                disabled={isBooking || !store.selectedPackageId}
+                disabled={isBooking || !store.selectedPackageId || !hasEnoughCredits}
               >
                 {isBooking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Reservar clase
+                {store.guests.length > 0
+                  ? `Reservar para ${totalPeople} persona${totalPeople > 1 ? "s" : ""}`
+                  : "Reservar clase"}
               </Button>
             </div>
           )}

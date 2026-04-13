@@ -53,6 +53,9 @@ interface PackageData {
   recurringInterval: string | null;
   sortOrder: number;
   countryId: string | null;
+  allowGuests: boolean;
+  maxGuestsPerBooking: number | null;
+  monthlyGuestPasses: number | null;
 }
 
 type PackageKind = PackageData["type"];
@@ -125,6 +128,9 @@ interface FormState {
   classTypeIds: string[];
   countryId: string;
   sortOrder: string;
+  allowGuests: boolean;
+  maxGuestsPerBooking: string;
+  monthlyGuestPasses: string;
 }
 
 function emptyForm(forType: PackageKind): FormState {
@@ -143,6 +149,9 @@ function emptyForm(forType: PackageKind): FormState {
     classTypeIds: [],
     countryId: "",
     sortOrder: "0",
+    allowGuests: false,
+    maxGuestsPerBooking: "",
+    monthlyGuestPasses: "",
   };
 }
 
@@ -171,6 +180,9 @@ function formFromPackage(pkg: PackageData): FormState {
     classTypeIds: pkg.classTypes?.map((c) => c.id) ?? [],
     countryId: pkg.countryId ?? "",
     sortOrder: String(pkg.sortOrder ?? 0),
+    allowGuests: pkg.allowGuests ?? false,
+    maxGuestsPerBooking: pkg.maxGuestsPerBooking == null ? "" : String(pkg.maxGuestsPerBooking),
+    monthlyGuestPasses: pkg.monthlyGuestPasses == null ? "" : String(pkg.monthlyGuestPasses),
   };
 }
 
@@ -198,6 +210,13 @@ function buildPayload(form: FormState) {
         .map((a) => ({ classTypeId: a.classTypeId, credits: parseInt(a.credits, 10) }))
     : [];
 
+  const maxGuestsPerBooking = form.allowGuests && form.maxGuestsPerBooking.trim() !== ""
+    ? parseInt(form.maxGuestsPerBooking, 10)
+    : null;
+  const monthlyGuestPasses = form.allowGuests && form.monthlyGuestPasses.trim() !== ""
+    ? parseInt(form.monthlyGuestPasses, 10)
+    : null;
+
   return {
     name: form.name.trim(),
     description: form.description.trim() || null,
@@ -212,6 +231,9 @@ function buildPayload(form: FormState) {
     countryId: form.countryId.trim() === "" ? null : form.countryId,
     sortOrder,
     creditAllocations,
+    allowGuests: form.allowGuests,
+    maxGuestsPerBooking: maxGuestsPerBooking != null && !Number.isNaN(maxGuestsPerBooking) ? maxGuestsPerBooking : null,
+    monthlyGuestPasses: monthlyGuestPasses != null && !Number.isNaN(monthlyGuestPasses) ? monthlyGuestPasses : null,
   };
 }
 
@@ -495,6 +517,17 @@ export default function AdminPackagesPage() {
                       <span className="font-medium text-foreground/80">{t("disciplinesLabel")}: </span>
                       {classTypesLabel(pkg, t)}
                     </p>
+                    {pkg.allowGuests && (
+                      <p className="text-xs leading-relaxed text-muted">
+                        <span className="font-medium text-foreground/80">Invitados: </span>
+                        {pkg.maxGuestsPerBooking != null
+                          ? `Máx. ${pkg.maxGuestsPerBooking} por reserva`
+                          : "Sin límite por reserva"}
+                        {pkg.credits === null && pkg.monthlyGuestPasses != null
+                          ? ` · ${pkg.monthlyGuestPasses} pases/mes`
+                          : ""}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex shrink-0 flex-row gap-2 sm:flex-col sm:items-stretch">
@@ -810,6 +843,63 @@ export default function AdminPackagesPage() {
                   ))
                 )}
               </div>
+            </div>
+
+            {/* Guest configuration */}
+            <div className="space-y-3">
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-input-border accent-admin"
+                  checked={form.allowGuests}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, allowGuests: e.target.checked }))
+                  }
+                />
+                <span className="font-medium">Permitir invitados en reservas</span>
+              </label>
+
+              {form.allowGuests && (
+                <div className="space-y-3 rounded-xl border border-input-border/60 bg-surface/50 p-3">
+                  <p className="text-xs text-muted">
+                    Los usuarios con este paquete podrán agregar invitados a sus reservas. Cada invitado consume un crédito adicional.
+                  </p>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium" htmlFor="pkg-max-guests">
+                      Máx. invitados por reserva (opcional)
+                    </label>
+                    <Input
+                      id="pkg-max-guests"
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={form.maxGuestsPerBooking}
+                      onChange={(e) => setForm((f) => ({ ...f, maxGuestsPerBooking: e.target.value }))}
+                      placeholder="Sin límite"
+                      className="w-40"
+                    />
+                  </div>
+                  {form.creditsUnlimited && (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium" htmlFor="pkg-monthly-guests">
+                        Pases de invitado al mes (para pases ilimitados)
+                      </label>
+                      <Input
+                        id="pkg-monthly-guests"
+                        type="number"
+                        min={0}
+                        value={form.monthlyGuestPasses}
+                        onChange={(e) => setForm((f) => ({ ...f, monthlyGuestPasses: e.target.value }))}
+                        placeholder="Sin límite"
+                        className="w-40"
+                      />
+                      <p className="mt-1 text-xs text-muted">
+                        Controla cuántos pases de invitado se incluyen mensualmente con paquetes ilimitados.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>

@@ -131,6 +131,25 @@ export async function PUT(
       }
       data.sortOrder = n;
     }
+    if (body.allowGuests !== undefined) {
+      data.allowGuests = Boolean(body.allowGuests);
+    }
+    if (body.maxGuestsPerBooking !== undefined) {
+      if (body.maxGuestsPerBooking === null) {
+        data.maxGuestsPerBooking = null;
+      } else {
+        const n = typeof body.maxGuestsPerBooking === "number" ? body.maxGuestsPerBooking : parseInt(String(body.maxGuestsPerBooking), 10);
+        data.maxGuestsPerBooking = Number.isNaN(n) ? null : n;
+      }
+    }
+    if (body.monthlyGuestPasses !== undefined) {
+      if (body.monthlyGuestPasses === null) {
+        data.monthlyGuestPasses = null;
+      } else {
+        const n = typeof body.monthlyGuestPasses === "number" ? body.monthlyGuestPasses : parseInt(String(body.monthlyGuestPasses), 10);
+        data.monthlyGuestPasses = Number.isNaN(n) ? null : n;
+      }
+    }
 
     if (classTypeIds !== undefined) {
       if (!Array.isArray(classTypeIds)) {

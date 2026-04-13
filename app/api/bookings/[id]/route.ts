@@ -143,6 +143,21 @@ export async function PUT(
       const windowMs = await getCancellationWindowMs(tenant.id);
       const restored = await restoreCreditIfEligible(booking, windowMs);
       creditLost = !restored;
+
+      // Cancel guest bookings and restore their credits
+      const guestBookings = await prisma.booking.findMany({
+        where: { parentBookingId: id, status: "CONFIRMED" },
+        include: { class: true },
+      });
+      for (const gb of guestBookings) {
+        if (restored) {
+          await restoreCreditIfEligible(gb, windowMs);
+        }
+        await prisma.booking.update({
+          where: { id: gb.id },
+          data: { status: "CANCELLED", spotNumber: null, creditLost: !restored },
+        });
+      }
     }
 
     // No-show penalty logic depends on package type:
@@ -270,6 +285,21 @@ export async function DELETE(
 
     const windowMs = await getCancellationWindowMs(tenant.id);
     const restored = await restoreCreditIfEligible(booking, windowMs);
+
+    // Cancel guest bookings and restore their credits
+    const guestBookings = await prisma.booking.findMany({
+      where: { parentBookingId: id, status: "CONFIRMED" },
+      include: { class: true },
+    });
+    for (const gb of guestBookings) {
+      if (restored) {
+        await restoreCreditIfEligible(gb, windowMs);
+      }
+      await prisma.booking.update({
+        where: { id: gb.id },
+        data: { status: "CANCELLED", spotNumber: null, creditLost: !restored },
+      });
+    }
 
     const cancelled = await prisma.booking.update({
       where: { id, tenantId: tenant.id },
