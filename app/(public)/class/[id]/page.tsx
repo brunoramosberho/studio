@@ -41,6 +41,7 @@ import { cn, formatTime, maskLastName } from "@/lib/utils";
 import { useBooking } from "@/hooks/useBooking";
 import { usePackages } from "@/hooks/usePackages";
 import { BookingSheet } from "@/components/booking/booking-sheet";
+import { GuestListInput, type GuestEntry } from "@/components/booking/guest-list-input";
 import { SongRequest } from "@/components/booking/song-request";
 import { MediaGallery } from "@/components/feed/media-gallery";
 import { LikeButton } from "@/components/feed/like-button";
@@ -168,6 +169,7 @@ export default function ClassDetailPage() {
   const [playlistTracks, setPlaylistTracks] = useState<PlaylistTrack[]>([]);
   const [playlistLoading, setPlaylistLoading] = useState(false);
   const [nudgeConverted, setNudgeConverted] = useState(false);
+  const [guests, setGuests] = useState<GuestEntry[]>([]);
 
   const {
     data: cls,
@@ -256,6 +258,28 @@ export default function ClassDetailPage() {
 
   const hasCredits = validPackages.length > 0;
 
+  // Guest configuration from the first valid package
+  const guestConfig = useMemo(() => {
+    const pkg = validPackages[0]?.package as any;
+    console.log("[guests] validPackages:", validPackages.length, "pkg?.allowGuests:", pkg?.allowGuests);
+    if (!pkg) return { allowGuests: false, maxGuests: null as number | null };
+    return {
+      allowGuests: pkg.allowGuests === true,
+      maxGuests: pkg.maxGuestsPerBooking as number | null,
+    };
+  }, [validPackages]);
+
+  // Available credits for credit summary display
+  const availableCreditsForBooking = useMemo(() => {
+    const pkg = validPackages[0];
+    if (!pkg) return 0;
+    if (pkg.creditsTotal === null) return Infinity;
+    return Math.max(0, (pkg.creditsTotal ?? 0) - pkg.creditsUsed);
+  }, [validPackages]);
+
+  const totalPeople = 1 + guests.length;
+  const hasEnoughCreditsForAll = availableCreditsForBooking >= totalPeople;
+
   const { data: nudgeDecision } = useQuery<NudgeDecision>({
     queryKey: ["nudge-decision", id],
     queryFn: async () => {
@@ -335,10 +359,12 @@ export default function ClassDetailPage() {
         spotNumber: selectedSpot ?? undefined,
         packageId: validPackages[0]?.id,
         privacy,
+        ...(guests.length > 0 && { guests }),
       });
       setBookingSuccess(true);
       setBookedSpotNumber(selectedSpot);
       setSelectedSpot(null);
+      setGuests([]);
       queryClient.invalidateQueries({ queryKey: ["classes", id] });
     } catch (err: any) {
       setError(err.error || t("couldNotBook"));
@@ -1273,19 +1299,54 @@ export default function ClassDetailPage() {
                     onSingleClass={() => setSheetOpen(true)}
                   />
                 ) : (
-                  <Button
-                    size="lg"
-                    className="w-full min-h-[48px] rounded-full bg-foreground text-background hover:bg-foreground/90"
-                    onClick={handleReserveClick}
-                    disabled={isBooking || (hasLayout && !selectedSpot) || (isAuthenticated && packagesLoading)}
-                  >
-                    {isBooking ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    {hasLayout && !selectedSpot
-                      ? t("selectSpot")
-                      : t("bookClass")}
-                  </Button>
+                  <div className="space-y-3">
+                    {/* Guest section - only for authenticated users with credits */}
+                    {isAuthenticated && hasCredits && guestConfig.allowGuests && (
+                      <>
+                        <GuestListInput
+                          guests={guests}
+                          onChange={setGuests}
+                          maxGuests={guestConfig.maxGuests}
+                          disabled={isBooking}
+                        />
+
+                        {guests.length > 0 && (
+                          <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3">
+                            <Users className="h-5 w-5 flex-shrink-0 text-accent" />
+                            <div className="flex-1 text-sm">
+                              <span className="font-medium text-foreground">
+                                {totalPeople} crédito{totalPeople > 1 ? "s" : ""}
+                              </span>
+                              <span className="text-muted">
+                                {" "}(tú + {guests.length} invitado{guests.length > 1 ? "s" : ""})
+                              </span>
+                            </div>
+                            {!hasEnoughCreditsForAll && availableCreditsForBooking !== Infinity && (
+                              <span className="text-xs font-medium text-red-600">
+                                Solo tienes {availableCreditsForBooking}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    <Button
+                      size="lg"
+                      className="w-full min-h-[48px] rounded-full bg-foreground text-background hover:bg-foreground/90"
+                      onClick={handleReserveClick}
+                      disabled={isBooking || (hasLayout && !selectedSpot) || (isAuthenticated && packagesLoading) || (guests.length > 0 && !hasEnoughCreditsForAll)}
+                    >
+                      {isBooking ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      {hasLayout && !selectedSpot
+                        ? t("selectSpot")
+                        : guests.length > 0
+                          ? `Reservar para ${totalPeople} persona${totalPeople > 1 ? "s" : ""}`
+                          : t("bookClass")}
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
