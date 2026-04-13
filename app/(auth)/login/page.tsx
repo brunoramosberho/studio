@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SessionProvider, signIn, useSession } from "next-auth/react";
@@ -43,6 +43,106 @@ function useIsAdminSubdomain() {
     setIsAdmin(hostname === `admin.${rootDomain}`);
   }, []);
   return isAdmin;
+}
+
+/* ── OTP Input ── */
+
+function OtpInput({
+  length = 6,
+  onComplete,
+  disabled,
+}: {
+  length?: number;
+  onComplete: (code: string) => void;
+  disabled?: boolean;
+}) {
+  const [values, setValues] = useState<string[]>(Array(length).fill(""));
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    inputRefs.current[0]?.focus();
+  }, []);
+
+  function handleChange(index: number, raw: string) {
+    if (disabled) return;
+
+    // Handle paste or autofill (multiple chars in one event)
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length > 1) {
+      const chars = digits.slice(0, length).split("");
+      const next = [...values];
+      chars.forEach((d, i) => {
+        if (index + i < length) next[index + i] = d;
+      });
+      setValues(next);
+      const focusAt = Math.min(index + chars.length, length - 1);
+      inputRefs.current[focusAt]?.focus();
+      if (next.every((v) => v)) onComplete(next.join(""));
+      return;
+    }
+
+    if (digits.length === 0 && raw.length > 0) return; // non-digit typed
+
+    const next = [...values];
+    next[index] = digits;
+    setValues(next);
+
+    if (digits && index < length - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    if (next.every((v) => v)) onComplete(next.join(""));
+  }
+
+  function handleKeyDown(index: number, e: React.KeyboardEvent) {
+    if (e.key === "Backspace" && !values[index] && index > 0) {
+      const next = [...values];
+      next[index - 1] = "";
+      setValues(next);
+      inputRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    e.preventDefault();
+    const paste = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, length);
+    if (!paste) return;
+    const next = Array(length).fill("");
+    paste.split("").forEach((d, i) => {
+      next[i] = d;
+    });
+    setValues(next);
+    const focusAt = Math.min(paste.length, length - 1);
+    inputRefs.current[focusAt]?.focus();
+    if (next.every((v) => v)) onComplete(next.join(""));
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-2" onPaste={handlePaste}>
+      {values.map((val, i) => (
+        <Fragment key={i}>
+          {i === 3 && (
+            <div className="mx-1 text-lg text-muted/40 select-none">—</div>
+          )}
+          <input
+            ref={(el) => { inputRefs.current[i] = el; }}
+            type="text"
+            inputMode="numeric"
+            autoComplete={i === 0 ? "one-time-code" : "off"}
+            maxLength={6}
+            value={val}
+            onChange={(e) => handleChange(i, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(i, e)}
+            onFocus={(e) => e.target.select()}
+            disabled={disabled}
+            className="h-14 w-11 rounded-xl border border-border bg-surface text-center font-mono text-xl font-semibold text-foreground outline-none transition-all
+              focus:border-accent focus:ring-2 focus:ring-accent/20
+              disabled:opacity-50"
+          />
+        </Fragment>
+      ))}
+    </div>
+  );
 }
 
 /* ── Super-admin login (admin.mgic.app subdomain) ── */
@@ -141,7 +241,7 @@ function SuperAdminLoginForm() {
 
 /* ── Tenant login / registration ── */
 
-type LoginStep = "email" | "register" | "magic-link-sent";
+type LoginStep = "email" | "register" | "otp";
 
 function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
   const [step, setStep] = useState<LoginStep>("email");
@@ -150,6 +250,9 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [otpKey, setOtpKey] = useState(0);
   const { studioName, logoUrl } = useBranding();
   const t = useTranslations("auth");
   const tc = useTranslations("common");
@@ -160,8 +263,6 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
   const defaultCallback = isAdminPortal ? "/admin" : "/my";
   const callbackUrl = searchParams.get("callbackUrl") || defaultCallback;
   const sessionCookie = isAdminPortal ? COOKIE_ADMIN : COOKIE_CLIENT;
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pendingTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (session?.user && !authenticated) {
@@ -170,55 +271,17 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
     }
   }, [session, callbackUrl, router, authenticated]);
 
-  useEffect(() => {
-    if (step !== "magic-link-sent" || !pendingTokenRef.current) {
-      if (pollRef.current) clearInterval(pollRef.current);
-      return;
-    }
-
-    const token = pendingTokenRef.current;
-
-    pollRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/auth/pending-login?token=${token}`);
-        if (!res.ok) return;
-        const data = await res.json();
-
-        if (data.approved && data.sessionToken) {
-          if (pollRef.current) clearInterval(pollRef.current);
-          document.cookie = `${sessionCookie}=${data.sessionToken}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
-          setAuthenticated(true);
-          setTimeout(() => router.replace(callbackUrl), 500);
-        }
-      } catch {}
-    }, 2500);
-
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [step, callbackUrl, router, sessionCookie]);
-
   async function handleGoogleSignIn() {
     await signIn("google", { callbackUrl });
   }
 
-  async function sendMagicLink() {
-    const pendingRes = await fetch("/api/auth/pending-login", {
+  async function sendOtp() {
+    await fetch("/api/auth/pending-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email.trim() }),
     });
-    if (pendingRes.ok) {
-      const { token } = await pendingRes.json();
-      pendingTokenRef.current = token;
-    }
-
-    await signIn("resend", {
-      email: email.trim(),
-      callbackUrl,
-      redirect: false,
-    });
-    setStep("magic-link-sent");
+    setStep("otp");
   }
 
   async function handleEmailSubmit(e: React.FormEvent) {
@@ -236,12 +299,12 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
 
       if (data.exists) {
         if (data.name) setName(data.name);
-        await sendMagicLink();
+        await sendOtp();
       } else {
         setStep("register");
       }
     } catch {
-      await sendMagicLink();
+      await sendOtp();
     } finally {
       setLoading(false);
     }
@@ -260,10 +323,60 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
           phone: phone.trim(),
         }),
       });
-      await sendMagicLink();
+      await sendOtp();
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleOtpComplete(code: string) {
+    setVerifying(true);
+    setOtpError("");
+
+    try {
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), code }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.error === "expired") {
+          setOtpError(t("codeExpired"));
+        } else if (data.error === "too_many_attempts") {
+          setOtpError(t("tooManyAttempts"));
+        } else if (data.error === "invalid_code") {
+          setOtpError(t("invalidCode", { remaining: data.remaining }));
+        } else {
+          setOtpError(t("connectionError"));
+        }
+        setVerifying(false);
+        // Reset the OTP input
+        setOtpKey((k) => k + 1);
+        return;
+      }
+
+      // Success — set session cookie and redirect
+      document.cookie = `${sessionCookie}=${data.sessionToken}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
+      setAuthenticated(true);
+      setTimeout(() => router.replace(callbackUrl), 400);
+    } catch {
+      setOtpError(t("connectionError"));
+      setVerifying(false);
+    }
+  }
+
+  async function handleResendCode() {
+    setOtpError("");
+    setLoading(true);
+    try {
+      await sendOtp();
+    } finally {
+      setLoading(false);
+    }
+    if ((OtpInput as any)._reset) (OtpInput as any)._reset();
   }
 
   const heading = isAdminPortal ? t("adminAccess") : t("welcomeTo", { studioName });
@@ -310,6 +423,16 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
                 </h1>
                 <p className="mt-2 text-sm text-muted">
                   {t("completeYourDetails")}
+                </p>
+              </>
+            )}
+            {step === "otp" && !authenticated && (
+              <>
+                <h1 className="mt-6 font-display text-2xl font-bold text-foreground">
+                  {t("enterCode")}
+                </h1>
+                <p className="mt-2 text-sm text-muted">
+                  {t("otpSent", { email })}
                 </p>
               </>
             )}
@@ -415,46 +538,84 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
             </form>
           )}
 
-          {/* Step: magic link sent */}
-          {step === "magic-link-sent" && (
-            <div className="rounded-2xl bg-accent/5 p-6 text-center">
+          {/* Step: OTP verification */}
+          {step === "otp" && (
+            <div className="space-y-6">
               {authenticated ? (
-                <>
+                <div className="rounded-2xl bg-accent/5 p-6 text-center">
                   <CheckCircle2 className="mx-auto h-10 w-10 text-green-500" />
                   <h3 className="mt-4 font-display text-lg font-bold text-foreground">
                     {t("sessionStarted")}
                   </h3>
                   <p className="mt-2 text-sm text-muted">{t("redirecting")}</p>
-                </>
+                </div>
               ) : (
                 <>
-                  <Mail className="mx-auto h-10 w-10 text-accent" />
-                  <h3 className="mt-4 font-display text-lg font-bold text-foreground">
-                    {t("checkYourEmail")}
-                  </h3>
-                  <p className="mt-2 text-sm text-muted">
-                    {t("magicLinkSent", { email })}
-                  </p>
-                  <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted/60">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    {t("waitingApproval")}
+                  {/* Email badge */}
+                  <div className="flex justify-center">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/50 px-4 py-1.5 text-sm text-muted">
+                      <Mail className="h-3.5 w-3.5" />
+                      {email}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      setStep("email");
-                      pendingTokenRef.current = null;
-                    }}
-                    className="mt-4 text-xs text-accent hover:text-accent/80"
-                  >
-                    {t("useOtherEmail")}
-                  </button>
+
+                  {/* OTP input */}
+                  <OtpInput
+                    key={otpKey}
+                    onComplete={handleOtpComplete}
+                    disabled={verifying}
+                  />
+
+                  {/* Loading / error states */}
+                  {verifying && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t("verifying")}
+                    </div>
+                  )}
+
+                  {otpError && (
+                    <div className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-600">
+                      {otpError}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex flex-col items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleResendCode}
+                      disabled={loading}
+                      className="text-xs text-accent transition-colors hover:text-accent/80 disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <span className="flex items-center gap-1.5">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          {t("resendCode")}
+                        </span>
+                      ) : (
+                        t("resendCode")
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStep("email");
+                        setOtpError("");
+                      }}
+                      className="flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
+                    >
+                      <ArrowLeft className="h-3 w-3" />
+                      {t("useOtherEmail")}
+                    </button>
+                  </div>
                 </>
               )}
             </div>
           )}
 
-          {/* Terms (hidden on magic-link-sent) */}
-          {step !== "magic-link-sent" && (
+          {/* Terms (hidden on otp step) */}
+          {step !== "otp" && (
             <p className="mt-8 text-center text-[11px] leading-relaxed text-muted/60">
               {t.rich("termsNotice", {
                 terms: (chunks) => (
