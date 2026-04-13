@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
+import { X, Sparkles, ArrowRight, TrendingUp, TrendingDown, Telescope } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { useBranding } from "@/components/branding-provider";
@@ -41,6 +41,70 @@ interface FinanceData {
   dailyRevenue: DailyRevenue[];
 }
 
+interface ClassTypeStat {
+  name: string;
+  classesHeld: number;
+  totalCapacity: number;
+  seatsBooked: number;
+  emptySeats: number;
+  fillRate: number;
+  avgAttendees: number;
+}
+
+interface CoachStat {
+  name: string;
+  classesHeld: number;
+  totalCapacity: number;
+  seatsBooked: number;
+  fillRate: number;
+  payType: string | null;
+}
+
+interface TimeSlotStat {
+  dayOfWeek: number;
+  dayLabel: string;
+  hour: number;
+  classesHeld: number;
+  fillRate: number;
+}
+
+interface CohortStat {
+  month: string;
+  joined: number;
+  stillActive: number;
+  retentionPct: number;
+}
+
+interface InsightsData {
+  classTypeTop: ClassTypeStat[];
+  classTypeBottom: ClassTypeStat[];
+  coachTop: CoachStat[];
+  coachBottom: CoachStat[];
+  timeSlotTop: TimeSlotStat[];
+  timeSlotBottom: TimeSlotStat[];
+  mrrConcentration: {
+    totalMrr: number;
+    top10Share: number;
+    topMembers: { name: string; amount: number; packageName: string }[];
+  };
+  mrrAtRisk: {
+    count: number;
+    exposedMrr: number;
+    members: { name: string; amount: number; daysInactive: number }[];
+  };
+  retentionCohorts: CohortStat[];
+  waitlistHotspots: {
+    classType: string;
+    waitlistedClasses: number;
+    totalWaitlisted: number;
+  }[];
+  meta: {
+    range: string;
+    classesAnalyzed: number;
+    activeSubscriptions: number;
+  };
+}
+
 const SOURCE_COLORS: Record<string, string> = {
   subscriptions: "#1C2340",
   packages: "#378ADD",
@@ -61,13 +125,18 @@ function todayKey(prefix: string, range: string) {
   return `${prefix}-${range}-${new Date().toISOString().slice(0, 10)}`;
 }
 
+function formatHour(h: number) {
+  return `${h.toString().padStart(2, "0")}:00`;
+}
+
 function buildCfoPrompt(params: {
   firstName: string;
   studioName: string;
   range: string;
   data: FinanceData;
+  insights: InsightsData | null;
 }) {
-  const { firstName, studioName, range, data } = params;
+  const { firstName, studioName, range, data, insights } = params;
   const { summary, bySource, dailyRevenue } = data;
 
   const rangeLabel: Record<string, string> = {
@@ -102,6 +171,80 @@ function buildCfoPrompt(params: {
     dailyRevenue[0] ?? { date: "", amount: 0 },
   );
 
+  // ─── Build insights sections if available ─────────────────
+  let operationalSection = "";
+  if (insights && insights.meta.classesAnalyzed > 0) {
+    const topClasses = insights.classTypeTop
+      .map((c) => `${c.name} ${c.fillRate}% (${c.seatsBooked}/${c.totalCapacity} asientos, ${c.classesHeld} clases)`)
+      .join(" · ");
+    const bottomClasses = insights.classTypeBottom
+      .map((c) => `${c.name} ${c.fillRate}% (${c.emptySeats} asientos vacíos en ${c.classesHeld} clases)`)
+      .join(" · ");
+    const topCoaches = insights.coachTop
+      .map(
+        (c) =>
+          `${c.name} ${c.seatsBooked} alumnos en ${c.classesHeld} clases (fill ${c.fillRate}%${c.payType ? ", paga " + c.payType : ""})`,
+      )
+      .join(" · ");
+    const bottomCoaches = insights.coachBottom
+      .map(
+        (c) =>
+          `${c.name} fill ${c.fillRate}% en ${c.classesHeld} clases${c.payType ? " (paga " + c.payType + ")" : ""}`,
+      )
+      .join(" · ");
+    const topSlots = insights.timeSlotTop
+      .map((s) => `${s.dayLabel} ${formatHour(s.hour)} ${s.fillRate}%`)
+      .join(" · ");
+    const bottomSlots = insights.timeSlotBottom
+      .map((s) => `${s.dayLabel} ${formatHour(s.hour)} ${s.fillRate}%`)
+      .join(" · ");
+
+    operationalSection = `
+RENTABILIDAD POR CLASE (proxy = fill rate, no revenue exacto porque la gente paga via suscripción/paquete, pero capacidad vacía = coste de coach desperdiciado)
+- Clases más ocupadas: ${topClasses || "—"}
+- Clases con más capacidad desperdiciada: ${bottomClasses || "—"}
+
+PERFORMANCE DE COACHES (proxy de "ingresos generados" = alumnos servidos; payType indica si el coste es fijo o variable)
+- Coaches con más alumnos: ${topCoaches || "—"}
+- Coaches con menor ocupación: ${bottomCoaches || "—"}
+
+HORARIOS
+- Mejores slots: ${topSlots || "—"}
+- Peores slots: ${bottomSlots || "—"}
+
+DEMANDA INSATISFECHA (waitlists = oportunidad de abrir más clases)
+${
+  insights.waitlistHotspots.length
+    ? insights.waitlistHotspots
+        .map((w) => `- ${w.classType}: ${w.totalWaitlisted} personas en waitlist en ${w.waitlistedClasses} clases`)
+        .join("\n")
+    : "- Sin waitlists relevantes"
+}`;
+  }
+
+  let recurrenceHealthSection = "";
+  if (insights) {
+    const concentrationLine = insights.mrrConcentration.totalMrr > 0
+      ? `Top 10 miembros = ${insights.mrrConcentration.top10Share}% del MRR (${formatCurrency(insights.mrrConcentration.topMembers.reduce((s, m) => s + m.amount, 0))} de ${formatCurrency(insights.mrrConcentration.totalMrr)})`
+      : "Sin MRR activo";
+
+    const atRiskLine = insights.mrrAtRisk.count > 0
+      ? `${insights.mrrAtRisk.count} miembros pagan pero no han venido en 21+ días → ${formatCurrency(insights.mrrAtRisk.exposedMrr)} de MRR expuesto a churn`
+      : "Cero miembros activos inactivos — señal de salud";
+
+    const cohortLines = insights.retentionCohorts.length
+      ? insights.retentionCohorts
+          .map((c) => `${c.month}: ${c.stillActive}/${c.joined} siguen activos (${c.retentionPct}%)`)
+          .join(" · ")
+      : "Sin cohortes recientes";
+
+    recurrenceHealthSection = `
+SALUD DEL MRR
+- Concentración: ${concentrationLine}
+- MRR en riesgo: ${atRiskLine}
+- Retención de cohortes recientes: ${cohortLines}`;
+  }
+
   return `Soy ${firstName}, admin de ${studioName}. Acabo de abrir la página de finanzas (/admin/finance) con el período "${rangeLabel[range] ?? range}".
 
 Necesito que actúes como MI CFO de confianza de un boutique studio. No como un chatbot — como el CFO del studio que lleva meses conmigo, conoce la operación, y me va a dar un read rápido de cómo estamos financieramente.
@@ -126,17 +269,20 @@ COMPORTAMIENTO
 - Ingreso diario promedio: ${formatCurrency(avgDaily)}
 - Día pico: ${peakDay.date || "—"} con ${formatCurrency(peakDay.amount)}
 ${trendNote ? `- ${trendNote}` : ""}
+${operationalSection}
+${recurrenceHealthSection}
 
 INSTRUCCIONES PARA TU RESPUESTA:
 - Ya tienes todos los datos arriba — responde DIRECTAMENTE sin llamar herramientas.
 - Háblame directo, por mi nombre (${firstName}) y mencionando ${studioName} al menos una vez.
 - NO repitas los números tal cual te los pasé — interprétalos como un CFO experimentado en fitness boutique.
-- Formato: 3-4 bullets con análisis punzante (no genérico). Cada bullet debe decir algo que yo NO vería con solo mirar las tarjetas.
-- Cruza al menos dos dimensiones (p.ej. MRR vs churn implícito, composición vs riesgo, recurrencia vs pico, concentración, calidad de ingresos).
+- Formato: 3-5 bullets con análisis punzante (no genérico). Cada bullet debe decir algo que yo NO vería con solo mirar las tarjetas.
+- Prioriza cruces fuertes: p.ej. "tal clase llena + tal coach vacío = reasignar"; "MRR crece pero X miembros pagan sin venir = churn latente"; "top 10 miembros concentran Y% = riesgo si se van"; "waitlist en X slot = abrir más clases".
+- Si ves una capacidad desperdiciada clara (clase/coach con fill bajo), mencionarlo es valioso — aunque no haya revenue exacto, el coste del coach sí está ocurriendo.
 - Cierra con una línea final en **negritas** con UNA recomendación concreta accionable — la que tú priorizarías si estuvieras en mi silla hoy.
 - Tono: directo, cálido, con opinión. Usa emojis sutiles (→ ✓ ⚠ ↑ ↓) cuando aporten.
 - No uses encabezados ni tablas. Solo bullets cortos y la recomendación final en negritas.
-- Máximo 6 líneas totales.`;
+- Máximo 7 líneas totales.`;
 }
 
 const DISMISS_KEY_PREFIX = "mgic-ai-finance-briefing-dismissed";
@@ -148,7 +294,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
   const [dismissed, setDismissed] = useState(false);
   const [error, setError] = useState(false);
   const { colorAdmin, studioName } = useBranding();
-  const { open } = useMgicAI();
+  const { open, sendMessage, isStreaming } = useMgicAI();
   const { data: session } = useSession();
   const hasFetched = useRef<string | null>(null);
 
@@ -162,6 +308,16 @@ export function FinanceBriefingCard({ range }: { range: string }) {
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
+  });
+
+  const { data: insights, isError: insightsError } = useQuery<InsightsData>({
+    queryKey: ["admin-finance-insights", range],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/finance/insights?range=${range}`);
+      if (!res.ok) throw new Error("Failed to fetch insights");
+      return res.json();
+    },
+    retry: 1,
   });
 
   // Reset state when period changes
@@ -187,6 +343,9 @@ export function FinanceBriefingCard({ range }: { range: string }) {
   const fetchBriefing = useCallback(async () => {
     if (!finance || !session?.user?.name) return;
     if (dismissed) return;
+    // Wait for insights too — they enrich the prompt meaningfully.
+    // If insights errored, proceed without them (briefing still works from base finance data).
+    if (insights === undefined && !insightsError) return;
     const cacheId = `${range}-${new Date().toISOString().slice(0, 10)}`;
     if (hasFetched.current === cacheId) return;
     if (content) return;
@@ -200,7 +359,13 @@ export function FinanceBriefingCard({ range }: { range: string }) {
           messages: [
             {
               role: "user",
-              content: buildCfoPrompt({ firstName, studioName, range, data: finance }),
+              content: buildCfoPrompt({
+                firstName,
+                studioName,
+                range,
+                data: finance,
+                insights: insights ?? null,
+              }),
             },
           ],
         }),
@@ -249,7 +414,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
       setError(true);
       setLoading(false);
     }
-  }, [finance, session?.user?.name, dismissed, content, firstName, studioName, range]);
+  }, [finance, insights, insightsError, session?.user?.name, dismissed, content, firstName, studioName, range]);
 
   useEffect(() => {
     fetchBriefing();
@@ -258,6 +423,34 @@ export function FinanceBriefingCard({ range }: { range: string }) {
   const dismiss = () => {
     localStorage.setItem(todayKey(DISMISS_KEY_PREFIX, range), "1");
     setDismissed(true);
+  };
+
+  const deepDive = () => {
+    const rangeLabel: Record<string, string> = {
+      today: "hoy",
+      month: "este mes",
+      last30: "los últimos 30 días",
+      last90: "los últimos 90 días",
+      year: "este año",
+    };
+    const label = rangeLabel[range] ?? range;
+    open();
+    // Let the panel mount before dispatching the message.
+    setTimeout(() => {
+      sendMessage(
+        `Hazme un análisis profundo de la situación financiera y operativa de ${studioName} (${label}) como CFO del studio.
+
+Usa las herramientas que tengas para cruzar datos reales:
+1. Rentabilidad por tipo de clase — fill rate, capacidad desperdiciada y cómo se relaciona con el tipo de pago del coach (MONTHLY_FIXED = coste fijo, PER_CLASS = coste por clase aunque haya pocos alumnos).
+2. Ranking de coaches: quién llena más asientos, quién tiene fill rate bajo, y si su modelo de pago tiene sentido para su performance.
+3. Concentración de ingresos: qué % del MRR depende de los top miembros, y exposición a churn (miembros que pagan pero llevan semanas sin venir).
+4. Demanda insatisfecha (waitlists) y si hay slots donde convendría abrir más clases.
+5. Retención por cohorte de los últimos meses.
+6. Composición de ingresos (suscripciones vs paquetes vs productos) y qué señales de salud/riesgo muestra.
+
+Al final dame 3 recomendaciones priorizadas: qué hacer YA, qué observar esta semana, qué investigar a fondo. Tono directo, como un CFO con skin in the game. Háblame por mi nombre (${firstName}).`,
+      );
+    }, 50);
   };
 
   if (dismissed) return null;
@@ -337,8 +530,18 @@ export function FinanceBriefingCard({ range }: { range: string }) {
                 <BriefingMarkdown content={content} accentColor={colorAdmin} />
               )}
 
-              {/* CTA */}
-              <div className="mt-4">
+              {/* CTA row */}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={deepDive}
+                  disabled={isStreaming}
+                  className="group inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:gap-2.5 disabled:opacity-60"
+                  style={{ backgroundColor: colorAdmin }}
+                >
+                  <Telescope className="h-3.5 w-3.5" />
+                  Profundiza más
+                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                </button>
                 <button
                   onClick={open}
                   className="group inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:gap-2.5"
