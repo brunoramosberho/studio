@@ -146,25 +146,39 @@ export async function POST(req: Request) {
       content.reduce((s, c) => s + ("text" in c && typeof c.text === "string" ? c.text.length : 0), 0),
     );
 
-    // 5. Call Claude
+    // 5. Call Claude (with retry on overload)
     const anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
+    const callClaude = async (retries = 3): Promise<Anthropic.Messages.Message> => {
+      try {
+        return await anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 8192,
+          messages: [{ role: "user", content }],
+        });
+      } catch (e) {
+        const status = (e as { status?: number }).status;
+        if ((status === 529 || status === 503) && retries > 0) {
+          console.log(`[onboarding/analyze] API overloaded (${status}), retrying in 3s... (${retries} left)`);
+          await new Promise((r) => setTimeout(r, 3000));
+          return callClaude(retries - 1);
+        }
+        throw e;
+      }
+    };
+
     let message: Anthropic.Messages.Message;
     try {
-      message = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 8192,
-        messages: [{ role: "user", content }],
-      });
+      message = await callClaude();
     } catch (e) {
       console.error("[onboarding/analyze] Claude API error:", e);
-      const errMsg = e instanceof Error ? e.message : "Error de IA";
-      return NextResponse.json(
-        { error: `Error al comunicarse con la IA: ${errMsg.slice(0, 300)}` },
-        { status: 422 },
-      );
+      const status = (e as { status?: number }).status;
+      const friendly = status === 529 || status === 503
+        ? "La IA está saturada en este momento. Intenta de nuevo en unos segundos."
+        : `Error al comunicarse con la IA (${status || "unknown"})`;
+      return NextResponse.json({ error: friendly }, { status: 422 });
     }
 
     // 6. Parse response
