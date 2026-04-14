@@ -201,7 +201,7 @@ export default function CoachAvailabilityPage() {
       <div className="mx-auto flex max-w-7xl flex-col gap-6 p-4 lg:flex-row lg:p-6">
         {/* Left: calendar */}
         <div className="flex-1">
-          <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-6">
+          <div className="rounded-2xl border border-stone-200 bg-card p-4 sm:p-6">
             {/* Tabs + nav */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <div className="inline-flex rounded-lg bg-stone-100 p-1">
@@ -212,7 +212,7 @@ export default function CoachAvailabilityPage() {
                     className={cn(
                       "rounded-lg px-4 py-1.5 text-sm font-medium transition-all",
                       view === v
-                        ? "border border-stone-200 bg-white text-stone-900 shadow-none"
+                        ? "border border-stone-200 bg-card text-stone-900 shadow-none"
                         : "text-stone-500 hover:text-stone-700",
                     )}
                   >
@@ -287,7 +287,7 @@ export default function CoachAvailabilityPage() {
 
         {/* Right: sidebar */}
         <div className="w-full lg:w-80">
-          <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-6">
+          <div className="rounded-2xl border border-stone-200 bg-card p-4 sm:p-6">
             <h2 className="mb-5 text-lg font-semibold text-stone-900">
               {t("myAvailability")}
             </h2>

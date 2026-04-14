@@ -83,7 +83,7 @@ export function PackageSelector({
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                      className="h-2 w-2 rounded-full bg-white"
+                      className="h-2 w-2 rounded-full bg-card"
                     />
                   )}
                 </div>

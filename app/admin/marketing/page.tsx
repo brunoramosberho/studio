@@ -462,7 +462,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
   return (
     <div className="space-y-5">
       {/* Explainer */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-5">
+      <div className="rounded-2xl border border-stone-200 bg-card p-5">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#3730B8]/10">
             <Link2 className="h-4.5 w-4.5 text-[#3730B8]" />
@@ -525,7 +525,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar clase, paquete o producto..."
-              className="w-full rounded-xl border border-stone-200 bg-white py-2 pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400 focus:ring-1 focus:ring-stone-300"
+              className="w-full rounded-xl border border-stone-200 bg-card py-2 pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400 focus:ring-1 focus:ring-stone-300"
             />
           </div>
           <div className="flex gap-1">
@@ -548,7 +548,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
       )}
 
       {/* Link List */}
-      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-card">
         {!hasAnyLinks ? (
           <div className="px-4 py-12 text-center">
             <Link2 className="mx-auto mb-2 h-8 w-8 text-stone-300" />
@@ -832,7 +832,7 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
   return (
     <div className="space-y-5">
       {/* Explainer */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-5">
+      <div className="rounded-2xl border border-stone-200 bg-card p-5">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#3730B8]/10">
             <BarChart3 className="h-4.5 w-4.5 text-[#3730B8]" />
@@ -858,7 +858,7 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Form */}
         <div className="space-y-4 lg:col-span-3">
-          <div className="space-y-4 rounded-2xl border border-stone-200 bg-white p-5">
+          <div className="space-y-4 rounded-2xl border border-stone-200 bg-card p-5">
             <div>
               <label className="mb-1 block text-xs font-medium text-stone-600">
                 ¿A dónde quieres enviar a la gente?
@@ -1042,7 +1042,7 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
 
         {/* Templates */}
         <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
+          <div className="rounded-2xl border border-stone-200 bg-card p-5">
             <h3 className="text-sm font-semibold text-stone-900">
               Atajos rápidos
             </h3>
@@ -1118,7 +1118,7 @@ function Toggle({
     >
       <span
         className={cn(
-          "absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+          "absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform",
           checked && "translate-x-4"
         )}
       />
@@ -1175,7 +1175,7 @@ function PixelCard({
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border border-stone-200 bg-white p-5">
+    <div className="space-y-4 rounded-2xl border border-stone-200 bg-card p-5">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-100 text-sm font-bold text-stone-600">
@@ -1339,7 +1339,7 @@ function PixelsTab() {
   return (
     <div className="space-y-5">
       {/* Explainer */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-5">
+      <div className="rounded-2xl border border-stone-200 bg-card p-5">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#3730B8]/10">
             <TrendingUp className="h-4.5 w-4.5 text-[#3730B8]" />

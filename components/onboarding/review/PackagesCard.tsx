@@ -120,7 +120,7 @@ export function PackagesCard({ data, currency, onChange }: Props) {
                               e.target.value === "subscription" ? pkg.periodicity || "monthly" : null,
                           })
                         }
-                        className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-sm"
+                        className="h-8 w-full rounded-md border border-gray-200 bg-card px-2 text-sm"
                       >
                         <option value="offer">Oferta</option>
                         <option value="package">Paquete</option>
@@ -197,7 +197,7 @@ export function PackagesCard({ data, currency, onChange }: Props) {
                               periodicity: e.target.value as "monthly" | "annual",
                             })
                           }
-                          className="h-7 rounded border border-gray-200 bg-white px-2 text-xs"
+                          className="h-7 rounded border border-gray-200 bg-card px-2 text-xs"
                         >
                           <option value="monthly">Mensual</option>
                           <option value="annual">Anual</option>

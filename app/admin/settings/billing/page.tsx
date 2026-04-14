@@ -104,7 +104,7 @@ export default function BillingPage() {
       </div>
 
       {/* ── SaaS Subscription Section ── */}
-      <section className="rounded-xl border border-border bg-white p-6">
+      <section className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-admin/10">
             <Zap className="h-5 w-5 text-admin" />
@@ -139,7 +139,7 @@ export default function BillingPage() {
       </section>
 
       {/* ── Stripe Connect Section ── */}
-      <section className="rounded-xl border border-border bg-white p-6">
+      <section className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-admin/10">
             <CreditCard className="h-5 w-5 text-admin" />
@@ -198,7 +198,7 @@ export default function BillingPage() {
             <button
               onClick={startOnboarding}
               disabled={onboarding}
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-50 disabled:opacity-50"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-card px-4 py-2 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-50 disabled:opacity-50"
             >
               {onboarding ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -226,7 +226,7 @@ export default function BillingPage() {
             <button
               onClick={startOnboarding}
               disabled={onboarding}
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-800 transition-colors hover:bg-red-50 disabled:opacity-50"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-card px-4 py-2 text-sm font-medium text-red-800 transition-colors hover:bg-red-50 disabled:opacity-50"
             >
               {onboarding ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -262,7 +262,7 @@ export default function BillingPage() {
               href="https://dashboard.stripe.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-medium text-emerald-800 transition-colors hover:bg-emerald-50"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-card px-4 py-2 text-sm font-medium text-emerald-800 transition-colors hover:bg-emerald-50"
             >
               <ExternalLink className="h-4 w-4" />
               Ver en Stripe

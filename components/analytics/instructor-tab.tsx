@@ -96,7 +96,7 @@ export function InstructorTab({ coaches, metrics }: InstructorTabProps) {
               key={coach.id}
               onClick={() => setSelectedCoachId(coach.id)}
               className={cn(
-                "w-full rounded-2xl bg-white p-4 text-left shadow-[var(--shadow-warm)] transition-all",
+                "w-full rounded-2xl bg-card p-4 text-left shadow-[var(--shadow-warm)] transition-all",
                 isSelected
                   ? "ring-2 ring-admin"
                   : "hover:shadow-[var(--shadow-warm-md)]",

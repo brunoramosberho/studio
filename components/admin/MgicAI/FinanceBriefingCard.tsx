@@ -467,7 +467,7 @@ Al final dame 3 recomendaciones priorizadas: qué hacer YA, qué observar esta s
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-        className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.08)]"
+        className="overflow-hidden rounded-2xl bg-card shadow-[0_2px_20px_-4px_rgba(0,0,0,0.08)]"
       >
         {/* Gradient accent bar */}
         <div

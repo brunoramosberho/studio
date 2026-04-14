@@ -620,7 +620,7 @@ export default function AdminClassDetailPage() {
                 value={blockingNotes}
                 onChange={(e) => handleNotesChange(e.target.value)}
                 placeholder={t("blockingNotesPlaceholder")}
-                className="w-full resize-none rounded-lg border border-border/60 bg-white p-3 pr-20 text-sm transition-colors focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30"
+                className="w-full resize-none rounded-lg border border-border/60 bg-card p-3 pr-20 text-sm transition-colors focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30"
                 rows={2}
               />
               {blockingNotes.trim() && (

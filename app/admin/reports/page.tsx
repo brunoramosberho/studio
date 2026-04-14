@@ -39,7 +39,7 @@ function ChartTooltip({ active, payload, label }: Record<string, unknown>) {
   if (!active || !(payload as unknown[])?.length) return null;
   const entry = (payload as { value: number; name: string }[])[0];
   return (
-    <div className="rounded-xl border border-border bg-white px-3 py-2 shadow-warm">
+    <div className="rounded-xl border border-border bg-card px-3 py-2 shadow-warm">
       <p className="text-xs text-muted">{(label as string) || entry.name}</p>
       <p className="font-mono text-sm font-bold text-foreground">{entry.value}%</p>
     </div>
@@ -250,7 +250,7 @@ export default function AdminReportsPage() {
                           if (!active || !payload?.length) return null;
                           const d = payload[0].payload as { month: string; rate: number; total: number; active: number };
                           return (
-                            <div className="rounded-xl border border-border bg-white px-3 py-2 shadow-warm">
+                            <div className="rounded-xl border border-border bg-card px-3 py-2 shadow-warm">
                               <p className="text-xs text-muted">{d.month}</p>
                               <p className="font-mono text-sm font-bold text-foreground">{d.rate}%</p>
                               <p className="text-xs text-muted">{d.active} / {d.total}</p>

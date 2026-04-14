@@ -41,7 +41,7 @@ export function StudioLocationMap({
   const directionsUrl = getDirectionsUrl(latitude, longitude);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/50 bg-white">
+    <div className="overflow-hidden rounded-2xl border border-border/50 bg-card">
       <a
         href={directionsUrl}
         target="_blank"

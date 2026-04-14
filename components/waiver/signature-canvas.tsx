@@ -138,7 +138,7 @@ export function SignatureCanvas({ onAccept, onClose }: SignatureCanvasProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
-      <div className="w-full max-w-lg animate-sheet-up rounded-t-3xl bg-white safe-bottom">
+      <div className="w-full max-w-lg animate-sheet-up rounded-t-3xl bg-card safe-bottom">
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="h-1 w-10 rounded-full bg-stone-300" />

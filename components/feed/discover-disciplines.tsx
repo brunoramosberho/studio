@@ -118,7 +118,7 @@ export function DiscoverDisciplines({ disciplines }: DiscoverDisciplinesProps) {
                 <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
                   {/* Icon pill */}
                   <div
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-sm"
                   >
                     {Icon ? (
                       <Icon className="h-4 w-4" style={{ color: d.color }} />
@@ -128,7 +128,7 @@ export function DiscoverDisciplines({ disciplines }: DiscoverDisciplinesProps) {
                   </div>
 
                   {/* Intensity flames */}
-                  <div className="flex items-center rounded-full bg-white px-2 py-1 shadow-sm">
+                  <div className="flex items-center rounded-full bg-card px-2 py-1 shadow-sm">
                     {Array.from({ length: flames }).map((_, i) => (
                       <Flame key={i} className="h-3.5 w-3.5" style={{ fill: d.color, color: d.color }} />
                     ))}

@@ -109,7 +109,7 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
           className="overflow-hidden"
         >
           <div className="px-4 pb-2 pt-1">
-            <div className="rounded-xl border border-border/50 bg-white p-3">
+            <div className="rounded-xl border border-border/50 bg-card p-3">
               <div className="flex items-center gap-3">
                 <div
                   className="flex h-10 w-10 items-center justify-center rounded-xl"

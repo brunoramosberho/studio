@@ -101,8 +101,8 @@ export function PollCard({ poll, eventId }: PollCardProps) {
                 isMyVote
                   ? "border-accent bg-accent/5 ring-1 ring-accent/20"
                   : hasVoted
-                    ? "border-border/50 bg-white"
-                    : "border-border/60 bg-white hover:border-accent/40 hover:bg-accent/5",
+                    ? "border-border/50 bg-card"
+                    : "border-border/60 bg-card hover:border-accent/40 hover:bg-accent/5",
               )}
             >
               {hasVoted && (

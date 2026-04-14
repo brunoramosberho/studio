@@ -186,7 +186,7 @@ export default function BookingsPage() {
               className={cn(
                 "flex-1 rounded-lg py-2 text-sm font-medium transition-all",
                 tab === tabKey
-                  ? "bg-white text-foreground shadow-sm"
+                  ? "bg-card text-foreground shadow-sm"
                   : "text-muted hover:text-foreground",
               )}
             >
@@ -283,7 +283,7 @@ export default function BookingsPage() {
                     </span>
                   </div>
 
-                  <div className="rounded-2xl border border-border/40 bg-white shadow-sm overflow-hidden">
+                  <div className="rounded-2xl border border-border/40 bg-card shadow-sm overflow-hidden">
                     <Link
                       href={`/class/${booking.classId}`}
                       className="block"
@@ -338,7 +338,7 @@ export default function BookingsPage() {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 300 }}
-                className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-white pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+                className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-card pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
               >
                 <div className="flex justify-center pt-3 sm:hidden">
                   <div className="h-1 w-10 rounded-full bg-border" />
@@ -428,7 +428,7 @@ export default function BookingsPage() {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 300 }}
-                className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-white pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+                className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-card pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
               >
                 <div className="flex justify-center pt-3 sm:hidden">
                   <div className="h-1 w-10 rounded-full bg-border" />
@@ -517,7 +517,7 @@ function BookingCard({
         href={`/class/${booking.classId}`}
         className="block"
       >
-        <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
+        <div className="rounded-2xl border border-border/40 bg-card px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
           <div className="flex items-center gap-3">
             {(booking.class.coach.photoUrl || booking.class.coach.user?.image) ? (
               <img

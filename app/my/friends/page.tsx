@@ -176,13 +176,13 @@ export default function FriendsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nombre..."
-            className="h-11 w-full rounded-2xl border border-border/50 bg-white pl-10 pr-4 text-[14px] text-foreground placeholder:text-muted/60 focus:border-accent focus:outline-none"
+            className="h-11 w-full rounded-2xl border border-border/50 bg-card pl-10 pr-4 text-[14px] text-foreground placeholder:text-muted/60 focus:border-accent focus:outline-none"
           />
         </div>
 
         {/* Invite banner */}
         {shareUrl && (
-          <div className="mb-5 rounded-2xl border border-border/50 bg-white p-4">
+          <div className="mb-5 rounded-2xl border border-border/50 bg-card p-4">
             <div className="flex items-center gap-3">
               <div
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
@@ -214,7 +214,7 @@ export default function FriendsPage() {
               </button>
               <button
                 onClick={handleCopyLink}
-                className="flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-white px-4 py-2.5 text-[14px] font-medium text-foreground transition-colors active:bg-surface"
+                className="flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2.5 text-[14px] font-medium text-foreground transition-colors active:bg-surface"
               >
                 {copied ? (
                   <Check className="h-4 w-4 text-green-500" />
@@ -243,7 +243,7 @@ export default function FriendsPage() {
                   {filteredPending.map((req) => (
                     <div
                       key={req.friendshipId}
-                      className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
+                      className="flex items-center gap-3 rounded-2xl border border-border/50 bg-card px-4 py-3"
                     >
                       <Link href={`/my/user/${req.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                         <UserAvatar user={req as UserAvatarUser} size={44} />
@@ -286,7 +286,7 @@ export default function FriendsPage() {
                   {filteredSent.map((req) => (
                     <div
                       key={req.friendshipId}
-                      className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
+                      className="flex items-center gap-3 rounded-2xl border border-border/50 bg-card px-4 py-3"
                     >
                       <Link href={`/my/user/${req.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                         <UserAvatar user={req as UserAvatarUser} size={44} />
@@ -317,7 +317,7 @@ export default function FriendsPage() {
                 Tus amigos ({filteredFriends.length})
               </h2>
               {filteredFriends.length === 0 ? (
-                <div className="rounded-2xl border border-border/50 bg-white py-12 text-center">
+                <div className="rounded-2xl border border-border/50 bg-card py-12 text-center">
                   <span className="text-3xl">👋</span>
                   <p className="mt-3 text-[14px] font-medium text-foreground">
                     Aún no tienes amigos
@@ -331,7 +331,7 @@ export default function FriendsPage() {
                   {filteredFriends.map((f) => (
                     <div
                       key={f.friendshipId}
-                      className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
+                      className="flex items-center gap-3 rounded-2xl border border-border/50 bg-card px-4 py-3"
                     >
                       <Link href={`/my/user/${f.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                         <UserAvatar user={f as UserAvatarUser} size={44} />
@@ -361,7 +361,7 @@ export default function FriendsPage() {
                   {filteredSuggestions.map((s) => (
                     <div
                       key={s.id}
-                      className="flex items-center gap-3 rounded-2xl border border-border/50 bg-white px-4 py-3"
+                      className="flex items-center gap-3 rounded-2xl border border-border/50 bg-card px-4 py-3"
                     >
                       <Link href={`/my/user/${s.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                         <UserAvatar user={s as UserAvatarUser} size={44} />

@@ -21,7 +21,7 @@ export default function FeedLoading() {
 
       <div className="space-y-4">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="rounded-2xl border border-border/50 bg-white p-4 space-y-3">
+          <div key={i} className="rounded-2xl border border-border/50 bg-card p-4 space-y-3">
             <div className="flex items-center gap-3">
               <Skeleton className="h-10 w-10 rounded-full" />
               <div className="space-y-1.5 flex-1">

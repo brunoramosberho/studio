@@ -59,7 +59,7 @@ export function WaiverGate() {
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
           className="fixed inset-x-0 bottom-20 z-50 mx-auto w-[calc(100%-2rem)] max-w-md md:bottom-6"
         >
-          <div className="flex items-start gap-3 rounded-2xl border border-amber-200/80 bg-white p-4 shadow-lg shadow-black/5">
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-200/80 bg-card p-4 shadow-lg shadow-black/5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
               <AnimatedFileText ref={iconRef} size={18} className="p-0" />
             </div>

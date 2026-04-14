@@ -40,13 +40,14 @@ const fontVars = [
   jakarta, outfit, nunitoSans, GeistSans, GeistMono,
 ].map((f) => f.variable).join(" ");
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { getServerBranding } from "@/lib/branding.server";
-import { DEFAULTS, getFontPairing } from "@/lib/branding";
+import { getFontPairing } from "@/lib/branding";
 import { getTenantSlug } from "@/lib/tenant";
 import { buildAppleSplashStartupImages } from "@/lib/pwa/splash-meta";
+import type { ThemeMode } from "@/components/theme-provider";
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getServerBranding();
@@ -119,27 +120,36 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
 
+  // Only the tenant-customizable brand vars are injected as inline style.
+  // Platform neutrals (bg/fg/surface/muted/border/card) and their dark-mode
+  // counterparts live in globals.css so `html.dark` can cleanly override
+  // them without inline styles winning by specificity.
   const themeStyle = {
-    "--color-background": b.colorBg,
-    "--color-foreground": b.colorFg,
-    "--color-surface": b.colorSurface,
     "--color-accent": b.colorAccent,
-    "--color-accent-soft": b.colorAccentSoft,
-    "--color-muted": b.colorMuted,
-    "--color-border": b.colorBorder,
     "--color-hero-bg": b.colorHeroBg,
     "--color-ring": b.colorAccent,
-    "--color-coach": b.colorCoach,
-    "--color-admin": b.colorAdmin,
     "--font-display": fp.displayVar,
     "--font-body": fp.bodyVar,
   } as React.CSSProperties;
 
+  const cookieStore = await cookies();
+  const themePref = (cookieStore.get("studio-theme")?.value ?? "system") as ThemeMode;
+
   return (
-    <html lang={locale} className={fontVars} style={themeStyle}>
+    <html lang={locale} className={fontVars} style={themeStyle} suppressHydrationWarning>
+      <head>
+        {/* No-flash theme script — resolves user preference before paint so
+            the correct palette is applied on first render. Inlined to avoid
+            any network round-trip. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=document.cookie.match(/(?:^|;\\s*)studio-theme=([^;]+)/);var t=(p&&p[1])||localStorage.getItem('studio-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.content=d?'#0B0B0F':'#FFFFFF';}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <NextIntlClientProvider messages={messages}>
-          <Providers>
+          <Providers initialTheme={themePref}>
             <InAppBrowserBanner />
             <SplashScreen />
             {children}

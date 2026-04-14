@@ -135,7 +135,7 @@ function timeAgo(dateStr: string) {
 function ClassCard({ cls, showCoach = true }: { cls: UpcomingClass; showCoach?: boolean }) {
   const Icon = cls.icon ? getIconComponent(cls.icon) : null;
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/50 bg-white">
+    <div className="overflow-hidden rounded-2xl border border-border/50 bg-card">
       <div className="flex items-center gap-3 px-4 py-3">
         <div
           className="h-10 w-10 shrink-0 rounded-xl"
@@ -209,7 +209,7 @@ function FeedEventMini({ event }: { event: FeedItem }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl bg-white">
+    <div className="overflow-hidden rounded-xl bg-card">
       <div className="flex items-start gap-3 px-3 py-2.5">
         <div
           className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
@@ -487,7 +487,7 @@ export default function UserProfilePage({
               </section>
             )}
             {(!profile.coachClasses || profile.coachClasses.length === 0) && (
-              <div className="rounded-2xl border border-border/50 bg-white py-10 text-center">
+              <div className="rounded-2xl border border-border/50 bg-card py-10 text-center">
                 <Calendar className="mx-auto h-6 w-6 text-muted/40" />
                 <p className="mt-2 text-[13px] text-muted">Sin clases próximas</p>
               </div>
@@ -498,7 +498,7 @@ export default function UserProfilePage({
         {/* ===== NON-FRIEND VIEW (non-coach) ===== */}
         {!profile.isFriend && !profile.isCoach && (
           <motion.div custom={3} variants={fadeUp} initial="hidden" animate="show">
-            <div className="rounded-2xl border border-border/50 bg-white py-10 text-center">
+            <div className="rounded-2xl border border-border/50 bg-card py-10 text-center">
               <Users className="mx-auto h-7 w-7 text-muted/40" />
               <p className="mt-3 text-[14px] font-medium text-foreground">
                 Perfil limitado
@@ -520,7 +520,7 @@ export default function UserProfilePage({
                 className={cn(
                   "flex-1 rounded-lg py-2 text-[13px] font-medium transition-all",
                   activeTab === "upcoming"
-                    ? "bg-white text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm"
                     : "text-muted hover:text-foreground",
                 )}
               >
@@ -532,7 +532,7 @@ export default function UserProfilePage({
                 className={cn(
                   "flex-1 rounded-lg py-2 text-[13px] font-medium transition-all",
                   activeTab === "activity"
-                    ? "bg-white text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm"
                     : "text-muted hover:text-foreground",
                 )}
               >
@@ -549,7 +549,7 @@ export default function UserProfilePage({
                     <ClassCard key={cls.id} cls={cls} />
                   ))
                 ) : (
-                  <div className="rounded-2xl border border-border/50 bg-white py-10 text-center">
+                  <div className="rounded-2xl border border-border/50 bg-card py-10 text-center">
                     <Calendar className="mx-auto h-6 w-6 text-muted/40" />
                     <p className="mt-2 text-[13px] text-muted">
                       Sin clases próximas reservadas
@@ -574,7 +574,7 @@ export default function UserProfilePage({
                         return (
                         <div
                           key={item.id}
-                          className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5"
+                          className="flex items-center gap-3 rounded-xl bg-card px-3 py-2.5"
                         >
                           <div
                             className="h-8 w-8 shrink-0 rounded-lg"
@@ -619,7 +619,7 @@ export default function UserProfilePage({
 
                 {(!profile.recentActivity || profile.recentActivity.length === 0) &&
                   (!profile.activityFeed || profile.activityFeed.length === 0) && (
-                    <div className="rounded-2xl border border-border/50 bg-white py-10 text-center">
+                    <div className="rounded-2xl border border-border/50 bg-card py-10 text-center">
                       <Clock className="mx-auto h-6 w-6 text-muted/40" />
                       <p className="mt-2 text-[13px] text-muted">Sin actividad reciente</p>
                     </div>

@@ -116,7 +116,7 @@ export function CustomerStep() {
       <div className="flex items-center gap-2.5">
         <div ref={dropdownRef} className="relative flex-1">
           {customer ? (
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-white px-4 py-3">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-admin/10">
                 {customer.image ? (
                   <img
@@ -152,7 +152,7 @@ export function CustomerStep() {
           ) : (
             <div
               className={cn(
-                "flex items-center gap-3 rounded-xl border bg-white px-4 py-3 transition-colors cursor-text",
+                "flex items-center gap-3 rounded-xl border bg-card px-4 py-3 transition-colors cursor-text",
                 dropdownOpen
                   ? "border-admin/40 ring-2 ring-admin/10"
                   : "border-border hover:border-border/80",
@@ -181,7 +181,7 @@ export function CustomerStep() {
 
           {/* Dropdown */}
           {dropdownOpen && (
-            <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-border/60 bg-white py-1.5 shadow-lg">
+            <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-border/60 bg-card py-1.5 shadow-lg">
               {isLoading ? (
                 <div className="flex items-center justify-center py-6">
                   <Loader2 className="h-5 w-5 animate-spin text-muted" />
@@ -239,7 +239,7 @@ export function CustomerStep() {
         {/* Add new customer button */}
         <button
           onClick={() => setShowCreateClient(true)}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-muted transition-colors hover:bg-surface hover:text-foreground"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted transition-colors hover:bg-surface hover:text-foreground"
         >
           <Plus className="h-4.5 w-4.5" />
         </button>
@@ -249,7 +249,7 @@ export function CustomerStep() {
           <button
             onClick={() => setShowPreview(true)}
             title={t("viewCustomerProfile")}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-muted transition-colors hover:bg-surface hover:text-foreground"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted transition-colors hover:bg-surface hover:text-foreground"
           >
             <Eye className="h-4.5 w-4.5" />
           </button>

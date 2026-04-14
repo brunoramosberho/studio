@@ -125,7 +125,7 @@ export function ScheduleCard({ data, disciplines, coaches, onChange }: Props) {
                               <select
                                 value={slot.dayOfWeek}
                                 onChange={(e) => update(i, { dayOfWeek: Number(e.target.value) })}
-                                className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-sm"
+                                className="h-8 w-full rounded-md border border-gray-200 bg-card px-2 text-sm"
                               >
                                 {Object.entries(DAY_NAMES).map(([val, name]) => (
                                   <option key={val} value={val}>{name}</option>
@@ -163,7 +163,7 @@ export function ScheduleCard({ data, disciplines, coaches, onChange }: Props) {
                               <select
                                 value={slot.disciplineName}
                                 onChange={(e) => update(i, { disciplineName: e.target.value })}
-                                className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-sm"
+                                className="h-8 w-full rounded-md border border-gray-200 bg-card px-2 text-sm"
                               >
                                 <option value="">— seleccionar —</option>
                                 {disciplines.map((d) => (
@@ -176,7 +176,7 @@ export function ScheduleCard({ data, disciplines, coaches, onChange }: Props) {
                               <select
                                 value={slot.coachName || ""}
                                 onChange={(e) => update(i, { coachName: e.target.value || null })}
-                                className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-sm"
+                                className="h-8 w-full rounded-md border border-gray-200 bg-card px-2 text-sm"
                               >
                                 <option value="">— sin asignar —</option>
                                 {coaches.map((c) => (

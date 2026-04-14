@@ -348,7 +348,7 @@ function Lightbox({
               key={i}
               className={cn(
                 "h-1.5 rounded-full transition-all duration-200",
-                i === idx ? "w-4 bg-white" : "w-1.5 bg-white/40",
+                i === idx ? "w-4 bg-card" : "w-1.5 bg-white/40",
               )}
             />
           ))}

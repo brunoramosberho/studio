@@ -226,7 +226,7 @@ export function PaymentStep() {
                         ? "cursor-not-allowed border-border/40 bg-surface/30 opacity-60"
                         : isSelected
                           ? "border-admin/30 bg-admin/5 ring-1 ring-admin/10"
-                          : "border-border/60 bg-white hover:bg-surface/50",
+                          : "border-border/60 bg-card hover:bg-surface/50",
                     )}
                   >
                     <div
@@ -276,7 +276,7 @@ export function PaymentStep() {
                     >
                       {isSelected && !cardDisabled && (
                         <div className="flex h-full items-center justify-center">
-                          <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                          <div className="h-1.5 w-1.5 rounded-full bg-card" />
                         </div>
                       )}
                     </div>
@@ -293,7 +293,7 @@ export function PaymentStep() {
                             "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
                             selectedCardId === card.id
                               ? "border-admin/30 bg-admin/5"
-                              : "border-border/50 bg-white hover:bg-surface/50",
+                              : "border-border/50 bg-card hover:bg-surface/50",
                           )}
                         >
                           <CreditCard

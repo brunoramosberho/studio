@@ -152,7 +152,7 @@ export default function ReferralSettingsPage() {
       </div>
 
       {/* Toggle */}
-      <section className="rounded-xl border border-border bg-white p-6">
+      <section className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center gap-4">
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-foreground">Programa activo</h3>
@@ -168,7 +168,7 @@ export default function ReferralSettingsPage() {
       </section>
 
       {/* Trigger stage */}
-      <section className="rounded-xl border border-border bg-white p-6">
+      <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-foreground">
           ¿Cuándo se desbloquea el premio?
         </h2>
@@ -288,7 +288,7 @@ function RewardSection({
           : null;
 
   return (
-    <section className="rounded-xl border border-border bg-white p-6">
+    <section className="rounded-xl border border-border bg-card p-6">
       <h2 className="mb-1 text-sm font-semibold text-foreground">{title}</h2>
       <p className="mb-4 text-xs text-muted">{subtitle}</p>
 
@@ -303,7 +303,7 @@ function RewardSection({
               onTypeChange(e.target.value as RewardType);
               onValueChange(null);
             }}
-            className="h-10 w-full rounded-lg border border-border/60 bg-white px-3 text-sm text-foreground focus:border-admin focus:outline-none"
+            className="h-10 w-full rounded-lg border border-border/60 bg-card px-3 text-sm text-foreground focus:border-admin focus:outline-none"
           >
             {REWARD_TYPES.map(({ key, label }) => (
               <option key={key} value={key}>
@@ -326,7 +326,7 @@ function RewardSection({
                 onChange={(e) =>
                   onValueChange(e.target.value ? Number(e.target.value) : null)
                 }
-                className="h-10 w-24 rounded-lg border border-border/60 bg-white px-3 text-sm text-foreground focus:border-admin focus:outline-none"
+                className="h-10 w-24 rounded-lg border border-border/60 bg-card px-3 text-sm text-foreground focus:border-admin focus:outline-none"
                 placeholder="0"
               />
               <span className="text-sm text-muted">{valueLabel}</span>
@@ -343,7 +343,7 @@ function RewardSection({
             onChange={(e) => onTextChange(e.target.value)}
             placeholder="ej. 1 clase gratis por cada amigo que traigas"
             rows={2}
-            className="w-full resize-none rounded-lg border border-border/60 bg-white px-3 py-2.5 text-sm text-foreground placeholder:text-muted/50 focus:border-admin focus:outline-none"
+            className="w-full resize-none rounded-lg border border-border/60 bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted/50 focus:border-admin focus:outline-none"
           />
         </div>
 
@@ -356,7 +356,7 @@ function RewardSection({
             value={rewardWhen}
             onChange={(e) => onWhenChange(e.target.value)}
             placeholder="ej. cuando tu amigo vaya a su primera clase"
-            className="h-10 w-full rounded-lg border border-border/60 bg-white px-3 text-sm text-foreground placeholder:text-muted/50 focus:border-admin focus:outline-none"
+            className="h-10 w-full rounded-lg border border-border/60 bg-card px-3 text-sm text-foreground placeholder:text-muted/50 focus:border-admin focus:outline-none"
           />
         </div>
       </div>

@@ -315,7 +315,7 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
       {/* Preview overlay */}
       {pending.length > 0 && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-6">
-          <div className="w-full max-w-md overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl">
+          <div className="w-full max-w-md overflow-hidden rounded-t-2xl bg-card sm:rounded-2xl">
             {/* Preview */}
             <div className="max-h-[60dvh] overflow-y-auto p-3">
               {pending.length === 1 ? (

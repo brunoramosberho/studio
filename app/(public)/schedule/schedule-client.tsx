@@ -433,7 +433,7 @@ export function ScheduleClient({
                 <select
                   value={filterCity}
                   onChange={(e) => { setFilterCity(e.target.value); setFilterStudio("all"); }}
-                  className="appearance-none rounded-full border border-border bg-white py-1.5 pl-3 pr-7 text-[12px] font-medium text-foreground focus:outline-none"
+                  className="appearance-none rounded-full border border-border bg-card py-1.5 pl-3 pr-7 text-[12px] font-medium text-foreground focus:outline-none"
                 >
                   {activeCities.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -587,7 +587,7 @@ export function ScheduleClient({
                   <select
                     value={filterStudio}
                     onChange={(e) => setFilterStudio(e.target.value)}
-                    className="appearance-none rounded-full border border-border bg-white py-1 pl-2.5 pr-6 text-[11px] font-medium text-foreground focus:outline-none"
+                    className="appearance-none rounded-full border border-border bg-card py-1 pl-2.5 pr-6 text-[11px] font-medium text-foreground focus:outline-none"
                   >
                     <option value="all">{t("studio")}</option>
                     {studios.map((s) => (
@@ -610,7 +610,7 @@ export function ScheduleClient({
                       "flex flex-shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all",
                       active
                         ? "border-transparent text-white"
-                        : "border-border bg-white text-foreground hover:bg-muted/30",
+                        : "border-border bg-card text-foreground hover:bg-muted/30",
                     )}
                     style={active ? { backgroundColor: ct.color } : undefined}
                   >
@@ -721,7 +721,7 @@ export function ScheduleClient({
                       "flex flex-shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
                       active
                         ? "border-transparent text-white"
-                        : "border-border bg-white text-foreground hover:bg-muted/30",
+                        : "border-border bg-card text-foreground hover:bg-muted/30",
                     )}
                     style={active ? { backgroundColor: ct.color } : undefined}
                   >
@@ -872,7 +872,7 @@ export function ScheduleClient({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-white pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+              className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-card pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
             >
               <div className="flex justify-center pt-3 sm:hidden">
                 <div className="h-1 w-10 rounded-full bg-border" />
@@ -1118,7 +1118,7 @@ function MobileClassCard({
           "flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-shadow",
           past
             ? "border-border/30 bg-surface/50 opacity-50"
-            : "border-border/50 bg-white active:shadow-md",
+            : "border-border/50 bg-card active:shadow-md",
         )}
       >
         {/* Time column */}
@@ -1310,7 +1310,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
           "flex h-[155px] flex-col justify-between rounded-2xl border px-4 py-3.5 transition-shadow",
           past
             ? "border-border/30 bg-surface/60"
-            : "border-border/70 bg-white hover:shadow-md",
+            : "border-border/70 bg-card hover:shadow-md",
         )}
       >
         <div>
@@ -1439,7 +1439,7 @@ function FilterSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "appearance-none rounded-lg border bg-white py-2 pl-3 pr-8 text-[13px] font-medium focus:outline-none",
+          "appearance-none rounded-lg border bg-card py-2 pl-3 pr-8 text-[13px] font-medium focus:outline-none",
           isAll
             ? "border-border text-muted"
             : "border-foreground/20 text-foreground",

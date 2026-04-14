@@ -41,6 +41,8 @@ import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
 import { useBranding } from "@/components/branding-provider";
 import { useTranslations } from "next-intl";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Palette } from "lucide-react";
 
 interface UserPackageInfo {
   id: string;
@@ -93,6 +95,7 @@ interface ReferralSheetData {
 export default function ProfilePage() {
   const t = useTranslations("member");
   const tf = useTranslations("footer");
+  const tc = useTranslations("common");
   const TRIGGER_LABELS: Record<string, string> = {
     installed: t("triggerInstalled"),
     purchased: t("triggerPurchased"),
@@ -552,7 +555,7 @@ export default function ProfilePage() {
           const locked = gamification.achievements.filter((a) => !a.earned);
           return (
             <motion.div custom={3} variants={fadeUp} initial="hidden" animate="show">
-              <div className="rounded-2xl border border-border/50 bg-white p-4">
+              <div className="rounded-2xl border border-border/50 bg-card p-4">
                 <button
                   onClick={() => setShowAllAchievements(!showAllAchievements)}
                   className="flex w-full items-center gap-2"
@@ -630,7 +633,7 @@ export default function ProfilePage() {
           initial="hidden"
           animate="show"
         >
-          <div className="divide-y divide-border/40 rounded-2xl border border-border/50 bg-white">
+          <div className="divide-y divide-border/40 rounded-2xl border border-border/50 bg-card">
             {/* Invite a friend — first item */}
             <button
               onClick={openReferralSheet}
@@ -813,7 +816,7 @@ export default function ProfilePage() {
         {/* Active rewards */}
         {gamification && gamification.rewards.length > 0 && (
           <motion.div custom={4.5} variants={fadeUp} initial="hidden" animate="show">
-            <div className="rounded-2xl border border-border/50 bg-white p-4">
+            <div className="rounded-2xl border border-border/50 bg-card p-4">
               <div className="mb-3 flex items-center gap-2">
                 <Package className="h-4 w-4 text-accent" />
                 <span className="text-[13px] font-semibold text-foreground">
@@ -857,7 +860,7 @@ export default function ProfilePage() {
                     const [cId, cityId] = e.target.value.split("|");
                     handleLocationChange(cId || "", cityId || "");
                   }}
-                  className="appearance-none rounded-full border border-border/60 bg-white py-1.5 pl-3 pr-7 text-[13px] font-medium text-foreground focus:border-accent focus:outline-none"
+                  className="appearance-none rounded-full border border-border/60 bg-card py-1.5 pl-3 pr-7 text-[13px] font-medium text-foreground focus:border-accent focus:outline-none"
                 >
                   <option value="">{t("selectOption")}</option>
                   {activeLocations.map((country) =>
@@ -880,6 +883,19 @@ export default function ProfilePage() {
           </motion.div>
         )}
 
+        {/* Appearance */}
+        <motion.div custom={5.4} variants={fadeUp} initial="hidden" animate="show">
+          <div className="flex items-center gap-3 px-4 py-2">
+            <div className="flex items-center gap-2 text-[13px] text-muted">
+              <Palette className="h-3.5 w-3.5" />
+              <span>{tc("appearance")}</span>
+            </div>
+            <div className="ml-auto">
+              <ThemeToggle />
+            </div>
+          </div>
+        </motion.div>
+
         {/* Language */}
         <motion.div custom={5.5} variants={fadeUp} initial="hidden" animate="show">
           <div className="flex items-center gap-3 px-4 py-2">
@@ -892,7 +908,7 @@ export default function ProfilePage() {
                 value={currentLocale}
                 onChange={(e) => handleLocaleChange(e.target.value)}
                 disabled={savingLocale}
-                className="appearance-none rounded-full border border-border/60 bg-white py-1.5 pl-3 pr-7 text-[13px] font-medium text-foreground focus:border-accent focus:outline-none"
+                className="appearance-none rounded-full border border-border/60 bg-card py-1.5 pl-3 pr-7 text-[13px] font-medium text-foreground focus:border-accent focus:outline-none"
               >
                 <option value="es">Español</option>
                 <option value="en">English</option>
@@ -1073,7 +1089,7 @@ function ReferralSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 350 }}
-            className="fixed inset-x-0 bottom-0 z-[61] flex max-h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-white"
+            className="fixed inset-x-0 bottom-0 z-[61] flex max-h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-card"
           >
             {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1">
@@ -1186,7 +1202,7 @@ function ReferralSheet({
                     </button>
                     <button
                       onClick={onCopy}
-                      className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-white px-5 py-3.5 text-[15px] font-medium text-foreground transition-colors active:bg-surface"
+                      className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card px-5 py-3.5 text-[15px] font-medium text-foreground transition-colors active:bg-surface"
                     >
                       {copied ? (
                         <Check className="h-4 w-4 text-green-500" />
@@ -1201,7 +1217,7 @@ function ReferralSheet({
                   {config?.isEnabled && (
                     <button
                       onClick={onViewAll}
-                      className="flex w-full items-center gap-3 rounded-2xl border border-border/50 bg-white p-4 text-left transition-colors active:bg-surface/50"
+                      className="flex w-full items-center gap-3 rounded-2xl border border-border/50 bg-card p-4 text-left transition-colors active:bg-surface/50"
                     >
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface">
                         <Users className="h-4.5 w-4.5 text-foreground/70" />

@@ -304,7 +304,7 @@ function SidebarFlyoutGroup({
       {isOpen &&
         createPortal(
           <div
-            className="fixed z-50 min-w-[200px] rounded-md border border-border/50 bg-white py-1.5 shadow-lg"
+            className="fixed z-50 min-w-[200px] rounded-md border border-border/50 bg-card py-1.5 shadow-lg"
             style={{ top: pos.top, left: pos.left }}
             onMouseEnter={handleEnter}
             onMouseLeave={onClose}
@@ -840,7 +840,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-[calc(100dvh-3.5rem-4px)]">
         {/* Desktop sidebar */}
-        <aside className="hidden w-56 shrink-0 border-r border-border/40 bg-white lg:block">
+        <aside className="hidden w-56 shrink-0 border-r border-border/40 bg-card lg:block">
           <div className="sticky top-[calc(3.5rem+4px)] flex h-[calc(100dvh-3.5rem-4px)] flex-col">
             {/* Spark AI protagonist */}
             <div className="p-3 pb-0">
@@ -890,7 +890,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 animate={{ x: 0 }}
                 exit={{ x: -280 }}
                 transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                className="fixed left-0 top-0 z-40 flex h-dvh w-64 flex-col border-r border-border/40 bg-white pt-16 shadow-warm-lg lg:hidden"
+                className="fixed left-0 top-0 z-40 flex h-dvh w-64 flex-col border-r border-border/40 bg-card pt-16 shadow-warm-lg lg:hidden"
               >
                 {/* Spark AI protagonist (mobile) */}
                 <div className="px-3 pt-4 pb-1">

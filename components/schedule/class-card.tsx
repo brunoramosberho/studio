@@ -43,7 +43,7 @@ export function ClassCard({
       whileHover={past ? undefined : { scale: 1.02 }}
       whileTap={past ? undefined : { scale: 0.98 }}
       className={cn(
-        "group relative w-full cursor-pointer rounded-2xl bg-white p-4 text-left shadow-[var(--shadow-warm)] transition-shadow duration-200",
+        "group relative w-full cursor-pointer rounded-2xl bg-card p-4 text-left shadow-[var(--shadow-warm)] transition-shadow duration-200",
         "min-h-[48px] touch-manipulation",
         !past && "hover:shadow-[var(--shadow-warm-lift)]",
         past && "pointer-events-auto cursor-default opacity-50 grayscale",

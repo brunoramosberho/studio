@@ -148,7 +148,7 @@ export default function AdminReferralsPage() {
       )}
 
       {/* Lifecycle distribution */}
-      <section className="rounded-2xl border border-border/50 bg-white p-5">
+      <section className="rounded-2xl border border-border/50 bg-card p-5">
         <div className="mb-4 flex items-center gap-2">
           <Users className="h-4 w-4 text-muted" />
           <h2 className="text-sm font-semibold text-foreground">
@@ -184,7 +184,7 @@ export default function AdminReferralsPage() {
       </section>
 
       {/* Top referrers */}
-      <section className="rounded-2xl border border-border/50 bg-white p-5">
+      <section className="rounded-2xl border border-border/50 bg-card p-5">
         <div className="mb-4 flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-muted" />
           <h2 className="text-sm font-semibold text-foreground">Top referrers</h2>
@@ -225,7 +225,7 @@ export default function AdminReferralsPage() {
 
       {/* Pending manual rewards */}
       {data.pendingRewards.length > 0 && (
-        <section className="rounded-2xl border border-border/50 bg-white p-5">
+        <section className="rounded-2xl border border-border/50 bg-card p-5">
           <div className="mb-4 flex items-center gap-2">
             <Gift className="h-4 w-4 text-muted" />
             <h2 className="text-sm font-semibold text-foreground">

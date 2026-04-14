@@ -184,7 +184,7 @@ export function DisciplinesCard({ data, onChange }: Props) {
                       onChange={(e) =>
                         update(i, { level: e.target.value as ExtractedDiscipline["level"] })
                       }
-                      className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-sm"
+                      className="h-8 w-full rounded-md border border-gray-200 bg-card px-2 text-sm"
                     >
                       <option value="all">Todos los niveles</option>
                       <option value="beginner">Principiante</option>

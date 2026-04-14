@@ -180,7 +180,7 @@ export function ActivityCalendar() {
   const activeWeekKeys = new Set(data?.weeksWithActivity ?? []);
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-white p-4">
+    <div className="rounded-2xl border border-border/50 bg-card p-4">
       {/* Month nav */}
       <div className="flex items-center justify-between">
         <button

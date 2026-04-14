@@ -208,7 +208,7 @@ export function RoomLayoutEditor({ value, onChange }: RoomLayoutEditorProps) {
       </div>
 
       {/* Grid */}
-      <div className="overflow-x-auto rounded-xl border border-border/50 bg-white p-4">
+      <div className="overflow-x-auto rounded-xl border border-border/50 bg-card p-4">
         <div
           className="mx-auto grid justify-center"
           style={{

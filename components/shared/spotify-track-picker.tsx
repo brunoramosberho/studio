@@ -109,7 +109,7 @@ export function SpotifyTrackPicker({
           value={query}
           onChange={(e) => handleInputChange(e.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-10 text-sm text-foreground outline-none transition-colors focus:border-foreground/30"
+          className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-10 text-sm text-foreground outline-none transition-colors focus:border-foreground/30"
           autoComplete="off"
         />
         {query && (
@@ -138,7 +138,7 @@ export function SpotifyTrackPicker({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-2 max-h-[280px] overflow-y-auto rounded-xl border border-border bg-white"
+            className="mt-2 max-h-[280px] overflow-y-auto rounded-xl border border-border bg-card"
           >
             {results.map((track) => (
               <button
@@ -176,7 +176,7 @@ export function SpotifyTrackPicker({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="mt-3 flex items-center gap-3 rounded-xl border border-border bg-white p-3"
+            className="mt-3 flex items-center gap-3 rounded-xl border border-border bg-card p-3"
           >
             {selected.albumArt ? (
               <img

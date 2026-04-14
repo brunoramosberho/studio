@@ -33,7 +33,7 @@ export default function ScheduleLoading() {
 
         <div className="space-y-3">
           {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="rounded-2xl border border-border/50 bg-white p-4">
+            <div key={i} className="rounded-2xl border border-border/50 bg-card p-4">
               <div className="flex items-center gap-4">
                 <div className="space-y-1 text-center">
                   <Skeleton className="h-4 w-12" />

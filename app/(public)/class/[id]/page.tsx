@@ -742,7 +742,7 @@ export default function ClassDetailPage() {
                   )} />
                 </button>
                 {playlistOpen && (
-                  <div className="mt-2 space-y-1 rounded-xl border border-green-100 bg-white p-2">
+                  <div className="mt-2 space-y-1 rounded-xl border border-green-100 bg-card p-2">
                     {playlistLoading ? (
                       <div className="flex items-center justify-center py-4">
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-300 border-t-green-600" />
@@ -1078,7 +1078,7 @@ export default function ClassDetailPage() {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 overflow-hidden rounded-xl border border-border/50 bg-white"
+                        className="mt-4 overflow-hidden rounded-xl border border-border/50 bg-card"
                       >
                         <SongRequest
                           classId={id}
@@ -1091,7 +1091,7 @@ export default function ClassDetailPage() {
 
                   {/* Guest login prompt */}
                   {!isAuthenticated && guestEmail && (
-                    <div className="mt-4 rounded-xl border border-border/50 bg-white p-4">
+                    <div className="mt-4 rounded-xl border border-border/50 bg-card p-4">
                       {magicSent ? (
                         <div className="flex items-center gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10">
@@ -1517,7 +1517,7 @@ export default function ClassDetailPage() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-white pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+              className="fixed inset-x-0 bottom-0 z-[60] rounded-t-3xl bg-card pb-safe shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
             >
               <div className="flex justify-center pt-3 sm:hidden">
                 <div className="h-1 w-10 rounded-full bg-border" />

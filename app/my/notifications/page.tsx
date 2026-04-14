@@ -119,7 +119,7 @@ export default function NotificationsPage() {
             <Loader2 className="h-5 w-5 animate-spin text-muted" />
           </div>
         ) : notifications.length === 0 ? (
-          <div className="rounded-2xl border border-border/50 bg-white py-16 text-center">
+          <div className="rounded-2xl border border-border/50 bg-card py-16 text-center">
             <div className="mx-auto w-fit"><BellIcon size={40} className="text-muted/20" /></div>
             <p className="mt-3 text-[15px] font-medium text-foreground">
               {t("noNotifications")}
@@ -129,7 +129,7 @@ export default function NotificationsPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-border/50 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-border/50 bg-card">
             {notifications.map((n, i) => {
               const href = getNotificationHref(n);
               const content = (

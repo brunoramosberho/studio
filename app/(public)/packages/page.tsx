@@ -243,7 +243,7 @@ export default function PackagesPage() {
                     className={cn(
                       "flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-all",
                       currentTab === tab.type
-                        ? "bg-white text-foreground shadow-sm"
+                        ? "bg-card text-foreground shadow-sm"
                         : "text-muted hover:text-foreground",
                     )}
                   >
@@ -282,7 +282,7 @@ export default function PackagesPage() {
                   <Link
                     href={`/packages/${pkg.id}`}
                     className={cn(
-                      "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-4 sm:p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-warm-md active:scale-[0.98]",
+                      "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-card p-4 sm:p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-warm-md active:scale-[0.98]",
                       pkg.isPromo && "border-2 border-dashed border-accent/40",
                     )}
                   >

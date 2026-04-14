@@ -181,7 +181,7 @@ export default function CheckInPage() {
             <select
               value={filterStudioId}
               onChange={(e) => setFilterStudioId(e.target.value)}
-              className="appearance-none bg-white border border-stone-200 rounded-lg px-2.5 py-1 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-[#3730B8] focus:border-[#3730B8] cursor-pointer"
+              className="appearance-none bg-card border border-stone-200 rounded-lg px-2.5 py-1 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-[#3730B8] focus:border-[#3730B8] cursor-pointer"
             >
               <option value="all">{t("allStudios")}</option>
               {studios.map((s) => (
@@ -196,7 +196,7 @@ export default function CheckInPage() {
       <div className="flex flex-col md:grid md:grid-cols-[260px_1fr] gap-3 h-[calc(100dvh-160px)] md:h-[calc(100vh-200px)]">
         {/* Left: class list — hidden on mobile when viewing roster */}
         <div className={cn(
-          "bg-white border border-stone-200 rounded-2xl overflow-hidden flex-col h-full",
+          "bg-card border border-stone-200 rounded-2xl overflow-hidden flex-col h-full",
           showMobileRoster ? "hidden md:flex" : "flex",
         )}>
           <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-stone-100">
@@ -269,7 +269,7 @@ export default function CheckInPage() {
 
         {/* Right: roster — hidden on mobile when viewing class list */}
         <div className={cn(
-          "bg-white border border-stone-200 rounded-2xl overflow-hidden relative flex-col h-full",
+          "bg-card border border-stone-200 rounded-2xl overflow-hidden relative flex-col h-full",
           showMobileRoster ? "flex" : "hidden md:flex",
         )}>
           {/* Mobile back button */}

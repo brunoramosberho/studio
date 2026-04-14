@@ -354,7 +354,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
             )} />
           </button>
           {playlistOpen && (
-            <div className="mt-1.5 overflow-hidden rounded-[10px] border border-neutral-200/80 bg-white">
+            <div className="mt-1.5 overflow-hidden rounded-[10px] border border-neutral-200/80 bg-card">
               {playlistLoading ? (
                 <div className="flex items-center justify-center py-6">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-200 border-t-emerald-500" />
@@ -921,7 +921,7 @@ export function FeedEventCard({ event }: FeedEventCardProps) {
     <article
       id={`post-${event.id}`}
       className={cn(
-        "overflow-hidden border-y border-border/40 bg-white sm:rounded-2xl sm:border sm:shadow-warm-sm",
+        "overflow-hidden border-y border-border/40 bg-card sm:rounded-2xl sm:border sm:shadow-warm-sm",
         event.isPinned && "ring-1 ring-accent/20",
       )}
     >

@@ -172,7 +172,7 @@ export function PhoneInput({
       </div>
 
       {dropdownOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1 max-h-64 w-full overflow-hidden rounded-lg border border-border bg-white shadow-lg">
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-64 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg">
           <div className="border-b border-border/50 p-2">
             <input
               ref={searchRef}

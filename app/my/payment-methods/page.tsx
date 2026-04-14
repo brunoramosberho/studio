@@ -34,7 +34,7 @@ const brandLabels: Record<string, string> = {
 function BrandIcon({ brand }: { brand: string }) {
   const label = brandLabels[brand] ?? brand;
   return (
-    <div className="flex h-10 w-14 items-center justify-center rounded-lg border border-border/40 bg-white text-[11px] font-bold uppercase tracking-wider text-muted">
+    <div className="flex h-10 w-14 items-center justify-center rounded-lg border border-border/40 bg-card text-[11px] font-bold uppercase tracking-wider text-muted">
       {label}
     </div>
   );
@@ -115,7 +115,7 @@ export default function PaymentMethodsPage() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -40 }}
-                  className="flex items-center gap-3 rounded-2xl border border-border/40 bg-white px-4 py-3.5"
+                  className="flex items-center gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3.5"
                 >
                   <BrandIcon brand={card.brand} />
                   <div className="flex-1">

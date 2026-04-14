@@ -105,7 +105,7 @@ export function DisciplineSheet({ open, onClose, discipline }: DisciplineSheetPr
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 350 }}
             className={cn(
-              "fixed inset-x-0 bottom-0 z-[61] flex h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-white",
+              "fixed inset-x-0 bottom-0 z-[61] flex h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-card",
               "lg:inset-auto lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2",
               "lg:h-auto lg:max-h-[90vh] lg:w-full lg:max-w-lg lg:rounded-3xl",
             )}

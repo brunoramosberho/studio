@@ -20,17 +20,14 @@ export function useBranding() {
 
 export function applyTheme(b: StudioBranding) {
   const html = document.documentElement;
-  html.style.setProperty("--color-background", b.colorBg);
-  html.style.setProperty("--color-foreground", b.colorFg);
-  html.style.setProperty("--color-surface", b.colorSurface);
+  // Only apply tenant-customizable vars as inline style. Platform neutrals
+  // (bg/fg/surface/muted/border/card/coach/admin) are driven by globals.css
+  // so the `html.dark` class can override them cleanly.
+  // `--color-accent-soft` / `--color-accent-border` / `--color-accent-text`
+  // are derived at CSS level via color-mix() against the current background.
   html.style.setProperty("--color-accent", b.colorAccent);
-  html.style.setProperty("--color-accent-soft", b.colorAccentSoft);
-  html.style.setProperty("--color-muted", b.colorMuted);
-  html.style.setProperty("--color-border", b.colorBorder);
   html.style.setProperty("--color-hero-bg", b.colorHeroBg);
   html.style.setProperty("--color-ring", b.colorAccent);
-  html.style.setProperty("--color-coach", b.colorCoach);
-  html.style.setProperty("--color-admin", b.colorAdmin);
 
   const fp = getFontPairing(b.fontPairing);
   html.style.setProperty("--font-display", fp.displayVar);

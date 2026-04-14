@@ -130,7 +130,7 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
                 onClose();
               }
             }}
-            className="pointer-events-auto w-full max-h-[80dvh] overflow-hidden rounded-t-2xl bg-white shadow-[var(--shadow-warm-lg)] sm:max-w-md sm:rounded-2xl sm:max-h-[min(560px,80dvh)] sm:shadow-xl"
+            className="pointer-events-auto w-full max-h-[80dvh] overflow-hidden rounded-t-2xl bg-card shadow-[var(--shadow-warm-lg)] sm:max-w-md sm:rounded-2xl sm:max-h-[min(560px,80dvh)] sm:shadow-xl"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}

@@ -511,7 +511,7 @@ export default function AdminStudiosPage() {
                                     key={room.id}
                                     className="flex items-center gap-4 px-5 py-3"
                                   >
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-card">
                                       <DoorOpen className="h-4 w-4 text-muted" />
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -534,7 +534,7 @@ export default function AdminStudiosPage() {
                                       </Badge>
                                       <button
                                         onClick={() => openEditRoom(room, studio.id)}
-                                        className="rounded-lg p-1.5 text-muted transition-colors hover:bg-white hover:text-foreground"
+                                        className="rounded-lg p-1.5 text-muted transition-colors hover:bg-card hover:text-foreground"
                                       >
                                         <Pencil className="h-3 w-3" />
                                       </button>
@@ -767,7 +767,7 @@ export default function AdminStudiosPage() {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted">{t("discipline")}</label>
-                <div className="rounded-lg border border-border bg-white p-2 space-y-1 max-h-40 overflow-y-auto">
+                <div className="rounded-lg border border-border bg-card p-2 space-y-1 max-h-40 overflow-y-auto">
                   {classTypes?.length ? classTypes.map((ct) => (
                     <label
                       key={ct.id}

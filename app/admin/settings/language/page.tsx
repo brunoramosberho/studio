@@ -32,7 +32,7 @@ export default function LanguageSettingsPage() {
         <p className="mt-1 text-sm text-muted">{t("languageDescription")}</p>
       </div>
 
-      <div className="rounded-xl border border-border/50 bg-white p-6">
+      <div className="rounded-xl border border-border/50 bg-card p-6">
         <LanguageSelector currentLocale={tenantLocale} mode="tenant" />
       </div>
     </div>

@@ -362,7 +362,7 @@ export function ClassFormDialog({
                     className={`rounded-lg px-3 py-2 text-left text-sm font-medium transition-all ${
                       editScope === scope
                         ? "bg-admin text-white"
-                        : "bg-white text-foreground hover:bg-surface"
+                        : "bg-card text-foreground hover:bg-surface"
                     }`}
                   >
                     {scope === "this" ? t("editOnlyThis") : scope === "thisAndFuture" ? t("editThisAndFuture") : t("editAllSeries")}
@@ -380,7 +380,7 @@ export function ClassFormDialog({
                 onClick={() => setMode("single")}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-all ${
                   mode === "single"
-                    ? "bg-white text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm"
                     : "text-muted hover:text-foreground"
                 }`}
               >
@@ -392,7 +392,7 @@ export function ClassFormDialog({
                 onClick={() => setMode("recurring")}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-all ${
                   mode === "recurring"
-                    ? "bg-white text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm"
                     : "text-muted hover:text-foreground"
                 }`}
               >

@@ -6,8 +6,31 @@ import { Toaster } from "sonner";
 import { useState } from "react";
 import { BrandingProvider } from "@/components/branding-provider";
 import { TenantProvider } from "@/components/tenant-provider";
+import {
+  ThemeProvider,
+  useTheme,
+  type ThemeMode,
+} from "@/components/theme-provider";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme();
+  return (
+    <Toaster
+      richColors
+      closeButton
+      position="top-center"
+      theme={resolvedTheme}
+    />
+  );
+}
+
+export function Providers({
+  children,
+  initialTheme,
+}: {
+  children: React.ReactNode;
+  initialTheme?: ThemeMode;
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -23,12 +46,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
-        <BrandingProvider>
-          <TenantProvider>
-            {children}
-            <Toaster richColors closeButton position="top-center" />
-          </TenantProvider>
-        </BrandingProvider>
+        <ThemeProvider initialTheme={initialTheme}>
+          <BrandingProvider>
+            <TenantProvider>
+              {children}
+              <ThemedToaster />
+            </TenantProvider>
+          </BrandingProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>
   );

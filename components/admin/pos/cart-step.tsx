@@ -268,13 +268,13 @@ export function CartStep() {
                 </div>
                 <button
                   onClick={() => setShowClassPicker(true)}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white text-muted transition-colors hover:bg-surface hover:text-foreground"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted transition-colors hover:bg-surface hover:text-foreground"
                 >
                   <CalendarDays className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setShowClassPicker(true)}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white text-muted transition-colors hover:bg-surface hover:text-foreground"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted transition-colors hover:bg-surface hover:text-foreground"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -306,7 +306,7 @@ export function CartStep() {
                     <button
                       key={pkg.id}
                       onClick={() => handleAddPackage(pkg)}
-                      className="flex w-full items-center gap-3 rounded-lg border border-border/50 bg-white px-3 py-2.5 text-left transition-colors hover:bg-surface"
+                      className="flex w-full items-center gap-3 rounded-lg border border-border/50 bg-card px-3 py-2.5 text-left transition-colors hover:bg-surface"
                     >
                       <CalendarSync className="h-4 w-4 shrink-0 text-admin/60" />
                       <div className="min-w-0 flex-1">
@@ -345,7 +345,7 @@ export function CartStep() {
                     <button
                       key={pkg.id}
                       onClick={() => handleAddPackage(pkg)}
-                      className="flex w-full items-center gap-3 rounded-lg border border-border/50 bg-white px-3 py-2.5 text-left transition-colors hover:bg-surface"
+                      className="flex w-full items-center gap-3 rounded-lg border border-border/50 bg-card px-3 py-2.5 text-left transition-colors hover:bg-surface"
                     >
                       <Package className="h-4 w-4 shrink-0 text-admin/60" />
                       <div className="min-w-0 flex-1">
@@ -372,7 +372,7 @@ export function CartStep() {
           {activeCategory === "product" && (
             <div className="space-y-3">
               <h4 className="text-sm font-semibold">{t("product")}</h4>
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
                 <Search className="h-4 w-4 shrink-0 text-muted/50" />
                 <input
                   type="text"
@@ -396,7 +396,7 @@ export function CartStep() {
                     <button
                       key={product.id}
                       onClick={() => handleAddProduct(product)}
-                      className="flex w-full items-center gap-3 rounded-lg border border-border/50 bg-white px-3 py-2.5 text-left transition-colors hover:bg-surface"
+                      className="flex w-full items-center gap-3 rounded-lg border border-border/50 bg-card px-3 py-2.5 text-left transition-colors hover:bg-surface"
                     >
                       {product.imageUrl ? (
                         <img

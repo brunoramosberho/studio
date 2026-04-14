@@ -445,7 +445,7 @@ function AddPayRateForm({
               Bono por día especial
             </label>
             <div className="flex items-center gap-3">
-              <div className="inline-flex items-center gap-0.5 rounded-lg bg-white p-0.5">
+              <div className="inline-flex items-center gap-0.5 rounded-lg bg-card p-0.5">
                 {[
                   { value: "1", label: "Sin bono" },
                   { value: "1.25", label: "1.25x" },
@@ -494,7 +494,7 @@ function AddPayRateForm({
                         "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold transition-colors",
                         bonusDays.includes(day)
                           ? "bg-admin text-white"
-                          : "bg-white text-muted hover:text-foreground border border-border/50",
+                          : "bg-card text-muted hover:text-foreground border border-border/50",
                       )}
                     >
                       {label}
@@ -732,7 +732,7 @@ function EditProfileForm({
         <div>
           <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted">Biografía</label>
           <textarea
-            className="w-full rounded-lg border border-input-border bg-white p-3 text-sm transition-colors focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30"
+            className="w-full rounded-lg border border-input-border bg-card p-3 text-sm transition-colors focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30"
             rows={4}
             value={bio}
             onChange={(e) => setBio(e.target.value)}
@@ -1155,7 +1155,7 @@ export default function CoachDetailPage() {
                   {coach.payRates.map((rate) => (
                     <div
                       key={rate.id}
-                      className="group flex items-start gap-3 rounded-lg border border-border/50 bg-white px-4 py-3 transition-colors hover:bg-surface/30"
+                      className="group flex items-start gap-3 rounded-lg border border-border/50 bg-card px-4 py-3 transition-colors hover:bg-surface/30"
                     >
                       <span className="mt-0.5 text-lg">{PAY_RATE_ICONS[rate.type]}</span>
                       <div className="min-w-0 flex-1">
@@ -1265,7 +1265,7 @@ export default function CoachDetailPage() {
                     <Link
                       key={cls.id}
                       href={`/admin/class/${cls.id}`}
-                      className="flex items-center gap-3 rounded-lg border border-border/40 bg-white px-4 py-3 transition-colors hover:bg-surface/50"
+                      className="flex items-center gap-3 rounded-lg border border-border/40 bg-card px-4 py-3 transition-colors hover:bg-surface/50"
                     >
                       <div
                         className="h-9 w-1 shrink-0 rounded-full"

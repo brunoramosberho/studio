@@ -225,7 +225,7 @@ export function PlacesAutocomplete({
       </div>
 
       {open && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-border/50 bg-white shadow-lg">
+        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-border/50 bg-card shadow-lg">
           {suggestions.map((s) => (
             <button
               key={s.placeId}

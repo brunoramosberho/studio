@@ -162,7 +162,7 @@ export default function AdminTeamPage() {
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as "ADMIN" | "FRONT_DESK")}
-                  className="rounded-md border border-border bg-white px-3 py-2 text-sm font-medium outline-none"
+                  className="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium outline-none"
                 >
                   <option value="ADMIN">{tr("admin")}</option>
                   <option value="FRONT_DESK">{tr("frontDesk")}</option>

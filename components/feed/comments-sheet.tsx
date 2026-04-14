@@ -156,7 +156,7 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 400 }}
             >
-              <div className="flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-[var(--shadow-warm-lg)] sm:rounded-2xl sm:max-h-[min(620px,85dvh)] sm:shadow-xl">
+              <div className="flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl bg-card shadow-[var(--shadow-warm-lg)] sm:rounded-2xl sm:max-h-[min(620px,85dvh)] sm:shadow-xl">
               {/* Drag handle + header */}
               <div
                 className="touch-none cursor-grab active:cursor-grabbing sm:cursor-default"
@@ -289,7 +289,7 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
               </div>
               </div>
               {/* Extends white background below sheet to cover iOS keyboard gap */}
-              <div className="h-[50vh] -mb-[50vh] bg-white sm:hidden" />
+              <div className="h-[50vh] -mb-[50vh] bg-card sm:hidden" />
             </motion.div>
             </div>
           </>

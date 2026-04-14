@@ -149,7 +149,7 @@ export default function SparkRequestsPage() {
                 className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
                   categoryFilter === stat.category
                     ? "border-indigo-300 bg-indigo-50 ring-1 ring-indigo-200"
-                    : "border-gray-100 bg-white hover:border-gray-200"
+                    : "border-gray-100 bg-card hover:border-gray-200"
                 }`}
               >
                 <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${config.color}`}>

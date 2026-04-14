@@ -70,7 +70,7 @@ function FeedSkeleton() {
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="animate-pulse overflow-hidden rounded-2xl border border-border/50 bg-white shadow-warm-sm"
+          className="animate-pulse overflow-hidden rounded-2xl border border-border/50 bg-card shadow-warm-sm"
         >
           <div className="flex items-start gap-3 p-4">
             <div className="h-10 w-10 rounded-full bg-surface" />

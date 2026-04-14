@@ -197,7 +197,7 @@ function OptionCard({
           )}
         >
           {selected && (
-            <div className="h-2 w-2 rounded-full bg-white" />
+            <div className="h-2 w-2 rounded-full bg-card" />
           )}
         </div>
         <div className="flex-1 min-w-0">

@@ -97,7 +97,7 @@ export function FriendsClasses() {
               </div>
 
               <Link href={`/class/${c.classId}`} className="block">
-                <div className="rounded-2xl border border-border/40 bg-white px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
+                <div className="rounded-2xl border border-border/40 bg-card px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
                   <div className="flex items-center gap-3">
                     {(c.class.coach.photoUrl || c.class.coach.user?.image) ? (
                       <img
