@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { getTranslations } from "next-intl/server";
 import { formatDate, formatTime, formatCurrency } from "./utils";
-import { getServerBranding } from "./branding.server";
+import { getServerBranding, getBrandingForTenantId } from "./branding.server";
 import { type StudioBranding } from "./branding";
 import { createRatingToken } from "./ratings/token";
 
@@ -597,6 +597,7 @@ export async function sendAchievementUnlocked({
   achievementIcon,
   achievementDescription,
   rewardText,
+  tenantId,
 }: {
   to: string;
   name: string;
@@ -604,9 +605,12 @@ export async function sendAchievementUnlocked({
   achievementIcon: string;
   achievementDescription: string;
   rewardText: string | null;
+  tenantId?: string;
 }) {
   try {
-    const b = await getServerBranding();
+    const b = tenantId
+      ? await getBrandingForTenantId(tenantId)
+      : await getServerBranding();
     const studioFull = `${b.studioName} Studio`;
 
     const content = `
@@ -662,15 +666,19 @@ export async function sendLevelUp({
   levelName,
   levelIcon,
   rewardText,
+  tenantId,
 }: {
   to: string;
   name: string;
   levelName: string;
   levelIcon: string;
   rewardText: string | null;
+  tenantId?: string;
 }) {
   try {
-    const b = await getServerBranding();
+    const b = tenantId
+      ? await getBrandingForTenantId(tenantId)
+      : await getServerBranding();
     const studioFull = `${b.studioName} Studio`;
 
     const content = `

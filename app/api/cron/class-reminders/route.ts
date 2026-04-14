@@ -102,6 +102,7 @@ export async function GET(request: NextRequest) {
       include: {
         classType: true,
         coach: { include: { user: { select: { name: true, image: true } } } },
+        room: { include: { studio: { include: { city: { select: { timezone: true } } } } } },
         bookings: {
           where: { status: { not: "CANCELLED" } },
           include: { user: { select: { id: true, name: true, image: true } } },
@@ -135,6 +136,19 @@ export async function GET(request: NextRequest) {
         }));
 
       if (attendees.length > 0 && cls.coach.userId) {
+        const tz = cls.room?.studio?.city?.timezone ?? undefined;
+        const localDate = tz
+          ? new Date(cls.startsAt.toLocaleString("en-US", { timeZone: tz }))
+          : cls.startsAt;
+        const timeStr = tz
+          ? cls.startsAt.toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+              timeZone: tz,
+            })
+          : format(cls.startsAt, "h:mm a");
+
         const feedEvent = await prisma.feedEvent.create({
           data: {
             tenantId: tenant.id,
@@ -149,8 +163,9 @@ export async function GET(request: NextRequest) {
               coachName: cls.coach.name,
               coachImage: cls.coach.photoUrl || cls.coach.user?.image,
               coachUserId: cls.coach.userId,
-              date: format(cls.startsAt, "EEEE d 'de' MMMM", { locale: es }),
-              time: format(cls.startsAt, "h:mm a"),
+              date: format(localDate, "EEEE d 'de' MMMM", { locale: es }),
+              time: timeStr,
+              startsAt: cls.startsAt.toISOString(),
               duration: cls.classType.duration,
               attendees,
               attendeeCount: attendees.length,
@@ -169,7 +184,7 @@ export async function GET(request: NextRequest) {
         }
 
         const coachFirst = cls.coach.name?.split(" ")[0] ?? "Tu coach";
-        sendPushToMany(
+        await sendPushToMany(
           attendedUserIds,
           {
             title: `${cls.classType.name} completada`,
