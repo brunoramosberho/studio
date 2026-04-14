@@ -465,7 +465,7 @@ export function ScheduleClient({
                 className={cn(
                   "flex min-w-[52px] flex-shrink-0 flex-col items-center rounded-xl px-3 py-2 transition-colors",
                   active
-                    ? "bg-foreground text-white"
+                    ? "bg-foreground text-background"
                     : "text-muted hover:bg-surface",
                 )}
               >
@@ -475,7 +475,7 @@ export function ScheduleClient({
                 <span
                   className={cn(
                     "mt-0.5 text-[18px] font-bold",
-                    active ? "text-white" : "text-foreground",
+                    active ? "text-background" : "text-foreground",
                   )}
                 >
                   {format(day, "d")}

@@ -1015,16 +1015,16 @@ export default function ClassDetailPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-6"
                 >
-                  <div className="rounded-xl bg-green-50 px-4 py-3">
+                  <div className="rounded-xl bg-green-50 px-4 py-3 dark:bg-green-500/10 dark:ring-1 dark:ring-green-500/20">
                     <div className="flex items-center gap-3">
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-500">
                         <Check className="h-3.5 w-3.5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-green-800">
+                        <p className="text-sm font-semibold text-green-800 dark:text-green-300">
                           {t("bookingConfirmed")}
                         </p>
-                        <p className="text-xs text-green-600">
+                        <p className="text-xs text-green-600 dark:text-green-400/80">
                           {bookedSpotNumber ? `${t("spotNumber", { number: bookedSpotNumber })} · ` : ""}{formatTime(cls.startsAt)}
                         </p>
                       </div>
@@ -1034,21 +1034,21 @@ export default function ClassDetailPage() {
                         href={calendarUrls?.google}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98] dark:bg-green-500/15 dark:text-green-300 dark:hover:bg-green-500/25"
                       >
                         <CalendarPlus className="h-3.5 w-3.5" />
                         Google
                       </a>
                       <button
                         onClick={handleDownloadIcs}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-100 py-2 text-[13px] font-medium text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98] dark:bg-green-500/15 dark:text-green-300 dark:hover:bg-green-500/25"
                       >
                         <CalendarPlus className="h-3.5 w-3.5" />
                         Apple
                       </button>
                       <button
                         onClick={handleShare}
-                        className="flex items-center justify-center rounded-lg bg-green-100 px-3 py-2 text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98]"
+                        className="flex items-center justify-center rounded-lg bg-green-100 px-3 py-2 text-green-700 transition-colors hover:bg-green-200 active:scale-[0.98] dark:bg-green-500/15 dark:text-green-300 dark:hover:bg-green-500/25"
                       >
                         {copied ? (
                           <Check className="h-3.5 w-3.5" />

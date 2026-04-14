@@ -165,9 +165,11 @@ export function AchievementBadge({
     <div
       className={cn(
         "inline-flex items-center gap-2 rounded-full border font-medium",
+        // Light mode keeps the pastel tint; dark mode falls back to a
+        // neutral surface so the badge doesn't glow against dark bg.
         style.bg,
         style.text,
-        "border-transparent",
+        "border-transparent dark:!bg-surface dark:!text-foreground",
         size === "sm" && "px-2.5 py-1 text-[11px]",
         size === "md" && "px-3.5 py-1.5 text-[13px]",
         size === "lg" && "px-4 py-2 text-sm",
@@ -214,13 +216,15 @@ export function AchievementIllustration({
       <div
         className={cn(
           "relative overflow-hidden rounded-xl p-3",
+          // Pastel tint in light, neutral card surface in dark.
           style.bg,
+          "dark:!bg-surface dark:ring-1 dark:ring-border/60",
           className,
         )}
       >
         <div
           className={cn(
-            "absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gradient-to-br opacity-20 blur-lg",
+            "absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gradient-to-br opacity-20 blur-lg dark:opacity-40",
             style.gradient,
           )}
         />
@@ -235,7 +239,13 @@ export function AchievementIllustration({
             {def.icon}
           </div>
           <div className="min-w-0 flex-1">
-            <p className={cn("truncate text-[13px] font-bold leading-tight", style.text)}>
+            <p
+              className={cn(
+                "truncate text-[13px] font-bold leading-tight",
+                style.text,
+                "dark:!text-foreground",
+              )}
+            >
               {def.label}
             </p>
             <p className="mt-0.5 truncate text-[11px] leading-tight text-muted">
@@ -252,18 +262,19 @@ export function AchievementIllustration({
       className={cn(
         "relative overflow-hidden rounded-2xl p-5",
         style.bg,
+        "dark:!bg-surface dark:ring-1 dark:ring-border/60",
         className,
       )}
     >
       <div
         className={cn(
-          "absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br opacity-20 blur-xl",
+          "absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br opacity-20 blur-xl dark:opacity-40",
           style.gradient,
         )}
       />
       <div
         className={cn(
-          "absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-gradient-to-br opacity-15 blur-lg",
+          "absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-gradient-to-br opacity-15 blur-lg dark:opacity-30",
           style.gradient,
         )}
       />
@@ -280,7 +291,13 @@ export function AchievementIllustration({
         </div>
 
         <div>
-          <p className={cn("text-[15px] font-bold", style.text)}>
+          <p
+            className={cn(
+              "text-[15px] font-bold",
+              style.text,
+              "dark:!text-foreground",
+            )}
+          >
             {def.label}
           </p>
           <p className="mt-0.5 text-[12px] leading-snug text-muted">

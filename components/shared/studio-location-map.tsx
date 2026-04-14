@@ -67,7 +67,7 @@ export function StudioLocationMap({
           href={directionsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-80 active:opacity-70"
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-xs font-semibold text-background transition-opacity hover:opacity-80 active:opacity-70"
         >
           <Navigation className="h-3.5 w-3.5" />
           {t("directions")}

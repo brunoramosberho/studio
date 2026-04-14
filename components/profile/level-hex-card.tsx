@@ -165,7 +165,7 @@ export function LevelHexCard({
 
   return (
     <div
-      className="cursor-pointer select-none rounded-2xl border border-border/50 bg-gradient-to-b from-white to-surface/80 p-4 shadow-warm-sm transition-all active:scale-[0.995]"
+      className="cursor-pointer select-none rounded-2xl border border-border/50 bg-gradient-to-b from-card to-surface/80 p-4 shadow-warm-sm transition-all active:scale-[0.995]"
       onClick={() => setExpanded((v) => !v)}
       role="button"
       tabIndex={0}

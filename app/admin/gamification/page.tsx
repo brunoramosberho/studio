@@ -914,7 +914,7 @@ export default function AdminGamificationPage() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
-            className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-center border-t border-border/50 bg-white/90 px-4 py-3 backdrop-blur-md sm:bottom-20 sm:left-auto sm:right-4 sm:inset-x-auto sm:rounded-xl sm:border sm:shadow-lg"
+            className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-center border-t border-border/50 bg-card/90 px-4 py-3 backdrop-blur-md sm:bottom-20 sm:left-auto sm:right-4 sm:inset-x-auto sm:rounded-xl sm:border sm:shadow-lg"
           >
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-foreground">Cambios sin guardar</span>
