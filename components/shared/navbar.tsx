@@ -107,7 +107,7 @@ export function Navbar() {
               Cuenta
             </Link>
           )}
-          <Button asChild size="sm" className="h-9 rounded-lg bg-foreground px-4 text-xs font-semibold uppercase tracking-wider text-white hover:bg-foreground/90">
+          <Button asChild size="sm" className="h-9 rounded-lg bg-foreground px-4 text-xs font-semibold uppercase tracking-wider text-background hover:bg-foreground/90">
             <Link href="/schedule">Reservar</Link>
           </Button>
         </div>

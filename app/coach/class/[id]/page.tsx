@@ -1239,7 +1239,7 @@ export default function ClassRosterPage() {
           {classData.bookings.length > 0 && (
             <>
               {isPastClass ? (
-                <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/50 bg-white/95 p-4 backdrop-blur-sm safe-bottom">
+                <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/50 bg-card/95 p-4 backdrop-blur-sm safe-bottom">
                   <div className="mx-auto max-w-3xl">
                     <Button
                       onClick={() => completeMutation.mutate()}

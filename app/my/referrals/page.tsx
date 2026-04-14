@@ -179,7 +179,7 @@ export default function ReferralsPage() {
             </div>
             <button
               onClick={handleCopy}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-foreground text-white active:opacity-80"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-foreground text-background active:opacity-80"
             >
               {copied ? (
                 <Check className="h-4 w-4" />

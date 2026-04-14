@@ -772,7 +772,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     <MgicAIProvider>
     <div className="min-h-dvh bg-background">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-admin/10 bg-white/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-admin/10 bg-card/80 backdrop-blur-xl">
         <div className="h-1 bg-gradient-to-r from-admin/80 to-admin/30" />
         <div className="flex h-14 items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-3">
