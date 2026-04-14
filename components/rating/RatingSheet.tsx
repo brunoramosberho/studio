@@ -126,7 +126,7 @@ export function RatingSheet() {
 
   useEffect(() => {
     if (!submitted) return;
-    const timer = setTimeout(dismiss, 2500);
+    const timer = setTimeout(dismiss, 1200);
     return () => clearTimeout(timer);
   }, [submitted, dismiss]);
 
