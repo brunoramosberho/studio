@@ -12,7 +12,7 @@ export default function BookingsLoading() {
 
       <div className="space-y-3">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="rounded-2xl border border-border/50 bg-white p-4">
+          <div key={i} className="rounded-2xl border border-border/50 bg-card p-4">
             <div className="flex items-start gap-4">
               <Skeleton className="h-12 w-12 rounded-xl" />
               <div className="flex-1 space-y-2">

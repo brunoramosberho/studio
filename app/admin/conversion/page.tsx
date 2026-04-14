@@ -233,7 +233,7 @@ function ResultsTab({
       {/* Range selector */}
       <div className="flex justify-end">
         <Select value={range} onValueChange={onRangeChange}>
-          <SelectTrigger className="w-[140px] bg-white">
+          <SelectTrigger className="w-[140px] bg-card">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -276,7 +276,7 @@ function ResultsTab({
       </div>
 
       {/* Funnel */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="rounded-2xl border border-stone-200 bg-card p-6">
         <h3 className="mb-4 text-sm font-semibold text-stone-900">
           {t("conversionFunnel")}
         </h3>
@@ -284,7 +284,7 @@ function ResultsTab({
       </div>
 
       {/* By Automation */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="rounded-2xl border border-stone-200 bg-card p-6">
         <h3 className="mb-4 text-sm font-semibold text-stone-900">
           {t("byAutomation")}
         </h3>
@@ -338,7 +338,7 @@ function ResultsTab({
       </div>
 
       {/* Recent Conversions */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="rounded-2xl border border-stone-200 bg-card p-6">
         <h3 className="mb-4 text-sm font-semibold text-stone-900">
           {t("recentConversions")}
         </h3>
@@ -426,7 +426,7 @@ function StatCard({
   valueClassName?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5">
+    <div className="rounded-2xl border border-stone-200 bg-card p-5">
       <div className="flex items-center justify-between">
         {icon}
         {trend}
@@ -561,7 +561,7 @@ function ConfigCard({
 }) {
   const tc = useTranslations("common");
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white">
+    <div className="rounded-2xl border border-stone-200 bg-card">
       <div className="flex items-center gap-4 px-6 py-5">
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-stone-100">
           {icon}

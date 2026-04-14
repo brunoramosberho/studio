@@ -42,7 +42,7 @@ export function InputBar({ onSend, disabled }: InputBarProps) {
   const canSend = value.trim().length > 0 && !disabled;
 
   return (
-    <div className="shrink-0 border-t border-border/50 bg-white px-4 py-3">
+    <div className="shrink-0 border-t border-border/50 bg-card px-4 py-3">
       <div className="flex items-end gap-2 rounded-2xl border border-border bg-surface px-4 py-2.5">
         <textarea
           ref={textareaRef}

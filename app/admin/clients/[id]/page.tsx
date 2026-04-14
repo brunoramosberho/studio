@@ -801,7 +801,7 @@ export default function ClientDetailPage() {
                       className={cn(
                         "rounded-lg border p-3.5 transition-colors",
                         pkg.isActive
-                          ? "border-border/60 bg-white"
+                          ? "border-border/60 bg-card"
                           : "border-border/40 bg-surface/30 opacity-60",
                       )}
                     >
@@ -868,7 +868,7 @@ export default function ClientDetailPage() {
                           "rounded-lg border p-3.5 transition-colors",
                           sub.status === "canceled"
                             ? "border-border/40 bg-surface/30 opacity-60"
-                            : "border-border/60 bg-white",
+                            : "border-border/60 bg-card",
                         )}
                       >
                         <div className="flex items-start justify-between">
@@ -956,7 +956,7 @@ export default function ClientDetailPage() {
                     <Link
                       key={b.id}
                       href={`/admin/class/${b.classId}`}
-                      className="flex items-center gap-3 rounded-lg border border-border/40 bg-white px-4 py-3 transition-colors hover:bg-surface/50"
+                      className="flex items-center gap-3 rounded-lg border border-border/40 bg-card px-4 py-3 transition-colors hover:bg-surface/50"
                     >
                       <div
                         className="h-9 w-1 shrink-0 rounded-full"

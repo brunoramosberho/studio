@@ -123,7 +123,7 @@ export default function AnalyticsPage() {
                     className={cn(
                       "rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap",
                       period === p.value
-                        ? "bg-white text-foreground shadow-[var(--shadow-warm-sm)]"
+                        ? "bg-card text-foreground shadow-[var(--shadow-warm-sm)]"
                         : "text-muted hover:text-foreground",
                     )}
                   >

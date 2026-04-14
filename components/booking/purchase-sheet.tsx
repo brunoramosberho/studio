@@ -262,7 +262,7 @@ export function PurchaseSheet({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-white shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-card shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag indicator (mobile) */}
@@ -563,7 +563,7 @@ export function PurchaseSheet({
                       key={card.id}
                       onClick={() => payWithSavedCard(card.id)}
                       disabled={!!payingWithCard}
-                      className="flex w-full items-center gap-3 rounded-2xl border border-border/40 bg-white px-4 py-3.5 text-left transition-colors active:bg-surface disabled:opacity-60"
+                      className="flex w-full items-center gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3.5 text-left transition-colors active:bg-surface disabled:opacity-60"
                     >
                       <div className="flex h-9 w-12 items-center justify-center rounded-lg border border-border/30 bg-surface text-[10px] font-bold uppercase tracking-wider text-muted">
                         {brandLabels[card.brand] ?? card.brand}

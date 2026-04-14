@@ -419,7 +419,7 @@ export default function TenantDetailPage({
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Graduate */}
-          <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-white p-4">
+          <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-card p-4">
             <div>
               <p className="text-sm font-medium text-gray-900">Graduar a producción</p>
               <p className="text-xs text-gray-500">
@@ -439,7 +439,7 @@ export default function TenantDetailPage({
           </div>
 
           {/* Nuke */}
-          <div className="rounded-lg border border-red-200 bg-white p-4">
+          <div className="rounded-lg border border-red-200 bg-card p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-red-700">Eliminar permanentemente</p>

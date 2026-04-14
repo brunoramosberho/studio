@@ -117,7 +117,7 @@ export function InstructorDetail({ coach, metrics }: InstructorDetailProps) {
             className={cn(
               "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
               selectedDisc === "all"
-                ? "bg-white text-foreground shadow-[var(--shadow-warm-sm)]"
+                ? "bg-card text-foreground shadow-[var(--shadow-warm-sm)]"
                 : "text-muted hover:text-foreground",
             )}
           >
@@ -130,7 +130,7 @@ export function InstructorDetail({ coach, metrics }: InstructorDetailProps) {
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                 selectedDisc === cd.discipline.id
-                  ? "bg-white text-foreground shadow-[var(--shadow-warm-sm)]"
+                  ? "bg-card text-foreground shadow-[var(--shadow-warm-sm)]"
                   : "text-muted hover:text-foreground",
               )}
             >

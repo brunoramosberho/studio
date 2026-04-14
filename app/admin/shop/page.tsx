@@ -633,7 +633,7 @@ export default function AdminShopPage() {
                 <select
                   value={form.currency}
                   onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-                  className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-admin/30"
+                  className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-admin/30"
                 >
                   <option value="MXN">MXN</option>
                   <option value="EUR">EUR</option>
@@ -647,7 +647,7 @@ export default function AdminShopPage() {
               <select
                 value={form.categoryId}
                 onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
-                className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-admin/30"
+                className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-admin/30"
               >
                 <option value="">{t("selectOption")}</option>
                 {categories.map((cat) => (
@@ -683,7 +683,7 @@ export default function AdminShopPage() {
               >
                 <span
                   className={cn(
-                    "inline-block h-4 w-4 rounded-full bg-white transition-transform",
+                    "inline-block h-4 w-4 rounded-full bg-card transition-transform",
                     form.isVisible ? "translate-x-6" : "translate-x-1",
                   )}
                 />

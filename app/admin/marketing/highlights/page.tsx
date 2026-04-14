@@ -77,7 +77,7 @@ function Toggle({
     >
       <span
         className={cn(
-          "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+          "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-card shadow-sm transition-transform",
           checked && "translate-x-5",
         )}
       />
@@ -341,7 +341,7 @@ function HighlightCard({
   return (
     <Reorder.Item
       value={item}
-      className="group flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-3 shadow-sm"
+      className="group flex items-start gap-3 rounded-xl border border-stone-200 bg-card p-3 shadow-sm"
     >
       <GripVertical className="mt-3 h-4 w-4 shrink-0 cursor-grab text-stone-300 active:cursor-grabbing" />
 
@@ -521,7 +521,7 @@ export default function HighlightsPage() {
       </motion.div>
 
       {/* Master toggle */}
-      <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white p-5">
+      <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-card p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
             <Sparkles className="h-5 w-5 text-emerald-600" />

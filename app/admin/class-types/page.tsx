@@ -601,7 +601,7 @@ export default function AdminClassTypesPage() {
                   </div>
 
                   <div className="hidden lg:block">
-                    <div className="rounded-md border border-border bg-white p-4 shadow-sm">
+                    <div className="rounded-md border border-border bg-card p-4 shadow-sm">
                       <p className="text-xs font-medium text-muted">{t("preview")}</p>
                       <div className="mt-3 flex items-center gap-3">
                         <div

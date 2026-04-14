@@ -105,7 +105,7 @@ export function RatingSection({
   const activeRating = hovered || rating;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-white p-5">
+    <div className="rounded-2xl border border-border/50 bg-card p-5">
       {submitted && !showReasons ? (
         /* Submitted state — can still change */
         <div className="text-center">

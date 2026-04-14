@@ -508,7 +508,7 @@ function MgicAIButton() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={toggle}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-full bg-white pl-1.5 pr-5 py-1.5 text-sm font-semibold text-foreground shadow-lg ring-1 ring-border/50 transition-shadow hover:shadow-xl"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-full bg-card pl-1.5 pr-5 py-1.5 text-sm font-semibold text-foreground shadow-lg ring-1 ring-border/50 transition-shadow hover:shadow-xl"
           aria-label="Abrir Spark"
         >
           <img
@@ -743,7 +743,7 @@ function MgicAIPanel() {
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             className={cn(
-              "fixed right-0 flex max-w-full flex-col border-l border-border/50 bg-white",
+              "fixed right-0 flex max-w-full flex-col border-l border-border/50 bg-card",
               isSidebar
                 ? "z-30 shadow-sm"
                 : "top-0 z-50 h-dvh shadow-2xl",
@@ -995,7 +995,7 @@ function EmptyState({ onSend }: { onSend: (msg: string) => void }) {
             key={s}
             onClick={() => onSend(s)}
             className={cn(
-              "rounded-xl border border-border bg-white px-3.5 py-2",
+              "rounded-xl border border-border bg-card px-3.5 py-2",
               "text-[12px] font-medium text-foreground",
               "shadow-sm transition-all hover:border-admin/30 hover:shadow-md",
             )}

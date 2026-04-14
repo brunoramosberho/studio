@@ -422,7 +422,7 @@ export default function AdminPackagesPage() {
               className={cn(
                 "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-medium transition-all sm:text-sm",
                 activeTab === tab.type
-                  ? "bg-white text-foreground shadow-sm"
+                  ? "bg-card text-foreground shadow-sm"
                   : "text-muted hover:text-foreground",
               )}
             >
@@ -600,7 +600,7 @@ export default function AdminPackagesPage() {
                     className={cn(
                       "flex-1 rounded-lg py-2 text-xs font-medium transition-all sm:text-[13px]",
                       form.type === tab.type
-                        ? "bg-white text-foreground shadow-sm"
+                        ? "bg-card text-foreground shadow-sm"
                         : "text-muted hover:text-foreground",
                       editingId && "cursor-not-allowed opacity-60",
                     )}
@@ -802,7 +802,7 @@ export default function AdminPackagesPage() {
                       className={cn(
                         "flex-1 rounded-lg py-2 text-sm font-medium transition-all",
                         form.recurringInterval === opt.value
-                          ? "bg-white text-foreground shadow-sm"
+                          ? "bg-card text-foreground shadow-sm"
                           : "text-muted hover:text-foreground",
                       )}
                     >

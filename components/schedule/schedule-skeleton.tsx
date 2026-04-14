@@ -5,7 +5,7 @@ function CardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-2xl bg-white p-4 shadow-[var(--shadow-warm-sm)]",
+        "rounded-2xl bg-card p-4 shadow-[var(--shadow-warm-sm)]",
         className,
       )}
     >

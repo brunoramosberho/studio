@@ -175,7 +175,7 @@ export function SubscribeSheet({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-white shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-card shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center pt-3 sm:hidden">
@@ -231,7 +231,7 @@ export function SubscribeSheet({
                         onClick={() => setStep("select-card")}
                         className="flex w-full items-center gap-3 rounded-2xl border border-border/40 bg-surface/50 px-4 py-3 text-left transition-colors active:bg-surface"
                       >
-                        <div className="flex h-8 w-11 items-center justify-center rounded-lg border border-border/30 bg-white text-[9px] font-bold uppercase tracking-wider text-muted">
+                        <div className="flex h-8 w-11 items-center justify-center rounded-lg border border-border/30 bg-card text-[9px] font-bold uppercase tracking-wider text-muted">
                           {brandLabels[selectedCard.brand] ?? selectedCard.brand}
                         </div>
                         <div className="flex-1">
@@ -292,7 +292,7 @@ export function SubscribeSheet({
                       className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition-colors active:bg-surface ${
                         selectedCard?.id === card.id
                           ? "border-foreground/30 bg-surface/80"
-                          : "border-border/40 bg-white"
+                          : "border-border/40 bg-card"
                       }`}
                     >
                       <div className="flex h-9 w-12 items-center justify-center rounded-lg border border-border/30 bg-surface text-[10px] font-bold uppercase tracking-wider text-muted">

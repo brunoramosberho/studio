@@ -514,7 +514,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           >
             <button
               onClick={() => setPhotoPreview(null)}
-              className="absolute -top-3 -right-3 z-10 bg-white rounded-full p-1 shadow-lg text-stone-500 hover:text-stone-700"
+              className="absolute -top-3 -right-3 z-10 bg-card rounded-full p-1 shadow-lg text-stone-500 hover:text-stone-700"
             >
               <X size={16} />
             </button>
@@ -555,7 +555,7 @@ function ConfirmDialog({
   const tc = useTranslations("common");
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
-      <div className="bg-white rounded-xl shadow-xl p-4 mx-4 max-w-sm w-full">
+      <div className="bg-card rounded-xl shadow-xl p-4 mx-4 max-w-sm w-full">
         <div className="flex items-start gap-3">
           {icon}
           <div>
@@ -845,7 +845,7 @@ function WaiverConfirmDialog({
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
-      <div className="bg-white rounded-xl shadow-xl p-4 mx-4 max-w-sm w-full">
+      <div className="bg-card rounded-xl shadow-xl p-4 mx-4 max-w-sm w-full">
         <div className="flex items-start gap-3">
           <FileText className="text-amber-600 shrink-0 mt-0.5" size={18} />
           <div className="flex-1">
@@ -1045,7 +1045,7 @@ function WalkInModal({
   if (noCreditInfo) {
     return (
       <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
-        <div className="bg-white rounded-xl shadow-xl mx-4 max-w-sm w-full overflow-hidden">
+        <div className="bg-card rounded-xl shadow-xl mx-4 max-w-sm w-full overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
             <p className="text-sm font-medium text-stone-900">{t("noCredits")}</p>
             <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
@@ -1085,7 +1085,7 @@ function WalkInModal({
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
-      <div className="bg-white rounded-xl shadow-xl mx-4 max-w-sm w-full overflow-hidden">
+      <div className="bg-card rounded-xl shadow-xl mx-4 max-w-sm w-full overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
           <p className="text-sm font-medium text-stone-900">{t("addWalkIn")}</p>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-600">

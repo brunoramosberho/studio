@@ -44,7 +44,7 @@ export function FriendBiometrics({ classId }: { classId: string }) {
         <Link
           key={f.user.id}
           href={`/my/user/${f.user.id}`}
-          className="flex items-center gap-2.5 rounded-xl border border-border/40 bg-white px-3 py-2.5 shadow-sm"
+          className="flex items-center gap-2.5 rounded-xl border border-border/40 bg-card px-3 py-2.5 shadow-sm"
         >
           <UserAvatar
             user={f.user as UserAvatarUser}

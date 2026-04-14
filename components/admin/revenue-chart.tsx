@@ -20,7 +20,7 @@ function CustomTooltip({ active, payload, label }: Record<string, unknown>) {
   if (!active || !(payload as unknown[])?.length) return null;
   const entry = (payload as { value: number }[])[0];
   return (
-    <div className="rounded-xl border border-border bg-white px-3 py-2 shadow-warm">
+    <div className="rounded-xl border border-border bg-card px-3 py-2 shadow-warm">
       <p className="text-xs text-muted">{label as string}</p>
       <p className="font-mono text-sm font-bold text-foreground">
         {formatCurrency(entry.value)}

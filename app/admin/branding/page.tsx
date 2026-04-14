@@ -23,12 +23,100 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { type StudioBranding, DEFAULTS, FONT_PAIRINGS, deriveAccentSoft, withDerivedColors } from "@/lib/branding";
-import { useBranding, applyTheme } from "@/components/branding-provider";
+import { useBranding } from "@/components/branding-provider";
 
 const colorFields: { key: keyof StudioBranding; labelKey: string; hintKey: string }[] = [
   { key: "colorAccent", labelKey: "brandColorLabel", hintKey: "brandColorHint" },
   { key: "colorHeroBg", labelKey: "landingBgLabel", hintKey: "landingBgHint" },
 ];
+
+/* Perceived luminance of a #RRGGBB string, 0..1. Used to warn when a
+   tenant's brand color is too dark for a dark-mode surface. */
+function computeBrightness(hex: string): number {
+  const h = (hex || "").replace("#", "");
+  if (h.length !== 6) return 1;
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+interface BrandPreviewCardProps {
+  mode: "light" | "dark";
+  bg: string;
+  fg: string;
+  surface: string;
+  muted: string;
+  border: string;
+  accent: string;
+  studioName: string;
+  tagline: string;
+  bookLabel: string;
+  schedulesLabel: string;
+  modeLabel: string;
+}
+
+function BrandPreviewCard({
+  mode,
+  bg,
+  fg,
+  surface,
+  muted,
+  border,
+  accent,
+  studioName,
+  tagline,
+  bookLabel,
+  schedulesLabel,
+  modeLabel,
+}: BrandPreviewCardProps) {
+  // accent-soft is derived against the preview bg using color-mix at runtime,
+  // matching the CSS tokens the app actually uses.
+  const accentSoft = `color-mix(in srgb, ${accent} 12%, ${bg})`;
+  return (
+    <div
+      className="overflow-hidden rounded-md border"
+      style={{ backgroundColor: bg, color: fg, borderColor: border }}
+    >
+      <div
+        className="flex items-center justify-between px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider"
+        style={{ borderBottom: `1px solid ${border}`, color: muted }}
+      >
+        <span>{modeLabel}</span>
+        <span
+          className="inline-block h-2 w-2 rounded-full"
+          style={{ backgroundColor: mode === "dark" ? "#A1A1AA" : "#FACC15" }}
+        />
+      </div>
+      <div className="p-4">
+        <h3 className="font-display text-base font-bold">{studioName}</h3>
+        <p className="mt-0.5 text-xs" style={{ color: muted }}>
+          {tagline}
+        </p>
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <span
+            className="rounded-md px-2.5 py-1 text-[11px] font-semibold text-white"
+            style={{ backgroundColor: accent }}
+          >
+            {bookLabel}
+          </span>
+          <span
+            className="rounded-md px-2.5 py-1 text-[11px] font-medium"
+            style={{ backgroundColor: accentSoft, color: fg }}
+          >
+            {schedulesLabel}
+          </span>
+        </div>
+        <div
+          className="mt-2.5 rounded-md border p-2 text-[10px]"
+          style={{ borderColor: border, backgroundColor: surface, color: muted }}
+        >
+          {studioName} · {modeLabel}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function BrandingPage() {
   const t = useTranslations("admin");
@@ -522,7 +610,7 @@ export default function BrandingPage() {
                       <div
                         className={cn(
                           "mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md border",
-                          selected ? "border-admin bg-admin text-white" : "border-border bg-white text-muted opacity-0 group-hover:opacity-100",
+                          selected ? "border-admin bg-admin text-white" : "border-border bg-card text-muted opacity-0 group-hover:opacity-100",
                         )}
                         aria-hidden
                       >
@@ -598,7 +686,7 @@ export default function BrandingPage() {
                 const label = t(labelKey);
                 const hint = t(hintKey);
                 return (
-                <div key={key} className="flex items-center gap-3 rounded-md border border-border bg-white p-3 shadow-sm">
+                <div key={key} className="flex items-center gap-3 rounded-md border border-border bg-card p-3 shadow-sm">
                   <label className="relative">
                     <input
                       type="color"
@@ -629,48 +717,65 @@ export default function BrandingPage() {
 
             <div className="mt-6 rounded-md border border-border p-4">
               <p className="mb-3 text-xs font-medium text-muted">{t("previewLabel")}</p>
-              <div className="overflow-hidden rounded-md">
-                <div className="p-6" style={{ backgroundColor: settings.colorBg, color: settings.colorFg }}>
-                  <h3 className="font-display text-xl font-bold">{settings.studioName}</h3>
-                  <p className="mt-1 text-sm" style={{ color: settings.colorMuted }}>
-                    {settings.tagline || t("yourStudio")}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span
-                      className="rounded-md px-3 py-1.5 text-xs font-semibold text-white"
-                      style={{ backgroundColor: settings.colorAccent }}
-                    >
-                      {t("bookClass")}
-                    </span>
-                    <span
-                      className="rounded-md px-3 py-1.5 text-xs font-medium"
-                      style={{ backgroundColor: settings.colorAccentSoft, color: settings.colorFg }}
-                    >
-                      {t("viewSchedules")}
-                    </span>
-                  </div>
-                  <div
-                    className="mt-3 rounded-md border p-3"
-                    style={{ borderColor: settings.colorBorder, backgroundColor: settings.colorSurface }}
-                  >
-                    <p className="text-xs" style={{ color: settings.colorMuted }}>
-                      {t("colorsAutoAdjust")}
-                    </p>
-                  </div>
-                </div>
-                <div className="p-6" style={{ backgroundColor: settings.colorHeroBg, color: "#FFFFFF" }}>
-                  <h3 className="font-display text-lg font-bold">{t("yourLandingPage")}</h3>
-                  <p className="mt-1 text-sm opacity-70">
-                    {t("darkSectionsPreview")}
-                  </p>
-                  <span
-                    className="mt-3 inline-block rounded-md px-3 py-1.5 text-xs font-semibold text-white"
-                    style={{ backgroundColor: settings.colorAccent }}
-                  >
-                    {t("startToday")}
-                  </span>
-                </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* Light mode preview */}
+                <BrandPreviewCard
+                  mode="light"
+                  bg="#FFFFFF"
+                  fg="#18181B"
+                  surface="#FAFAFA"
+                  muted="#71717A"
+                  border="#E4E4E7"
+                  accent={settings.colorAccent}
+                  studioName={settings.studioName}
+                  tagline={settings.tagline}
+                  bookLabel={t("bookClass")}
+                  schedulesLabel={t("viewSchedules")}
+                  modeLabel={tc("themeLight") === "themeLight" ? "Light" : tc("themeLight")}
+                />
+                {/* Dark mode preview — simulates the dark palette members see. */}
+                <BrandPreviewCard
+                  mode="dark"
+                  bg="#0B0B0F"
+                  fg="#F4F4F5"
+                  surface="#17171C"
+                  muted="#A1A1AA"
+                  border="#2A2A31"
+                  accent={settings.colorAccent}
+                  studioName={settings.studioName}
+                  tagline={settings.tagline}
+                  bookLabel={t("bookClass")}
+                  schedulesLabel={t("viewSchedules")}
+                  modeLabel={tc("themeDark") === "themeDark" ? "Dark" : tc("themeDark")}
+                />
               </div>
+              {/* Landing / hero preview */}
+              <div
+                className="mt-3 overflow-hidden rounded-md p-6"
+                style={{ backgroundColor: settings.colorHeroBg, color: "#FFFFFF" }}
+              >
+                <h3 className="font-display text-lg font-bold">{t("yourLandingPage")}</h3>
+                <p className="mt-1 text-sm opacity-70">
+                  {t("darkSectionsPreview")}
+                </p>
+                <span
+                  className="mt-3 inline-block rounded-md px-3 py-1.5 text-xs font-semibold text-white"
+                  style={{ backgroundColor: settings.colorAccent }}
+                >
+                  {t("startToday")}
+                </span>
+              </div>
+              {/* Warn admin if their accent may clash with dark mode.
+                  Heuristic: very dark accents (brightness < 0.35) need review. */}
+              {(() => {
+                const b = computeBrightness(settings.colorAccent);
+                if (b >= 0.35) return null;
+                return (
+                  <div className="mt-3 rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-[11px] leading-relaxed text-warning">
+                    Tu color de marca es muy oscuro — en modo oscuro los textos y botones pueden verse con bajo contraste. Considerá un tono más saturado o luminoso.
+                  </div>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>

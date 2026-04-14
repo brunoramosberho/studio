@@ -36,7 +36,7 @@ export default async function SuperAdminLayout({
   if (!session) redirect("/login");
 
   return (
-    <div className="flex min-h-dvh bg-white">
+    <div className="flex min-h-dvh bg-card">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-gray-800 bg-gray-950 md:flex">
         <div className="flex h-16 items-center gap-3 border-b border-gray-800 px-6">
           <Shield className="h-5 w-5 text-indigo-400" />
@@ -67,7 +67,7 @@ export default async function SuperAdminLayout({
       </aside>
 
       {/* Mobile header */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 md:hidden">
+      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-card px-4 md:hidden">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-indigo-600" />
           <span className="text-sm font-semibold">Mgic Studio</span>
@@ -78,7 +78,7 @@ export default async function SuperAdminLayout({
       </header>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-gray-200 bg-white md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-gray-200 bg-card md:hidden">
         {navItems.map((item) => (
           <Link
             key={item.href}

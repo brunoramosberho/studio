@@ -237,7 +237,7 @@ export default function CoachStatsPage() {
                 className={cn(
                   "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                   earningsView === "week"
-                    ? "bg-white text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm"
                     : "text-muted hover:text-foreground",
                 )}
               >
@@ -248,7 +248,7 @@ export default function CoachStatsPage() {
                 className={cn(
                   "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                   earningsView === "month"
-                    ? "bg-white text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm"
                     : "text-muted hover:text-foreground",
                 )}
               >
@@ -364,7 +364,7 @@ export default function CoachStatsPage() {
               className={cn(
                 "flex-1 rounded-md py-2 text-xs font-semibold transition-all",
                 period === p
-                  ? "bg-white text-foreground shadow-sm"
+                  ? "bg-card text-foreground shadow-sm"
                   : "text-muted hover:text-foreground",
               )}
             >

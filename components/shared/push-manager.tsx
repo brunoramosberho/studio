@@ -144,7 +144,7 @@ export function PushManager() {
           >
             <div
               className={[
-                "relative overflow-hidden border border-border/60 bg-white shadow-[0_-12px_48px_rgba(15,23,42,0.18)]",
+                "relative overflow-hidden border border-border/60 bg-card shadow-[0_-12px_48px_rgba(15,23,42,0.18)]",
                 "rounded-t-[1.75rem] pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2 md:rounded-3xl md:pb-8 md:pt-8 md:shadow-[var(--shadow-warm-lg)]",
               ].join(" ")}
             >

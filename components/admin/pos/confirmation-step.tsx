@@ -108,7 +108,7 @@ export function ConfirmationStep() {
 
       {/* Payment method */}
       {displayTotal > 0 && (
-        <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-white px-4 py-3">
+        <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-card px-4 py-3">
           <MethodIcon className="h-4 w-4 text-muted" />
           <div className="min-w-0 flex-1">
             <p className="text-xs text-muted">{t("paymentMethod")}</p>

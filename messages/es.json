@@ -48,7 +48,12 @@
     "exportError": "Error al exportar",
     "name": "Nombre",
     "openInBrowser": "Abrir en navegador externo",
-    "forBetterExperience": "para una mejor experiencia"
+    "forBetterExperience": "para una mejor experiencia",
+    "themeToggle": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "themeSystem": "Sistema",
+    "appearance": "Apariencia"
   },
   "auth": {
     "adminPanel": "Panel de Administracion",

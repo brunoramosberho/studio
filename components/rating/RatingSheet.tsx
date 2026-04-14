@@ -151,7 +151,7 @@ export function RatingSheet() {
           visible ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="bg-white rounded-t-[20px] px-6 pb-[max(24px,env(safe-area-inset-bottom))] max-h-[85dvh] overflow-y-auto">
+        <div className="bg-card rounded-t-[20px] px-6 pb-[max(24px,env(safe-area-inset-bottom))] max-h-[85dvh] overflow-y-auto">
           {/* Handle */}
           <div className="flex justify-center pt-2.5 mb-4">
             <div className="w-9 h-1 rounded-full bg-stone-200" />
@@ -241,7 +241,7 @@ export function RatingSheet() {
                 onChange={(e) => setComment(e.target.value)}
                 placeholder={t("anythingElse")}
                 rows={2}
-                className="w-full rounded-[14px] border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 resize-none focus:outline-none focus:ring-2 focus:ring-accent/30 mb-4"
+                className="w-full rounded-[14px] border border-stone-200 bg-card px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 resize-none focus:outline-none focus:ring-2 focus:ring-accent/30 mb-4"
               />
               <button
                 onClick={submitReasons}

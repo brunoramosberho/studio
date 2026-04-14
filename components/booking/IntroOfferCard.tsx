@@ -125,7 +125,7 @@ export function IntroOfferCard({
       </div>
 
       {/* Body */}
-      <div className="bg-white px-6 py-6 space-y-5">
+      <div className="bg-card px-6 py-6 space-y-5">
         {/* Price comparison */}
         <div className="flex items-baseline justify-center gap-3">
           <span className="text-3xl font-bold text-[#3730B8]">

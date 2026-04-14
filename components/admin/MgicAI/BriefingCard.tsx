@@ -170,7 +170,7 @@ export function MgicAIBriefing() {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-        className="mb-6 overflow-hidden rounded-2xl bg-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.08)]"
+        className="mb-6 overflow-hidden rounded-2xl bg-card shadow-[0_2px_20px_-4px_rgba(0,0,0,0.08)]"
       >
         {/* Gradient accent bar */}
         <div

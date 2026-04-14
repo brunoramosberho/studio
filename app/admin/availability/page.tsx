@@ -271,7 +271,7 @@ function TabButton({
       className={cn(
         "relative flex items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-medium transition-all",
         active
-          ? "border border-stone-200 bg-white text-stone-900"
+          ? "border border-stone-200 bg-card text-stone-900"
           : "text-stone-500 hover:text-stone-700",
       )}
     >
@@ -293,7 +293,7 @@ function RequestsTab({ pending }: { pending: PendingBlock[] }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-stone-200 bg-white p-3">
+        <div className="rounded-2xl border border-stone-200 bg-card p-3">
           <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
             Solicitudes pendientes
           </p>
@@ -302,7 +302,7 @@ function RequestsTab({ pending }: { pending: PendingBlock[] }) {
           </p>
           <p className="text-xs text-stone-500">Requieren tu atención</p>
         </div>
-        <div className="rounded-2xl border border-stone-200 bg-white p-3">
+        <div className="rounded-2xl border border-stone-200 bg-card p-3">
           <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
             Clases sin cobertura
           </p>
@@ -323,7 +323,7 @@ function RequestsTab({ pending }: { pending: PendingBlock[] }) {
       </div>
 
       {pending.length === 0 ? (
-        <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center">
+        <div className="rounded-2xl border border-stone-200 bg-card p-8 text-center">
           <p className="text-sm text-stone-500">
             No hay solicitudes pendientes
           </p>
@@ -371,7 +371,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
       : "";
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
+    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-card">
       <div className="flex items-start gap-3 p-4">
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
@@ -628,7 +628,7 @@ function CoverageTab() {
       </div>
 
       {data && (
-        <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white p-4">
+        <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-card p-4">
           <div
             className="grid gap-px"
             style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
@@ -769,7 +769,7 @@ function HourlyTab() {
         <select
           value={filterDiscipline ?? ""}
           onChange={(e) => setFilterDiscipline(e.target.value || null)}
-          className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800"
+          className="rounded-lg border border-stone-200 bg-card px-3 py-1.5 text-sm text-stone-800"
         >
           <option value="">Disciplina</option>
           {(data?.disciplines ?? []).map((d) => (
@@ -780,7 +780,7 @@ function HourlyTab() {
         <select
           value={filterHour ?? ""}
           onChange={(e) => setFilterHour(e.target.value ? Number(e.target.value) : null)}
-          className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800"
+          className="rounded-lg border border-stone-200 bg-card px-3 py-1.5 text-sm text-stone-800"
         >
           <option value="">Hora</option>
           {hours.map((h) => (
@@ -834,7 +834,7 @@ function HourlyTab() {
 
       {/* Grid */}
       {data && (
-        <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white p-4">
+        <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-card p-4">
           <div
             className="relative grid"
             style={{
@@ -945,7 +945,7 @@ function SettingsTab() {
   const [section, setSection] = useState<"zones" | "notifications" | "hours">("zones");
 
   return (
-    <div className="flex gap-0 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+    <div className="flex gap-0 overflow-hidden rounded-2xl border border-stone-200 bg-card">
       {/* Sidebar */}
       <div className="w-[200px] shrink-0 border-r border-stone-200 bg-stone-50 p-2">
         <p className="px-2 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-stone-400">
@@ -974,7 +974,7 @@ function SettingsTab() {
         </SettingsNavItem>
         <Link
           href="/admin/coaches"
-          className="flex items-center gap-1 rounded-xl px-3 py-2 text-sm text-stone-500 hover:bg-white"
+          className="flex items-center gap-1 rounded-xl px-3 py-2 text-sm text-stone-500 hover:bg-card"
         >
           Coaches
           <ExternalLink className="h-3 w-3" />
@@ -1006,8 +1006,8 @@ function SettingsNavItem({
       className={cn(
         "w-full rounded-xl px-3 py-2 text-left text-sm",
         active
-          ? "border border-stone-200 bg-white font-medium text-stone-900"
-          : "text-stone-500 hover:bg-white",
+          ? "border border-stone-200 bg-card font-medium text-stone-900"
+          : "text-stone-500 hover:bg-card",
       )}
     >
       {children}
@@ -1231,7 +1231,7 @@ function NotificationsSection() {
             >
               <div
                 className={cn(
-                  "absolute top-[3px] h-3.5 w-3.5 rounded-full bg-white transition-transform",
+                  "absolute top-[3px] h-3.5 w-3.5 rounded-full bg-card transition-transform",
                   current[item.key] ? "left-[18px]" : "left-[3px]",
                 )}
               />

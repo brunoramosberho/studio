@@ -120,7 +120,7 @@ export default function ReferralsPage() {
               Invita amigos
             </h1>
           </div>
-          <div className="rounded-2xl border border-border/50 bg-white py-12 text-center">
+          <div className="rounded-2xl border border-border/50 bg-card py-12 text-center">
             <span className="text-3xl">🔗</span>
             <p className="mt-3 text-sm font-medium text-foreground">
               El programa de referidos no está activo
@@ -159,7 +159,7 @@ export default function ReferralsPage() {
           ].map(({ label, value, icon: Icon }) => (
             <div
               key={label}
-              className="flex flex-col items-center rounded-2xl border border-border/50 bg-white py-4"
+              className="flex flex-col items-center rounded-2xl border border-border/50 bg-card py-4"
             >
               <Icon className="mb-1.5 h-4 w-4 text-muted" />
               <span className="text-lg font-bold text-foreground">{value}</span>
@@ -169,7 +169,7 @@ export default function ReferralsPage() {
         </div>
 
         {/* Share link */}
-        <div className="mb-5 rounded-2xl border border-border/50 bg-white p-4">
+        <div className="mb-5 rounded-2xl border border-border/50 bg-card p-4">
           <p className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-muted">
             Tu link de invitación
           </p>
@@ -228,7 +228,7 @@ export default function ReferralsPage() {
           </h2>
 
           {data.referrals.length === 0 ? (
-            <div className="rounded-2xl border border-border/50 bg-white py-12 text-center">
+            <div className="rounded-2xl border border-border/50 bg-card py-12 text-center">
               <span className="text-3xl">✉️</span>
               <p className="mt-3 text-sm font-medium text-foreground">
                 Aún no has invitado a nadie
@@ -248,7 +248,7 @@ export default function ReferralsPage() {
                 return (
                   <div
                     key={ref.id}
-                    className="overflow-hidden rounded-2xl border border-border/50 bg-white"
+                    className="overflow-hidden rounded-2xl border border-border/50 bg-card"
                   >
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : ref.id)}

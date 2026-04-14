@@ -798,7 +798,7 @@ export default function ClassRosterPage() {
                     value={caption}
                     onChange={(e) => handleCaptionChange(e.target.value)}
                     placeholder="Escribe algo sobre la clase..."
-                    className="w-full resize-none rounded-xl border border-input-border bg-white p-3 pr-16 text-sm transition-colors focus:border-coach focus:outline-none focus:ring-1 focus:ring-coach/30"
+                    className="w-full resize-none rounded-xl border border-input-border bg-card p-3 pr-16 text-sm transition-colors focus:border-coach focus:outline-none focus:ring-1 focus:ring-coach/30"
                     rows={2}
                     disabled={!feedEventId}
                   />
@@ -889,7 +889,7 @@ export default function ClassRosterPage() {
                       value={commentText}
                       onChange={(e) => setCommentText(e.target.value)}
                       placeholder="Escribe un comentario..."
-                      className="flex-1 rounded-full border border-input-border bg-white px-4 py-2 text-sm transition-colors focus:border-coach focus:outline-none"
+                      className="flex-1 rounded-full border border-input-border bg-card px-4 py-2 text-sm transition-colors focus:border-coach focus:outline-none"
                     />
                     <Button
                       type="submit"
@@ -940,7 +940,7 @@ export default function ClassRosterPage() {
                         return (
                           <div
                             key={booking.id}
-                            className="flex items-center gap-3 rounded-xl bg-white p-3"
+                            className="flex items-center gap-3 rounded-xl bg-card p-3"
                           >
                             <UserAvatar
                               user={booking.user as UserAvatarUser}

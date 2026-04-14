@@ -267,7 +267,7 @@ export default function FinancePage() {
           <select
             value={range}
             onChange={(e) => { setRange(e.target.value); setPage(1); }}
-            className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-700 outline-none focus:border-stone-400"
+            className="rounded-lg border border-stone-200 bg-card px-3 py-1.5 text-sm text-stone-700 outline-none focus:border-stone-400"
           >
             {periods.map((p) => (
               <option key={p.value} value={p.value}>{t(p.labelKey)}</option>
@@ -275,7 +275,7 @@ export default function FinancePage() {
           </select>
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+            className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-card px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
           >
             <Download className="h-3.5 w-3.5" />
             {t("exportCsv")}
@@ -298,7 +298,7 @@ export default function FinancePage() {
           <>
             {/* Gross Revenue */}
             <motion.div variants={fadeUp}>
-              <div className="bg-white border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
+              <div className="bg-card border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
                   <DollarSign className="h-3 w-3 shrink-0" /> <span className="truncate">{t("grossRevenue")}</span>
                 </p>
@@ -314,7 +314,7 @@ export default function FinancePage() {
 
             {/* MRR */}
             <motion.div variants={fadeUp}>
-              <div className="bg-white border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
+              <div className="bg-card border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
                   <RefreshCw className="h-3 w-3 shrink-0" /> <span className="truncate">{t("mrrActive")}</span>
                 </p>
@@ -333,7 +333,7 @@ export default function FinancePage() {
 
             {/* Failed Payments */}
             <motion.div variants={fadeUp}>
-              <div className="bg-white border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
+              <div className="bg-card border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3 shrink-0" /> <span className="truncate">{t("failedPayments")}</span>
                 </p>
@@ -360,7 +360,7 @@ export default function FinancePage() {
 
             {/* Upcoming Renewals */}
             <motion.div variants={fadeUp}>
-              <div className="bg-white border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
+              <div className="bg-card border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
                   <Clock className="h-3 w-3 shrink-0" /> <span className="truncate">{t("upcomingCharges")}</span>
                 </p>
@@ -382,7 +382,7 @@ export default function FinancePage() {
       {/* Charts Row */}
       <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
         {/* Daily Revenue Bar Chart */}
-        <div className="lg:col-span-2 bg-white border border-stone-100 rounded-2xl p-3 sm:p-4">
+        <div className="lg:col-span-2 bg-card border border-stone-100 rounded-2xl p-3 sm:p-4">
           <p className="text-xs font-medium text-stone-600 mb-3">{t("dailyRevenue")}</p>
           {financeLd ? (
             <Skeleton className="h-[100px]" />
@@ -392,7 +392,7 @@ export default function FinancePage() {
         </div>
 
         {/* Source Breakdown */}
-        <div className="bg-white border border-stone-100 rounded-2xl p-3 sm:p-4">
+        <div className="bg-card border border-stone-100 rounded-2xl p-3 sm:p-4">
           <p className="text-xs font-medium text-stone-600 mb-3">{t("sourceBreakdown")}</p>
           {financeLd ? (
             <Skeleton className="h-[100px]" />
@@ -451,7 +451,7 @@ export default function FinancePage() {
       )}
 
       {/* Transactions Table */}
-      <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden">
+      <div className="bg-card border border-stone-100 rounded-2xl overflow-hidden">
         {/* Search & Filters */}
         <div className="px-3 py-3 sm:px-4 border-b border-stone-50 flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
@@ -654,7 +654,7 @@ export default function FinancePage() {
               const dayLabel = formatRenewalDay(r.date, t);
               const grouped = groupMemberships(r.memberships);
               return (
-                <div key={r.date} className="bg-white border border-stone-100 rounded-xl p-3">
+                <div key={r.date} className="bg-card border border-stone-100 rounded-xl p-3">
                   <p className="text-[10px] text-stone-400">{dayLabel} · {r.count} {t("chargesCount")}</p>
                   <p className="text-sm font-medium text-stone-900">{t("membershipRenewals")}</p>
                   <p className="text-[13px] font-medium text-[#3730B8] mt-1">{formatCurrency(r.totalAmount)}</p>

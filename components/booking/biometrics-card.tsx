@@ -82,7 +82,7 @@ export function BiometricsCard({ bookingId, variant = "standalone" }: Biometrics
   }
 
   return (
-    <div className="rounded-2xl border border-border/40 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-border/40 bg-card p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-orange-600" />

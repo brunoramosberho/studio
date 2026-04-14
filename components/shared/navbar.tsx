@@ -38,7 +38,7 @@ export function Navbar() {
   if (session?.user && hideForLoggedIn) return null;
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white safe-top">
+    <header className="sticky top-0 z-40 w-full bg-card safe-top">
       <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Mobile: hamburger + logo */}
         <div className="flex items-center gap-3">
@@ -121,7 +121,7 @@ export function Navbar() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" as const }}
-            className="overflow-hidden border-t border-border/50 bg-white lg:hidden"
+            className="overflow-hidden border-t border-border/50 bg-card lg:hidden"
           >
             <div className="flex flex-col gap-1 px-4 py-3">
               {publicLinks.map((link) => (

@@ -368,7 +368,7 @@ export function BookingSheet({
         animate={{ y: 0 }}
         exit={{ y: "-100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 top-0 z-50 max-h-[90dvh] overflow-y-auto rounded-b-3xl bg-white pt-safe shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[90vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="fixed inset-x-0 top-0 z-50 max-h-[90dvh] overflow-y-auto rounded-b-3xl bg-card pt-safe shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[90vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
       >
         {/* Header */}
         <div className="px-6 pb-2 pt-4">

@@ -72,7 +72,7 @@ export function LanguageSelector({ currentLocale, mode, onSaved }: LanguageSelec
           value={value}
           onChange={(e) => handleChange(e.target.value)}
           disabled={saving}
-          className="rounded-md border border-border bg-white px-3 py-1.5 text-sm font-medium outline-none"
+          className="rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium outline-none"
         >
           <option value="es">{t("spanish")}</option>
           <option value="en">{t("english")}</option>

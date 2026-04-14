@@ -55,7 +55,7 @@ export function FilterBar({
             onFilterChange({ classTypeId: v || undefined })
           }
         >
-          <SelectTrigger className="h-9 min-w-[120px] rounded-full border border-border bg-white px-3.5 py-0 text-sm font-body shadow-[var(--shadow-warm-sm)] transition-colors data-[state=open]:border-accent data-[state=open]:bg-accent/5 [&>svg]:ml-1 [&>svg]:h-3.5 [&>svg]:w-3.5">
+          <SelectTrigger className="h-9 min-w-[120px] rounded-full border border-border bg-card px-3.5 py-0 text-sm font-body shadow-[var(--shadow-warm-sm)] transition-colors data-[state=open]:border-accent data-[state=open]:bg-accent/5 [&>svg]:ml-1 [&>svg]:h-3.5 [&>svg]:w-3.5">
             <SelectValue placeholder="Clase" />
           </SelectTrigger>
           <SelectContent>
@@ -74,7 +74,7 @@ export function FilterBar({
           value={filters.coachId ?? ""}
           onValueChange={(v) => onFilterChange({ coachId: v || undefined })}
         >
-          <SelectTrigger className="h-9 min-w-[120px] rounded-full border border-border bg-white px-3.5 py-0 text-sm font-body shadow-[var(--shadow-warm-sm)] transition-colors data-[state=open]:border-accent data-[state=open]:bg-accent/5 [&>svg]:ml-1 [&>svg]:h-3.5 [&>svg]:w-3.5">
+          <SelectTrigger className="h-9 min-w-[120px] rounded-full border border-border bg-card px-3.5 py-0 text-sm font-body shadow-[var(--shadow-warm-sm)] transition-colors data-[state=open]:border-accent data-[state=open]:bg-accent/5 [&>svg]:ml-1 [&>svg]:h-3.5 [&>svg]:w-3.5">
             <SelectValue placeholder="Coach" />
           </SelectTrigger>
           <SelectContent>
@@ -95,7 +95,7 @@ export function FilterBar({
             onFilterChange({ level: (v as Level) || undefined })
           }
         >
-          <SelectTrigger className="h-9 min-w-[120px] rounded-full border border-border bg-white px-3.5 py-0 text-sm font-body shadow-[var(--shadow-warm-sm)] transition-colors data-[state=open]:border-accent data-[state=open]:bg-accent/5 [&>svg]:ml-1 [&>svg]:h-3.5 [&>svg]:w-3.5">
+          <SelectTrigger className="h-9 min-w-[120px] rounded-full border border-border bg-card px-3.5 py-0 text-sm font-body shadow-[var(--shadow-warm-sm)] transition-colors data-[state=open]:border-accent data-[state=open]:bg-accent/5 [&>svg]:ml-1 [&>svg]:h-3.5 [&>svg]:w-3.5">
             <SelectValue placeholder="Nivel" />
           </SelectTrigger>
           <SelectContent>
@@ -118,7 +118,7 @@ export function FilterBar({
             })
           }
         >
-          <SelectTrigger className="h-9 min-w-[120px] rounded-full border border-border bg-white px-3.5 py-0 text-sm font-body shadow-[var(--shadow-warm-sm)] transition-colors data-[state=open]:border-accent data-[state=open]:bg-accent/5 [&>svg]:ml-1 [&>svg]:h-3.5 [&>svg]:w-3.5">
+          <SelectTrigger className="h-9 min-w-[120px] rounded-full border border-border bg-card px-3.5 py-0 text-sm font-body shadow-[var(--shadow-warm-sm)] transition-colors data-[state=open]:border-accent data-[state=open]:bg-accent/5 [&>svg]:ml-1 [&>svg]:h-3.5 [&>svg]:w-3.5">
             <SelectValue placeholder="Horario" />
           </SelectTrigger>
           <SelectContent>

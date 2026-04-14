@@ -87,7 +87,7 @@ export default async function CoachesPage() {
                     <Link
                       href={profileHref}
                       className={cn(
-                        "flex min-h-[4.5rem] items-center gap-3.5 rounded-2xl border border-border/50 bg-white px-3.5 py-3",
+                        "flex min-h-[4.5rem] items-center gap-3.5 rounded-2xl border border-border/50 bg-card px-3.5 py-3",
                         "shadow-[var(--shadow-warm-sm)] transition-colors active:bg-surface",
                       )}
                     >

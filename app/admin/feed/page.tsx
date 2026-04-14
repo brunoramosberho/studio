@@ -576,7 +576,7 @@ export default function AdminFeedPage() {
             className={cn(
               "flex-1 rounded-lg py-2 text-[13px] font-medium transition-all",
               filter === tab.key
-                ? "bg-white text-foreground shadow-sm"
+                ? "bg-card text-foreground shadow-sm"
                 : "text-muted hover:text-foreground",
             )}
           >
@@ -600,7 +600,7 @@ export default function AdminFeedPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-x-4 top-[10%] z-50 mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-warm-lg sm:inset-x-auto sm:w-full"
+              className="fixed inset-x-4 top-[10%] z-50 mx-auto max-w-3xl rounded-2xl bg-card p-6 shadow-warm-lg sm:inset-x-auto sm:w-full"
             >
               <div className="mb-5 flex items-center justify-between">
                 <div>
@@ -726,7 +726,7 @@ export default function AdminFeedPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-x-4 top-[5%] z-50 mx-auto max-w-lg rounded-2xl bg-white shadow-warm-lg sm:inset-x-auto sm:w-full"
+              className="fixed inset-x-4 top-[5%] z-50 mx-auto max-w-lg rounded-2xl bg-card shadow-warm-lg sm:inset-x-auto sm:w-full"
             >
               <div className="max-h-[90dvh] overflow-y-auto p-6">
                 {/* Header */}
@@ -797,7 +797,7 @@ export default function AdminFeedPage() {
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
                     rows={4}
-                    className="flex w-full rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-foreground transition-colors placeholder:text-muted/50 focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30 resize-none"
+                    className="flex w-full rounded-xl border border-border bg-card px-3.5 py-3 text-sm text-foreground transition-colors placeholder:text-muted/50 focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin/30 resize-none"
                   />
 
                   {/* Title (optional) */}
@@ -926,7 +926,7 @@ export default function AdminFeedPage() {
                       sendPush ? "bg-admin" : "bg-border",
                     )}>
                       <div className={cn(
-                        "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                        "absolute top-0.5 h-5 w-5 rounded-full bg-card shadow-sm transition-transform",
                         sendPush ? "translate-x-5" : "translate-x-0.5",
                       )} />
                     </div>
@@ -957,7 +957,7 @@ export default function AdminFeedPage() {
                       pinPost ? "bg-admin" : "bg-border",
                     )}>
                       <div className={cn(
-                        "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                        "absolute top-0.5 h-5 w-5 rounded-full bg-card shadow-sm transition-transform",
                         pinPost ? "translate-x-5" : "translate-x-0.5",
                       )} />
                     </div>
@@ -1143,7 +1143,7 @@ export default function AdminFeedPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-x-4 top-[8%] z-[60] mx-auto max-w-lg rounded-2xl bg-white p-5 shadow-warm-lg sm:inset-x-auto sm:w-full"
+              className="fixed inset-x-4 top-[8%] z-[60] mx-auto max-w-lg rounded-2xl bg-card p-5 shadow-warm-lg sm:inset-x-auto sm:w-full"
             >
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="font-display text-lg font-bold text-foreground">Seleccionar clase</h3>

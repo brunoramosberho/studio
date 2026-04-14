@@ -71,7 +71,7 @@ export default function PoliciesSettingsPage() {
       </div>
 
       {/* Cancellation policy */}
-      <div className="rounded-xl border border-border/50 bg-white p-6 space-y-5">
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-50">
             <Clock className="h-5 w-5 text-orange-500" />
@@ -125,7 +125,7 @@ export default function PoliciesSettingsPage() {
       </div>
 
       {/* No-show policy */}
-      <div className="rounded-xl border border-border/50 bg-white p-6 space-y-5">
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
             <ShieldAlert className="h-5 w-5 text-red-500" />

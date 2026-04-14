@@ -284,7 +284,7 @@ export default function AdminWaiverPage() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-1 rounded-xl border border-border/60 bg-white p-1">
+      <div className="mb-6 flex gap-1 rounded-xl border border-border/60 bg-card p-1">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -306,7 +306,7 @@ export default function AdminWaiverPage() {
       {tab === "editor" && (
         <>
           {!waiver ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-white px-6 py-16 text-center">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 py-16 text-center">
               <FileText className="mb-4 h-10 w-10 text-muted/40" />
               <h2 className="mb-1 text-base font-semibold text-foreground">
                 No hay waiver configurado
@@ -325,7 +325,7 @@ export default function AdminWaiverPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-border/60 bg-white p-5">
+              <div className="rounded-2xl border border-border/60 bg-card p-5">
                 <label className="mb-1.5 block text-sm font-medium text-foreground">
                   Título
                 </label>
@@ -358,7 +358,7 @@ export default function AdminWaiverPage() {
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-white p-4">
+              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card p-4">
                 <div className="text-xs text-muted">
                   Versión {waiver.version}
                   {waiver.publishedAt && (
@@ -398,7 +398,7 @@ export default function AdminWaiverPage() {
           {/* Publish modal */}
           {showPublish && waiver && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-              <div className="w-full max-w-md rounded-2xl bg-white p-6">
+              <div className="w-full max-w-md rounded-2xl bg-card p-6">
                 <h3 className="mb-1 text-base font-semibold text-foreground">
                   Publicar waiver v{waiver.version}
                 </h3>
@@ -481,7 +481,7 @@ export default function AdminWaiverPage() {
               { label: "Pendientes", value: stats.pending, color: "text-amber-600 bg-amber-50" },
               { label: "Re-firma", value: stats.needsResign, color: "text-red-600 bg-red-50" },
             ].map((s) => (
-              <div key={s.label} className="rounded-2xl border border-border/60 bg-white p-4 text-center">
+              <div key={s.label} className="rounded-2xl border border-border/60 bg-card p-4 text-center">
                 <p className={cn("text-2xl font-bold", s.color.split(" ")[0])}>{s.value}</p>
                 <p className="text-xs text-muted">{s.label}</p>
               </div>
@@ -531,7 +531,7 @@ export default function AdminWaiverPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-hidden rounded-2xl border border-border/60 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
             {sigLoading ? (
               <div className="flex h-32 items-center justify-center">
                 <Loader2 className="h-5 w-5 animate-spin text-muted" />
@@ -681,7 +681,7 @@ export default function AdminWaiverPage() {
       )}
 
       {tab === "settings" && !waiver && (
-        <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-white">
+        <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card">
           <AlertCircle className="h-5 w-5 text-muted/40" />
           <p className="text-sm text-muted">Crea un waiver primero para configurarlo</p>
         </div>
@@ -698,7 +698,7 @@ function SettingsSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-white">
+    <div className="rounded-2xl border border-border/60 bg-card">
       <div className="border-b border-border/40 px-5 py-3">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       </div>

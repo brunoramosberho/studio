@@ -95,7 +95,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-[calc(100dvh-3.5rem-4px)]">
         {/* Desktop sidebar */}
-        <aside className="hidden w-60 shrink-0 border-r border-border/50 bg-white lg:block">
+        <aside className="hidden w-60 shrink-0 border-r border-border/50 bg-card lg:block">
           <nav className="sticky top-[calc(3.5rem+4px)] flex flex-col gap-1 p-4">
             {navItems.map((item) => {
               const active =
@@ -137,7 +137,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
                 animate={{ x: 0 }}
                 exit={{ x: -280 }}
                 transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                className="fixed left-0 top-0 z-40 h-dvh w-64 border-r border-border/50 bg-white pt-20 shadow-warm-lg lg:hidden"
+                className="fixed left-0 top-0 z-40 h-dvh w-64 border-r border-border/50 bg-card pt-20 shadow-warm-lg lg:hidden"
               >
                 <nav className="flex flex-col gap-1 p-4">
                   {navItems.map((item) => {

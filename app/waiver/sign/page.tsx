@@ -24,7 +24,7 @@ interface WaiverData {
 
 export default function WaiverSignPage() {
   return (
-    <Suspense fallback={<div className="flex h-dvh items-center justify-center bg-stone-50"><Loader2 size={24} className="animate-spin text-stone-400" /></div>}>
+    <Suspense fallback={<div className="flex h-dvh items-center justify-center bg-stone-50"><Loader2 size={24} className="animate-spin text-muted/80" /></div>}>
       <WaiverSignContent />
     </Suspense>
   );
@@ -177,7 +177,7 @@ function WaiverSignContent() {
   if (loading) {
     return (
       <div className="flex h-dvh items-center justify-center bg-stone-50">
-        <Loader2 size={24} className="animate-spin text-stone-400" />
+        <Loader2 size={24} className="animate-spin text-muted/80" />
       </div>
     );
   }
@@ -246,12 +246,12 @@ function WaiverSignContent() {
     return (
       <div className="flex h-dvh flex-col overflow-hidden bg-stone-50">
         {/* Fixed header */}
-        <div className="shrink-0 border-b border-stone-100 bg-white/90 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
+        <div className="shrink-0 border-b border-border/60 bg-card/90 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-stone-800">
               {studioName}
             </span>
-            <span className="text-xs text-stone-400">1 de 2</span>
+            <span className="text-xs text-muted/80">1 de 2</span>
           </div>
         </div>
 
@@ -271,9 +271,9 @@ function WaiverSignContent() {
         </div>
 
         {/* Fixed footer */}
-        <div className="shrink-0 border-t border-stone-100 bg-white px-5 py-4 safe-bottom">
+        <div className="shrink-0 border-t border-border/60 bg-card px-5 py-4 safe-bottom">
           {!skipScroll && !hasScrolled && (
-            <p className="mb-2 text-center text-xs text-stone-400">
+            <p className="mb-2 text-center text-xs text-muted/80">
               Desliza para leer todo el documento
             </p>
           )}
@@ -295,7 +295,7 @@ function WaiverSignContent() {
     return (
       <div className="flex h-dvh flex-col overflow-hidden bg-stone-50">
         {/* Fixed header */}
-        <div className="shrink-0 border-b border-stone-100 bg-white/90 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
+        <div className="shrink-0 border-b border-border/60 bg-card/90 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setStep("read")}
@@ -303,7 +303,7 @@ function WaiverSignContent() {
             >
               ← Volver
             </button>
-            <span className="text-xs text-stone-400">
+            <span className="text-xs text-muted/80">
               2 de 2 · Firma el acuerdo
             </span>
             <div className="w-12" />
@@ -319,7 +319,7 @@ function WaiverSignContent() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mb-5 w-full rounded-xl border border-stone-200 p-3 text-base text-stone-800 outline-none focus:border-stone-400"
+            className="mb-5 w-full rounded-xl border border-border p-3 text-base text-stone-800 outline-none focus:border-stone-400"
             placeholder="Tu nombre"
           />
 
@@ -333,7 +333,7 @@ function WaiverSignContent() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="mb-5 w-full rounded-xl border border-stone-200 p-3 text-base text-stone-800 outline-none focus:border-stone-400"
+                className="mb-5 w-full rounded-xl border border-border p-3 text-base text-stone-800 outline-none focus:border-stone-400"
                 placeholder="+52 555 123 4567"
               />
             </>
@@ -349,13 +349,13 @@ function WaiverSignContent() {
                 type="date"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
-                className="mb-5 w-full rounded-xl border border-stone-200 p-3 text-base text-stone-800 outline-none focus:border-stone-400"
+                className="mb-5 w-full rounded-xl border border-border p-3 text-base text-stone-800 outline-none focus:border-stone-400"
               />
             </>
           )}
 
           {/* Signature area */}
-          <div className="mb-5 rounded-xl border border-stone-200 bg-white p-4">
+          <div className="mb-5 rounded-xl border border-border bg-card p-4">
             <p className="mb-3 text-sm font-medium text-stone-700">
               Firma del participante{" "}
               <span className="text-red-400">*</span>
@@ -366,7 +366,7 @@ function WaiverSignContent() {
                 <img
                   src={signatureDataUrl}
                   alt="Firma"
-                  className="h-20 w-auto rounded-lg border border-stone-100 bg-stone-50 p-2"
+                  className="h-20 w-auto rounded-lg border border-border/60 bg-stone-50 p-2"
                 />
                 <button
                   onClick={() => setSignatureDataUrl(null)}
@@ -379,7 +379,7 @@ function WaiverSignContent() {
             ) : (
               <button
                 onClick={() => setShowCanvas(true)}
-                className="flex h-24 w-full items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 text-sm text-stone-400 active:bg-stone-100"
+                className="flex h-24 w-full items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 text-sm text-muted/80 active:bg-stone-100"
               >
                 Toca aquí para firmar
               </button>
@@ -409,7 +409,7 @@ function WaiverSignContent() {
         </div>
 
         {/* Fixed footer */}
-        <div className="shrink-0 border-t border-stone-100 bg-white px-5 py-4 safe-bottom">
+        <div className="shrink-0 border-t border-border/60 bg-card px-5 py-4 safe-bottom">
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || submitting}

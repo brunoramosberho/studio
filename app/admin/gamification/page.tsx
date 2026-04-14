@@ -172,7 +172,7 @@ function Toggle({
     >
       <span
         className={cn(
-          "pointer-events-none block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+          "pointer-events-none block h-5 w-5 rounded-full bg-card shadow-sm transition-transform",
           checked ? "translate-x-5" : "translate-x-0",
         )}
       />
@@ -202,7 +202,7 @@ function Section({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="mb-2 flex w-full items-center justify-between rounded-xl border border-border/50 bg-white px-4 py-3 text-left transition-colors hover:bg-surface/60"
+        className="mb-2 flex w-full items-center justify-between rounded-xl border border-border/50 bg-card px-4 py-3 text-left transition-colors hover:bg-surface/60"
       >
         <span className="flex items-center gap-2 font-semibold text-foreground">
           <Icon className="h-4 w-4 text-admin" />
@@ -453,7 +453,7 @@ export default function AdminGamificationPage() {
       >
         <div
           className={cn(
-            "space-y-2 rounded-xl border border-border/50 bg-white p-4 transition-opacity",
+            "space-y-2 rounded-xl border border-border/50 bg-card p-4 transition-opacity",
             !config.levelsEnabled && "opacity-50 pointer-events-none",
           )}
         >
@@ -570,7 +570,7 @@ export default function AdminGamificationPage() {
       >
         <div
           className={cn(
-            "rounded-xl border border-border/50 bg-white p-4 transition-opacity",
+            "rounded-xl border border-border/50 bg-card p-4 transition-opacity",
             !config.achievementsEnabled && "opacity-50 pointer-events-none",
           )}
         >
@@ -718,7 +718,7 @@ export default function AdminGamificationPage() {
       >
         <div
           className={cn(
-            "rounded-xl border border-border/50 bg-white p-4 transition-opacity",
+            "rounded-xl border border-border/50 bg-card p-4 transition-opacity",
             !config.autoRewardsEnabled && "opacity-50 pointer-events-none",
           )}
         >
@@ -781,7 +781,7 @@ export default function AdminGamificationPage() {
         count={recentAch.length}
         defaultOpen={true}
       >
-        <div className="rounded-xl border border-border/50 bg-white">
+        <div className="rounded-xl border border-border/50 bg-card">
           {recentAch.length === 0 ? (
             <p className="p-6 text-center text-sm text-muted">
               Sin logros desbloqueados en los últimos 7 días.

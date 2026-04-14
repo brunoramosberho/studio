@@ -21,6 +21,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 import { useTenant } from "@/components/tenant-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const sidebarLinks = [
   { href: "/my", icon: Home, labelKey: "feed" },
@@ -100,7 +101,7 @@ export function DesktopSidebar() {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-border/50 bg-white md:block">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-border/50 bg-card md:block">
       <div className="flex h-full flex-col">
         <div className="p-6">
           <Link href="/" className="font-display text-2xl font-bold text-foreground">
@@ -184,8 +185,9 @@ export function DesktopSidebar() {
           </div>
         )}
 
-        <div className="border-t border-border/50 p-4">
+        <div className="flex items-center justify-between gap-2 border-t border-border/50 px-4 py-3">
           <p className="text-[10px] text-muted/50">{studioName} Studio · {tc("portal")}</p>
+          <ThemeToggle variant="icon" />
         </div>
       </div>
     </aside>

@@ -198,7 +198,7 @@ export default function CoachProfilePage() {
                 {t("bio")}
               </label>
               <textarea
-                className="w-full rounded-xl border border-input-border bg-white p-4 text-sm transition-colors focus:border-coach focus:outline-none focus:ring-1 focus:ring-coach/30"
+                className="w-full rounded-xl border border-input-border bg-card p-4 text-sm transition-colors focus:border-coach focus:outline-none focus:ring-1 focus:ring-coach/30"
                 rows={5}
                 placeholder={t("bioPlaceholder")}
                 value={bio}

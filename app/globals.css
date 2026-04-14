@@ -1,36 +1,41 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode: `.dark` on <html> turns everything dark. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  /* Base */
+  /* Base — light defaults. See `html.dark` below for dark overrides. */
   --color-background: #FFFFFF;
   --color-foreground: #18181B;
   --color-surface: #FAFAFA;
+  --color-card: #FFFFFF;
   --color-muted: #71717A;
   --color-border: #E4E4E7;
   --color-hero-bg: #18181B;
 
-  /* Accent — Coral Fire */
+  /* Accent — tenant-customizable. The *-soft / *-border / *-text shades are
+     derived at runtime via color-mix so they adapt to background changes. */
   --color-accent: #FF5A2C;
-  --color-accent-soft: #FFF1EE;
-  --color-accent-border: #FED7C7;
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 12%, var(--color-background));
+  --color-accent-border: color-mix(in srgb, var(--color-accent) 28%, var(--color-background));
   --color-accent-fg: #FFFFFF;
-  --color-accent-text: #C93B15;
-  --color-ring: #FF5A2C;
+  --color-accent-text: color-mix(in srgb, var(--color-accent) 80%, #000000);
+  --color-ring: var(--color-accent);
   --color-input-border: #D4D4D8;
 
-  /* Roles */
+  /* Roles — platform-level, have dark-friendly counterparts below. */
   --color-coach: #15803D;
-  --color-coach-soft: #F0FDF4;
+  --color-coach-soft: color-mix(in srgb, var(--color-coach) 10%, var(--color-background));
   --color-admin: #1E40AF;
-  --color-admin-soft: #EFF6FF;
+  --color-admin-soft: color-mix(in srgb, var(--color-admin) 10%, var(--color-background));
 
-  /* Semantic */
+  /* Semantic — stay readable on both themes. */
   --color-success: #16A34A;
-  --color-success-soft: #DCFCE7;
+  --color-success-soft: color-mix(in srgb, var(--color-success) 12%, var(--color-background));
   --color-warning: #D97706;
-  --color-warning-soft: #FEF9C3;
+  --color-warning-soft: color-mix(in srgb, var(--color-warning) 14%, var(--color-background));
   --color-danger: #DC2626;
-  --color-danger-soft: #FEE2E2;
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 12%, var(--color-background));
   --color-destructive: #DC2626;
 
   --font-display: var(--font-inter), sans-serif;
@@ -52,6 +57,49 @@
   --animate-slide-up: slide-up 0.5s ease-out;
   --animate-scale-in: scale-in 0.3s ease-out;
   --animate-sheet-up: sheet-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Dark mode
+   The tenant's brand accent (--color-accent) and hero background
+   (--color-hero-bg) are inherited from tenant branding inline styles on
+   <html>; everything else switches to a warm-neutral dark palette here.
+   accent-soft / accent-border / accent-text are defined via color-mix()
+   in @theme above, so they auto-recompute against the dark background.
+   ──────────────────────────────────────────────────────────────────── */
+html.dark {
+  color-scheme: dark;
+
+  --color-background: #0B0B0F;
+  --color-foreground: #F4F4F5;
+  --color-surface: #17171C;
+  --color-card: #1C1C22;
+  --color-muted: #A1A1AA;
+  --color-border: #2A2A31;
+  --color-input-border: #353541;
+
+  /* Role colors — brightened for visibility on dark bg. */
+  --color-coach: #4ADE80;
+  --color-admin: #60A5FA;
+
+  --color-destructive: #F87171;
+
+  /* Give accent a gentle luminance lift so very-dark tenant accents remain
+     readable as link/label text. Vibrant accents are left effectively
+     unchanged (the mix barely shifts them). */
+  --color-accent-text: color-mix(in srgb, var(--color-accent) 72%, #FFFFFF);
+
+  /* Soften shadows — on dark surfaces a crisp drop-shadow reads as glow.
+     Use deep black shadow with very low opacity. */
+  --shadow-warm-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-warm: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-warm-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-warm-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --shadow-warm-lift: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+:root {
+  color-scheme: light;
 }
 
 @keyframes fade-in {
@@ -87,6 +135,19 @@
     rgba(255, 255, 255, 0.95) 50%,
     rgba(231, 229, 228, 0.9) 75%,
     rgba(231, 229, 228, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+html.dark .shimmer-line {
+  background: linear-gradient(
+    90deg,
+    rgba(63, 63, 70, 0.55) 0%,
+    rgba(63, 63, 70, 0.8) 25%,
+    rgba(113, 113, 122, 0.8) 50%,
+    rgba(63, 63, 70, 0.8) 75%,
+    rgba(63, 63, 70, 0.55) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
@@ -349,6 +410,12 @@
   --lt-inner: #fffbeb;
 }
 
+/* In dark mode, swap the badge inner surface for a dark tinted variant
+   so the tier gradient ring reads against the surrounding dark bg. */
+html.dark .loyalty-tier-badge--bronze { --lt-inner: #1f150b; --lt-inner-border: rgba(232, 169, 106, 0.15); }
+html.dark .loyalty-tier-badge--silver { --lt-inner: #1b1d22; --lt-inner-border: rgba(226, 229, 234, 0.12); }
+html.dark .loyalty-tier-badge--gold { --lt-inner: #241d08; --lt-inner-border: rgba(255, 229, 102, 0.14); }
+
 .loyalty-tier-badge--platinum::before {
   background: conic-gradient(
     from var(--loyalty-angle),
@@ -382,6 +449,8 @@
   --lt-speed: 6s;
   --lt-inner: #f4f7fb;
 }
+
+html.dark .loyalty-tier-badge--platinum { --lt-inner: #141821; --lt-inner-border: rgba(221, 232, 245, 0.12); }
 
 .loyalty-tier-badge--elite::before {
   background: conic-gradient(
@@ -418,6 +487,8 @@
   --lt-inner: #f5f5f8;
 }
 
+html.dark .loyalty-tier-badge--elite { --lt-inner: #16161c; --lt-inner-border: rgba(168, 168, 200, 0.14); }
+
 .loyalty-tier-badge--elite .loyalty-tier-badge__name {
   background: linear-gradient(135deg, #5a5a72, #8a8aa8, #5c5c78);
   -webkit-background-clip: text;
@@ -453,10 +524,16 @@
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.02em;
-  background: #ffffff;
+  background: var(--color-card);
   box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.95),
+    0 0 0 2px var(--color-card),
     0 2px 8px rgba(15, 23, 42, 0.15);
+}
+
+html.dark .loyalty-level-pin {
+  box-shadow:
+    0 0 0 2px var(--color-card),
+    0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
 .loyalty-level-pin--bronze {
