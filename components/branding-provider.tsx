@@ -21,13 +21,17 @@ export function useBranding() {
 export function applyTheme(b: StudioBranding) {
   const html = document.documentElement;
   // Only apply tenant-customizable vars as inline style. Platform neutrals
-  // (bg/fg/surface/muted/border/card/coach/admin) are driven by globals.css
-  // so the `html.dark` class can override them cleanly.
+  // (bg/fg/surface/muted/border/card) are driven by globals.css so the
+  // `html.dark` class can override them cleanly.
   // `--color-accent-soft` / `--color-accent-border` / `--color-accent-text`
   // are derived at CSS level via color-mix() against the current background.
   html.style.setProperty("--color-accent", b.colorAccent);
   html.style.setProperty("--color-hero-bg", b.colorHeroBg);
   html.style.setProperty("--color-ring", b.colorAccent);
+  // Role colors track the tenant's choice in both themes (many tenants
+  // align admin/coach with their brand accent — e.g. orange for BE TORO).
+  html.style.setProperty("--color-coach", b.colorCoach);
+  html.style.setProperty("--color-admin", b.colorAdmin);
 
   const fp = getFontPairing(b.fontPairing);
   html.style.setProperty("--font-display", fp.displayVar);

@@ -217,7 +217,7 @@ function ZoomPanContainer({
   return (
     <div
       ref={wrapRef}
-      className="relative w-full overflow-hidden rounded-xl bg-neutral-50/60"
+      className="relative w-full overflow-hidden rounded-xl bg-neutral-50/60 dark:bg-surface"
       style={{ height: containerH, touchAction: isZoomedIn ? "none" : "pan-y" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -239,7 +239,7 @@ function ZoomPanContainer({
 
       {/* Gesture hints */}
       {showHint && needsZoom && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/60 transition-opacity duration-500">
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm transition-opacity duration-500 dark:bg-surface/60">
           <div className="flex items-center gap-6">
             {/* Pinch icon */}
             <div className="flex flex-col items-center gap-1">
@@ -342,7 +342,7 @@ export function StudioMap({
           className={cn(
             "relative flex h-[38px] w-[38px] items-center justify-center rounded-full transition-all overflow-hidden",
             isAvailable && !isSelected &&
-              "border border-neutral-300 text-neutral-500 hover:border-neutral-400 active:scale-95",
+              "border border-neutral-300 text-neutral-500 hover:border-neutral-400 active:scale-95 dark:border-border dark:text-muted dark:hover:border-muted/60",
             isAvailable && isSelected &&
               "bg-foreground text-background shadow-sm",
             isSelf &&
@@ -352,13 +352,13 @@ export function StudioMap({
             isFriend &&
               "ring-0 border-0",
             isBlocked &&
-              "bg-red-100 text-red-400 border border-red-300",
+              "bg-red-100 text-red-400 border border-red-300 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30",
             adminMode && isBlocked &&
-              "cursor-pointer hover:bg-red-200",
+              "cursor-pointer hover:bg-red-200 dark:hover:bg-red-500/25",
             adminMode && isAvailable &&
-              "cursor-pointer hover:border-red-400 hover:bg-red-50",
+              "cursor-pointer hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-500/10",
             !isSelf && !isFriend && !isGuest && isOccupied &&
-              "bg-neutral-100 text-neutral-300",
+              "bg-neutral-100 text-neutral-300 dark:bg-card dark:text-muted/40 dark:border dark:border-border/60",
             !adminMode && disabled && isAvailable && "opacity-40 pointer-events-none",
           )}
         >
@@ -369,7 +369,7 @@ export function StudioMap({
           ) : isFriend ? (
             <Avatar className="h-full w-full">
               {info.userImage && <AvatarImage src={info.userImage} className="object-cover" />}
-              <AvatarFallback className="text-[11px] font-semibold bg-blue-100 text-blue-600">
+              <AvatarFallback className="text-[11px] font-semibold bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300">
                 {initials}
               </AvatarFallback>
             </Avatar>

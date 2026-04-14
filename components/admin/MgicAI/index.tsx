@@ -692,7 +692,7 @@ function MgicAIPanel() {
         <>
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto overscroll-contain bg-gradient-to-b from-slate-50 to-white"
+            className="flex-1 overflow-y-auto overscroll-contain bg-gradient-to-b from-slate-50 to-white dark:from-background dark:to-card"
           >
             {messages.length === 0 ? (
               <EmptyState onSend={sendMessage} />

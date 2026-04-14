@@ -78,9 +78,9 @@ html.dark {
   --color-border: #2A2A31;
   --color-input-border: #353541;
 
-  /* Role colors — brightened for visibility on dark bg. */
-  --color-coach: #4ADE80;
-  --color-admin: #60A5FA;
+  /* Role colors intentionally NOT overridden in dark — they follow the
+     tenant's inline `--color-coach` / `--color-admin` so brand-aligned
+     choices (e.g. orange for both admin and coach) stay consistent. */
 
   --color-destructive: #F87171;
 
