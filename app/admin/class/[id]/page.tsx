@@ -438,7 +438,7 @@ export default function AdminClassDetailPage() {
   const genericBlockedSpots = classData.blockedSpots.filter((bs) => bs.spotNumber == null);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-32">
+    <div className="mx-auto max-w-3xl space-y-4 pb-32 sm:space-y-6">
       {/* Back link */}
       <Link
         href="/admin/classes"
@@ -452,42 +452,42 @@ export default function AdminClassDetailPage() {
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="overflow-hidden border-admin/15">
           <div className="h-1.5" style={{ backgroundColor: classData.classType.color || "#1A2C4E" }} />
-          <CardContent className="p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="font-display text-2xl font-bold">{classData.classType.name}</h1>
-                <p className="mt-1 text-muted">{formatDate(classData.startsAt)}</p>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+              <div className="min-w-0">
+                <h1 className="font-display text-xl font-bold sm:text-2xl">{classData.classType.name}</h1>
+                <p className="mt-1 text-sm text-muted sm:text-base">{formatDate(classData.startsAt)}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {classData.status === "COMPLETED" && (
                   <Badge className="border-green-200 bg-green-50 text-green-700">{t("completedStatus")}</Badge>
                 )}
                 {classData.status === "CANCELLED" && (
                   <Badge variant="danger">{t("cancelledStatus")}</Badge>
                 )}
-                <Badge className="border-admin/20 bg-admin/10 text-admin text-base">
+                <Badge className="border-admin/20 bg-admin/10 text-admin text-sm sm:text-base">
                   {enrolled}/{capacity}
                 </Badge>
               </div>
             </div>
-            <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted">
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted sm:text-sm">
               <span className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4" />
+                <Clock className="h-4 w-4 shrink-0" />
                 {formatTime(classData.startsAt)} – {formatTime(classData.endsAt)}
               </span>
               <span className="flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
+                <Users className="h-4 w-4 shrink-0" />
                 {capacity - enrolled - blockedCount} {t("available")}
                 {blockedCount > 0 && (
                   <span className="text-red-500">· {blockedCount} {blockedCount !== 1 ? t("blockedPlural") : t("blocked")}</span>
                 )}
               </span>
-              <span className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4" />
-                {classData.room.studio.name} · {classData.room.name}
+              <span className="flex min-w-0 items-center gap-1.5">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="truncate">{classData.room.studio.name} · {classData.room.name}</span>
               </span>
             </div>
-            <div className="mt-2 text-sm text-muted">
+            <div className="mt-2 text-xs text-muted sm:text-sm">
               {t("coachLabelDetail")}: <span className="font-medium text-foreground">{classData.coach.name}</span>
             </div>
           </CardContent>
@@ -497,8 +497,8 @@ export default function AdminClassDetailPage() {
       {/* ─── BLOCKING SECTION ─── */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <Card className="border-red-200/50">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Lock className="h-4 w-4 text-red-500" />
                 {t("spotBlocking")}
@@ -529,7 +529,7 @@ export default function AdminClassDetailPage() {
                 : t("genericBlockingDesc")}
             </p>
           </CardHeader>
-          <CardContent className="space-y-4 pt-0">
+          <CardContent className="space-y-4 px-4 pt-0 sm:px-6">
             {/* Map (layout mode) */}
             {hasLayout && (
               <StudioMap
@@ -548,8 +548,8 @@ export default function AdminClassDetailPage() {
             {/* No-layout mode: generic blocking */}
             {!hasLayout && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between rounded-xl bg-red-50/60 p-4">
-                  <div>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-red-50/60 p-3 sm:p-4">
+                  <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">
                       {t("blockedSpotsCount")}: <span className="font-bold text-red-600">{genericBlockedSpots.length}</span>
                     </p>
@@ -691,7 +691,7 @@ export default function AdminClassDetailPage() {
                           {booking.stats && <AttendeeTags stats={booking.stats} />}
                         </div>
 
-                        <div className="flex shrink-0 items-center gap-1.5">
+                        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
                           {hasSongs && (
                             <button
                               onClick={() => setExpandedSongs((prev) => ({ ...prev, [booking.id]: !prev[booking.id] }))}
@@ -703,14 +703,24 @@ export default function AdminClassDetailPage() {
                           <button
                             onClick={() => toggleAttendance(booking.id, status)}
                             className={cn(
-                              "flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                              "flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:px-3",
                               status === "ATTENDED" && "bg-green-100 text-green-700",
                               status === "NO_SHOW" && "bg-red-100 text-red-700",
                               status === "CONFIRMED" && "bg-surface text-muted",
                             )}
                           >
-                            {status === "ATTENDED" && (<><CheckCircle2 className="h-3.5 w-3.5" /> {t("attended")}</>)}
-                            {status === "NO_SHOW" && (<><XCircle className="h-3.5 w-3.5" /> {t("noShow")}</>)}
+                            {status === "ATTENDED" && (
+                              <>
+                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                <span className="hidden sm:inline">{t("attended")}</span>
+                              </>
+                            )}
+                            {status === "NO_SHOW" && (
+                              <>
+                                <XCircle className="h-3.5 w-3.5 shrink-0" />
+                                <span className="hidden sm:inline">{t("noShow")}</span>
+                              </>
+                            )}
                             {status === "CONFIRMED" && t("confirmedStatus")}
                           </button>
                         </div>
@@ -752,11 +762,11 @@ export default function AdminClassDetailPage() {
 
       {/* Save attendance */}
       {classData.bookings.length > 0 && Object.keys(attendance).length > 0 && (
-        <div className="flex justify-end">
+        <div className="sticky bottom-4 z-10 flex justify-stretch sm:static sm:justify-end">
           <Button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="gap-2 bg-admin hover:bg-admin/90"
+            className="w-full gap-2 bg-admin shadow-lg hover:bg-admin/90 sm:w-auto sm:shadow-none"
           >
             {saveMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
