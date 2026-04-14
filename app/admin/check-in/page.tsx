@@ -126,17 +126,17 @@ export default function CheckInPage() {
 
   const occupancyPill = (c: ClassItem) => {
     const pct = c.capacity > 0 ? c.enrolledCount / c.capacity : 0;
-    if (c.enrolledCount >= c.capacity) return { label: `${c.enrolledCount}/${c.capacity}`, className: "bg-emerald-50 text-emerald-700" };
-    if (pct > 0.8) return { label: `${c.enrolledCount}/${c.capacity}`, className: "bg-emerald-50 text-emerald-700" };
-    return { label: `${c.enrolledCount}/${c.capacity}`, className: "bg-blue-50 text-blue-700" };
+    if (c.enrolledCount >= c.capacity) return { label: `${c.enrolledCount}/${c.capacity}`, className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" };
+    if (pct > 0.8) return { label: `${c.enrolledCount}/${c.capacity}`, className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" };
+    return { label: `${c.enrolledCount}/${c.capacity}`, className: "bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300" };
   };
 
   return (
     <div className="space-y-3 md:space-y-4">
       {/* Page header — hidden on mobile when viewing roster */}
       <div className={cn(showMobileRoster && "hidden md:block")}>
-        <h1 className="text-xl font-semibold text-stone-900">{t("checkIn")}</h1>
-        <p className="text-xs text-stone-400 mt-0.5">
+        <h1 className="text-xl font-semibold text-stone-900 dark:text-foreground">{t("checkIn")}</h1>
+        <p className="text-xs text-stone-400 dark:text-muted mt-0.5">
           {t("checkInSubtitle")}
         </p>
       </div>
@@ -149,7 +149,7 @@ export default function CheckInPage() {
         <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             onClick={() => setSelectedDate((d) => subDays(d, 1))}
-            className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-500"
+            className="p-1.5 rounded-lg border border-stone-200 dark:border-border hover:bg-stone-50 dark:hover:bg-surface/60 text-stone-500 dark:text-muted"
           >
             <ChevronLeft size={16} />
           </button>
@@ -158,18 +158,18 @@ export default function CheckInPage() {
             className={cn(
               "px-3 py-1 text-xs font-medium rounded-lg border transition-colors",
               isToday(selectedDate)
-                ? "bg-[#3730B8] text-white border-[#3730B8]"
-                : "border-stone-200 text-stone-600 hover:bg-stone-50",
+                ? "bg-admin text-white border-admin"
+                : "border-stone-200 dark:border-border text-stone-600 dark:text-muted hover:bg-stone-50 dark:hover:bg-surface/60 dark:border-border dark:text-muted dark:hover:bg-surface",
             )}
           >
             {td("today")}
           </button>
-          <span className="text-xs sm:text-sm font-medium text-stone-700 truncate max-w-[160px] sm:max-w-none">
+          <span className="text-xs sm:text-sm font-medium text-stone-700 dark:text-foreground truncate max-w-[160px] sm:max-w-none">
             {formatHeaderDate(selectedDate, td)}
           </span>
           <button
             onClick={() => setSelectedDate((d) => addDays(d, 1))}
-            className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-500"
+            className="p-1.5 rounded-lg border border-stone-200 dark:border-border hover:bg-stone-50 dark:hover:bg-surface/60 text-stone-500 dark:text-muted dark:border-border dark:hover:bg-surface dark:text-muted"
           >
             <ChevronRight size={16} />
           </button>
@@ -177,11 +177,11 @@ export default function CheckInPage() {
 
         {hasMultipleStudios && (
           <div className="flex items-center gap-1.5">
-            <MapPin size={14} className="text-stone-400" />
+            <MapPin size={14} className="text-stone-400 dark:text-muted" />
             <select
               value={filterStudioId}
               onChange={(e) => setFilterStudioId(e.target.value)}
-              className="appearance-none bg-card border border-stone-200 rounded-lg px-2.5 py-1 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-[#3730B8] focus:border-[#3730B8] cursor-pointer"
+              className="appearance-none bg-card border border-stone-200 dark:border-border rounded-lg px-2.5 py-1 text-xs text-stone-700 dark:text-foreground focus:outline-none focus:ring-1 focus:ring-admin focus:border-admin cursor-pointer"
             >
               <option value="all">{t("allStudios")}</option>
               {studios.map((s) => (
@@ -196,24 +196,24 @@ export default function CheckInPage() {
       <div className="flex flex-col md:grid md:grid-cols-[260px_1fr] gap-3 h-[calc(100dvh-160px)] md:h-[calc(100vh-200px)]">
         {/* Left: class list — hidden on mobile when viewing roster */}
         <div className={cn(
-          "bg-card border border-stone-200 rounded-2xl overflow-hidden flex-col h-full",
+          "bg-card border border-stone-200 dark:border-border rounded-2xl overflow-hidden flex-col h-full",
           showMobileRoster ? "hidden md:flex" : "flex",
         )}>
-          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-stone-100">
-            <span className="text-xs font-medium text-stone-900">
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-stone-100 dark:border-border/60">
+            <span className="text-xs font-medium text-stone-900 dark:text-foreground">
               {isPastDate ? t("dayClasses") : t("todayClasses")}
             </span>
-            <span className="text-xs text-stone-400">
+            <span className="text-xs text-stone-400 dark:text-muted">
               {format(selectedDate, "EEE d MMM", { locale: es })}
             </span>
           </div>
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="animate-spin text-stone-300" size={20} />
+                <Loader2 className="animate-spin text-stone-300 dark:text-muted/70" size={20} />
               </div>
             ) : classes.length === 0 ? (
-              <div className="text-center py-12 text-xs text-stone-400">
+              <div className="text-center py-12 text-xs text-stone-400 dark:text-muted">
                 {t("noClassesScheduled")}
               </div>
             ) : (
@@ -222,20 +222,20 @@ export default function CheckInPage() {
                   <>
                     <button
                       onClick={() => setShowFinished((v) => !v)}
-                      className="flex w-full items-center gap-2 border-b border-stone-100 bg-stone-50/60 px-3.5 py-2 text-left"
+                      className="flex w-full items-center gap-2 border-b border-stone-100 dark:border-border/60 bg-stone-50/60 dark:bg-surface/60 px-3.5 py-2 text-left dark:border-border/60 dark:bg-surface/60"
                     >
                       <ChevronDown
                         size={14}
                         className={cn(
-                          "text-stone-400 transition-transform",
+                          "text-stone-400 dark:text-muted transition-transform",
                           !showFinished && "-rotate-90",
                         )}
                       />
-                      <span className="flex-1 text-[11px] font-medium text-stone-500">
+                      <span className="flex-1 text-[11px] font-medium text-stone-500 dark:text-muted">
                         {t("finishedClasses")} ({finishedClasses.length})
                       </span>
                       {!showFinished && finishedClasses.some((c) => c.enrolledCount > c.checkedInCount) && (
-                        <span className="text-[10px] rounded-full bg-amber-50 px-1.5 py-0.5 text-amber-600">
+                        <span className="text-[10px] rounded-full bg-amber-50 px-1.5 py-0.5 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">
                           {t("noCheckInLabel")}
                         </span>
                       )}
@@ -269,13 +269,13 @@ export default function CheckInPage() {
 
         {/* Right: roster — hidden on mobile when viewing class list */}
         <div className={cn(
-          "bg-card border border-stone-200 rounded-2xl overflow-hidden relative flex-col h-full",
+          "bg-card border border-stone-200 dark:border-border rounded-2xl overflow-hidden relative flex-col h-full",
           showMobileRoster ? "flex" : "hidden md:flex",
         )}>
           {/* Mobile back button */}
           <button
             onClick={() => setShowMobileRoster(false)}
-            className="md:hidden flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium text-stone-500 border-b border-stone-100 active:bg-stone-50 shrink-0"
+            className="md:hidden flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium text-stone-500 dark:text-muted border-b border-stone-100 dark:border-border/60 active:bg-stone-50 shrink-0"
           >
             <ChevronLeft size={14} />
             {selectedClass
@@ -300,9 +300,9 @@ export default function CheckInPage() {
               />
             </div>
           ) : (
-            <div className="flex items-center justify-center h-full text-xs text-stone-400">
+            <div className="flex items-center justify-center h-full text-xs text-stone-400 dark:text-muted">
               {isLoading ? (
-                <Loader2 className="animate-spin text-stone-300" size={20} />
+                <Loader2 className="animate-spin text-stone-300 dark:text-muted/70" size={20} />
               ) : (
                 t("selectClassRoster")
               )}
@@ -331,31 +331,31 @@ function ClassListItem({
     <button
       onClick={onSelect}
       className={cn(
-        "w-full text-left px-3.5 py-2.5 border-b border-stone-50 transition-colors",
+        "w-full text-left px-3.5 py-2.5 border-b border-stone-50 dark:border-border/40 transition-colors dark:border-border/40",
         isSelected
-          ? "border-l-[3px] border-l-[#3730B8] bg-[#EEEDFE]"
-          : "border-l-[3px] border-l-transparent hover:bg-stone-50",
+          ? "border-l-[3px] border-l-admin bg-admin/10 dark:bg-admin/15"
+          : "border-l-[3px] border-l-transparent hover:bg-stone-50 dark:hover:bg-surface/60",
         c.isFinished && !isSelected && "opacity-70",
       )}
     >
       <div className="flex items-center gap-1.5 mb-0.5">
-        <span className="text-[11px] text-stone-500">
+        <span className="text-[11px] text-stone-500 dark:text-muted">
           {format(new Date(c.startTime), "HH:mm")} – {format(new Date(c.endTime), "HH:mm")}
         </span>
         {c.isLive && (
-          <span className="flex items-center gap-1 text-[10px] font-medium text-red-500">
+          <span className="flex items-center gap-1 text-[10px] font-medium text-red-500 dark:text-red-400">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
             {t("inProgressLabel")}
           </span>
         )}
         {c.isFinished && (
-          <span className="text-[10px] text-stone-400">{t("finishedLabel")}</span>
+          <span className="text-[10px] text-stone-400 dark:text-muted">{t("finishedLabel")}</span>
         )}
       </div>
-      <p className="text-[13px] font-medium text-stone-900 truncate">
+      <p className="text-[13px] font-medium text-stone-900 dark:text-foreground truncate">
         {c.className}
       </p>
-      <p className="text-xs text-stone-500 truncate">{c.coachName}</p>
+      <p className="text-xs text-stone-500 dark:text-muted truncate">{c.coachName}</p>
       <div className="flex gap-1.5 mt-1">
         <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", pill.className)}>
           {pill.label}

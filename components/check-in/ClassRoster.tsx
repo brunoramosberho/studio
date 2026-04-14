@@ -117,27 +117,27 @@ function AttendeeTags({ stats }: { stats: AttendeeStats }) {
   const tags: { label: string; icon: React.ReactNode; className: string }[] = [];
 
   if (stats.birthdayLabel === "today") {
-    tags.push({ label: t("birthdayToday"), icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-200 text-pink-800 border-pink-300 animate-pulse" });
+    tags.push({ label: t("birthdayToday"), icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-200 text-pink-800 border-pink-300 animate-pulse dark:bg-pink-500/20 dark:text-pink-200 dark:border-pink-500/30" });
   } else if (stats.birthdayLabel === "yesterday") {
-    tags.push({ label: t("birthdayYesterday"), icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-100 text-pink-700 border-pink-200" });
+    tags.push({ label: t("birthdayYesterday"), icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-500/15 dark:text-pink-300 dark:border-pink-500/25" });
   } else if (stats.birthdayLabel === "this_week") {
-    tags.push({ label: t("birthdayThisWeek"), icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-50 text-pink-600 border-pink-200" });
+    tags.push({ label: t("birthdayThisWeek"), icon: <Cake className="h-2.5 w-2.5" />, className: "bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/25" });
   }
 
   if (stats.isFirstEver) {
-    tags.push({ label: t("firstClass"), icon: <Sparkles className="h-2.5 w-2.5" />, className: "bg-amber-100 text-amber-700 border-amber-200" });
+    tags.push({ label: t("firstClass"), icon: <Sparkles className="h-2.5 w-2.5" />, className: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/25" });
   } else if (stats.isFirstWithCoach) {
-    tags.push({ label: t("firstWithCoach"), icon: <UserPlus className="h-2.5 w-2.5" />, className: "bg-violet-100 text-violet-700 border-violet-200" });
+    tags.push({ label: t("firstWithCoach"), icon: <UserPlus className="h-2.5 w-2.5" />, className: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/25" });
   }
 
   if (stats.isTopClient) {
-    tags.push({ label: t("topClient"), icon: <Crown className="h-2.5 w-2.5" />, className: "bg-yellow-100 text-yellow-700 border-yellow-200" });
+    tags.push({ label: t("topClient"), icon: <Crown className="h-2.5 w-2.5" />, className: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-500/15 dark:text-yellow-300 dark:border-yellow-500/25" });
   } else if (stats.isNewMember) {
-    tags.push({ label: t("newMember"), icon: <Star className="h-2.5 w-2.5" />, className: "bg-blue-100 text-blue-700 border-blue-200" });
+    tags.push({ label: t("newMember"), icon: <Star className="h-2.5 w-2.5" />, className: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/25" });
   }
 
   if (stats.totalClasses > 1) {
-    tags.push({ label: t("classesCount", { num: stats.totalClasses }), icon: <Trophy className="h-2.5 w-2.5" />, className: "bg-stone-100 text-stone-600 border-stone-200" });
+    tags.push({ label: t("classesCount", { num: stats.totalClasses }), icon: <Trophy className="h-2.5 w-2.5" />, className: "bg-stone-100 text-stone-600 border-stone-200 dark:bg-surface dark:text-muted dark:border-border" });
   }
 
   if (stats.cancelRate != null && stats.cancelRate >= 20) {
@@ -145,10 +145,10 @@ function AttendeeTags({ stats }: { stats: AttendeeStats }) {
       label: t("cancellationRate", { num: stats.cancelRate }),
       icon: <AlertTriangle className="h-2.5 w-2.5" />,
       className: stats.cancelRate >= 50
-        ? "bg-red-100 text-red-700 border-red-200"
+        ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/25"
         : stats.cancelRate >= 35
-          ? "bg-orange-100 text-orange-700 border-orange-200"
-          : "bg-amber-50 text-amber-600 border-amber-200",
+          ? "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/25"
+          : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/25",
     });
   }
 
@@ -321,21 +321,21 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-stone-100 shrink-0">
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-stone-100 dark:border-border/60 shrink-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-stone-900 truncate">
+            <p className="text-sm font-medium text-stone-900 dark:text-foreground truncate">
               {classInfo.className} · {startFormatted}
             </p>
-            <p className="text-xs text-stone-400 truncate">
+            <p className="text-xs text-stone-400 dark:text-muted truncate">
               {classInfo.coachName} · {classInfo.room}
             </p>
           </div>
           <div className="flex gap-1.5 sm:gap-2 text-[10px] shrink-0">
-            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
               {enrolledCount} <span className="hidden sm:inline">{t("enrolled")}</span><span className="sm:hidden">{t("enrolledShort")}</span>
             </span>
-            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
               {presentCount} <span className="hidden sm:inline">{t("confirmed")}</span><span className="sm:hidden">{t("confirmedShort")}</span>
             </span>
           </div>
@@ -344,35 +344,35 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
       {/* Finished banner */}
       {classInfo.isFinished && (
-        <div className="px-4 py-2 bg-stone-100 text-stone-500 text-xs text-center border-b border-stone-100">
+        <div className="px-4 py-2 bg-stone-100 text-stone-500 text-xs text-center border-b border-stone-100 dark:bg-surface dark:text-muted dark:border-border/60">
           {t("classFinished")}
         </div>
       )}
 
       {/* Search + QR */}
-      <div className="flex gap-2 p-3 border-b border-stone-100">
+      <div className="flex gap-2 p-3 border-b border-stone-100 dark:border-border/60">
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-300" size={14} />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-300 dark:text-muted" size={14} />
           <input
             type="text"
             placeholder={t("searchMember")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-stone-200 bg-stone-50 focus:outline-none focus:ring-1 focus:ring-[#3730B8] focus:border-[#3730B8]"
+            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-stone-200 bg-stone-50 text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-admin focus:border-admin dark:bg-surface dark:border-border"
           />
         </div>
         <button
           disabled
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-stone-200 text-stone-400 opacity-50 cursor-not-allowed"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-stone-200 text-stone-400 opacity-50 cursor-not-allowed dark:border-border dark:text-muted"
         >
           <QrCode size={14} />
           {t("scanQR")}
-          <span className="text-[9px] bg-stone-100 rounded px-1">{t("comingSoon")}</span>
+          <span className="text-[9px] bg-stone-100 rounded px-1 dark:bg-surface">{t("comingSoon")}</span>
         </button>
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-4 border-b border-stone-100">
+      <div className="grid grid-cols-4 border-b border-stone-100 dark:border-border/60">
         {[
           { value: presentCount, label: t("present"), highlight: false },
           { value: enrolledCount, label: t("enrolled"), highlight: false },
@@ -381,12 +381,12 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="py-1.5 sm:py-2 text-center border-r border-stone-100 last:border-r-0"
+            className="py-1.5 sm:py-2 text-center border-r border-stone-100 last:border-r-0 dark:border-border/60"
           >
-            <p className={cn("text-sm sm:text-base font-medium", stat.highlight ? "text-amber-600" : "text-stone-900")}>
+            <p className={cn("text-sm sm:text-base font-medium", stat.highlight ? "text-amber-600 dark:text-amber-300" : "text-stone-900 dark:text-foreground")}>
               {stat.value}
             </p>
-            <p className={cn("text-[9px] sm:text-[10px]", stat.highlight ? "text-amber-600" : "text-stone-400")}>
+            <p className={cn("text-[9px] sm:text-[10px]", stat.highlight ? "text-amber-600 dark:text-amber-300" : "text-stone-400 dark:text-muted")}>
               {stat.label}
             </p>
           </div>
@@ -397,10 +397,10 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="animate-spin text-stone-300" size={20} />
+            <Loader2 className="animate-spin text-stone-300 dark:text-muted" size={20} />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-xs text-stone-400">
+          <div className="text-center py-12 text-xs text-stone-400 dark:text-muted">
             {searchQuery ? t("noMembersFound") : t("noEnrollees")}
           </div>
         ) : (
@@ -623,10 +623,10 @@ function RosterRow({
   return (
     <div
       className={cn(
-        "group flex items-start gap-3 px-3 sm:px-4 py-2.5 border-b border-stone-100 transition-colors",
-        isCheckedIn ? "bg-emerald-50/70" : "hover:bg-stone-50",
-        hasBirthday && !isCheckedIn && "bg-pink-50/50",
-        hasBirthday && isCheckedIn && "bg-gradient-to-r from-emerald-50/70 to-pink-50/50",
+        "group flex items-start gap-3 px-3 sm:px-4 py-2.5 border-b border-stone-100 transition-colors dark:border-border/60",
+        isCheckedIn ? "bg-emerald-50/70 dark:bg-emerald-500/10" : "hover:bg-stone-50 dark:hover:bg-surface/60",
+        hasBirthday && !isCheckedIn && "bg-pink-50/50 dark:bg-pink-500/10",
+        hasBirthday && isCheckedIn && "bg-gradient-to-r from-emerald-50/70 to-pink-50/50 dark:from-emerald-500/10 dark:to-pink-500/10",
       )}
     >
       {/* Avatar with photo */}
@@ -636,7 +636,7 @@ function RosterRow({
         className={cn(
           "w-[34px] h-[34px] rounded-full shrink-0 mt-0.5 overflow-hidden",
           isCheckedIn && "ring-2 ring-emerald-400",
-          hasPhoto && "cursor-pointer hover:ring-2 hover:ring-[#3730B8]/40 transition-shadow",
+          hasPhoto && "cursor-pointer hover:ring-2 hover:ring-admin/40 transition-shadow",
           !hasPhoto && "cursor-default",
         )}
       >
@@ -660,18 +660,18 @@ function RosterRow({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-stone-900 truncate">
+        <p className="text-[13px] font-medium text-stone-900 dark:text-foreground truncate">
           {member.memberName}
         </p>
         <div className="flex items-center gap-1.5">
           <p className={cn(
             "text-[11px] truncate",
-            member.hasPaymentPending ? "text-red-500" : "text-stone-400",
+            member.hasPaymentPending ? "text-red-500 dark:text-red-300" : "text-stone-400 dark:text-muted",
           )}>
             {packageLabel}
           </p>
           {member.waiverPending && (
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
               <FileText size={9} />
               Waiver
             </span>
@@ -689,7 +689,9 @@ function RosterRow({
             <span
               className={cn(
                 "flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full text-xs cursor-default",
-                isLate ? "bg-amber-50 text-amber-700" : "bg-emerald-100 text-emerald-600",
+                isLate
+                  ? "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                  : "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300",
               )}
             >
               {isLate ? (
@@ -1072,7 +1074,7 @@ function WalkInModal({
               </button>
               <button
                 onClick={handleOpenPOS}
-                className="flex-1 px-3 py-2 text-xs font-medium rounded-lg bg-[#3730B8] text-white hover:bg-[#2d28a0]"
+                className="flex-1 px-3 py-2 text-xs font-medium rounded-lg bg-admin text-white hover:bg-admin/90"
               >
                 {t("openPOS")}
               </button>
@@ -1101,7 +1103,7 @@ function WalkInModal({
               placeholder={t("searchByNameOrEmail")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50 focus:outline-none focus:ring-1 focus:ring-[#3730B8]"
+              className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50 focus:outline-none focus:ring-1 focus:ring-admin"
             />
           </div>
         </div>
