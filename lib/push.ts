@@ -83,14 +83,17 @@ export async function sendPushToUser(userId: string, payload: PushPayload, tenan
 }
 
 /**
- * Send a push notification to multiple users (fire-and-forget).
+ * Send a push notification to multiple users.
+ * Returns a Promise so callers in serverless contexts (e.g. cron jobs) can
+ * await delivery before the function terminates. Callers that want
+ * fire-and-forget behavior can simply not await the returned Promise.
  */
 export function sendPushToMany(
   userIds: string[],
   payload: PushPayload,
   tenantId?: string,
-) {
-  for (const uid of userIds) {
-    sendPushToUser(uid, payload, tenantId).catch(() => {});
-  }
+): Promise<void> {
+  return Promise.allSettled(
+    userIds.map((uid) => sendPushToUser(uid, payload, tenantId)),
+  ).then(() => undefined);
 }

@@ -90,6 +90,7 @@ async function notifyAchievement(
       achievementIcon: achievement.icon,
       achievementDescription: achievement.description ?? "",
       rewardText: null,
+      tenantId,
     }).catch(() => {});
   }
 }
@@ -387,6 +388,7 @@ async function notifyLevelUp(
       levelName: level.name,
       levelIcon: level.icon,
       rewardText: null,
+      tenantId,
     }).catch(() => {});
   }
 }
