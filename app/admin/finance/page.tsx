@@ -250,7 +250,7 @@ export default function FinancePage() {
   const pagination = txData?.pagination;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
@@ -287,25 +287,25 @@ export default function FinancePage() {
       <FinanceBriefingCard range={range} />
 
       {/* Summary Cards */}
-      <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         {financeLd ? (
           Array.from({ length: 4 }).map((_, i) => (
             <motion.div key={i} variants={fadeUp}>
-              <Skeleton className="h-[120px] rounded-2xl" />
+              <Skeleton className="h-[108px] sm:h-[120px] rounded-2xl" />
             </motion.div>
           ))
         ) : (
           <>
             {/* Gross Revenue */}
             <motion.div variants={fadeUp}>
-              <div className="bg-white border border-stone-100 rounded-2xl p-4">
+              <div className="bg-white border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <DollarSign className="h-3 w-3" /> {t("grossRevenue")}
+                  <DollarSign className="h-3 w-3 shrink-0" /> <span className="truncate">{t("grossRevenue")}</span>
                 </p>
-                <p className="text-[22px] font-medium leading-none">
+                <p className="text-[18px] sm:text-[22px] font-medium leading-tight truncate">
                   {formatCurrency(summary?.grossRevenue ?? 0)}
                 </p>
-                <p className="text-[11px] text-stone-400 mt-1">
+                <p className="text-[11px] text-stone-400 mt-1 truncate">
                   {t("stripeFeesDashboard")}
                 </p>
                 <TrendBadge value={summary?.vsPreviousPeriod.grossRevenue ?? 0} label={t("vsPrevPeriod")} />
@@ -314,45 +314,45 @@ export default function FinancePage() {
 
             {/* MRR */}
             <motion.div variants={fadeUp}>
-              <div className="bg-white border border-stone-100 rounded-2xl p-4">
+              <div className="bg-white border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <RefreshCw className="h-3 w-3" /> {t("mrrActive")}
+                  <RefreshCw className="h-3 w-3 shrink-0" /> <span className="truncate">{t("mrrActive")}</span>
                 </p>
-                <p className="text-[22px] font-medium leading-none text-[#3730B8]">
+                <p className="text-[18px] sm:text-[22px] font-medium leading-tight text-[#3730B8] truncate">
                   {formatCurrency(summary?.mrr ?? 0)}
                 </p>
-                <p className="text-[11px] text-stone-400 mt-1">
+                <p className="text-[11px] text-stone-400 mt-1 truncate">
                   {summary?.activeMemberships ?? 0} {t("activeMembershipsCount")}
                 </p>
                 <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" />
-                  +{summary?.newMembershipsThisMonth ?? 0} {t("newThisMonth")}
+                  <TrendingUp className="h-3 w-3 shrink-0" />
+                  <span className="truncate">+{summary?.newMembershipsThisMonth ?? 0} {t("newThisMonth")}</span>
                 </p>
               </div>
             </motion.div>
 
             {/* Failed Payments */}
             <motion.div variants={fadeUp}>
-              <div className="bg-white border border-stone-100 rounded-2xl p-4">
+              <div className="bg-white border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" /> {t("failedPayments")}
+                  <AlertTriangle className="h-3 w-3 shrink-0" /> <span className="truncate">{t("failedPayments")}</span>
                 </p>
                 <p className={cn(
-                  "text-[22px] font-medium leading-none",
+                  "text-[18px] sm:text-[22px] font-medium leading-tight truncate",
                   (summary?.failedPaymentsCount ?? 0) > 0 ? "text-red-700" : "",
                 )}>
                   {formatCurrency(summary?.failedPaymentsAmount ?? 0)}
                 </p>
-                <p className="text-[11px] text-stone-400 mt-1">
+                <p className="text-[11px] text-stone-400 mt-1 truncate">
                   {summary?.failedPaymentsCount ?? 0} {t("declinedCards")}
                 </p>
                 {(summary?.failedPaymentsCount ?? 0) > 0 ? (
                   <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> {t("requireAction")}
+                    <AlertTriangle className="h-3 w-3 shrink-0" /> <span className="truncate">{t("requireAction")}</span>
                   </p>
                 ) : (
                   <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> {t("noFailedPaymentsMsg")}
+                    <TrendingUp className="h-3 w-3 shrink-0" /> <span className="truncate">{t("noFailedPaymentsMsg")}</span>
                   </p>
                 )}
               </div>
@@ -360,17 +360,17 @@ export default function FinancePage() {
 
             {/* Upcoming Renewals */}
             <motion.div variants={fadeUp}>
-              <div className="bg-white border border-stone-100 rounded-2xl p-4">
+              <div className="bg-white border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
                 <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> {t("upcomingCharges")}
+                  <Clock className="h-3 w-3 shrink-0" /> <span className="truncate">{t("upcomingCharges")}</span>
                 </p>
-                <p className="text-[22px] font-medium leading-none">
+                <p className="text-[18px] sm:text-[22px] font-medium leading-tight truncate">
                   {formatCurrency(summary?.upcomingRenewalsAmount ?? 0)}
                 </p>
-                <p className="text-[11px] text-stone-400 mt-1">
+                <p className="text-[11px] text-stone-400 mt-1 truncate">
                   {summary?.upcomingRenewalsCount ?? 0} {t("renewalsCount")}
                 </p>
-                <p className="text-[11px] text-stone-400 mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-stone-400 mt-1 truncate">
                   {t("next7Days")}
                 </p>
               </div>
@@ -380,9 +380,9 @@ export default function FinancePage() {
       </motion.div>
 
       {/* Charts Row */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
         {/* Daily Revenue Bar Chart */}
-        <div className="lg:col-span-2 bg-white border border-stone-100 rounded-2xl p-4">
+        <div className="lg:col-span-2 bg-white border border-stone-100 rounded-2xl p-3 sm:p-4">
           <p className="text-xs font-medium text-stone-600 mb-3">{t("dailyRevenue")}</p>
           {financeLd ? (
             <Skeleton className="h-[100px]" />
@@ -392,7 +392,7 @@ export default function FinancePage() {
         </div>
 
         {/* Source Breakdown */}
-        <div className="bg-white border border-stone-100 rounded-2xl p-4">
+        <div className="bg-white border border-stone-100 rounded-2xl p-3 sm:p-4">
           <p className="text-xs font-medium text-stone-600 mb-3">{t("sourceBreakdown")}</p>
           {financeLd ? (
             <Skeleton className="h-[100px]" />
@@ -405,13 +405,13 @@ export default function FinancePage() {
       {/* Alerts */}
       {!financeLd && (summary?.failedPaymentsCount ?? 0) > 0 && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-3">
-            <AlertTriangle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2.5 sm:gap-3">
+            <AlertTriangle className="h-4 w-4 text-red-700 mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-red-900">
                 {summary!.failedPaymentsCount} {t("failedPayments").toLowerCase()} — {formatCurrency(summary!.failedPaymentsAmount)} {t("pendingAmount")}
               </p>
-              <p className="text-xs text-red-700 mt-1">
+              <p className="text-xs text-red-700 mt-1 break-words">
                 {finance!.failedPayments
                   .slice(0, 3)
                   .map((p) => `${p.memberName} (${formatCurrency(p.amount)})`)
@@ -433,9 +433,9 @@ export default function FinancePage() {
 
       {!financeLd && (summary?.upcomingRenewalsCount ?? 0) > 0 && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3">
-            <Clock className="h-4 w-4 text-amber-700 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5 sm:gap-3">
+            <Clock className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-amber-900">
                 {summary!.upcomingRenewalsCount} {t("renewalsThisWeek")} — {formatCurrency(summary!.upcomingRenewalsAmount)}
               </p>
@@ -453,7 +453,7 @@ export default function FinancePage() {
       {/* Transactions Table */}
       <div className="bg-white border border-stone-100 rounded-2xl overflow-hidden">
         {/* Search & Filters */}
-        <div className="px-4 py-3 border-b border-stone-50 flex flex-col sm:flex-row gap-2 sm:items-center">
+        <div className="px-3 py-3 sm:px-4 border-b border-stone-50 flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
             <input
@@ -464,35 +464,61 @@ export default function FinancePage() {
               className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-stone-200 text-sm outline-none focus:border-stone-400 placeholder:text-stone-300"
             />
           </div>
-          <div className="flex gap-1 flex-wrap items-center">
-            {methodFilters.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => { setMethod(f.value); setPage(1); }}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
-                  method === f.value
-                    ? "bg-stone-900 text-white"
-                    : "bg-stone-100 text-stone-500 hover:bg-stone-200",
-                )}
-              >
-                {t(f.labelKey)}
-              </button>
-            ))}
-            <label className="ml-2 flex items-center gap-1.5 text-xs text-stone-400 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={hideAbandoned}
-                onChange={(e) => setHideAbandoned(e.target.checked)}
-                className="rounded border-stone-300 text-stone-600 focus:ring-stone-400 h-3 w-3"
-              />
-              {t("hideAbandoned")}
-            </label>
+          {/* Filter pills: horizontal scroll on mobile, wrap on larger screens */}
+          <div className="-mx-3 sm:mx-0 overflow-x-auto sm:overflow-visible">
+            <div className="flex gap-1 items-center px-3 sm:px-0 sm:flex-wrap min-w-min">
+              {methodFilters.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => { setMethod(f.value); setPage(1); }}
+                  className={cn(
+                    "shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
+                    method === f.value
+                      ? "bg-stone-900 text-white"
+                      : "bg-stone-100 text-stone-500 hover:bg-stone-200",
+                  )}
+                >
+                  {t(f.labelKey)}
+                </button>
+              ))}
+              <label className="ml-1 sm:ml-2 flex shrink-0 items-center gap-1.5 text-xs text-stone-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={hideAbandoned}
+                  onChange={(e) => setHideAbandoned(e.target.checked)}
+                  className="rounded border-stone-300 text-stone-600 focus:ring-stone-400 h-3 w-3"
+                />
+                {t("hideAbandoned")}
+              </label>
+            </div>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Mobile card list (below md) */}
+        <div className="md:hidden">
+          {txLd ? (
+            <div className="divide-y divide-stone-50">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="px-3 py-3">
+                  <Skeleton className="h-12" />
+                </div>
+              ))}
+            </div>
+          ) : tx.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-stone-400">
+              {t("noTransactionsInPeriod")}
+            </div>
+          ) : (
+            <div className="divide-y divide-stone-50">
+              {tx.map((txn) => (
+                <MobileTxCard key={txn.id} txn={txn} t={t} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop table (md+) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-stone-100">
@@ -664,9 +690,12 @@ function DailyRevenueChart({ data, t }: { data: DailyRevenue[]; t: (key: string)
 
   return (
     <div className="flex items-end gap-[2px] h-[80px]">
-      {data.map((d) => {
+      {data.map((d, i) => {
         const height = Math.max((d.amount / maxAmount) * 72, 2);
         const isCurrentDay = d.date === todayStr;
+        // Anchor tooltip to edges when near the start/end to avoid overflow
+        const isFirstThird = i < data.length / 3;
+        const isLastThird = i >= (data.length * 2) / 3;
         return (
           <div
             key={d.date}
@@ -679,7 +708,16 @@ function DailyRevenueChart({ data, t }: { data: DailyRevenue[]; t: (key: string)
               )}
               style={{ height: `${height}px` }}
             />
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block">
+            <div
+              className={cn(
+                "absolute bottom-full mb-1 hidden group-hover:block z-10",
+                isFirstThird
+                  ? "left-0"
+                  : isLastThird
+                    ? "right-0"
+                    : "left-1/2 -translate-x-1/2",
+              )}
+            >
               <div className="bg-stone-900 text-white text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">
                 {d.date.slice(8, 10)}/{d.date.slice(5, 7)} · {formatCurrency(d.amount)}
               </div>
@@ -698,11 +736,11 @@ function SourceBreakdown({ sources, t }: { sources: BySource[]; t: (key: string)
   return (
     <div className="space-y-2.5">
       {filtered.map((s) => (
-        <div key={s.source} className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: sourceColors[s.source] ?? "#999" }} />
-          <span className="text-xs text-stone-600 flex-1">{sourceLabelKeys[s.source] ? t(sourceLabelKeys[s.source]) : s.source}</span>
-          <span className="text-xs font-medium text-stone-700">{formatCurrency(s.amount)}</span>
-          <span className="text-[10px] text-stone-400 w-8 text-right">{s.percent}%</span>
+        <div key={s.source} className="flex items-center gap-2 min-w-0">
+          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sourceColors[s.source] ?? "#999" }} />
+          <span className="text-xs text-stone-600 flex-1 truncate">{sourceLabelKeys[s.source] ? t(sourceLabelKeys[s.source]) : s.source}</span>
+          <span className="text-xs font-medium text-stone-700 shrink-0">{formatCurrency(s.amount)}</span>
+          <span className="text-[10px] text-stone-400 w-8 text-right shrink-0">{s.percent}%</span>
         </div>
       ))}
     </div>
@@ -782,4 +820,58 @@ function groupMemberships(memberships: { memberName: string; membershipName: str
   return Object.entries(counts)
     .map(([name, count]) => `${count} × ${name}`)
     .join(" · ");
+}
+
+function MobileTxCard({ txn, t }: { txn: Transaction; t: (key: string) => string }) {
+  const clientInner = (
+    <div className="min-w-0 flex-1">
+      <p className="text-sm font-medium text-stone-800 truncate">{txn.memberName}</p>
+      <p className="text-[11px] text-stone-400 truncate">{txn.memberEmail}</p>
+    </div>
+  );
+
+  return (
+    <div className="px-3 py-3">
+      <div className="flex items-start justify-between gap-3">
+        {txn.memberId ? (
+          <Link href={`/admin/clients/${txn.memberId}`} className="min-w-0 flex-1 hover:underline">
+            {clientInner}
+          </Link>
+        ) : (
+          clientInner
+        )}
+        <div className="text-right shrink-0">
+          <p className="text-sm font-semibold text-stone-900">{formatCurrency(txn.grossAmount)}</p>
+          <p className="text-[10px] text-stone-400 mt-0.5">{formatTransactionDate(txn.createdAt, t)}</p>
+        </div>
+      </div>
+
+      {/* Concept */}
+      <div className="mt-2">
+        {txn.itemName && txn.itemHref ? (
+          <Link href={txn.itemHref} className="text-[12px] font-medium text-stone-700 hover:underline truncate block">
+            {txn.itemName}
+          </Link>
+        ) : (
+          <p className="text-[12px] font-medium text-stone-600 truncate">{txn.concept ?? "—"}</p>
+        )}
+        {txn.conceptSub ? (
+          <p className="text-[10px] text-stone-400 truncate">{txn.conceptSub}</p>
+        ) : null}
+      </div>
+
+      {/* Meta row: badges + status */}
+      <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+        <span className={cn("inline-block px-1.5 py-0.5 rounded text-[9px] font-medium", conceptTypeStyles[txn.conceptType] ?? "bg-stone-100 text-stone-500")}>
+          {conceptTypeLabelKeys[txn.conceptType] ? t(conceptTypeLabelKeys[txn.conceptType]) : txn.conceptType}
+        </span>
+        <span className={cn("inline-block px-2 py-0.5 rounded-full text-[10px] font-medium", methodStyles[txn.source] ?? "bg-stone-100 text-stone-500")}>
+          {methodLabelKeys[txn.source] ? t(methodLabelKeys[txn.source]) : txn.source}
+        </span>
+        <span className="ml-auto">
+          <StatusBadge status={txn.status} createdAt={txn.createdAt} t={t} />
+        </span>
+      </div>
+    </div>
+  );
 }

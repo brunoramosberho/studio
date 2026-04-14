@@ -476,25 +476,25 @@ Al final dame 3 recomendaciones priorizadas: qué hacer YA, qué observar esta s
             background: `linear-gradient(90deg, ${colorAdmin}, ${colorAdmin}88, ${colorAdmin}44)`,
           }}
         />
-        <div className="p-5 sm:p-6">
+        <div className="p-4 sm:p-6">
           {/* Header */}
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
+          <div className="mb-4 flex items-start justify-between gap-2 sm:gap-3">
+            <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
               <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm"
+                className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl shadow-sm"
                 style={{ backgroundColor: `${colorAdmin}15` }}
               >
                 <img
                   src="/spark-avatar.png"
                   alt="Spark"
-                  className="h-7 w-7 rounded-lg object-cover"
+                  className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg object-cover"
                 />
               </div>
-              <div>
-                <h3 className="text-[15px] font-bold text-foreground leading-tight">
+              <div className="min-w-0">
+                <h3 className="text-[14px] sm:text-[15px] font-bold text-foreground leading-tight">
                   El read financiero de hoy, {firstName}
                 </h3>
-                <p className="text-xs text-muted/70 mt-0.5">
+                <p className="text-[11px] sm:text-xs text-muted/70 mt-0.5 truncate">
                   Spark <span className="font-medium">CFO</span> · análisis en vivo de {studioName}
                 </p>
               </div>
@@ -508,7 +508,7 @@ Al final dame 3 recomendaciones priorizadas: qué hacer YA, qué observar esta s
             </button>
           </div>
 
-          <div className="sm:pl-[52px] grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+          <div className="sm:pl-[52px] grid gap-4 lg:gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
             {/* Content */}
             <div>
               {loading && !content ? (
@@ -570,7 +570,7 @@ Al final dame 3 recomendaciones priorizadas: qué hacer YA, qué observar esta s
             </div>
 
             {/* Visual mini-dashboard */}
-            <div className="lg:w-[280px] rounded-xl border border-stone-100 bg-stone-50/40 p-3">
+            <div className="w-full lg:w-[280px] rounded-xl border border-stone-100 bg-stone-50/40 p-3">
               {financeLd || !finance ? (
                 <div className="space-y-3">
                   <div className="shimmer-line h-4 w-full rounded-full" />
