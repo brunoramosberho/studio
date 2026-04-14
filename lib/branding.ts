@@ -71,14 +71,15 @@ export function getFontPairing(id: string): FontPairing {
 
 /* ── Platform-level fixed colors (not customizable by tenant admins) ── */
 
+/* Platform-level fixed neutrals. admin/coach are intentionally left out —
+   tenants can set them to match their brand accent (e.g. orange for
+   BE TORO) and we honor that value in both light and dark. */
 export const PLATFORM_COLORS = {
   colorBg: "#FFFFFF",
   colorFg: "#18181B",
   colorSurface: "#FAFAFA",
   colorMuted: "#71717A",
   colorBorder: "#E4E4E7",
-  colorCoach: "#15803D",
-  colorAdmin: "#1E40AF",
 } as const;
 
 function hexToRgb(hex: string): [number, number, number] {

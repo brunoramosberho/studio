@@ -2,6 +2,7 @@
 
 import { Navigation } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/components/theme-provider";
 
 interface StudioLocationMapProps {
   name: string;
@@ -12,9 +13,12 @@ interface StudioLocationMapProps {
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
-function getMapUrl(lat: number, lng: number) {
+type MapStyle = "light-v11" | "dark-v11";
+
+function getMapUrl(lat: number, lng: number, style: MapStyle) {
+  // Pin stays red for both themes — it reads well on either palette.
   const pin = `pin-s+ef4444(${lng},${lat})`;
-  return `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${pin}/${lng},${lat},15,0/400x200@2x?access_token=${MAPBOX_TOKEN}&logo=false&attribution=false`;
+  return `https://api.mapbox.com/styles/v1/mapbox/${style}/static/${pin}/${lng},${lat},15,0/400x200@2x?access_token=${MAPBOX_TOKEN}&logo=false&attribution=false`;
 }
 
 function getDirectionsUrl(lat: number, lng: number) {
@@ -35,9 +39,11 @@ export function StudioLocationMap({
   longitude,
 }: StudioLocationMapProps) {
   const t = useTranslations("map");
+  const { resolvedTheme } = useTheme();
 
   if (!MAPBOX_TOKEN) return null;
 
+  const mapStyle: MapStyle = resolvedTheme === "dark" ? "dark-v11" : "light-v11";
   const directionsUrl = getDirectionsUrl(latitude, longitude);
 
   return (
@@ -49,7 +55,10 @@ export function StudioLocationMap({
         className="block"
       >
         <img
-          src={getMapUrl(latitude, longitude)}
+          // `key` forces a reload when theme flips so the cached light-style
+          // image doesn't linger after switching to dark.
+          key={mapStyle}
+          src={getMapUrl(latitude, longitude, mapStyle)}
           alt={t("mapOf", { name })}
           width={400}
           height={200}

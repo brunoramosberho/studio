@@ -128,6 +128,9 @@ export default async function RootLayout({
     "--color-accent": b.colorAccent,
     "--color-hero-bg": b.colorHeroBg,
     "--color-ring": b.colorAccent,
+    // Role colors honour the tenant's choice in both themes.
+    "--color-coach": b.colorCoach,
+    "--color-admin": b.colorAdmin,
     "--font-display": fp.displayVar,
     "--font-body": fp.bodyVar,
   } as React.CSSProperties;
