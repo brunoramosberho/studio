@@ -3,9 +3,11 @@
 import { memo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
+import { ChatTable } from "./ChatTable";
+import { ChatChart } from "./ChatChart";
 import type { AiMessage } from "./index";
 
 interface MessageListProps {
@@ -142,9 +144,9 @@ const MessageBubble = memo(function MessageBubble({
           <TypingDots />
         </div>
       ) : (
-        <div className="flex gap-2.5">
+        <div className="flex w-full min-w-0 gap-2.5">
           <img src="/spark-avatar.png" alt="Spark" className="mt-1 h-6 w-6 shrink-0 rounded-full object-cover" />
-          <div className="max-w-[90%] text-[14px] leading-[1.7] text-foreground">
+          <div className="min-w-0 flex-1 text-[14px] leading-[1.7] text-foreground">
             <MarkdownContent content={message.content} />
           </div>
         </div>
@@ -158,46 +160,80 @@ function MarkdownContent({ content }: { content: string }) {
   const elements: React.ReactNode[] = [];
   let inTable = false;
   let tableRows: string[][] = [];
+  let lastHeading: string | null = null;
   let tableKey = 0;
+  let chartKey = 0;
+  let i = 0;
 
   function flushTable() {
     if (tableRows.length > 0) {
+      const title = lastHeading ?? undefined;
       elements.push(
-        <div key={`table-${tableKey++}`} className="my-3 overflow-x-auto rounded-xl border border-border">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-border bg-surface">
-                {tableRows[0].map((cell, i) => (
-                  <th
-                    key={i}
-                    className="px-3 py-2 text-left font-semibold text-foreground"
-                  >
-                    {cell.trim()}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tableRows.slice(1).map((row, ri) => (
-                <tr key={ri} className="border-b border-border/50 last:border-0">
-                  {row.map((cell, ci) => (
-                    <td key={ci} className="px-3 py-2 text-muted">
-                      {cell.trim()}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>,
+        <ChatTable key={`table-${tableKey++}`} rows={tableRows} title={title} />,
       );
       tableRows = [];
     }
     inTable = false;
   }
 
-  for (let i = 0; i < lines.length; i++) {
+  while (i < lines.length) {
     const line = lines[i];
+
+    // Chart code fence: ```chart ... ```
+    const chartFenceMatch = /^```chart\s*$/i.test(line.trim());
+    if (chartFenceMatch) {
+      if (inTable) flushTable();
+      const chartLines: string[] = [];
+      let j = i + 1;
+      let closed = false;
+      while (j < lines.length) {
+        if (/^```\s*$/.test(lines[j].trim())) {
+          closed = true;
+          break;
+        }
+        chartLines.push(lines[j]);
+        j++;
+      }
+      if (closed) {
+        const spec = chartLines.join("\n").trim();
+        elements.push(<ChatChart key={`chart-${chartKey++}`} spec={spec} />);
+        i = j + 1;
+      } else {
+        // Still streaming — show placeholder
+        elements.push(
+          <div
+            key={`chart-loading-${chartKey++}`}
+            className="my-4 flex items-center gap-2.5 rounded-xl border border-border bg-surface/50 px-4 py-6 text-[12px] text-muted"
+          >
+            <Loader2 className="h-4 w-4 animate-spin text-admin" />
+            Preparando gráfica…
+          </div>,
+        );
+        i = lines.length;
+      }
+      continue;
+    }
+
+    // Generic code fence: skip for now (render contents as pre in a future pass)
+    if (/^```/.test(line.trim())) {
+      if (inTable) flushTable();
+      const codeLines: string[] = [];
+      let j = i + 1;
+      while (j < lines.length && !/^```\s*$/.test(lines[j].trim())) {
+        codeLines.push(lines[j]);
+        j++;
+      }
+      elements.push(
+        <pre
+          key={`code-${i}`}
+          className="my-3 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[12px] leading-relaxed text-foreground"
+        >
+          <code>{codeLines.join("\n")}</code>
+        </pre>,
+      );
+      i = j < lines.length ? j + 1 : lines.length;
+      continue;
+    }
 
     if (line.includes("|") && line.trim().startsWith("|")) {
       const cells = line
@@ -205,35 +241,53 @@ function MarkdownContent({ content }: { content: string }) {
         .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
       if (cells.every((c) => /^[\s-:]+$/.test(c))) {
         inTable = true;
+        i++;
         continue;
       }
       if (inTable || tableRows.length > 0) {
         tableRows.push(cells);
         inTable = true;
+        i++;
         continue;
       }
       tableRows.push(cells);
+      i++;
       continue;
     }
 
     if (inTable) flushTable();
 
     if (line.startsWith("### ")) {
+      const text = line.slice(4);
+      lastHeading = text.trim();
       elements.push(
-        <h4 key={i} className="mb-1 mt-4 text-[13px] font-bold uppercase tracking-wide text-muted">
-          {formatInline(line.slice(4))}
+        <h4
+          key={i}
+          className="mb-1.5 mt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-muted"
+        >
+          {formatInline(text)}
         </h4>,
       );
     } else if (line.startsWith("## ")) {
+      const text = line.slice(3);
+      lastHeading = text.trim();
       elements.push(
-        <h3 key={i} className="mb-1 mt-4 text-[15px] font-bold text-foreground">
-          {formatInline(line.slice(3))}
+        <h3
+          key={i}
+          className="mb-2 mt-5 border-b border-border/50 pb-1.5 text-[15px] font-bold text-foreground"
+        >
+          {formatInline(text)}
         </h3>,
       );
     } else if (line.startsWith("# ")) {
+      const text = line.slice(2);
+      lastHeading = text.trim();
       elements.push(
-        <h2 key={i} className="mb-2 mt-4 text-base font-bold text-foreground">
-          {formatInline(line.slice(2))}
+        <h2
+          key={i}
+          className="mb-2 mt-5 text-[17px] font-bold leading-tight text-foreground"
+        >
+          {formatInline(text)}
         </h2>,
       );
     } else if (/^[-•*]\s/.test(line)) {
@@ -260,6 +314,7 @@ function MarkdownContent({ content }: { content: string }) {
         </p>,
       );
     }
+    i++;
   }
 
   if (inTable || tableRows.length > 0) flushTable();
