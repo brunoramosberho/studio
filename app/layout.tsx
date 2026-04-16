@@ -165,7 +165,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <NextIntlClientProvider messages={messages}>
-          <Providers initialTheme={themePref}>
+          <Providers initialTheme={themePref} initialBranding={b}>
             <InAppBrowserBanner />
             <SplashScreen />
             {children}

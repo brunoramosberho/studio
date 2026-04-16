@@ -38,8 +38,8 @@ export function applyTheme(b: StudioBranding) {
   html.style.setProperty("--font-body", fp.bodyVar);
 }
 
-export function BrandingProvider({ children }: { children: React.ReactNode }) {
-  const [branding, setBranding] = useState<StudioBranding>(DEFAULTS);
+export function BrandingProvider({ children, initial }: { children: React.ReactNode; initial?: StudioBranding }) {
+  const [branding, setBranding] = useState<StudioBranding>(initial ?? DEFAULTS);
 
   const fetchBranding = useCallback(() => {
     fetch("/api/admin/settings")
