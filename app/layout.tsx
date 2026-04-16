@@ -45,7 +45,6 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { getServerBranding } from "@/lib/branding.server";
 import { getFontPairing } from "@/lib/branding";
-import { getTenantSlug } from "@/lib/tenant";
 import { buildAppleSplashStartupImages } from "@/lib/pwa/splash-meta";
 import type { ThemeMode } from "@/components/theme-provider";
 
@@ -58,8 +57,12 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = host.includes("localhost") ? "http" : "https";
   const baseUrl = `${protocol}://${host}`;
 
-  const slug = await getTenantSlug();
-  const startupImage = slug ? buildAppleSplashStartupImages(slug) : [];
+  // Branded PWA splash screens (for iOS apple-touch-startup-image) are
+  // only applied to the client portal. Admin/coach PWAs keep their
+  // original neutral launch behaviour.
+  const portal = h.get("x-auth-portal") ?? "client";
+  const startupImage =
+    portal === "client" ? buildAppleSplashStartupImages() : [];
 
   return {
     metadataBase: new URL(baseUrl),
@@ -72,8 +75,11 @@ export async function generateMetadata(): Promise<Metadata> {
         { url: "/api/icon?size=32", sizes: "32x32", type: "image/png" },
         { url: "/api/icon?size=192", sizes: "192x192", type: "image/png" },
       ],
+      // Always use the dynamic /apple-icon route — it renders the tenant's
+      // icon server-side (see app/apple-icon.tsx) and is guaranteed to
+      // resolve regardless of whether pre-generated assets exist on disk.
       apple: [
-        { url: slug ? `/pwa/${slug}/apple-icon-180.png` : "/apple-icon", sizes: "180x180", type: "image/png" },
+        { url: "/apple-icon", sizes: "180x180", type: "image/png" },
       ],
     },
     appleWebApp: {
@@ -138,21 +144,24 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const themePref = (cookieStore.get("studio-theme")?.value ?? "system") as ThemeMode;
 
-  // Branded splash icon: use the tenant's CDN icon when available so it
-  // appears instantly (no /api/icon round-trip). Fallback to the static
-  // /icon-192.png that ships with the app shell.
+  // Branded splash (gradient + instant-load logo) applies only to the
+  // client portal. Admin/coach portals keep their original neutral splash.
+  const hdrs = await headers();
+  const isClientPortal = (hdrs.get("x-auth-portal") ?? "client") === "client";
   const splashIconUrl = b.appIconUrl || "/icon-192.png";
 
   return (
     <html lang={locale} className={fontVars} style={themeStyle} suppressHydrationWarning>
       <head>
-        {/* Preload the splash logo so it's painted on the very first frame. */}
-        <link
-          rel="preload"
-          as="image"
-          href={splashIconUrl}
-          fetchPriority="high"
-        />
+        {isClientPortal && (
+          /* Preload the splash logo so it's painted on the very first frame. */
+          <link
+            rel="preload"
+            as="image"
+            href={splashIconUrl}
+            fetchPriority="high"
+          />
+        )}
         {/* No-flash theme script — resolves user preference before paint so
             the correct palette is applied on first render. Inlined to avoid
             any network round-trip. */}
@@ -166,12 +175,16 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <Providers initialTheme={themePref}>
             <InAppBrowserBanner />
-            <SplashScreen
-              accent={b.colorAccent}
-              heroBg={b.colorHeroBg}
-              iconUrl={b.appIconUrl}
-              studioName={b.studioName}
-            />
+            {isClientPortal ? (
+              <SplashScreen
+                accent={b.colorAccent}
+                heroBg={b.colorHeroBg}
+                iconUrl={b.appIconUrl}
+                studioName={b.studioName}
+              />
+            ) : (
+              <SplashScreen />
+            )}
             {children}
             <MobileNav />
             <WaiverGate />

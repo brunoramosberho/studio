@@ -57,9 +57,13 @@ const APPLE_SPLASH_SPECS: Array<{
   { width: 640, height: 1136, deviceWidth: 320, deviceHeight: 568, pixelRatio: 2 },
 ];
 
-export function buildAppleSplashStartupImages(slug: string): StartupImageEntry[] {
+export function buildAppleSplashStartupImages(): StartupImageEntry[] {
   return APPLE_SPLASH_SPECS.map((spec) => ({
-    url: `/pwa/${slug}/apple-splash-${spec.width}-${spec.height}.png`,
+    // Dynamic branded splash rendered per-device on the fly. iOS caches
+    // the result aggressively so it's only generated once per tenant +
+    // device. This guarantees a branded first frame — no flat
+    // black/white splash from a missing file.
+    url: `/api/pwa/apple-splash?w=${spec.width}&h=${spec.height}`,
     media: `(device-width: ${spec.deviceWidth}px) and (device-height: ${spec.deviceHeight}px) and (-webkit-device-pixel-ratio: ${spec.pixelRatio}) and (orientation: portrait)`,
   }));
 }
