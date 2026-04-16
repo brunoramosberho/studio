@@ -98,6 +98,7 @@ export async function generateMetadata(): Promise<Metadata> {
     // renders "mobile-web-app-capable" which iOS Safari ignores.
     other: {
       "apple-mobile-web-app-capable": "yes",
+      "apple-touch-fullscreen": "yes",
     },
     openGraph: {
       title: `${fullName} — ${s.tagline}`,
