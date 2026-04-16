@@ -88,14 +88,14 @@ export default function AnalyticsPage() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="flex items-center gap-3"
+              className="flex items-center gap-2 sm:gap-3"
             >
               {/* Discipline selector */}
               <Select
                 value={disciplineId ?? "all"}
                 onValueChange={handleDisciplineChange}
               >
-                <SelectTrigger ref={disciplineSelectRef} className="h-9 w-48 text-xs">
+                <SelectTrigger ref={disciplineSelectRef} className="h-9 w-[calc(50%-0.25rem)] min-w-0 text-xs sm:w-48">
                   <SelectValue placeholder={t("allDisciplines")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -162,15 +162,15 @@ export default function AnalyticsPage() {
             <TabsList>
               <TabsTrigger value="schedule" className="gap-1.5">
                 <Clock className="h-3.5 w-3.5" />
-                {t("bySchedule")}
+                <span className="hidden sm:inline">{t("bySchedule")}</span>
               </TabsTrigger>
               <TabsTrigger value="instructors" className="gap-1.5">
                 <UserCog className="h-3.5 w-3.5" />
-                {t("byInstructor")}
+                <span className="hidden sm:inline">{t("byInstructor")}</span>
               </TabsTrigger>
               <TabsTrigger value="cross" className="gap-1.5">
                 <GitCompareArrows className="h-3.5 w-3.5" />
-                {t("crossAnalysis")}
+                <span className="hidden sm:inline">{t("crossAnalysis")}</span>
               </TabsTrigger>
             </TabsList>
 
@@ -193,8 +193,8 @@ export default function AnalyticsPage() {
 
             <TabsContent value="instructors">
               {isLoading || !data ? (
-                <div className="flex gap-6">
-                  <div className="w-[40%] space-y-3">
+                <div className="flex flex-col gap-6 lg:flex-row">
+                  <div className="w-full space-y-3 lg:w-[40%]">
                     {Array.from({ length: 4 }).map((_, i) => (
                       <Skeleton key={i} className="h-28 rounded-2xl" />
                     ))}

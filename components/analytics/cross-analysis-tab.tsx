@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -96,11 +96,11 @@ function CrossCombinations({
       <div className="grid gap-4 sm:grid-cols-2">
         {combinations.map((c, i) => (
           <Card key={i}>
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <div
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
                     style={{ backgroundColor: c.coach.color }}
                   >
                     {c.coach.name
@@ -109,14 +109,14 @@ function CrossCombinations({
                       .join("")
                       .slice(0, 2)}
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold">{c.coach.name}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{c.coach.name}</p>
                     <p className="text-xs text-muted">
                       {getDayName(c.day)} {c.time}
                     </p>
                   </div>
                 </div>
-                <Badge variant="success" className="text-sm font-bold">
+                <Badge variant="success" className="shrink-0 text-sm font-bold">
                   {c.occupancy}%
                 </Badge>
               </div>
@@ -131,6 +131,18 @@ function CrossCombinations({
   );
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 639px)");
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
 function ComparisonChart({
   coaches,
   coachMetrics,
@@ -142,6 +154,7 @@ function ComparisonChart({
   slots: ScheduleSlot[];
   disciplineId: string;
 }) {
+  const isMobile = useIsMobile();
   const relevantCoaches = useMemo(
     () =>
       coaches.filter((c) =>
@@ -172,11 +185,11 @@ function ComparisonChart({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-72">
+        <div className="h-56 sm:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}
-              margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
+              margin={{ top: 8, right: 4, left: isMobile ? -10 : -20, bottom: 0 }}
             >
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -184,16 +197,18 @@ function ComparisonChart({
               />
               <XAxis
                 dataKey="hour"
-                tick={{ fontSize: 11, fill: "var(--color-muted)" }}
+                tick={{ fontSize: isMobile ? 10 : 11, fill: "var(--color-muted)" }}
                 axisLine={false}
                 tickLine={false}
+                interval={isMobile ? 1 : 0}
               />
               <YAxis
                 domain={[0, 100]}
-                tick={{ fontSize: 11, fill: "var(--color-muted)" }}
+                tick={{ fontSize: isMobile ? 10 : 11, fill: "var(--color-muted)" }}
                 axisLine={false}
                 tickLine={false}
-                label={{
+                width={isMobile ? 30 : undefined}
+                label={isMobile ? undefined : {
                   value: "% ocupación media",
                   angle: -90,
                   position: "insideLeft",
@@ -218,7 +233,7 @@ function ComparisonChart({
               <Legend
                 iconType="circle"
                 iconSize={8}
-                wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
+                wrapperStyle={{ fontSize: isMobile ? 11 : 12, paddingTop: 8 }}
               />
               {relevantCoaches.map((coach) => (
                 <Bar
@@ -226,7 +241,7 @@ function ComparisonChart({
                   dataKey={coach.name}
                   fill={coach.color}
                   radius={[4, 4, 0, 0]}
-                  maxBarSize={32}
+                  maxBarSize={isMobile ? 24 : 32}
                 />
               ))}
             </BarChart>
