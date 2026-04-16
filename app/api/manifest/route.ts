@@ -34,6 +34,13 @@ export async function GET(request: NextRequest) {
     portal === "coach" ? b.colorCoach :
     b.colorBg;
 
+  // Client PWA uses the tenant's branded hero surface as the native
+  // splash background. On iOS 17+, if apple-touch-startup-image can't be
+  // used, the OS generates a splash from the manifest (icon + this bg).
+  // On Android, this is the native launch bg directly. Admin/coach
+  // PWAs keep the original neutral background.
+  const backgroundColor = portal === "my" ? b.colorHeroBg : b.colorBg;
+
   const icons = [
     { src: "/api/icon?size=192", sizes: "192x192", type: "image/png" },
     { src: "/api/icon?size=512", sizes: "512x512", type: "image/png" },
@@ -47,7 +54,7 @@ export async function GET(request: NextRequest) {
     start_url: cfg.start_url,
     scope: "/",
     display: "standalone",
-    background_color: b.colorBg,
+    background_color: backgroundColor,
     theme_color: themeColor,
     orientation: "portrait",
     icons,
