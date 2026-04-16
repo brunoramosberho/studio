@@ -57,13 +57,37 @@ const APPLE_SPLASH_SPECS: Array<{
   { width: 640, height: 1136, deviceWidth: 320, deviceHeight: 568, pixelRatio: 2 },
 ];
 
-export function buildAppleSplashStartupImages(): StartupImageEntry[] {
+export type SplashBranding = {
+  /** Background color (hex, e.g. "#18181B"). */
+  bg: string;
+  /** Accent color for the glow + icon tile (hex). */
+  accent: string;
+  /** Studio name — first letter is rendered on the icon tile. */
+  studioName: string;
+};
+
+/**
+ * Encodes the branding into query params so the /api/pwa/apple-splash
+ * route is pure rendering — it never has to look up the tenant.
+ */
+function buildUrl(w: number, h: number, b: SplashBranding): string {
+  const bg = encodeURIComponent(b.bg);
+  const accent = encodeURIComponent(b.accent);
+  const initial = encodeURIComponent(
+    (b.studioName?.charAt(0) || "·").toUpperCase(),
+  );
+  return `/api/pwa/apple-splash?w=${w}&h=${h}&bg=${bg}&a=${accent}&i=${initial}`;
+}
+
+export function buildAppleSplashStartupImages(
+  branding: SplashBranding,
+): StartupImageEntry[] {
   const specific = APPLE_SPLASH_SPECS.map((spec) => ({
     // Dynamic branded splash rendered per-device on the fly. iOS caches
     // the result aggressively so it's only generated once per tenant +
     // device. This guarantees a branded first frame — no flat
     // black/white splash from a missing file.
-    url: `/api/pwa/apple-splash?w=${spec.width}&h=${spec.height}`,
+    url: buildUrl(spec.width, spec.height, branding),
     media: `(device-width: ${spec.deviceWidth}px) and (device-height: ${spec.deviceHeight}px) and (-webkit-device-pixel-ratio: ${spec.pixelRatio}) and (orientation: portrait)`,
   }));
 
@@ -74,15 +98,15 @@ export function buildAppleSplashStartupImages(): StartupImageEntry[] {
   // see a flat white splash because no image is selected.
   const fallback: StartupImageEntry[] = [
     {
-      url: `/api/pwa/apple-splash?w=1320&h=2868`,
+      url: buildUrl(1320, 2868, branding),
       media: "(orientation: portrait) and (-webkit-device-pixel-ratio: 3)",
     },
     {
-      url: `/api/pwa/apple-splash?w=828&h=1792`,
+      url: buildUrl(828, 1792, branding),
       media: "(orientation: portrait) and (-webkit-device-pixel-ratio: 2)",
     },
     {
-      url: `/api/pwa/apple-splash?w=1320&h=2868`,
+      url: buildUrl(1320, 2868, branding),
       media: "(orientation: portrait)",
     },
   ];

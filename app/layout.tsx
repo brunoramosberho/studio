@@ -62,7 +62,13 @@ export async function generateMetadata(): Promise<Metadata> {
   // original neutral launch behaviour.
   const portal = h.get("x-auth-portal") ?? "client";
   const startupImage =
-    portal === "client" ? buildAppleSplashStartupImages() : [];
+    portal === "client"
+      ? buildAppleSplashStartupImages({
+          bg: s.colorHeroBg,
+          accent: s.colorAccent,
+          studioName: s.studioName,
+        })
+      : [];
 
   return {
     metadataBase: new URL(baseUrl),
