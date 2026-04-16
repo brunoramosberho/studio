@@ -27,6 +27,7 @@ interface RatingReason {
 export function RatingSheet() {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
+  const isEmbed = pathname.startsWith("/embed");
   const t = useTranslations("rating");
 
   const [pending, setPending] = useState<PendingClass | null>(null);
@@ -41,7 +42,7 @@ export function RatingSheet() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isAdmin) return;
+    if (isAdmin || isEmbed) return;
     fetch("/api/ratings/pending")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: PendingClass | null) => {
@@ -54,7 +55,7 @@ export function RatingSheet() {
         }, 1500);
       })
       .catch(() => {});
-  }, [isAdmin]);
+  }, [isAdmin, isEmbed]);
 
   const dismiss = useCallback(() => {
     if (pending) {
@@ -130,7 +131,7 @@ export function RatingSheet() {
     return () => clearTimeout(timer);
   }, [submitted, dismiss]);
 
-  if (!pending || isAdmin) return null;
+  if (!pending || isAdmin || isEmbed) return null;
 
   const stars = [1, 2, 3, 4, 5];
   const activeRating = hovered || rating;

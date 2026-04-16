@@ -137,6 +137,7 @@
     "policies": "Políticas",
     "waiver": "Waiver",
     "branding": "Marca",
+    "embed": "Incrustar",
     "studios": "Estudios",
     "language": "Idioma",
     "mgicAI": "Spark",
@@ -2028,5 +2029,33 @@
     "valueLabel": "Valor",
     "auditNotice": "Registro de auditoria",
     "auditNoticeDescription": "Todos los paquetes regalados quedan registrados con el administrador que los otorgo, la razon y la fecha. Este registro sirve para controlar el uso y prevenir fraudes."
+  },
+  "embed": {
+    "title": "Encontrar una clase",
+    "myAccount": "Mi cuenta",
+    "timezoneHint": "Todas las fechas y horas se muestran en la zona horaria de la ubicacion.",
+    "reserve": "Reservar",
+    "finished": "Finalizada",
+    "onlyOneSpot": "Solo queda 1 lugar!",
+    "onlyNSpots": "Solo quedan {n} lugares!",
+    "admin": {
+      "title": "Incrustar horario",
+      "subtitle": "Copia este codigo y pegalo en tu pagina web para mostrar el horario de tus clases a tus visitantes. Actualiza automaticamente con tu calendario.",
+      "scriptTitle": "Codigo recomendado",
+      "scriptDesc": "Funciona en cualquier sitio: WordPress, Wix, Webflow, Squarespace o HTML simple. Incluye ajuste automatico de altura.",
+      "iframeTitle": "Alternativa: iframe",
+      "iframeDesc": "Si tu plataforma no permite ejecutar scripts de terceros, puedes usar un iframe con altura fija.",
+      "previewTitle": "Vista previa",
+      "previewDesc": "Asi es como se vera el widget en tu sitio.",
+      "copyScript": "Copiar codigo",
+      "copyIframe": "Copiar iframe",
+      "copied": "Copiado",
+      "copyError": "No se pudo copiar",
+      "openInNewTab": "Abrir",
+      "refresh": "Recargar",
+      "bulletAutoResize": "Ajuste automatico de altura segun el contenido",
+      "bulletNoCookies": "Sin cookies de terceros — compatible con todos los navegadores",
+      "bulletAnyDomain": "Funciona en cualquier dominio sin configuracion adicional"
+    }
   }
 }

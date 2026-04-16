@@ -38,6 +38,21 @@ const nextConfig: NextConfig = {
       { source: "/apple-touch-icon-precomposed.png", destination: "/apple-icon" },
     ];
   },
+  async headers() {
+    // Explicitly allow the embed routes to be framed on any host so tenants
+    // can paste the widget on their own website (Wix, WordPress, Webflow…).
+    // Hosting platforms sometimes default to X-Frame-Options: SAMEORIGIN; we
+    // override that here and rely on CSP frame-ancestors instead.
+    return [
+      {
+        source: "/embed/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors *" },
+          { key: "X-Frame-Options", value: "ALLOWALL" },
+        ],
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);

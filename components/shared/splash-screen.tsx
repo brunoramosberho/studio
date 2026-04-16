@@ -17,7 +17,7 @@ export function SplashScreen() {
     });
   }, []);
 
-  if (removed || pathname === "/install") return null;
+  if (removed || pathname === "/install" || pathname.startsWith("/embed")) return null;
 
   return (
     <div

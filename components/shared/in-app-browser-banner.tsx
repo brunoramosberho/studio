@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ExternalLink, ArrowUpRight, X } from "lucide-react";
 import { getInAppBrowser, type InAppBrowser } from "@/lib/pwa-install";
@@ -19,10 +20,12 @@ const appNames: Record<NonNullable<InAppBrowser>, string> = {
 
 export function InAppBrowserBanner() {
   const t = useTranslations("common");
+  const pathname = usePathname();
   const [browser, setBrowser] = useState<InAppBrowser>(null);
   const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {
+    if (pathname.startsWith("/embed")) return;
     const detected = getInAppBrowser();
     if (!detected) return;
 
@@ -33,7 +36,7 @@ export function InAppBrowserBanner() {
 
     setBrowser(detected);
     setDismissed(false);
-  }, []);
+  }, [pathname]);
 
   function handleDismiss() {
     setDismissed(true);

@@ -137,6 +137,7 @@
     "policies": "Policies",
     "waiver": "Waiver",
     "branding": "Branding",
+    "embed": "Embed",
     "studios": "Studios",
     "language": "Language",
     "mgicAI": "Spark",
@@ -2028,5 +2029,33 @@
     "valueLabel": "Value",
     "auditNotice": "Audit trail",
     "auditNoticeDescription": "All gifted packages are logged with the admin who granted them, the reason, and the date. This log helps control usage and prevent fraud."
+  },
+  "embed": {
+    "title": "Find a class",
+    "myAccount": "My account",
+    "timezoneHint": "All dates and times are shown in the location's time zone.",
+    "reserve": "Reserve",
+    "finished": "Finished",
+    "onlyOneSpot": "Only 1 spot left!",
+    "onlyNSpots": "Only {n} spots left!",
+    "admin": {
+      "title": "Embed schedule",
+      "subtitle": "Copy this code and paste it on your website to show your class schedule to visitors. Updates automatically with your calendar.",
+      "scriptTitle": "Recommended snippet",
+      "scriptDesc": "Works anywhere: WordPress, Wix, Webflow, Squarespace, or plain HTML. Auto-resizes to fit the content.",
+      "iframeTitle": "Alternative: iframe",
+      "iframeDesc": "If your platform doesn't allow third-party scripts, you can use a fixed-height iframe instead.",
+      "previewTitle": "Preview",
+      "previewDesc": "This is how the widget will look on your site.",
+      "copyScript": "Copy snippet",
+      "copyIframe": "Copy iframe",
+      "copied": "Copied",
+      "copyError": "Could not copy",
+      "openInNewTab": "Open",
+      "refresh": "Refresh",
+      "bulletAutoResize": "Automatic height resizing based on content",
+      "bulletNoCookies": "No third-party cookies — compatible with all browsers",
+      "bulletAnyDomain": "Works on any domain without additional setup"
+    }
   }
 }

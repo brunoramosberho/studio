@@ -40,7 +40,8 @@ export type AdminPermission =
   | "branding"
   | "team"
   | "studios"
-  | "language";
+  | "language"
+  | "embed";
 
 const ALL_PERMISSIONS: AdminPermission[] = [
   "dashboard", "schedule", "classes", "checkIn", "clients",
@@ -49,7 +50,7 @@ const ALL_PERMISSIONS: AdminPermission[] = [
   "finance", "packages", "subscriptions", "shop", "platforms",
   "reports", "analytics", "conversion",
   "marketing", "highlights", "referrals",
-  "billing", "policies", "waiver", "branding", "team", "studios", "language",
+  "billing", "policies", "waiver", "branding", "team", "studios", "language", "embed",
 ];
 
 const FRONT_DESK_PERMISSIONS: Set<AdminPermission> = new Set([
