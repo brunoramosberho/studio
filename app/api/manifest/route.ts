@@ -39,11 +39,6 @@ export async function GET(request: NextRequest) {
     { src: "/api/icon?size=512", sizes: "512x512", type: "image/png" },
   ];
 
-  // Client PWA uses the tenant's branded hero surface so the OS native
-  // splash matches the in-app gradient and never shows a flat white/black
-  // frame. Admin/coach PWAs keep their original neutral background.
-  const backgroundColor = portal === "my" ? b.colorHeroBg : b.colorBg;
-
   const manifest = {
     name: `${b.studioName}${cfg.suffix}`,
     short_name: `${b.studioName}${cfg.suffix}`,
@@ -52,7 +47,7 @@ export async function GET(request: NextRequest) {
     start_url: cfg.start_url,
     scope: "/",
     display: "standalone",
-    background_color: backgroundColor,
+    background_color: b.colorBg,
     theme_color: themeColor,
     orientation: "portrait",
     icons,

@@ -58,7 +58,7 @@ const APPLE_SPLASH_SPECS: Array<{
 ];
 
 export function buildAppleSplashStartupImages(): StartupImageEntry[] {
-  return APPLE_SPLASH_SPECS.map((spec) => ({
+  const specific = APPLE_SPLASH_SPECS.map((spec) => ({
     // Dynamic branded splash rendered per-device on the fly. iOS caches
     // the result aggressively so it's only generated once per tenant +
     // device. This guarantees a branded first frame — no flat
@@ -66,4 +66,26 @@ export function buildAppleSplashStartupImages(): StartupImageEntry[] {
     url: `/api/pwa/apple-splash?w=${spec.width}&h=${spec.height}`,
     media: `(device-width: ${spec.deviceWidth}px) and (device-height: ${spec.deviceHeight}px) and (-webkit-device-pixel-ratio: ${spec.pixelRatio}) and (orientation: portrait)`,
   }));
+
+  // Catch-all entries for devices that don't match any exact spec above
+  // (e.g. iPhones released after this list was last updated). iOS picks
+  // the most specific matching link, falling back to these when no exact
+  // device media query matches. Without this fallback, new devices would
+  // see a flat white splash because no image is selected.
+  const fallback: StartupImageEntry[] = [
+    {
+      url: `/api/pwa/apple-splash?w=1320&h=2868`,
+      media: "(orientation: portrait) and (-webkit-device-pixel-ratio: 3)",
+    },
+    {
+      url: `/api/pwa/apple-splash?w=828&h=1792`,
+      media: "(orientation: portrait) and (-webkit-device-pixel-ratio: 2)",
+    },
+    {
+      url: `/api/pwa/apple-splash?w=1320&h=2868`,
+      media: "(orientation: portrait)",
+    },
+  ];
+
+  return [...specific, ...fallback];
 }

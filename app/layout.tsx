@@ -144,24 +144,9 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const themePref = (cookieStore.get("studio-theme")?.value ?? "system") as ThemeMode;
 
-  // Branded splash (gradient + instant-load logo) applies only to the
-  // client portal. Admin/coach portals keep their original neutral splash.
-  const hdrs = await headers();
-  const isClientPortal = (hdrs.get("x-auth-portal") ?? "client") === "client";
-  const splashIconUrl = b.appIconUrl || "/icon-192.png";
-
   return (
     <html lang={locale} className={fontVars} style={themeStyle} suppressHydrationWarning>
       <head>
-        {isClientPortal && (
-          /* Preload the splash logo so it's painted on the very first frame. */
-          <link
-            rel="preload"
-            as="image"
-            href={splashIconUrl}
-            fetchPriority="high"
-          />
-        )}
         {/* No-flash theme script — resolves user preference before paint so
             the correct palette is applied on first render. Inlined to avoid
             any network round-trip. */}
@@ -175,16 +160,7 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <Providers initialTheme={themePref}>
             <InAppBrowserBanner />
-            {isClientPortal ? (
-              <SplashScreen
-                accent={b.colorAccent}
-                heroBg={b.colorHeroBg}
-                iconUrl={b.appIconUrl}
-                studioName={b.studioName}
-              />
-            ) : (
-              <SplashScreen />
-            )}
+            <SplashScreen />
             {children}
             <MobileNav />
             <WaiverGate />
