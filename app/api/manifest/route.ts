@@ -47,7 +47,9 @@ export async function GET(request: NextRequest) {
     start_url: cfg.start_url,
     scope: "/",
     display: "standalone",
-    background_color: b.colorBg,
+    // Use the tenant's branded hero surface so the OS native splash matches
+    // the in-app splash overlay and never shows a flat white/black frame.
+    background_color: b.colorHeroBg,
     theme_color: themeColor,
     orientation: "portrait",
     icons,
