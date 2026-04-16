@@ -2035,6 +2035,8 @@
     "myAccount": "My account",
     "timezoneHint": "All dates and times are shown in the location's time zone.",
     "reserve": "Reserve",
+    "reserveExternal": "Reserve class",
+    "reserveExternalHint": "Opens in a new tab to complete your booking securely.",
     "finished": "Finished",
     "onlyOneSpot": "Only 1 spot left!",
     "onlyNSpots": "Only {n} spots left!",

@@ -2035,6 +2035,8 @@
     "myAccount": "Mi cuenta",
     "timezoneHint": "Todas las fechas y horas se muestran en la zona horaria de la ubicacion.",
     "reserve": "Reservar",
+    "reserveExternal": "Reservar clase",
+    "reserveExternalHint": "Se abrira en una nueva pestana para completar tu reserva de forma segura.",
     "finished": "Finalizada",
     "onlyOneSpot": "Solo queda 1 lugar!",
     "onlyNSpots": "Solo quedan {n} lugares!",
