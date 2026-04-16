@@ -98,7 +98,6 @@ export async function generateMetadata(): Promise<Metadata> {
     // renders "mobile-web-app-capable" which iOS Safari ignores.
     other: {
       "apple-mobile-web-app-capable": "yes",
-      "apple-touch-fullscreen": "yes",
     },
     openGraph: {
       title: `${fullName} — ${s.tagline}`,
@@ -154,6 +153,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={fontVars} style={themeStyle} suppressHydrationWarning>
       <head>
+        <meta name="apple-touch-fullscreen" content="yes" />
         {/* No-flash theme script — resolves user preference before paint so
             the correct palette is applied on first render. Inlined to avoid
             any network round-trip. */}
