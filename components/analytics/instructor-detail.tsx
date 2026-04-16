@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   AreaChart,
   Area,
@@ -48,9 +48,22 @@ function MiniStat({
   );
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 639px)");
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
 export function InstructorDetail({ coach, metrics }: InstructorDetailProps) {
   const hasManyDisciplines = coach.disciplines.length > 1;
   const [selectedDisc, setSelectedDisc] = useState<string>("all");
+  const isMobile = useIsMobile();
 
   const displayMetrics = useMemo(() => {
     if (selectedDisc === "all" || !metrics.by_discipline[selectedDisc]) {
@@ -111,32 +124,34 @@ export function InstructorDetail({ coach, metrics }: InstructorDetailProps) {
     <div className="space-y-5">
       {/* Discipline filter */}
       {hasManyDisciplines && (
-        <div className="inline-flex items-center gap-1 rounded-full bg-surface p-1">
-          <button
-            onClick={() => setSelectedDisc("all")}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              selectedDisc === "all"
-                ? "bg-card text-foreground shadow-[var(--shadow-warm-sm)]"
-                : "text-muted hover:text-foreground",
-            )}
-          >
-            Todas
-          </button>
-          {coach.disciplines.map((cd) => (
+        <div className="flex overflow-x-auto">
+          <div className="inline-flex items-center gap-1 rounded-full bg-surface p-1">
             <button
-              key={cd.discipline.id}
-              onClick={() => setSelectedDisc(cd.discipline.id)}
+              onClick={() => setSelectedDisc("all")}
               className={cn(
-                "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                selectedDisc === cd.discipline.id
+                "rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+                selectedDisc === "all"
                   ? "bg-card text-foreground shadow-[var(--shadow-warm-sm)]"
                   : "text-muted hover:text-foreground",
               )}
             >
-              {cd.discipline.name}
+              Todas
             </button>
-          ))}
+            {coach.disciplines.map((cd) => (
+              <button
+                key={cd.discipline.id}
+                onClick={() => setSelectedDisc(cd.discipline.id)}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+                  selectedDisc === cd.discipline.id
+                    ? "bg-card text-foreground shadow-[var(--shadow-warm-sm)]"
+                    : "text-muted hover:text-foreground",
+                )}
+              >
+                {cd.discipline.name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -156,9 +171,9 @@ export function InstructorDetail({ coach, metrics }: InstructorDetailProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-48">
+          <div className="h-40 sm:h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <AreaChart data={trendData} margin={{ top: 4, right: 4, left: isMobile ? -10 : -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id={`fill-${coach.id}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={coach.color} stopOpacity={0.2} />
@@ -168,16 +183,17 @@ export function InstructorDetail({ coach, metrics }: InstructorDetailProps) {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="week"
-                  tick={{ fontSize: 11, fill: "var(--color-muted)" }}
+                  tick={{ fontSize: isMobile ? 10 : 11, fill: "var(--color-muted)" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
                   domain={[0, 100]}
-                  tick={{ fontSize: 11, fill: "var(--color-muted)" }}
+                  tick={{ fontSize: isMobile ? 10 : 11, fill: "var(--color-muted)" }}
                   axisLine={false}
                   tickLine={false}
-                  label={{
+                  width={isMobile ? 30 : undefined}
+                  label={isMobile ? undefined : {
                     value: "% de lugares ocupados",
                     angle: -90,
                     position: "insideLeft",

@@ -68,15 +68,17 @@ export function ScheduleHeatmap({ grid, slots }: ScheduleHeatmapProps) {
     <div className="space-y-6">
       {/* Heatmap table */}
       <Card>
-        <CardContent className="overflow-x-auto p-4 sm:p-5">
-          <table className="w-full border-collapse text-center text-xs">
+        <CardContent className="relative overflow-x-auto p-3 sm:p-5">
+          {/* Scroll fade hint on mobile */}
+          <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-6 bg-gradient-to-l from-card to-transparent sm:hidden" />
+          <table className="w-full border-collapse text-center text-[10px] sm:text-xs">
             <thead>
               <tr>
-                <th className="p-2 text-left text-muted font-medium" />
+                <th className="sticky left-0 z-[5] bg-card p-1 text-left text-muted font-medium sm:p-2" />
                 {activeHours.map((h) => (
                   <th
                     key={h}
-                    className="p-1.5 font-medium text-muted whitespace-nowrap"
+                    className="p-1 font-medium text-muted whitespace-nowrap sm:p-1.5"
                   >
                     {h}
                   </th>
@@ -86,15 +88,16 @@ export function ScheduleHeatmap({ grid, slots }: ScheduleHeatmapProps) {
             <tbody>
               {activeDays.map((day) => (
                 <tr key={day}>
-                  <td className="p-2 text-left font-medium text-foreground whitespace-nowrap">
-                    {getDayName(day)}
+                  <td className="sticky left-0 z-[5] bg-card p-1 text-left font-medium text-foreground whitespace-nowrap sm:p-2">
+                    <span className="hidden sm:inline">{getDayName(day)}</span>
+                    <span className="sm:hidden">{getDayName(day).slice(0, 3)}</span>
                   </td>
                   {activeHours.map((hour) => {
                     const cell = cellMap.get(`${day}-${hour}`);
                     if (!cell) {
                       return (
-                        <td key={hour} className="p-1.5">
-                          <div className="flex h-10 items-center justify-center rounded-lg text-muted/20">
+                        <td key={hour} className="p-1 sm:p-1.5">
+                          <div className="flex h-8 items-center justify-center rounded-lg text-muted/20 sm:h-10">
                             —
                           </div>
                         </td>
@@ -102,12 +105,12 @@ export function ScheduleHeatmap({ grid, slots }: ScheduleHeatmapProps) {
                     }
                     const style = getOccupancyStyle(cell.avg_occupancy);
                     return (
-                      <td key={hour} className="p-1.5">
+                      <td key={hour} className="p-1 sm:p-1.5">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div
                               className={cn(
-                                "flex h-10 min-w-[3rem] cursor-default items-center justify-center rounded-lg text-xs transition-colors",
+                                "flex h-8 min-w-[2.5rem] cursor-default items-center justify-center rounded-lg text-[10px] transition-colors sm:h-10 sm:min-w-[3rem] sm:text-xs",
                                 style.bg,
                                 style.text,
                               )}

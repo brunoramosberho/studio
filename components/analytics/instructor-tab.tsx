@@ -155,7 +155,7 @@ export function InstructorTab({ coaches, metrics }: InstructorTabProps) {
               </div>
 
               {/* Inline metrics */}
-              <div className="mt-3 flex gap-4 text-xs text-muted">
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                 <div>
                   <span className="font-mono font-semibold text-foreground">
                     {m.occupancy_rate}%
