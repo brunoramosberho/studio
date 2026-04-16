@@ -51,6 +51,7 @@ import {
   CalendarSync,
   Wallet,
   ShieldAlert,
+  Code2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -144,6 +145,7 @@ const flyoutGroups: FlyoutGroup[] = [
       { href: "/admin/settings/policies", labelKey: "policies", icon: ShieldAlert, permission: "policies" },
       { href: "/admin/waiver", labelKey: "waiver", icon: FileSignature, permission: "waiver" },
       { href: "/admin/branding", labelKey: "branding", icon: Palette, permission: "branding" },
+      { href: "/admin/settings/embed", labelKey: "embed", icon: Code2, permission: "embed" },
       { href: "/admin/team", labelKey: "team", icon: ShieldCheck, permission: "team" },
       { href: "/admin/studios", labelKey: "studios", icon: Building2, permission: "studios" },
       { href: "/admin/settings/language", labelKey: "language", icon: Globe2, permission: "language" },

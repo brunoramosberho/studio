@@ -49,7 +49,7 @@ export function InstallPrompt() {
   }, []);
 
   useEffect(() => {
-    if (isStandalonePWA() || wasDismissedRecently() || pathname === "/install") return;
+    if (isStandalonePWA() || wasDismissedRecently() || pathname === "/install" || pathname.startsWith("/embed")) return;
 
     const plat = getMobileInstallPlatform();
     if (!plat) return;

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Cookie } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -10,12 +11,14 @@ const STORAGE_KEY = "cookie-consent";
 
 export function CookieConsent() {
   const t = useTranslations("legal");
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (pathname.startsWith("/embed")) return;
     const accepted = localStorage.getItem(STORAGE_KEY);
     if (!accepted) setVisible(true);
-  }, []);
+  }, [pathname]);
 
   function accept() {
     localStorage.setItem(STORAGE_KEY, "accepted");

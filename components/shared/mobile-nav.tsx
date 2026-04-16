@@ -28,7 +28,7 @@ const rightTabsBase = [
 
 const coachTab = { href: "/coach", icon: Mic, labelKey: "coach" as const };
 
-const hiddenOnPaths = ["/login", "/admin", "/coach", "/dev", "/directory", "/install", "/waiver"];
+const hiddenOnPaths = ["/login", "/admin", "/coach", "/dev", "/directory", "/install", "/waiver", "/embed"];
 
 interface DisciplineIcon {
   id: string;

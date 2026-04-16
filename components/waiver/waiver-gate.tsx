@@ -10,7 +10,7 @@ import { ArrowRight, X } from "lucide-react";
 import { AnimatedFileText, type FileTextIconHandle } from "@/components/icons/animated-file-text";
 
 const DISMISSED_KEY = "waiver-gate-dismissed";
-const SKIP_PREFIXES = ["/login", "/admin", "/coach", "/dev", "/waiver", "/super-admin", "/directory", "/install"];
+const SKIP_PREFIXES = ["/login", "/admin", "/coach", "/dev", "/waiver", "/super-admin", "/directory", "/install", "/embed"];
 
 export function WaiverGate() {
   const pathname = usePathname();
