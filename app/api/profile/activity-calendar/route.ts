@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
-import { startOfWeek, subWeeks, isAfter, isBefore, startOfDay } from "date-fns";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,6 +24,34 @@ export async function GET(request: NextRequest) {
       } catch {
         return d.toISOString().slice(0, 10);
       }
+    };
+
+    // Compute the Monday-based week-start key (YYYY-MM-DD) from a civil date
+    // key in the user's timezone, so the result matches the client's
+    // `startOfWeekMonday` (which works off local calendar dates, not UTC
+    // instants). Doing this in UTC avoids server-TZ drift (e.g. a Monday
+    // 00:00 UTC booking in a UTC-3 tz would otherwise map to the previous
+    // Sunday when formatted in the user's tz).
+    const weekStartKeyFromCivil = (civilKey: string): string => {
+      const [y, m, d] = civilKey.split("-").map(Number);
+      const date = new Date(Date.UTC(y, m - 1, d));
+      const dow = date.getUTCDay(); // 0=Sun..6=Sat
+      const diff = dow === 0 ? -6 : 1 - dow;
+      date.setUTCDate(date.getUTCDate() + diff);
+      const yy = date.getUTCFullYear();
+      const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(date.getUTCDate()).padStart(2, "0");
+      return `${yy}-${mm}-${dd}`;
+    };
+
+    const shiftWeekKey = (weekKey: string, deltaWeeks: number): string => {
+      const [y, m, d] = weekKey.split("-").map(Number);
+      const date = new Date(Date.UTC(y, m - 1, d));
+      date.setUTCDate(date.getUTCDate() + deltaWeeks * 7);
+      const yy = date.getUTCFullYear();
+      const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(date.getUTCDate()).padStart(2, "0");
+      return `${yy}-${mm}-${dd}`;
     };
 
     const bookings = await prisma.booking.findMany({
@@ -73,30 +100,29 @@ export async function GET(request: NextRequest) {
 
     const attendedWeeks = new Set<string>();
     for (const b of allAttended) {
-      const ws = startOfWeek(new Date(b.class.startsAt), { weekStartsOn: 1 });
-      attendedWeeks.add(toDateKey(ws));
+      const civilKey = toDateKey(b.class.startsAt);
+      attendedWeeks.add(weekStartKeyFromCivil(civilKey));
     }
 
     let weekStreak = 0;
-    const thisWeekStart = startOfWeek(now, { weekStartsOn: 1 });
-    let checkWeek = thisWeekStart;
+    let checkWeekKey = weekStartKeyFromCivil(toDateKey(now));
 
     // Allow current week to not have a class yet
-    if (!attendedWeeks.has(toDateKey(checkWeek))) {
-      checkWeek = subWeeks(checkWeek, 1);
+    if (!attendedWeeks.has(checkWeekKey)) {
+      checkWeekKey = shiftWeekKey(checkWeekKey, -1);
     }
 
-    while (attendedWeeks.has(toDateKey(checkWeek))) {
+    while (attendedWeeks.has(checkWeekKey)) {
       weekStreak++;
-      checkWeek = subWeeks(checkWeek, 1);
+      checkWeekKey = shiftWeekKey(checkWeekKey, -1);
     }
 
     // Which calendar weeks of this month had at least one class
     const weeksWithActivity: string[] = [];
     const seen = new Set<string>();
     for (const b of bookings) {
-      const ws = startOfWeek(new Date(b.class.startsAt), { weekStartsOn: 1 });
-      const key = toDateKey(ws);
+      const civilKey = toDateKey(b.class.startsAt);
+      const key = weekStartKeyFromCivil(civilKey);
       if (!seen.has(key)) {
         seen.add(key);
         weeksWithActivity.push(key);
