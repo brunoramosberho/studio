@@ -138,9 +138,21 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const themePref = (cookieStore.get("studio-theme")?.value ?? "system") as ThemeMode;
 
+  // Branded splash icon: use the tenant's CDN icon when available so it
+  // appears instantly (no /api/icon round-trip). Fallback to the static
+  // /icon-192.png that ships with the app shell.
+  const splashIconUrl = b.appIconUrl || "/icon-192.png";
+
   return (
     <html lang={locale} className={fontVars} style={themeStyle} suppressHydrationWarning>
       <head>
+        {/* Preload the splash logo so it's painted on the very first frame. */}
+        <link
+          rel="preload"
+          as="image"
+          href={splashIconUrl}
+          fetchPriority="high"
+        />
         {/* No-flash theme script — resolves user preference before paint so
             the correct palette is applied on first render. Inlined to avoid
             any network round-trip. */}
@@ -154,7 +166,12 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <Providers initialTheme={themePref}>
             <InAppBrowserBanner />
-            <SplashScreen />
+            <SplashScreen
+              accent={b.colorAccent}
+              heroBg={b.colorHeroBg}
+              iconUrl={b.appIconUrl}
+              studioName={b.studioName}
+            />
             {children}
             <MobileNav />
             <WaiverGate />
