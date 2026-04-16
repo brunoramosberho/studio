@@ -56,31 +56,35 @@ export default function EmbedSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
       <div>
-        <h1 className="font-display text-2xl font-bold">{t("title")}</h1>
+        <h1 className="font-display text-xl font-bold sm:text-2xl">
+          {t("title")}
+        </h1>
         <p className="mt-1 text-sm text-muted">{t("subtitle")}</p>
       </div>
 
       {/* Recommended: script */}
-      <section className="space-y-4 rounded-xl border border-border/50 bg-card p-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-admin/10">
+      <section className="space-y-4 rounded-xl border border-border/50 bg-card p-4 sm:p-6">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-admin/10">
             <Code2 className="h-5 w-5 text-admin" />
           </div>
-          <div>
-            <h2 className="font-display text-lg font-bold">{t("scriptTitle")}</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-base font-bold sm:text-lg">
+              {t("scriptTitle")}
+            </h2>
             <p className="text-sm text-muted">{t("scriptDesc")}</p>
           </div>
         </div>
 
-        <pre className="overflow-x-auto rounded-lg border border-border/50 bg-surface/80 p-4 text-[12px] leading-relaxed text-foreground/90">
-          <code>{scriptSnippet}</code>
+        <pre className="max-w-full overflow-x-auto rounded-lg border border-border/50 bg-surface/80 p-3 text-[11px] leading-relaxed text-foreground/90 sm:p-4 sm:text-[12px]">
+          <code className="whitespace-pre">{scriptSnippet}</code>
         </pre>
 
         <Button
           onClick={() => copy(scriptSnippet, "script")}
-          className="gap-2 bg-admin hover:bg-admin/90"
+          className="w-full gap-2 bg-admin hover:bg-admin/90 sm:w-auto"
         >
           {copied === "script" ? (
             <>
@@ -95,7 +99,7 @@ export default function EmbedSettingsPage() {
           )}
         </Button>
 
-        <ul className="space-y-1.5 rounded-lg bg-surface/60 px-4 py-3 text-[13px] text-muted">
+        <ul className="space-y-1.5 rounded-lg bg-surface/60 px-3 py-3 text-[12px] text-muted sm:px-4 sm:text-[13px]">
           <li>• {t("bulletAutoResize")}</li>
           <li>• {t("bulletNoCookies")}</li>
           <li>• {t("bulletAnyDomain")}</li>
@@ -103,25 +107,27 @@ export default function EmbedSettingsPage() {
       </section>
 
       {/* Alternative: iframe */}
-      <section className="space-y-4 rounded-xl border border-border/50 bg-card p-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface">
+      <section className="space-y-4 rounded-xl border border-border/50 bg-card p-4 sm:p-6">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-surface">
             <Monitor className="h-5 w-5 text-muted" />
           </div>
-          <div>
-            <h2 className="font-display text-lg font-bold">{t("iframeTitle")}</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-base font-bold sm:text-lg">
+              {t("iframeTitle")}
+            </h2>
             <p className="text-sm text-muted">{t("iframeDesc")}</p>
           </div>
         </div>
 
-        <pre className="overflow-x-auto rounded-lg border border-border/50 bg-surface/80 p-4 text-[12px] leading-relaxed text-foreground/90">
-          <code>{iframeSnippet}</code>
+        <pre className="max-w-full overflow-x-auto rounded-lg border border-border/50 bg-surface/80 p-3 text-[11px] leading-relaxed text-foreground/90 sm:p-4 sm:text-[12px]">
+          <code className="whitespace-pre">{iframeSnippet}</code>
         </pre>
 
         <Button
           variant="outline"
           onClick={() => copy(iframeSnippet, "iframe")}
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
         >
           {copied === "iframe" ? (
             <>
@@ -138,13 +144,15 @@ export default function EmbedSettingsPage() {
       </section>
 
       {/* Preview */}
-      <section className="space-y-4 rounded-xl border border-border/50 bg-card p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-lg font-bold">{t("previewTitle")}</h2>
+      <section className="space-y-4 rounded-xl border border-border/50 bg-card p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="font-display text-base font-bold sm:text-lg">
+              {t("previewTitle")}
+            </h2>
             <p className="text-sm text-muted">{t("previewDesc")}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <a
               href={`${origin}/embed/schedule`}
               target="_blank"
@@ -168,7 +176,7 @@ export default function EmbedSettingsPage() {
             key={previewKey}
             src={`${origin}/embed/schedule`}
             title="Schedule preview"
-            className="block h-[720px] w-full border-0"
+            className="block h-[560px] w-full border-0 sm:h-[720px]"
           />
         </div>
       </section>
