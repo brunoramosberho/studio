@@ -1,54 +1,38 @@
 import { NextRequest } from "next/server";
 import { ImageResponse } from "next/og";
-import { getServerBranding } from "@/lib/branding.server";
 
-// Node.js runtime is required because getServerBranding() uses Prisma.
-// Edge runtime would silently fail and the route would return an error
-// instead of a PNG, which iOS interprets as "no splash" and falls back
-// to a flat white/black frame.
+// Node.js runtime keeps things predictable even though this route no
+// longer needs Prisma — Vercel's edge can occasionally misbehave with
+// ImageResponse and we prefer the more forgiving Node runtime here.
 export const runtime = "nodejs";
 
 /**
  * Dynamic Apple PWA splash screen generator.
  *
- * iOS requires an `apple-touch-startup-image` for every device size,
- * otherwise the native launch shows a flat black/white screen before the
- * web content mounts. Rather than pre-generating dozens of PNGs per
- * tenant, we render a branded splash on demand at the exact requested
- * dimensions. iOS caches the result, so it's only generated once per
- * device/tenant.
- *
- * Intentionally avoids `<img src={remoteUrl}>` inside `ImageResponse`:
- * Satori fetches the remote image during render, and any network hiccup
- * (slow CDN, CORS, timeout) causes the render to fail silently — which
- * then makes iOS fall back to a flat splash. We instead render the
- * studio initial on an accent-colored tile, which always succeeds.
+ * Pure rendering — does NOT resolve branding server-side. Colors and
+ * the initial letter are passed via query params so the route cannot
+ * fail due to DB issues, tenant lookup, or cold-start latency. iOS is
+ * unforgiving: if this route ever errors out, iOS falls back to a flat
+ * white launch frame.
  *
  * Query params:
- *   - w: pixel width of the splash (matches the device resolution)
- *   - h: pixel height of the splash
+ *   - w: pixel width (matches the device resolution)
+ *   - h: pixel height
+ *   - bg: background color (hex, URL-encoded #). Defaults to #18181B.
+ *   - a:  accent color for the glow + icon tile. Defaults to #FF5A2C.
+ *   - i:  initial letter rendered on the tile. Defaults to "·".
  */
-export async function GET(request: NextRequest) {
-  const rawW = parseInt(request.nextUrl.searchParams.get("w") || "1170", 10);
-  const rawH = parseInt(request.nextUrl.searchParams.get("h") || "2532", 10);
+export function GET(request: NextRequest) {
+  const params = request.nextUrl.searchParams;
 
-  // Clamp to reasonable PWA dimensions to avoid abuse.
+  const rawW = parseInt(params.get("w") || "1170", 10);
+  const rawH = parseInt(params.get("h") || "2532", 10);
   const width = Math.min(Math.max(rawW || 1170, 320), 3000);
   const height = Math.min(Math.max(rawH || 2532, 320), 3000);
 
-  // Resolve branding with a hard-coded safe fallback so the route never
-  // throws — iOS *must* get a PNG back to render a branded splash.
-  let heroBg = "#18181B";
-  let accent = "#FF5A2C";
-  let initial = "R";
-  try {
-    const b = await getServerBranding();
-    heroBg = b.colorHeroBg || heroBg;
-    accent = b.colorAccent || accent;
-    initial = (b.studioName?.charAt(0) || "R").toUpperCase();
-  } catch {
-    // fall through with defaults
-  }
+  const bg = sanitizeHex(params.get("bg")) ?? "#18181B";
+  const accent = sanitizeHex(params.get("a")) ?? "#FF5A2C";
+  const initial = (params.get("i") || "·").charAt(0).toUpperCase();
 
   const minEdge = Math.min(width, height);
   const iconSize = Math.round(minEdge * 0.28);
@@ -64,10 +48,7 @@ export async function GET(request: NextRequest) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          // Branded surface + soft accent glow. Using hex + alpha suffix
-          // (supported by Satori) for the radial highlight.
-          backgroundColor: heroBg,
-          backgroundImage: `radial-gradient(ellipse at 50% 42%, ${accent}40 0%, ${heroBg} 70%)`,
+          background: `radial-gradient(ellipse at 50% 42%, ${accent}40 0%, ${bg} 70%)`,
         }}
       >
         <div
@@ -98,4 +79,12 @@ export async function GET(request: NextRequest) {
       },
     },
   );
+}
+
+/** Accept only `#RRGGBB` (with or without the leading #), else return null. */
+function sanitizeHex(input: string | null): string | null {
+  if (!input) return null;
+  const raw = input.trim().replace(/^#/, "");
+  if (!/^[0-9a-fA-F]{6}$/.test(raw)) return null;
+  return `#${raw}`;
 }
