@@ -5,31 +5,27 @@ import { useEffect } from "react";
 interface AppleSplashGeneratorProps {
   /** Icon URL for the splash. Same-origin recommended to avoid CORS. */
   iconUrl: string;
-  /** Background color for the splash (CSS color string). */
-  bgColor: string;
+  /** Dark background color (used when system prefers dark). */
+  darkBg: string;
+  /** Light background color (used when system prefers light). */
+  lightBg: string;
 }
 
 /**
  * Generates iOS PWA splash screens client-side using Canvas.
  *
- * Instead of serving pre-generated PNGs from the server (which iOS can
- * fail to fetch/cache silently), this uses the Canvas API to render the
- * splash at the device's exact resolution, converts it to a data URL,
- * and injects `<link rel="apple-touch-startup-image">` tags into the
- * `<head>`. The data URL is self-contained — iOS doesn't need to fetch
- * anything extra when the user taps "Add to Home Screen".
- *
- * Only runs on iOS devices. Uses simple orientation media queries that
- * match ALL devices (no device-specific width/height/pixel-ratio).
+ * Renders a polished splash: system-adaptive background (dark/light
+ * based on prefers-color-scheme), the tenant icon with rounded corners
+ * and a subtle shadow, centered on the canvas.
  *
  * Based on https://github.com/avadhesh18/iosPWASplash
  */
 export function AppleSplashGenerator({
   iconUrl,
-  bgColor,
+  darkBg,
+  lightBg,
 }: AppleSplashGeneratorProps) {
   useEffect(() => {
-    // Only generate on iOS/iPadOS — other platforms use the manifest.
     if (!/iPad|iPhone|iPod/.test(navigator.userAgent)) return;
 
     const img = new Image();
@@ -41,47 +37,49 @@ export function AppleSplashGenerator({
       const sw = screen.width * pixelRatio;
       const sh = screen.height * pixelRatio;
 
-      // Scale icon relative to the pixel-ratio (original lib formula).
-      const iconW = img.width / (3 / pixelRatio);
-      const iconH = img.height / (3 / pixelRatio);
+      const isDark = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      ).matches;
+      const bg = isDark ? darkBg : lightBg;
 
-      // --- Portrait ---
-      const portrait = document.createElement("canvas");
-      portrait.width = sw;
-      portrait.height = sh;
-      const pCtx = portrait.getContext("2d")!;
-      pCtx.fillStyle = bgColor;
-      pCtx.fillRect(0, 0, sw, sh);
-      pCtx.drawImage(
-        img,
-        (sw - iconW) / 2,
-        (sh - iconH) / 2,
-        iconW,
-        iconH,
-      );
+      const iconSize = Math.round(Math.min(sw, sh) * 0.28);
+      const radius = Math.round(iconSize * 0.22);
 
-      // --- Landscape ---
-      const landscape = document.createElement("canvas");
-      landscape.width = sh;
-      landscape.height = sw;
-      const lCtx = landscape.getContext("2d")!;
-      lCtx.fillStyle = bgColor;
-      lCtx.fillRect(0, 0, sh, sw);
-      lCtx.drawImage(
-        img,
-        (sh - iconW) / 2,
-        (sw - iconH) / 2,
-        iconW,
-        iconH,
-      );
+      const drawSplash = (w: number, h: number): string => {
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d")!;
 
-      // Remove any server-side startup-image links so iOS doesn't
-      // prefer a stale/failing one over our fresh data URLs.
+        // Background
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, w, h);
+
+        const x = (w - iconSize) / 2;
+        const y = (h - iconSize) / 2;
+
+        // Shadow behind the icon
+        ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+        ctx.shadowBlur = 40 * pixelRatio;
+        ctx.shadowOffsetY = 12 * pixelRatio;
+
+        // Rounded rect clip path
+        ctx.beginPath();
+        ctx.roundRect(x, y, iconSize, iconSize, radius);
+        ctx.closePath();
+        ctx.clip();
+
+        // Draw icon inside the rounded clip
+        ctx.drawImage(img, x, y, iconSize, iconSize);
+
+        return canvas.toDataURL("image/png");
+      };
+
+      // Remove any server-side startup-image links.
       document
         .querySelectorAll('link[rel="apple-touch-startup-image"]')
         .forEach((el) => el.remove());
 
-      // Inject the data-URL links.
       const addLink = (dataUrl: string, media: string) => {
         const link = document.createElement("link");
         link.rel = "apple-touch-startup-image";
@@ -90,10 +88,10 @@ export function AppleSplashGenerator({
         document.head.appendChild(link);
       };
 
-      addLink(portrait.toDataURL("image/png"), "screen and (orientation: portrait)");
-      addLink(landscape.toDataURL("image/png"), "screen and (orientation: landscape)");
+      addLink(drawSplash(sw, sh), "screen and (orientation: portrait)");
+      addLink(drawSplash(sh, sw), "screen and (orientation: landscape)");
     };
-  }, [iconUrl, bgColor]);
+  }, [iconUrl, darkBg, lightBg]);
 
   return null;
 }

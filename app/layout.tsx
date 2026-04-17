@@ -160,7 +160,8 @@ export default async function RootLayout({
             {isClientPortal && (
               <AppleSplashGenerator
                 iconUrl="/api/icon?size=512"
-                bgColor={b.colorHeroBg}
+                darkBg={b.colorHeroBg}
+                lightBg={b.colorBg}
               />
             )}
             <InAppBrowserBanner />
