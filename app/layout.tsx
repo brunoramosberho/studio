@@ -144,6 +144,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={fontVars} style={themeStyle} suppressHydrationWarning>
       <head>
+        <meta name="apple-touch-fullscreen" content="yes" />
         {/* No-flash theme script — resolves user preference before paint so
             the correct palette is applied on first render. Inlined to avoid
             any network round-trip. */}
@@ -155,7 +156,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <NextIntlClientProvider messages={messages}>
-          <Providers initialTheme={themePref}>
+          <Providers initialTheme={themePref} initialBranding={b}>
             {isClientPortal && (
               <AppleSplashGenerator
                 iconUrl="/api/icon?size=512"

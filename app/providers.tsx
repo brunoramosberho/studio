@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import { Toaster } from "sonner";
 import { useState } from "react";
 import { BrandingProvider } from "@/components/branding-provider";
+import type { StudioBranding } from "@/lib/branding";
 import { TenantProvider } from "@/components/tenant-provider";
 import {
   ThemeProvider,
@@ -27,9 +28,11 @@ function ThemedToaster() {
 export function Providers({
   children,
   initialTheme,
+  initialBranding,
 }: {
   children: React.ReactNode;
   initialTheme?: ThemeMode;
+  initialBranding?: StudioBranding;
 }) {
   const [queryClient] = useState(
     () =>
@@ -47,7 +50,7 @@ export function Providers({
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider initialTheme={initialTheme}>
-          <BrandingProvider>
+          <BrandingProvider initial={initialBranding}>
             <TenantProvider>
               {children}
               <ThemedToaster />
