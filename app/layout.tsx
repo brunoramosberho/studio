@@ -45,7 +45,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { getServerBranding } from "@/lib/branding.server";
 import { getFontPairing } from "@/lib/branding";
-import { buildAppleSplashStartupImages } from "@/lib/pwa/splash-meta";
+import { AppleSplashGenerator } from "@/components/shared/apple-splash-generator";
 import type { ThemeMode } from "@/components/theme-provider";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -57,18 +57,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = host.includes("localhost") ? "http" : "https";
   const baseUrl = `${protocol}://${host}`;
 
-  // Branded PWA splash screens (for iOS apple-touch-startup-image) are
-  // only applied to the client portal. Admin/coach PWAs keep their
-  // original neutral launch behaviour.
-  const portal = h.get("x-auth-portal") ?? "client";
-  const startupImage =
-    portal === "client"
-      ? buildAppleSplashStartupImages({
-          bg: s.colorHeroBg,
-          accent: s.colorAccent,
-          studioName: s.studioName,
-        })
-      : [];
+  // Apple splash screens are now generated client-side via Canvas
+  // (AppleSplashGenerator) — see RootLayout below. No server-side
+  // startupImage entries needed.
 
   return {
     metadataBase: new URL(baseUrl),
@@ -81,9 +72,6 @@ export async function generateMetadata(): Promise<Metadata> {
         { url: "/api/icon?size=32", sizes: "32x32", type: "image/png" },
         { url: "/api/icon?size=192", sizes: "192x192", type: "image/png" },
       ],
-      // Always use the dynamic /apple-icon route — it renders the tenant's
-      // icon server-side (see app/apple-icon.tsx) and is guaranteed to
-      // resolve regardless of whether pre-generated assets exist on disk.
       apple: [
         { url: "/apple-icon", sizes: "180x180", type: "image/png" },
       ],
@@ -92,7 +80,6 @@ export async function generateMetadata(): Promise<Metadata> {
       capable: true,
       statusBarStyle: "black-translucent",
       title: fullName,
-      startupImage,
     },
     // Override apple-mobile-web-app-capable: Next.js 15+ incorrectly
     // renders "mobile-web-app-capable" which iOS Safari ignores.
@@ -150,6 +137,10 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const themePref = (cookieStore.get("studio-theme")?.value ?? "system") as ThemeMode;
 
+  // Detect client portal for the iOS splash generator.
+  const hdrs = await headers();
+  const isClientPortal = (hdrs.get("x-auth-portal") ?? "client") === "client";
+
   return (
     <html lang={locale} className={fontVars} style={themeStyle} suppressHydrationWarning>
       <head>
@@ -166,6 +157,12 @@ export default async function RootLayout({
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <NextIntlClientProvider messages={messages}>
           <Providers initialTheme={themePref} initialBranding={b}>
+            {isClientPortal && (
+              <AppleSplashGenerator
+                iconUrl="/api/icon?size=512"
+                bgColor={b.colorHeroBg}
+              />
+            )}
             <InAppBrowserBanner />
             <SplashScreen />
             {children}
