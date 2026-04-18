@@ -140,7 +140,9 @@ export function InstallPrompt() {
                     <Ellipsis className="h-4 w-4" />
                   </div>
                   <p className="text-[13px] text-foreground">
-                    {t("tapMenu")}{" "}
+                    {t.rich("tapMenu", {
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                    })}{" "}
                     <span className="text-muted">{t("bottomRight")}</span>
                   </p>
                 </div>
@@ -149,7 +151,9 @@ export function InstallPrompt() {
                     <Share className="h-3.5 w-3.5" />
                   </div>
                   <p className="text-[13px] text-foreground">
-                    {t("tapShare")}
+                    {t.rich("tapShare", {
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                    })}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 border-t border-border/40 pt-2.5">
@@ -157,7 +161,9 @@ export function InstallPrompt() {
                     <Plus className="h-3.5 w-3.5" />
                   </div>
                   <p className="text-[13px] text-foreground">
-                    {t("tapAddToHome")}{" "}
+                    {t.rich("tapAddToHome", {
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                    })}{" "}
                     <span className="text-muted">
                       <ChevronDown className="mb-0.5 inline h-3 w-3" /> {t("scrollDown")}
                     </span>
