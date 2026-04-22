@@ -47,6 +47,13 @@ export interface ByPackage {
   avgPerAttributionCents: number;
 }
 
+export interface ByDisciplinePackage {
+  disciplineId: string;
+  disciplineName: string;
+  revenueCents: number;
+  packages: ByPackage[];
+}
+
 export interface ByTimeSlot {
   dayOfWeek: number; // 0 = Sunday
   hourOfDay: number;
@@ -71,6 +78,7 @@ export interface RevenueReport {
   byDiscipline: ByDiscipline[];
   byCoach: ByCoach[];
   byPackage: ByPackage[];
+  byDisciplinePackage: ByDisciplinePackage[];
   byTimeslot: ByTimeSlot[];
   heatmap: HeatmapCell[];
 }
@@ -249,6 +257,24 @@ export async function getMonthlyRevenueReport(
       revenueCents: number;
     }
   >();
+  // Nested: disciplineId → (packageKey → package aggregate). Feeds the
+  // expandable "Por disciplina" drill-down.
+  const byDisciplinePackageMap = new Map<
+    string,
+    {
+      disciplineName: string;
+      packages: Map<
+        string,
+        {
+          packageId: string | null;
+          packageName: string;
+          packageType: string | null;
+          attributions: number;
+          revenueCents: number;
+        }
+      >;
+    }
+  >();
   const byTimeslotMap = new Map<string, ByTimeSlot>();
   const heatmapMap = new Map<string, HeatmapCell>();
 
@@ -285,6 +311,24 @@ export async function getMonthlyRevenueReport(
       entry.attributions++;
       entry.revenueCents += row.amountCents;
       byPackageMap.set(key, entry);
+
+      if (row.classTypeId && row.classTypeName) {
+        const disc = byDisciplinePackageMap.get(row.classTypeId) ?? {
+          disciplineName: row.classTypeName,
+          packages: new Map(),
+        };
+        const pkgEntry = disc.packages.get(key) ?? {
+          packageId: row.packageId,
+          packageName: row.packageName,
+          packageType: row.packageType,
+          attributions: 0,
+          revenueCents: 0,
+        };
+        pkgEntry.attributions++;
+        pkgEntry.revenueCents += row.amountCents;
+        disc.packages.set(key, pkgEntry);
+        byDisciplinePackageMap.set(row.classTypeId, disc);
+      }
     }
     if (row.scheduledAt) {
       const dow = row.scheduledAt.getDay();
@@ -347,6 +391,31 @@ export async function getMonthlyRevenueReport(
     }))
     .sort((a, b) => b.revenueCents - a.revenueCents);
 
+  const byDisciplinePackage: ByDisciplinePackage[] = Array.from(
+    byDisciplinePackageMap.entries(),
+  )
+    .map(([disciplineId, v]) => {
+      const packages = Array.from(v.packages.values())
+        .map((p) => ({
+          packageId: p.packageId,
+          packageName: p.packageName,
+          packageType: p.packageType,
+          attributions: p.attributions,
+          revenueCents: p.revenueCents,
+          avgPerAttributionCents:
+            p.attributions > 0 ? Math.round(p.revenueCents / p.attributions) : 0,
+        }))
+        .sort((a, b) => b.revenueCents - a.revenueCents);
+      const revenueCents = packages.reduce((s, p) => s + p.revenueCents, 0);
+      return {
+        disciplineId,
+        disciplineName: v.disciplineName,
+        revenueCents,
+        packages,
+      };
+    })
+    .sort((a, b) => b.revenueCents - a.revenueCents);
+
   const byTimeslot = Array.from(byTimeslotMap.values()).sort(
     (a, b) => b.revenueCents - a.revenueCents,
   );
@@ -368,6 +437,7 @@ export async function getMonthlyRevenueReport(
     byDiscipline,
     byCoach,
     byPackage,
+    byDisciplinePackage,
     byTimeslot,
     heatmap,
   };
