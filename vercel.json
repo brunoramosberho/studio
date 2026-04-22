@@ -7,6 +7,18 @@
     {
       "path": "/api/cron/class-reminders",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/revenue-accrual-daily",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/revenue-pack-expiration",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/revenue-monthly-close",
+      "schedule": "0 * * * *"
     }
   ]
 }

@@ -11,153 +11,156 @@ datasource db {
 // ── Multi-tenant ──
 
 model Tenant {
-  id              String   @id @default(cuid())
-  slug            String   @unique
-  name            String
-  isActive        Boolean  @default(true)
+  id       String  @id @default(cuid())
+  slug     String  @unique
+  name     String
+  isActive Boolean @default(true)
 
   // Branding (migrated from StudioSettings)
-  tagline         String   @default("Pilates & Wellness")
-  slogan          String   @default("Muévete. Respira. Floréce.")
-  metaDescription String   @default("Tu espacio de Pilates y bienestar.")
-  logoUrl         String?
-  appIconUrl      String?
-  fontPairing     String   @default("jakarta-dmsans")
-  colorBg         String   @default("#FFFFFF")
-  colorFg         String   @default("#18181B")
-  colorSurface    String   @default("#FAFAFA")
-  colorAccent     String   @default("#FF5A2C")
-  colorAccentSoft String   @default("#FFF1EE")
-  colorMuted      String   @default("#71717A")
-  colorBorder     String   @default("#E4E4E7")
-  colorHeroBg     String   @default("#18181B")
-  colorCoach      String   @default("#15803D")
-  colorAdmin      String   @default("#1E40AF")
-  coachIconSvg    String?  @db.Text
-  landingUrl      String?
-  communityHeadline String @default("Tu comunidad en movimiento")
+  tagline           String  @default("Pilates & Wellness")
+  slogan            String  @default("Muévete. Respira. Floréce.")
+  metaDescription   String  @default("Tu espacio de Pilates y bienestar.")
+  logoUrl           String?
+  appIconUrl        String?
+  fontPairing       String  @default("jakarta-dmsans")
+  colorBg           String  @default("#FFFFFF")
+  colorFg           String  @default("#18181B")
+  colorSurface      String  @default("#FAFAFA")
+  colorAccent       String  @default("#FF5A2C")
+  colorAccentSoft   String  @default("#FFF1EE")
+  colorMuted        String  @default("#71717A")
+  colorBorder       String  @default("#E4E4E7")
+  colorHeroBg       String  @default("#18181B")
+  colorCoach        String  @default("#15803D")
+  colorAdmin        String  @default("#1E40AF")
+  coachIconSvg      String? @db.Text
+  landingUrl        String?
+  communityHeadline String  @default("Tu comunidad en movimiento")
 
-  stripeCustomerId      String?   // cus_xxx — Tenant as customer of Magic Payments (SaaS fee)
-  stripeAccountId       String?   // acct_xxx — Connected Account for receiving student payments
-  stripeAccountStatus   String?   // 'pending' | 'active' | 'restricted'
-  stripeSubscriptionId  String?   // sub_xxx — Active SaaS subscription
-  stripePlanId          String?   // price_xxx — Contracted plan
-  subscriptionStatus    String?   // 'active' | 'past_due' | 'canceled' | 'trialing'
+  stripeCustomerId      String? // cus_xxx — Tenant as customer of Magic Payments (SaaS fee)
+  stripeAccountId       String? // acct_xxx — Connected Account for receiving student payments
+  stripeAccountStatus   String? // 'pending' | 'active' | 'restricted'
+  stripeSubscriptionId  String? // sub_xxx — Active SaaS subscription
+  stripePlanId          String? // price_xxx — Contracted plan
+  subscriptionStatus    String? // 'active' | 'past_due' | 'canceled' | 'trialing'
   trialEndsAt           DateTime?
   applicationFeePercent Float     @default(0) // % fee Magic charges per transaction
 
-  zoneRedDays     Int      @default(14)
-  zoneYellowDays  Int      @default(30)
+  zoneRedDays    Int @default(14)
+  zoneYellowDays Int @default(30)
 
-  studioOpenTime  String   @default("07:00")
-  studioCloseTime String   @default("21:00")
-  operatingDays   Int[]    @default([0, 1, 2, 3, 4])
+  studioOpenTime  String @default("07:00")
+  studioCloseTime String @default("21:00")
+  operatingDays   Int[]  @default([0, 1, 2, 3, 4])
 
-  notifyEmailOnRequest       Boolean @default(true)
-  notifyPushOnRequest        Boolean @default(true)
-  notifyGapDetected          Boolean @default(true)
-  notifyWeeklySummary        Boolean @default(false)
-  notifyAutoRejectTimeout    Boolean @default(false)
+  notifyEmailOnRequest    Boolean @default(true)
+  notifyPushOnRequest     Boolean @default(true)
+  notifyGapDetected       Boolean @default(true)
+  notifyWeeklySummary     Boolean @default(false)
+  notifyAutoRejectTimeout Boolean @default(false)
 
-  locale          String   @default("es")  // "en" | "es"
+  locale String @default("es") // "en" | "es"
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  memberships       Membership[]
-  studios           Studio[]
-  classTypes        ClassType[]
-  coachProfiles     CoachProfile[]
-  classes           Class[]
-  bookings          Booking[]
-  waitlists         Waitlist[]
-  spotNotifyMe      ClassNotifyMe[]
-  packages          Package[]
-  userPackages      UserPackage[]
-  rooms             Room[]
-  feedEvents        FeedEvent[]
-  notifications     Notification[]
-  achievements       Achievement[]
-  memberProgress     MemberProgress[]
-  memberRewards      MemberReward[]
-  memberAchievements MemberAchievement[]
-  blockedSpots      BlockedSpot[]
-  friendships       Friendship[]
-  pushSubscriptions PushSubscription[]
-  productCategories ProductCategory[]
-  products          Product[]
-  songRequests      ClassSongRequest[]
-  coachPayRates     CoachPayRate[]
+  memberships             Membership[]
+  studios                 Studio[]
+  classTypes              ClassType[]
+  coachProfiles           CoachProfile[]
+  classes                 Class[]
+  bookings                Booking[]
+  waitlists               Waitlist[]
+  spotNotifyMe            ClassNotifyMe[]
+  packages                Package[]
+  userPackages            UserPackage[]
+  rooms                   Room[]
+  feedEvents              FeedEvent[]
+  notifications           Notification[]
+  achievements            Achievement[]
+  memberProgress          MemberProgress[]
+  memberRewards           MemberReward[]
+  memberAchievements      MemberAchievement[]
+  blockedSpots            BlockedSpot[]
+  friendships             Friendship[]
+  pushSubscriptions       PushSubscription[]
+  productCategories       ProductCategory[]
+  products                Product[]
+  songRequests            ClassSongRequest[]
+  coachPayRates           CoachPayRate[]
   coachAvailabilityBlocks CoachAvailabilityBlock[]
-  checkIns              CheckIn[]
+  checkIns                CheckIn[]
 
   instagramIntegration InstagramIntegration?
 
-  platformConfigs       StudioPlatformConfig[]
-  platformQuotas        SchedulePlatformQuota[]
-  platformBookings      PlatformBooking[]
-  platformAlerts        PlatformAlert[]
+  platformConfigs  StudioPlatformConfig[]
+  platformQuotas   SchedulePlatformQuota[]
+  platformBookings PlatformBooking[]
+  platformAlerts   PlatformAlert[]
 
-  waivers               Waiver[]
-  waiverSignatures      WaiverSignature[]
+  waivers          Waiver[]
+  waiverSignatures WaiverSignature[]
 
-  analyticsConfig       TenantAnalyticsConfig?
-  linkClicks            LinkClick[]
-  linkConversions       LinkConversion[]
+  analyticsConfig TenantAnalyticsConfig?
+  linkClicks      LinkClick[]
+  linkConversions LinkConversion[]
 
-  referralConfig        ReferralConfig?
-  referralRewards       ReferralReward[]
+  referralConfig  ReferralConfig?
+  referralRewards ReferralReward[]
 
-  gamificationConfig    TenantGamificationConfig?
+  gamificationConfig TenantGamificationConfig?
 
-  conversionConfig      MembershipConversionConfig?
-  nudgeEvents           NudgeEvent[]
-  introOfferClaims      IntroOfferClaim[]
+  conversionConfig MembershipConversionConfig?
+  nudgeEvents      NudgeEvent[]
+  introOfferClaims IntroOfferClaim[]
 
   // Cancellation & no-show policies
-  cancellationWindowHours Int      @default(12)
-  noShowPenaltyEnabled    Boolean  @default(false)
-  noShowPenaltyType       String   @default("CREDIT_LOSS") // CREDIT_LOSS | FEE
-  noShowPenaltyAmount     Float?   // Fee amount (e.g., 5.00 EUR) when type = FEE
+  cancellationWindowHours Int     @default(12)
+  noShowPenaltyEnabled    Boolean @default(false)
+  noShowPenaltyType       String  @default("CREDIT_LOSS") // CREDIT_LOSS | FEE
+  noShowPenaltyAmount     Float? // Fee amount (e.g., 5.00 EUR) when type = FEE
 
-  taxRate               Float     @default(0.21)
-  tpvFeePercent         Float?
-  tpvFeeFixed           Float?
-  tpvSettlementDays     Int?
+  taxRate           Float  @default(0.21)
+  tpvFeePercent     Float?
+  tpvFeeFixed       Float?
+  tpvSettlementDays Int?
 
-  stripePayments        StripePayment[]
-  stripeCustomers       StripeCustomer[]
-  memberSubscriptions   MemberSubscription[]
-  posTransactions       PosTransaction[]
-  classRatings          ClassRating[]
-  ratingReasons         RatingReason[]
+  stripePayments      StripePayment[]
+  stripeCustomers     StripeCustomer[]
+  memberSubscriptions MemberSubscription[]
+  posTransactions     PosTransaction[]
+  classRatings        ClassRating[]
+  ratingReasons       RatingReason[]
 
-  highlightsEnabled     Boolean       @default(false)
-  highlights            Highlight[]
+  highlightsEnabled Boolean     @default(false)
+  highlights        Highlight[]
 
-  feedShowDisciplines      Boolean @default(true)
-  feedDisciplineThreshold  Int?    @default(5)
+  feedShowDisciplines     Boolean @default(true)
+  feedDisciplineThreshold Int?    @default(5)
 
-  discountCodes         DiscountCode[]
-  giftPackages          GiftPackage[]
-  sparkFeatureRequests  SparkFeatureRequest[]
+  discountCodes        DiscountCode[]
+  giftPackages         GiftPackage[]
+  sparkFeatureRequests SparkFeatureRequest[]
+
+  entitlements  Entitlement[]
+  revenueEvents RevenueEvent[]
 }
 
 model InstagramIntegration {
-  id          String   @id @default(cuid())
-  tenantId    String   @unique
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  pageId      String
-  igUserId    String
-  igUsername  String?
+  pageId     String
+  igUserId   String
+  igUsername String?
 
-  accessToken String   @db.Text
+  accessToken String    @db.Text
   tokenType   String?
   expiresAt   DateTime?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
   @@index([igUserId])
@@ -173,15 +176,15 @@ enum MemberLifecycleStage {
 }
 
 model Membership {
-  id              String    @id @default(cuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenantId        String
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  role            Role      @default(CLIENT)
-  pwaInstalledAt  DateTime?
-  lastSeenAt      DateTime?
-  createdAt       DateTime  @default(now())
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role           Role      @default(CLIENT)
+  pwaInstalledAt DateTime?
+  lastSeenAt     DateTime?
+  createdAt      DateTime  @default(now())
 
   lifecycleStage     MemberLifecycleStage @default(lead)
   lifecycleUpdatedAt DateTime?
@@ -190,7 +193,7 @@ model Membership {
   firstAttendanceAt  DateTime?
   becameMemberAt     DateTime?
 
-  referralCode         String?      @unique
+  referralCode           String?      @unique
   referredByMembershipId String?
   referredByMembership   Membership?  @relation("MemberReferrals", fields: [referredByMembershipId], references: [id])
   referrals              Membership[] @relation("MemberReferrals")
@@ -204,21 +207,21 @@ model Membership {
 // ── Referrals ──
 
 model ReferralConfig {
-  id          String  @id @default(cuid())
-  tenantId    String  @unique
-  isEnabled   Boolean @default(true)
+  id        String  @id @default(cuid())
+  tenantId  String  @unique
+  isEnabled Boolean @default(true)
 
-  triggerStage  MemberLifecycleStage @default(attended)
+  triggerStage MemberLifecycleStage @default(attended)
 
-  referrerRewardType    ReferralRewardType @default(manual)
-  referrerRewardValue   Float?
-  referrerRewardText    String?
-  referrerRewardWhen    String?
+  referrerRewardType  ReferralRewardType @default(manual)
+  referrerRewardValue Float?
+  referrerRewardText  String?
+  referrerRewardWhen  String?
 
-  refereeRewardType     ReferralRewardType @default(manual)
-  refereeRewardValue    Float?
-  refereeRewardText     String?
-  refereeRewardWhen     String?
+  refereeRewardType  ReferralRewardType @default(manual)
+  refereeRewardValue Float?
+  refereeRewardText  String?
+  refereeRewardWhen  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -238,7 +241,7 @@ model ReferralReward {
   tenantId     String
   membershipId String
   referralId   String
-  type         String             // 'referrer' | 'referee'
+  type         String // 'referrer' | 'referee'
   rewardType   ReferralRewardType
   rewardValue  Float?
   rewardText   String?
@@ -320,49 +323,50 @@ model User {
   country       Country?  @relation(fields: [countryId], references: [id])
   cityId        String?
   city          City?     @relation(fields: [cityId], references: [id])
-  gender        String?   // "male" | "female" | "other" | null — AI-guessed on signup, editable by user
+  gender        String? // "male" | "female" | "other" | null — AI-guessed on signup, editable by user
   instagramUser String?
   stravaUser    String?
-  locale        String?   // null = inherit from tenant
+  locale        String? // null = inherit from tenant
   createdAt     DateTime  @default(now())
 
-  memberships  Membership[]
-  packages     UserPackage[]
-  bookings     Booking[]
+  memberships   Membership[]
+  packages      UserPackage[]
+  bookings      Booking[]
   coachProfiles CoachProfile[]
-  accounts     Account[]
-  sessions     Session[]
-  waitlists    Waitlist[]
-  spotNotifyMe ClassNotifyMe[]
+  accounts      Account[]
+  sessions      Session[]
+  waitlists     Waitlist[]
+  spotNotifyMe  ClassNotifyMe[]
 
-  feedEvents           FeedEvent[]      @relation("FeedEventAuthor")
-  likes                Like[]           @relation("UserLikes")
-  comments             Comment[]        @relation("UserComments")
-  photos               Photo[]          @relation("UserPhotos")
-  memberAchievements   MemberAchievement[] @relation("MemberAchievements")
-  memberProgressRows   MemberProgress[]    @relation("MemberProgressUser")
-  memberRewards        MemberReward[]      @relation("MemberRewardsUser")
-  notifications        Notification[]   @relation("UserNotifications")
-  notificationsActed   Notification[]   @relation("NotificationActor")
-  friendshipsRequested Friendship[]     @relation("FriendshipRequester")
-  friendshipsReceived  Friendship[]     @relation("FriendshipAddressee")
-  favoriteSongs        FavoriteSong[]   @relation("UserFavoriteSongs")
-  songRequests         ClassSongRequest[] @relation("UserSongRequests")
-  blockedSpots         BlockedSpot[]      @relation("UserBlockedSpots")
-  pushSubscriptions    PushSubscription[] @relation("UserPushSubscriptions")
-  wearableConnections  UserWearableConnection[] @relation("UserWearableConnections")
-  coachAvailabilityBlocks CoachAvailabilityBlock[] @relation("CoachAvailabilityBlocks")
-  memberCheckIns          CheckIn[]                @relation("MemberCheckIns")
-  staffCheckIns           CheckIn[]                @relation("StaffCheckIns")
-  waiverSignatures        WaiverSignature[]        @relation("MemberWaiverSignatures")
-  nudgeEvents             NudgeEvent[]             @relation("UserNudgeEvents")
-  introOfferClaims        IntroOfferClaim[]        @relation("UserIntroOfferClaims")
-  stripeCustomerRecords   StripeCustomer[]         @relation("UserStripeCustomers")
-  stripePayments          StripePayment[]          @relation("UserStripePayments")
-  memberSubscriptions     MemberSubscription[]
-  posTransactionsProcessed PosTransaction[]        @relation("PosProcessedBy")
-  posTransactionsMember    PosTransaction[]        @relation("PosMember")
-  classRatings             ClassRating[]           @relation("UserClassRatings")
+  feedEvents               FeedEvent[]              @relation("FeedEventAuthor")
+  likes                    Like[]                   @relation("UserLikes")
+  comments                 Comment[]                @relation("UserComments")
+  photos                   Photo[]                  @relation("UserPhotos")
+  memberAchievements       MemberAchievement[]      @relation("MemberAchievements")
+  memberProgressRows       MemberProgress[]         @relation("MemberProgressUser")
+  memberRewards            MemberReward[]           @relation("MemberRewardsUser")
+  notifications            Notification[]           @relation("UserNotifications")
+  notificationsActed       Notification[]           @relation("NotificationActor")
+  friendshipsRequested     Friendship[]             @relation("FriendshipRequester")
+  friendshipsReceived      Friendship[]             @relation("FriendshipAddressee")
+  favoriteSongs            FavoriteSong[]           @relation("UserFavoriteSongs")
+  songRequests             ClassSongRequest[]       @relation("UserSongRequests")
+  blockedSpots             BlockedSpot[]            @relation("UserBlockedSpots")
+  pushSubscriptions        PushSubscription[]       @relation("UserPushSubscriptions")
+  wearableConnections      UserWearableConnection[] @relation("UserWearableConnections")
+  coachAvailabilityBlocks  CoachAvailabilityBlock[] @relation("CoachAvailabilityBlocks")
+  memberCheckIns           CheckIn[]                @relation("MemberCheckIns")
+  staffCheckIns            CheckIn[]                @relation("StaffCheckIns")
+  waiverSignatures         WaiverSignature[]        @relation("MemberWaiverSignatures")
+  nudgeEvents              NudgeEvent[]             @relation("UserNudgeEvents")
+  introOfferClaims         IntroOfferClaim[]        @relation("UserIntroOfferClaims")
+  stripeCustomerRecords    StripeCustomer[]         @relation("UserStripeCustomers")
+  stripePayments           StripePayment[]          @relation("UserStripePayments")
+  memberSubscriptions      MemberSubscription[]
+  posTransactionsProcessed PosTransaction[]         @relation("PosProcessedBy")
+  posTransactionsMember    PosTransaction[]         @relation("PosMember")
+  classRatings             ClassRating[]            @relation("UserClassRatings")
+  entitlements             Entitlement[]
 
   @@index([countryId])
   @@index([cityId])
@@ -392,16 +396,16 @@ enum Role {
 // ── Studio domain models (tenant-scoped) ──
 
 model CoachProfile {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   name        String
   userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant         @relation(fields: [tenantId], references: [id])
   bio         String?
   specialties String[]
   photoUrl    String?
-  color       String   @default("#C9A96E")
+  color       String         @default("#C9A96E")
   classes     Class[]
   payRates    CoachPayRate[]
 
@@ -417,26 +421,26 @@ enum CoachPayRateType {
 }
 
 model CoachPayRate {
-  id                String           @id @default(cuid())
-  coachProfileId    String
-  coachProfile      CoachProfile     @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
-  tenantId          String
-  tenant            Tenant           @relation(fields: [tenantId], references: [id])
-  type              CoachPayRateType
-  amount            Float
-  currency          String           @default("MXN")
-  classTypeId       String?
-  classType         ClassType?       @relation(fields: [classTypeId], references: [id])
-  occupancyTiers    Json?
-  bonusMultiplier   Float            @default(1)
-  bonusDays         Json?
-  bonusTags         String[]         @default([])
-  isActive          Boolean          @default(true)
-  effectiveFrom     DateTime         @default(now())
-  effectiveTo       DateTime?
-  notes             String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  coachProfileId  String
+  coachProfile    CoachProfile     @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  tenantId        String
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  type            CoachPayRateType
+  amount          Float
+  currency        String           @default("MXN")
+  classTypeId     String?
+  classType       ClassType?       @relation(fields: [classTypeId], references: [id])
+  occupancyTiers  Json?
+  bonusMultiplier Float            @default(1)
+  bonusDays       Json?
+  bonusTags       String[]         @default([])
+  isActive        Boolean          @default(true)
+  effectiveFrom   DateTime         @default(now())
+  effectiveTo     DateTime?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([coachProfileId])
   @@index([tenantId])
@@ -454,15 +458,21 @@ model ClassType {
   mediaUrl    String?
   tags        String[] @default([])
 
-  showInFeed  Boolean @default(true)
+  showInFeed Boolean @default(true)
 
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  classes     Class[]
-  rooms         Room[]   @relation("RoomClassTypes")
-  packages      Package[] @relation("PackageClassTypes")
-  coachPayRates CoachPayRate[]
-  ratingReasons RatingReason[]
+  // Revenue recognition: weight for proportional allocation from unlimited
+  // subscriptions, and drop-in reference price used as the per-booking cap.
+  // Formula: weight = dropInPriceCents / baseDropInPriceCents.
+  revenueWeight    Decimal @default(1.0) @db.Decimal(4, 2)
+  dropInPriceCents Int?
+
+  tenantId                 String
+  tenant                   Tenant                    @relation(fields: [tenantId], references: [id])
+  classes                  Class[]
+  rooms                    Room[]                    @relation("RoomClassTypes")
+  packages                 Package[]                 @relation("PackageClassTypes")
+  coachPayRates            CoachPayRate[]
+  ratingReasons            RatingReason[]
   packageCreditAllocations PackageCreditAllocation[]
   userPackageCreditUsages  UserPackageCreditUsage[]
 
@@ -477,36 +487,38 @@ enum Level {
 }
 
 model Class {
-  id          String      @id @default(cuid())
-  classTypeId String
-  classType   ClassType   @relation(fields: [classTypeId], references: [id])
-  coachId     String
-  coach       CoachProfile @relation(fields: [coachId], references: [id])
-  roomId      String
-  room        Room         @relation(fields: [roomId], references: [id])
-  tenantId    String
-  tenant      Tenant       @relation(fields: [tenantId], references: [id])
-  startsAt    DateTime
-  endsAt      DateTime
-  status      ClassStatus @default(SCHEDULED)
-  isRecurring Boolean     @default(false)
-  recurringId String?
-  notes       String?
-  tag         String?
-  bookings             Booking[]
-  waitlist             Waitlist[]
-  spotNotifyMe         ClassNotifyMe[]
-  blockedSpots         BlockedSpot[]
-  songRequests         ClassSongRequest[]
-  songRequestsEnabled  Boolean   @default(true)
-  songRequestCriteria  String[]  @default(["ALL"])
-  playlistTracks       ClassPlaylistTrack[]
-  blockingNotes        String?
-  checkIns             CheckIn[]
-  platformQuotas       SchedulePlatformQuota[]
-  platformBookings     PlatformBooking[]
-  ratings              ClassRating[]
-  ratingEmailSent      Boolean   @default(false)
+  id                  String                  @id @default(cuid())
+  classTypeId         String
+  classType           ClassType               @relation(fields: [classTypeId], references: [id])
+  coachId             String
+  coach               CoachProfile            @relation(fields: [coachId], references: [id])
+  roomId              String
+  room                Room                    @relation(fields: [roomId], references: [id])
+  tenantId            String
+  tenant              Tenant                  @relation(fields: [tenantId], references: [id])
+  startsAt            DateTime
+  endsAt              DateTime
+  status              ClassStatus             @default(SCHEDULED)
+  isRecurring         Boolean                 @default(false)
+  recurringId         String?
+  notes               String?
+  tag                 String?
+  bookings            Booking[]
+  waitlist            Waitlist[]
+  spotNotifyMe        ClassNotifyMe[]
+  blockedSpots        BlockedSpot[]
+  songRequests        ClassSongRequest[]
+  songRequestsEnabled Boolean                 @default(true)
+  songRequestCriteria String[]                @default(["ALL"])
+  playlistTracks      ClassPlaylistTrack[]
+  blockingNotes       String?
+  checkIns            CheckIn[]
+  platformQuotas      SchedulePlatformQuota[]
+  platformBookings    PlatformBooking[]
+  ratings             ClassRating[]
+  ratingEmailSent     Boolean                 @default(false)
+  entitlements        Entitlement[]
+  revenueEvents       RevenueEvent[]
 
   @@index([startsAt])
   @@index([classTypeId])
@@ -558,18 +570,18 @@ model ClassPlaylistTrack {
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  classId     String
-  class       Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
-  userId      String?
-  user        User?         @relation(fields: [userId], references: [id])
-  tenantId    String
-  tenant      Tenant        @relation(fields: [tenantId], references: [id])
-  guestEmail  String?
-  guestName   String?
-  spotNumber  Int?
-  privacy     BookingPrivacy @default(PUBLIC)
-  status      BookingStatus  @default(CONFIRMED)
+  id             String         @id @default(cuid())
+  classId        String
+  class          Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?          @relation(fields: [userId], references: [id])
+  tenantId       String
+  tenant         Tenant         @relation(fields: [tenantId], references: [id])
+  guestEmail     String?
+  guestName      String?
+  spotNumber     Int?
+  privacy        BookingPrivacy @default(PUBLIC)
+  status         BookingStatus  @default(CONFIRMED)
   packageUsed    String?
   creditLost     Boolean        @default(false)
   createdAt      DateTime       @default(now())
@@ -579,13 +591,24 @@ model Booking {
   parentBooking   Booking?  @relation("BookingGuests", fields: [parentBookingId], references: [id], onDelete: SetNull)
   guestBookings   Booking[] @relation("BookingGuests")
 
-  biometrics     ClassBiometrics[]
+  biometrics ClassBiometrics[]
+
+  // Revenue recognition snapshot. imputedValueCents and classWeightSnapshot
+  // are written at recognition time (drop-in/pack at booking, unlimited at
+  // monthly close) so late edits to ClassType.revenueWeight or dropInPriceCents
+  // don't retroactively alter historical accounting.
+  imputedValueCents   Int?
+  classWeightSnapshot Decimal?       @db.Decimal(4, 2)
+  sourceEntitlementId String?
+  sourceEntitlement   Entitlement?   @relation("SourceEntitlement", fields: [sourceEntitlementId], references: [id])
+  revenueEvents       RevenueEvent[]
 
   @@unique([classId, spotNumber])
   @@index([classId])
   @@index([userId])
   @@index([tenantId])
   @@index([parentBookingId])
+  @@index([sourceEntitlementId])
 }
 
 enum BookingPrivacy {
@@ -655,24 +678,24 @@ enum PackageType {
 }
 
 model Package {
-  id            String        @id @default(cuid())
-  name          String
-  description   String?
-  type          PackageType   @default(PACK)
-  credits       Int?
-  validDays     Int
-  price         Float
-  currency      String        @default("MXN")
-  isPromo       Boolean       @default(false)
-  isActive      Boolean       @default(true)
-  stripePriceId String?
-  tenantId      String
-  tenant        Tenant        @relation(fields: [tenantId], references: [id])
-  countryId     String?
-  country       Country?      @relation(fields: [countryId], references: [id])
-  classTypes    ClassType[]   @relation("PackageClassTypes")
+  id                String      @id @default(cuid())
+  name              String
+  description       String?
+  type              PackageType @default(PACK)
+  credits           Int?
+  validDays         Int
+  price             Float
+  currency          String      @default("MXN")
+  isPromo           Boolean     @default(false)
+  isActive          Boolean     @default(true)
+  stripePriceId     String?
+  tenantId          String
+  tenant            Tenant      @relation(fields: [tenantId], references: [id])
+  countryId         String?
+  country           Country?    @relation(fields: [countryId], references: [id])
+  classTypes        ClassType[] @relation("PackageClassTypes")
   recurringInterval String?
-  sortOrder     Int           @default(0)
+  sortOrder         Int         @default(0)
 
   allowGuests         Boolean @default(false)
   maxGuestsPerBooking Int?
@@ -693,7 +716,7 @@ model MemberSubscription {
   packageId            String
   stripeSubscriptionId String    @unique
   stripePriceId        String
-  status               String    // 'active' | 'past_due' | 'canceled' | 'paused' | 'trialing' | 'incomplete'
+  status               String // 'active' | 'past_due' | 'canceled' | 'paused' | 'trialing' | 'incomplete'
   currentPeriodStart   DateTime
   currentPeriodEnd     DateTime
   cancelAtPeriodEnd    Boolean   @default(false)
@@ -714,18 +737,18 @@ model MemberSubscription {
 }
 
 model UserPackage {
-  id              String   @id @default(cuid())
+  id              String                   @id @default(cuid())
   userId          String
-  user            User     @relation(fields: [userId], references: [id])
+  user            User                     @relation(fields: [userId], references: [id])
   packageId       String
-  package         Package  @relation(fields: [packageId], references: [id])
+  package         Package                  @relation(fields: [packageId], references: [id])
   tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id])
   creditsTotal    Int?
-  creditsUsed     Int      @default(0)
+  creditsUsed     Int                      @default(0)
   expiresAt       DateTime
   stripePaymentId String?
-  purchasedAt     DateTime @default(now())
+  purchasedAt     DateTime                 @default(now())
   creditUsages    UserPackageCreditUsage[]
 
   @@index([userId])
@@ -856,18 +879,18 @@ enum FeedVisibility {
 }
 
 model FeedEvent {
-  id         String         @id @default(cuid())
-  userId     String
-  user       User           @relation("FeedEventAuthor", fields: [userId], references: [id])
-  tenantId   String
-  tenant     Tenant         @relation(fields: [tenantId], references: [id])
-  eventType  FeedEventType
-  payload    Json
-  visibility FeedVisibility @default(STUDIO_WIDE)
-  isPinned   Boolean        @default(false)
-  createdAt  DateTime       @default(now())
-  likes      Like[]
-  comments   Comment[]
+  id                String             @id @default(cuid())
+  userId            String
+  user              User               @relation("FeedEventAuthor", fields: [userId], references: [id])
+  tenantId          String
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  eventType         FeedEventType
+  payload           Json
+  visibility        FeedVisibility     @default(STUDIO_WIDE)
+  isPinned          Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  likes             Like[]
+  comments          Comment[]
   photos            Photo[]
   polls             Poll[]
   memberAchievement MemberAchievement?
@@ -1002,22 +1025,22 @@ enum MemberRewardKind {
 
 /// Definición de logro: tenantId null = sistema (todos los estudios). key único global.
 model Achievement {
-  id            String                   @id @default(cuid())
+  id            String                 @id @default(cuid())
   tenantId      String?
-  tenant        Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  key           String                   @unique
+  tenant        Tenant?                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  key           String                 @unique
   name          String
   description   String?
-  icon          String                   @default("🏆")
+  icon          String                 @default("🏆")
   category      AchievementCategory
   triggerType   AchievementTriggerType
   triggerValue  Int?
   triggerConfig Json?
-  rewardType    AchievementRewardType    @default(NONE)
+  rewardType    AchievementRewardType  @default(NONE)
   rewardValue   Json?
-  isSystem      Boolean                  @default(true)
-  active        Boolean                  @default(true)
-  createdAt     DateTime                 @default(now())
+  isSystem      Boolean                @default(true)
+  active        Boolean                @default(true)
+  createdAt     DateTime               @default(now())
   memberEarned  MemberAchievement[]
 
   @@index([tenantId, active])
@@ -1078,18 +1101,18 @@ model MemberAchievement {
 }
 
 model MemberReward {
-  id          String                 @id @default(cuid())
-  userId      String
-  tenantId    String
-  user        User                   @relation("MemberRewardsUser", fields: [userId], references: [id], onDelete: Cascade)
-  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sourceType  MemberRewardSourceType
-  sourceId    String?
-  rewardKind  MemberRewardKind
-  rewardData  Json
-  appliedAt   DateTime               @default(now())
-  expiresAt   DateTime?
-  consumedAt  DateTime?
+  id         String                 @id @default(cuid())
+  userId     String
+  tenantId   String
+  user       User                   @relation("MemberRewardsUser", fields: [userId], references: [id], onDelete: Cascade)
+  tenant     Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceType MemberRewardSourceType
+  sourceId   String?
+  rewardKind MemberRewardKind
+  rewardData Json
+  appliedAt  DateTime               @default(now())
+  expiresAt  DateTime?
+  consumedAt DateTime?
 
   @@index([userId, tenantId])
   @@index([tenantId])
@@ -1159,22 +1182,22 @@ model ProductCategory {
 }
 
 model Product {
-  id          String           @id @default(cuid())
+  id          String          @id @default(cuid())
   name        String
   description String?
   price       Float
-  currency    String           @default("MXN")
+  currency    String          @default("MXN")
   imageUrl    String?
-  isVisible   Boolean          @default(true)
-  isActive    Boolean          @default(true)
+  isVisible   Boolean         @default(true)
+  isActive    Boolean         @default(true)
   externalUrl String?
-  position    Int              @default(0)
+  position    Int             @default(0)
   categoryId  String
-  category    ProductCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category    ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   tenantId    String
-  tenant      Tenant           @relation(fields: [tenantId], references: [id])
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  tenant      Tenant          @relation(fields: [tenantId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@index([tenantId])
   @@index([categoryId])
@@ -1187,18 +1210,18 @@ enum WearableProvider {
 }
 
 model UserWearableConnection {
-  id                 String           @id @default(cuid())
-  userId             String
-  user               User             @relation("UserWearableConnections", fields: [userId], references: [id], onDelete: Cascade)
-  provider           WearableProvider
-  providerUserId     String
-  accessTokenEnc     String           @db.Text
-  refreshTokenEnc    String           @db.Text
-  tokenExpiresAt     DateTime?
-  scope              String?
-  disconnectedAt     DateTime?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation("UserWearableConnections", fields: [userId], references: [id], onDelete: Cascade)
+  provider        WearableProvider
+  providerUserId  String
+  accessTokenEnc  String           @db.Text
+  refreshTokenEnc String           @db.Text
+  tokenExpiresAt  DateTime?
+  scope           String?
+  disconnectedAt  DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@unique([userId, provider])
   @@unique([provider, providerUserId])
@@ -1206,16 +1229,16 @@ model UserWearableConnection {
 }
 
 model ClassBiometrics {
-  id                  String           @id @default(cuid())
-  bookingId           String
-  booking             Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  provider            WearableProvider
-  providerActivityId  String
-  calories            Float?
-  hrAvg               Float?
-  hrMax               Float?
-  rawPayload          Json?
-  createdAt           DateTime         @default(now())
+  id                 String           @id @default(cuid())
+  bookingId          String
+  booking            Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  provider           WearableProvider
+  providerActivityId String
+  calories           Float?
+  hrAvg              Float?
+  hrMax              Float?
+  rawPayload         Json?
+  createdAt          DateTime         @default(now())
 
   @@unique([bookingId, provider])
   @@unique([provider, providerActivityId])
@@ -1243,27 +1266,27 @@ enum AvailabilityStatus {
 }
 
 model CoachAvailabilityBlock {
-  id            String                  @id @default(cuid())
+  id            String                 @id @default(cuid())
   tenantId      String
   coachId       String
   type          AvailabilityBlockType
-  dayOfWeek     Int[]                   // 0=Lu, 1=Ma, ... 6=Do
-  startTime     String?                 // "14:00"
-  endTime       String?                 // "21:00"
-  startDate     DateTime?               @db.Date
-  endDate       DateTime?               @db.Date
-  isAllDay      Boolean                 @default(true)
+  dayOfWeek     Int[] // 0=Lu, 1=Ma, ... 6=Do
+  startTime     String? // "14:00"
+  endTime       String? // "21:00"
+  startDate     DateTime?              @db.Date
+  endDate       DateTime?              @db.Date
+  isAllDay      Boolean                @default(true)
   reasonType    AvailabilityReasonType
   reasonNote    String?
-  status        AvailabilityStatus      @default(active)
+  status        AvailabilityStatus     @default(active)
   rejectionNote String?
   approvedBy    String?
   approvedAt    DateTime?
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
 
-  tenant        Tenant                  @relation(fields: [tenantId], references: [id])
-  coach         User                    @relation("CoachAvailabilityBlocks", fields: [coachId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  coach  User   @relation("CoachAvailabilityBlocks", fields: [coachId], references: [id])
 
   @@index([tenantId, coachId])
 }
@@ -1292,10 +1315,10 @@ model CheckIn {
   status      CheckInStatus @default(present)
   createdAt   DateTime      @default(now())
 
-  tenant      Tenant        @relation(fields: [tenantId], references: [id])
-  class       Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
-  member      User          @relation("MemberCheckIns", fields: [memberId], references: [id])
-  checkedBy   User?         @relation("StaffCheckIns", fields: [checkedInBy], references: [id])
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  class     Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  member    User   @relation("MemberCheckIns", fields: [memberId], references: [id])
+  checkedBy User?  @relation("StaffCheckIns", fields: [checkedInBy], references: [id])
 
   @@unique([classId, memberId])
   @@index([tenantId, classId])
@@ -1316,24 +1339,24 @@ enum PlatformBookingStatus {
 }
 
 model StudioPlatformConfig {
-  id                String       @id @default(cuid())
-  tenantId          String
-  platform          PlatformType
+  id       String       @id @default(cuid())
+  tenantId String
+  platform PlatformType
 
   platformPartnerId String?
   locationMappings  Json?
 
-  inboundEmail      String       @unique
-  portalUrl         String?
-  ratePerVisit      Float?
-  isActive          Boolean      @default(false)
-  activatedAt       DateTime?
-  lastExportedAt    DateTime?
+  inboundEmail   String    @unique
+  portalUrl      String?
+  ratePerVisit   Float?
+  isActive       Boolean   @default(false)
+  activatedAt    DateTime?
+  lastExportedAt DateTime?
 
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tenant            Tenant       @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, platform])
   @@index([tenantId])
@@ -1352,8 +1375,8 @@ model SchedulePlatformQuota {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  tenant           Tenant       @relation(fields: [tenantId], references: [id])
-  class            Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@unique([classId, platform])
   @@index([tenantId])
@@ -1375,26 +1398,26 @@ model PlatformBooking {
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
 
-  tenant            Tenant                @relation(fields: [tenantId], references: [id])
-  class             Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, classId])
   @@index([tenantId, platform])
 }
 
 model PlatformAlert {
-  id           String       @id @default(cuid())
-  tenantId     String
-  classId      String?
-  platform     PlatformType
-  type         String
-  message      String
-  isResolved   Boolean      @default(false)
-  resolvedAt   DateTime?
-  resolvedBy   String?
-  createdAt    DateTime     @default(now())
+  id         String       @id @default(cuid())
+  tenantId   String
+  classId    String?
+  platform   PlatformType
+  type       String
+  message    String
+  isResolved Boolean      @default(false)
+  resolvedAt DateTime?
+  resolvedBy String?
+  createdAt  DateTime     @default(now())
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId, isResolved])
 }
@@ -1412,14 +1435,14 @@ enum WaiverSignatureMethod {
 }
 
 model Waiver {
-  id              String       @id @default(cuid())
-  tenantId        String
-  version         Int          @default(1)
-  title           String       @default("Acuerdo de responsabilidad")
-  content         String       @db.Text
-  isPdf           Boolean      @default(false)
-  pdfStorageKey   String?
-  status          WaiverStatus @default(draft)
+  id            String       @id @default(cuid())
+  tenantId      String
+  version       Int          @default(1)
+  title         String       @default("Acuerdo de responsabilidad")
+  content       String       @db.Text
+  isPdf         Boolean      @default(false)
+  pdfStorageKey String?
+  status        WaiverStatus @default(draft)
 
   requirePhone      Boolean @default(false)
   requireBirthDate  Boolean @default(false)
@@ -1432,23 +1455,23 @@ model Waiver {
 
   blockCheckinWithoutSignature Boolean @default(true)
 
-  publishedAt     DateTime?
-  publishedBy     String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  publishedAt DateTime?
+  publishedBy String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  tenant     Tenant             @relation(fields: [tenantId], references: [id])
+  tenant     Tenant            @relation(fields: [tenantId], references: [id])
   signatures WaiverSignature[]
 
   @@index([tenantId, status])
 }
 
 model WaiverSignature {
-  id              String                @id @default(cuid())
-  tenantId        String
-  waiverId        String
-  memberId        String
-  waiverVersion   Int
+  id            String @id @default(cuid())
+  tenantId      String
+  waiverId      String
+  memberId      String
+  waiverVersion Int
 
   participantName      String
   participantPhone     String?
@@ -1460,7 +1483,7 @@ model WaiverSignature {
 
   ipAddress   String?
   userAgent   String?
-  signedAt    DateTime @default(now())
+  signedAt    DateTime  @default(now())
   emailSentAt DateTime?
 
   pdfStorageKey String?
@@ -1509,12 +1532,12 @@ enum NudgeType {
 }
 
 model MembershipConversionConfig {
-  id        String @id @default(cuid())
-  tenantId  String @unique
+  id       String @id @default(cuid())
+  tenantId String @unique
 
-  showInBookingFlow      Boolean @default(true)
-  featuredMembershipId   String?
-  showSavingsBanner      String  @default("if_real") // "always" | "if_real" | "never"
+  showInBookingFlow    Boolean @default(true)
+  featuredMembershipId String?
+  showSavingsBanner    String  @default("if_real") // "always" | "if_real" | "never"
 
   introOfferEnabled      Boolean @default(true)
   introOfferPrice        Float   @default(49)
@@ -1525,10 +1548,10 @@ model MembershipConversionConfig {
   savingsEmailTriggerClasses Int     @default(3)
   savingsEmailDelayHours     Int     @default(24)
 
-  packageUpgradeEnabled  Boolean @default(true)
-  packageUpgradeTrigger  Int     @default(2)
-  packageUpgradeTiming   String  @default("post_booking") // "post_booking" | "pre_booking"
-  packageUpgradeCredit   Boolean @default(true)
+  packageUpgradeEnabled Boolean @default(true)
+  packageUpgradeTrigger Int     @default(2)
+  packageUpgradeTiming  String  @default("post_booking") // "post_booking" | "pre_booking"
+  packageUpgradeCredit  Boolean @default(true)
 
   maxNudgesPerMemberPerWeek Int @default(1)
 
@@ -1580,27 +1603,27 @@ model IntroOfferClaim {
 // ── Marketing: Analytics Config & Link Tracking ──
 
 model TenantAnalyticsConfig {
-  id                String   @id @default(cuid())
-  tenantId          String   @unique
-  ga4MeasurementId  String?
-  ga4ApiSecret      String?
-  metaPixelId       String?
-  gtmContainerId    String?
+  id               String  @id @default(cuid())
+  tenantId         String  @unique
+  ga4MeasurementId String?
+  ga4ApiSecret     String?
+  metaPixelId      String?
+  gtmContainerId   String?
 
-  ga4EventPurchase        Boolean @default(true)
-  ga4EventBeginCheckout   Boolean @default(true)
-  ga4EventViewItem        Boolean @default(true)
-  ga4EventSignUp          Boolean @default(true)
+  ga4EventPurchase      Boolean @default(true)
+  ga4EventBeginCheckout Boolean @default(true)
+  ga4EventViewItem      Boolean @default(true)
+  ga4EventSignUp        Boolean @default(true)
 
-  metaEventPurchase            Boolean @default(true)
-  metaEventInitiateCheckout    Boolean @default(true)
+  metaEventPurchase             Boolean @default(true)
+  metaEventInitiateCheckout     Boolean @default(true)
   metaEventCompleteRegistration Boolean @default(true)
-  metaEventViewContent         Boolean @default(false)
+  metaEventViewContent          Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model LinkClick {
@@ -1617,24 +1640,24 @@ model LinkClick {
   userAgent   String?
   createdAt   DateTime @default(now())
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, entityType, entityId])
   @@index([tenantId, createdAt])
 }
 
 model LinkConversion {
-  id              String   @id @default(cuid())
-  tenantId        String
-  linkClickId     String?
-  entityType      String
-  entityId        String
-  conversionType  String
-  revenue         Float?
-  memberId        String?
-  createdAt       DateTime @default(now())
+  id             String   @id @default(cuid())
+  tenantId       String
+  linkClickId    String?
+  entityType     String
+  entityId       String
+  conversionType String
+  revenue        Float?
+  memberId       String?
+  createdAt      DateTime @default(now())
 
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, createdAt])
 }
@@ -1652,8 +1675,8 @@ model StripePayment {
   stripeFee             Float?
   netAmount             Float?
   availableOn           DateTime?
-  status                String    // 'pending' | 'succeeded' | 'failed' | 'refunded'
-  type                  String    // 'subscription' | 'package' | 'product' | 'penalty' | 'class' | 'membership' | 'pos'
+  status                String // 'pending' | 'succeeded' | 'failed' | 'refunded'
+  type                  String // 'subscription' | 'package' | 'product' | 'penalty' | 'class' | 'membership' | 'pos'
   concept               String?
   conceptSub            String?
   referenceId           String?
@@ -1676,8 +1699,8 @@ model PosTransaction {
   memberId        String?
   amount          Float
   currency        String    @default("eur")
-  paymentMethod   String    // 'card' | 'cash' | 'saved_card'
-  type            String    // 'subscription' | 'package' | 'product' | 'penalty'
+  paymentMethod   String // 'card' | 'cash' | 'saved_card'
+  type            String // 'subscription' | 'package' | 'product' | 'penalty'
   concept         String?
   conceptSub      String?
   status          String    @default("completed") // 'completed' | 'refunded'
@@ -1729,7 +1752,7 @@ model ClassRating {
   tenantId   String
   userId     String
   classId    String
-  rating     Int          // 1-5
+  rating     Int // 1-5
   reasons    String[]
   comment    String?
   source     RatingSource
@@ -1746,13 +1769,13 @@ model ClassRating {
 }
 
 model RatingReason {
-  id          String     @id @default(cuid())
+  id          String  @id @default(cuid())
   tenantId    String
   classTypeId String?
   text        String
   emoji       String
-  order       Int        @default(0)
-  active      Boolean    @default(true)
+  order       Int     @default(0)
+  active      Boolean @default(true)
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   classType ClassType? @relation(fields: [classTypeId], references: [id], onDelete: Cascade)
@@ -1763,17 +1786,17 @@ model RatingReason {
 // ── Highlights (marketing banners on feed) ──
 
 model Highlight {
-  id          String   @id @default(cuid())
-  tenantId    String
-  title       String?
-  subtitle    String?
-  imageUrl    String
-  linkUrl     String
-  isExternal  Boolean  @default(false)
-  position    Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  tenantId   String
+  title      String?
+  subtitle   String?
+  imageUrl   String
+  linkUrl    String
+  isExternal Boolean  @default(false)
+  position   Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   clicks HighlightClick[]
@@ -1782,12 +1805,12 @@ model Highlight {
 }
 
 model HighlightClick {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   highlightId String
   userId      String?
   userName    String?
   userAgent   String?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
 
   highlight Highlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
 
@@ -1802,26 +1825,26 @@ enum DiscountType {
 }
 
 model DiscountCode {
-  id              String       @id @default(cuid())
-  tenantId        String
-  code            String       // e.g. "WELCOME20"
-  description     String?
-  type            DiscountType @default(PERCENTAGE)
-  value           Float        // percentage (0-100) or fixed amount
-  currency        String?      // required when type = FIXED_AMOUNT
-  maxUses         Int?         // null = unlimited
-  usedCount       Int          @default(0)
-  maxUsesPerUser  Int?         // null = unlimited per user
-  minPurchase     Float?       // minimum cart amount to apply
-  validFrom       DateTime     @default(now())
-  validUntil      DateTime?    // null = no expiry
-  isActive        Boolean      @default(true)
-  packageIds      String[]     @default([]) // empty = applies to all packages
-  stripeCouponId  String?      // Stripe coupon id for syncing
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  tenantId       String
+  code           String // e.g. "WELCOME20"
+  description    String?
+  type           DiscountType @default(PERCENTAGE)
+  value          Float // percentage (0-100) or fixed amount
+  currency       String? // required when type = FIXED_AMOUNT
+  maxUses        Int? // null = unlimited
+  usedCount      Int          @default(0)
+  maxUsesPerUser Int? // null = unlimited per user
+  minPurchase    Float? // minimum cart amount to apply
+  validFrom      DateTime     @default(now())
+  validUntil     DateTime? // null = no expiry
+  isActive       Boolean      @default(true)
+  packageIds     String[]     @default([]) // empty = applies to all packages
+  stripeCouponId String? // Stripe coupon id for syncing
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
-  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   redemptions DiscountRedemption[]
 
   @@unique([tenantId, code])
@@ -1830,14 +1853,14 @@ model DiscountCode {
 }
 
 model DiscountRedemption {
-  id              String   @id @default(cuid())
-  discountCodeId  String
-  userId          String?
-  userPackageId   String?  // the package purchase this was applied to
-  originalAmount  Float
-  discountAmount  Float
-  finalAmount     Float
-  createdAt       DateTime @default(now())
+  id             String   @id @default(cuid())
+  discountCodeId String
+  userId         String?
+  userPackageId  String? // the package purchase this was applied to
+  originalAmount Float
+  discountAmount Float
+  finalAmount    Float
+  createdAt      DateTime @default(now())
 
   discountCode DiscountCode @relation(fields: [discountCodeId], references: [id], onDelete: Cascade)
 
@@ -1848,17 +1871,17 @@ model DiscountRedemption {
 // ── Gift Packages (admin-gifted) ──
 
 model GiftPackage {
-  id              String   @id @default(cuid())
-  tenantId        String
-  recipientId     String   // user who receives the gift
-  packageId       String   // the package template
-  userPackageId   String?  // the created UserPackage
-  giftedById      String   // admin who gifted it
-  reason          String?  // why it was gifted (tracking/audit)
-  notes           String?  // internal notes
-  createdAt       DateTime @default(now())
+  id            String   @id @default(cuid())
+  tenantId      String
+  recipientId   String // user who receives the gift
+  packageId     String // the package template
+  userPackageId String? // the created UserPackage
+  giftedById    String // admin who gifted it
+  reason        String? // why it was gifted (tracking/audit)
+  notes         String? // internal notes
+  createdAt     DateTime @default(now())
 
-  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([recipientId])
@@ -1866,20 +1889,130 @@ model GiftPackage {
   @@index([tenantId, createdAt])
 }
 
+// ── Revenue recognition (ASC 606 / IFRS 15, tenant-scoped) ──
+//
+// Invariant: classes never generate revenue directly. Revenue comes from packs,
+// unlimited subscriptions, drop-ins, and penalties. Classes are cost centers
+// that *attract* revenue through attribution.
+//
+// Entitlement is the accounting overlay for everything a member has paid for
+// that can be consumed or has expired. It unifies bonos (packs), unlimited
+// subscriptions, drop-ins, and penalties. It does NOT replace UserPackage or
+// MemberSubscription — it mirrors them so RevenueEvent has a single stable FK
+// target.
+//
+// RevenueEvent is the single source of truth for recognized revenue. Every
+// recognized cent lives here, attributed either to a booking (→ class/coach/
+// time slot) or to breakage (pack expired, unlimited unconsumed). Totals
+// reconcile to recognized revenue for any given month.
+
+enum EntitlementType {
+  pack
+  unlimited
+  dropin
+  penalty
+}
+
+enum EntitlementStatus {
+  active
+  exhausted
+  expired
+  cancelled
+}
+
+model Entitlement {
+  id                   String  @id @default(cuid())
+  tenantId             String
+  userId               String
+  // Optional links to the SKU / source. packageId set for pack/unlimited/dropin
+  // originating from the Package catalog. memberSubscriptionId set for
+  // unlimited subscriptions so we can map one entitlement per billing period.
+  // userPackageId set for entitlements backfilled from existing UserPackage.
+  packageId            String?
+  userPackageId        String? @unique
+  memberSubscriptionId String?
+  // For dropin/penalty only: the class this entitlement was consumed against.
+  classId              String?
+
+  type   EntitlementType
+  status EntitlementStatus @default(active)
+
+  totalAmountCents Int
+  currency         String @default("eur")
+  creditsTotal     Int? // N for pack; null for unlimited/dropin/penalty
+  creditsUsed      Int    @default(0)
+
+  periodStart DateTime
+  periodEnd   DateTime
+
+  purchasedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classRef      Class?         @relation(fields: [classId], references: [id])
+  revenueEvents RevenueEvent[]
+  bookings      Booking[]      @relation("SourceEntitlement")
+
+  @@index([tenantId, status])
+  @@index([tenantId, type, periodEnd])
+  @@index([userId, status])
+  @@index([periodEnd])
+  @@index([memberSubscriptionId])
+  @@index([classId])
+}
+
+enum RevenueEventType {
+  booking // consumption of a class (pack, dropin, or unlimited-allocated)
+  daily_accrual // unlimited subscription daily pro-rata (intermediate; excluded from reports)
+  expiration_breakage // pack credits expired unused
+  monthly_breakage // unlimited MRR not consumed in the month
+  penalty // late-cancel / no-show fee
+  reversal // reserved for refunds/cancellations (not emitted in v1)
+}
+
+model RevenueEvent {
+  id            String           @id @default(cuid())
+  tenantId      String
+  entitlementId String
+  eventDate     DateTime         @db.Date
+  amountCents   Int
+  type          RevenueEventType
+  bookingId     String?
+  classId       String?
+  metadata      Json?
+  createdAt     DateTime         @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entitlement Entitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  booking     Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  classRef    Class?      @relation(fields: [classId], references: [id], onDelete: SetNull)
+
+  // Idempotency guard: re-running daily accrual or pack expiration for the
+  // same entitlement/date/type is a no-op at the DB level.
+  @@unique([entitlementId, eventDate, type], name: "uniq_entitlement_date_type")
+  @@index([tenantId, eventDate])
+  @@index([tenantId, type, eventDate])
+  @@index([entitlementId])
+  @@index([bookingId])
+  @@index([classId])
+}
+
 // ── Spark AI Feature Requests ──
 
 model SparkFeatureRequest {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   tenantId    String
   adminUserId String
-  request     String   @db.Text
+  request     String    @db.Text
   category    String?
-  sparkNote   String?  @db.Text
+  sparkNote   String?   @db.Text
   adminName   String?
   studioName  String?
-  isResolved  Boolean  @default(false)
+  isResolved  Boolean   @default(false)
   resolvedAt  DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

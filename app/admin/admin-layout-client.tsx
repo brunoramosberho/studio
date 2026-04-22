@@ -108,6 +108,7 @@ const flyoutGroups: FlyoutGroup[] = [
     permission: "finance",
     items: [
       { href: "/admin/finance", labelKey: "finance", icon: Wallet, permission: "finance" },
+      { href: "/admin/finance/recognition", labelKey: "revenueRecognition", icon: TrendingUp, permission: "finance" },
       { href: "/admin/packages", labelKey: "packages", icon: Package, permission: "packages" },
       { href: "/admin/discounts", labelKey: "discounts", icon: Ticket, permission: "packages" },
       { href: "/admin/gift-packages", labelKey: "giftPackages", icon: Gift, permission: "packages" },
