@@ -5,6 +5,7 @@ import { requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation, sendWelcomeEmail, getTenantBaseUrl } from "@/lib/email";
 import { createMemberPayment } from "@/lib/stripe/payments";
 import { createCreditUsagesForPackage } from "@/lib/credits";
+import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 
 export async function POST(request: NextRequest) {
   try {
@@ -180,6 +181,14 @@ export async function POST(request: NextRequest) {
       });
 
       return { userPackage: up, booking: bk };
+    });
+
+    await recognizeBookingSafe({
+      userPackageId: userPackage.id,
+      bookingId: booking.id,
+      classId,
+      scheduledAt: classData.startsAt,
+      scope: "book-and-pay",
     });
 
     // Create PaymentIntent if studio has Stripe Connect

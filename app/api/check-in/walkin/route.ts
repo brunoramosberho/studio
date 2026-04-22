@@ -6,6 +6,7 @@ import {
   deductCredit,
   userPackageIncludeForBooking,
 } from "@/lib/credits";
+import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 
 export async function POST(request: NextRequest) {
   try {
@@ -121,6 +122,14 @@ export async function POST(request: NextRequest) {
           privacy: "PUBLIC",
           spotNumber: spotNumber ?? null,
         },
+      });
+
+      await recognizeBookingSafe({
+        userPackageId: matchingPackage.id,
+        bookingId: booking.id,
+        classId,
+        scheduledAt: cls.startsAt,
+        scope: "walkin",
       });
 
       const now = new Date();

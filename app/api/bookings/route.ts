@@ -6,6 +6,7 @@ import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
 import { findPackageForClass, deductCredit, userPackageIncludeForBooking } from "@/lib/credits";
+import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 
 export async function GET(request: NextRequest) {
   try {
@@ -384,6 +385,25 @@ export async function POST(request: NextRequest) {
 
     if (session?.user?.id) {
       removeSpotNotifyMe(classId, session.user.id);
+    }
+
+    if (packageUsedId) {
+      await recognizeBookingSafe({
+        userPackageId: packageUsedId,
+        bookingId: booking.id,
+        classId,
+        scheduledAt: classData.startsAt,
+        scope: "bookings",
+      });
+      for (const gb of guestBookings) {
+        await recognizeBookingSafe({
+          userPackageId: packageUsedId,
+          bookingId: gb.id,
+          classId,
+          scheduledAt: classData.startsAt,
+          scope: "bookings.guest",
+        });
+      }
     }
 
     const baseUrl = getTenantBaseUrl(tenant.slug);
