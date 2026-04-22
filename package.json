@@ -9,9 +9,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "seed": "npx tsx prisma/seed.ts",
     "seed:shop": "npx tsx prisma/seed-shop.ts",
-    "seed:camila": "npx tsx prisma/seed-camila-toro.ts"
+    "seed:camila": "npx tsx prisma/seed-camila-toro.ts",
+    "backfill:revenue": "npx tsx scripts/backfill-entitlements.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -73,6 +76,7 @@
     "@types/react-big-calendar": "^1.16.3",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
+    "@vitest/ui": "^4.1.5",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "prisma": "^6.19.2",
@@ -80,6 +84,7 @@
     "pwa-asset-generator": "^8.1.4",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.5"
   }
 }
