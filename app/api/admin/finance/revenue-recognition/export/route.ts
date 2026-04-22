@@ -92,6 +92,33 @@ export async function GET(request: NextRequest) {
     }
 
     lines.push("");
+    lines.push("Por disciplina y paquete");
+    lines.push(
+      [
+        "Disciplina",
+        "Paquete",
+        "Tipo",
+        "Atribuciones",
+        "Ingreso",
+        "Ingreso / reserva",
+      ].join(","),
+    );
+    for (const disc of report.byDisciplinePackage) {
+      for (const pkg of disc.packages) {
+        lines.push(
+          [
+            escCsv(disc.disciplineName),
+            escCsv(pkg.packageName),
+            escCsv(pkg.packageType ?? ""),
+            pkg.attributions,
+            fmt(pkg.revenueCents),
+            fmt(pkg.avgPerAttributionCents),
+          ].join(","),
+        );
+      }
+    }
+
+    lines.push("");
     lines.push("Por coach");
     lines.push(["Coach", "Atribuciones", "Ingreso"].join(","));
     for (const row of report.byCoach) {

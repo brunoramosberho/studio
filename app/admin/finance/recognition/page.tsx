@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ChevronDown,
+  ChevronRight,
   Download,
   Info,
   Package,
@@ -48,6 +50,19 @@ interface RevenueReport {
     revenueCents: number;
     avgPerAttributionCents: number;
   }[];
+  byDisciplinePackage: {
+    disciplineId: string;
+    disciplineName: string;
+    revenueCents: number;
+    packages: {
+      packageId: string | null;
+      packageName: string;
+      packageType: string | null;
+      attributions: number;
+      revenueCents: number;
+      avgPerAttributionCents: number;
+    }[];
+  }[];
   byTimeslot: {
     dayOfWeek: number;
     hourOfDay: number;
@@ -76,6 +91,16 @@ function fromCents(c: number): number {
 
 export default function RevenueRecognitionPage() {
   const [month, setMonth] = useState<string>(currentMonth());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (disciplineId: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(disciplineId)) next.delete(disciplineId);
+      else next.add(disciplineId);
+      return next;
+    });
+  };
 
   const { data, isLoading, error } = useQuery<RevenueReport>({
     queryKey: ["revenue-recognition", month],
@@ -227,6 +252,7 @@ export default function RevenueRecognitionPage() {
             <table className="w-full text-sm">
               <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted">
                 <tr>
+                  <th className="py-2" aria-label="Expandir" />
                   <th className="py-2">Disciplina</th>
                   <th className="py-2 text-right">Atrib.</th>
                   <th className="py-2 text-right">Ingreso</th>
@@ -234,20 +260,62 @@ export default function RevenueRecognitionPage() {
                 </tr>
               </thead>
               <tbody>
-                {(data?.byDiscipline ?? []).map((row) => (
-                  <tr key={row.disciplineId} className="border-t border-border/50">
-                    <td className="py-2 font-medium">{row.disciplineName}</td>
-                    <td className="py-2 text-right tabular-nums">{row.attributions}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {formatCurrency(fromCents(row.revenueCents), currency)}
-                    </td>
-                    <td className="py-2 text-right tabular-nums text-muted">
-                      {formatCurrency(fromCents(row.avgPerAttributionCents), currency)}
-                    </td>
-                  </tr>
-                ))}
+                {(data?.byDiscipline ?? []).map((row) => {
+                  const detail = data?.byDisciplinePackage.find(
+                    (d) => d.disciplineId === row.disciplineId,
+                  );
+                  const isExpanded = expanded.has(row.disciplineId);
+                  const canExpand = (detail?.packages.length ?? 0) > 0;
+                  return (
+                    <Fragment key={row.disciplineId}>
+                      <tr
+                        className={cn(
+                          "border-t border-border/50",
+                          canExpand && "cursor-pointer hover:bg-surface/60",
+                        )}
+                        onClick={() =>
+                          canExpand && toggleExpanded(row.disciplineId)
+                        }
+                      >
+                        <td className="w-6 py-2 pl-1 text-muted">
+                          {canExpand ? (
+                            isExpanded ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            )
+                          ) : null}
+                        </td>
+                        <td className="py-2 font-medium">{row.disciplineName}</td>
+                        <td className="py-2 text-right tabular-nums">
+                          {row.attributions}
+                        </td>
+                        <td className="py-2 text-right tabular-nums">
+                          {formatCurrency(fromCents(row.revenueCents), currency)}
+                        </td>
+                        <td className="py-2 text-right tabular-nums text-muted">
+                          {formatCurrency(
+                            fromCents(row.avgPerAttributionCents),
+                            currency,
+                          )}
+                        </td>
+                      </tr>
+                      {isExpanded && detail && (
+                        <tr className="border-t border-border/30 bg-surface/40">
+                          <td />
+                          <td colSpan={4} className="py-2 pr-2">
+                            <DisciplinePackageDetail
+                              packages={detail.packages}
+                              currency={currency}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
                 {(data?.byDiscipline ?? []).length === 0 && (
-                  <EmptyRow colSpan={4} />
+                  <EmptyRow colSpan={5} />
                 )}
               </tbody>
             </table>
@@ -361,6 +429,55 @@ function InfoBanner() {
         consumido (breakage).
       </p>
     </div>
+  );
+}
+
+function DisciplinePackageDetail({
+  packages,
+  currency,
+}: {
+  packages: {
+    packageId: string | null;
+    packageName: string;
+    attributions: number;
+    revenueCents: number;
+    avgPerAttributionCents: number;
+  }[];
+  currency: string;
+}) {
+  if (packages.length === 0) {
+    return (
+      <p className="py-2 text-xs text-muted">Sin detalle de paquetes.</p>
+    );
+  }
+  return (
+    <table className="w-full text-xs">
+      <thead className="text-left font-medium uppercase tracking-wide text-muted">
+        <tr>
+          <th className="py-1">Paquete</th>
+          <th className="py-1 text-right">Atrib.</th>
+          <th className="py-1 text-right">Ingreso</th>
+          <th className="py-1 text-right">Ingreso / reserva</th>
+        </tr>
+      </thead>
+      <tbody>
+        {packages.map((p) => (
+          <tr
+            key={p.packageId ?? `fallback:${p.packageName}`}
+            className="border-t border-border/30"
+          >
+            <td className="py-1 font-medium">{p.packageName}</td>
+            <td className="py-1 text-right tabular-nums">{p.attributions}</td>
+            <td className="py-1 text-right tabular-nums">
+              {formatCurrency(fromCents(p.revenueCents), currency)}
+            </td>
+            <td className="py-1 text-right tabular-nums text-muted">
+              {formatCurrency(fromCents(p.avgPerAttributionCents), currency)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
