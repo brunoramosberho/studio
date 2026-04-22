@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "seed": "npx tsx prisma/seed.ts",
     "seed:shop": "npx tsx prisma/seed-shop.ts",
-    "seed:camila": "npx tsx prisma/seed-camila-toro.ts"
+    "seed:camila": "npx tsx prisma/seed-camila-toro.ts",
+    "backfill:revenue": "npx tsx scripts/backfill-entitlements.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
