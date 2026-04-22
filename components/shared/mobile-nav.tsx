@@ -22,9 +22,11 @@ const leftTabs = [
 ];
 
 const rightTabsBase = [
-  { href: "/shop", icon: ShoppingBag, labelKey: "shop" as const },
   { href: "/my/profile", icon: User, labelKey: "profile" as const },
 ];
+
+const shopTab = { href: "/shop", icon: ShoppingBag, labelKey: "shop" as const };
+const shopFallbackTab = { href: "/packages", icon: ShoppingBag, labelKey: "shop" as const };
 
 const coachTab = { href: "/coach", icon: Mic, labelKey: "coach" as const };
 
@@ -78,7 +80,7 @@ export function MobileNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
-  const { role } = useTenant();
+  const { role, hasShopProducts } = useTenant();
   const t = useTranslations("nav");
   const [disciplines, setDisciplines] = useState<DisciplineIcon[]>([]);
 
@@ -131,7 +133,8 @@ export function MobileNav() {
   if (shouldHide) return null;
 
   const isCoach = role === "COACH";
-  const rightTabs = isCoach ? [...rightTabsBase, coachTab] : rightTabsBase;
+  const shopEntry = hasShopProducts ? shopTab : shopFallbackTab;
+  const rightTabs = isCoach ? [shopEntry, ...rightTabsBase, coachTab] : [shopEntry, ...rightTabsBase];
   const scheduleActive = pathname.startsWith("/schedule");
 
   return (
