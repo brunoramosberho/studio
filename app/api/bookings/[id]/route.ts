@@ -4,6 +4,8 @@ import { requireAuth } from "@/lib/tenant";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
 import { promoteFromWaitlist, notifySpotWatchers } from "@/lib/waitlist";
 import { restoreCredit } from "@/lib/credits";
+import { recognizePenaltySafe } from "@/lib/revenue/hooks";
+import { toStripeAmount } from "@/lib/stripe/helpers";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -164,6 +166,7 @@ export async function PUT(
     // - Limited credits: credit already consumed on booking → mark creditLost
     // - Unlimited (null creditsTotal): no credit to lose → apply fee if configured
     let noShowFeeApplied = false;
+    let noShowFeeAmountCents = 0;
     if (status === "NO_SHOW") {
       creditLost = true; // Credit used for this class is always lost on no-show
 
@@ -183,6 +186,7 @@ export async function PUT(
 
         if (isUnlimited && tenantConfig?.noShowPenaltyEnabled && tenantConfig.noShowPenaltyAmount) {
           noShowFeeApplied = true;
+          noShowFeeAmountCents = toStripeAmount(tenantConfig.noShowPenaltyAmount);
           // The fee amount is stored in tenant config — actual charging handled externally
         }
       }
@@ -244,6 +248,16 @@ export async function PUT(
       syncCompletedClassFeedEvent(booking.classId, tenant.id).catch((err) =>
         console.error("Feed event sync failed:", err),
       );
+    }
+
+    if (noShowFeeApplied && noShowFeeAmountCents > 0 && booking.userId) {
+      await recognizePenaltySafe({
+        tenantId: tenant.id,
+        userId: booking.userId,
+        classId: booking.classId,
+        amountCents: noShowFeeAmountCents,
+        chargedAt: new Date(),
+      });
     }
 
     return NextResponse.json({ ...updated, noShowFeeApplied });
