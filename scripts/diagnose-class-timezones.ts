@@ -80,7 +80,6 @@ async function main() {
       count: number;
       firstDate: Date;
       lastDate: Date;
-      createdAt: Date;
       sampleIds: string[];
     }
   >();
@@ -115,7 +114,6 @@ async function main() {
         count: 1,
         firstDate: c.startsAt,
         lastDate: c.startsAt,
-        createdAt: c.createdAt,
         sampleIds: [c.id],
       });
     }
