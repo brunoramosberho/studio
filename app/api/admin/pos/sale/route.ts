@@ -9,6 +9,7 @@ import {
   userPackageIncludeForBooking,
 } from "@/lib/credits";
 import { sendPosReceiptEmail, getTenantBaseUrl } from "@/lib/email";
+import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 
 interface CartItem {
   type: "package" | "product";
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
         if (userPackage) {
           await deductCredit(userPackage.id, classData.classTypeId);
 
-          await prisma.booking.create({
+          const booking = await prisma.booking.create({
             data: {
               tenantId,
               classId: classData.id,
@@ -124,6 +125,14 @@ export async function POST(request: NextRequest) {
               privacy: "PUBLIC",
               spotNumber: selectedClass.spotNumber ?? null,
             },
+          });
+
+          await recognizeBookingSafe({
+            userPackageId: userPackage.id,
+            bookingId: booking.id,
+            classId: classData.id,
+            scheduledAt: classData.startsAt,
+            scope: "pos.existing-credits",
           });
 
           results.push({
@@ -255,7 +264,7 @@ export async function POST(request: NextRequest) {
         if (matchPkg) {
           await deductCredit(matchPkg.id, clsData.classTypeId);
 
-          await prisma.booking.create({
+          const booking = await prisma.booking.create({
             data: {
               tenantId,
               classId: clsData.id,
@@ -265,6 +274,14 @@ export async function POST(request: NextRequest) {
               privacy: "PUBLIC",
               spotNumber: selectedClass?.spotNumber ?? null,
             },
+          });
+
+          await recognizeBookingSafe({
+            userPackageId: matchPkg.id,
+            bookingId: booking.id,
+            classId: clsData.id,
+            scheduledAt: clsData.startsAt,
+            scope: "pos.post-purchase",
           });
 
           results.push({

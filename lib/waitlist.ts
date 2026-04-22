@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { sendPushToUser, sendPushToMany } from "@/lib/push";
 import { sendWaitlistPromotion, sendSpotAvailable, getTenantBaseUrl } from "@/lib/email";
+import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 
 /**
  * Refund the credit held by a waitlist entry back to the user's package.
@@ -91,6 +92,16 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
       packageUsed: first.packageUsed,
     },
   });
+
+  if (first.packageUsed) {
+    await recognizeBookingSafe({
+      userPackageId: first.packageUsed,
+      bookingId: booking.id,
+      classId,
+      scheduledAt: first.class.startsAt,
+      scope: "waitlist.promote",
+    });
+  }
 
   await prisma.waitlist.delete({ where: { id: first.id } });
   await reorderWaitlistPositions(classId, tenantId);
