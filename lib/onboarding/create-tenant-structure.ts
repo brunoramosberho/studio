@@ -25,7 +25,7 @@ export interface TenantStructure {
   tenantId: string;
   classTypes: { id: string; name: string; duration: number; color: string; icon: string | null }[];
   coachProfiles: { id: string; name: string; userId: string }[];
-  rooms: { id: string; maxCapacity: number; studioId: string }[];
+  rooms: { id: string; maxCapacity: number; studioId: string; cityTimezone: string }[];
   adminUserId: string;
 }
 
@@ -167,7 +167,7 @@ export async function createTenantStructure(
   }
 
   // 5. Locations → Studios → Rooms
-  const rooms: { id: string; maxCapacity: number; studioId: string }[] = [];
+  const rooms: { id: string; maxCapacity: number; studioId: string; cityTimezone: string }[] = [];
 
   if (data.locations.length > 0) {
     for (const loc of data.locations) {
@@ -209,7 +209,7 @@ export async function createTenantStructure(
             classTypes: { connect: { id: ct.id } },
           },
         });
-        rooms.push({ id: room.id, maxCapacity: room.maxCapacity, studioId: studio.id });
+        rooms.push({ id: room.id, maxCapacity: room.maxCapacity, studioId: studio.id, cityTimezone: city.timezone });
       }
     }
   } else {
@@ -237,7 +237,7 @@ export async function createTenantStructure(
           classTypes: { connect: { id: ct.id } },
         },
       });
-      rooms.push({ id: room.id, maxCapacity: room.maxCapacity, studioId: studio.id });
+      rooms.push({ id: room.id, maxCapacity: room.maxCapacity, studioId: studio.id, cityTimezone: city.timezone });
     }
   }
 

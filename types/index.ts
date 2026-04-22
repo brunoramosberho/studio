@@ -37,7 +37,7 @@ export type {
 };
 
 export interface RoomWithStudio extends Room {
-  studio: Studio;
+  studio: Studio & { city?: City | null };
 }
 
 export interface ClassWithDetails extends Class {

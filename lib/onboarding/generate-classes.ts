@@ -1,9 +1,29 @@
 import { prisma } from "@/lib/db";
 import { ClassStatus } from "@prisma/client";
-import { addDays, setHours, setMinutes, addMinutes } from "date-fns";
+import { addDays, addMinutes, setHours, setMinutes } from "date-fns";
 import type { ExtractedScheduleSlot } from "./types";
 import type { TenantStructure } from "./create-tenant-structure";
 import { WEEKDAY_SLOTS, WEEKEND_SLOTS } from "./demo-constants";
+import { zonedWallTimeToUtc } from "@/lib/utils";
+
+/**
+ * Given a "wall-clock" date (whose y/m/d/h/m fields were computed in server-local
+ * time) and a target IANA timezone, return the UTC instant that corresponds to
+ * those same wall-clock fields in that timezone.
+ *
+ * Needed because server-side code runs in UTC on Vercel; without this the class
+ * generator stores "7:00 AM UTC" instead of "7:00 AM CDMX" (off by -6h / -5h).
+ */
+function wallClockInZone(date: Date, hour: number, minute: number, timeZone: string): Date {
+  return zonedWallTimeToUtc(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    hour,
+    minute,
+    timeZone,
+  );
+}
 
 interface GeneratedClass {
   id: string;
@@ -74,17 +94,19 @@ async function generateFromSchedule(
       const [hourStr, minStr] = slot.startTime.split(":");
       const hour = parseInt(hourStr, 10);
       const minute = parseInt(minStr, 10);
-      const startsAt = setMinutes(setHours(date, hour), minute);
 
       const ct = ctByName.get(slot.disciplineName.toLowerCase()) || classTypes[0];
       const duration = slot.durationMinutes || ct.duration;
-      const endsAt = addMinutes(startsAt, duration);
 
       const coach = slot.coachName
         ? coachByName.get(slot.coachName.toLowerCase()) || coachProfiles[allClasses.length % coachProfiles.length]
         : coachProfiles[allClasses.length % coachProfiles.length];
 
       const room = rooms[allClasses.length % rooms.length];
+      // Interpret hour/minute as wall-clock time in the studio's city timezone,
+      // not in the server's timezone (which on Vercel is UTC).
+      const startsAt = wallClockInZone(date, hour, minute, room.cityTimezone);
+      const endsAt = addMinutes(startsAt, duration);
       const isPast = startsAt < todayStart;
 
       const cls = await prisma.class.create({
@@ -217,7 +239,7 @@ async function generateStandard(
       const ct = classTypes[idx % classTypes.length];
       const coach = coachProfiles[idx % coachProfiles.length];
       const room = rooms[idx % rooms.length];
-      const startsAt = setMinutes(setHours(date, slot.hour), slot.minute);
+      const startsAt = wallClockInZone(date, slot.hour, slot.minute, room.cityTimezone);
       const endsAt = addMinutes(startsAt, ct.duration);
 
       const cls = await prisma.class.create({

@@ -1132,7 +1132,7 @@ function MobileClassCard({
               past ? "text-muted" : "text-foreground",
             )}
           >
-            {formatTime(cls.startsAt)}
+            {formatTime(cls.startsAt, cls.room?.studio?.city?.timezone ?? undefined)}
           </p>
           <p className="text-[10px] text-muted">{cls.classType.duration} min</p>
         </div>
@@ -1320,7 +1320,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
               past ? "text-muted/50" : "text-foreground",
             )}
           >
-            {formatTime(cls.startsAt)}
+            {formatTime(cls.startsAt, cls.room?.studio?.city?.timezone ?? undefined)}
           </p>
           <p
             className={cn(
