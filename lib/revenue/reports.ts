@@ -38,6 +38,15 @@ export interface ByCoach {
   revenueCents: number;
 }
 
+export interface ByPackage {
+  packageId: string | null;
+  packageName: string;
+  packageType: string | null;
+  attributions: number;
+  revenueCents: number;
+  avgPerAttributionCents: number;
+}
+
 export interface ByTimeSlot {
   dayOfWeek: number; // 0 = Sunday
   hourOfDay: number;
@@ -61,6 +70,7 @@ export interface RevenueReport {
   breakageDetail: BreakageDetail;
   byDiscipline: ByDiscipline[];
   byCoach: ByCoach[];
+  byPackage: ByPackage[];
   byTimeslot: ByTimeSlot[];
   heatmap: HeatmapCell[];
 }
@@ -74,6 +84,9 @@ interface AttributedRow {
   coachId: string | null;
   coachName: string | null;
   scheduledAt: Date | null;
+  packageId: string | null;
+  packageName: string;
+  packageType: string | null;
 }
 
 async function loadAttributedRows(
@@ -89,6 +102,7 @@ async function loadAttributedRows(
     },
     select: {
       amountCents: true,
+      type: true,
       classId: true,
       booking: { select: { classId: true } },
       classRef: {
@@ -98,8 +112,32 @@ async function loadAttributedRows(
           coach: { select: { id: true, name: true } },
         },
       },
+      entitlement: {
+        select: {
+          type: true,
+          packageId: true,
+        },
+      },
     },
   });
+
+  // Entitlement has no `package` relation defined in the schema (just a loose
+  // packageId String). Batch-fetch package names in a separate, tenant-scoped
+  // query to label the aggregation rows.
+  const packageIds = Array.from(
+    new Set(
+      events
+        .map((e) => e.entitlement?.packageId)
+        .filter((id): id is string => !!id),
+    ),
+  );
+  const packages = packageIds.length
+    ? await prisma.package.findMany({
+        where: { id: { in: packageIds }, tenantId },
+        select: { id: true, name: true, type: true },
+      })
+    : [];
+  const packageById = new Map(packages.map((p) => [p.id, p]));
 
   // For booking events the class comes via booking→class; for penalty events
   // it comes via classId. We select both and collapse.
@@ -128,6 +166,15 @@ async function loadAttributedRows(
         : e.classId
           ? lookupById.get(e.classId)
           : undefined);
+    const pkg = e.entitlement?.packageId
+      ? (packageById.get(e.entitlement.packageId) ?? null)
+      : null;
+    const fallback =
+      e.type === "penalty"
+        ? "Penalización"
+        : e.entitlement?.type === "dropin"
+          ? "Dropin / pago único"
+          : "Sin paquete";
     return {
       amountCents: e.amountCents,
       classTypeId: cls?.classType.id ?? null,
@@ -135,6 +182,9 @@ async function loadAttributedRows(
       coachId: cls?.coach.id ?? null,
       coachName: cls?.coach.name ?? null,
       scheduledAt: cls?.startsAt ?? null,
+      packageId: pkg?.id ?? null,
+      packageName: pkg?.name ?? fallback,
+      packageType: pkg?.type ?? null,
     };
   });
 }
@@ -189,6 +239,16 @@ export async function getMonthlyRevenueReport(
     string,
     { name: string; attributions: number; revenueCents: number }
   >();
+  const byPackageMap = new Map<
+    string,
+    {
+      packageId: string | null;
+      packageName: string;
+      packageType: string | null;
+      attributions: number;
+      revenueCents: number;
+    }
+  >();
   const byTimeslotMap = new Map<string, ByTimeSlot>();
   const heatmapMap = new Map<string, HeatmapCell>();
 
@@ -212,6 +272,19 @@ export async function getMonthlyRevenueReport(
       entry.attributions++;
       entry.revenueCents += row.amountCents;
       byCoachMap.set(row.coachId, entry);
+    }
+    {
+      const key = row.packageId ?? `fallback:${row.packageName}`;
+      const entry = byPackageMap.get(key) ?? {
+        packageId: row.packageId,
+        packageName: row.packageName,
+        packageType: row.packageType,
+        attributions: 0,
+        revenueCents: 0,
+      };
+      entry.attributions++;
+      entry.revenueCents += row.amountCents;
+      byPackageMap.set(key, entry);
     }
     if (row.scheduledAt) {
       const dow = row.scheduledAt.getDay();
@@ -262,6 +335,18 @@ export async function getMonthlyRevenueReport(
     }))
     .sort((a, b) => b.revenueCents - a.revenueCents);
 
+  const byPackage: ByPackage[] = Array.from(byPackageMap.values())
+    .map((v) => ({
+      packageId: v.packageId,
+      packageName: v.packageName,
+      packageType: v.packageType,
+      attributions: v.attributions,
+      revenueCents: v.revenueCents,
+      avgPerAttributionCents:
+        v.attributions > 0 ? Math.round(v.revenueCents / v.attributions) : 0,
+    }))
+    .sort((a, b) => b.revenueCents - a.revenueCents);
+
   const byTimeslot = Array.from(byTimeslotMap.values()).sort(
     (a, b) => b.revenueCents - a.revenueCents,
   );
@@ -282,6 +367,7 @@ export async function getMonthlyRevenueReport(
     },
     byDiscipline,
     byCoach,
+    byPackage,
     byTimeslot,
     heatmap,
   };

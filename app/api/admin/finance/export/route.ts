@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { addBusinessDays } from "@/lib/stripe/helpers";
+import { escCsv } from "@/lib/csv";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -41,15 +42,6 @@ function getDateRange(range: Range, month?: string) {
   }
 
   return { start, end };
-}
-
-function escCsv(val: string | number | null | undefined): string {
-  if (val == null) return "";
-  const str = String(val);
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
 }
 
 function getConceptType(type: string): string {

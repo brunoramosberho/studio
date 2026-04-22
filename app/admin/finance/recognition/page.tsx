@@ -1,9 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { ArrowLeft, PieChart, Info, TrendingUp } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Info,
+  Package,
+  PieChart,
+  TrendingUp,
+} from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -32,6 +39,14 @@ interface RevenueReport {
     coachName: string;
     attributions: number;
     revenueCents: number;
+  }[];
+  byPackage: {
+    packageId: string | null;
+    packageName: string;
+    packageType: string | null;
+    attributions: number;
+    revenueCents: number;
+    avgPerAttributionCents: number;
   }[];
   byTimeslot: {
     dayOfWeek: number;
@@ -80,6 +95,22 @@ export default function RevenueRecognitionPage() {
     );
   }, [data]);
 
+  const handleExport = useCallback(async () => {
+    const res = await fetch(
+      `/api/admin/finance/revenue-recognition/export?month=${month}`,
+    );
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ingresos-reconocidos-${month}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [month]);
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <header className="space-y-3">
@@ -101,12 +132,23 @@ export default function RevenueRecognitionPage() {
               caducidad de bonos (breakage).
             </p>
           </div>
-          <input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="rounded-sm border border-border/60 bg-card px-3 py-1.5 text-sm font-medium text-foreground focus:border-admin/50 focus:outline-none"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="rounded-sm border border-border/60 bg-card px-3 py-1.5 text-sm font-medium text-foreground focus:border-admin/50 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={isLoading || !data}
+              className="inline-flex items-center gap-1.5 rounded-sm border border-border/60 bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-admin/50 hover:text-admin disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Exportar CSV
+            </button>
+          </div>
         </div>
       </header>
 
@@ -139,6 +181,43 @@ export default function RevenueRecognitionPage() {
       </section>
 
       <InfoBanner />
+
+      <Panel icon={<Package className="h-4 w-4" />} title="Por paquete">
+        {isLoading ? (
+          <TableSkeleton rows={6} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted">
+                <tr>
+                  <th className="py-2">Paquete</th>
+                  <th className="py-2 text-right">Atrib.</th>
+                  <th className="py-2 text-right">Ingreso</th>
+                  <th className="py-2 text-right">Ingreso / reserva</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.byPackage ?? []).map((row) => (
+                  <tr
+                    key={row.packageId ?? `fallback:${row.packageName}`}
+                    className="border-t border-border/50"
+                  >
+                    <td className="py-2 font-medium">{row.packageName}</td>
+                    <td className="py-2 text-right tabular-nums">{row.attributions}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      {formatCurrency(fromCents(row.revenueCents), currency)}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-muted">
+                      {formatCurrency(fromCents(row.avgPerAttributionCents), currency)}
+                    </td>
+                  </tr>
+                ))}
+                {(data?.byPackage ?? []).length === 0 && <EmptyRow colSpan={4} />}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <Panel icon={<PieChart className="h-4 w-4" />} title="Por disciplina">
