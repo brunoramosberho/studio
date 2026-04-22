@@ -18,10 +18,14 @@ export async function GET() {
       });
     }
 
-    const [membership, coachProfile] = await Promise.all([
+    const [membership, coachProfile, shopProduct] = await Promise.all([
       getMembership(session.user.id, tenant.id),
       prisma.coachProfile.findUnique({
         where: { userId_tenantId: { userId: session.user.id, tenantId: tenant.id } },
+        select: { id: true },
+      }),
+      prisma.product.findFirst({
+        where: { tenantId: tenant.id, isActive: true, isVisible: true },
         select: { id: true },
       }),
     ]);
@@ -29,6 +33,7 @@ export async function GET() {
     return NextResponse.json({
       role: membership?.role ?? null,
       hasCoachProfile: !!coachProfile,
+      hasShopProducts: !!shopProduct,
       tenantId: tenant.id,
       tenantSlug: tenant.slug,
       isSuperAdmin: (session.user as Record<string, unknown>).isSuperAdmin ?? false,
