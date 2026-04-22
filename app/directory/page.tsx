@@ -2,29 +2,31 @@ import type { Metadata } from "next";
 import { LandingClient } from "./client";
 
 export const metadata: Metadata = {
-  title: "Mgic Studio — La plataforma todo-en-uno para estudios fitness",
+  title: "Mgic Studio — The all-in-one platform for boutique fitness studios",
   description:
-    "Reservas, pagos, comunidad social, analytics con IA y una app white-label para tus miembros. Todo en un solo lugar.",
+    "Replace 10 tools with one. Mgic is the modern studio management platform that handles scheduling, payments, member engagement, AI insights, and community — so you can focus on what you love.",
   keywords: [
-    "reservas fitness",
-    "software para estudios",
+    "studio management",
+    "fitness booking",
     "pilates software",
-    "booking fitness",
+    "boutique studio",
     "gym management",
-    "studio management platform",
+    "booking platform",
+    "member app",
   ],
   openGraph: {
-    title: "Mgic Studio — La plataforma todo-en-uno para estudios fitness",
+    title: "Mgic Studio — The all-in-one platform for boutique fitness studios",
     description:
-      "Reservas, pagos, comunidad social, analytics con IA y una app white-label para tus miembros.",
-    type: "website",
+      "Replace 10 tools with one. Scheduling, payments, community, AI — all in Mgic.",
     url: "https://mgic.app",
+    siteName: "Mgic Studio",
+    type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mgic Studio — La plataforma todo-en-uno para estudios fitness",
+    title: "Mgic Studio — The all-in-one platform for boutique fitness studios",
     description:
-      "Reservas, pagos, comunidad social, analytics con IA y una app white-label para tus miembros.",
+      "Replace 10 tools with one. Scheduling, payments, community, AI — all in Mgic.",
   },
 };
 

@@ -1,0 +1,211 @@
+"use client";
+
+import { motion } from "framer-motion";
+
+const aiCapabilities = [
+  {
+    title: "Smart Briefings",
+    desc: "Start every day with AI-generated insights on your bookings, revenue, and member activity.",
+  },
+  {
+    title: "Churn Prediction",
+    desc: "MgicAI flags at-risk members before they leave, so you can reach out at the right moment.",
+  },
+  {
+    title: "Revenue Forecasting",
+    desc: "See where your revenue is heading based on renewals, failed payments, and booking trends.",
+  },
+  {
+    title: "Class Optimization",
+    desc: "Get recommendations on scheduling, capacity, and pricing based on real occupancy data.",
+  },
+];
+
+export function MgicAI() {
+  return (
+    <section id="mgic-ai" className="py-20 md:py-28">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <p className="text-sm font-semibold text-accent mb-3">MgicAI</p>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
+              AI that runs your front desk{" "}
+              <em className="not-italic text-gradient">while you teach</em>
+            </h2>
+            <p className="mt-4 text-lg text-muted leading-relaxed">
+              Powered by Claude, MgicAI is your always-on studio assistant. It
+              doesn&apos;t just answer questions — it surfaces the insights you
+              didn&apos;t know you needed.
+            </p>
+
+            <div className="mt-10 space-y-5">
+              {aiCapabilities.map((cap, i) => (
+                <motion.div
+                  key={cap.title}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.1 }}
+                  className="flex gap-4"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent text-sm font-bold">
+                    {i + 1}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{cap.title}</p>
+                    <p className="mt-0.5 text-sm text-muted">{cap.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="rounded-2xl border border-border bg-white shadow-xl overflow-hidden">
+              <div className="flex items-center gap-3 border-b border-border px-5 py-3 bg-surface/50">
+                <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
+                  <svg
+                    className="h-4 w-4 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">MgicAI</p>
+                  <p className="text-[10px] text-green-600 font-medium">Online</p>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4 bg-surface/20">
+                <div className="flex gap-3">
+                  <div className="h-7 w-7 shrink-0 rounded-full bg-accent/10 flex items-center justify-center">
+                    <svg
+                      className="h-3.5 w-3.5 text-accent"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div className="rounded-2xl rounded-tl-sm bg-white border border-border p-3 max-w-[85%]">
+                    <p className="text-xs text-foreground leading-relaxed">
+                      Good morning! Here&apos;s your daily briefing:
+                    </p>
+                    <div className="mt-2 space-y-1.5 text-xs text-muted">
+                      <p>
+                        📈 <strong className="text-foreground">Revenue is up 18%</strong> this week
+                        vs. last — driven by 12 new memberships.
+                      </p>
+                      <p>
+                        ⚠️ <strong className="text-foreground">3 members at risk</strong> of
+                        churning — no visits in 14+ days.
+                      </p>
+                      <p>
+                        🔥 <strong className="text-foreground">Thursday 6 PM HIIT</strong> is at
+                        94% capacity — consider adding a second session.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <div className="rounded-2xl rounded-tr-sm bg-foreground p-3 max-w-[75%]">
+                    <p className="text-xs text-white">
+                      Which members should I reach out to today?
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="h-7 w-7 shrink-0 rounded-full bg-accent/10 flex items-center justify-center">
+                    <svg
+                      className="h-3.5 w-3.5 text-accent"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div className="rounded-2xl rounded-tl-sm bg-white border border-border p-3 max-w-[85%]">
+                    <p className="text-xs text-foreground leading-relaxed mb-2">
+                      I&apos;d prioritize these three:
+                    </p>
+                    <div className="space-y-2">
+                      {[
+                        {
+                          name: "Emma Wilson",
+                          reason: "No visits in 16 days. Usually comes 3x/week.",
+                          action: "Send a re-engagement message",
+                        },
+                        {
+                          name: "David Chen",
+                          reason: "Package expires in 3 days, hasn't renewed.",
+                          action: "Offer a renewal incentive",
+                        },
+                        {
+                          name: "Mia Torres",
+                          reason: "Birthday tomorrow! Loyal member, 48 classes.",
+                          action: "Send a birthday greeting",
+                        },
+                      ].map((m) => (
+                        <div
+                          key={m.name}
+                          className="rounded-lg bg-surface p-2 text-[11px]"
+                        >
+                          <p className="font-semibold text-foreground">{m.name}</p>
+                          <p className="text-muted-foreground">{m.reason}</p>
+                          <p className="text-accent font-medium mt-0.5">
+                            → {m.action}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-border px-4 py-3 flex items-center gap-3">
+                <div className="flex-1 rounded-full bg-surface border border-border px-4 py-2 text-xs text-muted-foreground">
+                  Ask MgicAI anything about your studio...
+                </div>
+                <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
+                  <svg
+                    className="h-4 w-4 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}

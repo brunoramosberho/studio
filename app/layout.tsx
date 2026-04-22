@@ -49,17 +49,38 @@ import { AppleSplashGenerator } from "@/components/shared/apple-splash-generator
 import type { ThemeMode } from "@/components/theme-provider";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const s = await getServerBranding();
-  const fullName = `${s.studioName} Studio`;
-
   const h = await headers();
   const host = h.get("host") || process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
   const protocol = host.includes("localhost") ? "http" : "https";
   const baseUrl = `${protocol}://${host}`;
 
-  // Apple splash screens are now generated client-side via Canvas
-  // (AppleSplashGenerator) — see RootLayout below. No server-side
-  // startupImage entries needed.
+  const tenantSlug = h.get("x-tenant-slug");
+  const isApex = !tenantSlug;
+
+  // Apex domain: public marketing metadata, no PWA manifest/apple-icon.
+  // /directory/page.tsx provides the landing-specific title/description.
+  if (isApex) {
+    return {
+      metadataBase: new URL(baseUrl),
+      title: {
+        default: "Mgic Studio — The all-in-one platform for boutique fitness studios",
+        template: "%s | Mgic Studio",
+      },
+      description:
+        "Replace 10 tools with one. Mgic is the modern studio management platform that handles scheduling, payments, member engagement, AI insights, and community.",
+      keywords: [
+        "studio management",
+        "fitness booking",
+        "pilates software",
+        "gym management",
+        "boutique studio",
+        "member app",
+      ],
+    };
+  }
+
+  const s = await getServerBranding();
+  const fullName = `${s.studioName} Studio`;
 
   return {
     metadataBase: new URL(baseUrl),
@@ -137,8 +158,13 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const themePref = (cookieStore.get("studio-theme")?.value ?? "system") as ThemeMode;
 
-  // Detect client portal for the iOS splash generator.
+  // Detect apex domain vs tenant subdomain. The apex serves the public
+  // marketing landing — no PWA install prompt, no mobile member nav, no
+  // waiver/rating sheets, no install-prompt, no Apple splash. Those are
+  // exclusive to [slug].mgic.app.
   const hdrs = await headers();
+  const tenantSlug = hdrs.get("x-tenant-slug");
+  const isApex = !tenantSlug;
   const isClientPortal = (hdrs.get("x-auth-portal") ?? "client") === "client";
 
   return (
@@ -150,26 +176,26 @@ export default async function RootLayout({
             any network round-trip. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var p=document.cookie.match(/(?:^|;\\s*)studio-theme=([^;]+)/);var t=(p&&p[1])||localStorage.getItem('studio-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.content=d?'#0B0B0F':'#FFFFFF';}catch(e){}})();`,
+            __html: `(function(){try{var p=document.cookie.match(/(?:^|;\\s*)studio-theme=([^;]+)/);var t=(p&&p[1])||localStorage.getItem('studio-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');var m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d?'#0B0B0F':'#FFFFFF';}catch(e){}})();`,
           }}
         />
       </head>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <NextIntlClientProvider messages={messages}>
           <Providers initialTheme={themePref} initialBranding={b}>
-            {isClientPortal && (
+            {!isApex && isClientPortal && (
               <AppleSplashGenerator
                 iconUrl="/api/icon?size=512"
                 bgColor={b.colorHeroBg}
               />
             )}
-            <InAppBrowserBanner />
-            <SplashScreen />
+            {!isApex && <InAppBrowserBanner />}
+            {!isApex && <SplashScreen />}
             {children}
-            <MobileNav />
-            <WaiverGate />
-            <RatingSheet />
-            <InstallPrompt />
+            {!isApex && <MobileNav />}
+            {!isApex && <WaiverGate />}
+            {!isApex && <RatingSheet />}
+            {!isApex && <InstallPrompt />}
             <CookieConsent />
           </Providers>
         </NextIntlClientProvider>

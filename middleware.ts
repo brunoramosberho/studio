@@ -45,6 +45,24 @@ function hasAdminCookie(req: NextRequest): boolean {
   );
 }
 
+/** Paths that require a tenant subdomain. On the apex, they redirect home. */
+function isTenantOnlyPath(pathname: string): boolean {
+  return (
+    pathname === "/login" ||
+    pathname.startsWith("/my") ||
+    pathname.startsWith("/admin") ||
+    (pathname.startsWith("/coach") && !pathname.startsWith("/coaches")) ||
+    pathname.startsWith("/schedule") ||
+    pathname.startsWith("/book") ||
+    pathname.startsWith("/class/") ||
+    pathname.startsWith("/packages") ||
+    pathname.startsWith("/shop") ||
+    pathname.startsWith("/rate") ||
+    pathname.startsWith("/waiver") ||
+    pathname.startsWith("/install")
+  );
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const host = req.headers.get("host") || ROOT_DOMAIN;
@@ -67,18 +85,29 @@ export function middleware(req: NextRequest) {
     return NextResponse.rewrite(url, { request: { headers } });
   }
 
-  // Root domain (no subdomain): show directory on /
-  if (!subdomain && pathname === "/") {
-    const url = req.nextUrl.clone();
-    url.pathname = "/directory";
-    return NextResponse.rewrite(url);
+  // Apex domain (no subdomain): serve the marketing landing. No auth, no PWA,
+  // no tenant-specific surfaces — those live on [slug].mgic.app only.
+  if (!subdomain) {
+    if (pathname === "/") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/directory";
+      return NextResponse.rewrite(url);
+    }
+
+    // Block tenant-only routes on the apex. Send visitors to the landing.
+    if (isTenantOnlyPath(pathname)) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    return NextResponse.next();
   }
 
   // Inject tenant slug + auth portal + locale header
   const headers = new Headers(req.headers);
-  if (subdomain) {
-    headers.set("x-tenant-slug", subdomain);
-  }
+  headers.set("x-tenant-slug", subdomain);
   headers.set("x-auth-portal", isAdminPortalPath(pathname) ? "admin" : "client");
 
   // Locale: cookie override → default "es" (tenant locale resolved server-side in i18n/request.ts)

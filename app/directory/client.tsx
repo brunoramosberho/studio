@@ -1,30 +1,37 @@
 "use client";
 
-import { LandingNav } from "@/components/landing/nav";
-import { Hero } from "@/components/landing/hero";
-import { Studios } from "@/components/landing/studios";
-import { Features } from "@/components/landing/features";
-import { Showcase } from "@/components/landing/showcase";
-import { AIChat } from "@/components/landing/ai-chat";
-import { Comparison } from "@/components/landing/comparison";
-import { Pricing } from "@/components/landing/pricing";
-import { FAQ } from "@/components/landing/faq";
-import { FinalCTA, Footer } from "@/components/landing/cta-footer";
+import { MarketingNavbar } from "@/components/marketing/navbar";
+import { MarketingHero } from "@/components/marketing/hero";
+import { MetricsTicker } from "@/components/marketing/metrics-ticker";
+import { WhyMgic } from "@/components/marketing/why-mgic";
+import { MemberApp } from "@/components/marketing/member-app";
+import { MgicAI } from "@/components/marketing/mgic-ai";
+import { DashboardSection } from "@/components/marketing/dashboard-section";
+import { SocialCommunity } from "@/components/marketing/social-community";
+import { MarketingPricing } from "@/components/marketing/pricing";
+import { SwitchingCost } from "@/components/marketing/switching-cost";
+import { Testimonials } from "@/components/marketing/testimonials";
+import { MarketingFAQ } from "@/components/marketing/faq";
+import { DarkCTA } from "@/components/marketing/dark-cta";
+import { MarketingFooter } from "@/components/marketing/footer";
 
 export function LandingClient() {
   return (
-    <div className="min-h-dvh overflow-x-hidden scroll-auto bg-gray-50 text-gray-900 antialiased selection:bg-orange-100 selection:text-orange-600">
-      <LandingNav />
-      <Hero />
-      <Studios />
-      <Features />
-      <Showcase />
-      <AIChat />
-      <Comparison />
-      <Pricing />
-      <FAQ />
-      <FinalCTA />
-      <Footer />
+    <div className="min-h-dvh flex flex-col font-sans bg-background text-foreground antialiased">
+      <MarketingNavbar />
+      <MarketingHero />
+      <MetricsTicker />
+      <WhyMgic />
+      <MemberApp />
+      <MgicAI />
+      <DashboardSection />
+      <SocialCommunity />
+      <MarketingPricing />
+      <SwitchingCost />
+      <Testimonials />
+      <MarketingFAQ />
+      <DarkCTA />
+      <MarketingFooter />
     </div>
   );
 }
