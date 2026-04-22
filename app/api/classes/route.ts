@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         classType: true,
-        room: { include: { studio: true } },
+        room: { include: { studio: { include: { city: true } } } },
         coach: {
           select: {
             id: true,
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         classType: true,
-        room: { include: { studio: true } },
+        room: { include: { studio: { include: { city: true } } } },
         coach: {
           select: {
             id: true,

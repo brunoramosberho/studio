@@ -35,6 +35,92 @@ export function formatDate(date: Date | string, locale?: string): string {
   return format(d, "d 'de' MMMM, yyyy", { locale: loc });
 }
 
+/**
+ * Convert a wall-clock time in a given IANA timezone to the equivalent UTC Date.
+ * Example: zonedWallTimeToUtc(2026, 3, 23, 7, 0, "America/Mexico_City")
+ *   → Date representing 07:00 in CDMX (i.e. 13:00 UTC during CST, 12:00 UTC during CDT).
+ *
+ * Uses Intl.DateTimeFormat to compute the offset; no external deps.
+ */
+export function zonedWallTimeToUtc(
+  year: number,
+  monthIndex: number,
+  day: number,
+  hour: number,
+  minute: number,
+  timeZone: string,
+): Date {
+  const utcGuessMs = Date.UTC(year, monthIndex, day, hour, minute, 0);
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const parts = dtf.formatToParts(new Date(utcGuessMs));
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+  const zonedWallMs = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour"),
+    get("minute"),
+    get("second"),
+  );
+  const offsetMs = zonedWallMs - utcGuessMs;
+  return new Date(utcGuessMs - offsetMs);
+}
+
+/**
+ * Extract the wall-clock components (year/month/day/hour/minute/weekday) of a
+ * UTC instant as observed in the given IANA timezone. Useful for form prefill,
+ * date-bucketing and hour-bucketing in UI that must respect the studio's TZ
+ * regardless of the viewer's browser timezone.
+ */
+export function getWallClockInZone(
+  date: Date | string,
+  timeZone: string,
+): { year: number; month: number; day: number; hour: number; minute: number; weekday: number } {
+  const d = new Date(date);
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    weekday: "short",
+  });
+  const parts = dtf.formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    year: Number(get("year")),
+    month: Number(get("month")),
+    day: Number(get("day")),
+    hour: Number(get("hour")),
+    minute: Number(get("minute")),
+    weekday: weekdayMap[get("weekday")] ?? 0,
+  };
+}
+
+/** Returns "yyyy-MM-dd" for a UTC instant observed in the given timezone. */
+export function formatDateInZone(date: Date | string, timeZone: string): string {
+  const { year, month, day } = getWallClockInZone(date, timeZone);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/** Returns "HH:mm" (24h) for a UTC instant observed in the given timezone. */
+export function formatTime24InZone(date: Date | string, timeZone: string): string {
+  const { hour, minute } = getWallClockInZone(date, timeZone);
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 export function formatTime(date: Date | string, timeZone?: string): string {
   const d = new Date(date);
   if (timeZone) {

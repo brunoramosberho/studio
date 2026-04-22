@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
-import { addMinutes, addWeeks, format, setDay, startOfDay, isBefore, isAfter } from "date-fns";
+import { format } from "date-fns";
+import { zonedWallTimeToUtc } from "@/lib/utils";
+
+const FALLBACK_TZ = "Europe/Madrid";
 
 /**
  * POST /api/classes/bulk
@@ -38,34 +41,33 @@ export async function POST(request: NextRequest) {
     }
 
     const [hours, minutes] = time.split(":").map(Number);
-    const startDate = startOfDay(new Date(dateFrom));
-    const endDate = startOfDay(new Date(dateTo));
+    // Parse date strings as UTC date components so the weekday math is
+    // independent of the server TZ (Vercel runs in UTC). Actual UTC instants
+    // for each class are computed via zonedWallTimeToUtc using the studio's
+    // timezone below.
+    const [fromY, fromM, fromD] = (dateFrom as string).split("-").map(Number);
+    const [toY, toM, toD] = (dateTo as string).split("-").map(Number);
+    const startMs = Date.UTC(fromY, (fromM ?? 1) - 1, fromD ?? 1);
+    const endMs = Date.UTC(toY, (toM ?? 1) - 1, toD ?? 1);
 
-    if (isAfter(startDate, endDate)) {
+    if (startMs > endMs) {
       return NextResponse.json(
         { error: "dateFrom must be before or equal to dateTo" },
         { status: 400 },
       );
     }
 
-    // Limit date range to 8 weeks (56 days)
     const maxRangeMs = 56 * 24 * 60 * 60 * 1000;
-    if (endDate.getTime() - startDate.getTime() > maxRangeMs) {
+    if (endMs - startMs > maxRangeMs) {
       return NextResponse.json(
         { error: "El rango máximo es de 8 semanas. Crea otra serie para las siguientes semanas." },
         { status: 400 },
       );
     }
 
-    // Map our day index (0=Mon..6=Sun) to date-fns day (0=Sun, 1=Mon..6=Sat)
-    const dateFnsDayMap: Record<number, number> = {
-      0: 1, // Mon
-      1: 2, // Tue
-      2: 3, // Wed
-      3: 4, // Thu
-      4: 5, // Fri
-      5: 6, // Sat
-      6: 0, // Sun
+    // Map our day index (0=Mon..6=Sun) to JS getUTCDay (0=Sun, 1=Mon..6=Sat)
+    const jsDayMap: Record<number, number> = {
+      0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 0,
     };
 
     const recurringId = `rec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -77,25 +79,41 @@ export async function POST(request: NextRequest) {
         ? songRequestCriteria
         : ["ALL"];
 
-    // Generate all dates
+    // Resolve the studio's timezone so we interpret "time" as a wall-clock
+    // time in the studio's zone, not in the server's TZ (which is UTC on
+    // Vercel). Without this, an 8:15 AM class for a Madrid studio would be
+    // stored as 8:15 UTC and displayed as 10:15 CEST.
+    const roomRecord = await prisma.room.findUnique({
+      where: { id: roomId },
+      select: { studio: { select: { city: { select: { timezone: true } } } } },
+    });
+    const studioTz = roomRecord?.studio?.city?.timezone ?? FALLBACK_TZ;
+
     const classesToCreate: { startsAt: Date; endsAt: Date }[] = [];
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const WEEK_MS = 7 * DAY_MS;
+    const startUTCDow = new Date(startMs).getUTCDay();
 
     for (const dayIndex of days as number[]) {
-      const dateFnsDay = dateFnsDayMap[dayIndex];
-      if (dateFnsDay === undefined) continue;
+      const targetDow = jsDayMap[dayIndex];
+      if (targetDow === undefined) continue;
 
-      // Find the first occurrence of this weekday on or after startDate
-      let current = setDay(startDate, dateFnsDay, { weekStartsOn: 1 });
-      if (isBefore(current, startDate)) {
-        current = addWeeks(current, 1);
-      }
+      const offsetDays = (targetDow - startUTCDow + 7) % 7;
+      let cursor = startMs + offsetDays * DAY_MS;
 
-      while (!isAfter(current, endDate)) {
-        const startsAt = new Date(current);
-        startsAt.setHours(hours, minutes, 0, 0);
-        const endsAt = addMinutes(startsAt, duration);
+      while (cursor <= endMs) {
+        const d = new Date(cursor);
+        const startsAt = zonedWallTimeToUtc(
+          d.getUTCFullYear(),
+          d.getUTCMonth(),
+          d.getUTCDate(),
+          hours,
+          minutes,
+          studioTz,
+        );
+        const endsAt = new Date(startsAt.getTime() + duration * 60_000);
         classesToCreate.push({ startsAt, endsAt });
-        current = addWeeks(current, 1);
+        cursor += WEEK_MS;
       }
     }
 

@@ -28,12 +28,16 @@ import {
 } from "@/components/ui/select";
 import type { ClassType, CoachProfile, User } from "@prisma/client";
 import type { ClassWithDetails } from "@/types";
+import { zonedWallTimeToUtc, formatDateInZone, formatTime24InZone } from "@/lib/utils";
 
 interface StudioWithRooms {
   id: string;
   name: string;
+  city?: { id: string; name: string; timezone: string } | null;
   rooms: { id: string; name: string; maxCapacity: number; classTypes: { id: string; name: string }[] }[];
 }
+
+const FALLBACK_TZ = "Europe/Madrid";
 
 type CoachProfileWithUser = CoachProfile & { user?: Pick<User, "id" | "name" | "email" | "image"> | null };
 
@@ -141,15 +145,16 @@ export function ClassFormDialog({
       const start = new Date(editingClass.startsAt);
       const end = new Date(editingClass.endsAt);
       const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
+      const tz = editingClass.room?.studio?.city?.timezone ?? FALLBACK_TZ;
       setFormData({
         classTypeId: editingClass.classType.id,
         coachProfileId: editingClass.coach.id,
         roomId: editingClass.room?.id ?? "",
-        date: format(start, "yyyy-MM-dd"),
+        date: formatDateInZone(start, tz),
         dateFrom: "",
         dateTo: "",
         days: [],
-        time: format(start, "HH:mm"),
+        time: formatTime24InZone(start, tz),
         duration: durationMin,
         tag: editingClass.tag ?? "",
         songRequestsEnabled: editingClass.songRequestsEnabled ?? false,
@@ -170,8 +175,19 @@ export function ClassFormDialog({
   const availableRooms = studios?.flatMap((s) =>
     s.rooms
       .filter((r) => !formData.classTypeId || r.classTypes.some((ct) => ct.id === formData.classTypeId))
-      .map((r) => ({ ...r, studioName: s.name })),
+      .map((r) => ({ ...r, studioName: s.name, studioTimezone: s.city?.timezone ?? null })),
   ) ?? [];
+
+  /** Resolve the IANA timezone for the currently selected room. Falls back to
+   * the editing class's studio tz or Europe/Madrid. Class times must always be
+   * anchored to the studio's timezone, never the admin's browser tz. */
+  function resolveStudioTimezone(): string {
+    if (formData.roomId) {
+      const room = availableRooms.find((r) => r.id === formData.roomId);
+      if (room?.studioTimezone) return room.studioTimezone;
+    }
+    return editingClass?.room?.studio?.city?.timezone ?? FALLBACK_TZ;
+  }
 
   // Preview class count for recurring mode
   const previewCount = useMemo(() => {
@@ -208,7 +224,10 @@ export function ClassFormDialog({
 
   const saveSingleMutation = useMutation({
     mutationFn: async () => {
-      const startsAt = new Date(`${formData.date}T${formData.time}`);
+      const tz = resolveStudioTimezone();
+      const [y, m, d] = formData.date.split("-").map(Number);
+      const [hh, mm] = formData.time.split(":").map(Number);
+      const startsAt = zonedWallTimeToUtc(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, tz);
       const endsAt = addMinutes(startsAt, formData.duration);
       const payload = {
         classTypeId: formData.classTypeId,

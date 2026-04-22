@@ -25,7 +25,7 @@ export async function GET(
       where: { id, tenantId: tenant.id },
       include: {
         classType: true,
-        room: { include: { studio: true } },
+        room: { include: { studio: { include: { city: true } } } },
         coach: {
           select: {
             id: true, userId: true, name: true, bio: true, specialties: true, photoUrl: true, color: true, tenantId: true,
@@ -304,7 +304,7 @@ export async function PUT(
       },
       include: {
         classType: true,
-        room: { include: { studio: true } },
+        room: { include: { studio: { include: { city: true } } } },
         coach: {
           include: { user: { select: { name: true, image: true } } },
         },

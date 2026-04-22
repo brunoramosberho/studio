@@ -133,7 +133,7 @@ export function ClassDetailDialog({
         <div className="space-y-3 pt-2">
           <div className="flex items-center gap-2.5 text-sm">
             <Clock className="h-4 w-4 text-muted" />
-            <span>{formatTime(cls.startsAt)} — {cls.classType.duration} min</span>
+            <span>{formatTime(cls.startsAt, cls.room?.studio?.city?.timezone ?? undefined)} — {cls.classType.duration} min</span>
           </div>
 
           <div className="flex items-center gap-2.5 text-sm">

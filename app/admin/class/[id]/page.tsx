@@ -76,7 +76,7 @@ interface ClassDetail {
     name: string;
     maxCapacity: number;
     layout: RoomLayoutData | null;
-    studio: { id: string; name: string };
+    studio: { id: string; name: string; city?: { id: string; name: string; timezone: string } | null };
   };
   startsAt: string;
   endsAt: string;
@@ -473,7 +473,7 @@ export default function AdminClassDetailPage() {
             <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted sm:text-sm">
               <span className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4 shrink-0" />
-                {formatTime(classData.startsAt)} – {formatTime(classData.endsAt)}
+                {formatTime(classData.startsAt, classData.room.studio.city?.timezone ?? undefined)} – {formatTime(classData.endsAt, classData.room.studio.city?.timezone ?? undefined)}
               </span>
               <span className="flex items-center gap-1.5">
                 <Users className="h-4 w-4 shrink-0" />

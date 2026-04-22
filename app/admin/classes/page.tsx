@@ -330,7 +330,7 @@ export default function AdminClassesPage() {
                               {format(new Date(cls.startsAt), "EEE d MMM", { locale: es })}
                             </div>
                             <div className="text-xs text-muted font-mono">
-                              {formatTime(cls.startsAt)}–{formatTime(cls.endsAt)}
+                              {formatTime(cls.startsAt, cls.room?.studio?.city?.timezone ?? undefined)}–{formatTime(cls.endsAt, cls.room?.studio?.city?.timezone ?? undefined)}
                             </div>
                           </TableCell>
                           <TableCell className="py-3">
@@ -456,7 +456,7 @@ export default function AdminClassesPage() {
                         </span>
                         <span className="flex items-center gap-1 font-mono text-foreground">
                           <Clock className="h-3.5 w-3.5 text-muted" />
-                          {formatTime(cls.startsAt)} – {formatTime(cls.endsAt)}
+                          {formatTime(cls.startsAt, cls.room?.studio?.city?.timezone ?? undefined)} – {formatTime(cls.endsAt, cls.room?.studio?.city?.timezone ?? undefined)}
                         </span>
                         <span>{cls.coach.name}</span>
                         {cls.room?.studio && (

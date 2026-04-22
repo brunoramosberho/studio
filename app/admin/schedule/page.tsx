@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn, formatTime } from "@/lib/utils";
+import { cn, formatTime, getWallClockInZone } from "@/lib/utils";
 import { ClassFormDialog } from "@/components/admin/class-form-dialog";
 import { ClassDetailDialog } from "@/components/admin/class-detail-dialog";
 import type { ClassWithDetails } from "@/types";
@@ -297,8 +297,22 @@ export default function AdminSchedulePage() {
                   </div>
                   {days.map((day) => {
                     const dayClasses = filtered.filter((c) => {
-                      const start = new Date(c.startsAt);
-                      return isSameDay(start, day) && start.getHours() === hour;
+                      // Bucket classes by the studio's wall-clock day+hour, not
+                      // the admin's browser tz, so a Madrid class at 08:15
+                      // always lands in the 08:00 row for Monday regardless of
+                      // where the admin is viewing from.
+                      const tz = c.room?.studio?.city?.timezone ?? undefined;
+                      if (!tz) {
+                        const start = new Date(c.startsAt);
+                        return isSameDay(start, day) && start.getHours() === hour;
+                      }
+                      const wc = getWallClockInZone(c.startsAt, tz);
+                      return (
+                        wc.year === day.getFullYear() &&
+                        wc.month === day.getMonth() + 1 &&
+                        wc.day === day.getDate() &&
+                        wc.hour === hour
+                      );
                     });
                     return (
                       <div
@@ -334,7 +348,7 @@ export default function AdminSchedulePage() {
                                 {cls.classType.name}
                               </p>
                               <p className="truncate text-[9px] opacity-80">
-                                {cls.coach.name?.split(" ")[0]} · {formatTime(cls.startsAt)}
+                                {cls.coach.name?.split(" ")[0]} · {formatTime(cls.startsAt, cls.room?.studio?.city?.timezone ?? undefined)}
                               </p>
                               <p className="text-[8px] opacity-60">
                                 {booked}/{maxCap}
