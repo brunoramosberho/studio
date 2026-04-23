@@ -16,6 +16,7 @@ export async function GET() {
       noShowPenaltyEnabled: tenant.noShowPenaltyEnabled,
       noShowPenaltyType: tenant.noShowPenaltyType,
       noShowPenaltyAmount: tenant.noShowPenaltyAmount,
+      visibleScheduleDays: tenant.visibleScheduleDays,
     });
   } catch {
     // Default values for unauthenticated or error cases
@@ -24,6 +25,7 @@ export async function GET() {
       noShowPenaltyEnabled: false,
       noShowPenaltyType: "CREDIT_LOSS",
       noShowPenaltyAmount: null,
+      visibleScheduleDays: 7,
     });
   }
 }
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
     const ctx = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { cancellationWindowHours, noShowPenaltyEnabled, noShowPenaltyType, noShowPenaltyAmount } = body;
+    const { cancellationWindowHours, noShowPenaltyEnabled, noShowPenaltyType, noShowPenaltyAmount, visibleScheduleDays } = body;
 
     const data: Record<string, unknown> = {};
 
@@ -64,6 +66,11 @@ export async function POST(request: NextRequest) {
       data.noShowPenaltyAmount = noShowPenaltyAmount === null ? null : Math.max(0, Number(noShowPenaltyAmount));
     }
 
+    if (visibleScheduleDays !== undefined) {
+      const days = Math.max(1, Math.min(60, Math.round(Number(visibleScheduleDays))));
+      data.visibleScheduleDays = days;
+    }
+
     const updated = await prisma.tenant.update({
       where: { id: ctx.tenant.id },
       data,
@@ -72,6 +79,7 @@ export async function POST(request: NextRequest) {
         noShowPenaltyEnabled: true,
         noShowPenaltyType: true,
         noShowPenaltyAmount: true,
+        visibleScheduleDays: true,
       },
     });
 

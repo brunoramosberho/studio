@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, Clock, AlertTriangle, ShieldAlert, DollarSign } from "lucide-react";
+import { Loader2, Clock, AlertTriangle, ShieldAlert, DollarSign, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ interface PoliciesConfig {
   noShowPenaltyEnabled: boolean;
   noShowPenaltyType: "CREDIT_LOSS" | "FEE";
   noShowPenaltyAmount: number | null;
+  visibleScheduleDays: number;
 }
 
 export default function PoliciesSettingsPage() {
@@ -31,6 +32,7 @@ export default function PoliciesSettingsPage() {
           noShowPenaltyEnabled: false,
           noShowPenaltyType: "CREDIT_LOSS",
           noShowPenaltyAmount: null,
+          visibleScheduleDays: 7,
         }),
       );
   }, []);
@@ -198,6 +200,61 @@ export default function PoliciesSettingsPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Schedule visibility */}
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
+            <CalendarDays className="h-5 w-5 text-blue-500" />
+          </div>
+          <div>
+            <h2 className="font-display text-lg font-bold">{t("visibleDaysTitle")}</h2>
+            <p className="text-sm text-muted">{t("visibleDaysDesc")}</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">{t("visibleDaysLabel")}</Label>
+          <div className="flex items-center gap-3">
+            <Input
+              type="number"
+              min={1}
+              max={60}
+              step={1}
+              value={config.visibleScheduleDays}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  visibleScheduleDays: Math.max(1, Math.min(60, parseInt(e.target.value) || 1)),
+                })
+              }
+              className="w-24"
+            />
+            <span className="text-sm text-muted">{t("daysUnit")}</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {[7, 14, 21, 30].map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setConfig({ ...config, visibleScheduleDays: d })}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
+                  config.visibleScheduleDays === d
+                    ? "bg-admin text-white"
+                    : "bg-surface text-muted hover:text-foreground"
+                }`}
+              >
+                {t("daysShort", { days: d })}
+              </button>
+            ))}
+          </div>
+          <div className="rounded-lg bg-surface/60 px-3 py-2.5">
+            <p className="text-[13px] text-muted">
+              {t("visibleDaysExplain", { days: config.visibleScheduleDays })}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Save */}

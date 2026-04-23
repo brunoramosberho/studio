@@ -324,7 +324,11 @@ export function ScheduleClient({
   }, [studios, filterStudio]);
 
   const today = useMemo(() => startOfDay(new Date()), []);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
+  const visibleDays = Math.max(1, policies.visibleScheduleDays);
+  const days = useMemo(
+    () => Array.from({ length: visibleDays }, (_, i) => addDays(today, i)),
+    [today, visibleDays],
+  );
 
   const autoAdvancedRef = useRef(false);
   useEffect(() => {
@@ -335,14 +339,14 @@ export function ScheduleClient({
     const hasUpcoming = todayClasses.some((c) => !isPast(new Date(c.startsAt)));
     if (hasUpcoming) return;
 
-    for (let i = 1; i < 7; i++) {
+    for (let i = 1; i < visibleDays; i++) {
       const next = addDays(today, i);
       if (classes.some((c) => isSameDay(new Date(c.startsAt), next))) {
         setSelectedDay(next);
         break;
       }
     }
-  }, [loadingClasses, classes, today]);
+  }, [loadingClasses, classes, today, visibleDays]);
 
   const classTypes = Array.from(
     new Map(classes.map((c) => [c.classType.id, c.classType])).values(),
@@ -826,7 +830,15 @@ export function ScheduleClient({
         )}
 
         {/* Day headers */}
-        <div className="mb-3 grid grid-cols-7 gap-2">
+        <div
+          className={cn("mb-3 grid gap-2", visibleDays > 7 && "overflow-x-auto")}
+          style={{
+            gridTemplateColumns:
+              visibleDays <= 7
+                ? `repeat(${visibleDays}, minmax(0, 1fr))`
+                : `repeat(${visibleDays}, minmax(140px, 1fr))`,
+          }}
+        >
           {days.map((day) => {
             const today = isToday(day);
             return (
@@ -846,7 +858,15 @@ export function ScheduleClient({
         </div>
 
         {/* Class columns */}
-        <div className="grid grid-cols-7 items-start gap-2">
+        <div
+          className={cn("grid items-start gap-2", visibleDays > 7 && "overflow-x-auto")}
+          style={{
+            gridTemplateColumns:
+              visibleDays <= 7
+                ? `repeat(${visibleDays}, minmax(0, 1fr))`
+                : `repeat(${visibleDays}, minmax(140px, 1fr))`,
+          }}
+        >
           {days.map((day) => {
             const dayClasses = getClassesForDay(day);
             return (
