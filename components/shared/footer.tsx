@@ -16,7 +16,7 @@ export function Footer() {
   const footerLinks = {
     studio: [
       { href: "/schedule", label: t("schedule") },
-      { href: "/coaches", label: t("coaches") },
+      { href: "/instructors", label: t("coaches") },
       { href: "/packages", label: t("packages") },
     ],
     account: [
@@ -28,7 +28,7 @@ export function Footer() {
 
   const hideForLoggedIn =
     pathname === "/schedule" ||
-    pathname === "/coaches" ||
+    pathname === "/instructors" ||
     pathname.startsWith("/my") ||
     pathname.startsWith("/class/") ||
     pathname.startsWith("/book/");

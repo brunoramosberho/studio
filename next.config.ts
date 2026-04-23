@@ -38,6 +38,11 @@ const nextConfig: NextConfig = {
       { source: "/apple-touch-icon-precomposed.png", destination: "/apple-icon" },
     ];
   },
+  async redirects() {
+    return [
+      { source: "/coaches", destination: "/instructors", permanent: true },
+    ];
+  },
   async headers() {
     // Explicitly allow the embed routes to be framed on any host so tenants
     // can paste the widget on their own website (Wix, WordPress, Webflow…).

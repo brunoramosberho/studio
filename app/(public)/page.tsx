@@ -374,12 +374,12 @@ export default function LandingPage() {
 
           <div
             ref={scrollRef}
-            className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 md:overflow-visible md:pb-0"
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
           >
             {coaches.slice(0, 6).map((coach, i) => {
               const photo = coach.photoUrl ?? coach.user?.image;
-              const name = coach.name || "Coach";
-              const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2);
+              const name = coach.name || "Instructor";
+              const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
               return (
                 <motion.div
@@ -389,45 +389,52 @@ export default function LandingPage() {
                   viewport={{ once: true, margin: "-60px" }}
                   custom={i}
                   variants={fadeUp}
-                  className="min-w-[280px] flex-shrink-0 md:min-w-0"
                 >
-                  <div className="group relative h-full overflow-hidden rounded-2xl">
-                    <div className="aspect-[3/4]" style={{ background: `linear-gradient(135deg, ${heroText}15, ${branding.colorAccent}10, ${heroText}08)` }}>
+                  <Link
+                    href="/schedule"
+                    className="group flex min-h-[5rem] items-center gap-4 rounded-2xl border px-4 py-3 transition-colors"
+                    style={{
+                      borderColor: `${heroText}20`,
+                      backgroundColor: `${heroText}08`,
+                    }}
+                  >
+                    <div
+                      className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl"
+                      style={{ background: `linear-gradient(135deg, ${heroText}15, ${branding.colorAccent}15)` }}
+                    >
                       {photo ? (
                         <img
                           src={photo}
                           alt={name}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          className="h-full w-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <div className="flex h-24 w-24 items-center justify-center rounded-full text-3xl font-bold" style={{ backgroundColor: `${heroText}15`, color: heroTextSubtle }}>
-                            {initials}
-                          </div>
-                        </div>
+                        <span
+                          className="flex h-full w-full items-center justify-center text-base font-bold"
+                          style={{ color: heroTextSubtle }}
+                        >
+                          {initials}
+                        </span>
                       )}
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-6">
-                      <h3 className="font-display text-xl font-bold text-white">
+                    <div className="min-w-0 flex-1">
+                      <h3
+                        className="truncate font-display text-base font-bold"
+                        style={{ color: heroText }}
+                      >
                         {name}
                       </h3>
-                      <p className="mt-1 text-sm font-medium text-accent">
-                        {coach.specialties.join(" & ")}
-                      </p>
-                      {coach.bio && (
-                        <p className="mt-2 text-sm leading-relaxed text-white/60 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                          {coach.bio}
+                      {coach.specialties.length > 0 && (
+                        <p className="mt-0.5 truncate text-xs font-medium text-accent">
+                          {coach.specialties.slice(0, 3).join(" · ")}
                         </p>
                       )}
-                      <Link
-                        href="/schedule"
-                        className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-white"
-                      >
-                        {t("viewClasses")} <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
                     </div>
-                  </div>
+                    <ArrowRight
+                      className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                      style={{ color: heroTextSubtle }}
+                    />
+                  </Link>
                 </motion.div>
               );
             })}
@@ -442,7 +449,7 @@ export default function LandingPage() {
               className="mt-10 text-center"
             >
               <Link
-                href="/coaches"
+                href="/instructors"
                 className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-accent"
                 style={{ color: heroTextMuted }}
               >

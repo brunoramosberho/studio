@@ -127,9 +127,7 @@ export function MobileNav() {
 
   if (!session?.user) return null;
 
-  const shouldHide = hiddenOnPaths.some(
-    (p) => pathname.startsWith(p) && pathname !== "/coaches",
-  );
+  const shouldHide = hiddenOnPaths.some((p) => pathname.startsWith(p));
   if (shouldHide) return null;
 
   const isCoach = role === "COACH";
