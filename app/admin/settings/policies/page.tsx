@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, Clock, AlertTriangle, ShieldAlert, DollarSign, CalendarDays } from "lucide-react";
+import {
+  Loader2,
+  Clock,
+  AlertTriangle,
+  ShieldAlert,
+  DollarSign,
+  CalendarDays,
+  Hourglass,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,43 +20,59 @@ import { Switch } from "@/components/ui/switch";
 interface PoliciesConfig {
   cancellationWindowHours: number;
   noShowPenaltyEnabled: boolean;
-  noShowPenaltyType: "CREDIT_LOSS" | "FEE";
+  noShowLoseCredit: boolean;
+  noShowChargeFee: boolean;
   noShowPenaltyAmount: number | null;
+  noShowFeeAmountUnlimited: number | null;
+  noShowPenaltyGraceHours: number;
   visibleScheduleDays: number;
 }
+
+const DEFAULT_CONFIG: PoliciesConfig = {
+  cancellationWindowHours: 12,
+  noShowPenaltyEnabled: false,
+  noShowLoseCredit: true,
+  noShowChargeFee: false,
+  noShowPenaltyAmount: null,
+  noShowFeeAmountUnlimited: null,
+  noShowPenaltyGraceHours: 24,
+  visibleScheduleDays: 7,
+};
 
 export default function PoliciesSettingsPage() {
   const t = useTranslations("admin.policiesPage");
   const [config, setConfig] = useState<PoliciesConfig | null>(null);
+  const [separateUnlimitedFee, setSeparateUnlimitedFee] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/policies")
       .then((r) => r.json())
-      .then((data) => setConfig(data))
-      .catch(() =>
-        setConfig({
-          cancellationWindowHours: 12,
-          noShowPenaltyEnabled: false,
-          noShowPenaltyType: "CREDIT_LOSS",
-          noShowPenaltyAmount: null,
-          visibleScheduleDays: 7,
-        }),
-      );
+      .then((data: PoliciesConfig) => {
+        setConfig({ ...DEFAULT_CONFIG, ...data });
+        setSeparateUnlimitedFee(data.noShowFeeAmountUnlimited !== null);
+      })
+      .catch(() => setConfig(DEFAULT_CONFIG));
   }, []);
 
   async function handleSave() {
     if (!config) return;
     setSaving(true);
     try {
+      const payload = {
+        ...config,
+        noShowFeeAmountUnlimited: separateUnlimitedFee
+          ? config.noShowFeeAmountUnlimited
+          : null,
+      };
       const res = await fetch("/api/admin/policies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed");
       const updated = await res.json();
-      setConfig(updated);
+      setConfig({ ...DEFAULT_CONFIG, ...updated });
       toast.success(t("saved"));
     } catch {
       toast.error(t("saveError"));
@@ -64,6 +88,11 @@ export default function PoliciesSettingsPage() {
       </div>
     );
   }
+
+  const feeMissing =
+    config.noShowPenaltyEnabled &&
+    config.noShowChargeFee &&
+    (config.noShowPenaltyAmount === null || config.noShowPenaltyAmount <= 0);
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -150,53 +179,173 @@ export default function PoliciesSettingsPage() {
         </div>
 
         {config.noShowPenaltyEnabled && (
-          <div className="space-y-4 rounded-lg border border-border/30 bg-surface/20 p-4">
-            <div className="rounded-lg bg-surface/60 px-3 py-2.5 space-y-2">
-              <p className="text-[13px] font-medium text-foreground">{t("howItWorks")}</p>
-              <div className="space-y-1.5">
+          <div className="space-y-5 rounded-lg border border-border/30 bg-surface/20 p-4">
+            {/* Penalty kind: lose credit + charge fee */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">{t("penaltyKindLabel")}</Label>
+
+              <div className="flex items-start justify-between gap-4 rounded-lg bg-surface/60 px-3 py-2.5">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-3.5 w-3.5 text-orange-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-[13px] text-muted">
-                    <span className="font-medium text-foreground">{t("creditPackages")}</span>{" "}
-                    {t("creditPackagesDesc")}
-                  </p>
+                  <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-[13px] font-medium text-foreground">
+                      {t("loseCreditTitle")}
+                    </p>
+                    <p className="text-[12px] text-muted mt-0.5">{t("loseCreditDesc")}</p>
+                  </div>
                 </div>
+                <Switch
+                  checked={config.noShowLoseCredit}
+                  onCheckedChange={(checked) =>
+                    setConfig({ ...config, noShowLoseCredit: checked })
+                  }
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-4 rounded-lg bg-surface/60 px-3 py-2.5">
                 <div className="flex items-start gap-2">
-                  <DollarSign className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-[13px] text-muted">
-                    <span className="font-medium text-foreground">{t("unlimitedMemberships")}</span>{" "}
-                    {t("unlimitedMembershipsDesc")}
-                  </p>
+                  <DollarSign className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-[13px] font-medium text-foreground">
+                      {t("chargeFeeTitle")}
+                    </p>
+                    <p className="text-[12px] text-muted mt-0.5">{t("chargeFeeDesc")}</p>
+                  </div>
                 </div>
+                <Switch
+                  checked={config.noShowChargeFee}
+                  onCheckedChange={(checked) =>
+                    setConfig({ ...config, noShowChargeFee: checked })
+                  }
+                />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">{t("feeLabel")}</Label>
+            {/* Fee amount inputs — only when chargeFee is on */}
+            {config.noShowChargeFee && (
+              <div className="space-y-4 border-t border-border/30 pt-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{t("feeLabelDefault")}</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      value={config.noShowPenaltyAmount ?? ""}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          noShowPenaltyAmount: e.target.value
+                            ? parseFloat(e.target.value)
+                            : null,
+                        })
+                      }
+                      className="w-28"
+                      placeholder="5.00"
+                    />
+                    <span className="text-sm text-muted">{t("feeUnit")}</span>
+                  </div>
+                  <p className="text-[12px] text-muted">{t("feeLabelDefaultHelp")}</p>
+                </div>
+
+                <div className="flex items-start justify-between gap-4 rounded-lg bg-surface/60 px-3 py-2.5">
+                  <div>
+                    <p className="text-[13px] font-medium text-foreground">
+                      {t("differentUnlimitedFeeTitle")}
+                    </p>
+                    <p className="text-[12px] text-muted mt-0.5">
+                      {t("differentUnlimitedFeeDesc")}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={separateUnlimitedFee}
+                    onCheckedChange={setSeparateUnlimitedFee}
+                  />
+                </div>
+
+                {separateUnlimitedFee && (
+                  <div className="space-y-2 pl-4 border-l-2 border-red-200">
+                    <Label className="text-sm font-medium">{t("feeLabelUnlimited")}</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.5}
+                        value={config.noShowFeeAmountUnlimited ?? ""}
+                        onChange={(e) =>
+                          setConfig({
+                            ...config,
+                            noShowFeeAmountUnlimited: e.target.value
+                              ? parseFloat(e.target.value)
+                              : null,
+                          })
+                        }
+                        className="w-28"
+                        placeholder="15.00"
+                      />
+                      <span className="text-sm text-muted">{t("feeUnit")}</span>
+                    </div>
+                  </div>
+                )}
+
+                {feeMissing && (
+                  <p className="text-[12px] text-orange-600">{t("feeRequired")}</p>
+                )}
+              </div>
+            )}
+
+            {/* Grace window */}
+            <div className="space-y-3 border-t border-border/30 pt-4">
               <div className="flex items-center gap-2">
+                <Hourglass className="h-4 w-4 text-muted" />
+                <Label className="text-sm font-medium">{t("graceLabel")}</Label>
+              </div>
+              <p className="text-[12px] text-muted">{t("graceDesc")}</p>
+              <div className="flex items-center gap-3">
                 <Input
                   type="number"
                   min={0}
-                  step={0.5}
-                  value={config.noShowPenaltyAmount ?? ""}
+                  max={168}
+                  step={1}
+                  value={config.noShowPenaltyGraceHours}
                   onChange={(e) =>
                     setConfig({
                       ...config,
-                      noShowPenaltyAmount: e.target.value ? parseFloat(e.target.value) : null,
+                      noShowPenaltyGraceHours: Math.max(
+                        0,
+                        Math.min(168, parseInt(e.target.value) || 0),
+                      ),
                     })
                   }
-                  className="w-28"
-                  placeholder="5.00"
+                  className="w-24"
                 />
-                <span className="text-sm text-muted">{t("feeUnit")}</span>
+                <span className="text-sm text-muted">{t("graceUnit")}</span>
               </div>
-              {config.noShowPenaltyAmount ? (
-                <p className="text-[12px] text-muted">
-                  {t("feeExplain", { amount: config.noShowPenaltyAmount })}
+              <div className="flex flex-wrap gap-1.5">
+                {[0, 12, 24, 48, 72, 168].map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    onClick={() =>
+                      setConfig({ ...config, noShowPenaltyGraceHours: h })
+                    }
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
+                      config.noShowPenaltyGraceHours === h
+                        ? "bg-admin text-white"
+                        : "bg-surface text-muted hover:text-foreground"
+                    }`}
+                  >
+                    {h === 0 ? t("graceImmediate") : `${h}h`}
+                  </button>
+                ))}
+              </div>
+              <div className="rounded-lg bg-surface/60 px-3 py-2.5">
+                <p className="text-[13px] text-muted">
+                  {config.noShowPenaltyGraceHours === 0
+                    ? t("graceExplainImmediate")
+                    : t("graceExplain", { hours: config.noShowPenaltyGraceHours })}
                 </p>
-              ) : (
-                <p className="text-[12px] text-orange-600">{t("feeRequired")}</p>
-              )}
+              </div>
             </div>
           </div>
         )}

@@ -14,17 +14,22 @@ export async function GET() {
     return NextResponse.json({
       cancellationWindowHours: tenant.cancellationWindowHours,
       noShowPenaltyEnabled: tenant.noShowPenaltyEnabled,
-      noShowPenaltyType: tenant.noShowPenaltyType,
+      noShowLoseCredit: tenant.noShowLoseCredit,
+      noShowChargeFee: tenant.noShowChargeFee,
       noShowPenaltyAmount: tenant.noShowPenaltyAmount,
+      noShowFeeAmountUnlimited: tenant.noShowFeeAmountUnlimited,
+      noShowPenaltyGraceHours: tenant.noShowPenaltyGraceHours,
       visibleScheduleDays: tenant.visibleScheduleDays,
     });
   } catch {
-    // Default values for unauthenticated or error cases
     return NextResponse.json({
       cancellationWindowHours: 12,
       noShowPenaltyEnabled: false,
-      noShowPenaltyType: "CREDIT_LOSS",
+      noShowLoseCredit: true,
+      noShowChargeFee: false,
       noShowPenaltyAmount: null,
+      noShowFeeAmountUnlimited: null,
+      noShowPenaltyGraceHours: 24,
       visibleScheduleDays: 7,
     });
   }
@@ -39,7 +44,16 @@ export async function POST(request: NextRequest) {
     const ctx = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { cancellationWindowHours, noShowPenaltyEnabled, noShowPenaltyType, noShowPenaltyAmount, visibleScheduleDays } = body;
+    const {
+      cancellationWindowHours,
+      noShowPenaltyEnabled,
+      noShowLoseCredit,
+      noShowChargeFee,
+      noShowPenaltyAmount,
+      noShowFeeAmountUnlimited,
+      noShowPenaltyGraceHours,
+      visibleScheduleDays,
+    } = body;
 
     const data: Record<string, unknown> = {};
 
@@ -52,18 +66,27 @@ export async function POST(request: NextRequest) {
       data.noShowPenaltyEnabled = Boolean(noShowPenaltyEnabled);
     }
 
-    if (noShowPenaltyType !== undefined) {
-      if (!["CREDIT_LOSS", "FEE"].includes(noShowPenaltyType)) {
-        return NextResponse.json(
-          { error: "Invalid noShowPenaltyType. Must be CREDIT_LOSS or FEE" },
-          { status: 400 },
-        );
-      }
-      data.noShowPenaltyType = noShowPenaltyType;
+    if (noShowLoseCredit !== undefined) {
+      data.noShowLoseCredit = Boolean(noShowLoseCredit);
+    }
+
+    if (noShowChargeFee !== undefined) {
+      data.noShowChargeFee = Boolean(noShowChargeFee);
     }
 
     if (noShowPenaltyAmount !== undefined) {
-      data.noShowPenaltyAmount = noShowPenaltyAmount === null ? null : Math.max(0, Number(noShowPenaltyAmount));
+      data.noShowPenaltyAmount =
+        noShowPenaltyAmount === null ? null : Math.max(0, Number(noShowPenaltyAmount));
+    }
+
+    if (noShowFeeAmountUnlimited !== undefined) {
+      data.noShowFeeAmountUnlimited =
+        noShowFeeAmountUnlimited === null ? null : Math.max(0, Number(noShowFeeAmountUnlimited));
+    }
+
+    if (noShowPenaltyGraceHours !== undefined) {
+      const grace = Math.max(0, Math.min(168, Math.round(Number(noShowPenaltyGraceHours))));
+      data.noShowPenaltyGraceHours = grace;
     }
 
     if (visibleScheduleDays !== undefined) {
@@ -77,8 +100,11 @@ export async function POST(request: NextRequest) {
       select: {
         cancellationWindowHours: true,
         noShowPenaltyEnabled: true,
-        noShowPenaltyType: true,
+        noShowLoseCredit: true,
+        noShowChargeFee: true,
         noShowPenaltyAmount: true,
+        noShowFeeAmountUnlimited: true,
+        noShowPenaltyGraceHours: true,
         visibleScheduleDays: true,
       },
     });

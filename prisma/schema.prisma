@@ -120,8 +120,21 @@ model Tenant {
   // Cancellation & no-show policies
   cancellationWindowHours Int     @default(12)
   noShowPenaltyEnabled    Boolean @default(false)
-  noShowPenaltyType       String  @default("CREDIT_LOSS") // CREDIT_LOSS | FEE
-  noShowPenaltyAmount     Float? // Fee amount (e.g., 5.00 EUR) when type = FEE
+  noShowPenaltyType       String  @default("CREDIT_LOSS") // DEPRECATED — use noShowLoseCredit / noShowChargeFee
+  noShowPenaltyAmount     Float? // Fee amount for credit/pack members (and unlimited if noShowFeeAmountUnlimited is null)
+
+  // Per-segment penalty flags. noShowLoseCredit only affects pack/credit bookings
+  // (unlimited bookings never consume a credit). noShowChargeFee enables monetary
+  // charging; amounts split between regular and unlimited members when different
+  // fees apply.
+  noShowLoseCredit         Boolean @default(true)
+  noShowChargeFee          Boolean @default(false)
+  noShowFeeAmountUnlimited Float? // If null, noShowPenaltyAmount applies to unlimited too
+
+  // Grace window (in hours) before pending penalties auto-confirm. 0 = confirm
+  // immediately on the next auto-confirm cron run. Very large values effectively
+  // require manual confirmation.
+  noShowPenaltyGraceHours Int @default(24)
 
   taxRate           Float  @default(0.21)
   tpvFeePercent     Float?
@@ -147,6 +160,8 @@ model Tenant {
 
   entitlements  Entitlement[]
   revenueEvents RevenueEvent[]
+
+  pendingPenalties PendingPenalty[]
 }
 
 model InstagramIntegration {
@@ -370,6 +385,7 @@ model User {
   posTransactionsMember    PosTransaction[]         @relation("PosMember")
   classRatings             ClassRating[]            @relation("UserClassRatings")
   entitlements             Entitlement[]
+  pendingPenalties         PendingPenalty[]         @relation("UserPendingPenalties")
 
   @@index([countryId])
   @@index([cityId])
@@ -606,12 +622,56 @@ model Booking {
   sourceEntitlement   Entitlement?   @relation("SourceEntitlement", fields: [sourceEntitlementId], references: [id])
   revenueEvents       RevenueEvent[]
 
+  pendingPenalty PendingPenalty?
+
   @@unique([classId, spotNumber])
   @@index([classId])
   @@index([userId])
   @@index([tenantId])
   @@index([parentBookingId])
   @@index([sourceEntitlementId])
+}
+
+enum PendingPenaltyStatus {
+  pending
+  confirmed
+  waived
+  reverted
+}
+
+// A no-show penalty awaiting admin review before the fee is charged and/or
+// credit is formally consumed. Created by the cron or by manual NO_SHOW
+// marking. Auto-confirms after the tenant's configured grace window, or is
+// resolved manually from /admin/no-shows.
+model PendingPenalty {
+  id        String @id @default(cuid())
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId String @unique
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  classId   String
+  userId    String?
+  user      User?   @relation("UserPendingPenalties", fields: [userId], references: [id], onDelete: SetNull)
+
+  loseCredit     Boolean @default(false) // Snapshot: does this penalty imply credit loss?
+  chargeFee      Boolean @default(false) // Snapshot: should we charge a fee?
+  feeAmountCents Int     @default(0)     // Snapshot of fee amount at creation time
+  isUnlimited    Boolean @default(false) // Was the booking on an unlimited package?
+
+  status PendingPenaltyStatus @default(pending)
+
+  createdAt      DateTime  @default(now())
+  autoConfirmAt  DateTime? // When this will be auto-confirmed by the cron
+  resolvedAt     DateTime?
+  resolvedBy     String? // User id of admin who resolved; null when auto-confirmed
+  resolutionNote String?
+
+  revenueEventId String? // Set when status=confirmed and fee was recognized
+
+  @@index([tenantId, status])
+  @@index([tenantId, autoConfirmAt])
+  @@index([classId])
+  @@index([userId])
 }
 
 enum BookingPrivacy {
