@@ -537,7 +537,7 @@ export function ScheduleClient({
                   );
                 })}
                 <Link
-                  href="/coaches"
+                  href="/instructors"
                   className="flex flex-shrink-0 flex-col items-center gap-1"
                 >
                   <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-surface transition-colors hover:bg-surface/80">
@@ -785,7 +785,7 @@ export function ScheduleClient({
                 );
               })}
               <Link
-                href="/coaches"
+                href="/instructors"
                 className="flex flex-shrink-0 flex-col items-center gap-1.5"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border/60 bg-surface transition-colors hover:bg-surface/80">

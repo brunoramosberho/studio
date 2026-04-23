@@ -13,7 +13,7 @@ import { useBranding } from "@/components/branding-provider";
 
 const publicLinks = [
   { href: "/schedule", label: "Horarios" },
-  { href: "/coaches", label: "Coaches" },
+  { href: "/instructors", label: "Instructores" },
   { href: "/packages", label: "Paquetes" },
 ];
 
@@ -26,13 +26,13 @@ export function Navbar() {
 
   const isPortal =
     pathname.startsWith("/my") ||
-    (pathname.startsWith("/coach") && pathname !== "/coaches") ||
+    pathname.startsWith("/coach") ||
     pathname.startsWith("/admin");
   if (isPortal) return null;
 
   const hideForLoggedIn =
     pathname === "/schedule" ||
-    pathname === "/coaches" ||
+    pathname === "/instructors" ||
     pathname.startsWith("/class/") ||
     pathname.startsWith("/book/");
   if (session?.user && hideForLoggedIn) return null;

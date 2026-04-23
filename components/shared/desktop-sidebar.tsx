@@ -26,7 +26,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 const sidebarLinks = [
   { href: "/my", icon: Home, labelKey: "feed" },
   { href: "/schedule", icon: Dumbbell, labelKey: "classes" },
-  { href: "/coaches", icon: Users, labelKey: "coaches" },
+  { href: "/instructors", icon: Users, labelKey: "coaches" },
   { href: "/my/bookings", icon: CalendarCheck, labelKey: "myBookings" },
   { href: "/my/packages", icon: Package, labelKey: "myPackages" },
   { href: "/shop", icon: ShoppingBag, labelKey: "shop" },

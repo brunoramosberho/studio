@@ -19,7 +19,7 @@ function getSubdomain(host: string): string | null {
 function isAdminPortalPath(pathname: string): boolean {
   return (
     pathname.startsWith("/admin") ||
-    (pathname.startsWith("/coach") && !pathname.startsWith("/coaches")) ||
+    pathname.startsWith("/coach") ||
     pathname.startsWith("/api/admin") ||
     pathname.startsWith("/api/ai") ||
     pathname.startsWith("/api/check-in") ||
@@ -51,7 +51,7 @@ function isTenantOnlyPath(pathname: string): boolean {
     pathname === "/login" ||
     pathname.startsWith("/my") ||
     pathname.startsWith("/admin") ||
-    (pathname.startsWith("/coach") && !pathname.startsWith("/coaches")) ||
+    pathname.startsWith("/coach") ||
     pathname.startsWith("/schedule") ||
     pathname.startsWith("/book") ||
     pathname.startsWith("/class/") ||
@@ -121,8 +121,7 @@ export function middleware(req: NextRequest) {
 
   // Auth guard: check the portal-specific cookie
   const needsAdminAuth =
-    pathname.startsWith("/admin") ||
-    (pathname.startsWith("/coach") && !pathname.startsWith("/coaches"));
+    pathname.startsWith("/admin") || pathname.startsWith("/coach");
 
   if (needsAdminAuth) {
     if (!hasAdminCookie(req)) {
