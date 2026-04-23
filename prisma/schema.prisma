@@ -53,6 +53,9 @@ model Tenant {
   studioCloseTime String @default("21:00")
   operatingDays   Int[]  @default([0, 1, 2, 3, 4])
 
+  // How many days of schedule are visible to clients on the public /schedule page
+  visibleScheduleDays Int @default(7)
+
   notifyEmailOnRequest    Boolean @default(true)
   notifyPushOnRequest     Boolean @default(true)
   notifyGapDetected       Boolean @default(true)

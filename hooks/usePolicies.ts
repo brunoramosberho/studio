@@ -7,6 +7,7 @@ interface TenantPolicies {
   noShowPenaltyEnabled: boolean;
   noShowPenaltyType: "CREDIT_LOSS" | "FEE";
   noShowPenaltyAmount: number | null;
+  visibleScheduleDays: number;
 }
 
 const DEFAULTS: TenantPolicies = {
@@ -14,6 +15,7 @@ const DEFAULTS: TenantPolicies = {
   noShowPenaltyEnabled: false,
   noShowPenaltyType: "CREDIT_LOSS",
   noShowPenaltyAmount: null,
+  visibleScheduleDays: 7,
 };
 
 export function usePolicies() {
