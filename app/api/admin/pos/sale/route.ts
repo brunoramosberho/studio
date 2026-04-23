@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
           where: {
             userId: customerId,
             tenantId,
+            status: "ACTIVE",
             expiresAt: { gt: new Date() },
           },
           include: userPackageIncludeForBooking,
@@ -250,6 +251,7 @@ export async function POST(request: NextRequest) {
           where: {
             userId: customerId,
             tenantId,
+            status: "ACTIVE",
             expiresAt: { gt: new Date() },
           },
           include: userPackageIncludeForBooking,

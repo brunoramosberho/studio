@@ -6,6 +6,7 @@ import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
 import { findPackageForClass, deductCredit, userPackageIncludeForBooking } from "@/lib/credits";
+import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 
 export async function GET(request: NextRequest) {
@@ -240,10 +241,21 @@ export async function POST(request: NextRequest) {
     let packageUsedId: string | null = null;
 
     if (session?.user) {
+      if (await userHasOpenDebt(session.user.id, tenant.id)) {
+        return NextResponse.json(
+          {
+            error:
+              "Tienes un saldo pendiente con el estudio. Contacta a administración para resolverlo antes de reservar.",
+          },
+          { status: 403 },
+        );
+      }
+
       const userPackages = await prisma.userPackage.findMany({
         where: {
           userId: session.user.id,
           tenantId: tenant.id,
+          status: "ACTIVE",
           expiresAt: { gt: new Date() },
         },
         include: {

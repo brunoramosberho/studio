@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId: customerId,
         tenantId,
+        status: "ACTIVE",
         expiresAt: { gt: new Date() },
       },
       include: userPackageIncludeForBooking,

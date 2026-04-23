@@ -3,6 +3,55 @@ import { getStripe } from "@/lib/stripe/client";
 import { prisma } from "@/lib/db";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { createCreditUsagesForPackage } from "@/lib/credits";
+import { computeDebtAmount } from "@/lib/billing/debt";
+import type Stripe from "stripe";
+
+async function cancelFutureBookingsForPackage(userPackageId: string) {
+  await prisma.booking.updateMany({
+    where: {
+      packageUsed: userPackageId,
+      status: "CONFIRMED",
+      class: { startsAt: { gt: new Date() } },
+    },
+    data: { status: "CANCELLED" },
+  });
+}
+
+async function restoreFutureBookingsForPackage(userPackageId: string) {
+  await prisma.booking.updateMany({
+    where: {
+      packageUsed: userPackageId,
+      status: "CANCELLED",
+      class: { startsAt: { gt: new Date() } },
+    },
+    data: { status: "CONFIRMED" },
+  });
+}
+
+async function findUserPackageForPaymentIntent(paymentIntentId: string) {
+  const payment = await prisma.stripePayment.findUnique({
+    where: { stripePaymentIntentId: paymentIntentId },
+  });
+  if (!payment) return { payment: null, userPackage: null };
+
+  let userPackage = null;
+  if (
+    payment.referenceId &&
+    (payment.type === "membership" || payment.type === "class")
+  ) {
+    userPackage = await prisma.userPackage.findUnique({
+      where: { id: payment.referenceId },
+      include: { package: true },
+    });
+  }
+  if (!userPackage) {
+    userPackage = await prisma.userPackage.findFirst({
+      where: { stripePaymentId: paymentIntentId },
+      include: { package: true },
+    });
+  }
+  return { payment, userPackage };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,13 +85,20 @@ export async function POST(request: NextRequest) {
           where: { stripePaymentIntentId: pi.id },
         });
 
-        if (payment?.type === "membership" && payment.referenceId) {
+        if (
+          payment?.referenceId &&
+          (payment.type === "membership" || payment.type === "class")
+        ) {
           await prisma.userPackage.updateMany({
             where: {
               id: payment.referenceId,
               stripePaymentId: "pending_stripe",
             },
             data: { stripePaymentId: pi.id },
+          });
+          await prisma.userPackage.updateMany({
+            where: { id: payment.referenceId },
+            data: { status: "ACTIVE" },
           });
         }
 
@@ -60,6 +116,185 @@ export async function POST(request: NextRequest) {
           where: { stripePaymentIntentId: pi.id },
           data: { status: "failed" },
         });
+
+        const { userPackage } = await findUserPackageForPaymentIntent(pi.id);
+        if (userPackage) {
+          await prisma.userPackage.update({
+            where: { id: userPackage.id },
+            data: {
+              status: "PAYMENT_FAILED",
+              revokedAt: new Date(),
+              revokedReason: "payment_failed",
+            },
+          });
+          await cancelFutureBookingsForPackage(userPackage.id);
+        }
+        break;
+      }
+
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const pi =
+          typeof dispute.payment_intent === "string"
+            ? dispute.payment_intent
+            : dispute.payment_intent?.id;
+        if (!pi) break;
+
+        const { userPackage } = await findUserPackageForPaymentIntent(pi);
+        if (!userPackage) break;
+
+        await prisma.userPackage.update({
+          where: { id: userPackage.id },
+          data: { status: "DISPUTED" },
+        });
+        await cancelFutureBookingsForPackage(userPackage.id);
+        break;
+      }
+
+      case "charge.dispute.closed": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const pi =
+          typeof dispute.payment_intent === "string"
+            ? dispute.payment_intent
+            : dispute.payment_intent?.id;
+        if (!pi) break;
+
+        const { payment, userPackage } = await findUserPackageForPaymentIntent(pi);
+        if (!userPackage || !payment) break;
+
+        if (dispute.status === "lost") {
+          const pkg = (userPackage as any).package as {
+            credits: number | null;
+            price: number;
+            creditAllocations?: unknown[];
+          } | null;
+
+          const chargedAmount =
+            typeof dispute.amount === "number" ? dispute.amount / 100 : payment.amount;
+
+          const amount = pkg
+            ? computeDebtAmount({
+                creditsUsed: userPackage.creditsUsed,
+                packageCredits: pkg.credits,
+                packagePrice: pkg.price,
+                hasAllocations: false,
+                chargedAmount,
+              })
+            : chargedAmount;
+
+          await prisma.$transaction(async (tx) => {
+            await tx.userPackage.update({
+              where: { id: userPackage.id },
+              data: {
+                status: "REVOKED",
+                revokedAt: new Date(),
+                revokedReason: "chargeback",
+              },
+            });
+            await tx.stripePayment.updateMany({
+              where: { stripePaymentIntentId: pi },
+              data: { status: "refunded" },
+            });
+            if (amount > 0 && payment.memberId) {
+              await tx.debt.create({
+                data: {
+                  tenantId: payment.tenantId,
+                  userId: payment.memberId,
+                  userPackageId: userPackage.id,
+                  stripePaymentId: pi,
+                  amount,
+                  currency: payment.currency,
+                  reason: "chargeback",
+                  status: "OPEN",
+                  notes: `Dispute lost for €${chargedAmount}. Credits used: ${userPackage.creditsUsed}.`,
+                },
+              });
+            }
+          });
+          await cancelFutureBookingsForPackage(userPackage.id);
+        } else if (dispute.status === "won") {
+          await prisma.userPackage.update({
+            where: { id: userPackage.id },
+            data: { status: "ACTIVE", revokedAt: null, revokedReason: null },
+          });
+          await restoreFutureBookingsForPackage(userPackage.id);
+        }
+        break;
+      }
+
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        const pi =
+          typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : charge.payment_intent?.id;
+        if (!pi) break;
+
+        const { payment, userPackage } = await findUserPackageForPaymentIntent(pi);
+        if (!payment) break;
+
+        const fullyRefunded = charge.amount_refunded >= charge.amount;
+
+        if (fullyRefunded && userPackage) {
+          const pkg = (userPackage as any).package as {
+            credits: number | null;
+            price: number;
+          } | null;
+
+          const refundedAmount = charge.amount_refunded / 100;
+          const amount = pkg
+            ? computeDebtAmount({
+                creditsUsed: userPackage.creditsUsed,
+                packageCredits: pkg.credits,
+                packagePrice: pkg.price,
+                hasAllocations: false,
+                chargedAmount: refundedAmount,
+              })
+            : refundedAmount;
+
+          await prisma.$transaction(async (tx) => {
+            await tx.userPackage.update({
+              where: { id: userPackage.id },
+              data: {
+                status: "REVOKED",
+                revokedAt: new Date(),
+                revokedReason: "refund",
+              },
+            });
+            await tx.stripePayment.updateMany({
+              where: { stripePaymentIntentId: pi },
+              data: { status: "refunded" },
+            });
+            if (amount > 0 && userPackage.creditsUsed > 0 && payment.memberId) {
+              await tx.debt.create({
+                data: {
+                  tenantId: payment.tenantId,
+                  userId: payment.memberId,
+                  userPackageId: userPackage.id,
+                  stripePaymentId: pi,
+                  amount,
+                  currency: payment.currency,
+                  reason: "refund",
+                  status: "OPEN",
+                  notes: `Refunded €${refundedAmount}. Credits used: ${userPackage.creditsUsed}.`,
+                },
+              });
+            }
+          });
+          await cancelFutureBookingsForPackage(userPackage.id);
+        } else {
+          await prisma.stripePayment.update({
+            where: { stripePaymentIntentId: pi },
+            data: {
+              metadata: {
+                partialRefund: {
+                  amountRefunded: charge.amount_refunded / 100,
+                  at: new Date().toISOString(),
+                },
+              },
+            },
+          });
+        }
         break;
       }
 
@@ -106,6 +341,7 @@ export async function POST(request: NextRequest) {
               creditsUsed: 0,
               expiresAt: new Date(periodEnd * 1000),
               stripePaymentId: piId,
+              status: "ACTIVE",
             },
           });
           userPackageId = userPackage.id;

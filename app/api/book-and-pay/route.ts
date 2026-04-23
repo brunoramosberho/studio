@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation, sendWelcomeEmail, getTenantBaseUrl } from "@/lib/email";
 import { createMemberPayment } from "@/lib/stripe/payments";
-import { createCreditUsagesForPackage } from "@/lib/credits";
+import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 
 export async function POST(request: NextRequest) {
@@ -123,15 +123,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (finalUserId && (await userHasOpenDebt(finalUserId, tenant.id))) {
+      return NextResponse.json(
+        {
+          error:
+            "Tienes un saldo pendiente con el estudio. Contacta a administración para resolverlo antes de reservar.",
+        },
+        { status: 403 },
+      );
+    }
+
     // Atomic: create package + booking in a single transaction
     const purchasedAt = new Date();
     const expiresAt = new Date(purchasedAt);
     expiresAt.setDate(expiresAt.getDate() + pkg.validDays);
 
-    const stripePaymentId =
-      tenant.stripeAccountId && pkg.price > 0
-        ? "pending_stripe"
-        : `sim_${Date.now()}`;
+    const needsPayment = !!tenant.stripeAccountId && pkg.price > 0;
+    const stripePaymentId = needsPayment ? "pending_stripe" : `sim_${Date.now()}`;
+    const initialStatus = needsPayment ? "PENDING_PAYMENT" : "ACTIVE";
 
     const hasAllocations = pkg.creditAllocations.length > 0;
 
@@ -145,6 +154,7 @@ export async function POST(request: NextRequest) {
           creditsUsed: hasAllocations ? 0 : 1,
           expiresAt,
           stripePaymentId,
+          status: initialStatus,
           purchasedAt,
         },
       });
@@ -210,6 +220,10 @@ export async function POST(request: NextRequest) {
           paymentMethodId,
         });
         if (paymentMethodId && pi.status === "succeeded") {
+          await prisma.userPackage.update({
+            where: { id: userPackage.id },
+            data: { status: "ACTIVE", stripePaymentId: pi.id },
+          });
           paymentData = null;
         } else {
           paymentData = {

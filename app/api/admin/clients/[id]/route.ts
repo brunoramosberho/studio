@@ -180,7 +180,7 @@ export async function GET(
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [user, progress, achievements, allAchievements, packages, levels, memberSubscriptions] =
+    const [user, progress, achievements, allAchievements, packages, levels, memberSubscriptions, debts] =
       await Promise.all([
         prisma.user.findUniqueOrThrow({
           where: { id: userId },
@@ -227,6 +227,17 @@ export async function GET(
             package: {
               select: { id: true, name: true, price: true, currency: true, recurringInterval: true },
             },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+
+        prisma.debt.findMany({
+          where: { userId, tenantId },
+          include: {
+            userPackage: {
+              include: { package: { select: { name: true } } },
+            },
+            resolvedBy: { select: { name: true } },
           },
           orderBy: { createdAt: "desc" },
         }),
@@ -396,7 +407,23 @@ export async function GET(
         creditsRemaining:
           p.creditsTotal === null ? -1 : p.creditsTotal - p.creditsUsed,
         expiresAt: p.expiresAt.toISOString(),
-        isActive: new Date(p.expiresAt) > now,
+        isActive: p.status === "ACTIVE" && new Date(p.expiresAt) > now,
+        status: p.status,
+        revokedReason: p.revokedReason,
+      })),
+
+      debts: debts.map((d) => ({
+        id: d.id,
+        amount: d.amount,
+        currency: d.currency,
+        reason: d.reason,
+        status: d.status,
+        notes: d.notes,
+        createdAt: d.createdAt.toISOString(),
+        resolvedAt: d.resolvedAt?.toISOString() ?? null,
+        resolvedByName: d.resolvedBy?.name ?? null,
+        userPackageName: d.userPackage?.package.name ?? null,
+        stripePaymentId: d.stripePaymentId,
       })),
 
       upcomingBookings: upcomingBookings.map((b) => ({
