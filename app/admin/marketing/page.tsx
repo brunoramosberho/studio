@@ -635,7 +635,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                       ...m,
                       _type: "membership",
                       subtitle: m.price
-                        ? `${currencySymbolFor(m.currency)}${m.price}${m.isPromo ? " · Oferta" : ""}`
+                        ? `${currencySymbolFor(m.currency ?? tenantCurrency.code)}${m.price}${m.isPromo ? " · Oferta" : ""}`
                         : undefined,
                     }}
                     onQR={openQR}
@@ -656,7 +656,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                       ...p,
                       _type: "product",
                       subtitle: p.price
-                        ? `${currencySymbolFor(p.currency)}${p.price}`
+                        ? `${currencySymbolFor(p.currency ?? tenantCurrency.code)}${p.price}`
                         : undefined,
                     }}
                     onQR={openQR}

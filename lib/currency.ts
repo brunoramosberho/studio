@@ -46,7 +46,8 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 /** Resolve a display symbol for an arbitrary ISO 4217 code. */
-export function currencySymbolFor(code: string): string {
+export function currencySymbolFor(code: string | null | undefined): string {
+  if (!code) return FALLBACK_CURRENCY.symbol;
   return CURRENCY_SYMBOLS[code.toUpperCase()] ?? code.toUpperCase();
 }
 
