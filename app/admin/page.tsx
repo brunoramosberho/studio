@@ -26,7 +26,8 @@ import { useBranding } from "@/components/branding-provider";
 import { RevenueChart } from "@/components/admin/revenue-chart";
 import { MgicAIBriefing } from "@/components/admin/MgicAI/BriefingCard";
 import { useTranslations } from "next-intl";
-import { cn, formatCurrency, timeAgo, formatDate } from "@/lib/utils";
+import { cn, timeAgo, formatDate } from "@/lib/utils";
+import { useFormatMoney } from "@/components/tenant-provider";
 
 interface DashboardData {
   bookingsToday: number;
@@ -91,6 +92,7 @@ export default function AdminDashboard() {
   const { studioName } = useBranding();
   const t = useTranslations("admin");
   const tc = useTranslations("common");
+  const formatCurrency = useFormatMoney();
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["admin-reports"],
     queryFn: async () => {

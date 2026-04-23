@@ -6,8 +6,8 @@ import { X, Sparkles, ArrowRight, TrendingUp, TrendingDown, Telescope } from "lu
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { useBranding } from "@/components/branding-provider";
+import { useFormatMoney } from "@/components/tenant-provider";
 import { useMgicAI } from "./index";
-import { formatCurrency } from "@/lib/utils";
 import type { StreamEvent } from "@/lib/ai/types";
 
 // Keep types aligned with the Finance page API
@@ -134,8 +134,9 @@ function buildCfoPrompt(params: {
   range: string;
   data: FinanceData;
   insights: InsightsData | null;
+  formatCurrency: (amount: number, overrideCode?: string | null) => string;
 }) {
-  const { firstName, studioName, range, data, insights } = params;
+  const { firstName, studioName, range, data, insights, formatCurrency } = params;
   const { summary, bySource, dailyRevenue } = data;
 
   const rangeLabel: Record<string, string> = {
@@ -293,6 +294,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
   const [dismissed, setDismissed] = useState(false);
   const [error, setError] = useState(false);
   const { colorAdmin, studioName } = useBranding();
+  const formatCurrency = useFormatMoney();
   const { open, sendMessage, isStreaming } = useMgicAI();
   const { data: session } = useSession();
   const hasFetched = useRef<string | null>(null);
@@ -364,6 +366,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
                 range,
                 data: finance,
                 insights: insights ?? null,
+                formatCurrency,
               }),
             },
           ],

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Clock, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatMoney } from "@/components/tenant-provider";
 import type { IntroOfferData } from "@/lib/conversion/nudge-engine";
 
 interface IntroOfferCardProps {
@@ -25,6 +25,7 @@ export function IntroOfferCard({
   onAccept,
   onReject,
 }: IntroOfferCardProps) {
+  const formatCurrency = useFormatMoney();
   const [timeLeft, setTimeLeft] = useState(() =>
     Math.max(
       0,

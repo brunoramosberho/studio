@@ -47,7 +47,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn, formatDate, formatCurrency, timeAgo, getDateLocale } from "@/lib/utils";
+import { cn, formatDate, timeAgo, getDateLocale } from "@/lib/utils";
+import { useFormatMoney } from "@/components/tenant-provider";
 import { format } from "date-fns";
 import { usePosStore } from "@/store/pos-store";
 import { ShoppingBag } from "lucide-react";
@@ -402,6 +403,7 @@ export default function ClientDetailPage() {
   const ta = useTranslations("admin");
   const tc = useTranslations("common");
   const locale = useLocale();
+  const formatCurrency = useFormatMoney();
   const dateLocale = getDateLocale(locale);
   const STATUS_MAP = useStatusMap(t);
   const SUB_STATUS_BADGE = useSubStatusBadge(t);
@@ -934,7 +936,7 @@ export default function ClientDetailPage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-mono text-sm font-bold">
-                              {formatCurrency(d.amount, d.currency, locale)}
+                              {formatCurrency(d.amount, d.currency)}
                             </p>
                             {d.status === "OPEN" && (
                               <Badge className="bg-red-100 text-[10px] text-red-700">Abierta</Badge>
@@ -1034,7 +1036,7 @@ export default function ClientDetailPage() {
                               )}
                             </div>
                             <p className="mt-0.5 text-xs text-muted">
-                              {formatCurrency(sub.package.price, sub.package.currency, locale)}/{sub.package.recurringInterval === "year" ? ta("yearInterval") : ta("monthInterval")}
+                              {formatCurrency(sub.package.price, sub.package.currency)}/{sub.package.recurringInterval === "year" ? ta("yearInterval") : ta("monthInterval")}
                               {" · "}{t("nextCharge")}: {periodEnd}
                             </p>
                             {sub.status === "paused" && sub.resumesAt && (

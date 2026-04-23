@@ -285,7 +285,6 @@
       "differentUnlimitedFeeTitle": "Cargo distinto para ilimitados",
       "differentUnlimitedFeeDesc": "Útil si querés un fee más alto cuando el miembro no pierde crédito.",
       "feeLabelUnlimited": "Monto para membresías ilimitadas",
-      "feeUnit": "EUR",
       "feeRequired": "Configura un monto antes de activar el cargo",
       "graceLabel": "Ventana de gracia",
       "graceDesc": "Las penalizaciones van a una cola de revisión y se confirman solas después de este tiempo. En 0h, se aplican en el siguiente ciclo del cron.",

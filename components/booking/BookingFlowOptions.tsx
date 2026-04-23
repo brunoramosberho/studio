@@ -5,7 +5,8 @@ import { motion } from "framer-motion";
 import { Loader2, Star, ArrowRight, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useFormatMoney } from "@/components/tenant-provider";
 import type { BookingFlowData, MembershipOption } from "@/lib/conversion/nudge-engine";
 
 interface BookingFlowOptionsProps {
@@ -21,6 +22,7 @@ export function BookingFlowOptions({
   onSelect,
   onContinue,
 }: BookingFlowOptionsProps) {
+  const formatCurrency = useFormatMoney();
   const [selected, setSelected] = useState<string | null>(null);
   const [activating, setActivating] = useState(false);
 

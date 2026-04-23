@@ -6,7 +6,8 @@ import { Loader2, ArrowRight, Package, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useFormatMoney } from "@/components/tenant-provider";
 import type { PackageUpgradeData, MembershipOption } from "@/lib/conversion/nudge-engine";
 
 interface PackageUpgradeCardProps {
@@ -18,6 +19,7 @@ export function PackageUpgradeCard({
   data,
   onContinue,
 }: PackageUpgradeCardProps) {
+  const formatCurrency = useFormatMoney();
   const [selectedMembership, setSelectedMembership] =
     useState<MembershipOption | null>(data.memberships[0] ?? null);
   const [activating, setActivating] = useState(false);
