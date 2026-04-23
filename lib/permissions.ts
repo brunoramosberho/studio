@@ -10,6 +10,7 @@ export type AdminPermission =
   | "schedule"
   | "classes"
   | "checkIn"
+  | "noShowReview"
   | "clients"
   | "feed"
   | "achievements"
@@ -44,7 +45,7 @@ export type AdminPermission =
   | "embed";
 
 const ALL_PERMISSIONS: AdminPermission[] = [
-  "dashboard", "schedule", "classes", "checkIn", "clients",
+  "dashboard", "schedule", "classes", "checkIn", "noShowReview", "clients",
   "feed", "achievements", "pos", "waitlist",
   "coaches", "availability", "disciplines",
   "finance", "packages", "subscriptions", "shop", "platforms",
@@ -58,6 +59,7 @@ const FRONT_DESK_PERMISSIONS: Set<AdminPermission> = new Set([
   "schedule",
   "classes",
   "checkIn",
+  "noShowReview",
   "clients",
   "feed",
   "achievements",

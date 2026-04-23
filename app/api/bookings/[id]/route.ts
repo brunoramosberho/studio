@@ -4,8 +4,11 @@ import { requireAuth } from "@/lib/tenant";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
 import { promoteFromWaitlist, notifySpotWatchers } from "@/lib/waitlist";
 import { restoreCredit } from "@/lib/credits";
-import { recognizePenaltySafe } from "@/lib/revenue/hooks";
-import { toStripeAmount } from "@/lib/stripe/helpers";
+import {
+  createPendingPenalty,
+  hasAnyPenalty,
+  resolveNoShowPenalty,
+} from "@/lib/no-show-penalty";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -162,33 +165,60 @@ export async function PUT(
       }
     }
 
-    // No-show penalty logic depends on package type:
-    // - Limited credits: credit already consumed on booking → mark creditLost
-    // - Unlimited (null creditsTotal): no credit to lose → apply fee if configured
+    // No-show: evaluate tenant policy to queue a pending penalty for admin
+    // review. Credit loss (if the policy calls for it) is flagged on the
+    // booking immediately — the queued entry decides whether a fee is later
+    // charged and lets admins waive or revert before it auto-confirms.
     let noShowFeeApplied = false;
     let noShowFeeAmountCents = 0;
     if (status === "NO_SHOW") {
-      creditLost = true; // Credit used for this class is always lost on no-show
+      const tenantConfig = await prisma.tenant.findUnique({
+        where: { id: tenant.id },
+        select: {
+          noShowPenaltyEnabled: true,
+          noShowLoseCredit: true,
+          noShowChargeFee: true,
+          noShowPenaltyAmount: true,
+          noShowFeeAmountUnlimited: true,
+          noShowPenaltyGraceHours: true,
+        },
+      });
 
+      let isUnlimited = false;
       if (booking.packageUsed) {
-        const tenantConfig = await prisma.tenant.findUnique({
-          where: { id: tenant.id },
-          select: { noShowPenaltyEnabled: true, noShowPenaltyAmount: true },
-        });
-
-        // Check if user has an unlimited package (creditsTotal === null)
         const userPkg = await prisma.userPackage.findUnique({
           where: { id: booking.packageUsed },
           select: { creditsTotal: true },
         });
+        isUnlimited = userPkg?.creditsTotal === null;
+      } else {
+        // No package — treat as "no credit to lose", fee rules still apply
+        isUnlimited = true;
+      }
 
-        const isUnlimited = userPkg?.creditsTotal === null;
+      const decision = tenantConfig
+        ? resolveNoShowPenalty(tenantConfig, isUnlimited)
+        : { loseCredit: !isUnlimited, chargeFee: false, feeAmountCents: 0, isUnlimited };
 
-        if (isUnlimited && tenantConfig?.noShowPenaltyEnabled && tenantConfig.noShowPenaltyAmount) {
-          noShowFeeApplied = true;
-          noShowFeeAmountCents = toStripeAmount(tenantConfig.noShowPenaltyAmount);
-          // The fee amount is stored in tenant config — actual charging handled externally
-        }
+      creditLost = decision.loseCredit;
+      noShowFeeApplied = decision.chargeFee;
+      noShowFeeAmountCents = decision.feeAmountCents;
+
+      // Lenient policy: credit was consumed at booking but the studio opted
+      // out of forfeiture. Refund it now so UserPackage reflects reality.
+      if (!decision.loseCredit && !isUnlimited && booking.packageUsed) {
+        await restoreCredit(booking.packageUsed, booking.class.classTypeId);
+      }
+
+      if (tenantConfig && hasAnyPenalty(decision)) {
+        await createPendingPenalty(prisma, {
+          tenantId: tenant.id,
+          bookingId: booking.id,
+          classId: booking.classId,
+          userId: booking.userId,
+          decision,
+          graceHours: tenantConfig.noShowPenaltyGraceHours,
+        });
       }
     }
 
@@ -250,17 +280,34 @@ export async function PUT(
       );
     }
 
-    if (noShowFeeApplied && noShowFeeAmountCents > 0 && booking.userId) {
-      await recognizePenaltySafe({
-        tenantId: tenant.id,
-        userId: booking.userId,
-        classId: booking.classId,
-        amountCents: noShowFeeAmountCents,
-        chargedAt: new Date(),
+    // Status change to ATTENDED (e.g. admin correcting an auto-marked no-show)
+    // should revert any pending penalty and refund the lost credit if it was
+    // going to be lost under the policy.
+    if (status === "ATTENDED") {
+      const pending = await prisma.pendingPenalty.findUnique({
+        where: { bookingId: booking.id },
       });
+      if (pending && pending.status === "pending") {
+        await prisma.pendingPenalty.update({
+          where: { id: pending.id },
+          data: {
+            status: "reverted",
+            resolvedAt: new Date(),
+            resolvedBy: session.user.id,
+            resolutionNote: "Reverted: booking marked ATTENDED",
+          },
+        });
+        if (pending.loseCredit && booking.packageUsed && booking.creditLost) {
+          await restoreCredit(booking.packageUsed, booking.class.classTypeId);
+          await prisma.booking.update({
+            where: { id: booking.id },
+            data: { creditLost: false },
+          });
+        }
+      }
     }
 
-    return NextResponse.json({ ...updated, noShowFeeApplied });
+    return NextResponse.json({ ...updated, noShowFeeApplied, noShowFeeAmountCents });
   } catch (error) {
     console.error("PUT /api/bookings/[id] error:", error);
     return NextResponse.json(

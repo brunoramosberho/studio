@@ -10,6 +10,13 @@ import {
   createGroupedAchievementEvents,
   type GrantedAchievement,
 } from "@/lib/achievements";
+import {
+  createPendingPenalty,
+  hasAnyPenalty,
+  resolveNoShowPenalty,
+  type TenantPenaltyPolicy,
+} from "@/lib/no-show-penalty";
+import { restoreCredit } from "@/lib/credits";
 import { formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -92,6 +99,7 @@ export async function GET(request: NextRequest) {
 
   // Auto-complete classes past their scheduled end time
   let classesAutoCompleted = 0;
+  let pendingPenaltiesCreated = 0;
   for (const tenant of tenants) {
     const overdueClasses = await prisma.class.findMany({
       where: {
@@ -110,16 +118,68 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    for (const cls of overdueClasses) {
-      const confirmedBookingIds = cls.bookings
-        .filter((b) => b.status === "CONFIRMED")
-        .map((b) => b.id);
+    let tenantPolicy: TenantPenaltyPolicy | null = null;
+    const needsPolicy = overdueClasses.some((c) =>
+      c.bookings.some((b) => b.status === "CONFIRMED"),
+    );
+    if (needsPolicy) {
+      const t = await prisma.tenant.findUnique({
+        where: { id: tenant.id },
+        select: {
+          noShowPenaltyEnabled: true,
+          noShowLoseCredit: true,
+          noShowChargeFee: true,
+          noShowPenaltyAmount: true,
+          noShowFeeAmountUnlimited: true,
+          noShowPenaltyGraceHours: true,
+        },
+      });
+      if (t) tenantPolicy = t;
+    }
 
-      if (confirmedBookingIds.length > 0) {
-        await prisma.booking.updateMany({
-          where: { id: { in: confirmedBookingIds } },
-          data: { status: "NO_SHOW" },
+    for (const cls of overdueClasses) {
+      const confirmedBookings = cls.bookings.filter((b) => b.status === "CONFIRMED");
+
+      for (const b of confirmedBookings) {
+        let isUnlimited = false;
+        if (b.packageUsed) {
+          const pkg = await prisma.userPackage.findUnique({
+            where: { id: b.packageUsed },
+            select: { creditsTotal: true },
+          });
+          isUnlimited = pkg?.creditsTotal === null;
+        } else {
+          isUnlimited = true;
+        }
+
+        const decision = tenantPolicy
+          ? resolveNoShowPenalty(tenantPolicy, isUnlimited)
+          : { loseCredit: !isUnlimited, chargeFee: false, feeAmountCents: 0, isUnlimited };
+
+        if (!decision.loseCredit && !isUnlimited && b.packageUsed) {
+          await restoreCredit(b.packageUsed, cls.classTypeId);
+        }
+
+        await prisma.booking.update({
+          where: { id: b.id },
+          data: {
+            status: "NO_SHOW",
+            creditLost: decision.loseCredit,
+          },
         });
+
+        if (tenantPolicy && hasAnyPenalty(decision)) {
+          await createPendingPenalty(prisma, {
+            tenantId: tenant.id,
+            bookingId: b.id,
+            classId: cls.id,
+            userId: b.userId,
+            decision,
+            graceHours: tenantPolicy.noShowPenaltyGraceHours,
+            now,
+          });
+          pendingPenaltiesCreated++;
+        }
       }
 
       await prisma.class.update({
@@ -388,6 +448,7 @@ export async function GET(request: NextRequest) {
     ok: true,
     sent,
     classesAutoCompleted,
+    pendingPenaltiesCreated,
     waitlistRefunded,
     birthdayChecked,
     streaksReset,

@@ -85,6 +85,7 @@ const directItems: NavItem[] = [
   { href: "/admin/schedule", labelKey: "schedule", icon: CalendarDays, permission: "schedule", badgeKey: "pendingWaitlist" },
   { href: "/admin/classes", labelKey: "classes", icon: ClipboardList, permission: "classes", contextKey: "activeClasses" },
   { href: "/admin/check-in", labelKey: "checkIn", icon: ClipboardCheck, permission: "checkIn" },
+  { href: "/admin/no-shows", labelKey: "noShowReview", icon: ShieldAlert, permission: "noShowReview" },
   { href: "/admin/clients", labelKey: "clients", icon: Users, permission: "clients", badgeKey: "newClients" },
   { href: "/admin/feed", labelKey: "feed", icon: Megaphone, permission: "feed", badgeKey: "recentFeed" },
   { href: "/admin/gamification", labelKey: "achievements", icon: Trophy, permission: "achievements" },

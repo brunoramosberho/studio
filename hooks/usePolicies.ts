@@ -2,19 +2,25 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-interface TenantPolicies {
+export interface TenantPolicies {
   cancellationWindowHours: number;
   noShowPenaltyEnabled: boolean;
-  noShowPenaltyType: "CREDIT_LOSS" | "FEE";
+  noShowLoseCredit: boolean;
+  noShowChargeFee: boolean;
   noShowPenaltyAmount: number | null;
+  noShowFeeAmountUnlimited: number | null;
+  noShowPenaltyGraceHours: number;
   visibleScheduleDays: number;
 }
 
 const DEFAULTS: TenantPolicies = {
   cancellationWindowHours: 12,
   noShowPenaltyEnabled: false,
-  noShowPenaltyType: "CREDIT_LOSS",
+  noShowLoseCredit: true,
+  noShowChargeFee: false,
   noShowPenaltyAmount: null,
+  noShowFeeAmountUnlimited: null,
+  noShowPenaltyGraceHours: 24,
   visibleScheduleDays: 7,
 };
 
