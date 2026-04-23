@@ -10,7 +10,6 @@ import { DashboardSection } from "@/components/marketing/dashboard-section";
 import { SocialCommunity } from "@/components/marketing/social-community";
 import { MarketingPricing } from "@/components/marketing/pricing";
 import { SwitchingCost } from "@/components/marketing/switching-cost";
-import { Testimonials } from "@/components/marketing/testimonials";
 import { MarketingFAQ } from "@/components/marketing/faq";
 import { DarkCTA } from "@/components/marketing/dark-cta";
 import { MarketingFooter } from "@/components/marketing/footer";
@@ -28,7 +27,6 @@ export function LandingClient() {
       <SocialCommunity />
       <MarketingPricing />
       <SwitchingCost />
-      <Testimonials />
       <MarketingFAQ />
       <DarkCTA />
       <MarketingFooter />

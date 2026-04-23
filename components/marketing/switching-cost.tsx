@@ -7,36 +7,36 @@ const cards = [
     type: "icon" as const,
     content: {
       icons: ["🏢", "🌙", "⚡"],
-      title: "Your data, our promise",
-      desc: "Your switching concerns are valid. That's why our team spends 4 weeks preparing for one perfect night. We move your business to Mgic overnight with zero downtime, zero disruption, zero stress.",
+      title: "Tus datos, nuestra promesa",
+      desc: "Tus dudas sobre cambiar de plataforma son válidas. Por eso nuestro equipo dedica 4 semanas a prepararse para una noche perfecta. Movemos tu negocio a Mgic en una noche, con cero downtime, cero interrupciones, cero estrés.",
     },
   },
   {
     type: "image" as const,
     content: {
-      title: "For studio owners, by studio owners",
-      desc: "Last year we shipped 400+ product requests made by studio owners like you. We listen, think and act like your partner. Shipping new updates every week to help you win.",
+      title: "De dueños de studio, para dueños de studio",
+      desc: "Escuchamos y actuamos como tu socio. Publicamos actualizaciones cada semana basadas en lo que necesitan los studios como el tuyo.",
     },
   },
   {
     type: "image" as const,
     content: {
-      title: "Customer for life philosophy",
-      desc: "Video call support from product experts whenever you and your team need it. 99.9% uptime and enterprise-grade security standards.",
+      title: "Filosofía de cliente de por vida",
+      desc: "Soporte en videollamada con expertos de producto cuando tú y tu equipo lo necesiten. Estándares de seguridad de nivel empresarial.",
     },
   },
   {
     type: "image" as const,
     content: {
-      title: "AI frontdesk — MgicAI",
-      desc: "Stop training staff who leave in six months. Let AI handle inquiries, member insights, and business intelligence automatically.",
+      title: "Recepción con IA — MgicAI",
+      desc: "Deja de entrenar staff que se va en seis meses. Que la IA maneje consultas, insights de miembros e inteligencia de negocio automáticamente.",
     },
   },
   {
     type: "image" as const,
     content: {
-      title: "Contract buyout",
-      desc: "Don't stay stuck with outdated or overpriced software. We offer full contract buyouts for all fitness studios. Switch risk-free.",
+      title: "Liquidamos tu contrato",
+      desc: "No te quedes atado a software anticuado o caro. Liquidamos contratos para studios fitness. Cambia sin riesgo.",
     },
   },
 ];
@@ -67,15 +67,15 @@ export function SwitchingCost() {
           className="mx-auto max-w-3xl text-center mb-6"
         >
           <div className="inline-flex items-center rounded-full border border-border bg-white px-4 py-1.5 text-sm font-medium text-muted mb-6">
-            Premium Support
+            Soporte Premium
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground">
-            Zero switching cost <em className="not-italic text-gradient">promise</em>
+            Promesa de <em className="not-italic text-gradient">cero costo al cambiarte</em>
           </h2>
           <p className="mt-4 text-lg text-muted max-w-2xl mx-auto">
-            Unlike other platforms, we&apos;re honest — <strong className="text-foreground">switching is hard</strong>.
-            That&apos;s why we built our process to eliminate disruption, member confusion,
-            and extra work for your team.
+            A diferencia de otras plataformas, somos honestos — <strong className="text-foreground">cambiar es difícil</strong>.
+            Por eso diseñamos nuestro proceso para eliminar interrupciones, confusión de
+            miembros y trabajo extra para tu equipo.
           </p>
         </motion.div>
 
@@ -95,7 +95,7 @@ export function SwitchingCost() {
                   {icon}
                 </div>
               ))}
-              <span className="ml-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">One Night</span>
+              <span className="ml-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Una Noche</span>
             </div>
             <h3 className="text-lg font-bold text-foreground">{cards[0].content.title}</h3>
             <p className="mt-2 text-sm text-muted leading-relaxed">{cards[0].content.desc}</p>
@@ -109,7 +109,7 @@ export function SwitchingCost() {
             className="rounded-2xl border border-border bg-white overflow-hidden"
           >
             <div className="h-48 overflow-hidden">
-              <ImagePlaceholder label="Photo: studio owners smiling / team meeting" />
+              <ImagePlaceholder label="Foto: dueños de studio / reunión de equipo" />
             </div>
             <div className="p-6">
               <h3 className="text-lg font-bold text-foreground">{cards[1].content.title}</h3>
@@ -131,10 +131,10 @@ export function SwitchingCost() {
               <div className="h-44 overflow-hidden">
                 <ImagePlaceholder label={
                   i === 0
-                    ? "Photo: support team on video call"
+                    ? "Foto: equipo de soporte en videollamada"
                     : i === 1
-                    ? "Photo: MgicAI mascot or AI illustration"
-                    : "Photo: person signing document / handshake"
+                    ? "Foto: mascota MgicAI o ilustración de IA"
+                    : "Foto: firma de documento / apretón de manos"
                 } />
               </div>
               <div className="p-5">
@@ -152,11 +152,11 @@ export function SwitchingCost() {
           className="mt-12 text-center"
         >
           <div className="inline-flex items-center gap-3 sm:gap-6 text-sm sm:text-base font-semibold text-foreground">
-            <span>Free trial</span>
+            <span>Prueba gratis</span>
             <span className="h-1 w-1 rounded-full bg-accent" />
-            <span>Contract buyout</span>
+            <span>Liquidamos tu contrato</span>
             <span className="h-1 w-1 rounded-full bg-accent" />
-            <span>One-night migration</span>
+            <span>Migración en una noche</span>
           </div>
         </motion.div>
       </div>

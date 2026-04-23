@@ -15,30 +15,30 @@ export function DarkCTA() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white">
-            Ready to run your studio <em className="not-italic text-gradient">like magic?</em>
+            ¿Listo para operar tu studio <em className="not-italic text-gradient">como magia?</em>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-white/60">
-            Join 200+ boutique studios that switched to Mgic and never looked
-            back. Start your free trial today — no credit card, no commitment.
+            Arranca tu prueba gratis hoy — sin tarjeta de crédito, sin compromiso.
+            Te ayudamos a montar tu studio en Mgic en minutos.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
-              href="mailto:hello@mgic.app?subject=I%20want%20to%20try%20Mgic"
+              href="mailto:hola@mgic.app?subject=Quiero%20probar%20Mgic"
               className="btn-gradient inline-flex h-12 items-center rounded-full px-8 text-base font-semibold shadow-lg shadow-accent/25"
             >
-              Start Free Trial
+              Empezar Prueba Gratis
             </a>
             <a
-              href="mailto:hello@mgic.app?subject=Book%20a%20Mgic%20demo"
+              href="mailto:hola@mgic.app?subject=Reservar%20Demo%20Mgic"
               className="inline-flex h-12 items-center rounded-full border border-white/20 px-8 text-base font-semibold text-white transition-all hover:bg-white/10 hover:-translate-y-0.5"
             >
-              Book a Demo
+              Reservar una Demo
             </a>
           </div>
 
           <p className="mt-6 text-sm text-white/40">
-            14-day free trial · No credit card required · Cancel anytime
+            Prueba de 14 días · Sin tarjeta de crédito · Cancela cuando quieras
           </p>
         </motion.div>
       </div>

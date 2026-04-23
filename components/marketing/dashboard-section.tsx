@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const tabs = [
   {
     id: "scheduling",
-    label: "Scheduling",
+    label: "Horarios",
     mockUI: (
       <div className="rounded-2xl border border-border bg-white shadow-xl overflow-hidden">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 bg-surface/50">
@@ -22,21 +22,21 @@ const tabs = [
         <div className="p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h3 className="text-sm font-semibold text-foreground">Weekly Schedule</h3>
+              <h3 className="text-sm font-semibold text-foreground">Horario Semanal</h3>
               <div className="flex gap-1">
-                {["← ", "Apr 7 – 13", " →"].map((t) => (
+                {["← ", "7 – 13 de abril", " →"].map((t) => (
                   <span key={t} className="rounded-md bg-surface px-2 py-0.5 text-[10px] font-medium text-muted">{t}</span>
                 ))}
               </div>
             </div>
             <div className="flex gap-2">
-              <span className="rounded-md bg-surface px-2 py-1 text-[10px] text-muted">All Studios</span>
-              <span className="rounded-md bg-accent text-white px-2 py-1 text-[10px] font-medium">+ New Class</span>
+              <span className="rounded-md bg-surface px-2 py-1 text-[10px] text-muted">Todos los studios</span>
+              <span className="rounded-md bg-accent text-white px-2 py-1 text-[10px] font-medium">+ Nueva clase</span>
             </div>
           </div>
           <div className="grid grid-cols-8 gap-px bg-border rounded-lg overflow-hidden text-[10px]">
             <div className="bg-surface p-2 font-medium text-muted text-right" />
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+            {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
               <div key={d} className="bg-surface p-2 text-center font-semibold text-foreground">{d}</div>
             ))}
             {["6 AM", "7 AM", "8 AM", "9 AM", "10 AM", "11 AM"].map((h, hi) => (
@@ -55,7 +55,7 @@ const tabs = [
                             : "bg-violet/10 border border-violet/20 text-violet"
                         }`}>
                           <p className="font-semibold">{classType}</p>
-                          <p className="text-[8px] opacity-70">Coach {classType === "HIIT" ? "Maria" : "Alex"}</p>
+                          <p className="text-[8px] opacity-70">Coach {classType === "HIIT" ? "María" : "Alex"}</p>
                           <p className="text-[8px] opacity-70">{14 + ((hi + di) % 6)}/20</p>
                         </div>
                       )}
@@ -71,7 +71,7 @@ const tabs = [
   },
   {
     id: "memberships",
-    label: "Memberships",
+    label: "Membresías",
     mockUI: (
       <div className="rounded-2xl border border-border bg-white shadow-xl overflow-hidden">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 bg-surface/50">
@@ -86,7 +86,7 @@ const tabs = [
         </div>
         <div className="p-4 md:p-6">
           <div className="flex items-center gap-3 mb-4">
-            {["Memberships", "Class Packs", "Gift Cards", "Products"].map((t, i) => (
+            {["Membresías", "Paquetes de Clases", "Tarjetas de Regalo", "Productos"].map((t, i) => (
               <span key={t} className={`rounded-md px-3 py-1.5 text-xs font-medium ${
                 i === 0 ? "bg-foreground text-white" : "bg-surface text-muted"
               }`}>{t}</span>
@@ -94,12 +94,12 @@ const tabs = [
           </div>
           <div className="space-y-2">
             {[
-              { name: "Unlimited Monthly", price: "$149.00", type: "Recurring", credits: "Unlimited", members: "86" },
-              { name: "Unlimited Annual", price: "$1,299.00", type: "Recurring", credits: "Unlimited", members: "42" },
-              { name: "10-Class Pack", price: "$89.00", type: "One-time", credits: "10 credits", members: "128" },
-              { name: "5-Class Pack", price: "$49.00", type: "One-time", credits: "5 credits", members: "94" },
-              { name: "Drop-in Single", price: "$18.00", type: "One-time", credits: "1 credit", members: "215" },
-              { name: "Intro Offer – 2 Weeks", price: "$29.00", type: "One-time", credits: "Unlimited · 14 days", members: "67" },
+              { name: "Mensual Ilimitado", price: "$149.00", type: "Recurrente", credits: "Ilimitado", members: "86" },
+              { name: "Anual Ilimitado", price: "$1,299.00", type: "Recurrente", credits: "Ilimitado", members: "42" },
+              { name: "Pack 10 Clases", price: "$89.00", type: "Pago único", credits: "10 créditos", members: "128" },
+              { name: "Pack 5 Clases", price: "$49.00", type: "Pago único", credits: "5 créditos", members: "94" },
+              { name: "Clase Suelta", price: "$18.00", type: "Pago único", credits: "1 crédito", members: "215" },
+              { name: "Intro – 2 Semanas", price: "$29.00", type: "Pago único", credits: "Ilimitado · 14 días", members: "67" },
             ].map((p) => (
               <div key={p.name} className="flex items-center justify-between rounded-lg border border-border px-4 py-3 text-xs hover:bg-surface/50 transition-colors">
                 <div className="flex-1">
@@ -108,10 +108,10 @@ const tabs = [
                 </div>
                 <div className="flex items-center gap-4">
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                    p.type === "Recurring" ? "bg-green-100 text-green-700" : "bg-surface text-muted"
+                    p.type === "Recurrente" ? "bg-green-100 text-green-700" : "bg-surface text-muted"
                   }`}>{p.type}</span>
                   <span className="font-semibold text-foreground w-20 text-right">{p.price}</span>
-                  <span className="text-muted-foreground w-16 text-right">{p.members} active</span>
+                  <span className="text-muted-foreground w-16 text-right">{p.members} activos</span>
                 </div>
               </div>
             ))}
@@ -122,7 +122,7 @@ const tabs = [
   },
   {
     id: "payments",
-    label: "Payments",
+    label: "Pagos",
     mockUI: (
       <div className="rounded-2xl border border-border bg-white shadow-xl overflow-hidden">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 bg-surface/50">
@@ -138,10 +138,10 @@ const tabs = [
         <div className="p-4 md:p-6">
           <div className="grid grid-cols-4 gap-3 mb-5">
             {[
-              { label: "Gross Revenue", value: "$24,800", change: "+22%", good: true },
+              { label: "Ingresos Brutos", value: "$24,800", change: "+22%", good: true },
               { label: "MRR", value: "$18,200", change: "+12%", good: true },
-              { label: "Active Memberships", value: "186", change: "+8", good: true },
-              { label: "Failed Payments", value: "4 ($596)", change: "Retry pending", good: false },
+              { label: "Membresías Activas", value: "186", change: "+8", good: true },
+              { label: "Pagos Fallidos", value: "4 ($596)", change: "Reintento pendiente", good: false },
             ].map((k) => (
               <div key={k.label} className="rounded-xl border border-border p-3">
                 <p className="text-[10px] font-medium text-muted">{k.label}</p>
@@ -152,11 +152,11 @@ const tabs = [
           </div>
           <div className="rounded-xl border border-border p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-foreground">Revenue (30 days)</p>
+              <p className="text-xs font-semibold text-foreground">Ingresos (30 días)</p>
               <div className="flex gap-2 text-[10px]">
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-accent" /> Memberships</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet" /> Class Packs</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500" /> Drop-ins</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-accent" /> Membresías</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet" /> Paquetes</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500" /> Clases sueltas</span>
               </div>
             </div>
             <div className="flex items-end gap-0.5 h-24">
@@ -174,9 +174,9 @@ const tabs = [
           </div>
           <div className="space-y-1.5">
             {[
-              { name: "Sarah M.", amount: "$149.00", desc: "Unlimited Monthly", status: "Paid", time: "2h ago" },
-              { name: "James K.", amount: "$89.00", desc: "10-Class Pack", status: "Paid", time: "3h ago" },
-              { name: "Lisa R.", amount: "$149.00", desc: "Unlimited Monthly", status: "Retry #2", time: "5h ago" },
+              { name: "Sara M.", amount: "$149.00", desc: "Mensual Ilimitado", status: "Pagado", time: "hace 2h" },
+              { name: "Javier K.", amount: "$89.00", desc: "Pack 10 Clases", status: "Pagado", time: "hace 3h" },
+              { name: "Lisa R.", amount: "$149.00", desc: "Mensual Ilimitado", status: "Reintento #2", time: "hace 5h" },
             ].map((t) => (
               <div key={t.name} className="flex items-center justify-between rounded-lg bg-surface px-3 py-2 text-[11px]">
                 <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ const tabs = [
                   <span className="text-muted-foreground">{t.time}</span>
                   <span className="font-semibold text-foreground">{t.amount}</span>
                   <span className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${
-                    t.status === "Paid" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                    t.status === "Pagado" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
                   }`}>{t.status}</span>
                 </div>
               </div>
@@ -199,7 +199,7 @@ const tabs = [
   },
   {
     id: "staff",
-    label: "Staff",
+    label: "Equipo",
     mockUI: (
       <div className="rounded-2xl border border-border bg-white shadow-xl overflow-hidden">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 bg-surface/50">
@@ -215,7 +215,7 @@ const tabs = [
         <div className="p-4 md:p-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
             {[
-              { name: "Coach Maria", specialty: "HIIT · Strength", rating: "4.9", classes: "48", occupancy: "92%", earnings: "$3,840", color: "bg-accent" },
+              { name: "Coach María", specialty: "HIIT · Fuerza", rating: "4.9", classes: "48", occupancy: "92%", earnings: "$3,840", color: "bg-accent" },
               { name: "Coach Alex", specialty: "Yoga · Pilates", rating: "4.8", classes: "36", occupancy: "87%", earnings: "$2,880", color: "bg-violet" },
               { name: "Coach Diana", specialty: "Barre · Dance", rating: "4.9", classes: "32", occupancy: "85%", earnings: "$2,560", color: "bg-green-600" },
               { name: "Coach Ryan", specialty: "CrossFit · HIIT", rating: "4.7", classes: "28", occupancy: "81%", earnings: "$2,240", color: "bg-blue-600" },
@@ -231,22 +231,22 @@ const tabs = [
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[10px]">
-                  <div><span className="text-muted-foreground">Rating</span><p className="font-semibold text-foreground">⭐ {c.rating}</p></div>
-                  <div><span className="text-muted-foreground">Classes</span><p className="font-semibold text-foreground">{c.classes} /mo</p></div>
-                  <div><span className="text-muted-foreground">Occupancy</span><p className="font-semibold text-foreground">{c.occupancy}</p></div>
-                  <div><span className="text-muted-foreground">Earnings</span><p className="font-semibold text-foreground">{c.earnings}</p></div>
+                  <div><span className="text-muted-foreground">Calificación</span><p className="font-semibold text-foreground">⭐ {c.rating}</p></div>
+                  <div><span className="text-muted-foreground">Clases</span><p className="font-semibold text-foreground">{c.classes} /mes</p></div>
+                  <div><span className="text-muted-foreground">Ocupación</span><p className="font-semibold text-foreground">{c.occupancy}</p></div>
+                  <div><span className="text-muted-foreground">Ingresos</span><p className="font-semibold text-foreground">{c.earnings}</p></div>
                 </div>
               </div>
             ))}
           </div>
           <div className="rounded-xl border border-border p-4">
-            <p className="text-xs font-semibold text-foreground mb-3">Pay Configuration — Coach Maria</p>
+            <p className="text-xs font-semibold text-foreground mb-3">Configuración de Pago — Coach María</p>
             <div className="grid grid-cols-4 gap-3">
               {[
-                { label: "Base per class", value: "$45" },
-                { label: "Per student bonus", value: "$3" },
-                { label: "High occ. bonus (>80%)", value: "+$15" },
-                { label: "Weekend bonus", value: "+$10" },
+                { label: "Base por clase", value: "$45" },
+                { label: "Bono por alumno", value: "$3" },
+                { label: "Bono alta ocup. (>80%)", value: "+$15" },
+                { label: "Bono fin de semana", value: "+$10" },
               ].map((p) => (
                 <div key={p.label} className="rounded-lg bg-surface p-2 text-[10px]">
                   <p className="text-muted-foreground">{p.label}</p>
@@ -261,7 +261,7 @@ const tabs = [
   },
   {
     id: "analytics",
-    label: "Analytics",
+    label: "Analítica",
     mockUI: (
       <div className="rounded-2xl border border-border bg-white shadow-xl overflow-hidden">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 bg-surface/50">
@@ -277,10 +277,10 @@ const tabs = [
         <div className="p-4 md:p-6">
           <div className="grid grid-cols-4 gap-3 mb-5">
             {[
-              { label: "Today's Bookings", value: "47", change: "+12%", icon: "📅" },
-              { label: "Avg Occupancy", value: "87%", change: "+5%", icon: "📊" },
-              { label: "New Members", value: "12", change: "+3 this week", icon: "👤" },
-              { label: "Retention Rate", value: "91%", change: "+2%", icon: "💎" },
+              { label: "Reservas de hoy", value: "47", change: "+12%", icon: "📅" },
+              { label: "Ocupación promedio", value: "87%", change: "+5%", icon: "📊" },
+              { label: "Nuevos miembros", value: "12", change: "+3 esta semana", icon: "👤" },
+              { label: "Retención", value: "91%", change: "+2%", icon: "💎" },
             ].map((k) => (
               <div key={k.label} className="rounded-xl border border-border p-3">
                 <div className="flex items-center justify-between mb-1">
@@ -294,13 +294,13 @@ const tabs = [
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl border border-border p-4">
-              <p className="text-xs font-semibold text-foreground mb-3">Member Insights</p>
+              <p className="text-xs font-semibold text-foreground mb-3">Insights de Miembros</p>
               <div className="space-y-2">
                 {[
-                  { label: "Active", value: "248", pct: 80, color: "bg-green-500" },
-                  { label: "At Risk", value: "32", pct: 10, color: "bg-amber-500" },
-                  { label: "Churned", value: "18", pct: 6, color: "bg-red-500" },
-                  { label: "New (7d)", value: "12", pct: 4, color: "bg-blue-500" },
+                  { label: "Activos", value: "248", pct: 80, color: "bg-green-500" },
+                  { label: "En Riesgo", value: "32", pct: 10, color: "bg-amber-500" },
+                  { label: "Bajas", value: "18", pct: 6, color: "bg-red-500" },
+                  { label: "Nuevos (7d)", value: "12", pct: 4, color: "bg-blue-500" },
                 ].map((r) => (
                   <div key={r.label} className="flex items-center gap-3 text-[10px]">
                     <span className="w-12 text-muted-foreground">{r.label}</span>
@@ -313,7 +313,7 @@ const tabs = [
               </div>
             </div>
             <div className="rounded-xl border border-border p-4">
-              <p className="text-xs font-semibold text-foreground mb-3">Top Classes</p>
+              <p className="text-xs font-semibold text-foreground mb-3">Clases Top</p>
               <div className="space-y-2">
                 {[
                   { name: "Power HIIT", bookings: 186, occ: "94%" },
@@ -326,7 +326,7 @@ const tabs = [
                       <span className="text-muted-foreground">#{i + 1}</span>
                       <span className="font-medium text-foreground">{c.name}</span>
                     </span>
-                    <span className="text-muted-foreground">{c.bookings} bookings · {c.occ}</span>
+                    <span className="text-muted-foreground">{c.bookings} reservas · {c.occ}</span>
                   </div>
                 ))}
               </div>
@@ -352,11 +352,11 @@ export function DashboardSection() {
           className="mx-auto max-w-3xl text-center mb-6"
         >
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground">
-            Your entire <em className="not-italic text-gradient">business-in-a-box</em>
+            Todo tu <em className="not-italic text-gradient">negocio en una caja</em>
           </h2>
           <p className="mt-4 text-lg text-muted max-w-xl mx-auto">
-            One platform to run scheduling, memberships, payments, staff, and analytics.
-            No add-ons, no integrations, no surprises.
+            Una plataforma para gestionar horarios, membresías, pagos, staff y analítica.
+            Sin complementos, sin integraciones, sin sorpresas.
           </p>
         </motion.div>
 
@@ -395,22 +395,22 @@ export function DashboardSection() {
           className="mt-14"
         >
           <p className="text-center text-base sm:text-lg font-semibold text-foreground mb-8">
-            Everything you need for seamless studio operations
+            Todo lo que necesitas para operar tu studio sin fricciones
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-4 max-w-3xl mx-auto">
             {[
-              "Memberships & Packs",
-              "Payment & POS",
-              "E-sign Waivers",
-              "Check-in System",
-              "Coach Pay Config",
-              "Gamification Engine",
-              "Referral Program",
-              "Community Feed",
-              "Marketing & UTM",
-              "Multi-Studio",
-              "E-commerce Store",
-              "ClassPass & Gympass",
+              "Membresías y Paquetes",
+              "Pagos y POS",
+              "Consentimientos con firma",
+              "Sistema de Check-in",
+              "Configuración de pagos a coaches",
+              "Motor de gamificación",
+              "Programa de referidos",
+              "Feed de comunidad",
+              "Marketing y UTM",
+              "Multi-studio",
+              "Tienda e-commerce",
+              "ClassPass y Gympass",
             ].map((f) => (
               <div key={f} className="flex items-center gap-2 text-sm text-muted">
                 <svg className="h-4 w-4 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

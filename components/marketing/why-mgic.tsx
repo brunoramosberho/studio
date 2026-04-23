@@ -6,76 +6,76 @@ import { motion, AnimatePresence } from "framer-motion";
 const tabs = [
   {
     id: "scheduling",
-    title: "Smart Scheduling",
-    headline: "A schedule that fills itself",
+    title: "Reservas Inteligentes",
+    headline: "Un horario que se llena solo",
     description:
-      "Drag-and-drop weekly view, recurring classes, waitlists that auto-promote, and coach availability management — all connected. Members see real-time spots, book instantly, and get reminded automatically.",
+      "Vista semanal drag-and-drop, clases recurrentes, listas de espera que promueven automáticamente y gestión de disponibilidad de coaches — todo conectado. Los miembros ven cupos en tiempo real, reservan al instante y reciben recordatorios automáticos.",
     features: [
-      "Weekly calendar with drag-and-drop",
-      "Automatic waitlist promotion",
-      "Coach availability & conflict detection",
-      "Multi-studio room management",
-      "Blocked spots & capacity controls",
+      "Calendario semanal con drag-and-drop",
+      "Promoción automática desde lista de espera",
+      "Disponibilidad de coaches y detección de conflictos",
+      "Gestión de salas multi-studio",
+      "Bloqueo de cupos y control de capacidad",
     ],
     mockUI: "schedule",
   },
   {
     id: "payments",
-    title: "Payments & Packages",
-    headline: "Get paid without chasing anyone",
+    title: "Pagos y Paquetes",
+    headline: "Cobra sin perseguir a nadie",
     description:
-      "Stripe-powered payments, class packs, recurring memberships, auto-retry on failed charges, and a complete financial dashboard. See MRR, forecast renewals, and export everything in one click.",
+      "Pagos con Stripe, paquetes de clases, membresías recurrentes, reintentos automáticos en cobros fallidos y un dashboard financiero completo. Ve tu MRR, proyecta renovaciones y exporta todo con un solo clic.",
     features: [
-      "Stripe Connect integration",
-      "Class packs & recurring memberships",
-      "Auto-retry failed payments",
-      "Revenue dashboard with MRR tracking",
-      "One-click financial exports",
+      "Integración con Stripe Connect",
+      "Paquetes de clases y membresías recurrentes",
+      "Reintentos automáticos en pagos fallidos",
+      "Dashboard de ingresos con seguimiento de MRR",
+      "Exportes financieros con un clic",
     ],
     mockUI: "payments",
   },
   {
     id: "members",
-    title: "Member Management",
-    headline: "Know every member by name — and by data",
+    title: "Gestión de Miembros",
+    headline: "Conoce a cada miembro por nombre — y por datos",
     description:
-      "Full CRM with risk detection, engagement insights, and lifecycle tracking. See who's at risk of churning, who your top members are, and who just needs a nudge to come back.",
+      "CRM completo con detección de riesgo, insights de engagement y seguimiento de ciclo de vida. Ve quién está en riesgo de irse, quiénes son tus mejores miembros y quiénes solo necesitan un empujón para regresar.",
     features: [
-      "Smart filters: active, at-risk, new, expiring",
-      "Member insights & engagement scoring",
-      "Visit history & credit tracking",
-      "Digital waivers with e-signatures",
-      "Automated lifecycle nudges",
+      "Filtros inteligentes: activos, en riesgo, nuevos, por vencer",
+      "Insights de miembros y puntaje de engagement",
+      "Historial de visitas y seguimiento de créditos",
+      "Consentimientos digitales con firma electrónica",
+      "Recordatorios automatizados de ciclo de vida",
     ],
     mockUI: "members",
   },
   {
     id: "coaches",
-    title: "Coach Tools",
-    headline: "Your coaches deserve better than a spreadsheet",
+    title: "Herramientas para Coaches",
+    headline: "Tus coaches merecen algo mejor que una hoja de cálculo",
     description:
-      "Each coach gets their own dashboard with class stats, earnings breakdowns, fan rankings, and availability management. Configure flexible pay rates — per class, per student, or tiered by occupancy.",
+      "Cada coach tiene su propio dashboard con estadísticas de clases, desglose de ingresos, ranking de fans y gestión de disponibilidad. Configura pagos flexibles — por clase, por alumno o por tramos según ocupación.",
     features: [
-      "Personal coach dashboard & stats",
-      "Flexible pay: fixed, per-class, per-student, tiered",
-      "Fan rankings & top student insights",
-      "Availability blocks with approval flow",
-      "Bio, specialties & certifications",
+      "Dashboard personal del coach con estadísticas",
+      "Pagos flexibles: fijo, por clase, por alumno, por tramos",
+      "Ranking de fans e insights de mejores alumnos",
+      "Bloqueos de disponibilidad con flujo de aprobación",
+      "Bio, especialidades y certificaciones",
     ],
     mockUI: "coaches",
   },
   {
     id: "marketing",
-    title: "Marketing & Growth",
-    headline: "Turn every class into a growth engine",
+    title: "Marketing y Crecimiento",
+    headline: "Convierte cada clase en un motor de crecimiento",
     description:
-      "UTM-tracked links, QR codes, Instagram integration, referral programs, and promotional highlights — all built in. Track which campaigns drive actual bookings, not just clicks.",
+      "Enlaces con seguimiento UTM, códigos QR, integración con Instagram, programas de referidos y promociones destacadas — todo integrado. Mide qué campañas generan reservas reales, no solo clics.",
     features: [
-      "UTM tracking with conversion attribution",
-      "QR code generation for campaigns",
-      "Referral program with reward queue",
-      "Instagram media integration",
-      "Promotional highlights & banners",
+      "Seguimiento UTM con atribución de conversiones",
+      "Generación de códigos QR para campañas",
+      "Programa de referidos con cola de recompensas",
+      "Integración de medios con Instagram",
+      "Promociones destacadas y banners",
     ],
     mockUI: "marketing",
   },
@@ -83,7 +83,7 @@ const tabs = [
 
 function MockSchedule() {
   const hours = ["6 AM", "7 AM", "8 AM", "9 AM", "10 AM"];
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const days = ["Lun", "Mar", "Mié", "Jue", "Vie"];
   return (
     <div className="rounded-xl border border-border bg-white p-4 text-xs">
       <div className="grid grid-cols-6 gap-1">
@@ -124,9 +124,9 @@ function MockPayments() {
     <div className="rounded-xl border border-border bg-white p-4 space-y-3">
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Gross Revenue", value: "$24,800", sub: "This month" },
-          { label: "MRR", value: "$18,200", sub: "+12% vs last month" },
-          { label: "Active Memberships", value: "186", sub: "3 expiring" },
+          { label: "Ingresos Brutos", value: "$24,800", sub: "Este mes" },
+          { label: "MRR", value: "$18,200", sub: "+12% vs mes anterior" },
+          { label: "Membresías Activas", value: "186", sub: "3 por vencer" },
         ].map((k) => (
           <div key={k.label} className="rounded-lg bg-surface p-3">
             <p className="text-[10px] font-medium text-muted">{k.label}</p>
@@ -137,9 +137,9 @@ function MockPayments() {
       </div>
       <div className="space-y-2">
         {[
-          { name: "Sarah M.", amount: "$149", type: "Unlimited Monthly", status: "Paid" },
-          { name: "James K.", amount: "$89", type: "10-Class Pack", status: "Paid" },
-          { name: "Lisa R.", amount: "$149", type: "Unlimited Monthly", status: "Retry" },
+          { name: "Sara M.", amount: "$149", type: "Mensual Ilimitado", status: "Pagado" },
+          { name: "Javier K.", amount: "$89", type: "Pack 10 Clases", status: "Pagado" },
+          { name: "Lisa R.", amount: "$149", type: "Mensual Ilimitado", status: "Reintento" },
         ].map((t) => (
           <div
             key={t.name}
@@ -153,7 +153,7 @@ function MockPayments() {
               <span className="font-semibold text-foreground">{t.amount}</span>
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  t.status === "Paid"
+                  t.status === "Pagado"
                     ? "bg-green-100 text-green-700"
                     : "bg-yellow-100 text-yellow-700"
                 }`}
@@ -172,7 +172,7 @@ function MockMembers() {
   return (
     <div className="rounded-xl border border-border bg-white p-4 space-y-3">
       <div className="flex gap-2">
-        {["All", "Active", "At Risk", "New"].map((f, i) => (
+        {["Todos", "Activos", "En Riesgo", "Nuevos"].map((f, i) => (
           <span
             key={f}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
@@ -185,10 +185,10 @@ function MockMembers() {
       </div>
       <div className="space-y-2">
         {[
-          { name: "Ana García", classes: 24, last: "Today", status: "Active", risk: false },
-          { name: "Carlos Ruiz", classes: 18, last: "3 days ago", status: "Active", risk: false },
-          { name: "Emma Wilson", classes: 6, last: "12 days ago", status: "At Risk", risk: true },
-          { name: "David Chen", classes: 2, last: "21 days ago", status: "At Risk", risk: true },
+          { name: "Ana García", classes: 24, last: "Hoy", status: "Activa", risk: false },
+          { name: "Carlos Ruiz", classes: 18, last: "hace 3 días", status: "Activo", risk: false },
+          { name: "Emma Wilson", classes: 6, last: "hace 12 días", status: "En Riesgo", risk: true },
+          { name: "David Chen", classes: 2, last: "hace 21 días", status: "En Riesgo", risk: true },
         ].map((m) => (
           <div
             key={m.name}
@@ -200,11 +200,11 @@ function MockMembers() {
               </div>
               <div>
                 <span className="font-medium text-foreground">{m.name}</span>
-                <span className="ml-2 text-muted-foreground">{m.classes} classes</span>
+                <span className="ml-2 text-muted-foreground">{m.classes} clases</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Last: {m.last}</span>
+              <span className="text-muted-foreground">Última: {m.last}</span>
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                   m.risk ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
@@ -225,7 +225,7 @@ function MockCoaches() {
     <div className="rounded-xl border border-border bg-white p-4 space-y-3">
       <div className="grid grid-cols-2 gap-3">
         {[
-          { name: "Coach Maria", rating: "4.9", classes: "48", specialty: "HIIT · Strength", color: "bg-accent" },
+          { name: "Coach María", rating: "4.9", classes: "48", specialty: "HIIT · Fuerza", color: "bg-accent" },
           { name: "Coach Alex", rating: "4.8", classes: "36", specialty: "Yoga · Pilates", color: "bg-violet" },
         ].map((c) => (
           <div key={c.name} className="rounded-lg bg-surface p-3 space-y-2">
@@ -241,25 +241,25 @@ function MockCoaches() {
               </div>
             </div>
             <div className="flex justify-between text-[10px]">
-              <span className="text-muted-foreground">Rating: <strong className="text-foreground">{c.rating}</strong></span>
-              <span className="text-muted-foreground">Classes: <strong className="text-foreground">{c.classes}</strong></span>
+              <span className="text-muted-foreground">Calificación: <strong className="text-foreground">{c.rating}</strong></span>
+              <span className="text-muted-foreground">Clases: <strong className="text-foreground">{c.classes}</strong></span>
             </div>
           </div>
         ))}
       </div>
       <div className="rounded-lg bg-surface p-3">
-        <p className="text-[10px] font-semibold text-foreground mb-2">Pay Configuration</p>
+        <p className="text-[10px] font-semibold text-foreground mb-2">Configuración de Pago</p>
         <div className="space-y-1 text-[10px] text-muted-foreground">
           <div className="flex justify-between">
-            <span>Base per class</span>
+            <span>Base por clase</span>
             <span className="font-medium text-foreground">$45</span>
           </div>
           <div className="flex justify-between">
-            <span>Per student bonus</span>
+            <span>Bono por alumno</span>
             <span className="font-medium text-foreground">$3</span>
           </div>
           <div className="flex justify-between">
-            <span>High occupancy bonus (&gt;80%)</span>
+            <span>Bono por alta ocupación (&gt;80%)</span>
             <span className="font-medium text-foreground">+$15</span>
           </div>
         </div>
@@ -272,12 +272,12 @@ function MockMarketing() {
   return (
     <div className="rounded-xl border border-border bg-white p-4 space-y-3">
       <div className="rounded-lg bg-surface p-3">
-        <p className="text-[10px] font-semibold text-foreground mb-2">Campaign Performance</p>
+        <p className="text-[10px] font-semibold text-foreground mb-2">Rendimiento de Campañas</p>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: "Total Clicks", value: "2,340" },
-            { label: "Conversions", value: "186" },
-            { label: "Conv. Rate", value: "7.9%" },
+            { label: "Clics totales", value: "2,340" },
+            { label: "Conversiones", value: "186" },
+            { label: "Tasa de conv.", value: "7.9%" },
           ].map((m) => (
             <div key={m.label} className="text-center">
               <p className="text-lg font-bold text-foreground">{m.value}</p>
@@ -288,9 +288,9 @@ function MockMarketing() {
       </div>
       <div className="space-y-2">
         {[
-          { name: "Summer HIIT Launch", clicks: "890", conv: "72", source: "Instagram" },
-          { name: "Refer-a-Friend", clicks: "654", conv: "58", source: "Referral" },
-          { name: "New Year Yoga", clicks: "796", conv: "56", source: "QR Code" },
+          { name: "Lanzamiento HIIT Verano", clicks: "890", conv: "72", source: "Instagram" },
+          { name: "Refiere a un Amigo", clicks: "654", conv: "58", source: "Referido" },
+          { name: "Yoga Año Nuevo", clicks: "796", conv: "56", source: "Código QR" },
         ].map((c) => (
           <div
             key={c.name}
@@ -301,7 +301,7 @@ function MockMarketing() {
               <span className="ml-2 text-muted-foreground">{c.source}</span>
             </div>
             <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-              <span>{c.clicks} clicks</span>
+              <span>{c.clicks} clics</span>
               <span className="font-medium text-accent">{c.conv} conv.</span>
             </div>
           </div>
@@ -333,13 +333,13 @@ export function WhyMgic() {
           viewport={{ once: true }}
           className="mx-auto max-w-2xl text-center mb-12"
         >
-          <p className="text-sm font-semibold text-accent mb-3">Why Mgic</p>
+          <p className="text-sm font-semibold text-accent mb-3">Por qué Mgic</p>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-            Everything you need,{" "}
-            <em className="not-italic text-gradient">nothing</em> you don&apos;t
+            Todo lo que necesitas,{" "}
+            <em className="not-italic text-gradient">nada</em> que no
           </h2>
           <p className="mt-4 text-lg text-muted">
-            One platform that actually replaces the ten you&apos;re juggling today.
+            Una plataforma que realmente reemplaza las diez que hoy tienes funcionando.
           </p>
         </motion.div>
 

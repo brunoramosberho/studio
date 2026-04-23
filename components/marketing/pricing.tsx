@@ -23,17 +23,17 @@ const plans: Plan[] = [
     monthly: "299",
     annual: "249",
     currency: "EUR",
-    platformFee: "1.5% platform fee per transaction",
-    onboarding: "Onboarding: €799 EUR (one-time)",
-    description: "For new studios getting off the ground.",
+    platformFee: "1.5% de comisión por transacción",
+    onboarding: "Onboarding: €799 EUR (pago único)",
+    description: "Para studios nuevos que están arrancando.",
     features: [
-      "Up to 200 members",
-      "Bookings with spot map",
-      "Payments & packages with Stripe",
-      "Social feed & achievements",
-      "Push notifications",
+      "Hasta 200 miembros",
+      "Reservas con mapa de lugares",
+      "Pagos y paquetes con Stripe",
+      "Feed social y logros",
+      "Notificaciones push",
     ],
-    cta: "Book a Demo",
+    cta: "Reservar una Demo",
     highlighted: false,
   },
   {
@@ -41,22 +41,22 @@ const plans: Plan[] = [
     monthly: "449",
     annual: "379",
     currency: "EUR",
-    platformFee: "1% platform fee per transaction",
-    onboarding: "Onboarding: €1,499 EUR (one-time)",
-    description: "For studios ready to scale and retain.",
+    platformFee: "1% de comisión por transacción",
+    onboarding: "Onboarding: €1,499 EUR (pago único)",
+    description: "Para studios listos para crecer y retener.",
     highlight:
-      "The AI assistant from Momence costs $399/mo as an add-on. Here it's included.",
+      "El asistente de IA de Momence cuesta $399/mes como complemento. Aquí viene incluido.",
     features: [
-      "Everything in Starter, plus:",
-      "AI Assistant with insights",
-      "Coach portal",
-      "Integrated shop",
-      "PWA white-label",
-      "Advanced dashboard",
-      "Data migration included",
-      "1 feature request / month",
+      "Todo lo de Starter, más:",
+      "Asistente de IA con insights",
+      "Portal para coaches",
+      "Tienda integrada",
+      "PWA con tu marca",
+      "Dashboard avanzado",
+      "Migración de datos incluida",
+      "1 feature request al mes",
     ],
-    cta: "Book a Demo",
+    cta: "Reservar una Demo",
     highlighted: true,
   },
   {
@@ -64,20 +64,20 @@ const plans: Plan[] = [
     monthly: "699",
     annual: "599",
     currency: "EUR",
-    platformFee: "0.5% platform fee per transaction",
-    onboarding: "Onboarding included",
-    description: "For multi-location studios and franchises.",
+    platformFee: "0.5% de comisión por transacción",
+    onboarding: "Onboarding incluido",
+    description: "Para studios con múltiples locaciones y franquicias.",
     features: [
-      "Unlimited members",
-      "Everything in Growth, plus:",
-      "Multi-location",
-      "Custom domain",
-      "Dedicated account manager",
-      "Onboarding included",
-      "Uptime SLA",
-      "2 feature requests / month",
+      "Miembros ilimitados",
+      "Todo lo de Growth, más:",
+      "Multi-locación",
+      "Dominio propio",
+      "Account manager dedicado",
+      "Onboarding incluido",
+      "SLA de disponibilidad",
+      "2 feature requests al mes",
     ],
-    cta: "Book a Demo",
+    cta: "Reservar una Demo",
     highlighted: false,
   },
 ];
@@ -94,21 +94,21 @@ export function MarketingPricing() {
           viewport={{ once: true }}
           className="mx-auto max-w-2xl text-center mb-10"
         >
-          <p className="text-sm font-semibold text-accent mb-3">Pricing</p>
+          <p className="text-sm font-semibold text-accent mb-3">Precios</p>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-            Simple pricing. <em className="not-italic text-gradient">No surprises.</em>
+            Precios simples. <em className="not-italic text-gradient">Sin sorpresas.</em>
           </h2>
           <p className="mt-4 text-lg text-muted">
-            All plans include updates, hosting, and support.
+            Todos los planes incluyen actualizaciones, hosting y soporte.
           </p>
         </motion.div>
 
         <div className="flex items-center justify-center gap-3 mb-12">
-          <span className={`text-sm font-medium ${!annual ? "text-foreground" : "text-muted"}`}>Monthly</span>
+          <span className={`text-sm font-medium ${!annual ? "text-foreground" : "text-muted"}`}>Mensual</span>
           <button
             onClick={() => setAnnual(!annual)}
             className={`relative h-7 w-12 rounded-full transition-colors ${annual ? "bg-accent" : "bg-border"}`}
-            aria-label="Toggle annual pricing"
+            aria-label="Cambiar a precio anual"
           >
             <span
               className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
@@ -116,10 +116,10 @@ export function MarketingPricing() {
               }`}
             />
           </button>
-          <span className={`text-sm font-medium ${annual ? "text-foreground" : "text-muted"}`}>Annual</span>
+          <span className={`text-sm font-medium ${annual ? "text-foreground" : "text-muted"}`}>Anual</span>
           {annual && (
             <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-              Save ~16%
+              Ahorra ~16%
             </span>
           )}
         </div>
@@ -140,7 +140,7 @@ export function MarketingPricing() {
             >
               {plan.highlighted && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-4 py-1 text-xs font-semibold text-white whitespace-nowrap">
-                  Most Popular
+                  Más Popular
                 </div>
               )}
 
@@ -150,7 +150,7 @@ export function MarketingPricing() {
                 <span className="text-4xl font-extrabold text-foreground">
                   €{annual ? plan.annual : plan.monthly}
                 </span>
-                <span className="text-base text-muted">{plan.currency}/mo</span>
+                <span className="text-base text-muted">{plan.currency}/mes</span>
               </div>
 
               <div className="mt-2 space-y-0.5">
@@ -208,7 +208,7 @@ export function MarketingPricing() {
           viewport={{ once: true }}
           className="mt-8 text-center text-sm text-muted-foreground"
         >
-          All plans include updates, hosting, and support. No hidden fees.
+          Todos los planes incluyen actualizaciones, hosting y soporte. Sin cargos ocultos.
         </motion.p>
       </div>
     </section>

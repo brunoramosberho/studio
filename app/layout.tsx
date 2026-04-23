@@ -57,24 +57,26 @@ export async function generateMetadata(): Promise<Metadata> {
   const tenantSlug = h.get("x-tenant-slug");
   const isApex = !tenantSlug;
 
-  // Apex domain: public marketing metadata, no PWA manifest/apple-icon.
+  // Apex domain: public marketing metadata, no PWA manifest.
   // /directory/page.tsx provides the landing-specific title/description.
+  // Favicon + apple-touch-icon are served by /app/icon.tsx and
+  // /app/apple-icon.tsx (both detect apex and render the Mgic logo).
   if (isApex) {
     return {
       metadataBase: new URL(baseUrl),
       title: {
-        default: "Mgic Studio — The all-in-one platform for boutique fitness studios",
+        default: "Mgic Studio — La plataforma todo-en-uno para studios boutique de fitness",
         template: "%s | Mgic Studio",
       },
       description:
-        "Replace 10 tools with one. Mgic is the modern studio management platform that handles scheduling, payments, member engagement, AI insights, and community.",
+        "Reemplaza 10 herramientas con una. Mgic es la plataforma moderna de gestión para studios: reservas, pagos, engagement, insights con IA y comunidad.",
       keywords: [
-        "studio management",
-        "fitness booking",
-        "pilates software",
-        "gym management",
-        "boutique studio",
-        "member app",
+        "gestión de studio",
+        "reservas fitness",
+        "software pilates",
+        "gestión de gimnasio",
+        "studio boutique",
+        "app de miembros",
       ],
     };
   }

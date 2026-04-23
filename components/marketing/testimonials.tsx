@@ -5,44 +5,44 @@ import { motion } from "framer-motion";
 const testimonials = [
   {
     quote:
-      "We replaced Mindbody, Mailchimp, and three other tools the day we switched to Mgic. Our admin hours dropped by 60%.",
-    name: "Maria S.",
-    role: "Owner, HIIT Republic",
+      "Reemplazamos Mindbody, Mailchimp y otras tres herramientas el día que cambiamos a Mgic. Nuestras horas de admin bajaron 60%.",
+    name: "María S.",
+    role: "Dueña, HIIT Republic",
     avatar: "MS",
   },
   {
     quote:
-      "The social feed changed everything. Members are tagging each other, celebrating streaks — our retention is up 35% since launch.",
+      "El feed social lo cambió todo. Los miembros se etiquetan, celebran rachas — nuestra retención subió 35% desde que lanzamos.",
     name: "Alex K.",
-    role: "Founder, FlowState Yoga",
+    role: "Fundador, FlowState Yoga",
     avatar: "AK",
   },
   {
     quote:
-      "MgicAI told me three members were about to churn before I even noticed. I reached out, and all three renewed. That alone pays for the platform.",
+      "MgicAI me dijo que tres miembros iban a darse de baja antes de que yo lo notara. Los contacté y los tres renovaron. Solo eso paga la plataforma.",
     name: "Carlos R.",
     role: "Director, CrossFit Elevate",
     avatar: "CR",
   },
   {
     quote:
-      "My coaches love their dashboards. They can see their earnings, their top students, their ratings — all in one place. Morale is through the roof.",
+      "A mis coaches les encantan sus dashboards. Ven sus ingresos, sus mejores alumnos, sus calificaciones — todo en un solo lugar. La moral está por las nubes.",
     name: "Emma T.",
-    role: "Co-Founder, Barre & Beyond",
+    role: "Co-fundadora, Barre & Beyond",
     avatar: "ET",
   },
   {
     quote:
-      "The gamification system is our secret weapon. Members are competing for badges, climbing tiers — it turned fitness into a game they don't want to stop playing.",
+      "El sistema de gamificación es nuestra arma secreta. Los miembros compiten por badges, suben de nivel — convirtió el fitness en un juego del que no quieren parar.",
     name: "David L.",
-    role: "Owner, Ride Collective",
+    role: "Dueño, Ride Collective",
     avatar: "DL",
   },
   {
     quote:
-      "Setup took 20 minutes. Not days, not weeks — 20 minutes. And the team at Mgic was there the whole way. Best onboarding experience I've had.",
+      "El setup tomó 20 minutos. No días, no semanas — 20 minutos. Y el equipo de Mgic estuvo ahí en todo momento. El mejor onboarding que he tenido.",
     name: "Sophia W.",
-    role: "Manager, Zen Studio",
+    role: "Gerente, Zen Studio",
     avatar: "SW",
   },
 ];
@@ -57,12 +57,12 @@ export function Testimonials() {
           viewport={{ once: true }}
           className="mx-auto max-w-2xl text-center mb-14"
         >
-          <p className="text-sm font-semibold text-accent mb-3">Loved by Studios</p>
+          <p className="text-sm font-semibold text-accent mb-3">Los studios nos aman</p>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-            Don&apos;t take our word for it
+            No nos creas a nosotros
           </h2>
           <p className="mt-4 text-lg text-muted">
-            Hear from studio owners who made the switch.
+            Escucha a dueños de studios que ya se cambiaron.
           </p>
         </motion.div>
 

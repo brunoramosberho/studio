@@ -2,31 +2,32 @@ import type { Metadata } from "next";
 import { LandingClient } from "./client";
 
 export const metadata: Metadata = {
-  title: "Mgic Studio — The all-in-one platform for boutique fitness studios",
+  title: "Mgic Studio — La plataforma todo-en-uno para studios boutique de fitness",
   description:
-    "Replace 10 tools with one. Mgic is the modern studio management platform that handles scheduling, payments, member engagement, AI insights, and community — so you can focus on what you love.",
+    "Reemplaza 10 herramientas con una. Mgic es la plataforma moderna de gestión para studios: reservas, pagos, engagement, insights con IA y comunidad — para que te enfoques en lo que amas.",
   keywords: [
-    "studio management",
-    "fitness booking",
-    "pilates software",
-    "boutique studio",
-    "gym management",
-    "booking platform",
-    "member app",
+    "gestión de studio",
+    "reservas fitness",
+    "software pilates",
+    "studio boutique",
+    "gestión de gimnasio",
+    "plataforma de reservas",
+    "app de miembros",
   ],
   openGraph: {
-    title: "Mgic Studio — The all-in-one platform for boutique fitness studios",
+    title: "Mgic Studio — La plataforma todo-en-uno para studios boutique de fitness",
     description:
-      "Replace 10 tools with one. Scheduling, payments, community, AI — all in Mgic.",
+      "Reemplaza 10 herramientas con una. Reservas, pagos, comunidad, IA — todo en Mgic.",
     url: "https://mgic.app",
     siteName: "Mgic Studio",
     type: "website",
+    locale: "es_ES",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mgic Studio — The all-in-one platform for boutique fitness studios",
+    title: "Mgic Studio — La plataforma todo-en-uno para studios boutique de fitness",
     description:
-      "Replace 10 tools with one. Scheduling, payments, community, AI — all in Mgic.",
+      "Reemplaza 10 herramientas con una. Reservas, pagos, comunidad, IA — todo en Mgic.",
   },
 };
 

@@ -5,36 +5,36 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const faqs = [
   {
-    q: "How long does it take to set up Mgic?",
-    a: "Most studios are up and running in under 30 minutes. We handle data migration from your current platform, and our team walks you through every step. No technical skills required.",
+    q: "¿Cuánto tarda configurar Mgic?",
+    a: "La mayoría de los studios están operando en menos de 30 minutos. Nos encargamos de migrar los datos desde tu plataforma actual y nuestro equipo te acompaña en cada paso. No se requieren conocimientos técnicos.",
   },
   {
-    q: "Do my members need to download an app?",
-    a: "Nope. Mgic's member app is a Progressive Web App (PWA) — members just visit your branded link and add it to their home screen. Looks and feels native, no App Store needed.",
+    q: "¿Mis miembros necesitan descargar una app?",
+    a: "No. La app de miembros de Mgic es una Progressive Web App (PWA) — los miembros solo abren tu enlace con tu marca y la añaden a la pantalla de inicio. Se ve y se siente nativa, sin pasar por la App Store.",
   },
   {
-    q: "What payment processor do you use?",
-    a: "We use Stripe Connect for secure, global payment processing. Your members can pay with credit cards, and you get payouts directly to your bank account. We never hold your money.",
+    q: "¿Qué procesador de pagos usan?",
+    a: "Usamos Stripe Connect para pagos seguros y globales. Tus miembros pagan con tarjeta y los fondos llegan directo a tu cuenta bancaria. Nosotros nunca retenemos tu dinero.",
   },
   {
-    q: "Can I manage multiple studio locations?",
-    a: "Absolutely. Our Scale plan includes full multi-studio management — separate rooms, coaches, and schedules per location, all controlled from one dashboard.",
+    q: "¿Puedo gestionar múltiples locaciones?",
+    a: "Por supuesto. Nuestro plan Scale incluye gestión multi-studio completa — salas, coaches y horarios separados por locación, todo controlado desde un mismo dashboard.",
   },
   {
-    q: "How does MgicAI work?",
-    a: "MgicAI is powered by Claude and analyzes your studio data in real time. It generates daily briefings, flags at-risk members, forecasts revenue, and answers questions about your business in natural language. Available on Growth and Scale plans.",
+    q: "¿Cómo funciona MgicAI?",
+    a: "MgicAI está impulsado por Claude y analiza los datos de tu studio en tiempo real. Genera briefings diarios, identifica miembros en riesgo, proyecta ingresos y responde preguntas sobre tu negocio en lenguaje natural. Disponible en los planes Growth y Scale.",
   },
   {
-    q: "What makes the social features different from just having a WhatsApp group?",
-    a: "Mgic's social layer is built into the booking experience. Members see what friends are booking, give kudos after classes, celebrate achievements, and discover new friends through shared sessions. It's contextual, not just chat.",
+    q: "¿Qué diferencia hay entre las funciones sociales y un simple grupo de WhatsApp?",
+    a: "La capa social de Mgic vive dentro de la experiencia de reserva. Los miembros ven qué clases reservan sus amigos, dan kudos después de las clases, celebran logros y descubren nuevos amigos a través de sesiones compartidas. Es contextual, no solo chat.",
   },
   {
-    q: "Do you integrate with ClassPass or Gympass?",
-    a: "Yes. Our Scale plan includes full integration with ClassPass and Gympass — manage quotas, handle check-ins, export reconciliation data, and track which external bookings convert to members.",
+    q: "¿Se integran con ClassPass o Gympass?",
+    a: "Sí. El plan Scale incluye integración completa con ClassPass y Gympass — gestiona cuotas, check-ins, exporta datos de reconciliación y mide cuáles reservas externas se convierten en miembros.",
   },
   {
-    q: "Is there a contract or commitment?",
-    a: "No contracts, ever. All plans are month-to-month. You can upgrade, downgrade, or cancel anytime. We believe the product should earn your business every month.",
+    q: "¿Hay contrato o compromiso?",
+    a: "Sin contratos, nunca. Todos los planes son mes a mes. Puedes subir, bajar o cancelar cuando quieras. Creemos que el producto debe ganarse tu confianza cada mes.",
   },
 ];
 
@@ -87,7 +87,7 @@ export function MarketingFAQ() {
         >
           <p className="text-sm font-semibold text-accent mb-3">FAQ</p>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-            Questions? Answers.
+            ¿Preguntas? Respuestas.
           </h2>
         </motion.div>
 

@@ -1,40 +1,40 @@
 export function MarketingFooter() {
   const columns = [
     {
-      title: "Product",
+      title: "Producto",
       links: [
-        { label: "Scheduling", href: "#why-mgic" },
-        { label: "Payments", href: "#why-mgic" },
-        { label: "Member App", href: "#member-app" },
+        { label: "Horarios", href: "#why-mgic" },
+        { label: "Pagos", href: "#why-mgic" },
+        { label: "App de Miembros", href: "#member-app" },
         { label: "MgicAI", href: "#mgic-ai" },
-        { label: "Community", href: "#community" },
+        { label: "Comunidad", href: "#community" },
         { label: "Dashboard", href: "#dashboard" },
       ],
     },
     {
-      title: "Company",
+      title: "Compañía",
       links: [
-        { label: "About", href: "#" },
+        { label: "Nosotros", href: "#" },
         { label: "Blog", href: "#" },
-        { label: "Careers", href: "#" },
-        { label: "Press", href: "#" },
+        { label: "Empleos", href: "#" },
+        { label: "Prensa", href: "#" },
       ],
     },
     {
-      title: "Resources",
+      title: "Recursos",
       links: [
-        { label: "Help Center", href: "#" },
+        { label: "Centro de Ayuda", href: "#" },
         { label: "API Docs", href: "#" },
-        { label: "Status", href: "#" },
+        { label: "Estado", href: "#" },
         { label: "Changelog", href: "#" },
       ],
     },
     {
       title: "Legal",
       links: [
-        { label: "Privacy Policy", href: "#" },
-        { label: "Terms of Service", href: "#" },
-        { label: "Cookie Policy", href: "#" },
+        { label: "Política de Privacidad", href: "#" },
+        { label: "Términos de Servicio", href: "#" },
+        { label: "Política de Cookies", href: "#" },
       ],
     },
   ];
@@ -51,7 +51,7 @@ export function MarketingFooter() {
               <span className="text-lg font-bold tracking-tight text-foreground">mgic</span>
             </a>
             <p className="mt-3 text-sm text-muted leading-relaxed">
-              The all-in-one platform for boutique fitness studios.
+              La plataforma todo-en-uno para studios boutique de fitness.
             </p>
           </div>
 
@@ -76,7 +76,7 @@ export function MarketingFooter() {
 
         <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Mgic Studio. All rights reserved.
+            &copy; {new Date().getFullYear()} Mgic Studio. Todos los derechos reservados.
           </p>
           <div className="flex items-center gap-4">
             {[

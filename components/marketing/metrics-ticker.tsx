@@ -3,14 +3,14 @@
 import { motion } from "framer-motion";
 
 const metrics = [
-  { value: "200+", label: "Studios Worldwide" },
-  { value: "50K+", label: "Classes Booked Monthly" },
-  { value: "99.9%", label: "Uptime" },
-  { value: "4.9/5", label: "Average Rating" },
-  { value: "30%", label: "Revenue Growth Avg" },
-  { value: "12K+", label: "Active Members" },
-  { value: "<2 min", label: "Avg Setup Time" },
-  { value: "85%", label: "Retention Rate Lift" },
+  { value: "10+", label: "Herramientas que reemplaza" },
+  { value: "<30 min", label: "Tiempo de configuración" },
+  { value: "24/7", label: "Asistente con IA" },
+  { value: "Mes a mes", label: "Sin contratos" },
+  { value: "Stripe", label: "Pagos seguros" },
+  { value: "PWA", label: "Sin App Store" },
+  { value: "Multi-studio", label: "Una sola plataforma" },
+  { value: "ES · EN", label: "Multi-idioma" },
 ];
 
 export function MetricsTicker() {

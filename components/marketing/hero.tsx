@@ -16,7 +16,7 @@ export function MarketingHero() {
             className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-4 py-1.5 text-sm font-medium text-muted mb-8"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-            Built for boutique fitness studios
+            Hecho para studios boutique de fitness
           </motion.div>
 
           <motion.h1
@@ -25,10 +25,10 @@ export function MarketingHero() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.08]"
           >
-            Replace 10 tools with{" "}
-            <em className="not-italic text-gradient">one</em> —{" "}
+            Reemplaza 10 herramientas con{" "}
+            <em className="not-italic text-gradient">una</em> —{" "}
             <br className="hidden sm:block" />
-            no add-ons, no surprises
+            sin complementos, sin sorpresas
           </motion.h1>
 
           <motion.p
@@ -37,9 +37,9 @@ export function MarketingHero() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mx-auto mt-6 max-w-2xl text-lg md:text-xl text-muted leading-relaxed"
           >
-            Scheduling, payments, member engagement, AI insights, and
-            community — all in one platform designed for studios that refuse to
-            settle.
+            Reservas, pagos, engagement de miembros, insights con IA y
+            comunidad — todo en una plataforma diseñada para studios que no se
+            conforman.
           </motion.p>
 
           <motion.div
@@ -52,13 +52,13 @@ export function MarketingHero() {
               href="#cta"
               className="btn-gradient inline-flex h-12 items-center rounded-full px-8 text-base font-semibold shadow-lg shadow-accent/25"
             >
-              Book a Demo →
+              Reservar una Demo →
             </a>
             <a
               href="#why-mgic"
               className="inline-flex h-12 items-center rounded-full border border-border bg-white px-8 text-base font-semibold text-foreground transition-all hover:bg-surface hover:-translate-y-0.5"
             >
-              See How It Works
+              Ver cómo funciona
             </a>
           </motion.div>
 
@@ -69,14 +69,14 @@ export function MarketingHero() {
             className="mt-8 flex flex-col items-center gap-2"
           >
             <div className="flex items-center gap-3 sm:gap-5 text-sm font-semibold text-foreground">
-              <span>Free trial</span>
+              <span>Prueba gratis</span>
               <span className="h-1 w-1 rounded-full bg-accent" />
-              <span>Contract buyout</span>
+              <span>Liquidamos tu contrato</span>
               <span className="h-1 w-1 rounded-full bg-accent" />
-              <span>One-night migration</span>
+              <span>Migración en una noche</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Trusted by 200+ boutique studios worldwide
+              Sin tarjeta de crédito · Cancela cuando quieras
             </p>
           </motion.div>
         </div>
@@ -101,10 +101,10 @@ export function MarketingHero() {
             <div className="p-6 md:p-8 bg-surface/30">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {[
-                  { label: "Today's Bookings", value: "47", change: "+12%" },
-                  { label: "Weekly Revenue", value: "$8,240", change: "+18%" },
-                  { label: "Active Members", value: "312", change: "+8%" },
-                  { label: "Avg Occupancy", value: "87%", change: "+5%" },
+                  { label: "Reservas de hoy", value: "47", change: "+12%" },
+                  { label: "Ingresos semanales", value: "$8,240", change: "+18%" },
+                  { label: "Miembros activos", value: "312", change: "+8%" },
+                  { label: "Ocupación promedio", value: "87%", change: "+5%" },
                 ].map((kpi) => (
                   <div
                     key={kpi.label}
@@ -123,7 +123,7 @@ export function MarketingHero() {
               <div className="rounded-xl border border-border bg-white p-6">
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-sm font-semibold text-foreground">
-                    Weekly Revenue
+                    Ingresos semanales
                   </p>
                   <div className="flex gap-2">
                     {["1W", "1M", "3M"].map((t) => (
@@ -148,7 +148,7 @@ export function MarketingHero() {
                         style={{ height: `${h}%` }}
                       />
                       <span className="text-[10px] text-muted-foreground">
-                        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}
+                        {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][i]}
                       </span>
                     </div>
                   ))}
