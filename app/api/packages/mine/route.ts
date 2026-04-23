@@ -15,6 +15,7 @@ export async function GET() {
       where: {
         userId: session.user!.id!,
         tenantId: tenant.id,
+        status: { in: ["ACTIVE", "PENDING_PAYMENT", "DISPUTED"] },
         ...(user?.countryId && {
           package: {
             OR: [{ countryId: user.countryId }, { countryId: null }],

@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
       where: {
         userId: session.user.id,
         tenantId: tenant.id,
+        status: "ACTIVE",
         expiresAt: { gt: new Date() },
       },
       include: userPackageIncludeForBooking,
