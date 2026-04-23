@@ -211,10 +211,28 @@ async function main() {
 
   // --- Location Hierarchy: Country > City > Studio > Room ---
   const spain = await prisma.country.create({
-    data: { name: "España", code: "ES" },
+    data: {
+      name: "España",
+      code: "ES",
+      currency: "EUR",
+      currencySymbol: "€",
+      intlLocale: "es-ES",
+    },
   });
   const mexico = await prisma.country.create({
-    data: { name: "México", code: "MX" },
+    data: {
+      name: "México",
+      code: "MX",
+      currency: "MXN",
+      currencySymbol: "$",
+      intlLocale: "es-MX",
+    },
+  });
+
+  // Anchor the tenant to its primary country so currency defaults propagate.
+  await prisma.tenant.update({
+    where: { id: tenantId },
+    data: { defaultCountryId: spain.id },
   });
 
   const madrid = await prisma.city.create({

@@ -16,6 +16,8 @@ import {
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { useCurrency } from "@/components/tenant-provider";
+import { formatMoney as formatMoneyWithCurrency } from "@/lib/currency";
 
 type ActionKind = "confirm" | "waive" | "revert";
 
@@ -49,10 +51,6 @@ function formatDateLabel(date: Date): string {
   if (isYesterday(date)) return "Ayer";
   return format(date, "EEEE d 'de' MMMM", { locale: es })
     .replace(/^./, (c) => c.toUpperCase());
-}
-
-function formatMoney(cents: number): string {
-  return `${(cents / 100).toFixed(2)}€`;
 }
 
 function groupByDay(items: PendingItem[]): Array<{ key: string; label: string; items: PendingItem[] }> {
@@ -226,6 +224,7 @@ function NoShowRow({
   disabled: boolean;
 }) {
   const t = useTranslations("admin.noShowsPage");
+  const currency = useCurrency();
   const displayName = item.user?.name || item.user?.email || "—";
   const classLabel = item.class
     ? `${item.class.classType.name} · ${format(new Date(item.class.startsAt), "HH:mm")}`
@@ -259,7 +258,7 @@ function NoShowRow({
           {item.chargeFee && (
             <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700">
               <DollarSign className="h-3 w-3" />
-              {formatMoney(item.feeAmountCents)}
+              {formatMoneyWithCurrency(item.feeAmountCents / 100, currency)}
             </span>
           )}
           {item.status === "pending" && autoAt && (

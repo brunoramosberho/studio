@@ -19,7 +19,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, formatTime } from "@/lib/utils";
+import { cn, formatTime, formatCurrency } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
 interface PeriodStats {
@@ -90,12 +90,11 @@ const stagger = {
   show: { transition: { staggerChildren: 0.04 } },
 };
 
+// Local alias kept for call-site brevity. Delegates to the shared formatter
+// so the Intl locale follows the actual currency (es-MX for MXN, es-ES for
+// EUR, en-US for USD…).
 function fmt(amount: number, currency: string = "MXN") {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-  }).format(amount);
+  return formatCurrency(amount, currency);
 }
 
 function groupByMonth(classes: HistoryEntry[]): MonthGroup[] {

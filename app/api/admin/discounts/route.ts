@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requireRole, getTenantCurrency } from "@/lib/tenant";
 
 // GET /api/admin/discounts — list all discount codes for tenant
 export async function GET() {
@@ -97,7 +97,8 @@ export async function POST(request: NextRequest) {
           couponData.percent_off = value;
         } else {
           couponData.amount_off = Math.round(value * 100); // cents
-          couponData.currency = (currency || "eur").toLowerCase();
+          const fallbackCurrency = (await getTenantCurrency()).code;
+          couponData.currency = (currency || fallbackCurrency).toLowerCase();
         }
 
         if (maxUses) {

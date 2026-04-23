@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requireRole, getTenantCurrency } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,12 +52,13 @@ export async function POST(request: NextRequest) {
       _max: { position: true },
     });
 
+    const tenantCurrency = await getTenantCurrency();
     const product = await prisma.product.create({
       data: {
         name: name.trim(),
         description: description?.trim() || null,
         price: Number(price),
-        currency: currency || "MXN",
+        currency: currency || tenantCurrency.code,
         imageUrl: imageUrl || null,
         isVisible: isVisible ?? true,
         externalUrl: externalUrl?.trim() || null,

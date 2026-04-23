@@ -64,6 +64,13 @@ model Tenant {
 
   locale String @default("es") // "en" | "es"
 
+  // Default country for this tenant. Drives currency/symbol/intl locale for the
+  // whole app unless overridden per Studio/Package. Nullable for backfill; once
+  // the tenant has at least one Studio, this should point to the same Country
+  // as the primary Studio's City.
+  defaultCountryId String?
+  defaultCountry   Country? @relation("TenantDefaultCountry", fields: [defaultCountryId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -863,12 +870,19 @@ model UserPackageCreditUsage {
 // ── Location Hierarchy ──
 
 model Country {
-  id       String    @id @default(cuid())
-  name     String
-  code     String    @unique
-  cities   City[]
-  packages Package[]
-  users    User[]
+  id             String    @id @default(cuid())
+  name           String
+  code           String    @unique
+  // ISO 4217 currency code (e.g. "EUR", "MXN", "USD").
+  currency       String    @default("EUR")
+  // Display symbol for UI ("€", "$", "£", "MX$", etc.). Prefer ASCII for forms.
+  currencySymbol String    @default("€")
+  // BCP 47 locale used to format numbers/dates inside this country (e.g. "es-ES", "es-MX", "en-US").
+  intlLocale     String    @default("es-ES")
+  cities         City[]
+  packages       Package[]
+  users          User[]
+  tenantsDefault Tenant[]  @relation("TenantDefaultCountry")
 }
 
 model City {

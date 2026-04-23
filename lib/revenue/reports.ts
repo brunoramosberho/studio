@@ -10,6 +10,7 @@
 // until month close converts them into `booking` + `monthly_breakage`.
 
 import { prisma } from "@/lib/db";
+import { resolveTenantCurrency } from "@/lib/currency";
 import type { Prisma } from "@prisma/client";
 
 export interface RevenueSummary {
@@ -203,12 +204,14 @@ export async function getMonthlyRevenueReport(
 ): Promise<RevenueReport> {
   const { start, end } = monthBoundsInternal(month);
 
-  // Currency: read off the tenant via its packages (fallback to "eur").
+  // Currency: prefer the tenant's default country currency; fall back to the
+  // first Package row only if the tenant hasn't been anchored to a country.
   const firstPkg = await prisma.package.findFirst({
     where: { tenantId },
     select: { currency: true },
   });
-  const currency = (firstPkg?.currency ?? "eur").toLowerCase();
+  const tenantCurrency = await resolveTenantCurrency(tenantId);
+  const currency = (firstPkg?.currency ?? tenantCurrency.code).toLowerCase();
 
   const [attributedAgg, breakageRows, attributed] = await Promise.all([
     prisma.revenueEvent.aggregate({

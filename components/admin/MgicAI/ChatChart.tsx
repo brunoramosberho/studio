@@ -18,6 +18,8 @@ import {
 } from "recharts";
 import { Download, Check, AlertTriangle } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
+import { useCurrency } from "@/components/tenant-provider";
+import { type CurrencyConfig } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 
 type ChartType = "bar" | "line" | "pie";
@@ -74,19 +76,23 @@ function parseSpec(raw: string): ChartSpec | { error: string } {
   }
 }
 
-function formatValue(value: unknown, format?: ChartSpec["format"]): string {
+function formatValue(
+  value: unknown,
+  format: ChartSpec["format"] | undefined,
+  currency: CurrencyConfig,
+): string {
   if (typeof value !== "number") return String(value ?? "");
   if (format === "currency") {
-    return new Intl.NumberFormat("es-MX", {
+    return new Intl.NumberFormat(currency.intlLocale, {
       style: "currency",
-      currency: "MXN",
+      currency: currency.code,
       maximumFractionDigits: 0,
     }).format(value);
   }
   if (format === "percent") {
     return `${value.toFixed(1)}%`;
   }
-  return new Intl.NumberFormat("es-MX").format(value);
+  return new Intl.NumberFormat(currency.intlLocale).format(value);
 }
 
 function shortAxisFormatter(format?: ChartSpec["format"]) {
@@ -101,6 +107,7 @@ function shortAxisFormatter(format?: ChartSpec["format"]) {
 export function ChatChart({ spec: rawSpec }: ChatChartProps) {
   const [copied, setCopied] = useState(false);
   const { colorAdmin } = useBranding();
+  const currency = useCurrency();
 
   const parsed = useMemo(() => parseSpec(rawSpec), [rawSpec]);
 
@@ -211,7 +218,7 @@ export function ChatChart({ spec: rawSpec }: ChatChartProps) {
                 tickFormatter={shortAxisFormatter(spec.format)}
               />
               <Tooltip
-                content={<ChartTooltip format={spec.format} />}
+                content={<ChartTooltip format={spec.format} currency={currency} />}
                 cursor={{ fill: "var(--color-surface)" }}
               />
               {series.length > 1 && (
@@ -254,7 +261,7 @@ export function ChatChart({ spec: rawSpec }: ChatChartProps) {
                 tickLine={false}
                 tickFormatter={shortAxisFormatter(spec.format)}
               />
-              <Tooltip content={<ChartTooltip format={spec.format} />} />
+              <Tooltip content={<ChartTooltip format={spec.format} currency={currency} />} />
               {series.length > 1 && (
                 <Legend
                   wrapperStyle={{ fontSize: 11, color: "var(--color-muted)" }}
@@ -298,7 +305,7 @@ export function ChatChart({ spec: rawSpec }: ChatChartProps) {
                   />
                 ))}
               </Pie>
-              <Tooltip content={<ChartTooltip format={spec.format} />} />
+              <Tooltip content={<ChartTooltip format={spec.format} currency={currency} />} />
               <Legend
                 wrapperStyle={{ fontSize: 11, color: "var(--color-muted)" }}
                 iconType="circle"
@@ -317,11 +324,13 @@ function ChartTooltip({
   payload,
   label,
   format,
+  currency,
 }: {
   active?: boolean;
   payload?: { name: string; value: number; color: string; payload: Record<string, unknown> }[];
   label?: string;
   format?: ChartSpec["format"];
+  currency: CurrencyConfig;
 }) {
   if (!active || !payload?.length) return null;
   const headerLabel = label ?? String(payload[0]?.payload?.name ?? "");
@@ -339,7 +348,7 @@ function ChartTooltip({
           />
           <span className="text-muted">{p.name}:</span>
           <span className="font-mono font-semibold tabular-nums text-foreground">
-            {formatValue(p.value, format)}
+            {formatValue(p.value, format, currency)}
           </span>
         </div>
       ))}

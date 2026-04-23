@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/tenant";
+import { requireAuth, getTenantCurrency } from "@/lib/tenant";
 
 export async function GET() {
   try {
@@ -161,7 +161,10 @@ async function calculateCoachEarnings(
     },
   });
 
-  if (payRates.length === 0) return { total: 0, breakdown: [], currency: "MXN", hasRates: false };
+  if (payRates.length === 0) {
+    const tenantCurrency = await getTenantCurrency();
+    return { total: 0, breakdown: [], currency: tenantCurrency.code, hasRates: false };
+  }
 
   const classes = await prisma.class.findMany({
     where: {
@@ -246,7 +249,8 @@ async function calculateCoachEarnings(
     }
   }
 
-  return { total: Math.round(total * 100) / 100, breakdown, currency: payRates[0]?.currency ?? "MXN", hasRates: true };
+  const fallbackCurrency = payRates[0]?.currency ?? (await getTenantCurrency()).code;
+  return { total: Math.round(total * 100) / 100, breakdown, currency: fallbackCurrency, hasRates: true };
 }
 
 async function calculatePerClassEarnings(

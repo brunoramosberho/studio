@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
-import { getStripe } from "./client";
+import { getStripeForCountry } from "./client";
 import { toStripeAmount, fromStripeAmount, calculateFee } from "./helpers";
+import { resolveTenantCurrency } from "@/lib/currency";
 import { prisma } from "@/lib/db";
 
 export interface CreateMemberPaymentParams {
@@ -12,11 +13,35 @@ export interface CreateMemberPaymentParams {
   description?: string;
   paymentMethodId?: string;
   concept?: string;
+  /**
+   * ISO 4217 currency code. When omitted we fall back to the tenant's
+   * defaultCountry currency (so a Mexican studio charges in MXN, a Spanish
+   * studio in EUR…). Pass this explicitly when the caller knows the source
+   * (e.g. a Package row) — it avoids an extra DB hit and guarantees the
+   * Stripe charge matches what the user saw.
+   */
+  currency?: string;
+}
+
+/**
+ * Resolve the platform Stripe instance + currency for a tenant in a single
+ * round-trip. Centralised here so every Stripe call site uses the same logic.
+ */
+async function getTenantStripeContext(
+  tenantId: string,
+): Promise<{ stripe: Stripe; currency: string; countryCode: string | null }> {
+  const cfg = await resolveTenantCurrency(tenantId);
+  return {
+    stripe: getStripeForCountry(cfg.countryCode),
+    currency: cfg.code.toLowerCase(),
+    countryCode: cfg.countryCode,
+  };
 }
 
 /**
  * Creates a PaymentIntent on the studio's Connected Account, with an
- * application_fee directed to the platform (Magic Payments ES).
+ * application_fee directed to the platform (Magic Payments — entity is picked
+ * automatically based on the tenant's country).
  * Returns the PaymentIntent so the frontend can use its clientSecret.
  */
 export async function createMemberPayment({
@@ -28,9 +53,8 @@ export async function createMemberPayment({
   description,
   paymentMethodId,
   concept,
+  currency,
 }: CreateMemberPaymentParams): Promise<Stripe.PaymentIntent> {
-  const stripe = getStripe();
-
   const tenant = await prisma.tenant.findUniqueOrThrow({
     where: { id: tenantId },
   });
@@ -39,10 +63,14 @@ export async function createMemberPayment({
     throw new Error("Studio has no connected Stripe account");
   }
 
+  const { stripe, currency: tenantCurrency } = await getTenantStripeContext(tenantId);
+  const chargeCurrency = (currency ?? tenantCurrency).toLowerCase();
+
   const stripeCustomer = await getOrCreateStripeCustomer(
     memberId,
     tenantId,
     tenant.stripeAccountId,
+    stripe,
   );
 
   const feeAmount = calculateFee(
@@ -53,7 +81,7 @@ export async function createMemberPayment({
   const paymentIntent = await stripe.paymentIntents.create(
     {
       amount: toStripeAmount(amountInCurrency),
-      currency: "eur",
+      currency: chargeCurrency,
       customer: stripeCustomer.stripeCustomerId,
       description,
       application_fee_amount: feeAmount > 0 ? feeAmount : undefined,
@@ -106,7 +134,7 @@ export async function listSavedPaymentMethods(
   });
   if (!tenant.stripeAccountId) return [];
 
-  const stripe = getStripe();
+  const { stripe } = await getTenantStripeContext(tenantId);
   const methods = await stripe.paymentMethods.list(
     { customer: stripeCustomer.stripeCustomerId, type: "card" },
     { stripeAccount: tenant.stripeAccountId },
@@ -136,7 +164,7 @@ export async function detachPaymentMethod(
   });
   if (!tenant.stripeAccountId) throw new Error("No connected account");
 
-  const stripe = getStripe();
+  const { stripe } = await getTenantStripeContext(tenantId);
 
   const pm = await stripe.paymentMethods.retrieve(paymentMethodId, {
     stripeAccount: tenant.stripeAccountId,
@@ -161,13 +189,15 @@ export async function createSetupIntent(
     throw new Error("Studio has no connected Stripe account");
   }
 
+  const { stripe } = await getTenantStripeContext(tenantId);
+
   const stripeCustomer = await getOrCreateStripeCustomer(
     memberId,
     tenantId,
     tenant.stripeAccountId,
+    stripe,
   );
 
-  const stripe = getStripe();
   const setupIntent = await stripe.setupIntents.create(
     {
       customer: stripeCustomer.stripeCustomerId,
@@ -186,6 +216,7 @@ async function getOrCreateStripeCustomer(
   memberId: string,
   tenantId: string,
   stripeAccountId: string,
+  stripe: Stripe,
 ) {
   const existing = await prisma.stripeCustomer.findUnique({
     where: { tenantId_memberId: { tenantId, memberId } },
@@ -197,7 +228,6 @@ async function getOrCreateStripeCustomer(
     where: { id: memberId },
   });
 
-  const stripe = getStripe();
   const customer = await stripe.customers.create(
     {
       email: member.email,

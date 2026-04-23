@@ -51,6 +51,8 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/components/tenant-provider";
+import { formatMoney, currencySymbolFor } from "@/lib/currency";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -401,6 +403,7 @@ function SectionHeader({ label }: { label: string }) {
 
 function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
   const { data, isLoading } = useLinks();
+  const tenantCurrency = useCurrency();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<
     "all" | "class" | "membership" | "product"
@@ -503,7 +506,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
         />
         <StatCard
           label="Revenue atribuido"
-          value={`€${data.totals.revenue.toLocaleString()}`}
+          value={formatMoney(data.totals.revenue, tenantCurrency)}
           icon={DollarSign}
           hint="Ingresos generados a través de links"
         />
@@ -632,7 +635,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                       ...m,
                       _type: "membership",
                       subtitle: m.price
-                        ? `${m.currency === "MXN" ? "$" : "€"}${m.price}${m.isPromo ? " · Oferta" : ""}`
+                        ? `${currencySymbolFor(m.currency ?? tenantCurrency.code)}${m.price}${m.isPromo ? " · Oferta" : ""}`
                         : undefined,
                     }}
                     onQR={openQR}
@@ -653,7 +656,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                       ...p,
                       _type: "product",
                       subtitle: p.price
-                        ? `${p.currency === "MXN" ? "$" : "€"}${p.price}`
+                        ? `${currencySymbolFor(p.currency ?? tenantCurrency.code)}${p.price}`
                         : undefined,
                     }}
                     onQR={openQR}

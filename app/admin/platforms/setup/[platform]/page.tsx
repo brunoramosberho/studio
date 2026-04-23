@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/components/tenant-provider";
 
 type Platform = "classpass" | "gympass";
 
@@ -283,6 +284,7 @@ function ClassPassSteps({
   onCopy: (text: string) => void;
   copied: boolean;
 }) {
+  const currency = useCurrency();
   return (
     <div className="space-y-3">
       <Step number={1} title="Crea tu cuenta en ClassPass Partner Portal">
@@ -321,7 +323,7 @@ function ClassPassSteps({
 
       <Step number={5} title="Tarifa estimada por visita">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted">€</span>
+          <span className="text-sm font-medium text-muted">{currency.symbol}</span>
           <Input
             type="number"
             step="0.01"
@@ -371,6 +373,7 @@ function GympassSteps({
   onCopy: (text: string) => void;
   copied: boolean;
 }) {
+  const currency = useCurrency();
   function updateLocation(index: number, field: "name" | "gymId", value: string) {
     const next = [...locations];
     next[index] = { ...next[index], [field]: value };
@@ -448,7 +451,7 @@ function GympassSteps({
 
       <Step number={5} title="Tarifa estimada por visita">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted">€</span>
+          <span className="text-sm font-medium text-muted">{currency.symbol}</span>
           <Input
             type="number"
             step="0.01"

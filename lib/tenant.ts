@@ -2,6 +2,7 @@ import { headers, cookies } from "next/headers";
 import { cache } from "react";
 import { prisma } from "./db";
 import { auth, adminAuth, SUPER_SESSION_COOKIE } from "./auth";
+import { FALLBACK_CURRENCY, type CurrencyConfig } from "./currency";
 import type { Session } from "next-auth";
 import type { Tenant, Membership, Role } from "@prisma/client";
 
@@ -27,6 +28,28 @@ export const requireTenant = cache(async (): Promise<Tenant> => {
     throw new Error("Tenant not found");
   }
   return tenant;
+});
+
+/**
+ * Resolve the current tenant's currency configuration (code / symbol / intl
+ * locale) from its `defaultCountry`. Falls back to EUR/es-ES when the tenant
+ * hasn't been anchored to a country yet — callers should treat this as a
+ * display-only fallback, never as a billing decision.
+ */
+export const getTenantCurrency = cache(async (): Promise<CurrencyConfig> => {
+  const tenant = await getTenant();
+  if (!tenant?.defaultCountryId) return FALLBACK_CURRENCY;
+  const country = await prisma.country.findUnique({
+    where: { id: tenant.defaultCountryId },
+    select: { currency: true, currencySymbol: true, intlLocale: true, code: true },
+  });
+  if (!country) return FALLBACK_CURRENCY;
+  return {
+    code: country.currency,
+    symbol: country.currencySymbol,
+    intlLocale: country.intlLocale,
+    countryCode: country.code,
+  };
 });
 
 // ── Role hierarchy ──

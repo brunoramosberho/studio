@@ -13,19 +13,40 @@ export function getDateLocale(locale?: string) {
   return locale === "en" ? enUS : es;
 }
 
-/** Resolve Intl locale string for number/currency formatting */
-function getIntlLocale(locale?: string, currency?: string): string {
-  if (locale === "en") return currency === "MXN" ? "en-MX" : "en-US";
-  return currency === "MXN" ? "es-MX" : "es-ES";
+/**
+ * Legacy currency formatter. New code should prefer `formatMoney(amount,
+ * tenantCurrency)` from `lib/currency.ts` so the tenant's country drives the
+ * currency code, symbol and Intl locale. This wrapper is kept for callers
+ * that still pass explicit currency/locale strings.
+ */
+export function formatCurrency(amount: number, currency: string = "EUR", locale?: string): string {
+  const code = currency.toUpperCase();
+  const intlLocale = resolveLegacyIntlLocale(code, locale);
+  try {
+    return new Intl.NumberFormat(intlLocale, {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${code} ${Math.round(amount).toLocaleString()}`;
+  }
 }
 
-export function formatCurrency(amount: number, currency: string = "EUR", locale?: string): string {
-  return new Intl.NumberFormat(getIntlLocale(locale, currency), {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+function resolveLegacyIntlLocale(currency: string, locale?: string): string {
+  switch (currency) {
+    case "MXN": return locale === "en" ? "en-MX" : "es-MX";
+    case "USD": return locale === "es" ? "es-US" : "en-US";
+    case "GBP": return "en-GB";
+    case "ARS": return "es-AR";
+    case "COP": return "es-CO";
+    case "CLP": return "es-CL";
+    case "PEN": return "es-PE";
+    case "BRL": return "pt-BR";
+    case "EUR":
+    default:    return locale === "en" ? "en-IE" : "es-ES";
+  }
 }
 
 export function formatDate(date: Date | string, locale?: string): string {

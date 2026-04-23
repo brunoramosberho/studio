@@ -31,6 +31,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
+import { useCurrency } from "@/components/tenant-provider";
 import { useTranslations } from "next-intl";
 
 interface DiscountData {
@@ -74,27 +75,29 @@ interface FormState {
   packageIds: string[];
 }
 
-const emptyForm: FormState = {
-  code: "",
-  description: "",
-  type: "PERCENTAGE",
-  value: "",
-  currency: "EUR",
-  maxUses: "",
-  maxUsesPerUser: "",
-  minPurchase: "",
-  validFrom: "",
-  validUntil: "",
-  packageIds: [],
-};
+function emptyForm(defaultCurrency = "EUR"): FormState {
+  return {
+    code: "",
+    description: "",
+    type: "PERCENTAGE",
+    value: "",
+    currency: defaultCurrency,
+    maxUses: "",
+    maxUsesPerUser: "",
+    minPurchase: "",
+    validFrom: "",
+    validUntil: "",
+    packageIds: [],
+  };
+}
 
-function formFromDiscount(d: DiscountData): FormState {
+function formFromDiscount(d: DiscountData, defaultCurrency = "EUR"): FormState {
   return {
     code: d.code,
     description: d.description || "",
     type: d.type,
     value: String(d.value),
-    currency: d.currency || "EUR",
+    currency: d.currency || defaultCurrency,
     maxUses: d.maxUses !== null ? String(d.maxUses) : "",
     maxUsesPerUser: d.maxUsesPerUser !== null ? String(d.maxUsesPerUser) : "",
     minPurchase: d.minPurchase !== null ? String(d.minPurchase) : "",
@@ -118,10 +121,11 @@ export default function DiscountsPage() {
   const t = useTranslations("discounts");
   const ta = useTranslations("admin");
   const qc = useQueryClient();
+  const tenantCurrency = useCurrency();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<DiscountData | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<FormState>(() => emptyForm(tenantCurrency.code));
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const { data: discounts, isLoading } = useQuery<DiscountData[]>({
@@ -187,20 +191,20 @@ export default function DiscountsPage() {
 
   function openCreate() {
     setEditing(null);
-    setForm(emptyForm);
+    setForm(emptyForm(tenantCurrency.code));
     setDialogOpen(true);
   }
 
   function openEdit(d: DiscountData) {
     setEditing(d);
-    setForm(formFromDiscount(d));
+    setForm(formFromDiscount(d, tenantCurrency.code));
     setDialogOpen(true);
   }
 
   function closeDialog() {
     setDialogOpen(false);
     setEditing(null);
-    setForm(emptyForm);
+    setForm(emptyForm(tenantCurrency.code));
   }
 
   function handleSave() {
@@ -366,7 +370,7 @@ export default function DiscountsPage() {
                         <span>
                           {d.type === "PERCENTAGE"
                             ? `${d.value}% ${t("off")}`
-                            : `${formatCurrency(d.value, d.currency || "EUR")} ${t("off")}`}
+                            : `${formatCurrency(d.value, d.currency || tenantCurrency.code)} ${t("off")}`}
                         </span>
                         <span className="flex items-center gap-1">
                           <Users className="h-3 w-3" />

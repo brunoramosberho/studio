@@ -13,6 +13,7 @@
 // service code handles the monthly_close replay explicitly.
 
 import { prisma } from "@/lib/db";
+import { resolveTenantCurrency } from "@/lib/currency";
 import type {
   Entitlement,
   Prisma,
@@ -476,7 +477,8 @@ export async function recognizePenalty(params: {
   chargedAt: Date;
   currency?: string;
 }): Promise<RevenueEvent> {
-  const currency = (params.currency ?? "eur").toLowerCase();
+  const fallback = params.currency ?? (await resolveTenantCurrency(params.tenantId)).code;
+  const currency = fallback.toLowerCase();
 
   return prisma.$transaction(async (tx) => {
     const ent = await tx.entitlement.create({
