@@ -14,6 +14,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/components/tenant-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface RevenueReport {
@@ -90,6 +91,7 @@ function fromCents(c: number): number {
 }
 
 export default function RevenueRecognitionPage() {
+  const tenantCurrency = useCurrency();
   const [month, setMonth] = useState<string>(currentMonth());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -111,7 +113,7 @@ export default function RevenueRecognitionPage() {
     },
   });
 
-  const currency = (data?.currency ?? "eur").toUpperCase();
+  const currency = (data?.currency ?? tenantCurrency.code).toUpperCase();
 
   const attributedShare = useMemo(() => {
     if (!data || data.summary.totalRecognizedCents === 0) return 0;

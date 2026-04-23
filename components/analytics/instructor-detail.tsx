@@ -13,7 +13,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useFormatMoney } from "@/components/tenant-provider";
 import { getDayName } from "@/lib/analytics/mock-data";
 import type { Coach, CoachMetrics } from "@/lib/analytics/types";
 import {
@@ -61,6 +62,7 @@ function useIsMobile() {
 }
 
 export function InstructorDetail({ coach, metrics }: InstructorDetailProps) {
+  const formatCurrency = useFormatMoney();
   const hasManyDisciplines = coach.disciplines.length > 1;
   const [selectedDisc, setSelectedDisc] = useState<string>("all");
   const isMobile = useIsMobile();

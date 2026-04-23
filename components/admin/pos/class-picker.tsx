@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { format, isAfter, isBefore } from "date-fns";
 import { es } from "date-fns/locale";
 import type { PosCustomer } from "@/store/pos-store";

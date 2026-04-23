@@ -32,7 +32,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useFormatMoney } from "@/components/tenant-provider";
 
 // ── Types ──
 
@@ -202,6 +203,7 @@ function ResultsTab({
   onRangeChange: (r: string) => void;
 }) {
   const t = useTranslations("admin");
+  const formatCurrency = useFormatMoney();
   const NUDGE_LABELS = useNudgeLabels();
   const { data: stats, isLoading } = useQuery<ConversionStats>({
     queryKey: ["conversion-stats", range],
@@ -617,6 +619,7 @@ function BookingFlowConfig({
   memberships: SubscriptionPackage[];
 }) {
   const t = useTranslations("admin");
+  const formatCurrency = useFormatMoney();
   const queryClient = useQueryClient();
   const [featured, setFeatured] = useState(config.featuredMembershipId ?? "__none__");
   const [savingsBanner, setSavingsBanner] = useState(config.showSavingsBanner);
@@ -708,6 +711,7 @@ function IntroOfferConfig({
   memberships: SubscriptionPackage[];
 }) {
   const t = useTranslations("admin");
+  const formatCurrency = useFormatMoney();
   const queryClient = useQueryClient();
   const [price, setPrice] = useState(config.introOfferPrice);
   const [membershipId, setMembershipId] = useState(

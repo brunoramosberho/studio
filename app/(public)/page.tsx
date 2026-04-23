@@ -535,7 +535,7 @@ export default function LandingPage() {
                         isHighlight ? "text-accent" : "text-foreground"
                       }`}
                     >
-                      {formatCurrency(pkg.price)}
+                      {formatCurrency(pkg.price, pkg.currency)}
                     </span>
                     <span className={`ml-1 text-sm ${isHighlight ? "" : "text-muted"}`} style={isHighlight ? { color: heroTextMuted } : undefined}>
                       {pkg.currency}

@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatMoney } from "@/components/tenant-provider";
 
 interface RevenueChartProps {
   data: { name: string; revenue: number }[];
@@ -17,6 +17,7 @@ interface RevenueChartProps {
 }
 
 function CustomTooltip({ active, payload, label }: Record<string, unknown>) {
+  const formatCurrency = useFormatMoney();
   if (!active || !(payload as unknown[])?.length) return null;
   const entry = (payload as { value: number }[])[0];
   return (

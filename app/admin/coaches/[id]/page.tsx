@@ -1182,7 +1182,7 @@ export default function CoachDetailPage() {
                           <div className="mt-1 space-y-0.5">
                             {(rate.occupancyTiers as { min: number; max: number; amount: number }[]).map((tier, i) => (
                               <p key={i} className="text-xs text-muted">
-                                {tier.min}%–{tier.max}%: <span className="font-semibold text-foreground">{formatCurrency(tier.amount)}</span>/clase
+                                {tier.min}%–{tier.max}%: <span className="font-semibold text-foreground">{formatCurrency(tier.amount, rate.currency)}</span>/clase
                               </p>
                             ))}
                           </div>

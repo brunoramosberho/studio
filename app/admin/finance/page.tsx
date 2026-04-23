@@ -21,7 +21,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useFormatMoney } from "@/components/tenant-provider";
 import { format, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { useTranslations } from "next-intl";
@@ -202,6 +203,7 @@ const fadeUp = {
 export default function FinancePage() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
+  const formatCurrency = useFormatMoney();
   const [range, setRange] = useState<string>("month");
   const [method, setMethod] = useState("all");
   const [search, setSearch] = useState("");
@@ -683,6 +685,7 @@ function TrendBadge({ value, label }: { value: number; label: string }) {
 }
 
 function DailyRevenueChart({ data, t }: { data: DailyRevenue[]; t: (key: string) => string }) {
+  const formatCurrency = useFormatMoney();
   if (data.length === 0) return <p className="text-xs text-stone-400">{t("noData")}</p>;
 
   const maxAmount = Math.max(...data.map((d) => d.amount), 1);
@@ -730,6 +733,7 @@ function DailyRevenueChart({ data, t }: { data: DailyRevenue[]; t: (key: string)
 }
 
 function SourceBreakdown({ sources, t }: { sources: BySource[]; t: (key: string) => string }) {
+  const formatCurrency = useFormatMoney();
   const filtered = sources.filter((s) => s.amount > 0);
   if (filtered.length === 0) return <p className="text-xs text-stone-400">{t("noData")}</p>;
 
@@ -748,6 +752,7 @@ function SourceBreakdown({ sources, t }: { sources: BySource[]; t: (key: string)
 }
 
 function FeeNetCell({ transaction: txn, t }: { transaction: Transaction; t: (key: string) => string }) {
+  const formatCurrency = useFormatMoney();
   if (txn.source === "cash") {
     return <span className="text-[10px] text-stone-400">{t("noFee")}</span>;
   }
@@ -823,6 +828,7 @@ function groupMemberships(memberships: { memberName: string; membershipName: str
 }
 
 function MobileTxCard({ txn, t }: { txn: Transaction; t: (key: string) => string }) {
+  const formatCurrency = useFormatMoney();
   const clientInner = (
     <div className="min-w-0 flex-1">
       <p className="text-sm font-medium text-stone-800 truncate">{txn.memberName}</p>

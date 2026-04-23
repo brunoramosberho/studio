@@ -24,7 +24,6 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RevenueChart } from "@/components/admin/revenue-chart";
-import { formatCurrency } from "@/lib/utils";
 
 interface ReportsData {
   revenueChart: { name: string; revenue: number }[];
