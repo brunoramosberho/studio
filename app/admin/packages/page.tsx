@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { useCurrency } from "@/components/tenant-provider";
 
 interface CreditAllocation {
   classTypeId: string;
@@ -133,13 +134,13 @@ interface FormState {
   monthlyGuestPasses: string;
 }
 
-function emptyForm(forType: PackageKind): FormState {
+function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
   return {
     type: forType,
     name: "",
     description: "",
     price: "",
-    currency: "EUR",
+    currency: defaultCurrency,
     creditsUnlimited: false,
     credits: "",
     perDisciplineCredits: false,
@@ -155,14 +156,14 @@ function emptyForm(forType: PackageKind): FormState {
   };
 }
 
-function formFromPackage(pkg: PackageData): FormState {
+function formFromPackage(pkg: PackageData, defaultCurrency = "EUR"): FormState {
   const hasAllocations = pkg.creditAllocations?.length > 0;
   return {
     type: pkg.type,
     name: pkg.name,
     description: pkg.description ?? "",
     price: String(pkg.price),
-    currency: pkg.currency || "EUR",
+    currency: pkg.currency || defaultCurrency,
     creditsUnlimited: !hasAllocations && pkg.credits === null,
     credits: pkg.credits === null ? "" : String(pkg.credits),
     perDisciplineCredits: hasAllocations,
@@ -241,10 +242,11 @@ export default function AdminPackagesPage() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const queryClient = useQueryClient();
+  const tenantCurrency = useCurrency();
   const [activeTab, setActiveTab] = useState<PackageKind>("OFFER");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(() => emptyForm("OFFER"));
+  const [form, setForm] = useState<FormState>(() => emptyForm("OFFER", tenantCurrency.code));
   const [formError, setFormError] = useState<string | null>(null);
 
   const { data: packages = [], isLoading } = useQuery<PackageData[]>({
@@ -321,20 +323,20 @@ export default function AdminPackagesPage() {
   const closeDialog = useCallback(() => {
     setDialogOpen(false);
     setEditingId(null);
-    setForm(emptyForm(activeTab));
+    setForm(emptyForm(activeTab, tenantCurrency.code));
     setFormError(null);
-  }, [activeTab]);
+  }, [activeTab, tenantCurrency.code]);
 
   const openCreate = () => {
     setEditingId(null);
-    setForm(emptyForm(activeTab));
+    setForm(emptyForm(activeTab, tenantCurrency.code));
     setFormError(null);
     setDialogOpen(true);
   };
 
   const openEdit = (pkg: PackageData) => {
     setEditingId(pkg.id);
-    setForm(formFromPackage(pkg));
+    setForm(formFromPackage(pkg, tenantCurrency.code));
     setFormError(null);
     setDialogOpen(true);
   };
@@ -663,7 +665,7 @@ export default function AdminPackagesPage() {
                   value={form.currency}
                   onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
                   list="pkg-currency-options"
-                  placeholder="MXN"
+                  placeholder={tenantCurrency.code}
                 />
                 <datalist id="pkg-currency-options">
                   {CURRENCIES.map((c) => (

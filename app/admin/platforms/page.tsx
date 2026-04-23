@@ -38,6 +38,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { useCurrency } from "@/components/tenant-provider";
+import { formatMoney } from "@/lib/currency";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -1431,8 +1433,22 @@ function buildDemoLiquidation(month: string): LiquidationData {
 }
 
 function LiquidacionTab({ demo }: { demo: boolean }) {
+  const currency = useCurrency();
   const [monthDate, setMonthDate] = useState(new Date());
   const month = format(startOfMonth(monthDate), "yyyy-MM");
+
+  const formatPlatformAmount = (amount: number): string => {
+    try {
+      return new Intl.NumberFormat(currency.intlLocale, {
+        style: "currency",
+        currency: currency.code,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    } catch {
+      return formatMoney(amount, currency);
+    }
+  };
 
   const { data, isLoading } = useQuery<LiquidationData>({
     queryKey: ["platform-liquidation", month],
@@ -1482,10 +1498,10 @@ function LiquidacionTab({ demo }: { demo: boolean }) {
                   </div>
                   <div className="text-right">
                     <p className="font-mono text-lg font-bold">
-                      €{p.totalEstimated.toFixed(2)}
+                      {formatPlatformAmount(p.totalEstimated)}
                     </p>
                     <p className="text-xs text-muted">
-                      {p.checkedIn.length} visitas × €{p.rate.toFixed(2)}
+                      {p.checkedIn.length} visitas × {formatPlatformAmount(p.rate)}
                     </p>
                   </div>
                 </div>
@@ -1505,7 +1521,7 @@ function LiquidacionTab({ demo }: { demo: boolean }) {
                           <TableCell className="py-2 text-sm">{v.className}</TableCell>
                           <TableCell className="py-2 text-sm text-muted">{v.date}</TableCell>
                           <TableCell className="py-2 text-right font-mono text-sm">
-                            €{p.rate.toFixed(2)}
+                            {formatPlatformAmount(p.rate)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1528,7 +1544,7 @@ function LiquidacionTab({ demo }: { demo: boolean }) {
           <Card className="bg-surface/50">
             <CardContent className="flex items-center justify-between p-4">
               <p className="text-sm font-semibold">Total estimado</p>
-              <p className="font-mono text-xl font-bold">€{effectiveData.grandTotal.toFixed(2)}</p>
+              <p className="font-mono text-xl font-bold">{formatPlatformAmount(effectiveData.grandTotal)}</p>
             </CardContent>
           </Card>
 

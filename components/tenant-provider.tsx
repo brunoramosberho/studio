@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { FALLBACK_CURRENCY, type CurrencyConfig } from "@/lib/currency";
 
 interface TenantContextValue {
   role: "CLIENT" | "COACH" | "ADMIN" | null;
@@ -10,6 +11,7 @@ interface TenantContextValue {
   isSuperAdmin: boolean;
   hasCoachProfile: boolean;
   hasShopProducts: boolean;
+  currency: CurrencyConfig;
   loading: boolean;
   refresh: () => void;
 }
@@ -21,12 +23,18 @@ const TenantContext = createContext<TenantContextValue>({
   isSuperAdmin: false,
   hasCoachProfile: false,
   hasShopProducts: false,
+  currency: FALLBACK_CURRENCY,
   loading: true,
   refresh: () => {},
 });
 
 export function useTenant() {
   return useContext(TenantContext);
+}
+
+/** Convenience hook for components that only care about currency formatting. */
+export function useCurrency(): CurrencyConfig {
+  return useContext(TenantContext).currency;
 }
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
@@ -38,13 +46,22 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     isSuperAdmin: false,
     hasCoachProfile: false,
     hasShopProducts: false,
+    currency: FALLBACK_CURRENCY,
   });
   const [loading, setLoading] = useState(true);
 
   const fetchMembership = useCallback(() => {
     if (status === "loading") return;
     if (!session?.user) {
-      setState({ role: null, tenantId: null, tenantSlug: null, isSuperAdmin: false, hasCoachProfile: false, hasShopProducts: false });
+      setState({
+        role: null,
+        tenantId: null,
+        tenantSlug: null,
+        isSuperAdmin: false,
+        hasCoachProfile: false,
+        hasShopProducts: false,
+        currency: FALLBACK_CURRENCY,
+      });
       setLoading(false);
       return;
     }
@@ -59,6 +76,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           isSuperAdmin: data.isSuperAdmin ?? false,
           hasCoachProfile: data.hasCoachProfile ?? false,
           hasShopProducts: data.hasShopProducts ?? false,
+          currency: (data.currency as CurrencyConfig | undefined) ?? FALLBACK_CURRENCY,
         });
       })
       .catch(() => {})

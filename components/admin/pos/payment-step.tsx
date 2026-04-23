@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { usePosStore, type PosPaymentMethod } from "@/store/pos-store";
 import { cn, formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/components/tenant-provider";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -66,6 +67,7 @@ function formatBrand(brand: string): string {
 export function PaymentStep() {
   const t = useTranslations("pos");
   const tc = useTranslations("common");
+  const tenantCurrency = useCurrency();
   const {
     customer,
     cart,
@@ -81,7 +83,7 @@ export function PaymentStep() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   const total = cartTotal();
-  const currency = cart[0]?.currency ?? "EUR";
+  const currency = cart[0]?.currency ?? tenantCurrency.code;
   const hasPaidItems = cart.some((i) => i.price > 0);
 
   const { data: savedCards = [], isLoading: cardsLoading } = useQuery<

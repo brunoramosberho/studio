@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requireRole, getTenantCurrency } from "@/lib/tenant";
 import { addBusinessDays } from "@/lib/stripe/helpers";
 import { escCsv } from "@/lib/csv";
 import { format } from "date-fns";
@@ -209,6 +209,8 @@ export async function GET(request: NextRequest) {
       return db.localeCompare(da);
     });
 
+    const tenantCurrency = await getTenantCurrency();
+    const sym = tenantCurrency.symbol;
     const headers = [
       "Fecha",
       "Cliente",
@@ -216,13 +218,13 @@ export async function GET(request: NextRequest) {
       "Concepto",
       "Tipo",
       "Método de pago",
-      "Monto bruto (€)",
-      "Fee (€)",
-      "Neto (€)",
+      `Monto bruto (${sym})`,
+      `Fee (${sym})`,
+      `Neto (${sym})`,
       "Es estimado",
       "Llega al banco",
-      "Base imponible (€)",
-      "IVA (€)",
+      `Base imponible (${sym})`,
+      `IVA (${sym})`,
       "Estado",
       "Cobrado por",
     ];

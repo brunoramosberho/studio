@@ -30,6 +30,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { formatCurrency, cn } from "@/lib/utils";
+import { useCurrency } from "@/components/tenant-provider";
 import { useTranslations } from "next-intl";
 
 interface Category {
@@ -53,22 +54,27 @@ interface Product {
   category: { id: string; name: string };
 }
 
-const emptyProduct = {
-  name: "",
-  description: "",
-  price: "",
-  currency: "EUR",
-  imageUrl: "",
-  isVisible: true,
-  externalUrl: "",
-  categoryId: "",
-};
+function buildEmptyProduct(defaultCurrency: string) {
+  return {
+    name: "",
+    description: "",
+    price: "",
+    currency: defaultCurrency,
+    imageUrl: "",
+    isVisible: true,
+    externalUrl: "",
+    categoryId: "",
+  };
+}
 
 export default function AdminShopPage() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const qc = useQueryClient();
+  const tenantCurrency = useCurrency();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const emptyProduct = buildEmptyProduct(tenantCurrency.code);
 
   const [catDialog, setCatDialog] = useState(false);
   const [catName, setCatName] = useState("");
@@ -76,7 +82,7 @@ export default function AdminShopPage() {
 
   const [prodDialog, setProdDialog] = useState(false);
   const [editingProd, setEditingProd] = useState<Product | null>(null);
-  const [form, setForm] = useState(emptyProduct);
+  const [form, setForm] = useState(() => emptyProduct);
   const [uploading, setUploading] = useState(false);
 
   const [filterCat, setFilterCat] = useState<string>("all");

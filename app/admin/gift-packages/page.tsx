@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, cn } from "@/lib/utils";
+import { useCurrency } from "@/components/tenant-provider";
 import { useTranslations } from "next-intl";
 
 interface GiftData {
@@ -55,6 +56,7 @@ const fadeUp = {
 
 export default function GiftPackagesPage() {
   const t = useTranslations("gifts");
+  const tenantCurrency = useCurrency();
 
   const { data: gifts, isLoading } = useQuery<GiftData[]>({
     queryKey: ["admin-gift-packages"],
@@ -106,7 +108,7 @@ export default function GiftPackagesPage() {
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold">
-                {formatCurrency(totalValue, "EUR")}
+                {formatCurrency(totalValue, tenantCurrency.code)}
               </div>
               <div className="text-xs text-muted-foreground">{t("totalValue")}</div>
             </CardContent>

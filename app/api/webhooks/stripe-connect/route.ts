@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
+import { currencySymbolFor } from "@/lib/currency";
 import { prisma } from "@/lib/db";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { createCreditUsagesForPackage } from "@/lib/credits";
@@ -206,7 +207,7 @@ export async function POST(request: NextRequest) {
                   currency: payment.currency,
                   reason: "chargeback",
                   status: "OPEN",
-                  notes: `Dispute lost for €${chargedAmount}. Credits used: ${userPackage.creditsUsed}.`,
+                  notes: `Dispute lost for ${currencySymbolFor(payment.currency)}${chargedAmount}. Credits used: ${userPackage.creditsUsed}.`,
                 },
               });
             }
@@ -276,7 +277,7 @@ export async function POST(request: NextRequest) {
                   currency: payment.currency,
                   reason: "refund",
                   status: "OPEN",
-                  notes: `Refunded €${refundedAmount}. Credits used: ${userPackage.creditsUsed}.`,
+                  notes: `Refunded ${currencySymbolFor(payment.currency)}${refundedAmount}. Credits used: ${userPackage.creditsUsed}.`,
                 },
               });
             }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getTenant } from "@/lib/tenant";
+import { getTenant, getTenantCurrency } from "@/lib/tenant";
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
 
     if (config?.ga4MeasurementId && config?.ga4ApiSecret) {
       const ga4Event = conversionType === "booking" ? "purchase" : conversionType === "signup" ? "sign_up" : "purchase";
+      const tenantCurrency = await getTenantCurrency();
 
       fetch(
         `https://www.google-analytics.com/mp/collect?measurement_id=${config.ga4MeasurementId}&api_secret=${config.ga4ApiSecret}`,
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
                 params: {
                   transaction_id: `conv_${Date.now()}`,
                   value: revenue || 0,
-                  currency: "EUR",
+                  currency: tenantCurrency.code,
                   items: [{ item_name: entityId, item_category: entityType }],
                 },
               },

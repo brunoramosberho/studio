@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PackageType } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireTenant, getAuthContext, requireRole } from "@/lib/tenant";
+import { requireTenant, getAuthContext, requireRole, getTenantCurrency } from "@/lib/tenant";
 import { ensureStripePrice } from "@/lib/stripe/subscriptions";
 
 const PACKAGE_TYPES = ["OFFER", "PACK", "SUBSCRIPTION"] as const;
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         credits: hasAllocations ? null : creditsVal,
         validDays: validDaysNum,
         price: priceNum,
-        currency: typeof currency === "string" && currency ? currency : "MXN",
+        currency: typeof currency === "string" && currency ? currency : (await getTenantCurrency()).code,
         isPromo: Boolean(isPromo),
         recurringInterval:
           recurringInterval === undefined || recurringInterval === null || recurringInterval === ""

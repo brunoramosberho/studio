@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requireRole, getTenantCurrency } from "@/lib/tenant";
 
 const PACKAGE_TYPES = ["OFFER", "PACK", "SUBSCRIPTION"] as const;
 
@@ -103,7 +103,10 @@ export async function PUT(
       data.price = n;
     }
     if (currency !== undefined) {
-      data.currency = currency === null || currency === "" ? "MXN" : String(currency);
+      data.currency =
+        currency === null || currency === ""
+          ? (await getTenantCurrency()).code
+          : String(currency);
     }
     if (isPromo !== undefined) {
       data.isPromo = Boolean(isPromo);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requireRole, getTenantCurrency } from "@/lib/tenant";
 import { createMemberPayment } from "@/lib/stripe/payments";
 import {
   findPackageForClass,
@@ -86,7 +86,8 @@ export async function POST(request: NextRequest) {
       (sum, i) => sum + i.price * i.quantity,
       0,
     );
-    const currency = items?.[0]?.currency ?? "EUR";
+    const tenantCurrency = await getTenantCurrency();
+    const currency = items?.[0]?.currency ?? tenantCurrency.code;
 
     // 1. Process class reservation if customer already has credits
     if (selectedClass?.hasCredits) {

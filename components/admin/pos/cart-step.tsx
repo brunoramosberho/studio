@@ -22,6 +22,7 @@ import { ClassPicker } from "./class-picker";
 import { SpotPicker } from "./spot-picker";
 import { usePosStore, type PosSelectedClass } from "@/store/pos-store";
 import { cn, formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/components/tenant-provider";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
@@ -72,6 +73,7 @@ const CATEGORIES: CategoryDef[] = [
 export function CartStep() {
   const t = useTranslations("pos");
   const tc = useTranslations("common");
+  const tenantCurrency = useCurrency();
   const {
     customer,
     cart,
@@ -500,7 +502,7 @@ export function CartStep() {
               <span className="text-sm font-semibold">{t("total")}</span>
               <span className="text-base font-bold">
                 {total > 0
-                  ? formatCurrency(total, cart[0]?.currency ?? "EUR")
+                  ? formatCurrency(total, cart[0]?.currency ?? tenantCurrency.code)
                   : tc("free")}
               </span>
             </div>

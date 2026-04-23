@@ -42,7 +42,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency as formatCurrencyShared } from "@/lib/utils";
+import { useCurrency } from "@/components/tenant-provider";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -189,8 +190,11 @@ function OccupancyBar({ value, size = "md" }: { value: number; size?: "sm" | "md
   );
 }
 
+// Local wrapper kept for call-site brevity. Delegates to the shared
+// `formatCurrency` in lib/utils, which honours the resolved Intl locale per
+// currency (es-MX for MXN, es-ES for EUR, en-US for USD…).
 function formatCurrency(amount: number, currency: string = "MXN") {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency, minimumFractionDigits: 0 }).format(amount);
+  return formatCurrencyShared(amount, currency);
 }
 
 function AddPayRateForm({
@@ -203,6 +207,7 @@ function AddPayRateForm({
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
+  const tenantCurrency = useCurrency();
   const [type, setType] = useState<string>("PER_CLASS");
   const [amount, setAmount] = useState("");
   const [classTypeId, setClassTypeId] = useState<string>("all");
@@ -212,7 +217,7 @@ function AddPayRateForm({
     { min: 80, max: 99, amount: 0 },
     { min: 100, max: 100, amount: 0 },
   ]);
-  const [currency, setCurrency] = useState("MXN");
+  const [currency, setCurrency] = useState(tenantCurrency.code);
   const [bonusMultiplier, setBonusMultiplier] = useState("1");
   const [bonusDays, setBonusDays] = useState<number[]>([]);
   const [bonusTag, setBonusTag] = useState("");

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requireRole, getTenantCurrency } from "@/lib/tenant";
 
 export async function GET(
   _request: NextRequest,
@@ -45,13 +45,14 @@ export async function POST(
       return NextResponse.json({ error: "Tipo y monto son requeridos" }, { status: 400 });
     }
 
+    const tenantCurrency = await getTenantCurrency();
     const rate = await prisma.coachPayRate.create({
       data: {
         coachProfileId: id,
         tenantId: ctx.tenant.id,
         type,
         amount: parseFloat(amount),
-        currency: currency || "MXN",
+        currency: currency || tenantCurrency.code,
         classTypeId: classTypeId || null,
         occupancyTiers: occupancyTiers || null,
         bonusMultiplier: parseFloat(bonusMultiplier) || 1,

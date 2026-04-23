@@ -178,7 +178,15 @@ export async function createTenantStructure(
       if (!city) {
         let country = await prisma.country.findFirst({ where: { code: "MX" } });
         if (!country) {
-          country = await prisma.country.create({ data: { name: "México", code: "MX" } });
+          country = await prisma.country.create({
+            data: {
+              name: "México",
+              code: "MX",
+              currency: "MXN",
+              currencySymbol: "$",
+              intlLocale: "es-MX",
+            },
+          });
         }
         city = await prisma.city.create({
           data: {
@@ -216,7 +224,15 @@ export async function createTenantStructure(
     // Default: 1 studio, 1 room per class type
     let country = await prisma.country.findFirst({ where: { code: "MX" } });
     if (!country) {
-      country = await prisma.country.create({ data: { name: "México", code: "MX" } });
+      country = await prisma.country.create({
+        data: {
+          name: "México",
+          code: "MX",
+          currency: "MXN",
+          currencySymbol: "$",
+          intlLocale: "es-MX",
+        },
+      });
     }
     let city = await prisma.city.findFirst({ where: { name: "Ciudad de México" } });
     if (!city) {
@@ -238,6 +254,21 @@ export async function createTenantStructure(
         },
       });
       rooms.push({ id: room.id, maxCapacity: room.maxCapacity, studioId: studio.id, cityTimezone: city.timezone });
+    }
+  }
+
+  // Anchor the tenant to its primary country for currency/locale defaults.
+  const firstRoomStudioId = rooms[0]?.studioId;
+  if (firstRoomStudioId) {
+    const primaryStudio = await prisma.studio.findUnique({
+      where: { id: firstRoomStudioId },
+      select: { city: { select: { countryId: true } } },
+    });
+    if (primaryStudio?.city.countryId) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { defaultCountryId: primaryStudio.city.countryId },
+      });
     }
   }
 
