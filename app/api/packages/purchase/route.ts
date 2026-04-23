@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireTenant } from "@/lib/tenant";
 import { createMemberPayment } from "@/lib/stripe/payments";
 import { createCreditUsagesForPackage } from "@/lib/credits";
+import { userHasOpenDebt } from "@/lib/billing/debt";
 
 async function validateAndApplyDiscount(
   discountCode: string,
@@ -167,6 +168,16 @@ export async function POST(request: NextRequest) {
       finalUserId = user.id;
     }
 
+    if (await userHasOpenDebt(finalUserId, tenant.id)) {
+      return NextResponse.json(
+        {
+          error:
+            "Tienes un saldo pendiente con el estudio. Contacta a administración para resolverlo antes de comprar.",
+        },
+        { status: 403 },
+      );
+    }
+
     const hasAllocations = pkg.creditAllocations.length > 0;
 
     // If tenant has Stripe Connect, create a real PaymentIntent
@@ -185,6 +196,7 @@ export async function POST(request: NextRequest) {
             creditsUsed: 0,
             expiresAt,
             stripePaymentId: "pending_stripe",
+            status: "PENDING_PAYMENT",
             purchasedAt,
           },
         });
@@ -224,6 +236,10 @@ export async function POST(request: NextRequest) {
         });
 
         if (paymentMethodId && paymentIntent.status === "succeeded") {
+          await prisma.userPackage.update({
+            where: { id: userPackage.id },
+            data: { status: "ACTIVE", stripePaymentId: paymentIntent.id },
+          });
           return NextResponse.json({
             success: true,
             requiresPayment: false,

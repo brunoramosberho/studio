@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  AlertTriangle,
   ChevronRight,
   ChevronDown,
   Mail,
@@ -95,6 +96,21 @@ interface ClientDetail {
     creditsRemaining: number;
     expiresAt: string;
     isActive: boolean;
+    status: "ACTIVE" | "PENDING_PAYMENT" | "PAYMENT_FAILED" | "REVOKED" | "DISPUTED";
+    revokedReason: string | null;
+  }[];
+  debts: {
+    id: string;
+    amount: number;
+    currency: string;
+    reason: string;
+    status: "OPEN" | "PAID" | "FORGIVEN" | "DISPUTED";
+    notes: string | null;
+    createdAt: string;
+    resolvedAt: string | null;
+    resolvedByName: string | null;
+    userPackageName: string | null;
+    stripePaymentId: string | null;
   }[];
   upcomingBookings: {
     id: string;
@@ -473,6 +489,36 @@ export default function ClientDetailPage() {
     onError: (err: Error) => toast.error(err.message || t("prizeError")),
   });
 
+  const resolveDebtMutation = useMutation({
+    mutationFn: async ({
+      debtId,
+      action,
+      notes,
+    }: {
+      debtId: string;
+      action: "paid" | "forgiven";
+      notes?: string;
+    }) => {
+      const res = await fetch(`/api/admin/debts/${debtId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, notes }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Error");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-client", id] });
+      toast.success(
+        variables.action === "paid" ? "Deuda marcada como pagada" : "Deuda perdonada",
+      );
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const [prizeDialog, setPrizeDialog] = useState<ClientDetail["achievements"][number] | null>(null);
   const [prizeText, setPrizeText] = useState("");
 
@@ -809,11 +855,25 @@ export default function ClientDetailPage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-semibold">{pkg.name}</p>
-                            {pkg.isActive && (
+                            {pkg.status === "ACTIVE" && pkg.isActive && (
                               <Badge className="bg-green-100 text-[10px] text-green-700">{tc("active")}</Badge>
                             )}
-                            {!pkg.isActive && (
+                            {pkg.status === "ACTIVE" && !pkg.isActive && (
                               <Badge variant="secondary" className="text-[10px]">{t("expired")}</Badge>
+                            )}
+                            {pkg.status === "PENDING_PAYMENT" && (
+                              <Badge className="bg-amber-100 text-[10px] text-amber-700">Pago pendiente</Badge>
+                            )}
+                            {pkg.status === "PAYMENT_FAILED" && (
+                              <Badge className="bg-red-100 text-[10px] text-red-700">Pago fallido</Badge>
+                            )}
+                            {pkg.status === "DISPUTED" && (
+                              <Badge className="bg-orange-100 text-[10px] text-orange-700">En disputa</Badge>
+                            )}
+                            {pkg.status === "REVOKED" && (
+                              <Badge className="bg-red-100 text-[10px] text-red-700">
+                                Revocado{pkg.revokedReason ? ` · ${pkg.revokedReason}` : ""}
+                              </Badge>
                             )}
                           </div>
                           <p className="mt-0.5 text-xs text-muted">
@@ -847,6 +907,99 @@ export default function ClientDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Debts */}
+          {client.debts && client.debts.length > 0 && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <span className="text-sm font-semibold">Deudas y contracargos</span>
+                  <Badge className="bg-red-100 text-[10px] text-red-700">
+                    {client.debts.filter((d) => d.status === "OPEN").length} abierta(s)
+                  </Badge>
+                </div>
+                <div className="space-y-2.5">
+                  {client.debts.map((d) => (
+                    <div
+                      key={d.id}
+                      className={cn(
+                        "rounded-lg border p-3.5 transition-colors",
+                        d.status === "OPEN"
+                          ? "border-red-200 bg-red-50/40"
+                          : "border-border/40 bg-surface/30 opacity-70",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-mono text-sm font-bold">
+                              {formatCurrency(d.amount, d.currency, locale)}
+                            </p>
+                            {d.status === "OPEN" && (
+                              <Badge className="bg-red-100 text-[10px] text-red-700">Abierta</Badge>
+                            )}
+                            {d.status === "PAID" && (
+                              <Badge className="bg-green-100 text-[10px] text-green-700">Pagada</Badge>
+                            )}
+                            {d.status === "FORGIVEN" && (
+                              <Badge variant="secondary" className="text-[10px]">Perdonada</Badge>
+                            )}
+                            {d.status === "DISPUTED" && (
+                              <Badge className="bg-orange-100 text-[10px] text-orange-700">En disputa</Badge>
+                            )}
+                            <span className="text-[10px] uppercase tracking-wider text-muted">
+                              {d.reason}
+                            </span>
+                          </div>
+                          {d.userPackageName && (
+                            <p className="mt-0.5 text-xs text-muted">
+                              Paquete: {d.userPackageName}
+                            </p>
+                          )}
+                          {d.notes && (
+                            <p className="mt-1 text-[11px] text-muted">{d.notes}</p>
+                          )}
+                          <p className="mt-1 text-[10px] text-muted/70">
+                            {format(new Date(d.createdAt), "d MMM yyyy · HH:mm", { locale: dateLocale })}
+                            {d.resolvedAt &&
+                              ` · Resuelta ${format(new Date(d.resolvedAt), "d MMM", { locale: dateLocale })}${d.resolvedByName ? ` por ${d.resolvedByName}` : ""}`}
+                          </p>
+                        </div>
+                        {d.status === "OPEN" && (
+                          <div className="flex shrink-0 flex-col gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 gap-1 text-[11px]"
+                              disabled={resolveDebtMutation.isPending}
+                              onClick={() =>
+                                resolveDebtMutation.mutate({ debtId: d.id, action: "paid" })
+                              }
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              Pagada
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 gap-1 text-[11px] text-muted"
+                              disabled={resolveDebtMutation.isPending}
+                              onClick={() =>
+                                resolveDebtMutation.mutate({ debtId: d.id, action: "forgiven" })
+                              }
+                            >
+                              Perdonar
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Subscriptions */}
           {client.subscriptions.length > 0 && (

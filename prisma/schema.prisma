@@ -162,6 +162,7 @@ model Tenant {
   revenueEvents RevenueEvent[]
 
   pendingPenalties PendingPenalty[]
+  debts            Debt[]
 }
 
 model InstagramIntegration {
@@ -386,6 +387,8 @@ model User {
   classRatings             ClassRating[]            @relation("UserClassRatings")
   entitlements             Entitlement[]
   pendingPenalties         PendingPenalty[]         @relation("UserPendingPenalties")
+  debts                    Debt[]                   @relation("UserDebts")
+  debtsResolved            Debt[]                   @relation("DebtResolver")
 
   @@index([countryId])
   @@index([cityId])
@@ -811,12 +814,25 @@ model UserPackage {
   creditsUsed     Int                      @default(0)
   expiresAt       DateTime
   stripePaymentId String?
+  status          UserPackageStatus        @default(ACTIVE)
+  revokedAt       DateTime?
+  revokedReason   String? // "payment_failed" | "chargeback" | "refund" | "manual"
   purchasedAt     DateTime                 @default(now())
   creditUsages    UserPackageCreditUsage[]
+  debts           Debt[]
 
   @@index([userId])
   @@index([expiresAt])
   @@index([tenantId])
+  @@index([status])
+}
+
+enum UserPackageStatus {
+  ACTIVE
+  PENDING_PAYMENT
+  PAYMENT_FAILED
+  REVOKED
+  DISPUTED
 }
 
 model PackageCreditAllocation {
@@ -1754,6 +1770,39 @@ model StripePayment {
   @@index([memberId])
   @@index([status])
   @@index([tenantId, createdAt])
+}
+
+model Debt {
+  id              String       @id @default(cuid())
+  tenantId        String
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User         @relation("UserDebts", fields: [userId], references: [id])
+  userPackageId   String?
+  userPackage     UserPackage? @relation(fields: [userPackageId], references: [id])
+  stripePaymentId String? // stripePaymentIntentId of the disputed/refunded payment
+  amount          Float
+  currency        String       @default("eur")
+  reason          String // "chargeback" | "refund" | "manual"
+  status          DebtStatus   @default(OPEN)
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolvedBy      User?        @relation("DebtResolver", fields: [resolvedById], references: [id])
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([tenantId, status])
+}
+
+enum DebtStatus {
+  OPEN
+  PAID
+  FORGIVEN
+  DISPUTED
 }
 
 model PosTransaction {
