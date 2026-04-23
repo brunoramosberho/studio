@@ -285,7 +285,6 @@
       "differentUnlimitedFeeTitle": "Different fee for unlimited",
       "differentUnlimitedFeeDesc": "Useful when you want a higher fee for members who don't forfeit a credit.",
       "feeLabelUnlimited": "Amount for unlimited memberships",
-      "feeUnit": "EUR",
       "feeRequired": "Set an amount before enabling the fee",
       "graceLabel": "Grace window",
       "graceDesc": "Penalties queue for review and auto-confirm after this time. At 0h they apply on the next cron tick.",

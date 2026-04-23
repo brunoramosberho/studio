@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useCurrency } from "@/components/tenant-provider";
 
 interface PoliciesConfig {
   cancellationWindowHours: number;
@@ -41,6 +42,7 @@ const DEFAULT_CONFIG: PoliciesConfig = {
 
 export default function PoliciesSettingsPage() {
   const t = useTranslations("admin.policiesPage");
+  const tenantCurrency = useCurrency();
   const [config, setConfig] = useState<PoliciesConfig | null>(null);
   const [separateUnlimitedFee, setSeparateUnlimitedFee] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -243,7 +245,7 @@ export default function PoliciesSettingsPage() {
                       className="w-28"
                       placeholder="5.00"
                     />
-                    <span className="text-sm text-muted">{t("feeUnit")}</span>
+                    <span className="text-sm text-muted">{tenantCurrency.code}</span>
                   </div>
                   <p className="text-[12px] text-muted">{t("feeLabelDefaultHelp")}</p>
                 </div>
@@ -283,7 +285,7 @@ export default function PoliciesSettingsPage() {
                         className="w-28"
                         placeholder="15.00"
                       />
-                      <span className="text-sm text-muted">{t("feeUnit")}</span>
+                      <span className="text-sm text-muted">{tenantCurrency.code}</span>
                     </div>
                   </div>
                 )}
