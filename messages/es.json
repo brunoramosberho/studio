@@ -100,7 +100,7 @@
     "myClasses": "Mis clases",
     "book": "Reserva",
     "coach": "Instructor",
-    "coachPortal": "Portal Instructor"
+    "coachPortal": "Portal del Instructor"
   },
   "admin": {
     "portal": "Admin Portal",
@@ -1030,7 +1030,7 @@
     }
   },
   "coach": {
-    "portal": "Portal Instructor",
+    "portal": "Portal del Instructor",
     "dashboard": "Dashboard",
     "mySchedule": "Mi Horario",
     "availability": "Disponibilidad",
@@ -1295,7 +1295,7 @@
     "backToSchedule": "Volver a horarios",
     "team": "Equipo",
     "ourCoaches": "Nuestros instructores",
-    "coachesPageDesc": "Expertas certificadas que te guían en cada sesión. Toca una para ver su perfil y reservar sus clases.",
+    "coachesPageDesc": "Equipo certificado que te guía en cada sesión. Toca un perfil para ver más y reservar clases.",
     "noCoachesPublished": "Aún no hay instructores publicados.",
     "viewScheduleAndBio": "Ver horarios y bio",
     "viewProfile": "Ver perfil",
