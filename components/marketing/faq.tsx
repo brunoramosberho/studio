@@ -2,41 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const faqs = [
-  {
-    q: "¿Cuánto tarda configurar Mgic?",
-    a: "La mayoría de los studios están operando en menos de 30 minutos. Nos encargamos de migrar los datos desde tu plataforma actual y nuestro equipo te acompaña en cada paso. No se requieren conocimientos técnicos.",
-  },
-  {
-    q: "¿Mis miembros necesitan descargar una app?",
-    a: "No. La app de miembros de Mgic es una Progressive Web App (PWA) — los miembros solo abren tu enlace con tu marca y la añaden a la pantalla de inicio. Se ve y se siente nativa, sin pasar por la App Store.",
-  },
-  {
-    q: "¿Qué procesador de pagos usan?",
-    a: "Usamos Stripe Connect para pagos seguros y globales. Tus miembros pagan con tarjeta y los fondos llegan directo a tu cuenta bancaria. Nosotros nunca retenemos tu dinero.",
-  },
-  {
-    q: "¿Puedo gestionar múltiples locaciones?",
-    a: "Por supuesto. Nuestro plan Scale incluye gestión multi-studio completa — salas, coaches y horarios separados por locación, todo controlado desde un mismo dashboard.",
-  },
-  {
-    q: "¿Cómo funciona MgicAI?",
-    a: "MgicAI está impulsado por Claude y analiza los datos de tu studio en tiempo real. Genera briefings diarios, identifica miembros en riesgo, proyecta ingresos y responde preguntas sobre tu negocio en lenguaje natural. Disponible en los planes Growth y Scale.",
-  },
-  {
-    q: "¿Qué diferencia hay entre las funciones sociales y un simple grupo de WhatsApp?",
-    a: "La capa social de Mgic vive dentro de la experiencia de reserva. Los miembros ven qué clases reservan sus amigos, dan kudos después de las clases, celebran logros y descubren nuevos amigos a través de sesiones compartidas. Es contextual, no solo chat.",
-  },
-  {
-    q: "¿Se integran con ClassPass o Gympass?",
-    a: "Sí. El plan Scale incluye integración completa con ClassPass y Gympass — gestiona cuotas, check-ins, exporta datos de reconciliación y mide cuáles reservas externas se convierten en miembros.",
-  },
-  {
-    q: "¿Hay contrato o compromiso?",
-    a: "Sin contratos, nunca. Todos los planes son mes a mes. Puedes subir, bajar o cancelar cuando quieras. Creemos que el producto debe ganarse tu confianza cada mes.",
-  },
-];
+import { useTranslations } from "next-intl";
 
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
@@ -76,6 +42,9 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 }
 
 export function MarketingFAQ() {
+  const t = useTranslations("marketing");
+  const faqs = t.raw("faq.items") as { q: string; a: string }[];
+
   return (
     <section id="faq" className="py-20 md:py-28 bg-surface/50">
       <div className="mx-auto max-w-3xl px-6 lg:px-8">
@@ -85,9 +54,9 @@ export function MarketingFAQ() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <p className="text-sm font-semibold text-accent mb-3">FAQ</p>
+          <p className="text-sm font-semibold text-accent mb-3">{t("faq.label")}</p>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-            ¿Preguntas? Respuestas.
+            {t("faq.title")}
           </h2>
         </motion.div>
 

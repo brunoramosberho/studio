@@ -1,43 +1,15 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
+type FooterLink = { label: string; href: string };
+type FooterColumn = { title: string; links: FooterLink[] };
+
 export function MarketingFooter() {
-  const columns = [
-    {
-      title: "Producto",
-      links: [
-        { label: "Horarios", href: "#why-mgic" },
-        { label: "Pagos", href: "#why-mgic" },
-        { label: "App de Miembros", href: "#member-app" },
-        { label: "MgicAI", href: "#mgic-ai" },
-        { label: "Comunidad", href: "#community" },
-        { label: "Dashboard", href: "#dashboard" },
-      ],
-    },
-    {
-      title: "Compañía",
-      links: [
-        { label: "Nosotros", href: "#" },
-        { label: "Blog", href: "#" },
-        { label: "Empleos", href: "#" },
-        { label: "Prensa", href: "#" },
-      ],
-    },
-    {
-      title: "Recursos",
-      links: [
-        { label: "Centro de Ayuda", href: "#" },
-        { label: "API Docs", href: "#" },
-        { label: "Estado", href: "#" },
-        { label: "Changelog", href: "#" },
-      ],
-    },
-    {
-      title: "Legal",
-      links: [
-        { label: "Política de Privacidad", href: "#" },
-        { label: "Términos de Servicio", href: "#" },
-        { label: "Política de Cookies", href: "#" },
-      ],
-    },
-  ];
+  const t = useTranslations("marketing");
+  const columnsObj = t.raw("footer.columns") as Record<string, FooterColumn>;
+  const columns = Object.values(columnsObj);
+  const copyright = t("footer.copyright", { year: new Date().getFullYear() });
 
   return (
     <footer className="border-t border-border bg-white">
@@ -51,7 +23,7 @@ export function MarketingFooter() {
               <span className="text-lg font-bold tracking-tight text-foreground">mgic</span>
             </a>
             <p className="mt-3 text-sm text-muted leading-relaxed">
-              La plataforma todo-en-uno para studios boutique de fitness.
+              {t("footer.tagline")}
             </p>
           </div>
 
@@ -75,9 +47,7 @@ export function MarketingFooter() {
         </div>
 
         <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Mgic Studio. Todos los derechos reservados.
-          </p>
+          <p className="text-xs text-muted-foreground">{copyright}</p>
           <div className="flex items-center gap-4">
             {[
               {

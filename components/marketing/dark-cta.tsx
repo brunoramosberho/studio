@@ -1,8 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 export function DarkCTA() {
+  const t = useTranslations("marketing");
+
   return (
     <section id="cta" className="py-20 md:py-28 bg-foreground relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground to-accent/20 pointer-events-none" />
@@ -15,11 +18,11 @@ export function DarkCTA() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white">
-            ¿Listo para operar tu studio <em className="not-italic text-gradient">como magia?</em>
+            {t("darkCta.titleStart")}
+            <em className="not-italic text-gradient">{t("darkCta.titleEmphasis")}</em>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-white/60">
-            Arranca tu prueba gratis hoy — sin tarjeta de crédito, sin compromiso.
-            Te ayudamos a montar tu studio en Mgic en minutos.
+            {t("darkCta.subtitle")}
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -27,19 +30,17 @@ export function DarkCTA() {
               href="mailto:hola@mgic.app?subject=Quiero%20probar%20Mgic"
               className="btn-gradient inline-flex h-12 items-center rounded-full px-8 text-base font-semibold shadow-lg shadow-accent/25"
             >
-              Empezar Prueba Gratis
+              {t("darkCta.ctaPrimary")}
             </a>
             <a
               href="mailto:hola@mgic.app?subject=Reservar%20Demo%20Mgic"
               className="inline-flex h-12 items-center rounded-full border border-white/20 px-8 text-base font-semibold text-white transition-all hover:bg-white/10 hover:-translate-y-0.5"
             >
-              Reservar una Demo
+              {t("darkCta.ctaSecondary")}
             </a>
           </div>
 
-          <p className="mt-6 text-sm text-white/40">
-            Prueba de 14 días · Sin tarjeta de crédito · Cancela cuando quieras
-          </p>
+          <p className="mt-6 text-sm text-white/40">{t("darkCta.footNote")}</p>
         </motion.div>
       </div>
     </section>

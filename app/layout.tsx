@@ -42,7 +42,7 @@ const fontVars = [
 
 import { cookies, headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { getServerBranding } from "@/lib/branding.server";
 import { getFontPairing } from "@/lib/branding";
 import { AppleSplashGenerator } from "@/components/shared/apple-splash-generator";
@@ -62,22 +62,15 @@ export async function generateMetadata(): Promise<Metadata> {
   // Favicon + apple-touch-icon are served by /app/icon.tsx and
   // /app/apple-icon.tsx (both detect apex and render the Mgic logo).
   if (isApex) {
+    const t = await getTranslations("marketing.meta");
     return {
       metadataBase: new URL(baseUrl),
       title: {
-        default: "Mgic Studio — La plataforma todo-en-uno para studios boutique de fitness",
+        default: t("title"),
         template: "%s | Mgic Studio",
       },
-      description:
-        "Reemplaza 10 herramientas con una. Mgic es la plataforma moderna de gestión para studios: reservas, pagos, engagement, insights con IA y comunidad.",
-      keywords: [
-        "gestión de studio",
-        "reservas fitness",
-        "software pilates",
-        "gestión de gimnasio",
-        "studio boutique",
-        "app de miembros",
-      ],
+      description: t("description"),
+      keywords: t.raw("keywords") as string[],
     };
   }
 

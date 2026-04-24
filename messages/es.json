@@ -2099,5 +2099,360 @@
       "bulletNoCookies": "Sin cookies de terceros — compatible con todos los navegadores",
       "bulletAnyDomain": "Funciona en cualquier dominio sin configuracion adicional"
     }
+  },
+  "marketing": {
+    "meta": {
+      "title": "Mgic Studio — La plataforma todo-en-uno para studios boutique de fitness",
+      "description": "Reemplaza 10 herramientas con una. Mgic es la plataforma moderna de gestión para studios: reservas, pagos, engagement, insights con IA y comunidad — para que te enfoques en lo que amas.",
+      "ogDescription": "Reemplaza 10 herramientas con una. Reservas, pagos, comunidad, IA — todo en Mgic.",
+      "keywords": ["gestión de studio", "reservas fitness", "software pilates", "studio boutique", "gestión de gimnasio", "plataforma de reservas", "app de miembros"]
+    },
+    "nav": {
+      "features": "Funcionalidades",
+      "memberApp": "App de Miembros",
+      "community": "Comunidad",
+      "pricing": "Precios",
+      "bookDemo": "Reservar una Demo",
+      "toggleMenu": "Abrir menú"
+    },
+    "hero": {
+      "badge": "Hecho para studios boutique de fitness",
+      "titleStart": "Reemplaza 10 herramientas con ",
+      "titleEmphasis": "una",
+      "titleEnd": " — sin complementos, sin sorpresas",
+      "subtitle": "Reservas, pagos, engagement de miembros, insights con IA y comunidad — todo en una plataforma diseñada para studios que no se conforman.",
+      "ctaPrimary": "Reservar una Demo →",
+      "ctaSecondary": "Ver cómo funciona",
+      "bulletFreeTrial": "Prueba gratis",
+      "bulletBuyout": "Liquidamos tu contrato",
+      "bulletMigration": "Migración en una noche",
+      "trustLine": "Sin tarjeta de crédito · Cancela cuando quieras",
+      "kpiTodayBookings": "Reservas de hoy",
+      "kpiWeeklyRevenue": "Ingresos semanales",
+      "kpiActiveMembers": "Miembros activos",
+      "kpiAvgOccupancy": "Ocupación promedio"
+    },
+    "metricsTicker": [
+      { "value": "10+", "label": "Herramientas que reemplaza" },
+      { "value": "<30 min", "label": "Tiempo de configuración" },
+      { "value": "24/7", "label": "Asistente con IA" },
+      { "value": "Mes a mes", "label": "Sin contratos" },
+      { "value": "Stripe", "label": "Pagos seguros" },
+      { "value": "PWA", "label": "Sin App Store" },
+      { "value": "Multi-studio", "label": "Una sola plataforma" },
+      { "value": "ES · EN", "label": "Multi-idioma" }
+    ],
+    "whyMgic": {
+      "label": "Por qué Mgic",
+      "titleStart": "Todo lo que necesitas, ",
+      "titleEmphasis": "nada",
+      "titleEnd": " que no",
+      "subtitle": "Una plataforma que realmente reemplaza las diez que hoy tienes funcionando.",
+      "tabs": [
+        {
+          "id": "scheduling",
+          "title": "Reservas Inteligentes",
+          "headline": "Un horario que se llena solo",
+          "description": "Vista semanal drag-and-drop, clases recurrentes, listas de espera que promueven automáticamente y gestión de disponibilidad de coaches — todo conectado. Los miembros ven cupos en tiempo real, reservan al instante y reciben recordatorios automáticos.",
+          "features": [
+            "Calendario semanal con drag-and-drop",
+            "Promoción automática desde lista de espera",
+            "Disponibilidad de coaches y detección de conflictos",
+            "Gestión de salas multi-studio",
+            "Bloqueo de cupos y control de capacidad"
+          ]
+        },
+        {
+          "id": "payments",
+          "title": "Pagos y Paquetes",
+          "headline": "Cobra sin perseguir a nadie",
+          "description": "Pagos con Stripe, paquetes de clases, membresías recurrentes, reintentos automáticos en cobros fallidos y un dashboard financiero completo. Ve tu MRR, proyecta renovaciones y exporta todo con un solo clic.",
+          "features": [
+            "Integración con Stripe Connect",
+            "Paquetes de clases y membresías recurrentes",
+            "Reintentos automáticos en pagos fallidos",
+            "Dashboard de ingresos con seguimiento de MRR",
+            "Exportes financieros con un clic"
+          ]
+        },
+        {
+          "id": "members",
+          "title": "Gestión de Miembros",
+          "headline": "Conoce a cada miembro por nombre — y por datos",
+          "description": "CRM completo con detección de riesgo, insights de engagement y seguimiento de ciclo de vida. Ve quién está en riesgo de irse, quiénes son tus mejores miembros y quiénes solo necesitan un empujón para regresar.",
+          "features": [
+            "Filtros inteligentes: activos, en riesgo, nuevos, por vencer",
+            "Insights de miembros y puntaje de engagement",
+            "Historial de visitas y seguimiento de créditos",
+            "Consentimientos digitales con firma electrónica",
+            "Recordatorios automatizados de ciclo de vida"
+          ]
+        },
+        {
+          "id": "coaches",
+          "title": "Herramientas para Coaches",
+          "headline": "Tus coaches merecen algo mejor que una hoja de cálculo",
+          "description": "Cada coach tiene su propio dashboard con estadísticas de clases, desglose de ingresos, ranking de fans y gestión de disponibilidad. Configura pagos flexibles — por clase, por alumno o por tramos según ocupación.",
+          "features": [
+            "Dashboard personal del coach con estadísticas",
+            "Pagos flexibles: fijo, por clase, por alumno, por tramos",
+            "Ranking de fans e insights de mejores alumnos",
+            "Bloqueos de disponibilidad con flujo de aprobación",
+            "Bio, especialidades y certificaciones"
+          ]
+        },
+        {
+          "id": "marketing",
+          "title": "Marketing y Crecimiento",
+          "headline": "Convierte cada clase en un motor de crecimiento",
+          "description": "Enlaces con seguimiento UTM, códigos QR, integración con Instagram, programas de referidos y promociones destacadas — todo integrado. Mide qué campañas generan reservas reales, no solo clics.",
+          "features": [
+            "Seguimiento UTM con atribución de conversiones",
+            "Generación de códigos QR para campañas",
+            "Programa de referidos con cola de recompensas",
+            "Integración de medios con Instagram",
+            "Promociones destacadas y banners"
+          ]
+        }
+      ]
+    },
+    "memberApp": {
+      "badge": "App de Miembros",
+      "titleStart": "La app de tu studio. ",
+      "titleBetterThan": "Mejor que ",
+      "subtitle": "Una PWA con tu marca que tus miembros sí van a amar — reservas, social, logros y comunidad, sin pasar por la App Store.",
+      "tabs": {
+        "social": "Feed Social",
+        "achievements": "Logros",
+        "booking": "Reservar y Elegir Lugar",
+        "referrals": "Refiere y Gana"
+      },
+      "tryCta": "Prueba la App de Miembros de Mgic ahora",
+      "pwaNote": "Progressive Web App — funciona en cualquier dispositivo, sin descargas"
+    },
+    "mgicAi": {
+      "label": "MgicAI",
+      "titleStart": "IA que opera tu recepción ",
+      "titleEmphasis": "mientras enseñas",
+      "subtitle": "Impulsada por Claude, MgicAI es tu asistente de studio 24/7. No solo responde preguntas — descubre insights que no sabías que necesitabas.",
+      "capabilities": [
+        { "title": "Briefings Inteligentes", "desc": "Empieza cada día con insights generados por IA sobre tus reservas, ingresos y actividad de miembros." },
+        { "title": "Predicción de Churn", "desc": "MgicAI identifica a los miembros en riesgo antes de que se vayan, para que puedas contactarlos en el momento justo." },
+        { "title": "Proyección de Ingresos", "desc": "Mira hacia dónde van tus ingresos según renovaciones, pagos fallidos y tendencias de reservas." },
+        { "title": "Optimización de Clases", "desc": "Recibe recomendaciones de horarios, capacidad y precios con base en datos reales de ocupación." }
+      ],
+      "onlineLabel": "En línea",
+      "chatPlaceholder": "Pregúntale lo que sea a MgicAI sobre tu studio..."
+    },
+    "dashboard": {
+      "titleStart": "Todo tu ",
+      "titleEmphasis": "negocio en una caja",
+      "subtitle": "Una plataforma para gestionar horarios, membresías, pagos, staff y analítica. Sin complementos, sin integraciones, sin sorpresas.",
+      "tabs": {
+        "scheduling": "Horarios",
+        "memberships": "Membresías",
+        "payments": "Pagos",
+        "staff": "Equipo",
+        "analytics": "Analítica"
+      },
+      "featuresTitle": "Todo lo que necesitas para operar tu studio sin fricciones",
+      "features": [
+        "Membresías y Paquetes",
+        "Pagos y POS",
+        "Consentimientos con firma",
+        "Sistema de Check-in",
+        "Configuración de pagos a coaches",
+        "Motor de gamificación",
+        "Programa de referidos",
+        "Feed de comunidad",
+        "Marketing y UTM",
+        "Multi-studio",
+        "Tienda e-commerce",
+        "ClassPass y Gympass"
+      ]
+    },
+    "social": {
+      "label": "Social y Comunidad",
+      "titleStart": "Strava x tu studio — ",
+      "titleEmphasis": "integrado",
+      "subtitle": "La capa social que convierte entrenamientos individuales en experiencias compartidas. Amigos, kudos, logros y un feed que mantiene a tus miembros regresando.",
+      "cards": [
+        { "icon": "👥", "title": "Descubre amigos", "desc": "Sugiere amigos basándose en clases compartidas. Quien entrena acompañado, se queda." },
+        { "icon": "🔥", "title": "Kudos y Reacciones", "desc": "Celebra logros con reacciones, comentarios y shout-outs — igual que Strava." },
+        { "icon": "🏆", "title": "Motor de Gamificación", "desc": "Niveles, badges y recompensas automáticas que impulsan la retención. Configura niveles, disparadores y premios." },
+        { "icon": "⌚", "title": "Conexión con Wearables", "desc": "Integración con Apple Watch y Strava — comparte datos reales de entrenamiento directo en el feed." },
+        { "icon": "🎁", "title": "Programa de Referidos", "desc": "Códigos personales, dashboard de seguimiento y cola de recompensas — convierte a tus mejores miembros en embajadores." },
+        { "icon": "📢", "title": "Avísame", "desc": "Los miembros reciben alertas instantáneas cuando se libera un lugar en una clase llena — sin estar revisando." }
+      ]
+    },
+    "pricing": {
+      "label": "Precios",
+      "titleStart": "Precios simples. ",
+      "titleEmphasis": "Sin sorpresas.",
+      "subtitle": "Todos los planes incluyen actualizaciones, hosting y soporte.",
+      "monthly": "Mensual",
+      "annual": "Anual",
+      "toggleAriaLabel": "Cambiar a precio anual",
+      "saveBadge": "Ahorra ~16%",
+      "mostPopular": "Más Popular",
+      "perMonth": "/mes",
+      "bookDemo": "Reservar una Demo",
+      "footerNote": "Todos los planes incluyen actualizaciones, hosting y soporte. Sin cargos ocultos.",
+      "plans": [
+        {
+          "name": "Starter",
+          "monthly": "299",
+          "annual": "249",
+          "platformFee": "1.5% de comisión por transacción",
+          "onboarding": "Onboarding: €799 EUR (pago único)",
+          "description": "Para studios nuevos que están arrancando.",
+          "features": [
+            "Hasta 200 miembros",
+            "Reservas con mapa de lugares",
+            "Pagos y paquetes con Stripe",
+            "Feed social y logros",
+            "Notificaciones push"
+          ]
+        },
+        {
+          "name": "Growth",
+          "monthly": "449",
+          "annual": "379",
+          "platformFee": "1% de comisión por transacción",
+          "onboarding": "Onboarding: €1,499 EUR (pago único)",
+          "description": "Para studios listos para crecer y retener.",
+          "highlight": "El asistente de IA de Momence cuesta $399/mes como complemento. Aquí viene incluido.",
+          "features": [
+            "Todo lo de Starter, más:",
+            "Asistente de IA con insights",
+            "Portal para coaches",
+            "Tienda integrada",
+            "PWA con tu marca",
+            "Dashboard avanzado",
+            "Migración de datos incluida",
+            "1 feature request al mes"
+          ]
+        },
+        {
+          "name": "Scale",
+          "monthly": "699",
+          "annual": "599",
+          "platformFee": "0.5% de comisión por transacción",
+          "onboarding": "Onboarding incluido",
+          "description": "Para studios con múltiples locaciones y franquicias.",
+          "features": [
+            "Miembros ilimitados",
+            "Todo lo de Growth, más:",
+            "Multi-locación",
+            "Dominio propio",
+            "Account manager dedicado",
+            "Onboarding incluido",
+            "SLA de disponibilidad",
+            "2 feature requests al mes"
+          ]
+        }
+      ]
+    },
+    "switching": {
+      "badge": "Soporte Premium",
+      "titleStart": "Promesa de ",
+      "titleEmphasis": "cero costo al cambiarte",
+      "subtitleStart": "A diferencia de otras plataformas, somos honestos — ",
+      "subtitleEmphasis": "cambiar es difícil",
+      "subtitleEnd": ". Por eso diseñamos nuestro proceso para eliminar interrupciones, confusión de miembros y trabajo extra para tu equipo.",
+      "oneNightLabel": "Una Noche",
+      "cards": {
+        "main": {
+          "title": "Tus datos, nuestra promesa",
+          "desc": "Tus dudas sobre cambiar de plataforma son válidas. Por eso nuestro equipo dedica 4 semanas a prepararse para una noche perfecta. Movemos tu negocio a Mgic en una noche, con cero downtime, cero interrupciones, cero estrés."
+        },
+        "owners": {
+          "title": "De dueños de studio, para dueños de studio",
+          "desc": "Escuchamos y actuamos como tu socio. Publicamos actualizaciones cada semana basadas en lo que necesitan los studios como el tuyo."
+        },
+        "support": {
+          "title": "Filosofía de cliente de por vida",
+          "desc": "Soporte en videollamada con expertos de producto cuando tú y tu equipo lo necesiten. Estándares de seguridad de nivel empresarial."
+        },
+        "aiDesk": {
+          "title": "Recepción con IA — MgicAI",
+          "desc": "Deja de entrenar staff que se va en seis meses. Que la IA maneje consultas, insights de miembros e inteligencia de negocio automáticamente."
+        },
+        "buyout": {
+          "title": "Liquidamos tu contrato",
+          "desc": "No te quedes atado a software anticuado o caro. Liquidamos contratos para studios fitness. Cambia sin riesgo."
+        }
+      },
+      "bullets": {
+        "freeTrial": "Prueba gratis",
+        "buyout": "Liquidamos tu contrato",
+        "migration": "Migración en una noche"
+      }
+    },
+    "faq": {
+      "label": "FAQ",
+      "title": "¿Preguntas? Respuestas.",
+      "items": [
+        { "q": "¿Cuánto tarda configurar Mgic?", "a": "La mayoría de los studios están operando en menos de 30 minutos. Nos encargamos de migrar los datos desde tu plataforma actual y nuestro equipo te acompaña en cada paso. No se requieren conocimientos técnicos." },
+        { "q": "¿Mis miembros necesitan descargar una app?", "a": "No. La app de miembros de Mgic es una Progressive Web App (PWA) — los miembros solo abren tu enlace con tu marca y la añaden a la pantalla de inicio. Se ve y se siente nativa, sin pasar por la App Store." },
+        { "q": "¿Qué procesador de pagos usan?", "a": "Usamos Stripe Connect para pagos seguros y globales. Tus miembros pagan con tarjeta y los fondos llegan directo a tu cuenta bancaria. Nosotros nunca retenemos tu dinero." },
+        { "q": "¿Puedo gestionar múltiples locaciones?", "a": "Por supuesto. Nuestro plan Scale incluye gestión multi-studio completa — salas, coaches y horarios separados por locación, todo controlado desde un mismo dashboard." },
+        { "q": "¿Cómo funciona MgicAI?", "a": "MgicAI está impulsado por Claude y analiza los datos de tu studio en tiempo real. Genera briefings diarios, identifica miembros en riesgo, proyecta ingresos y responde preguntas sobre tu negocio en lenguaje natural. Disponible en los planes Growth y Scale." },
+        { "q": "¿Qué diferencia hay entre las funciones sociales y un simple grupo de WhatsApp?", "a": "La capa social de Mgic vive dentro de la experiencia de reserva. Los miembros ven qué clases reservan sus amigos, dan kudos después de las clases, celebran logros y descubren nuevos amigos a través de sesiones compartidas. Es contextual, no solo chat." },
+        { "q": "¿Se integran con ClassPass o Gympass?", "a": "Sí. El plan Scale incluye integración completa con ClassPass y Gympass — gestiona cuotas, check-ins, exporta datos de reconciliación y mide cuáles reservas externas se convierten en miembros." },
+        { "q": "¿Hay contrato o compromiso?", "a": "Sin contratos, nunca. Todos los planes son mes a mes. Puedes subir, bajar o cancelar cuando quieras. Creemos que el producto debe ganarse tu confianza cada mes." }
+      ]
+    },
+    "darkCta": {
+      "titleStart": "¿Listo para operar tu studio ",
+      "titleEmphasis": "como magia?",
+      "subtitle": "Arranca tu prueba gratis hoy — sin tarjeta de crédito, sin compromiso. Te ayudamos a montar tu studio en Mgic en minutos.",
+      "ctaPrimary": "Empezar Prueba Gratis",
+      "ctaSecondary": "Reservar una Demo",
+      "footNote": "Prueba de 14 días · Sin tarjeta de crédito · Cancela cuando quieras"
+    },
+    "footer": {
+      "tagline": "La plataforma todo-en-uno para studios boutique de fitness.",
+      "columns": {
+        "product": {
+          "title": "Producto",
+          "links": [
+            { "label": "Horarios", "href": "#why-mgic" },
+            { "label": "Pagos", "href": "#why-mgic" },
+            { "label": "App de Miembros", "href": "#member-app" },
+            { "label": "MgicAI", "href": "#mgic-ai" },
+            { "label": "Comunidad", "href": "#community" },
+            { "label": "Dashboard", "href": "#dashboard" }
+          ]
+        },
+        "company": {
+          "title": "Compañía",
+          "links": [
+            { "label": "Nosotros", "href": "#" },
+            { "label": "Blog", "href": "#" },
+            { "label": "Empleos", "href": "#" },
+            { "label": "Prensa", "href": "#" }
+          ]
+        },
+        "resources": {
+          "title": "Recursos",
+          "links": [
+            { "label": "Centro de Ayuda", "href": "#" },
+            { "label": "API Docs", "href": "#" },
+            { "label": "Estado", "href": "#" },
+            { "label": "Changelog", "href": "#" }
+          ]
+        },
+        "legal": {
+          "title": "Legal",
+          "links": [
+            { "label": "Política de Privacidad", "href": "#" },
+            { "label": "Términos de Servicio", "href": "#" },
+            { "label": "Política de Cookies", "href": "#" }
+          ]
+        }
+      },
+      "copyright": "© {year} Mgic Studio. Todos los derechos reservados."
+    }
   }
 }

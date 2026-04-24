@@ -1,27 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-
-const aiCapabilities = [
-  {
-    title: "Briefings Inteligentes",
-    desc: "Empieza cada día con insights generados por IA sobre tus reservas, ingresos y actividad de miembros.",
-  },
-  {
-    title: "Predicción de Churn",
-    desc: "MgicAI identifica a los miembros en riesgo antes de que se vayan, para que puedas contactarlos en el momento justo.",
-  },
-  {
-    title: "Proyección de Ingresos",
-    desc: "Mira hacia dónde van tus ingresos según renovaciones, pagos fallidos y tendencias de reservas.",
-  },
-  {
-    title: "Optimización de Clases",
-    desc: "Recibe recomendaciones de horarios, capacidad y precios con base en datos reales de ocupación.",
-  },
-];
+import { useTranslations } from "next-intl";
 
 export function MgicAI() {
+  const t = useTranslations("marketing");
+  const aiCapabilities = t.raw("mgicAi.capabilities") as { title: string; desc: string }[];
+
   return (
     <section id="mgic-ai" className="py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -32,15 +17,13 @@ export function MgicAI() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <p className="text-sm font-semibold text-accent mb-3">MgicAI</p>
+            <p className="text-sm font-semibold text-accent mb-3">{t("mgicAi.label")}</p>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-              IA que opera tu recepción{" "}
-              <em className="not-italic text-gradient">mientras enseñas</em>
+              {t("mgicAi.titleStart")}
+              <em className="not-italic text-gradient">{t("mgicAi.titleEmphasis")}</em>
             </h2>
             <p className="mt-4 text-lg text-muted leading-relaxed">
-              Impulsada por Claude, MgicAI es tu asistente de studio 24/7.
-              No solo responde preguntas — descubre insights que no sabías que
-              necesitabas.
+              {t("mgicAi.subtitle")}
             </p>
 
             <div className="mt-10 space-y-5">
@@ -85,8 +68,8 @@ export function MgicAI() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">MgicAI</p>
-                  <p className="text-[10px] text-green-600 font-medium">En línea</p>
+                  <p className="text-sm font-semibold text-foreground">{t("mgicAi.label")}</p>
+                  <p className="text-[10px] text-green-600 font-medium">{t("mgicAi.onlineLabel")}</p>
                 </div>
               </div>
 
@@ -105,20 +88,20 @@ export function MgicAI() {
                   </div>
                   <div className="rounded-2xl rounded-tl-sm bg-white border border-border p-3 max-w-[85%]">
                     <p className="text-xs text-foreground leading-relaxed">
-                      ¡Buenos días! Este es tu briefing del día:
+                      Good morning! Here&apos;s your daily briefing:
                     </p>
                     <div className="mt-2 space-y-1.5 text-xs text-muted">
                       <p>
-                        📈 <strong className="text-foreground">Ingresos +18%</strong> esta semana
-                        vs. la anterior — impulsados por 12 nuevas membresías.
+                        📈 <strong className="text-foreground">Revenue is up 18%</strong> this week
+                        vs. last — driven by 12 new memberships.
                       </p>
                       <p>
-                        ⚠️ <strong className="text-foreground">3 miembros en riesgo</strong> de
-                        irse — sin visitas en 14+ días.
+                        ⚠️ <strong className="text-foreground">3 members at risk</strong> of
+                        churning — no visits in 14+ days.
                       </p>
                       <p>
-                        🔥 <strong className="text-foreground">HIIT del jueves 6 PM</strong> está al
-                        94% de capacidad — considera abrir una segunda sesión.
+                        🔥 <strong className="text-foreground">Thursday 6 PM HIIT</strong> is at
+                        94% capacity — consider adding a second session.
                       </p>
                     </div>
                   </div>
@@ -127,7 +110,7 @@ export function MgicAI() {
                 <div className="flex justify-end">
                   <div className="rounded-2xl rounded-tr-sm bg-foreground p-3 max-w-[75%]">
                     <p className="text-xs text-white">
-                      ¿A qué miembros debería contactar hoy?
+                      Which members should I reach out to today?
                     </p>
                   </div>
                 </div>
@@ -146,24 +129,24 @@ export function MgicAI() {
                   </div>
                   <div className="rounded-2xl rounded-tl-sm bg-white border border-border p-3 max-w-[85%]">
                     <p className="text-xs text-foreground leading-relaxed mb-2">
-                      Priorizaría a estas tres:
+                      I&apos;d prioritize these three:
                     </p>
                     <div className="space-y-2">
                       {[
                         {
                           name: "Emma Wilson",
-                          reason: "Sin visitas en 16 días. Normalmente viene 3 veces por semana.",
-                          action: "Enviar mensaje de reconexión",
+                          reason: "No visits in 16 days. Usually comes 3x/week.",
+                          action: "Send a re-engagement message",
                         },
                         {
                           name: "David Chen",
-                          reason: "Su paquete vence en 3 días y no ha renovado.",
-                          action: "Ofrecer incentivo de renovación",
+                          reason: "Package expires in 3 days, hasn't renewed.",
+                          action: "Offer a renewal incentive",
                         },
                         {
                           name: "Mia Torres",
-                          reason: "¡Cumple años mañana! Miembro fiel, 48 clases.",
-                          action: "Enviar felicitación de cumpleaños",
+                          reason: "Birthday tomorrow! Loyal member, 48 classes.",
+                          action: "Send a birthday greeting",
                         },
                       ].map((m) => (
                         <div
@@ -184,7 +167,7 @@ export function MgicAI() {
 
               <div className="border-t border-border px-4 py-3 flex items-center gap-3">
                 <div className="flex-1 rounded-full bg-surface border border-border px-4 py-2 text-xs text-muted-foreground">
-                  Pregúntale lo que sea a MgicAI sobre tu studio...
+                  {t("mgicAi.chatPlaceholder")}
                 </div>
                 <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
                   <svg

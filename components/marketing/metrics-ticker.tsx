@@ -1,19 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-
-const metrics = [
-  { value: "10+", label: "Herramientas que reemplaza" },
-  { value: "<30 min", label: "Tiempo de configuración" },
-  { value: "24/7", label: "Asistente con IA" },
-  { value: "Mes a mes", label: "Sin contratos" },
-  { value: "Stripe", label: "Pagos seguros" },
-  { value: "PWA", label: "Sin App Store" },
-  { value: "Multi-studio", label: "Una sola plataforma" },
-  { value: "ES · EN", label: "Multi-idioma" },
-];
+import { useTranslations } from "next-intl";
 
 export function MetricsTicker() {
+  const t = useTranslations("marketing");
+  const metrics = t.raw("metricsTicker") as { value: string; label: string }[];
   const doubled = [...metrics, ...metrics];
 
   return (
