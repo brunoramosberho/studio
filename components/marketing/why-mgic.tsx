@@ -2,84 +2,23 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 
-const tabs = [
-  {
-    id: "scheduling",
-    title: "Smart Scheduling",
-    headline: "A schedule that fills itself",
-    description:
-      "Drag-and-drop weekly view, recurring classes, waitlists that auto-promote, and coach availability management — all connected. Members see real-time spots, book instantly, and get reminded automatically.",
-    features: [
-      "Weekly calendar with drag-and-drop",
-      "Automatic waitlist promotion",
-      "Coach availability & conflict detection",
-      "Multi-studio room management",
-      "Blocked spots & capacity controls",
-    ],
-    mockUI: "schedule",
-  },
-  {
-    id: "payments",
-    title: "Payments & Packages",
-    headline: "Get paid without chasing anyone",
-    description:
-      "Stripe-powered payments, class packs, recurring memberships, auto-retry on failed charges, and a complete financial dashboard. See MRR, forecast renewals, and export everything in one click.",
-    features: [
-      "Stripe Connect integration",
-      "Class packs & recurring memberships",
-      "Auto-retry failed payments",
-      "Revenue dashboard with MRR tracking",
-      "One-click financial exports",
-    ],
-    mockUI: "payments",
-  },
-  {
-    id: "members",
-    title: "Member Management",
-    headline: "Know every member by name — and by data",
-    description:
-      "Full CRM with risk detection, engagement insights, and lifecycle tracking. See who's at risk of churning, who your top members are, and who just needs a nudge to come back.",
-    features: [
-      "Smart filters: active, at-risk, new, expiring",
-      "Member insights & engagement scoring",
-      "Visit history & credit tracking",
-      "Digital waivers with e-signatures",
-      "Automated lifecycle nudges",
-    ],
-    mockUI: "members",
-  },
-  {
-    id: "coaches",
-    title: "Coach Tools",
-    headline: "Your coaches deserve better than a spreadsheet",
-    description:
-      "Each coach gets their own dashboard with class stats, earnings breakdowns, fan rankings, and availability management. Configure flexible pay rates — per class, per student, or tiered by occupancy.",
-    features: [
-      "Personal coach dashboard & stats",
-      "Flexible pay: fixed, per-class, per-student, tiered",
-      "Fan rankings & top student insights",
-      "Availability blocks with approval flow",
-      "Bio, specialties & certifications",
-    ],
-    mockUI: "coaches",
-  },
-  {
-    id: "marketing",
-    title: "Marketing & Growth",
-    headline: "Turn every class into a growth engine",
-    description:
-      "UTM-tracked links, QR codes, Instagram integration, referral programs, and promotional highlights — all built in. Track which campaigns drive actual bookings, not just clicks.",
-    features: [
-      "UTM tracking with conversion attribution",
-      "QR code generation for campaigns",
-      "Referral program with reward queue",
-      "Instagram media integration",
-      "Promotional highlights & banners",
-    ],
-    mockUI: "marketing",
-  },
-];
+type Tab = {
+  id: string;
+  title: string;
+  headline: string;
+  description: string;
+  features: string[];
+};
+
+const mockUIByTab: Record<string, () => React.JSX.Element> = {
+  scheduling: MockSchedule,
+  payments: MockPayments,
+  members: MockMembers,
+  coaches: MockCoaches,
+  marketing: MockMarketing,
+};
 
 function MockSchedule() {
   const hours = ["6 AM", "7 AM", "8 AM", "9 AM", "10 AM"];
@@ -311,18 +250,12 @@ function MockMarketing() {
   );
 }
 
-const mockComponents: Record<string, () => React.JSX.Element> = {
-  schedule: MockSchedule,
-  payments: MockPayments,
-  members: MockMembers,
-  coaches: MockCoaches,
-  marketing: MockMarketing,
-};
-
 export function WhyMgic() {
+  const t = useTranslations("marketing");
+  const tabs = t.raw("whyMgic.tabs") as Tab[];
   const [activeTab, setActiveTab] = useState(tabs[0].id);
-  const active = tabs.find((t) => t.id === activeTab)!;
-  const MockComponent = mockComponents[active.mockUI];
+  const active = tabs.find((tab) => tab.id === activeTab)!;
+  const MockComponent = mockUIByTab[active.id] ?? MockSchedule;
 
   return (
     <section id="why-mgic" className="py-20 md:py-28">
@@ -333,14 +266,13 @@ export function WhyMgic() {
           viewport={{ once: true }}
           className="mx-auto max-w-2xl text-center mb-12"
         >
-          <p className="text-sm font-semibold text-accent mb-3">Why Mgic</p>
+          <p className="text-sm font-semibold text-accent mb-3">{t("whyMgic.label")}</p>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-            Everything you need,{" "}
-            <em className="not-italic text-gradient">nothing</em> you don&apos;t
+            {t("whyMgic.titleStart")}
+            <em className="not-italic text-gradient">{t("whyMgic.titleEmphasis")}</em>
+            {t("whyMgic.titleEnd")}
           </h2>
-          <p className="mt-4 text-lg text-muted">
-            One platform that actually replaces the ten you&apos;re juggling today.
-          </p>
+          <p className="mt-4 text-lg text-muted">{t("whyMgic.subtitle")}</p>
         </motion.div>
 
         <div className="flex flex-wrap justify-center gap-2 mb-10">

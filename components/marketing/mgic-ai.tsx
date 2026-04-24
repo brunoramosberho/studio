@@ -1,27 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-
-const aiCapabilities = [
-  {
-    title: "Smart Briefings",
-    desc: "Start every day with AI-generated insights on your bookings, revenue, and member activity.",
-  },
-  {
-    title: "Churn Prediction",
-    desc: "MgicAI flags at-risk members before they leave, so you can reach out at the right moment.",
-  },
-  {
-    title: "Revenue Forecasting",
-    desc: "See where your revenue is heading based on renewals, failed payments, and booking trends.",
-  },
-  {
-    title: "Class Optimization",
-    desc: "Get recommendations on scheduling, capacity, and pricing based on real occupancy data.",
-  },
-];
+import { useTranslations } from "next-intl";
 
 export function MgicAI() {
+  const t = useTranslations("marketing");
+  const aiCapabilities = t.raw("mgicAi.capabilities") as { title: string; desc: string }[];
+
   return (
     <section id="mgic-ai" className="py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -32,15 +17,13 @@ export function MgicAI() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <p className="text-sm font-semibold text-accent mb-3">MgicAI</p>
+            <p className="text-sm font-semibold text-accent mb-3">{t("mgicAi.label")}</p>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-              AI that runs your front desk{" "}
-              <em className="not-italic text-gradient">while you teach</em>
+              {t("mgicAi.titleStart")}
+              <em className="not-italic text-gradient">{t("mgicAi.titleEmphasis")}</em>
             </h2>
             <p className="mt-4 text-lg text-muted leading-relaxed">
-              Powered by Claude, MgicAI is your always-on studio assistant. It
-              doesn&apos;t just answer questions — it surfaces the insights you
-              didn&apos;t know you needed.
+              {t("mgicAi.subtitle")}
             </p>
 
             <div className="mt-10 space-y-5">
@@ -85,8 +68,8 @@ export function MgicAI() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">MgicAI</p>
-                  <p className="text-[10px] text-green-600 font-medium">Online</p>
+                  <p className="text-sm font-semibold text-foreground">{t("mgicAi.label")}</p>
+                  <p className="text-[10px] text-green-600 font-medium">{t("mgicAi.onlineLabel")}</p>
                 </div>
               </div>
 
@@ -184,7 +167,7 @@ export function MgicAI() {
 
               <div className="border-t border-border px-4 py-3 flex items-center gap-3">
                 <div className="flex-1 rounded-full bg-surface border border-border px-4 py-2 text-xs text-muted-foreground">
-                  Ask MgicAI anything about your studio...
+                  {t("mgicAi.chatPlaceholder")}
                 </div>
                 <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
                   <svg

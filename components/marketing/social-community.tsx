@@ -1,8 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
+
+type Card = { icon: string; title: string; desc: string };
 
 export function SocialCommunity() {
+  const t = useTranslations("marketing");
+  const cards = t.raw("social.cards") as Card[];
+
   return (
     <section id="community" className="py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -12,15 +18,12 @@ export function SocialCommunity() {
           viewport={{ once: true }}
           className="mx-auto max-w-2xl text-center mb-14"
         >
-          <p className="text-sm font-semibold text-accent mb-3">Social & Community</p>
+          <p className="text-sm font-semibold text-accent mb-3">{t("social.label")}</p>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-            Strava meets your studio — <em className="not-italic text-gradient">built in</em>
+            {t("social.titleStart")}
+            <em className="not-italic text-gradient">{t("social.titleEmphasis")}</em>
           </h2>
-          <p className="mt-4 text-lg text-muted">
-            The social layer that turns solo workouts into shared experiences.
-            Friends, kudos, achievements, and a feed that keeps members coming
-            back.
-          </p>
+          <p className="mt-4 text-lg text-muted">{t("social.subtitle")}</p>
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -135,14 +138,7 @@ export function SocialCommunity() {
             transition={{ duration: 0.5, delay: 0.15 }}
             className="space-y-4"
           >
-            {[
-              { icon: "👥", title: "Friend Discovery", desc: "Suggest friends based on shared classes. Members who train together, stay together." },
-              { icon: "🔥", title: "Kudos & Reactions", desc: "Celebrate wins with fire reactions, comments, and shout-outs — just like Strava." },
-              { icon: "🏆", title: "Gamification Engine", desc: "Tiers, badges, and auto-rewards that drive real retention. Configure levels, triggers, and prizes." },
-              { icon: "⌚", title: "Wearable Connect", desc: "Apple Watch & Strava integration — share real workout data directly in the feed." },
-              { icon: "🎁", title: "Referral Program", desc: "Personal codes, tracking dashboard, reward queue — turn your best members into ambassadors." },
-              { icon: "📢", title: "Notify Me", desc: "Members get instant alerts when a spot opens in a full class — no more manual checking." },
-            ].map((f, i) => (
+            {cards.map((f, i) => (
               <motion.div
                 key={f.title}
                 initial={{ opacity: 0, x: 20 }}

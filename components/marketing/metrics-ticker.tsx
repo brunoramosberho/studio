@@ -1,19 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-
-const metrics = [
-  { value: "200+", label: "Studios Worldwide" },
-  { value: "50K+", label: "Classes Booked Monthly" },
-  { value: "99.9%", label: "Uptime" },
-  { value: "4.9/5", label: "Average Rating" },
-  { value: "30%", label: "Revenue Growth Avg" },
-  { value: "12K+", label: "Active Members" },
-  { value: "<2 min", label: "Avg Setup Time" },
-  { value: "85%", label: "Retention Rate Lift" },
-];
+import { useTranslations } from "next-intl";
 
 export function MetricsTicker() {
+  const t = useTranslations("marketing");
+  const metrics = t.raw("metricsTicker") as { value: string; label: string }[];
   const doubled = [...metrics, ...metrics];
 
   return (

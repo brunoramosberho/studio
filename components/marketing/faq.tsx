@@ -2,41 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const faqs = [
-  {
-    q: "How long does it take to set up Mgic?",
-    a: "Most studios are up and running in under 30 minutes. We handle data migration from your current platform, and our team walks you through every step. No technical skills required.",
-  },
-  {
-    q: "Do my members need to download an app?",
-    a: "Nope. Mgic's member app is a Progressive Web App (PWA) — members just visit your branded link and add it to their home screen. Looks and feels native, no App Store needed.",
-  },
-  {
-    q: "What payment processor do you use?",
-    a: "We use Stripe Connect for secure, global payment processing. Your members can pay with credit cards, and you get payouts directly to your bank account. We never hold your money.",
-  },
-  {
-    q: "Can I manage multiple studio locations?",
-    a: "Absolutely. Our Scale plan includes full multi-studio management — separate rooms, coaches, and schedules per location, all controlled from one dashboard.",
-  },
-  {
-    q: "How does MgicAI work?",
-    a: "MgicAI is powered by Claude and analyzes your studio data in real time. It generates daily briefings, flags at-risk members, forecasts revenue, and answers questions about your business in natural language. Available on Growth and Scale plans.",
-  },
-  {
-    q: "What makes the social features different from just having a WhatsApp group?",
-    a: "Mgic's social layer is built into the booking experience. Members see what friends are booking, give kudos after classes, celebrate achievements, and discover new friends through shared sessions. It's contextual, not just chat.",
-  },
-  {
-    q: "Do you integrate with ClassPass or Gympass?",
-    a: "Yes. Our Scale plan includes full integration with ClassPass and Gympass — manage quotas, handle check-ins, export reconciliation data, and track which external bookings convert to members.",
-  },
-  {
-    q: "Is there a contract or commitment?",
-    a: "No contracts, ever. All plans are month-to-month. You can upgrade, downgrade, or cancel anytime. We believe the product should earn your business every month.",
-  },
-];
+import { useTranslations } from "next-intl";
 
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
@@ -76,6 +42,9 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 }
 
 export function MarketingFAQ() {
+  const t = useTranslations("marketing");
+  const faqs = t.raw("faq.items") as { q: string; a: string }[];
+
   return (
     <section id="faq" className="py-20 md:py-28 bg-surface/50">
       <div className="mx-auto max-w-3xl px-6 lg:px-8">
@@ -85,9 +54,9 @@ export function MarketingFAQ() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <p className="text-sm font-semibold text-accent mb-3">FAQ</p>
+          <p className="text-sm font-semibold text-accent mb-3">{t("faq.label")}</p>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-            Questions? Answers.
+            {t("faq.title")}
           </h2>
         </motion.div>
 

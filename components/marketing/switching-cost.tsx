@@ -1,45 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 
-const cards = [
-  {
-    type: "icon" as const,
-    content: {
-      icons: ["🏢", "🌙", "⚡"],
-      title: "Your data, our promise",
-      desc: "Your switching concerns are valid. That's why our team spends 4 weeks preparing for one perfect night. We move your business to Mgic overnight with zero downtime, zero disruption, zero stress.",
-    },
-  },
-  {
-    type: "image" as const,
-    content: {
-      title: "For studio owners, by studio owners",
-      desc: "Last year we shipped 400+ product requests made by studio owners like you. We listen, think and act like your partner. Shipping new updates every week to help you win.",
-    },
-  },
-  {
-    type: "image" as const,
-    content: {
-      title: "Customer for life philosophy",
-      desc: "Video call support from product experts whenever you and your team need it. 99.9% uptime and enterprise-grade security standards.",
-    },
-  },
-  {
-    type: "image" as const,
-    content: {
-      title: "AI frontdesk — MgicAI",
-      desc: "Stop training staff who leave in six months. Let AI handle inquiries, member insights, and business intelligence automatically.",
-    },
-  },
-  {
-    type: "image" as const,
-    content: {
-      title: "Contract buyout",
-      desc: "Don't stay stuck with outdated or overpriced software. We offer full contract buyouts for all fitness studios. Switch risk-free.",
-    },
-  },
-];
+type Card = { title: string; desc: string };
 
 function ImagePlaceholder({ label }: { label: string }) {
   return (
@@ -57,6 +21,15 @@ function ImagePlaceholder({ label }: { label: string }) {
 }
 
 export function SwitchingCost() {
+  const t = useTranslations("marketing");
+  const main = t.raw("switching.cards.main") as Card;
+  const owners = t.raw("switching.cards.owners") as Card;
+  const bottomCards: Card[] = [
+    t.raw("switching.cards.support") as Card,
+    t.raw("switching.cards.aiDesk") as Card,
+    t.raw("switching.cards.buyout") as Card,
+  ];
+
   return (
     <section className="py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -67,15 +40,16 @@ export function SwitchingCost() {
           className="mx-auto max-w-3xl text-center mb-6"
         >
           <div className="inline-flex items-center rounded-full border border-border bg-white px-4 py-1.5 text-sm font-medium text-muted mb-6">
-            Premium Support
+            {t("switching.badge")}
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground">
-            Zero switching cost <em className="not-italic text-gradient">promise</em>
+            {t("switching.titleStart")}
+            <em className="not-italic text-gradient">{t("switching.titleEmphasis")}</em>
           </h2>
           <p className="mt-4 text-lg text-muted max-w-2xl mx-auto">
-            Unlike other platforms, we&apos;re honest — <strong className="text-foreground">switching is hard</strong>.
-            That&apos;s why we built our process to eliminate disruption, member confusion,
-            and extra work for your team.
+            {t("switching.subtitleStart")}
+            <strong className="text-foreground">{t("switching.subtitleEmphasis")}</strong>
+            {t("switching.subtitleEnd")}
           </p>
         </motion.div>
 
@@ -88,17 +62,19 @@ export function SwitchingCost() {
             className="rounded-2xl border border-border bg-white p-6 md:p-8"
           >
             <div className="flex items-center gap-3 mb-6">
-              {cards[0].content.icons!.map((icon, i) => (
+              {["🏢", "🌙", "⚡"].map((icon, i) => (
                 <div key={i} className={`h-10 w-10 rounded-full bg-surface flex items-center justify-center text-lg ${
                   i > 0 ? "-ml-2 ring-2 ring-white" : ""
                 }`}>
                   {icon}
                 </div>
               ))}
-              <span className="ml-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">One Night</span>
+              <span className="ml-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("switching.oneNightLabel")}
+              </span>
             </div>
-            <h3 className="text-lg font-bold text-foreground">{cards[0].content.title}</h3>
-            <p className="mt-2 text-sm text-muted leading-relaxed">{cards[0].content.desc}</p>
+            <h3 className="text-lg font-bold text-foreground">{main.title}</h3>
+            <p className="mt-2 text-sm text-muted leading-relaxed">{main.desc}</p>
           </motion.div>
 
           <motion.div
@@ -109,19 +85,19 @@ export function SwitchingCost() {
             className="rounded-2xl border border-border bg-white overflow-hidden"
           >
             <div className="h-48 overflow-hidden">
-              <ImagePlaceholder label="Photo: studio owners smiling / team meeting" />
+              <ImagePlaceholder label={owners.title} />
             </div>
             <div className="p-6">
-              <h3 className="text-lg font-bold text-foreground">{cards[1].content.title}</h3>
-              <p className="mt-2 text-sm text-muted leading-relaxed">{cards[1].content.desc}</p>
+              <h3 className="text-lg font-bold text-foreground">{owners.title}</h3>
+              <p className="mt-2 text-sm text-muted leading-relaxed">{owners.desc}</p>
             </div>
           </motion.div>
         </div>
 
         <div className="grid sm:grid-cols-3 gap-5">
-          {cards.slice(2).map((card, i) => (
+          {bottomCards.map((card, i) => (
             <motion.div
-              key={card.content.title}
+              key={card.title}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -129,17 +105,11 @@ export function SwitchingCost() {
               className="rounded-2xl border border-border bg-white overflow-hidden"
             >
               <div className="h-44 overflow-hidden">
-                <ImagePlaceholder label={
-                  i === 0
-                    ? "Photo: support team on video call"
-                    : i === 1
-                    ? "Photo: MgicAI mascot or AI illustration"
-                    : "Photo: person signing document / handshake"
-                } />
+                <ImagePlaceholder label={card.title} />
               </div>
               <div className="p-5">
-                <h3 className="text-base font-bold text-foreground">{card.content.title}</h3>
-                <p className="mt-1.5 text-sm text-muted leading-relaxed">{card.content.desc}</p>
+                <h3 className="text-base font-bold text-foreground">{card.title}</h3>
+                <p className="mt-1.5 text-sm text-muted leading-relaxed">{card.desc}</p>
               </div>
             </motion.div>
           ))}
@@ -152,11 +122,11 @@ export function SwitchingCost() {
           className="mt-12 text-center"
         >
           <div className="inline-flex items-center gap-3 sm:gap-6 text-sm sm:text-base font-semibold text-foreground">
-            <span>Free trial</span>
+            <span>{t("switching.bullets.freeTrial")}</span>
             <span className="h-1 w-1 rounded-full bg-accent" />
-            <span>Contract buyout</span>
+            <span>{t("switching.bullets.buyout")}</span>
             <span className="h-1 w-1 rounded-full bg-accent" />
-            <span>One-night migration</span>
+            <span>{t("switching.bullets.migration")}</span>
           </div>
         </motion.div>
       </div>

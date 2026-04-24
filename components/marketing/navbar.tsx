@@ -2,18 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const links = [
-  { label: "Features", href: "#why-mgic" },
-  { label: "Member App", href: "#member-app" },
-  { label: "MgicAI", href: "#mgic-ai" },
-  { label: "Community", href: "#community" },
-  { label: "Pricing", href: "#pricing" },
-];
+import { useTranslations } from "next-intl";
 
 export function MarketingNavbar() {
+  const t = useTranslations("marketing");
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const links = [
+    { label: t("nav.features"), href: "#why-mgic" },
+    { label: t("nav.memberApp"), href: "#member-app" },
+    { label: "MgicAI", href: "#mgic-ai" },
+    { label: t("nav.community"), href: "#community" },
+    { label: t("nav.pricing"), href: "#pricing" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -57,14 +59,14 @@ export function MarketingNavbar() {
               href="#cta"
               className="btn-gradient inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold shadow-md shadow-accent/20"
             >
-              Book a Demo
+              {t("nav.bookDemo")}
             </a>
           </div>
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="md:hidden flex flex-col gap-1.5 p-2"
-            aria-label="Toggle menu"
+            aria-label={t("nav.toggleMenu")}
           >
             <span
               className={`block h-0.5 w-5 bg-foreground transition-transform ${
@@ -109,7 +111,7 @@ export function MarketingNavbar() {
                 onClick={() => setMobileOpen(false)}
                 className="btn-gradient inline-flex h-10 items-center justify-center rounded-full px-5 text-sm font-semibold mt-2"
               >
-                Book a Demo
+                {t("nav.bookDemo")}
               </a>
             </div>
           </motion.div>
