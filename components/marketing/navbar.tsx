@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
+import { MarketingLanguageToggle } from "./language-toggle";
 
 export function MarketingNavbar() {
   const t = useTranslations("marketing");
@@ -55,6 +56,7 @@ export function MarketingNavbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
+            <MarketingLanguageToggle />
             <a
               href="#cta"
               className="btn-gradient inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold shadow-md shadow-accent/20"
@@ -113,6 +115,9 @@ export function MarketingNavbar() {
               >
                 {t("nav.bookDemo")}
               </a>
+              <div className="mt-3 flex justify-center">
+                <MarketingLanguageToggle />
+              </div>
             </div>
           </motion.div>
         )}
