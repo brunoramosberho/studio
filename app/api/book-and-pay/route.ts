@@ -41,6 +41,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Paquete no encontrado" }, { status: 404 });
     }
 
+    if (pkg.type === "SUBSCRIPTION") {
+      return NextResponse.json(
+        {
+          error:
+            "Este plan se contrata como suscripción. Reserva con un pase suelto o paquete de clases.",
+          code: "use_subscription_flow",
+        },
+        { status: 400 },
+      );
+    }
+
     const classData = await prisma.class.findUnique({
       where: { id: classId, tenantId: tenant.id },
       include: {

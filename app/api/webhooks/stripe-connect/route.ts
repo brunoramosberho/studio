@@ -77,31 +77,39 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case "payment_intent.succeeded": {
         const pi = event.data.object;
-        await prisma.stripePayment.updateMany({
-          where: { stripePaymentIntentId: pi.id },
-          data: { status: "succeeded" },
-        });
 
-        const payment = await prisma.stripePayment.findUnique({
-          where: { stripePaymentIntentId: pi.id },
-        });
+        // Marcar pago + activar UserPackage en una sola transacción para evitar
+        // estados intermedios donde el pago aparece como succeeded pero el
+        // paquete sigue PENDING_PAYMENT (impide al usuario reservar).
+        const payment = await prisma.$transaction(async (tx) => {
+          await tx.stripePayment.updateMany({
+            where: { stripePaymentIntentId: pi.id },
+            data: { status: "succeeded" },
+          });
 
-        if (
-          payment?.referenceId &&
-          (payment.type === "membership" || payment.type === "class")
-        ) {
-          await prisma.userPackage.updateMany({
-            where: {
-              id: payment.referenceId,
-              stripePaymentId: "pending_stripe",
-            },
-            data: { stripePaymentId: pi.id },
+          const p = await tx.stripePayment.findUnique({
+            where: { stripePaymentIntentId: pi.id },
           });
-          await prisma.userPackage.updateMany({
-            where: { id: payment.referenceId },
-            data: { status: "ACTIVE" },
-          });
-        }
+
+          if (
+            p?.referenceId &&
+            (p.type === "membership" || p.type === "class")
+          ) {
+            await tx.userPackage.updateMany({
+              where: {
+                id: p.referenceId,
+                stripePaymentId: "pending_stripe",
+              },
+              data: { stripePaymentId: pi.id },
+            });
+            await tx.userPackage.updateMany({
+              where: { id: p.referenceId },
+              data: { status: "ACTIVE" },
+            });
+          }
+
+          return p;
+        });
 
         if (payment?.memberId && payment.tenantId) {
           updateLifecycle(payment.memberId, payment.tenantId, "purchased").catch(

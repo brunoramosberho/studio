@@ -120,6 +120,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Los paquetes SUBSCRIPTION se cobran vía Stripe Subscriptions, no como
+    // PaymentIntent único. Si se intenta comprar aquí se crearía un UserPackage
+    // PENDING_PAYMENT huérfano (el invoice.paid del webhook crea uno nuevo
+    // ACTIVE, sin tocar este). Forzamos al cliente a usar /api/stripe/member-subscription.
+    if (pkg.type === "SUBSCRIPTION") {
+      return NextResponse.json(
+        {
+          error:
+            "Este plan se contrata como suscripción. Usa el flujo de suscripción para activarlo.",
+          code: "use_subscription_flow",
+        },
+        { status: 400 },
+      );
+    }
+
     if (userId && pkg.countryId) {
       const user = await prisma.user.findUnique({
         where: { id: userId },
