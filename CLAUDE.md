@@ -113,15 +113,88 @@ Domain modules with their own subfolder usually expose a barrel `index.ts`: `rev
 - `components/ui/` is a hand-rolled shadcn-style primitive set (Radix + `class-variance-authority` + `cn()` from `lib/utils.ts`). Reuse these instead of pulling in new UI libs.
 - i18n is server-resolved in `i18n/request.ts`: cookie `NEXT_LOCALE` → `tenant.locale` → `Accept-Language` → `es`. Messages live in `messages/{en,es}.json`.
 
-## Schema & data model notes
+## Data model (`prisma/schema.prisma`)
 
-`prisma/schema.prisma` is ~2.1k lines. Some non-obvious things worth knowing before editing:
+~2.1k lines, ~80 models. Almost everything is tenant-scoped — only `User`, `Account`, `Session`, `VerificationToken`, `PendingLogin`, `Country`, `City`, `LoyaltyLevel`, `FavoriteSong`, and system-wide `Achievement` rows (where `tenantId IS NULL`) are global. Always include `tenantId` in `where` clauses for everything else.
 
-- `Tenant` carries branding, Stripe Connect/SaaS state, policy flags (cancellation window, no-show penalty config), and notification toggles. There is no separate `StudioSettings` table anymore — `seed.ts` still references one for cleanup but the live config is on `Tenant`.
-- `Membership` is the per-tenant join. Carries `role`, `lifecycleStage` (lead → installed → purchased → booked → attended → member), referral linkage, and `pwaInstalledAt`. Most "is this user X for this studio?" checks should go through Membership, not the deprecated `User.role`.
-- Revenue: `RevenueEvent`, `Entitlement`, `UserPackage`, `MemberSubscription`, `PendingPenalty`, `Debt`. The math/allocation logic for proportional revenue from unlimited subs is in `lib/revenue/math.ts` (the only file with unit tests today).
-- Stripe state is split: `stripeAccountId` on `Tenant` (Connect — receives student payments), `stripeCustomerId` + `stripeSubscriptionId` on `Tenant` (the SaaS billing relationship with Magic itself), and `StripeCustomer` / `StripePayment` / `MemberSubscription` rows for member payments.
-- Cancellation/no-show penalties have per-segment flags (`noShowLoseCredit`, `noShowChargeFee`, `noShowFeeAmountUnlimited`) and a grace window auto-confirmed by the `no-show-auto-confirm` cron.
+### Tenant + identity
+
+- **`Tenant`** is huge (~80 columns, ~40 relations). It owns branding, Stripe Connect state (`stripeAccountId`), Magic SaaS billing state (`stripeCustomerId`, `stripeSubscriptionId`, `subscriptionStatus`, `trialEndsAt`, `applicationFeePercent`), studio-hour defaults, schedule visibility, notification toggles, cancellation/no-show policy, tax/TPV fees, and locale/`defaultCountryId`.
+- **`Membership`** is the per-(`User`, `Tenant`) join with `role` (`CLIENT`/`COACH`/`FRONT_DESK`/`ADMIN`), `lifecycleStage` (`lead → installed → purchased → booked → attended → member`) plus first-event timestamps, referral linkage (`referralCode`, `referredByMembershipId`), and `pwaInstalledAt`/`lastSeenAt`. Use this for "is X a member of Y?" — `User.role` is deprecated.
+- **`User`** is global, with optional `Country`/`City`. `isSuperAdmin` grants access to `admin.*` and auto-promotes the user's membership to `ADMIN`. `gender` is AI-guessed at signup (see `lib/ai/guess-gender.ts`).
+- **`StudioSettings`** still exists but is deprecated — branding moved onto `Tenant`. `seed.ts` deletes it for cleanup; do not write to it in new code.
+
+### Studio domain (booking core)
+
+The booking graph: **`Country` → `City` → `Studio` → `Room` → `Class` → `Booking`**. `Class` joins `ClassType` (the discipline/template, with `revenueWeight` and `dropInPriceCents` used by revenue allocation), **`CoachProfile`** (not `User` — coaches have their own profile with optional user link, plus `CoachPayRate` for compensation), and `Room`. Adjacent: `Waitlist`, `ClassNotifyMe` (notify-me when spots open), `BlockedSpot`, `ClassSongRequest` + `ClassPlaylistTrack` (Spotify), `CheckIn`, `CoachAvailabilityBlock` (vacation/training time off, with approval workflow).
+
+`Booking` invariants worth knowing:
+- `(classId, spotNumber)` is unique (one booking per spot).
+- Guest bookings: `userId` may be null, `guestEmail`/`guestName` set, and a member can bring guests via `parentBookingId` self-relation.
+- Revenue snapshot fields (`imputedValueCents`, `classWeightSnapshot`, `sourceEntitlementId`) are written once at recognition time so later edits to `ClassType.revenueWeight`/`dropInPriceCents` don't mutate history.
+
+### Packages, subscriptions, and entitlements
+
+Three overlapping concepts — all three coexist:
+
+- **`Package`** — the SKU. `type` ∈ `OFFER | PACK | SUBSCRIPTION`. Optional `credits`, `validDays`, `country`, `classTypes` filter (via `PackageCreditAllocation` for per-class-type credit splits). `recurringInterval` set for subscription SKUs.
+- **`UserPackage`** — a member's purchased pack. `status` ∈ `ACTIVE | PENDING_PAYMENT | PAYMENT_FAILED | REVOKED | DISPUTED`. `revokedReason` tracks chargeback/refund. Per-class-type usage tracked via `UserPackageCreditUsage`.
+- **`MemberSubscription`** — a Stripe-backed unlimited subscription. Mirrors Stripe state (`status`, `currentPeriodStart`/`End`, `pausedAt`, `cancelAtPeriodEnd`).
+- **`Entitlement`** is the **accounting overlay** added later — it unifies packs, unlimited, drop-ins, and penalties under one stable FK so `RevenueEvent` has a single target. `userPackageId` and `memberSubscriptionId` link back. **`Booking.sourceEntitlementId` is the canonical link** from a consumption to its source.
+
+When working on payments/booking flow, expect to write to `UserPackage` *and* `Entitlement` together. The revenue subsystem reads from `Entitlement`, never from `UserPackage` directly.
+
+### Revenue recognition (ASC 606 / IFRS 15)
+
+Header comment in the schema (around line 2018) is the spec — read it before touching this area. Key invariants:
+
+- Classes never generate revenue directly; revenue comes from packs, unlimited subs, drop-ins, and penalties.
+- **`RevenueEvent`** is the single source of truth. Types: `booking`, `daily_accrual` (unlimited pro-rata, excluded from reports), `expiration_breakage`, `monthly_breakage`, `penalty`, `reversal` (reserved). The unique constraint `(entitlementId, eventDate, type)` is the **idempotency guard** — re-running the daily accrual / pack expiration crons is a safe no-op.
+- Math lives in `lib/revenue/math.ts` (the only file with tests). Cron entry points: `revenue-accrual-daily`, `revenue-pack-expiration`, `revenue-monthly-close`. Do not bypass them — the math handles unlimited→class allocation with per-`ClassType` weights and a per-booking cap at the drop-in price.
+
+### Payments, debt, and POS
+
+- **`StripePayment`** — every online payment intent (Connect: student → studio). `type` ∈ `subscription | package | product | penalty | class | membership | pos`. Tracks `applicationFee`/`stripeFee`/`netAmount`/`availableOn`.
+- **`PosTransaction`** — in-person/manual sales (cash, card, saved card). Same `type` taxonomy as `StripePayment`. `processedById` is the staff member.
+- **`StripeCustomer`** — per-(tenant, user) Stripe customer with `defaultPaymentMethodId` for one-tap re-purchase.
+- **`PendingPenalty`** — buffer between "this looks like a no-show" and "we charged the fee / consumed the credit." Created by cron or manual NO_SHOW marking; auto-confirmed after `tenant.noShowPenaltyGraceHours`, or resolved manually from `/admin/no-shows`. Snapshots `loseCredit`/`chargeFee`/`feeAmountCents`/`isUnlimited` at creation time so policy changes don't retroactively alter pending items.
+- **`Debt`** — outstanding balance from chargebacks/refunds/manual entries. `status` ∈ `OPEN | PAID | FORGIVEN | DISPUTED`. Helpers in `lib/billing/debt.ts`.
+- **`DiscountCode`** + **`DiscountRedemption`** — coupons (percent or fixed). Optional Stripe sync via `stripeCouponId`.
+
+### Social, gamification, notifications
+
+- **`FeedEvent`** is the central social timeline. `eventType` ∈ `CLASS_COMPLETED | CLASS_RESERVED | ACHIEVEMENT_UNLOCKED | LEVEL_UP | STUDIO_POST`, `visibility` ∈ `STUDIO_WIDE | FRIENDS_ONLY | PRIVATE`. Has `Like`, `Comment`, `Photo`, `Poll` (with `PollOption`/`PollVote`) attached. Most generated content is mirrored here so the feed has a uniform shape.
+- **`Friendship`** is bidirectional with status (`PENDING | ACCEPTED | DECLINED`); always look up via both requester *and* addressee.
+- Gamification has three tiers: **`Achievement`** (definitions; `tenantId` nullable = system-wide, `key` globally unique), **`LoyaltyLevel`** (global Bronze→Elite ladder, not per-tenant), and per-member state in **`MemberProgress`** (composite PK on `userId+tenantId`), **`MemberAchievement`** (unlocks), **`MemberReward`** (granted rewards: discount code / free class / custom). Tenant toggles via **`TenantGamificationConfig`** (overrides for level/achievement names + `autoRewards` JSON config). Catalog seeds in `lib/gamification/catalog.ts`.
+- **`Notification`** + **`PushSubscription`** drive in-app and web-push notifications. Do not call `web-push` directly — go through `lib/push.ts`.
+
+### External integrations
+
+- **`StudioPlatformConfig`** + **`SchedulePlatformQuota`** + **`PlatformBooking`** + **`PlatformAlert`** — ClassPass / Gympass quota allocation per class and inbound-email parsing of partner reservations (Mailgun → `api/webhooks/email-inbound`). Quota algorithm in `lib/platforms/quota-algorithm.ts`, parser in `lib/platforms/parser.ts`.
+- **`InstagramIntegration`** — single per tenant; carries the long-lived IG token.
+- **`UserWearableConnection`** + **`ClassBiometrics`** — Strava OAuth (tokens encrypted via `lib/encryption.ts`). Biometrics are unique on `(bookingId, provider)` and `(provider, providerActivityId)`.
+- **`Waiver`** + **`WaiverSignature`** — per-tenant liability waiver with versioning. `WaiverSignature.signatureHash` proves integrity; PDFs go to Supabase Storage via `pdfStorageKey`. The `WaiverGate` component blocks the app for unsigned members per tenant trigger flags.
+
+### Marketing, analytics, conversion
+
+- **`MembershipConversionConfig`** + **`NudgeEvent`** + **`IntroOfferClaim`** drive the nudge engine in `lib/conversion/nudge-engine.ts` (booking-flow upsell, intro offer with timer, savings emails, package upgrade, post-class nudges). Cap is `maxNudgesPerMemberPerWeek`.
+- **`TenantAnalyticsConfig`** — per-tenant GA4 / Meta Pixel / GTM credentials with per-event toggles. Used by `lib/analytics/`.
+- **`LinkClick`** + **`LinkConversion`** — UTM-tagged link tracking (`lib/marketing/links.ts`).
+- **`ReferralConfig`** + **`ReferralReward`** — referrer/referee dual-reward system, triggered at `triggerStage` of the referee's lifecycle (`lib/referrals/`).
+- **`Highlight`** + **`HighlightClick`** — feed banners (only rendered when `tenant.highlightsEnabled`).
+- **`SparkFeatureRequest`** — admin-submitted feature requests captured by the in-app AI assistant.
+
+### Common modelling patterns
+
+- **Soft-state via enums + `isActive`**: most "deletable" entities use `isActive: Boolean` plus a status enum rather than hard deletes. Don't `prisma.x.delete()` without checking — usually you want to flip a flag.
+- **Nullable `tenantId` = system-wide**: `Achievement.tenantId` is the main example. `LoyaltyLevel` has no `tenantId` column at all (always global).
+- **Singleton-per-tenant configs**: `MembershipConversionConfig`, `TenantAnalyticsConfig`, `ReferralConfig`, `TenantGamificationConfig`, `InstagramIntegration` all use `tenantId @unique`. Use `upsert`, not `create`.
+- **Money**: revenue/accounting uses integer cents (`*Cents` columns + `Decimal(4,2)` for weights). Older money columns (`Package.price`, `StripePayment.amount`, etc.) use `Float` — be careful when mixing the two; never sum across types.
+- **Idempotency**: the only DB-level idempotency guard is `RevenueEvent.uniq_entitlement_date_type`. Webhook handlers and crons should rely on it rather than checking-then-writing.
+
+### When changing the schema
+
+`vercel.json` runs `npx prisma generate && next build`, but **migrations are not auto-applied** by the build. Run `npx prisma migrate dev --name <descriptive>` locally; commit the generated SQL in `prisma/migrations/` (not present in the repo today, so the first migration you add establishes the convention). For destructive changes, also update `prisma/seed.ts`'s deletion order — the seed walks tables in foreign-key order and will break if you add a new dependency without slotting it in.
 
 ## Tests
 
