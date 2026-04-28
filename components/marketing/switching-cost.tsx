@@ -1,33 +1,22 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 
-type Card = { title: string; desc: string };
-
-function ImagePlaceholder({ label }: { label: string }) {
-  return (
-    <div className="w-full h-full min-h-[180px] rounded-xl bg-gradient-to-br from-surface via-border/30 to-surface flex items-center justify-center">
-      <div className="text-center px-4">
-        <div className="mx-auto mb-2 h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-          <svg className="h-6 w-6 text-accent/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.41a2.25 2.25 0 013.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-          </svg>
-        </div>
-        <p className="text-[10px] text-muted-foreground/60">{label}</p>
-      </div>
-    </div>
-  );
-}
+type Card = { title: string; desc: string; image: string };
 
 export function SwitchingCost() {
   const t = useTranslations("marketing");
-  const main = t.raw("switching.cards.main") as Card;
-  const owners = t.raw("switching.cards.owners") as Card;
+  const main = t.raw("switching.cards.main") as Omit<Card, "image">;
+  const owners: Card = {
+    ...(t.raw("switching.cards.owners") as Omit<Card, "image">),
+    image: "/marketing/owners.jpg",
+  };
   const bottomCards: Card[] = [
-    t.raw("switching.cards.support") as Card,
-    t.raw("switching.cards.aiDesk") as Card,
-    t.raw("switching.cards.buyout") as Card,
+    { ...(t.raw("switching.cards.support") as Omit<Card, "image">), image: "/marketing/support.jpg" },
+    { ...(t.raw("switching.cards.aiDesk") as Omit<Card, "image">), image: "/marketing/ai-desk.jpg" },
+    { ...(t.raw("switching.cards.buyout") as Omit<Card, "image">), image: "/marketing/buyout.jpg" },
   ];
 
   return (
@@ -84,8 +73,14 @@ export function SwitchingCost() {
             transition={{ duration: 0.4, delay: 0.1 }}
             className="rounded-2xl border border-border bg-white overflow-hidden"
           >
-            <div className="h-48 overflow-hidden">
-              <ImagePlaceholder label={owners.title} />
+            <div className="relative h-48 overflow-hidden">
+              <Image
+                src={owners.image}
+                alt={owners.title}
+                fill
+                sizes="(min-width: 768px) 50vw, 100vw"
+                className="object-cover"
+              />
             </div>
             <div className="p-6">
               <h3 className="text-lg font-bold text-foreground">{owners.title}</h3>
@@ -104,8 +99,14 @@ export function SwitchingCost() {
               transition={{ duration: 0.4, delay: i * 0.1 }}
               className="rounded-2xl border border-border bg-white overflow-hidden"
             >
-              <div className="h-44 overflow-hidden">
-                <ImagePlaceholder label={card.title} />
+              <div className="relative h-44 overflow-hidden bg-surface">
+                <Image
+                  src={card.image}
+                  alt={card.title}
+                  fill
+                  sizes="(min-width: 640px) 33vw, 100vw"
+                  className="object-cover"
+                />
               </div>
               <div className="p-5">
                 <h3 className="text-base font-bold text-foreground">{card.title}</h3>
