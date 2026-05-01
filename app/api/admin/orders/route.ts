@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { hasPermission } from "@/lib/permissions";
+import type { BookingProductOrderStatus, Prisma } from "@prisma/client";
+
+const ACTIVE_STATUSES: BookingProductOrderStatus[] = ["PAID", "READY"];
+const COMPLETED_STATUSES: BookingProductOrderStatus[] = ["PICKED_UP", "CANCELLED"];
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const url = request.nextUrl;
     const studioId = url.searchParams.get("studioId");
-    const status = url.searchParams.get("status");
+    const status = url.searchParams.get("status") as BookingProductOrderStatus | null;
 
     // Cap completed/cancelled orders to today's (local) bucket so the kitchen
     // view doesn't bloat with historical data while still letting bar staff
@@ -20,16 +24,16 @@ export async function GET(request: NextRequest) {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    const where = {
+    const where: Prisma.BookingProductOrderWhereInput = {
       tenantId: ctx.tenant.id,
       ...(studioId ? { studioId } : {}),
       ...(status
-        ? { status: status as never }
+        ? { status }
         : {
             OR: [
-              { status: { in: ["PAID", "READY"] as const } },
+              { status: { in: ACTIVE_STATUSES } },
               {
-                status: { in: ["PICKED_UP", "CANCELLED"] as const },
+                status: { in: COMPLETED_STATUSES },
                 updatedAt: { gte: startOfToday },
               },
             ],
