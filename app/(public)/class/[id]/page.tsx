@@ -453,7 +453,9 @@ export default function ClassDetailPage() {
     const start = new Date(cls.startsAt);
     const end = new Date(cls.endsAt);
     const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-    const title = `${cls.classType.name} con ${cls.coach.name ?? ""}`;
+    const title = cls.coach.name
+      ? `${cls.classType.name} con ${cls.coach.name}`
+      : cls.classType.name;
     const location = [cls.room.studio.name, cls.room.studio.address].filter(Boolean).join(", ");
     const details = `${cls.room.name} · ${cls.classType.duration} min`;
 
@@ -494,7 +496,10 @@ export default function ClassDetailPage() {
     const date = new Date(cls.startsAt);
     const dayStr = date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
     const time = formatTime(cls.startsAt);
-    const text = `${cls.classType.name} con ${cls.coach.name}\n${dayStr}, ${time}\n${cls.room.studio.name}\n${t("reserveYourSpot")}`;
+    const heading = cls.coach.name
+      ? `${cls.classType.name} con ${cls.coach.name}`
+      : cls.classType.name;
+    const text = `${heading}\n${dayStr}, ${time}\n${cls.room.studio.name}\n${t("reserveYourSpot")}`;
 
     if (navigator.share) {
       try {

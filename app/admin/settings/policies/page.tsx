@@ -10,6 +10,7 @@ import {
   DollarSign,
   CalendarDays,
   Hourglass,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ interface PoliciesConfig {
   noShowFeeAmountUnlimited: number | null;
   noShowPenaltyGraceHours: number;
   visibleScheduleDays: number;
+  hideCoachUntilClassEnds: boolean;
 }
 
 const DEFAULT_CONFIG: PoliciesConfig = {
@@ -38,6 +40,7 @@ const DEFAULT_CONFIG: PoliciesConfig = {
   noShowFeeAmountUnlimited: null,
   noShowPenaltyGraceHours: 24,
   visibleScheduleDays: 7,
+  hideCoachUntilClassEnds: false,
 };
 
 export default function PoliciesSettingsPage() {
@@ -405,6 +408,32 @@ export default function PoliciesSettingsPage() {
               {t("visibleDaysExplain", { days: config.visibleScheduleDays })}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Hide coach until class ends */}
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50">
+            <EyeOff className="h-5 w-5 text-purple-500" />
+          </div>
+          <div>
+            <h2 className="font-display text-lg font-bold">{t("hideCoachTitle")}</h2>
+            <p className="text-sm text-muted">{t("hideCoachDesc")}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="pr-4">
+            <Label className="text-sm font-medium">{t("hideCoachToggle")}</Label>
+            <p className="text-xs text-muted mt-0.5">{t("hideCoachToggleDesc")}</p>
+          </div>
+          <Switch
+            checked={config.hideCoachUntilClassEnds}
+            onCheckedChange={(checked) =>
+              setConfig({ ...config, hideCoachUntilClassEnds: checked })
+            }
+          />
         </div>
       </div>
 

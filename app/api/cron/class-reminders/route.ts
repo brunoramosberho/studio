@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
   const tenants = await prisma.tenant.findMany({
     where: { isActive: true },
-    select: { id: true },
+    select: { id: true, hideCoachUntilClassEnds: true },
   });
 
   let sent = 0;
@@ -71,7 +71,6 @@ export async function GET(request: NextRequest) {
         (cls.startsAt.getTime() - now.getTime()) / 60_000,
       );
       const className = cls.classType.name;
-      const coachName = cls.coach.name?.split(" ")[0] ?? "tu coach";
       const tz = cls.room?.studio?.city?.timezone || "Europe/Madrid";
 
       const timeStr = formatTime(cls.startsAt, tz);
@@ -81,9 +80,13 @@ export async function GET(request: NextRequest) {
           ? "en 1 hora"
           : `en ${minUntil} min`;
 
+      const body = tenant.hideCoachUntilClassEnds
+        ? `Tu clase es a las ${timeStr}`
+        : `Tu clase con ${cls.coach.name?.split(" ")[0] ?? "tu coach"} es a las ${timeStr}`;
+
       await sendPushToUser(booking.userId, {
         title: `${className} ${untilLabel}`,
-        body: `Tu clase con ${coachName} es a las ${timeStr}`,
+        body,
         url: "/my/bookings",
         tag: `reminder-${booking.classId}`,
       }, tenant.id);

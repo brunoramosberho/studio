@@ -292,6 +292,10 @@
       "graceImmediate": "Inmediato",
       "graceExplainImmediate": "Las penalizaciones se confirmarán automáticamente en cuanto el cron las procese.",
       "graceExplain": "Las penalizaciones se confirmarán automáticamente {hours}h después de creadas, salvo que un admin las resuelva antes.",
+      "hideCoachTitle": "Ocultar coach hasta el final de la clase",
+      "hideCoachDesc": "Esconde el nombre y foto del coach en el calendario, reservas, recordatorios y emails. El coach se revela en el historial una vez que la clase terminó.",
+      "hideCoachToggle": "Ocultar coach a clientes hasta que termine la clase",
+      "hideCoachToggleDesc": "Útil para evitar sesgos al reservar. El directorio /instructors sigue visible.",
       "save": "Guardar políticas",
       "saved": "Políticas actualizadas",
       "saveError": "Error al guardar"

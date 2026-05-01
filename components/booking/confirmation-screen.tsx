@@ -14,7 +14,7 @@ interface ConfirmationScreenProps {
   classTitle?: string;
   classDate?: string;
   classTime?: string;
-  coachName?: string;
+  coachName?: string | null;
   startsAt?: string;
   endsAt?: string;
   location?: string;
@@ -79,7 +79,9 @@ export function ConfirmationScreen({
           new Date(startsAt),
           new Date(endsAt),
           location,
-          `Clase con ${coachName ?? "tu coach"} en ${studioName} Studio`,
+          coachName
+            ? `Clase con ${coachName} en ${studioName} Studio`
+            : `Clase en ${studioName} Studio`,
         )
       : null;
 
@@ -183,7 +185,7 @@ function ConfirmationContent({
   classTitle?: string;
   classDate?: string;
   classTime?: string;
-  coachName?: string;
+  coachName?: string | null;
 }) {
   const partyRef = useRef<PartyPopperIconHandle>(null);
 

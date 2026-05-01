@@ -138,7 +138,9 @@ export default function BookingsPage() {
     const date = new Date(booking.class.startsAt);
     const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
     const timeStr = formatTimeRange(booking.class.startsAt, booking.class.endsAt);
-    const text = `${booking.class.classType.name} — ${booking.class.coach.name}\n${dayStr}, ${timeStr}`;
+    const text = booking.class.coach.name
+      ? `${booking.class.classType.name} — ${booking.class.coach.name}\n${dayStr}, ${timeStr}`
+      : `${booking.class.classType.name}\n${dayStr}, ${timeStr}`;
 
     if (navigator.share) {
       try {
@@ -290,7 +292,15 @@ export default function BookingsPage() {
                     >
                       <div className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          {(booking.class.coach.photoUrl || booking.class.coach.user?.image) ? (
+                          {!booking.class.coach.name ? (
+                            <div
+                              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-white"
+                              style={{ backgroundColor: booking.class.classType.color || "#475569" }}
+                              aria-hidden
+                            >
+                              <Calendar className="h-4 w-4" />
+                            </div>
+                          ) : (booking.class.coach.photoUrl || booking.class.coach.user?.image) ? (
                             <img
                               src={(booking.class.coach.photoUrl || booking.class.coach.user?.image)!}
                               alt={booking.class.coach.name || "Coach"}
@@ -306,8 +316,14 @@ export default function BookingsPage() {
                               {booking.class.classType.name}
                             </p>
                             <p className="truncate text-[13px] text-muted">
-                              {t("withCoach")} {booking.class.coach.name?.split(" ")[0]}
-                              {studioName && <span className="text-muted/50"> · {studioName}</span>}
+                              {booking.class.coach.name ? (
+                                <>
+                                  {t("withCoach")} {booking.class.coach.name?.split(" ")[0]}
+                                  {studioName && <span className="text-muted/50"> · {studioName}</span>}
+                                </>
+                              ) : (
+                                studioName
+                              )}
                             </p>
                           </div>
                           <StatusBadge status={booking.status} creditLost={booking.creditLost} />
@@ -519,7 +535,15 @@ function BookingCard({
       >
         <div className="rounded-2xl border border-border/40 bg-card px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
           <div className="flex items-center gap-3">
-            {(booking.class.coach.photoUrl || booking.class.coach.user?.image) ? (
+            {!booking.class.coach.name ? (
+              <div
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-white"
+                style={{ backgroundColor: booking.class.classType.color || "#475569" }}
+                aria-hidden
+              >
+                <Calendar className="h-4 w-4" />
+              </div>
+            ) : (booking.class.coach.photoUrl || booking.class.coach.user?.image) ? (
               <img
                 src={(booking.class.coach.photoUrl || booking.class.coach.user?.image)!}
                 alt={booking.class.coach.name || "Coach"}
@@ -542,8 +566,14 @@ function BookingCard({
                 )}
               </div>
               <p className="truncate text-[13px] text-muted">
-                con {booking.class.coach.name?.split(" ")[0]}
-                {studioName && <span className="text-muted/50"> · {studioName}</span>}
+                {booking.class.coach.name ? (
+                  <>
+                    con {booking.class.coach.name?.split(" ")[0]}
+                    {studioName && <span className="text-muted/50"> · {studioName}</span>}
+                  </>
+                ) : (
+                  studioName
+                )}
               </p>
             </div>
             {booking.status === "CONFIRMED" && (
@@ -630,7 +660,15 @@ function WaitlistCard({
           />
 
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            {(entry.class.coach.photoUrl || entry.class.coach.user?.image) ? (
+            {!entry.class.coach.name ? (
+              <div
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-white"
+                style={{ backgroundColor: entry.class.classType.color || "#475569" }}
+                aria-hidden
+              >
+                <Calendar className="h-4 w-4" />
+              </div>
+            ) : (entry.class.coach.photoUrl || entry.class.coach.user?.image) ? (
               <img
                 src={entry.class.coach.photoUrl || entry.class.coach.user?.image!}
                 alt={entry.class.coach.name || "Coach"}
@@ -652,9 +690,15 @@ function WaitlistCard({
                 </span>
               </div>
               <p className="truncate text-[13px] text-muted">
-                {t("withCoach")} {entry.class.coach.name?.split(" ")[0]}
-                {studioName && (
-                  <span className="text-muted/50"> · {studioName}</span>
+                {entry.class.coach.name ? (
+                  <>
+                    {t("withCoach")} {entry.class.coach.name?.split(" ")[0]}
+                    {studioName && (
+                      <span className="text-muted/50"> · {studioName}</span>
+                    )}
+                  </>
+                ) : (
+                  studioName
                 )}
               </p>
               <p className="text-[11px] capitalize text-muted/70">

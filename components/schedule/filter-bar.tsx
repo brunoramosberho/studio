@@ -27,6 +27,7 @@ interface FilterBarProps {
   onFilterChange: (filters: Partial<ScheduleFilters>) => void;
   onClear: () => void;
   className?: string;
+  hideCoachFilter?: boolean;
 }
 
 export function FilterBar({
@@ -36,6 +37,7 @@ export function FilterBar({
   onFilterChange,
   onClear,
   className,
+  hideCoachFilter = false,
 }: FilterBarProps) {
   const hasActiveFilters = Object.values(filters).some(Boolean);
 
@@ -69,23 +71,25 @@ export function FilterBar({
       </FilterPill>
 
       {/* Coach */}
-      <FilterPill>
-        <Select
-          value={filters.coachId ?? ""}
-          onValueChange={(v) => onFilterChange({ coachId: v || undefined })}
-        >
-          <SelectTrigger className="h-9 min-w-[120px] rounded-full border border-border bg-card px-3.5 py-0 text-sm font-body shadow-[var(--shadow-warm-sm)] transition-colors data-[state=open]:border-accent data-[state=open]:bg-accent/5 [&>svg]:ml-1 [&>svg]:h-3.5 [&>svg]:w-3.5">
-            <SelectValue placeholder="Coach" />
-          </SelectTrigger>
-          <SelectContent>
-            {coaches.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </FilterPill>
+      {!hideCoachFilter && (
+        <FilterPill>
+          <Select
+            value={filters.coachId ?? ""}
+            onValueChange={(v) => onFilterChange({ coachId: v || undefined })}
+          >
+            <SelectTrigger className="h-9 min-w-[120px] rounded-full border border-border bg-card px-3.5 py-0 text-sm font-body shadow-[var(--shadow-warm-sm)] transition-colors data-[state=open]:border-accent data-[state=open]:bg-accent/5 [&>svg]:ml-1 [&>svg]:h-3.5 [&>svg]:w-3.5">
+              <SelectValue placeholder="Coach" />
+            </SelectTrigger>
+            <SelectContent>
+              {coaches.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterPill>
+      )}
 
       {/* Level */}
       <FilterPill>

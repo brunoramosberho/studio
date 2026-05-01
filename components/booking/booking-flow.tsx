@@ -268,6 +268,8 @@ export function BookingFlow({ classId }: BookingFlowProps) {
     );
   }
 
+  const coachHidden = !classData.coach.name;
+
   // --- Booking success (optimistic) ---
   if (store.bookingSuccess) {
     return (
@@ -275,7 +277,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
         classTitle={classData.classType.name}
         classDate={formatDate(classData.startsAt)}
         classTime={formatTime(classData.startsAt)}
-        coachName={classData.coach.name ?? "Coach"}
+        coachName={coachHidden ? null : classData.coach.name}
         startsAt={classData.startsAt.toString()}
         endsAt={classData.endsAt.toString()}
         location={classData.room?.studio?.name ?? undefined}
@@ -283,7 +285,7 @@ export function BookingFlow({ classId }: BookingFlowProps) {
     );
   }
 
-  const coachName = classData.coach.name ?? "Coach";
+  const coachName = coachHidden ? null : classData.coach.name;
 
   return (
     <motion.div
@@ -301,8 +303,12 @@ export function BookingFlow({ classId }: BookingFlowProps) {
             <span className="font-mono">{formatTime(classData.startsAt)}</span>
             <span className="text-muted/40">&bull;</span>
             <span className="capitalize">{formatDate(classData.startsAt)}</span>
-            <span className="text-muted/40">&bull;</span>
-            <span>{coachName}</span>
+            {coachName && (
+              <>
+                <span className="text-muted/40">&bull;</span>
+                <span>{coachName}</span>
+              </>
+            )}
           </div>
 
           {classFull && (

@@ -119,9 +119,11 @@ export default function WaitlistPage() {
                             <p className="font-display text-sm font-bold text-foreground">
                               {entry.class.classType.name}
                             </p>
-                            <p className="mt-0.5 text-xs text-muted">
-                              {entry.class.coach.name}
-                            </p>
+                            {entry.class.coach.name && (
+                              <p className="mt-0.5 text-xs text-muted">
+                                {entry.class.coach.name}
+                              </p>
+                            )}
                           </div>
                           <Badge>
                             Posición #{entry.position}

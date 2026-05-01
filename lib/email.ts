@@ -58,7 +58,7 @@ export async function sendBookingConfirmation({
   to: string;
   name: string;
   className: string;
-  coachName: string;
+  coachName: string | null;
   date: Date;
   startTime: Date;
   location?: string;
@@ -96,10 +96,10 @@ export async function sendBookingConfirmation({
               <td style="padding:3px 0;"><strong>${t("time")}</strong></td>
               <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
             </tr>
-            <tr>
+            ${coachName ? `<tr>
               <td style="padding:3px 0;"><strong>${t("coach")}</strong></td>
               <td style="padding:3px 0 3px 16px;">${coachName}</td>
-            </tr>
+            </tr>` : ""}
             ${location ? `<tr>
               <td style="padding:3px 0;"><strong>${t("location")}</strong></td>
               <td style="padding:3px 0 3px 16px;">${location}</td>
@@ -146,7 +146,7 @@ export async function sendClassCancelled({
   to: string;
   name: string;
   className: string;
-  coachName: string;
+  coachName: string | null;
   date: Date;
   startTime: Date;
   location?: string;
@@ -183,10 +183,10 @@ export async function sendClassCancelled({
               <td style="padding:3px 0;"><strong>${t("time")}</strong></td>
               <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
             </tr>
-            <tr>
+            ${coachName ? `<tr>
               <td style="padding:3px 0;"><strong>${t("coach")}</strong></td>
               <td style="padding:3px 0 3px 16px;">${coachName}</td>
-            </tr>
+            </tr>` : ""}
             ${location ? `<tr>
               <td style="padding:3px 0;"><strong>${t("location")}</strong></td>
               <td style="padding:3px 0 3px 16px;">${location}</td>
@@ -382,7 +382,7 @@ export async function sendWaitlistPromotion({
   to: string;
   name: string;
   className: string;
-  coachName: string;
+  coachName: string | null;
   date: Date;
   startTime: Date;
   location?: string;
@@ -415,10 +415,10 @@ export async function sendWaitlistPromotion({
               <td style="padding:3px 0;"><strong>Hora</strong></td>
               <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
             </tr>
-            <tr>
+            ${coachName ? `<tr>
               <td style="padding:3px 0;"><strong>Coach</strong></td>
               <td style="padding:3px 0 3px 16px;">${coachName}</td>
-            </tr>
+            </tr>` : ""}
             ${location ? `<tr>
               <td style="padding:3px 0;"><strong>Estudio</strong></td>
               <td style="padding:3px 0 3px 16px;">${location}</td>
@@ -456,7 +456,7 @@ export async function sendSpotAvailable({
   to: string;
   name: string;
   className: string;
-  coachName: string;
+  coachName: string | null;
   date: Date;
   startTime: Date;
   location?: string;
@@ -490,10 +490,10 @@ export async function sendSpotAvailable({
               <td style="padding:3px 0;"><strong>Hora</strong></td>
               <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
             </tr>
-            <tr>
+            ${coachName ? `<tr>
               <td style="padding:3px 0;"><strong>Coach</strong></td>
               <td style="padding:3px 0 3px 16px;">${coachName}</td>
-            </tr>
+            </tr>` : ""}
             ${location ? `<tr>
               <td style="padding:3px 0;"><strong>Estudio</strong></td>
               <td style="padding:3px 0 3px 16px;">${location}</td>

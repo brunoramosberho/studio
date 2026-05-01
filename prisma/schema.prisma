@@ -56,6 +56,13 @@ model Tenant {
   // How many days of schedule are visible to clients on the public /schedule page
   visibleScheduleDays Int @default(7)
 
+  // When true, the assigned coach is hidden from clients on the schedule, booking
+  // flow, confirmation surfaces, /my upcoming classes, reminders and emails. The
+  // coach is only revealed once the class has ended (history + ratings). Staff
+  // surfaces (admin/coach portal) are unaffected. The /instructors directory
+  // remains visible because it isn't tied to a specific class.
+  hideCoachUntilClassEnds Boolean @default(false)
+
   notifyEmailOnRequest    Boolean @default(true)
   notifyPushOnRequest     Boolean @default(true)
   notifyGapDetected       Boolean @default(true)
