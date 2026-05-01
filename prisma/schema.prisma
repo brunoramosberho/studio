@@ -101,6 +101,7 @@ model Tenant {
   songRequests            ClassSongRequest[]
   coachPayRates           CoachPayRate[]
   coachAvailabilityBlocks CoachAvailabilityBlock[]
+  substitutionRequests    SubstitutionRequest[]
   checkIns                CheckIn[]
 
   instagramIntegration InstagramIntegration?
@@ -438,8 +439,14 @@ model CoachProfile {
   specialties String[]
   photoUrl    String?
   color       String         @default("#C9A96E")
-  classes     Class[]
+  classes     Class[]        @relation("ClassCurrentCoach")
+  classesAsOriginalCoach Class[] @relation("ClassOriginalCoach")
   payRates    CoachPayRate[]
+
+  substitutionsRequested SubstitutionRequest[] @relation("SubstitutionRequestingCoach")
+  substitutionsOriginal  SubstitutionRequest[] @relation("SubstitutionOriginalCoach")
+  substitutionsTargeted  SubstitutionRequest[] @relation("SubstitutionTargetCoach")
+  substitutionsAccepted  SubstitutionRequest[] @relation("SubstitutionAcceptedCoach")
 
   @@unique([userId, tenantId])
   @@index([tenantId])
@@ -523,7 +530,9 @@ model Class {
   classTypeId         String
   classType           ClassType               @relation(fields: [classTypeId], references: [id])
   coachId             String
-  coach               CoachProfile            @relation(fields: [coachId], references: [id])
+  coach               CoachProfile            @relation("ClassCurrentCoach", fields: [coachId], references: [id])
+  originalCoachId     String?
+  originalCoach       CoachProfile?           @relation("ClassOriginalCoach", fields: [originalCoachId], references: [id])
   roomId              String
   room                Room                    @relation(fields: [roomId], references: [id])
   tenantId            String
@@ -551,6 +560,7 @@ model Class {
   ratingEmailSent     Boolean                 @default(false)
   entitlements        Entitlement[]
   revenueEvents       RevenueEvent[]
+  substitutionRequests SubstitutionRequest[]
 
   @@index([startsAt])
   @@index([classTypeId])
@@ -2237,4 +2247,54 @@ model SparkFeatureRequest {
 
   @@index([tenantId, createdAt])
   @@index([isResolved, createdAt])
+}
+
+// ── Class Substitutions ──
+//
+// A coach who can't teach an upcoming class can open a substitution request,
+// either to all eligible coaches (OPEN) or to a specific coach (DIRECT).
+// On acceptance, the class's coachId is reassigned and the original coach is
+// snapshotted on Class.originalCoachId so the UI can flag a substitution to
+// already-booked members.
+
+enum SubstitutionMode {
+  OPEN
+  DIRECT
+}
+
+enum SubstitutionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+model SubstitutionRequest {
+  id                  String              @id @default(cuid())
+  tenantId            String
+  classId             String
+  requestingCoachId   String
+  originalCoachId     String
+  targetCoachId       String?
+  acceptedByCoachId   String?
+  mode                SubstitutionMode
+  status              SubstitutionStatus  @default(PENDING)
+  note                String?             @db.Text
+  rejectionNote       String?             @db.Text
+  notifiedCoachIds    String[]            @default([])
+  createdAt           DateTime            @default(now())
+  respondedAt         DateTime?
+
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class             Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  requestingCoach   CoachProfile @relation("SubstitutionRequestingCoach", fields: [requestingCoachId], references: [id])
+  originalCoach     CoachProfile @relation("SubstitutionOriginalCoach", fields: [originalCoachId], references: [id])
+  targetCoach       CoachProfile? @relation("SubstitutionTargetCoach", fields: [targetCoachId], references: [id])
+  acceptedByCoach   CoachProfile? @relation("SubstitutionAcceptedCoach", fields: [acceptedByCoachId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([classId])
+  @@index([requestingCoachId])
+  @@index([targetCoachId, status])
 }

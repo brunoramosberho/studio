@@ -307,6 +307,12 @@ export default function BookingsPage() {
                             </p>
                             <p className="truncate text-[13px] text-muted">
                               {t("withCoach")} {booking.class.coach.name?.split(" ")[0]}
+                              {booking.class.originalCoachId &&
+                                booking.class.originalCoachId !== booking.class.coachId && (
+                                  <span className="ml-1 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">
+                                    Instructor actualizado
+                                  </span>
+                                )}
                               {studioName && <span className="text-muted/50"> · {studioName}</span>}
                             </p>
                           </div>
@@ -543,6 +549,12 @@ function BookingCard({
               </div>
               <p className="truncate text-[13px] text-muted">
                 con {booking.class.coach.name?.split(" ")[0]}
+                {booking.class.originalCoachId &&
+                  booking.class.originalCoachId !== booking.class.coachId && (
+                    <span className="ml-1 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">
+                      Instructor actualizado
+                    </span>
+                  )}
                 {studioName && <span className="text-muted/50"> · {studioName}</span>}
               </p>
             </div>
