@@ -1008,3 +1008,203 @@ export async function sendPosReceiptEmail({
     console.error("Failed to send POS receipt email:", error);
   }
 }
+
+export async function sendSubstitutionRequest({
+  to,
+  toName,
+  fromCoachName,
+  className,
+  date,
+  startTime,
+  mode,
+  note,
+  inboxUrl,
+  branding,
+}: {
+  to: string;
+  toName: string;
+  fromCoachName: string;
+  className: string;
+  date: Date;
+  startTime: Date;
+  mode: "OPEN" | "DIRECT";
+  note?: string | null;
+  inboxUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = toName?.split(" ")[0] || "";
+    const directLine =
+      mode === "DIRECT"
+        ? `<strong>${fromCoachName}</strong> te eligió específicamente como suplente.`
+        : `<strong>${fromCoachName}</strong> está buscando un suplente y tú apareces como elegible.`;
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:${b.colorAccent}15;line-height:56px;font-size:28px;">&#128227;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          Solicitud de suplencia
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          ${firstName ? `Hola ${firstName}. ` : ""}${directLine}
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>Fecha</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Hora</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime)}</td>
+            </tr>
+          </table>
+          ${note ? `<p style="margin:12px 0 0;font-size:13px;color:${b.colorMuted};font-style:italic;">"${note}"</p>` : ""}
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${inboxUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Ver solicitud
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        ${mode === "OPEN"
+          ? "Si aceptas, la clase se reasignará a ti automáticamente. El primero en aceptar se queda con ella."
+          : "Si aceptas, la clase se reasignará a ti automáticamente."}
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Suplencia solicitada — ${className}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send substitution request email:", error);
+  }
+}
+
+export async function sendSubstitutionAccepted({
+  to,
+  toName,
+  acceptedByName,
+  className,
+  date,
+  startTime,
+  classUrl,
+  branding,
+}: {
+  to: string;
+  toName: string;
+  acceptedByName: string;
+  className: string;
+  date: Date;
+  startTime: Date;
+  classUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = toName?.split(" ")[0] || "";
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#dcfce7;line-height:56px;font-size:28px;">&#10003;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          Suplencia confirmada
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          ${firstName ? `Hola ${firstName}, ` : ""}<strong>${acceptedByName}</strong> aceptó cubrir tu clase.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>Fecha</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Hora</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime)}</td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;">
+        <a href="${classUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Ver clase
+        </a>
+      </div>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Tu suplencia fue aceptada — ${className}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send substitution accepted email:", error);
+  }
+}
+
+export async function sendSubstitutionRejected({
+  to,
+  toName,
+  rejectedByName,
+  className,
+  date,
+  rejectionNote,
+  inboxUrl,
+  branding,
+}: {
+  to: string;
+  toName: string;
+  rejectedByName: string;
+  className: string;
+  date: Date;
+  rejectionNote?: string | null;
+  inboxUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = toName?.split(" ")[0] || "";
+
+    const content = `
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${b.colorFg};">
+        Suplencia no aceptada
+      </h1>
+      <p style="margin:0 0 20px;font-size:14px;color:${b.colorMuted};line-height:1.6;">
+        ${firstName ? `Hola ${firstName}. ` : ""}<strong>${rejectedByName}</strong> no puede cubrir tu clase de <strong>${className}</strong> el ${formatDate(date)}.
+      </p>
+      ${rejectionNote ? `<p style="margin:0 0 20px;padding:12px 16px;background:${b.colorBg};border-radius:10px;font-size:13px;color:${b.colorMuted};font-style:italic;">"${rejectionNote}"</p>` : ""}
+      <div style="text-align:center;">
+        <a href="${inboxUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Buscar otro suplente
+        </a>
+      </div>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Suplencia rechazada — ${className}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send substitution rejected email:", error);
+  }
+}

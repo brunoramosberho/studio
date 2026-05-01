@@ -27,6 +27,7 @@ const navItems = [
   { href: "/coach", labelKey: "dashboard" as const, icon: LayoutDashboard },
   { href: "/coach/schedule", labelKey: "mySchedule" as const, icon: CalendarDays },
   { href: "/coach/availability", labelKey: "availability" as const, icon: CalendarOff },
+  { href: "/coach/substitutions", labelKey: "substitutions" as const, icon: ArrowRightLeft },
   { href: "/coach/fans", labelKey: "myFans" as const, icon: UserCircle },
   { href: "/coach/stats", labelKey: "myHistory" as const, icon: BarChart3 },
   { href: "/coach/profile", labelKey: "myProfile" as const, icon: User },
