@@ -43,6 +43,19 @@ export async function GET(request: NextRequest) {
             room: { include: { studio: { select: { name: true } } } },
           },
         },
+        productOrder: {
+          include: {
+            items: {
+              select: {
+                id: true,
+                productId: true,
+                nameSnapshot: true,
+                quantity: true,
+                unitPriceCents: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { class: { startsAt: isUpcoming ? "asc" : "desc" } },
       take: 50,

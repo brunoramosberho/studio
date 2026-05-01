@@ -48,9 +48,12 @@ async function main() {
   await prisma.loyaltyLevel.deleteMany();
   await prisma.tenantGamificationConfig.deleteMany();
   await prisma.waitlist.deleteMany();
+  await prisma.bookingProductOrderItem.deleteMany();
+  await prisma.bookingProductOrder.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.class.deleteMany();
   await prisma.room.deleteMany();
+  await prisma.productStudioAvailability.deleteMany();
   await prisma.studio.deleteMany();
   await prisma.city.deleteMany();
   await prisma.country.deleteMany();

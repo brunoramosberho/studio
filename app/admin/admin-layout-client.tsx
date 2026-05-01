@@ -52,6 +52,7 @@ import {
   Wallet,
   ShieldAlert,
   Code2,
+  Coffee,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -90,6 +91,7 @@ const directItems: NavItem[] = [
   { href: "/admin/feed", labelKey: "feed", icon: Megaphone, permission: "feed", badgeKey: "recentFeed" },
   { href: "/admin/gamification", labelKey: "achievements", icon: Trophy, permission: "achievements" },
   { href: "#pos", labelKey: "pos", icon: ShoppingBag, permission: "pos" },
+  { href: "/admin/orders", labelKey: "orders", icon: Coffee, permission: "orders" },
 ];
 
 const flyoutGroups: FlyoutGroup[] = [
