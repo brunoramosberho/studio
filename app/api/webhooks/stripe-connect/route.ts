@@ -108,6 +108,17 @@ export async function POST(request: NextRequest) {
             });
           }
 
+          if (p?.referenceId && p.type === "product") {
+            await tx.bookingProductOrder.updateMany({
+              where: { id: p.referenceId, status: "PENDING_PAYMENT" },
+              data: {
+                status: "PAID",
+                paidAt: new Date(),
+                stripePaymentId: p.id,
+              },
+            });
+          }
+
           return p;
         });
 

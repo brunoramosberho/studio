@@ -96,6 +96,8 @@ model Tenant {
   pushSubscriptions       PushSubscription[]
   productCategories       ProductCategory[]
   products                Product[]
+  productStudioAvailability ProductStudioAvailability[]
+  bookingProductOrders    BookingProductOrder[]
   songRequests            ClassSongRequest[]
   coachPayRates           CoachPayRate[]
   coachAvailabilityBlocks CoachAvailabilityBlock[]
@@ -394,6 +396,7 @@ model User {
   classRatings             ClassRating[]            @relation("UserClassRatings")
   entitlements             Entitlement[]
   pendingPenalties         PendingPenalty[]         @relation("UserPendingPenalties")
+  bookingProductOrders     BookingProductOrder[]    @relation("UserBookingProductOrders")
   debts                    Debt[]                   @relation("UserDebts")
   debtsResolved            Debt[]                   @relation("DebtResolver")
 
@@ -633,6 +636,7 @@ model Booking {
   revenueEvents       RevenueEvent[]
 
   pendingPenalty PendingPenalty?
+  productOrder   BookingProductOrder?
 
   @@unique([classId, spotNumber])
   @@index([classId])
@@ -898,16 +902,20 @@ model City {
 }
 
 model Studio {
-  id        String  @id @default(cuid())
-  name      String
-  address   String?
-  latitude  Float?
-  longitude Float?
-  cityId    String
-  city      City    @relation(fields: [cityId], references: [id])
-  tenantId  String
-  tenant    Tenant  @relation(fields: [tenantId], references: [id])
-  rooms     Room[]
+  id              String  @id @default(cuid())
+  name            String
+  address         String?
+  latitude        Float?
+  longitude       Float?
+  cityId          String
+  city            City    @relation(fields: [cityId], references: [id])
+  tenantId        String
+  tenant          Tenant  @relation(fields: [tenantId], references: [id])
+  rooms           Room[]
+  productsEnabled Boolean @default(false)
+
+  productAvailability  ProductStudioAvailability[]
+  bookingProductOrders BookingProductOrder[]
 
   @@index([cityId])
   @@index([tenantId])
@@ -1275,25 +1283,108 @@ model ProductCategory {
 }
 
 model Product {
-  id          String          @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  currency    String          @default("MXN")
-  imageUrl    String?
-  isVisible   Boolean         @default(true)
-  isActive    Boolean         @default(true)
-  externalUrl String?
-  position    Int             @default(0)
-  categoryId  String
-  category    ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  tenantId    String
-  tenant      Tenant          @relation(fields: [tenantId], references: [id])
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id                   String          @id @default(cuid())
+  name                 String
+  description          String?
+  price                Float
+  currency             String          @default("MXN")
+  imageUrl             String?
+  isVisible            Boolean         @default(true)
+  isActive             Boolean         @default(true)
+  externalUrl          String?
+  position             Int             @default(0)
+  categoryId           String
+  category             ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tenantId             String
+  tenant               Tenant          @relation(fields: [tenantId], references: [id])
+  // Whether this product appears in the post-booking pre-order flow.
+  // Independent of `isVisible` (which controls the public shop).
+  availableForPreOrder Boolean         @default(false)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  studioAvailability ProductStudioAvailability[]
+  orderItems         BookingProductOrderItem[]
 
   @@index([tenantId])
   @@index([categoryId])
+}
+
+// Per-studio availability for a Product. If a Product has zero rows here, it
+// is available at every studio of the tenant; otherwise only at the listed
+// studios. Lets a smoothie be sold at one location but not another.
+model ProductStudioAvailability {
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  studioId  String
+  studio    Studio  @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+
+  @@id([productId, studioId])
+  @@index([studioId])
+  @@index([tenantId])
+}
+
+enum BookingProductOrderStatus {
+  PENDING_PAYMENT
+  PAID
+  READY
+  PICKED_UP
+  CANCELLED
+}
+
+// Pre-order placed alongside a class booking — the smoothie / snack the
+// member will pick up at the studio bar after class. Paid online up-front
+// via Stripe Connect; staff marks it as ready / picked up from /admin/orders.
+model BookingProductOrder {
+  id            String                    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant                    @relation(fields: [tenantId], references: [id])
+  bookingId     String                    @unique
+  booking       Booking                   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User                      @relation("UserBookingProductOrders", fields: [userId], references: [id])
+  studioId      String
+  studio        Studio                    @relation(fields: [studioId], references: [id])
+  status        BookingProductOrderStatus @default(PENDING_PAYMENT)
+  // Snapshot of the class end time so the bar view can sort by pickup window
+  // without joining back to Class.
+  pickupAt      DateTime
+  notes         String?
+  subtotalCents Int
+  currency      String
+  // Link to the StripePayment row (which itself references the Stripe
+  // PaymentIntent). Nullable while the intent is being created.
+  stripePaymentId String?
+  stripePayment   StripePayment? @relation("StripePaymentForProductOrder", fields: [stripePaymentId], references: [id])
+  paidAt          DateTime?
+  readyAt         DateTime?
+  pickedUpAt      DateTime?
+  cancelledAt     DateTime?
+
+  items     BookingProductOrderItem[]
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+
+  @@index([tenantId, status])
+  @@index([studioId, pickupAt])
+  @@index([userId])
+}
+
+model BookingProductOrderItem {
+  id            String              @id @default(cuid())
+  orderId       String
+  order         BookingProductOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product             @relation(fields: [productId], references: [id])
+  // Snapshot fields so historical orders survive product edits/deletes.
+  nameSnapshot  String
+  unitPriceCents Int
+  quantity      Int                 @default(1)
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 // ── Wearable Integrations ──
@@ -1779,6 +1870,8 @@ model StripePayment {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   member User?  @relation("UserStripePayments", fields: [memberId], references: [id])
+
+  bookingProductOrders BookingProductOrder[] @relation("StripePaymentForProductOrder")
 
   @@index([tenantId])
   @@index([memberId])

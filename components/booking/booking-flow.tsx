@@ -17,6 +17,7 @@ import { usePackages } from "@/hooks/usePackages";
 import { PackageSelector } from "./package-selector";
 import { ConfirmationScreen } from "./confirmation-screen";
 import { GuestListInput } from "./guest-list-input";
+import { ProductPickStep } from "./product-pick-step";
 import type { ClassWithDetails } from "@/types";
 
 interface BookingFlowProps {
@@ -38,6 +39,8 @@ export function BookingFlow({ classId }: BookingFlowProps) {
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
   const [notifyMeActive, setNotifyMeActive] = useState(false);
   const [togglingNotifyMe, setTogglingNotifyMe] = useState(false);
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
+  const [productStepDone, setProductStepDone] = useState(false);
 
   const { data: classData, isLoading: classLoading } = useQuery<ClassWithDetails>({
     queryKey: ["classes", classId],
@@ -121,11 +124,12 @@ export function BookingFlow({ classId }: BookingFlowProps) {
     store.setBookingSuccess(true);
 
     try {
-      await bookAsync({
+      const result = await bookAsync({
         classId,
         packageId: store.selectedPackageId ?? firstPackageId,
         ...(store.guests.length > 0 && { guests: store.guests }),
       });
+      if (result?.id) setCreatedBookingId(result.id);
     } catch (err: any) {
       store.setBookingSuccess(false);
       if (err.full) setIsClassFull(true);
@@ -143,11 +147,12 @@ export function BookingFlow({ classId }: BookingFlowProps) {
     store.setBookingSuccess(true);
 
     try {
-      await bookAsync({
+      const result = await bookAsync({
         classId,
         guestName: store.guestName,
         guestEmail: store.guestEmail,
       });
+      if (result?.id) setCreatedBookingId(result.id);
     } catch (err: any) {
       store.setBookingSuccess(false);
       if (err.full) setIsClassFull(true);
@@ -270,6 +275,15 @@ export function BookingFlow({ classId }: BookingFlowProps) {
 
   // --- Booking success (optimistic) ---
   if (store.bookingSuccess) {
+    if (createdBookingId && !productStepDone) {
+      return (
+        <ProductPickStep
+          bookingId={createdBookingId}
+          onComplete={() => setProductStepDone(true)}
+          onSkip={() => setProductStepDone(true)}
+        />
+      );
+    }
     return (
       <ConfirmationScreen
         classTitle={classData.classType.name}

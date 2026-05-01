@@ -16,6 +16,7 @@ export type AdminPermission =
   | "achievements"
   | "pos"
   | "waitlist"
+  | "orders"
   // Team management
   | "coaches"
   | "availability"
@@ -46,7 +47,7 @@ export type AdminPermission =
 
 const ALL_PERMISSIONS: AdminPermission[] = [
   "dashboard", "schedule", "classes", "checkIn", "noShowReview", "clients",
-  "feed", "achievements", "pos", "waitlist",
+  "feed", "achievements", "pos", "waitlist", "orders",
   "coaches", "availability", "disciplines",
   "finance", "packages", "subscriptions", "shop", "platforms",
   "reports", "analytics", "conversion",
@@ -65,6 +66,7 @@ const FRONT_DESK_PERMISSIONS: Set<AdminPermission> = new Set([
   "achievements",
   "pos",
   "waitlist",
+  "orders",
 ]);
 
 /**
