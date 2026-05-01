@@ -28,6 +28,7 @@ interface SavedCard {
   id: string;
   brand: string;
   last4: string;
+  isDefault?: boolean;
 }
 
 interface ProductPickStepProps {
@@ -295,6 +296,11 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
                       {brandLabels[c.brand] ?? c.brand}
                     </span>
                     <span className="text-muted">•••• {c.last4}</span>
+                    {c.isDefault && (
+                      <span className="ml-auto rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+                        Última usada
+                      </span>
+                    )}
                   </label>
                 ))}
               </div>

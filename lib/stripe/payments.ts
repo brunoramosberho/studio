@@ -117,6 +117,19 @@ export async function createMemberPayment({
     },
   });
 
+  // Remember the last-used method so the next checkout auto-selects it.
+  // Best-effort: never block the payment on this DB write.
+  if (paymentMethodId && paymentIntent.status === "succeeded") {
+    prisma.stripeCustomer
+      .update({
+        where: { tenantId_memberId: { tenantId, memberId } },
+        data: { defaultPaymentMethodId: paymentMethodId },
+      })
+      .catch((err) => {
+        console.error("Failed to persist defaultPaymentMethodId:", err);
+      });
+  }
+
   return paymentIntent;
 }
 
@@ -140,12 +153,24 @@ export async function listSavedPaymentMethods(
     { stripeAccount: tenant.stripeAccountId },
   );
 
-  return methods.data.map((pm) => ({
+  // Surface the last-used card first so checkouts auto-select it. If the
+  // stored default was detached we silently fall back to Stripe's order.
+  const defaultId = stripeCustomer.defaultPaymentMethodId;
+  const ordered = defaultId
+    ? [...methods.data].sort((a, b) => {
+        if (a.id === defaultId) return -1;
+        if (b.id === defaultId) return 1;
+        return 0;
+      })
+    : methods.data;
+
+  return ordered.map((pm) => ({
     id: pm.id,
     brand: pm.card?.brand ?? "unknown",
     last4: pm.card?.last4 ?? "****",
     expMonth: pm.card?.exp_month ?? 0,
     expYear: pm.card?.exp_year ?? 0,
+    isDefault: pm.id === defaultId,
   }));
 }
 
