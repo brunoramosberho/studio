@@ -14,14 +14,30 @@ export async function GET(request: NextRequest) {
     const studioId = url.searchParams.get("studioId");
     const status = url.searchParams.get("status");
 
+    // Cap completed/cancelled orders to today's (local) bucket so the kitchen
+    // view doesn't bloat with historical data while still letting bar staff
+    // see what they've handed off so far this shift.
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const where = {
+      tenantId: ctx.tenant.id,
+      ...(studioId ? { studioId } : {}),
+      ...(status
+        ? { status: status as never }
+        : {
+            OR: [
+              { status: { in: ["PAID", "READY"] as const } },
+              {
+                status: { in: ["PICKED_UP", "CANCELLED"] as const },
+                updatedAt: { gte: startOfToday },
+              },
+            ],
+          }),
+    };
+
     const orders = await prisma.bookingProductOrder.findMany({
-      where: {
-        tenantId: ctx.tenant.id,
-        ...(studioId ? { studioId } : {}),
-        ...(status
-          ? { status: status as never }
-          : { status: { in: ["PAID", "READY"] } }),
-      },
+      where,
       orderBy: { pickupAt: "asc" },
       include: {
         items: { select: { id: true, nameSnapshot: true, quantity: true } },
