@@ -338,9 +338,10 @@ export async function POST(request: NextRequest) {
         const amountPaid = typeof inv.amount_paid === "number" ? inv.amount_paid / 100 : memberSub.package.price;
 
         const hasAllocations = memberSub.package.creditAllocations.length > 0;
+        const isOnDemand = memberSub.package.type === "ON_DEMAND_SUBSCRIPTION";
 
         let userPackageId: string | undefined;
-        if (periodEnd) {
+        if (periodEnd && !isOnDemand) {
           const userPackage = await prisma.userPackage.create({
             data: {
               tenantId: memberSub.tenantId,
@@ -357,6 +358,35 @@ export async function POST(request: NextRequest) {
           if (hasAllocations) {
             await createCreditUsagesForPackage(userPackage.id, memberSub.packageId);
           }
+        }
+
+        // On-demand subscriptions: skip UserPackage (no credits, no class
+        // consumption) and create an Entitlement of type=on_demand for the
+        // billing period so revenue accrual can recognize MRR.
+        if (periodEnd && isOnDemand && periodStart) {
+          const totalAmountCents = Math.round(amountPaid * 100);
+          await prisma.entitlement.upsert({
+            where: { userPackageId: `__od_${memberSub.id}_${periodEnd}` },
+            create: {
+              tenantId: memberSub.tenantId,
+              userId: memberSub.userId,
+              packageId: memberSub.packageId,
+              memberSubscriptionId: memberSub.id,
+              userPackageId: `__od_${memberSub.id}_${periodEnd}`,
+              type: "on_demand",
+              status: "active",
+              totalAmountCents,
+              currency: memberSub.package.currency?.toLowerCase() ?? "eur",
+              creditsTotal: null,
+              periodStart: new Date(periodStart * 1000),
+              periodEnd: new Date(periodEnd * 1000),
+            },
+            update: {
+              status: "active",
+              totalAmountCents,
+              periodEnd: new Date(periodEnd * 1000),
+            },
+          });
         }
 
         if (piId) {
@@ -461,10 +491,23 @@ export async function POST(request: NextRequest) {
 
       case "customer.subscription.deleted": {
         const sub = event.data.object;
+        const memberSub = await prisma.memberSubscription.findUnique({
+          where: { stripeSubscriptionId: sub.id },
+        });
         await prisma.memberSubscription.updateMany({
           where: { stripeSubscriptionId: sub.id },
           data: { status: "canceled", canceledAt: new Date() },
         });
+        if (memberSub) {
+          await prisma.entitlement.updateMany({
+            where: {
+              memberSubscriptionId: memberSub.id,
+              type: "on_demand",
+              status: "active",
+            },
+            data: { status: "cancelled" },
+          });
+        }
         break;
       }
 

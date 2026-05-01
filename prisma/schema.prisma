@@ -170,6 +170,10 @@ model Tenant {
 
   pendingPenalties PendingPenalty[]
   debts            Debt[]
+
+  onDemandVideos         OnDemandVideo[]
+  onDemandConfig         OnDemandConfig?
+  onDemandStreamSessions OnDemandStreamSession[]
 }
 
 model InstagramIntegration {
@@ -396,6 +400,7 @@ model User {
   pendingPenalties         PendingPenalty[]         @relation("UserPendingPenalties")
   debts                    Debt[]                   @relation("UserDebts")
   debtsResolved            Debt[]                   @relation("DebtResolver")
+  onDemandStreamSessions   OnDemandStreamSession[]
 
   @@index([countryId])
   @@index([cityId])
@@ -437,6 +442,8 @@ model CoachProfile {
   color       String         @default("#C9A96E")
   classes     Class[]
   payRates    CoachPayRate[]
+
+  onDemandVideos OnDemandVideo[]
 
   @@unique([userId, tenantId])
   @@index([tenantId])
@@ -504,6 +511,7 @@ model ClassType {
   ratingReasons            RatingReason[]
   packageCreditAllocations PackageCreditAllocation[]
   userPackageCreditUsages  UserPackageCreditUsage[]
+  onDemandVideos           OnDemandVideo[]
 
   @@index([tenantId])
 }
@@ -748,6 +756,7 @@ enum PackageType {
   OFFER
   PACK
   SUBSCRIPTION
+  ON_DEMAND_SUBSCRIPTION
 }
 
 model Package {
@@ -774,9 +783,16 @@ model Package {
   maxGuestsPerBooking Int?
   monthlyGuestPasses  Int?
 
+  // When true, members holding this package (or subscription) also get access
+  // to the studio's on-demand video catalogue without needing a separate
+  // ON_DEMAND_SUBSCRIPTION. Used to bundle on-demand into existing unlimited
+  // tiers without adding a second Stripe charge.
+  includesOnDemand Boolean @default(false)
+
   userPackages        UserPackage[]
   memberSubscriptions MemberSubscription[]
   creditAllocations   PackageCreditAllocation[]
+  onDemandConfigs     OnDemandConfig[]
 
   @@index([countryId])
   @@index([tenantId])
@@ -2037,6 +2053,7 @@ enum EntitlementType {
   unlimited
   dropin
   penalty
+  on_demand
 }
 
 enum EntitlementStatus {
@@ -2123,6 +2140,114 @@ model RevenueEvent {
   @@index([entitlementId])
   @@index([bookingId])
   @@index([classId])
+}
+
+// ── On-Demand Videos (tenant-scoped) ──
+//
+// Library of pre-recorded classes streamed via Cloudflare Stream. Members with
+// an active ON_DEMAND_SUBSCRIPTION (or any package with includesOnDemand=true)
+// get gated access. Playback uses signed URLs minted on demand by the backend.
+//
+// Anti-piracy enforcement (V1): signed URL with 1h TTL, IP binding via JWT
+// accessRules, and a 1-stream-per-user cap enforced via OnDemandStreamSession.
+
+enum OnDemandVideoStatus {
+  processing
+  ready
+  errored
+}
+
+model OnDemandVideo {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  cloudflareStreamUid String              @unique
+  status              OnDemandVideoStatus @default(processing)
+  published           Boolean             @default(false)
+
+  title       String
+  description String?
+
+  coachProfileId String?
+  coachProfile   CoachProfile? @relation(fields: [coachProfileId], references: [id], onDelete: SetNull)
+
+  classTypeId String?
+  classType   ClassType? @relation(fields: [classTypeId], references: [id], onDelete: SetNull)
+
+  level Level @default(ALL)
+
+  durationSeconds Int?
+  widthPx         Int?
+  heightPx        Int?
+
+  thumbnailUrl           String?
+  cloudflareThumbnailUrl String?
+
+  viewCount Int @default(0)
+
+  errorMessage String?
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  streamSessions OnDemandStreamSession[]
+
+  @@index([tenantId, published])
+  @@index([tenantId, status])
+  @@index([coachProfileId])
+  @@index([classTypeId])
+}
+
+// Singleton-per-tenant config for the on-demand product (price, copy, link to
+// the Stripe Package SKU). Use `upsert` with the unique tenantId.
+model OnDemandConfig {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  enabled     Boolean @default(false)
+  description String?
+
+  packageId String?
+  package   Package? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum OnDemandSessionEndReason {
+  user_ended
+  heartbeat_timeout
+  superseded
+}
+
+// One row per active playback session. The player heartbeats every 30s. A new
+// playback supersedes any previous active session for the same (user, tenant)
+// pair — the displaced session is marked endedReason=superseded so the old
+// client can detect it and surface a "viewing stopped" message. Stale sessions
+// (no heartbeat for >90s) are cleaned up by the cron job.
+model OnDemandStreamSession {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId  String
+  video    OnDemandVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  startedAt        DateTime  @default(now())
+  lastHeartbeatAt  DateTime  @default(now())
+  endedAt          DateTime?
+  endedReason      OnDemandSessionEndReason?
+
+  clientIp  String?
+  userAgent String? @db.Text
+
+  @@index([tenantId, userId, endedAt])
+  @@index([videoId])
+  @@index([lastHeartbeatAt])
 }
 
 // ── Spark AI Feature Requests ──

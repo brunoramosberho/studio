@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireTenant, getAuthContext, requireRole, getTenantCurrency } from "@/lib/tenant";
 import { ensureStripePrice } from "@/lib/stripe/subscriptions";
 
-const PACKAGE_TYPES = ["OFFER", "PACK", "SUBSCRIPTION"] as const;
+const PACKAGE_TYPES = ["OFFER", "PACK", "SUBSCRIPTION", "ON_DEMAND_SUBSCRIPTION"] as const;
 
 export async function GET(request: NextRequest) {
   try {

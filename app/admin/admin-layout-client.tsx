@@ -52,6 +52,7 @@ import {
   Wallet,
   ShieldAlert,
   Code2,
+  Video,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -114,6 +115,7 @@ const flyoutGroups: FlyoutGroup[] = [
       { href: "/admin/discounts", labelKey: "discounts", icon: Ticket, permission: "packages" },
       { href: "/admin/gift-packages", labelKey: "giftPackages", icon: Gift, permission: "packages" },
       { href: "/admin/subscriptions", labelKey: "subscriptions", icon: CalendarSync, permission: "subscriptions" },
+      { href: "/admin/on-demand", labelKey: "onDemand", icon: Video, permission: "onDemand" },
       { href: "/admin/shop", labelKey: "store", icon: ShoppingBag, permission: "shop" },
       { href: "/admin/platforms", labelKey: "platforms", icon: Globe2, permission: "platforms" },
     ],
