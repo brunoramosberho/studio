@@ -50,6 +50,7 @@ export async function getEligibleCoaches(
       userId: { not: null },
     },
     include: { user: { select: { id: true, image: true, email: true } } },
+    // photoUrl is on CoachProfile itself (not in user) — surfaced via mapping below.
   });
 
   const userIds = profiles
@@ -110,7 +111,10 @@ export async function getEligibleCoaches(
       userId: p.userId!,
       name: p.name,
       email: p.user?.email ?? null,
-      image: p.user?.image ?? null,
+      // Prefer the studio-curated coach photo (CoachProfile.photoUrl) over
+      // the user's personal/Google avatar so the inbox/modal shows the
+      // public-facing instructor identity.
+      image: p.photoUrl ?? p.user?.image ?? null,
       hasDiscipline,
       available,
       hasConflict,

@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 
 type Mode = "OPEN" | "DIRECT";
@@ -336,12 +337,24 @@ function IncomingCard({
                 </>
               )}
             </div>
-            <p className="mt-2 text-xs text-muted">
-              Solicitado por{" "}
-              <strong className="text-foreground">
-                {req.requestingCoach.name}
-              </strong>
-            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <UserAvatar
+                user={
+                  {
+                    name: req.requestingCoach.name,
+                    image: req.requestingCoach.photoUrl,
+                  } as UserAvatarUser
+                }
+                size={28}
+                showBadge={false}
+              />
+              <p className="text-xs text-muted">
+                Solicitado por{" "}
+                <strong className="text-foreground">
+                  {req.requestingCoach.name}
+                </strong>
+              </p>
+            </div>
             {req.note && (
               <p className="mt-2 rounded-lg bg-surface px-3 py-2 text-xs italic text-muted">
                 &ldquo;{req.note}&rdquo;
@@ -419,17 +432,41 @@ function OutgoingCard({
               </span>
             </div>
             {req.targetCoach && (
-              <p className="mt-2 text-xs text-muted">
-                Enviada a{" "}
-                <strong className="text-foreground">
-                  {req.targetCoach.name}
-                </strong>
-              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <UserAvatar
+                  user={
+                    {
+                      name: req.targetCoach.name,
+                      image: req.targetCoach.photoUrl,
+                    } as UserAvatarUser
+                  }
+                  size={28}
+                  showBadge={false}
+                />
+                <p className="text-xs text-muted">
+                  Enviada a{" "}
+                  <strong className="text-foreground">
+                    {req.targetCoach.name}
+                  </strong>
+                </p>
+              </div>
             )}
             {req.acceptedByCoach && (
-              <p className="mt-2 text-xs text-green-600">
-                <strong>{req.acceptedByCoach.name}</strong> cubrirá tu clase
-              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <UserAvatar
+                  user={
+                    {
+                      name: req.acceptedByCoach.name,
+                      image: req.acceptedByCoach.photoUrl,
+                    } as UserAvatarUser
+                  }
+                  size={28}
+                  showBadge={false}
+                />
+                <p className="text-xs text-green-600">
+                  <strong>{req.acceptedByCoach.name}</strong> cubrirá tu clase
+                </p>
+              </div>
             )}
             {req.status === "REJECTED" && req.rejectionNote && (
               <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs italic text-red-600">

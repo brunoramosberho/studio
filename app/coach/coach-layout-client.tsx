@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -33,6 +34,12 @@ const navItems = [
   { href: "/coach/profile", labelKey: "myProfile" as const, icon: User },
 ];
 
+interface CoachMe {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+}
+
 function CoachLayoutInner({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
@@ -41,7 +48,23 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
   const t = useTranslations("coach");
   const tc = useTranslations("common");
 
-  const userName = session?.user?.name ?? "Coach";
+  // Prefer the studio-curated CoachProfile (name + photoUrl) over the
+  // session's user.image so the header reflects the public coach identity.
+  const { data: meData } = useQuery<{ coach: CoachMe }>({
+    queryKey: ["coach-me"],
+    queryFn: async () => {
+      const res = await fetch("/api/coach/me");
+      if (!res.ok) throw new Error("Failed to load coach");
+      return res.json();
+    },
+    enabled: !!session?.user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const userName =
+    meData?.coach.name ?? session?.user?.name ?? "Coach";
+  const avatarSrc =
+    meData?.coach.photoUrl ?? session?.user?.image ?? undefined;
   const initials = userName
     .split(" ")
     .map((n) => n[0])
@@ -78,7 +101,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
               {t("clientView")}
             </Link>
             <Avatar className="h-8 w-8 ring-2 ring-coach/20">
-              <AvatarImage src={session?.user?.image || undefined} />
+              <AvatarImage src={avatarSrc} alt={userName} />
               <AvatarFallback className="bg-coach/10 text-xs text-coach">
                 {initials}
               </AvatarFallback>
