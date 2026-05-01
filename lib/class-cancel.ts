@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { restoreCredit } from "@/lib/credits";
 import { refundAndClearWaitlist } from "@/lib/waitlist";
 import { sendClassCancelled } from "@/lib/email";
+import { shouldHideCoach } from "@/lib/coach";
 
 /**
  * Cancel a class and handle all side effects:
@@ -38,8 +39,9 @@ export async function cancelClassWithRefunds(classId: string, tenantId: string):
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
-    select: { locale: true },
+    select: { locale: true, hideCoachUntilClassEnds: true },
   });
+  const hideCoach = shouldHideCoach(tenant, { endsAt: cls.endsAt });
 
   // 1. Cancel the class
   await prisma.class.update({
@@ -68,7 +70,7 @@ export async function cancelClassWithRefunds(classId: string, tenantId: string):
         to: booking.user.email,
         name: booking.user.name ?? "Cliente",
         className: cls.classType.name,
-        coachName: cls.coach.name,
+        coachName: hideCoach ? null : cls.coach.name,
         date: cls.startsAt,
         startTime: cls.startsAt,
         location: cls.room?.studio?.name,

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { sendPushToUser, sendPushToMany } from "@/lib/push";
 import { sendWaitlistPromotion, sendSpotAvailable, getTenantBaseUrl } from "@/lib/email";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
+import { shouldHideCoach } from "@/lib/coach";
 
 /**
  * Refund the credit held by a waitlist entry back to the user's package.
@@ -81,6 +82,11 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
     },
   });
 
+  const tenantHide = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { hideCoachUntilClassEnds: true },
+  });
+
   if (!first) return null;
 
   const booking = await prisma.booking.create({
@@ -117,11 +123,12 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
   }, tenantId).catch(() => {});
 
   if (first.user.email) {
+    const hideCoach = shouldHideCoach(tenantHide, { endsAt: cls.endsAt });
     sendWaitlistPromotion({
       to: first.user.email,
       name: userName,
       className: cls.classType.name,
-      coachName: cls.coach.name,
+      coachName: hideCoach ? null : cls.coach.name,
       date: cls.startsAt,
       startTime: cls.startsAt,
       location: cls.room?.studio?.name ?? undefined,
@@ -214,10 +221,11 @@ export async function notifySpotWatchers(classId: string, tenantId: string) {
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
-    select: { slug: true },
+    select: { slug: true, hideCoachUntilClassEnds: true },
   });
 
   const baseUrl = tenant ? getTenantBaseUrl(tenant.slug) : "";
+  const hideCoach = shouldHideCoach(tenant, { endsAt: classData.endsAt });
   const classUrl = `${baseUrl}/class/${classId}`;
   const timezone = classData.room.studio?.city?.timezone;
   const location = classData.room.studio?.name ?? undefined;
@@ -239,7 +247,7 @@ export async function notifySpotWatchers(classId: string, tenantId: string) {
         to: watcher.user.email,
         name: watcher.user.name ?? "Hola",
         className: classData.classType.name,
-        coachName: classData.coach.name,
+        coachName: hideCoach ? null : classData.coach.name,
         date: classData.startsAt,
         startTime: classData.startsAt,
         location,

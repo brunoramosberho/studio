@@ -80,7 +80,9 @@ export function UpcomingClasses() {
     const date = new Date(b.class.startsAt);
     const dayStr = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
     const timeStr = formatTimeRange(b.class.startsAt, b.class.endsAt);
-    const text = `${b.class.classType.name} con ${b.class.coach.name}\n${dayStr}, ${timeStr}\n¡Reserva tu lugar!`;
+    const text = b.class.coach.name
+      ? `${b.class.classType.name} con ${b.class.coach.name}\n${dayStr}, ${timeStr}\n¡Reserva tu lugar!`
+      : `${b.class.classType.name}\n${dayStr}, ${timeStr}\n¡Reserva tu lugar!`;
 
     if (navigator.share) {
       try {
@@ -124,7 +126,15 @@ export function UpcomingClasses() {
               <Link href={`/class/${b.classId}`} className="block">
                 <div className="rounded-2xl border border-border/40 bg-card px-4 py-3.5 shadow-sm transition-shadow active:shadow-md">
                   <div className="flex items-center gap-3">
-                    {(b.class.coach.photoUrl || b.class.coach.user?.image) ? (
+                    {!b.class.coach.name ? (
+                      <div
+                        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-white"
+                        style={{ backgroundColor: (b.class.classType as { color?: string }).color || "#475569" }}
+                        aria-hidden
+                      >
+                        {b.class.classType.name.charAt(0)}
+                      </div>
+                    ) : (b.class.coach.photoUrl || b.class.coach.user?.image) ? (
                       <img
                         src={(b.class.coach.photoUrl || b.class.coach.user?.image)!}
                         alt={b.class.coach.name || "Coach"}
@@ -147,8 +157,14 @@ export function UpcomingClasses() {
                         )}
                       </div>
                       <p className="truncate text-[13px] text-muted">
-                        con {b.class.coach.name?.split(" ")[0]}
-                        {studioName && <span className="text-muted/50"> · {studioName}</span>}
+                        {b.class.coach.name ? (
+                          <>
+                            con {b.class.coach.name?.split(" ")[0]}
+                            {studioName && <span className="text-muted/50"> · {studioName}</span>}
+                          </>
+                        ) : (
+                          studioName
+                        )}
                       </p>
                     </div>
                     <button

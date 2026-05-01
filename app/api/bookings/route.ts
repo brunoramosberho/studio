@@ -8,6 +8,7 @@ import { removeSpotNotifyMe } from "@/lib/waitlist";
 import { findPackageForClass, deductCredit, userPackageIncludeForBooking } from "@/lib/credits";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
+import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 
 export async function GET(request: NextRequest) {
   try {
@@ -61,6 +62,13 @@ export async function GET(request: NextRequest) {
       take: 50,
     });
 
+    // Redact coach data on upcoming/in-progress classes when the tenant has
+    // `hideCoachUntilClassEnds`. Past classes always show the coach.
+    const redactCoachInBooking = <B extends { class: { endsAt: Date; coach: any } }>(b: B): B => {
+      if (!shouldHideCoach(tenant, { endsAt: b.class.endsAt })) return b;
+      return { ...b, class: { ...b.class, coach: redactedCoach(b.class.coach) } };
+    };
+
     // Attach friends going to the same classes (only for upcoming)
     if (isUpcoming && bookings.length > 0) {
       const friendships = await prisma.friendship.findMany({
@@ -98,14 +106,16 @@ export async function GET(request: NextRequest) {
         }
 
         const enriched = bookings.map((b) => ({
-          ...b,
+          ...redactCoachInBooking(b),
           friendsGoing: friendsByClass.get(b.classId) ?? [],
         }));
         return NextResponse.json(enriched);
       }
     }
 
-    return NextResponse.json(bookings.map((b) => ({ ...b, friendsGoing: [] })));
+    return NextResponse.json(
+      bookings.map((b) => ({ ...redactCoachInBooking(b), friendsGoing: [] })),
+    );
   } catch (error) {
     console.error("GET /api/bookings error:", error);
     return NextResponse.json(
@@ -432,6 +442,8 @@ export async function POST(request: NextRequest) {
     }
 
     const baseUrl = getTenantBaseUrl(tenant.slug);
+    const hideCoach = shouldHideCoach(tenant, classData);
+    const emailCoachName = hideCoach ? null : (classData.coach.name ?? "Coach");
 
     // Send confirmation to the main booker
     const recipientEmail = session?.user?.email ?? guestEmail;
@@ -441,7 +453,7 @@ export async function POST(request: NextRequest) {
         to: recipientEmail,
         name: recipientName,
         className: classData.classType.name,
-        coachName: classData.coach.name ?? "Coach",
+        coachName: emailCoachName,
         date: classData.startsAt,
         startTime: classData.startsAt,
         location: classData.room.studio.name ?? undefined,
@@ -456,7 +468,7 @@ export async function POST(request: NextRequest) {
         to: g.email.trim().toLowerCase(),
         name: g.name.trim(),
         className: classData.classType.name,
-        coachName: classData.coach.name ?? "Coach",
+        coachName: emailCoachName,
         date: classData.startsAt,
         startTime: classData.startsAt,
         location: classData.room.studio.name ?? undefined,
@@ -495,9 +507,11 @@ export async function POST(request: NextRequest) {
                 className: classData.classType.name,
                 classTypeColor: classData.classType.color,
                 classTypeIcon: classData.classType.icon,
-                coachName: classData.coach.name,
-                coachImage: classData.coach.photoUrl || classData.coach.user?.image,
-                coachUserId: classData.coach.userId,
+                coachName: hideCoach ? null : classData.coach.name,
+                coachImage: hideCoach
+                  ? null
+                  : (classData.coach.photoUrl || classData.coach.user?.image),
+                coachUserId: hideCoach ? null : classData.coach.userId,
                 date: classData.startsAt.toISOString(),
                 duration: classData.classType.duration,
               },

@@ -6,6 +6,7 @@ import { sendBookingConfirmation, sendWelcomeEmail, getTenantBaseUrl } from "@/l
 import { createMemberPayment } from "@/lib/stripe/payments";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
+import { shouldHideCoach } from "@/lib/coach";
 
 export async function POST(request: NextRequest) {
   try {
@@ -251,11 +252,12 @@ export async function POST(request: NextRequest) {
     const baseUrl = getTenantBaseUrl(tenant.slug);
 
     if (finalEmail && finalName) {
+      const hideCoach = shouldHideCoach(tenant, classData);
       sendBookingConfirmation({
         to: finalEmail,
         name: finalName,
         className: classData.classType.name,
-        coachName: classData.coach.name ?? "Coach",
+        coachName: hideCoach ? null : (classData.coach.name ?? "Coach"),
         date: classData.startsAt,
         startTime: classData.startsAt,
         location: classData.room.studio.name ?? undefined,

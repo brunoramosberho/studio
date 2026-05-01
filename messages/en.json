@@ -293,6 +293,10 @@
       "graceImmediate": "Immediate",
       "graceExplainImmediate": "Penalties auto-confirm as soon as the cron processes them.",
       "graceExplain": "Penalties auto-confirm {hours}h after creation unless an admin resolves them first.",
+      "hideCoachTitle": "Hide coach until class ends",
+      "hideCoachDesc": "Hides the coach's name and photo from the schedule, booking flow, reminders and emails. The coach is revealed in history once the class has ended.",
+      "hideCoachToggle": "Hide coach from clients until the class ends",
+      "hideCoachToggleDesc": "Useful to remove bias from booking decisions. The /instructors directory stays public.",
       "save": "Save policies",
       "saved": "Policies updated",
       "saveError": "Failed to save"

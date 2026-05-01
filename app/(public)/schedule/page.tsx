@@ -1,14 +1,17 @@
 import { Suspense } from "react";
 import { ScheduleClient } from "./schedule-client";
+import { getTenant } from "@/lib/tenant";
 
 export const metadata = {
   title: "Horarios",
 };
 
-export default function SchedulePage() {
+export default async function SchedulePage() {
+  const tenant = await getTenant();
+  const hideCoachAttribution = !!tenant?.hideCoachUntilClassEnds;
   return (
     <Suspense>
-      <ScheduleClient />
+      <ScheduleClient hideCoachAttribution={hideCoachAttribution} />
     </Suspense>
   );
 }
