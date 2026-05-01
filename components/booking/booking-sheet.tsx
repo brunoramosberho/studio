@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
 import { cn, formatTime } from "@/lib/utils";
 import type { Package } from "@prisma/client";
+import { ProductPickStep } from "./product-pick-step";
 
 function GuestLoginPrompt({ email, classId }: { email: string; classId: string }) {
   const t = useTranslations("bookingSheet");
@@ -80,9 +81,9 @@ function GuestLoginPrompt({ email, classId }: { email: string; classId: string }
   );
 }
 
-// Logged-in: package → booking → done
-// Guest: info → package → booking → done
-type Step = "info" | "package" | "booking" | "done";
+// Logged-in: package → booking → product → done
+// Guest: info → package → booking → product → done
+type Step = "info" | "package" | "booking" | "product" | "done";
 
 interface BookingSheetProps {
   open: boolean;
@@ -317,7 +318,9 @@ export function BookingSheet({
         spotNumber: data.spotNumber,
         packageName: data.packageName,
       });
-      setStep("done");
+      // Authenticated members can pre-order at the bar; guests skip the step
+      // because they don't have a saved card yet.
+      setStep(isLoggedIn && data.bookingId ? "product" : "done");
       queryClient.invalidateQueries({ queryKey: ["classes"] });
       queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
       onSuccess(isLoggedIn ? undefined : guestEmail);
@@ -673,6 +676,23 @@ export function BookingSheet({
                 <p className="mt-4 text-sm font-medium text-muted">
                   {t("bookingInProgress")}
                 </p>
+              </motion.div>
+            )}
+
+            {/* ── Step 3.5: Pre-order at the bar ── */}
+            {step === "product" && result && (
+              <motion.div
+                key="product"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <ProductPickStep
+                  bookingId={result.bookingId}
+                  onComplete={() => setStep("done")}
+                  onSkip={() => setStep("done")}
+                />
               </motion.div>
             )}
 

@@ -41,6 +41,7 @@ import { cn, formatTime, maskLastName } from "@/lib/utils";
 import { useBooking } from "@/hooks/useBooking";
 import { usePackages } from "@/hooks/usePackages";
 import { BookingSheet } from "@/components/booking/booking-sheet";
+import { ProductPickStep } from "@/components/booking/product-pick-step";
 import { GuestListInput, type GuestEntry } from "@/components/booking/guest-list-input";
 import { SongRequest } from "@/components/booking/song-request";
 import { MediaGallery } from "@/components/feed/media-gallery";
@@ -146,6 +147,8 @@ export default function ClassDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookedSpotNumber, setBookedSpotNumber] = useState<number | null>(null);
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
+  const [productStepDone, setProductStepDone] = useState(false);
   const [privacy, setPrivacy] = useState<"PUBLIC" | "PRIVATE">("PUBLIC");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -239,6 +242,8 @@ export default function ClassDetailPage() {
       setBookingSuccess(false);
       setBookedSpotNumber(null);
       setSelectedSpot(null);
+      setCreatedBookingId(null);
+      setProductStepDone(false);
       await Promise.all([
         queryClient.refetchQueries({ queryKey: ["classes", id] }),
         queryClient.invalidateQueries({ queryKey: ["packages", "mine"] }),
@@ -355,7 +360,7 @@ export default function ClassDetailPage() {
   async function handleDirectBook() {
     setError(null);
     try {
-      await bookAsync({
+      const result = await bookAsync({
         classId: id,
         spotNumber: selectedSpot ?? undefined,
         packageId: validPackages[0]?.id,
@@ -367,6 +372,8 @@ export default function ClassDetailPage() {
           })),
         }),
       });
+      if (result?.id) setCreatedBookingId(result.id);
+      setProductStepDone(false);
       setBookingSuccess(true);
       setBookedSpotNumber(selectedSpot);
       setSelectedSpot(null);
@@ -1063,6 +1070,24 @@ export default function ClassDetailPage() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Pre-order prompt */}
+                  <AnimatePresence>
+                    {createdBookingId && !productStepDone && isAuthenticated && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 overflow-hidden rounded-xl border border-border/50 bg-card"
+                      >
+                        <ProductPickStep
+                          bookingId={createdBookingId}
+                          onComplete={() => setProductStepDone(true)}
+                          onSkip={() => setProductStepDone(true)}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Mobile install hint */}
                   {!isAuthenticated && guestEmail && typeof window !== "undefined" && /iPad|iPhone|iPod|android/i.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches && (

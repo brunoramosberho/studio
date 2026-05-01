@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole, getTenantCurrency } from "@/lib/tenant";
 
+async function filterTenantStudioIds(tenantId: string, ids: unknown[]): Promise<string[]> {
+  const candidates = ids.filter((x): x is string => typeof x === "string" && x.length > 0);
+  if (candidates.length === 0) return [];
+  const studios = await prisma.studio.findMany({
+    where: { tenantId, id: { in: candidates } },
+    select: { id: true },
+  });
+  return studios.map((s) => s.id);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const ctx = await requireRole("ADMIN");
@@ -12,11 +22,19 @@ export async function GET(request: NextRequest) {
         tenantId: ctx.tenant.id,
         ...(categoryId ? { categoryId } : {}),
       },
-      include: { category: { select: { id: true, name: true } } },
+      include: {
+        category: { select: { id: true, name: true } },
+        studioAvailability: { select: { studioId: true } },
+      },
       orderBy: [{ position: "asc" }, { createdAt: "desc" }],
     });
 
-    return NextResponse.json(products);
+    return NextResponse.json(
+      products.map(({ studioAvailability, ...p }) => ({
+        ...p,
+        studioIds: studioAvailability.map((s) => s.studioId),
+      })),
+    );
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error";
     const status = msg === "Unauthorized" ? 401 : msg === "Forbidden" ? 403 : 500;
@@ -28,7 +46,18 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await requireRole("ADMIN");
     const body = await request.json();
-    const { name, description, price, currency, imageUrl, isVisible, externalUrl, categoryId } = body;
+    const {
+      name,
+      description,
+      price,
+      currency,
+      imageUrl,
+      isVisible,
+      externalUrl,
+      categoryId,
+      availableForPreOrder,
+      studioIds,
+    } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
@@ -53,6 +82,10 @@ export async function POST(request: NextRequest) {
     });
 
     const tenantCurrency = await getTenantCurrency();
+    const validStudioIds = Array.isArray(studioIds)
+      ? await filterTenantStudioIds(ctx.tenant.id, studioIds)
+      : [];
+
     const product = await prisma.product.create({
       data: {
         name: name.trim(),
@@ -62,14 +95,30 @@ export async function POST(request: NextRequest) {
         imageUrl: imageUrl || null,
         isVisible: isVisible ?? true,
         externalUrl: externalUrl?.trim() || null,
+        availableForPreOrder: availableForPreOrder === true,
         position: (maxPos._max.position ?? -1) + 1,
         categoryId,
         tenantId: ctx.tenant.id,
+        studioAvailability: validStudioIds.length
+          ? {
+              create: validStudioIds.map((studioId) => ({
+                studioId,
+                tenantId: ctx.tenant.id,
+              })),
+            }
+          : undefined,
       },
-      include: { category: { select: { id: true, name: true } } },
+      include: {
+        category: { select: { id: true, name: true } },
+        studioAvailability: { select: { studioId: true } },
+      },
     });
 
-    return NextResponse.json(product, { status: 201 });
+    const { studioAvailability, ...rest } = product;
+    return NextResponse.json(
+      { ...rest, studioIds: studioAvailability.map((s) => s.studioId) },
+      { status: 201 },
+    );
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error";
     const status = msg === "Unauthorized" ? 401 : msg === "Forbidden" ? 403 : 500;

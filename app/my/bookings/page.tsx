@@ -319,6 +319,12 @@ export default function BookingsPage() {
                               {booking.class.coach.name ? (
                                 <>
                                   {t("withCoach")} {booking.class.coach.name?.split(" ")[0]}
+                                  {booking.class.originalCoachId &&
+                                    booking.class.originalCoachId !== booking.class.coachId && (
+                                      <span className="ml-1 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">
+                                        Instructor actualizado
+                                      </span>
+                                    )}
                                   {studioName && <span className="text-muted/50"> · {studioName}</span>}
                                 </>
                               ) : (
@@ -569,6 +575,12 @@ function BookingCard({
                 {booking.class.coach.name ? (
                   <>
                     con {booking.class.coach.name?.split(" ")[0]}
+                    {booking.class.originalCoachId &&
+                      booking.class.originalCoachId !== booking.class.coachId && (
+                        <span className="ml-1 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">
+                          Instructor actualizado
+                        </span>
+                      )}
                     {studioName && <span className="text-muted/50"> · {studioName}</span>}
                   </>
                 ) : (
@@ -622,9 +634,61 @@ function BookingCard({
               </button>
             )}
           </div>
+
+          {booking.productOrder && <PreOrderSummary order={booking.productOrder} />}
         </div>
       </Link>
     </motion.div>
+  );
+}
+
+function PreOrderSummary({
+  order,
+}: {
+  order: NonNullable<EnrichedBooking["productOrder"]>;
+}) {
+  const statusLabel: Record<typeof order.status, string> = {
+    PENDING_PAYMENT: "Pago pendiente",
+    PAID: "Listo para preparar",
+    READY: "¡Listo en el bar!",
+    PICKED_UP: "Recogido",
+    CANCELLED: "Cancelado",
+  };
+  const isCelebrate = order.status === "READY";
+  return (
+    <div
+      className={cn(
+        "mt-3 rounded-xl border px-3 py-2",
+        isCelebrate
+          ? "border-emerald-200 bg-emerald-50"
+          : order.status === "CANCELLED"
+            ? "border-border bg-surface/50"
+            : "border-accent/20 bg-accent/5",
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground">
+          Pre-orden bar
+        </p>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+            isCelebrate
+              ? "bg-emerald-600 text-white"
+              : "bg-card text-muted",
+          )}
+        >
+          {statusLabel[order.status]}
+        </span>
+      </div>
+      <ul className="mt-1.5 space-y-0.5 text-[11px] text-muted">
+        {order.items.map((it) => (
+          <li key={it.id}>
+            {it.quantity}× {it.nameSnapshot}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -68,6 +68,7 @@ interface StudioData {
   cityId: string;
   city: City;
   rooms: RoomData[];
+  productsEnabled: boolean;
 }
 
 interface ClassType {
@@ -105,6 +106,7 @@ export default function AdminStudiosPage() {
   const [studioForm, setStudioForm] = useState({
     name: "", address: "", cityId: "",
     latitude: null as number | null, longitude: null as number | null,
+    productsEnabled: false,
   });
 
   const [cityDialogOpen, setCityDialogOpen] = useState(false);
@@ -189,7 +191,7 @@ export default function AdminStudiosPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setStudioDialogOpen(false);
-      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false });
       toast.success(t("studioCreated"));
     },
     onError: (err: Error) => toast.error(err.message || t("studioCreateError")),
@@ -213,7 +215,7 @@ export default function AdminStudiosPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setStudioDialogOpen(false);
       setEditingStudio(null);
-      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false });
       toast.success(t("studioUpdated"));
     },
     onError: (err: Error) => toast.error(err.message || t("studioUpdateError")),
@@ -331,7 +333,7 @@ export default function AdminStudiosPage() {
 
   function openCreateStudio() {
     setEditingStudio(null);
-    setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+    setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false });
     setStudioDialogOpen(true);
   }
 
@@ -340,6 +342,7 @@ export default function AdminStudiosPage() {
     setStudioForm({
       name: studio.name, address: studio.address ?? "", cityId: studio.cityId,
       latitude: studio.latitude ?? null, longitude: studio.longitude ?? null,
+      productsEnabled: studio.productsEnabled ?? false,
     });
     setStudioDialogOpen(true);
   }
@@ -663,6 +666,32 @@ export default function AdminStudiosPage() {
                   {studioForm.latitude.toFixed(5)}, {studioForm.longitude?.toFixed(5)}
                 </p>
               )}
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl border border-border p-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setStudioForm((f) => ({ ...f, productsEnabled: !f.productsEnabled }))
+                }
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                  studioForm.productsEnabled ? "bg-admin" : "bg-border",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 rounded-full bg-card transition-transform",
+                    studioForm.productsEnabled ? "translate-x-6" : "translate-x-1",
+                  )}
+                />
+              </button>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{t("productPreOrderEnabled")}</p>
+                <p className="text-[11px] text-muted">
+                  {t("productPreOrderEnabledDesc")}
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-2">
