@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ import {
   Check,
   Clock,
   ShoppingCart,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,6 +61,7 @@ const brandLabels: Record<string, string> = {
 type Phase = "browse" | "success";
 
 export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickStepProps) {
+  const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("browse");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -92,13 +95,17 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
     if (cards.length > 0 && !selectedCardId) setSelectedCardId(cards[0].id);
   }, [cards, selectedCardId]);
 
-  // If the studio has pre-orders disabled or no products, skip immediately.
+  // Open the sheet once we know there are products to offer; if the studio
+  // has pre-orders disabled or the catalog is empty, skip immediately so the
+  // member never sees an empty modal.
   useEffect(() => {
     if (!data) return;
     if (phase === "success") return;
     if (!data.studio.productsEnabled || data.products.length === 0) {
       onSkip();
+      return;
     }
+    setOpen(true);
   }, [data, onSkip, phase]);
 
   const grouped = useMemo(() => {
@@ -163,7 +170,6 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "No se pudo procesar el pago");
       }
-      // Snapshot the cart for the success screen, then transition.
       setConfirmedItems(cartItems);
       if (data?.classEndsAt) setPickupAt(new Date(data.classEndsAt));
       setPhase("success");
@@ -174,231 +180,274 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-muted" />
-      </div>
-    );
+  function handleSkip() {
+    setOpen(false);
+    onSkip();
   }
 
-  if (phase === "success") {
-    return (
-      <SuccessScreen
-        items={confirmedItems}
-        totalAmount={totalAmount}
-        currency={currency}
-        studioName={data?.studio.name ?? ""}
-        pickupAt={pickupAt}
-        onContinue={onComplete}
-      />
-    );
+  function handleContinueAfterSuccess() {
+    setOpen(false);
+    onComplete();
   }
 
-  if (!data || !data.studio.productsEnabled || data.products.length === 0) {
-    return null;
-  }
+  // Don't render the sheet host until we know we should show something.
+  if (isLoading || !data) return null;
+  if (!data.studio.productsEnabled || data.products.length === 0) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative space-y-5 px-4 py-6 pb-32"
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={(next) => {
+        // Closing while still browsing = skip. Closing after success = complete.
+        if (!next) {
+          if (phase === "success") handleContinueAfterSuccess();
+          else handleSkip();
+        } else {
+          setOpen(true);
+        }
+      }}
     >
-      <Hero studioName={data.studio.name} />
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0" />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col overflow-hidden rounded-t-3xl bg-background shadow-2xl",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom",
+            "sm:inset-x-auto sm:left-1/2 sm:bottom-auto sm:top-1/2 sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:max-h-[88dvh]",
+          )}
+        >
+          <DialogPrimitive.Title className="sr-only">
+            Pre-ordenar productos para tu clase
+          </DialogPrimitive.Title>
 
-      <div className="space-y-6">
-        {grouped.map((group) => (
-          <div key={group.id} className="space-y-2">
-            <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-              {group.name}
-            </p>
-            <div className="space-y-2.5">
-              {group.products.map((p) => (
-                <ProductRow
-                  key={p.id}
-                  product={p}
-                  quantity={cart[p.id] ?? 0}
-                  onInc={() => inc(p.id)}
-                  onDec={() => dec(p.id)}
-                />
-              ))}
-            </div>
+          {/* Drag handle (mobile) */}
+          <div className="flex justify-center pb-1 pt-2 sm:hidden">
+            <div className="h-1 w-10 rounded-full bg-border" />
           </div>
-        ))}
-      </div>
 
-      {/* Card / payment methods (only shown once cart has items) */}
-      <AnimatePresence>
-        {hasCart && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <Card className="rounded-2xl border border-accent/20 bg-card">
-              <CardContent className="space-y-3 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                  Método de pago
-                </p>
-                {cardsLoading ? (
-                  <div className="flex items-center gap-2 text-xs text-muted">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Cargando métodos de pago…
-                  </div>
-                ) : cards.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted">
-                    <p>No tienes una tarjeta guardada.</p>
-                    <Button
-                      asChild
-                      variant="link"
-                      size="sm"
-                      className="mt-1 h-auto p-0 text-xs"
-                    >
-                      <Link href="/my">Agregar una tarjeta</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {cards.map((c) => (
-                      <label
-                        key={c.id}
-                        className={cn(
-                          "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
-                          selectedCardId === c.id
-                            ? "border-accent bg-accent/10"
-                            : "border-border hover:bg-surface/50",
-                        )}
-                      >
-                        <input
-                          type="radio"
-                          name="pre-order-card"
-                          checked={selectedCardId === c.id}
-                          onChange={() => setSelectedCardId(c.id)}
-                          className="accent-accent"
-                        />
-                        <span className="text-xs font-medium uppercase">
-                          {brandLabels[c.brand] ?? c.brand}
-                        </span>
-                        <span className="text-muted">•••• {c.last4}</span>
-                        {c.isDefault && (
-                          <span className="ml-auto rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
-                            Última usada
-                          </span>
-                        )}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          {/* Close button (top right) — hidden during success so the screen feels final */}
+          {phase === "browse" && (
+            <DialogPrimitive.Close
+              className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-card/70 text-muted shadow-sm transition-colors hover:bg-card hover:text-foreground sm:right-4 sm:top-4"
+              aria-label="Cerrar"
+            >
+              <X className="h-4 w-4" />
+            </DialogPrimitive.Close>
+          )}
 
-      {error && (
-        <Card className="rounded-2xl border border-red-200 bg-red-50">
-          <CardContent className="p-3">
-            <p className="text-xs text-red-700">{error}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Floating CTA bar — appears once there's something in the cart */}
-      <AnimatePresence>
-        {hasCart ? (
-          <motion.div
-            key="cta-cart"
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            className="fixed inset-x-0 bottom-0 z-30 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3"
-          >
-            <div className="mx-auto max-w-md">
-              <div className="rounded-2xl border border-border/60 bg-card/90 p-3 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-card/80">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-accent">
-                      <ShoppingCart className="h-3.5 w-3.5" />
-                      <motion.span
-                        key={totalQty}
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 16 }}
-                        className="absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold tabular-nums text-white"
-                      >
-                        {totalQty}
-                      </motion.span>
-                    </span>
-                    <p className="text-xs text-muted">
-                      {cartItems.length === 1
-                        ? cartItems[0].product.name
-                        : `${cartItems.length} productos`}
-                    </p>
-                  </div>
-                  <motion.p
-                    key={totalCents}
-                    initial={{ scale: 0.92 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 18 }}
-                    className="font-display text-base font-bold text-foreground"
-                  >
-                    {formatCurrency(totalAmount, currency)}
-                  </motion.p>
+          {phase === "success" ? (
+            <SuccessScreen
+              items={confirmedItems}
+              totalAmount={totalAmount}
+              currency={currency}
+              studioName={data.studio.name}
+              pickupAt={pickupAt}
+              onContinue={handleContinueAfterSuccess}
+            />
+          ) : (
+            <>
+              <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-2">
+                <Hero studioName={data.studio.name} />
+                <div className="mt-5 space-y-6">
+                  {grouped.map((group) => (
+                    <div key={group.id} className="space-y-2">
+                      <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                        {group.name}
+                      </p>
+                      <div className="space-y-2.5">
+                        {group.products.map((p) => (
+                          <ProductRow
+                            key={p.id}
+                            product={p}
+                            quantity={cart[p.id] ?? 0}
+                            onInc={() => inc(p.id)}
+                            onDec={() => dec(p.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <Button
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-accent to-accent/80 text-white shadow-md hover:from-accent/90 hover:to-accent/70"
-                  disabled={submitting || !selectedCardId}
-                  onClick={handleSubmit}
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Procesando…
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Pre-ordenar
-                    </>
+
+                <AnimatePresence>
+                  {hasCart && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <Card className="mt-5 rounded-2xl border border-accent/20 bg-card">
+                        <CardContent className="space-y-3 p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                            Método de pago
+                          </p>
+                          {cardsLoading ? (
+                            <div className="flex items-center gap-2 text-xs text-muted">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              Cargando métodos de pago…
+                            </div>
+                          ) : cards.length === 0 ? (
+                            <div className="rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted">
+                              <p>No tienes una tarjeta guardada.</p>
+                              <Button
+                                asChild
+                                variant="link"
+                                size="sm"
+                                className="mt-1 h-auto p-0 text-xs"
+                              >
+                                <Link href="/my">Agregar una tarjeta</Link>
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {cards.map((c) => (
+                                <label
+                                  key={c.id}
+                                  className={cn(
+                                    "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
+                                    selectedCardId === c.id
+                                      ? "border-accent bg-accent/10"
+                                      : "border-border hover:bg-surface/50",
+                                  )}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="pre-order-card"
+                                    checked={selectedCardId === c.id}
+                                    onChange={() => setSelectedCardId(c.id)}
+                                    className="accent-accent"
+                                  />
+                                  <span className="text-xs font-medium uppercase">
+                                    {brandLabels[c.brand] ?? c.brand}
+                                  </span>
+                                  <span className="text-muted">•••• {c.last4}</span>
+                                  {c.isDefault && (
+                                    <span className="ml-auto rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+                                      Última usada
+                                    </span>
+                                  )}
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
                   )}
-                </Button>
-                <button
-                  type="button"
-                  onClick={onSkip}
-                  className="mt-1.5 w-full py-1 text-center text-[11px] text-muted hover:text-foreground"
-                >
-                  Saltar y solo reservar la clase
-                </button>
+                </AnimatePresence>
+
+                {error && (
+                  <Card className="mt-4 rounded-2xl border border-red-200 bg-red-50">
+                    <CardContent className="p-3">
+                      <p className="text-xs text-red-700">{error}</p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="cta-skip"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="pt-2"
-          >
-            <Button variant="ghost" size="lg" className="w-full text-muted" onClick={onSkip}>
-              Saltar
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+
+              {/* Footer CTA — anchored inside the sheet, never collides with bottom nav */}
+              <div
+                className="border-t border-border/60 bg-background/95 px-4 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+                style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  {hasCart ? (
+                    <motion.div
+                      key="cta-cart"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      className="space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-accent">
+                            <ShoppingCart className="h-3.5 w-3.5" />
+                            <motion.span
+                              key={totalQty}
+                              initial={{ scale: 0.5, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ type: "spring", stiffness: 400, damping: 16 }}
+                              className="absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold tabular-nums text-white"
+                            >
+                              {totalQty}
+                            </motion.span>
+                          </span>
+                          <p className="text-xs text-muted">
+                            {cartItems.length === 1
+                              ? cartItems[0].product.name
+                              : `${cartItems.length} productos`}
+                          </p>
+                        </div>
+                        <motion.p
+                          key={totalCents}
+                          initial={{ scale: 0.92 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 18 }}
+                          className="font-display text-base font-bold text-foreground"
+                        >
+                          {formatCurrency(totalAmount, currency)}
+                        </motion.p>
+                      </div>
+                      <Button
+                        size="lg"
+                        className="w-full bg-gradient-to-r from-accent to-accent/80 text-white shadow-md hover:from-accent/90 hover:to-accent/70"
+                        disabled={submitting || !selectedCardId}
+                        onClick={handleSubmit}
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Procesando…
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Pre-ordenar
+                          </>
+                        )}
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={handleSkip}
+                        className="block w-full py-1 text-center text-[11px] text-muted hover:text-foreground"
+                      >
+                        Saltar y solo reservar la clase
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="cta-skip"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="lg"
+                        className="w-full text-muted"
+                        onClick={handleSkip}
+                      >
+                        No, gracias
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
 function Hero({ studioName }: { studioName: string }) {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-accent/15 bg-gradient-to-br from-accent/15 via-accent/5 to-transparent p-6 pb-7 text-center">
-      {/* Animated glow */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute -top-16 left-1/2 h-44 w-44 -translate-x-1/2 rounded-full bg-accent/30 blur-3xl"
@@ -407,7 +456,6 @@ function Hero({ studioName }: { studioName: string }) {
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      {/* Floating sparkles */}
       <Sparkle className="left-6 top-4" delay={0.1} />
       <Sparkle className="right-7 top-7" delay={0.6} />
       <Sparkle className="right-12 bottom-6" delay={1.2} />
@@ -619,143 +667,142 @@ function SuccessScreen({
   );
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col items-center px-4 py-10 text-center"
-    >
-      {/* Confetti */}
-      <div className="relative mb-7 flex h-24 w-24 items-center justify-center">
-        {particles.map((p) => (
-          <motion.span
-            key={p.id}
-            aria-hidden
-            className="absolute rounded-full bg-accent"
-            style={{ width: p.size, height: p.size }}
-            initial={{ x: 0, y: 0, opacity: 0, scale: 0 }}
-            animate={{
-              x: Math.cos(p.angle) * p.distance,
-              y: Math.sin(p.angle) * p.distance,
-              opacity: [0, p.opacity, 0],
-              scale: [0, 1, 0.4],
-            }}
-            transition={{ duration: 1.3, delay: 0.3 + p.delay, ease: "easeOut" }}
-          />
-        ))}
+    <div className="flex flex-1 flex-col">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-1 flex-col items-center overflow-y-auto px-4 pb-4 pt-10 text-center"
+      >
+        <div className="relative mb-7 flex h-24 w-24 items-center justify-center">
+          {particles.map((p) => (
+            <motion.span
+              key={p.id}
+              aria-hidden
+              className="absolute rounded-full bg-accent"
+              style={{ width: p.size, height: p.size }}
+              initial={{ x: 0, y: 0, opacity: 0, scale: 0 }}
+              animate={{
+                x: Math.cos(p.angle) * p.distance,
+                y: Math.sin(p.angle) * p.distance,
+                opacity: [0, p.opacity, 0],
+                scale: [0, 1, 0.4],
+              }}
+              transition={{ duration: 1.3, delay: 0.3 + p.delay, ease: "easeOut" }}
+            />
+          ))}
+
+          <motion.div
+            className="relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/30"
+            initial={{ scale: 0, rotate: -45 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 14, delay: 0.1 }}
+          >
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 rounded-full bg-emerald-400/40"
+              animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeOut" }}
+            />
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 420, damping: 14, delay: 0.35 }}
+            >
+              <Check className="h-10 w-10 text-white" strokeWidth={3} />
+            </motion.div>
+          </motion.div>
+        </div>
 
         <motion.div
-          className="relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/30"
-          initial={{ scale: 0, rotate: -45 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 320, damping: 14, delay: 0.1 }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700"
         >
-          <motion.div
-            aria-hidden
-            className="absolute inset-0 rounded-full bg-emerald-400/40"
-            animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: "easeOut" }}
-          />
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 420, damping: 14, delay: 0.35 }}
-          >
-            <Check className="h-10 w-10 text-white" strokeWidth={3} />
-          </motion.div>
+          <Sparkles className="h-3 w-3" />
+          Pago confirmado
         </motion.div>
-      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45 }}
-        className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700"
-      >
-        <Sparkles className="h-3 w-3" />
-        Pago confirmado
-      </motion.div>
+        <motion.h2
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="font-display text-2xl font-bold leading-tight text-foreground"
+        >
+          ¡Lo tendremos listo!
+        </motion.h2>
 
-      <motion.h2
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.55 }}
-        className="font-display text-2xl font-bold leading-tight text-foreground"
-      >
-        ¡Lo tendremos listo!
-      </motion.h2>
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="mt-2 max-w-xs text-sm leading-relaxed text-muted"
+        >
+          Pasa al bar de{" "}
+          <span className="font-semibold text-foreground">{studioName}</span> al
+          terminar tu clase para recoger tu pedido.
+        </motion.p>
 
-      <motion.p
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.7 }}
-        className="mt-2 max-w-xs text-sm leading-relaxed text-muted"
-      >
-        Pasa al bar de{" "}
-        <span className="font-semibold text-foreground">{studioName}</span> al
-        terminar tu clase para recoger tu pedido.
-      </motion.p>
+        {pickupAt && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.85 }}
+            className="mt-6 flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/5 px-4 py-2.5"
+          >
+            <Clock className="h-4 w-4 text-accent" />
+            <span className="text-xs font-medium text-muted">Listo a las</span>
+            <span className="font-mono text-sm font-bold text-accent">
+              {formatTime(pickupAt)}
+            </span>
+          </motion.div>
+        )}
 
-      {pickupAt && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.85 }}
-          className="mt-6 flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/5 px-4 py-2.5"
+          transition={{ delay: 1 }}
+          className="mt-6 w-full max-w-sm"
         >
-          <Clock className="h-4 w-4 text-accent" />
-          <span className="text-xs font-medium text-muted">Listo a las</span>
-          <span className="font-mono text-sm font-bold text-accent">
-            {formatTime(pickupAt)}
-          </span>
-        </motion.div>
-      )}
-
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1 }}
-        className="mt-6 w-full max-w-sm"
-      >
-        <Card className="rounded-2xl border-border/50">
-          <CardContent className="p-4 text-left">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-              Tu pedido
-            </p>
-            <ul className="mt-2 space-y-1 text-sm">
-              {items.map((it) => (
-                <li
-                  key={it.product.id}
-                  className="flex items-center justify-between gap-3"
-                >
-                  <span className="truncate">
-                    <span className="mr-1.5 font-bold tabular-nums text-accent">
-                      {it.quantity}×
+          <Card className="rounded-2xl border-border/50">
+            <CardContent className="p-4 text-left">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                Tu pedido
+              </p>
+              <ul className="mt-2 space-y-1 text-sm">
+                {items.map((it) => (
+                  <li
+                    key={it.product.id}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <span className="truncate">
+                      <span className="mr-1.5 font-bold tabular-nums text-accent">
+                        {it.quantity}×
+                      </span>
+                      {it.product.name}
                     </span>
-                    {it.product.name}
-                  </span>
-                  <span className="shrink-0 text-xs text-muted">
-                    {formatCurrency(it.product.price * it.quantity, it.product.currency)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-3 flex items-baseline justify-between border-t border-border/50 pt-2.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Total cobrado
-              </span>
-              <span className="font-display text-lg font-bold text-foreground">
-                {formatCurrency(totalAmount, currency)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+                    <span className="shrink-0 text-xs text-muted">
+                      {formatCurrency(it.product.price * it.quantity, it.product.currency)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 flex items-baseline justify-between border-t border-border/50 pt-2.5">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Total cobrado
+                </span>
+                <span className="font-display text-lg font-bold text-foreground">
+                  {formatCurrency(totalAmount, currency)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.15 }}
-        className="mt-6 w-full max-w-sm"
+      <div
+        className="border-t border-border/60 bg-background/95 px-4 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
       >
         <Button
           size="lg"
@@ -765,7 +812,7 @@ function SuccessScreen({
           Continuar
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

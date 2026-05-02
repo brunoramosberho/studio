@@ -1071,23 +1071,14 @@ export default function ClassDetailPage() {
                     </div>
                   </div>
 
-                  {/* Pre-order prompt */}
-                  <AnimatePresence>
-                    {createdBookingId && !productStepDone && isAuthenticated && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 overflow-hidden rounded-xl border border-border/50 bg-card"
-                      >
-                        <ProductPickStep
-                          bookingId={createdBookingId}
-                          onComplete={() => setProductStepDone(true)}
-                          onSkip={() => setProductStepDone(true)}
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {/* Pre-order sheet — auto-opens once booking is created */}
+                  {createdBookingId && !productStepDone && isAuthenticated && (
+                    <ProductPickStep
+                      bookingId={createdBookingId}
+                      onComplete={() => setProductStepDone(true)}
+                      onSkip={() => setProductStepDone(true)}
+                    />
+                  )}
 
                   {/* Mobile install hint */}
                   {!isAuthenticated && guestEmail && typeof window !== "undefined" && /iPad|iPhone|iPod|android/i.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches && (
