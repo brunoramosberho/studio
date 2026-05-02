@@ -276,26 +276,29 @@ export function BookingFlow({ classId }: BookingFlowProps) {
   const coachHidden = !classData.coach.name;
 
   // --- Booking success (optimistic) ---
+  // ProductPickStep renders as a portal sheet, so it overlays the
+  // ConfirmationScreen rather than replacing it. Once the member skips or
+  // completes the pre-order, the sheet closes and the confirmation stays.
   if (store.bookingSuccess) {
-    if (createdBookingId && !productStepDone) {
-      return (
-        <ProductPickStep
-          bookingId={createdBookingId}
-          onComplete={() => setProductStepDone(true)}
-          onSkip={() => setProductStepDone(true)}
-        />
-      );
-    }
     return (
-      <ConfirmationScreen
-        classTitle={classData.classType.name}
-        classDate={formatDate(classData.startsAt)}
-        classTime={formatTime(classData.startsAt)}
-        coachName={coachHidden ? null : classData.coach.name}
-        startsAt={classData.startsAt.toString()}
-        endsAt={classData.endsAt.toString()}
-        location={classData.room?.studio?.name ?? undefined}
-      />
+      <>
+        <ConfirmationScreen
+          classTitle={classData.classType.name}
+          classDate={formatDate(classData.startsAt)}
+          classTime={formatTime(classData.startsAt)}
+          coachName={coachHidden ? null : classData.coach.name}
+          startsAt={classData.startsAt.toString()}
+          endsAt={classData.endsAt.toString()}
+          location={classData.room?.studio?.name ?? undefined}
+        />
+        {createdBookingId && !productStepDone && (
+          <ProductPickStep
+            bookingId={createdBookingId}
+            onComplete={() => setProductStepDone(true)}
+            onSkip={() => setProductStepDone(true)}
+          />
+        )}
+      </>
     );
   }
 
