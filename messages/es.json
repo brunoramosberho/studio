@@ -151,7 +151,6 @@
     "discounts": "Descuentos",
     "giftPackages": "Regalos",
     "subscriptions": "Suscripciones",
-    "onDemand": "On-Demand",
     "store": "Tienda",
     "platforms": "Plataformas",
     "metrics": "Metricas",
@@ -406,6 +405,10 @@
     "packagesTitle": "Paquetes",
     "offers": "Ofertas",
     "packs": "Paquetes",
+    "onDemandSubscriptions": "On-Demand",
+    "onDemandBadge": "Incluye On-Demand",
+    "includesOnDemandLabel": "Incluye acceso a On-Demand",
+    "includesOnDemandHint": "Los miembros de esta suscripción también pueden ver la biblioteca on-demand.",
     "allDisciplinesLabel": "Todas las disciplinas",
     "monthly": "Mensual",
     "annual": "Anual",
@@ -1413,6 +1416,9 @@
     "classUnit": "clase",
     "classesUnit": "clases",
     "unlimitedClasses": "Clases ilimitadas",
+    "onDemandUnlimited": "Acceso ilimitado a videos on-demand",
+    "onDemandBadge": "On-Demand",
+    "plusOnDemandIncluded": "Incluye videos on-demand",
     "validity": "Vigencia",
     "buy": "Comprar",
     "viewAllPackages": "Ver todos los paquetes",
@@ -2621,6 +2627,8 @@
     "noSubscriptionTitle": "Sin suscripción activa",
     "noSubscriptionDesc": "Suscríbete para ver clases On-Demand cuando quieras",
     "bundledTitle": "Acceso incluido",
-    "bundledDesc": "Tu plan {packageName} incluye acceso a On-Demand"
+    "bundledDesc": "Tu plan {packageName} incluye acceso a On-Demand",
+    "instructor": "Instructor",
+    "descriptionLabel": "Sobre esta clase"
   }
 }

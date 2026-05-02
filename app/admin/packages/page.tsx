@@ -13,6 +13,7 @@ import {
   Gift,
   Layers,
   CalendarSync,
+  Video,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,7 @@ interface PackageData {
   id: string;
   name: string;
   description: string | null;
-  type: "OFFER" | "PACK" | "SUBSCRIPTION";
+  type: "OFFER" | "PACK" | "SUBSCRIPTION" | "ON_DEMAND_SUBSCRIPTION";
   credits: number | null;
   validDays: number;
   price: number;
@@ -57,6 +58,7 @@ interface PackageData {
   allowGuests: boolean;
   maxGuestsPerBooking: number | null;
   monthlyGuestPasses: number | null;
+  includesOnDemand: boolean;
 }
 
 type PackageKind = PackageData["type"];
@@ -77,6 +79,7 @@ const TAB_CONFIG: { type: PackageKind; labelKey: string; icon: typeof Gift }[] =
   { type: "OFFER", labelKey: "offers", icon: Gift },
   { type: "PACK", labelKey: "packs", icon: Layers },
   { type: "SUBSCRIPTION", labelKey: "subscriptions", icon: CalendarSync },
+  { type: "ON_DEMAND_SUBSCRIPTION", labelKey: "onDemandSubscriptions", icon: Video },
 ];
 
 const CURRENCIES = ["EUR", "MXN", "USD"] as const;
@@ -132,6 +135,7 @@ interface FormState {
   allowGuests: boolean;
   maxGuestsPerBooking: string;
   monthlyGuestPasses: string;
+  includesOnDemand: boolean;
 }
 
 function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
@@ -153,6 +157,7 @@ function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
     allowGuests: false,
     maxGuestsPerBooking: "",
     monthlyGuestPasses: "",
+    includesOnDemand: false,
   };
 }
 
@@ -184,6 +189,7 @@ function formFromPackage(pkg: PackageData, defaultCurrency = "EUR"): FormState {
     allowGuests: pkg.allowGuests ?? false,
     maxGuestsPerBooking: pkg.maxGuestsPerBooking == null ? "" : String(pkg.maxGuestsPerBooking),
     monthlyGuestPasses: pkg.monthlyGuestPasses == null ? "" : String(pkg.monthlyGuestPasses),
+    includesOnDemand: pkg.includesOnDemand ?? false,
   };
 }
 
@@ -192,15 +198,19 @@ function buildPayload(form: FormState) {
   const validDays = parseInt(form.validDays, 10);
   const sortOrder = parseInt(form.sortOrder, 10) || 0;
 
-  const useAllocations = form.perDisciplineCredits && form.creditAllocations.length > 0;
+  const isOnDemand = form.type === "ON_DEMAND_SUBSCRIPTION";
+  const useAllocations =
+    !isOnDemand && form.perDisciplineCredits && form.creditAllocations.length > 0;
 
-  const credits = useAllocations
+  const credits = isOnDemand
     ? null
-    : form.creditsUnlimited
+    : useAllocations
       ? null
-      : form.credits.trim() === ""
+      : form.creditsUnlimited
         ? null
-        : parseInt(form.credits, 10);
+        : form.credits.trim() === ""
+          ? null
+          : parseInt(form.credits, 10);
 
   const creditAllocations = useAllocations
     ? form.creditAllocations
@@ -227,14 +237,17 @@ function buildPayload(form: FormState) {
     credits,
     validDays,
     recurringInterval:
-      form.type === "SUBSCRIPTION" ? form.recurringInterval : null,
-    classTypeIds: form.classTypeIds,
+      form.type === "SUBSCRIPTION" || form.type === "ON_DEMAND_SUBSCRIPTION"
+        ? form.recurringInterval
+        : null,
+    classTypeIds: isOnDemand ? [] : form.classTypeIds,
     countryId: form.countryId.trim() === "" ? null : form.countryId,
     sortOrder,
     creditAllocations,
-    allowGuests: form.allowGuests,
+    allowGuests: isOnDemand ? false : form.allowGuests,
     maxGuestsPerBooking: maxGuestsPerBooking != null && !Number.isNaN(maxGuestsPerBooking) ? maxGuestsPerBooking : null,
     monthlyGuestPasses: monthlyGuestPasses != null && !Number.isNaN(monthlyGuestPasses) ? monthlyGuestPasses : null,
+    includesOnDemand: form.type === "SUBSCRIPTION" ? form.includesOnDemand : false,
   };
 }
 
@@ -357,28 +370,33 @@ export default function AdminPackagesPage() {
       setFormError(t("validDaysMin1"));
       return;
     }
-    if (form.type === "SUBSCRIPTION" && !form.recurringInterval) {
+    if (
+      (form.type === "SUBSCRIPTION" || form.type === "ON_DEMAND_SUBSCRIPTION") &&
+      !form.recurringInterval
+    ) {
       setFormError(t("selectRecurringInterval"));
       return;
     }
-    if (form.perDisciplineCredits) {
-      const validAllocations = form.creditAllocations.filter((a) => {
-        const n = parseInt(a.credits, 10);
-        return !Number.isNaN(n) && n > 0;
-      });
-      if (validAllocations.length === 0) {
-        setFormError(t("addCreditsToOneDiscipline"));
-        return;
-      }
-    } else if (!form.creditsUnlimited) {
-      if (form.credits.trim() === "") {
-        setFormError(t("creditsNumberOrUnlimited"));
-        return;
-      }
-      const c = parseInt(form.credits, 10);
-      if (Number.isNaN(c) || c < 0) {
-        setFormError(t("creditsValidNumber"));
-        return;
+    if (form.type !== "ON_DEMAND_SUBSCRIPTION") {
+      if (form.perDisciplineCredits) {
+        const validAllocations = form.creditAllocations.filter((a) => {
+          const n = parseInt(a.credits, 10);
+          return !Number.isNaN(n) && n > 0;
+        });
+        if (validAllocations.length === 0) {
+          setFormError(t("addCreditsToOneDiscipline"));
+          return;
+        }
+      } else if (!form.creditsUnlimited) {
+        if (form.credits.trim() === "") {
+          setFormError(t("creditsNumberOrUnlimited"));
+          return;
+        }
+        const c = parseInt(form.credits, 10);
+        if (Number.isNaN(c) || c < 0) {
+          setFormError(t("creditsValidNumber"));
+          return;
+        }
       }
     }
 
@@ -477,6 +495,11 @@ export default function AdminPackagesPage() {
                           {t("promo")}
                         </Badge>
                       ) : null}
+                      {pkg.type === "SUBSCRIPTION" && pkg.includesOnDemand ? (
+                        <Badge variant="outline" className="border-admin/30 text-admin">
+                          {t("onDemandBadge")}
+                        </Badge>
+                      ) : null}
                     </div>
                     {pkg.description ? (
                       <p className="text-sm text-muted">{pkg.description}</p>
@@ -489,23 +512,25 @@ export default function AdminPackagesPage() {
                           {formatCurrency(pkg.price, pkg.currency)}
                         </strong>
                       </span>
-                      <span>
-                        {t("creditsLabel")}:{" "}
-                        <strong className="font-mono text-foreground">
-                          {pkg.creditAllocations?.length > 0
-                            ? pkg.creditAllocations.map((a) => `${a.credits} ${a.classType.name}`).join(", ")
-                            : pkg.credits === null
-                              ? t("unlimited")
-                              : pkg.credits}
-                        </strong>
-                      </span>
+                      {pkg.type !== "ON_DEMAND_SUBSCRIPTION" ? (
+                        <span>
+                          {t("creditsLabel")}:{" "}
+                          <strong className="font-mono text-foreground">
+                            {pkg.creditAllocations?.length > 0
+                              ? pkg.creditAllocations.map((a) => `${a.credits} ${a.classType.name}`).join(", ")
+                              : pkg.credits === null
+                                ? t("unlimited")
+                                : pkg.credits}
+                          </strong>
+                        </span>
+                      ) : null}
                       <span>
                         {t("validityLabel")}:{" "}
                         <strong className="font-mono text-foreground">
                           {pkg.validDays} {t("daysUnit")}
                         </strong>
                       </span>
-                      {pkg.type === "SUBSCRIPTION" ? (
+                      {pkg.type === "SUBSCRIPTION" || pkg.type === "ON_DEMAND_SUBSCRIPTION" ? (
                         <span>
                           {t("periodicityLabel")}:{" "}
                           <strong className="text-foreground">
@@ -515,10 +540,12 @@ export default function AdminPackagesPage() {
                       ) : null}
                     </div>
 
-                    <p className="text-xs leading-relaxed text-muted">
-                      <span className="font-medium text-foreground/80">{t("disciplinesLabel")}: </span>
-                      {classTypesLabel(pkg, t)}
-                    </p>
+                    {pkg.type !== "ON_DEMAND_SUBSCRIPTION" ? (
+                      <p className="text-xs leading-relaxed text-muted">
+                        <span className="font-medium text-foreground/80">{t("disciplinesLabel")}: </span>
+                        {classTypesLabel(pkg, t)}
+                      </p>
+                    ) : null}
                     {pkg.allowGuests && (
                       <p className="text-xs leading-relaxed text-muted">
                         <span className="font-medium text-foreground/80">Invitados: </span>
@@ -596,7 +623,9 @@ export default function AdminPackagesPage() {
                         ...f,
                         type: tab.type,
                         recurringInterval:
-                          tab.type === "SUBSCRIPTION" ? f.recurringInterval || "month" : "month",
+                          tab.type === "SUBSCRIPTION" || tab.type === "ON_DEMAND_SUBSCRIPTION"
+                            ? f.recurringInterval || "month"
+                            : "month",
                       }))
                     }
                     className={cn(
@@ -675,6 +704,7 @@ export default function AdminPackagesPage() {
               </div>
             </div>
 
+            {form.type !== "ON_DEMAND_SUBSCRIPTION" && (
             <div className="space-y-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="flex-1">
@@ -762,6 +792,7 @@ export default function AdminPackagesPage() {
                 </div>
               )}
             </div>
+            )}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -790,7 +821,7 @@ export default function AdminPackagesPage() {
               </div>
             </div>
 
-            {form.type === "SUBSCRIPTION" ? (
+            {form.type === "SUBSCRIPTION" || form.type === "ON_DEMAND_SUBSCRIPTION" ? (
               <div>
                 <p className="mb-2 text-sm font-medium">{t("periodicityLabel")}</p>
                 <div className="flex gap-1 rounded-xl bg-surface p-1">
@@ -815,6 +846,26 @@ export default function AdminPackagesPage() {
               </div>
             ) : null}
 
+            {form.type === "SUBSCRIPTION" ? (
+              <div className="rounded-xl border border-input-border/60 bg-surface/50 p-3">
+                <label className="flex cursor-pointer items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-input-border accent-admin"
+                    checked={form.includesOnDemand}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, includesOnDemand: e.target.checked }))
+                    }
+                  />
+                  <span>
+                    <span className="font-medium">{t("includesOnDemandLabel")}</span>
+                    <span className="ml-1 text-xs text-muted">{t("includesOnDemandHint")}</span>
+                  </span>
+                </label>
+              </div>
+            ) : null}
+
+            {form.type !== "ON_DEMAND_SUBSCRIPTION" && (
             <div>
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-sm font-medium">{t("disciplinesLabel")}</p>
@@ -846,8 +897,10 @@ export default function AdminPackagesPage() {
                 )}
               </div>
             </div>
+            )}
 
             {/* Guest configuration */}
+            {form.type !== "ON_DEMAND_SUBSCRIPTION" && (
             <div className="space-y-3">
               <label className="flex cursor-pointer items-center gap-2 text-sm">
                 <input
@@ -903,6 +956,7 @@ export default function AdminPackagesPage() {
                 </div>
               )}
             </div>
+            )}
 
             <div>
               <label className="mb-1.5 block text-sm font-medium" htmlFor="pkg-country">

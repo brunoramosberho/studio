@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, getAuthContext } from "@/lib/tenant";
 import { checkOnDemandAccess } from "@/lib/on-demand";
+import { signThumbnailUrl } from "@/lib/cloudflare-stream";
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,8 +54,32 @@ export async function GET(request: NextRequest) {
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     });
 
+    const withSignedThumbs = await Promise.all(
+      videos.map(async (v) => {
+        let signedThumb: string | null = null;
+        if (
+          !v.thumbnailUrl &&
+          v.cloudflareThumbnailUrl &&
+          v.cloudflareStreamUid
+        ) {
+          try {
+            signedThumb = await signThumbnailUrl({
+              videoUid: v.cloudflareStreamUid,
+              rawThumbnailUrl: v.cloudflareThumbnailUrl,
+            });
+          } catch (e) {
+            console.warn(
+              `[on-demand] failed to sign thumbnail for ${v.id}:`,
+              e instanceof Error ? e.message : e,
+            );
+          }
+        }
+        return { ...v, signedThumbnailUrl: signedThumb };
+      }),
+    );
+
     return NextResponse.json({
-      videos,
+      videos: withSignedThumbs,
       config: config
         ? {
             enabled: config.enabled,

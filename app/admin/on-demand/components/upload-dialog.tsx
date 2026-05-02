@@ -109,6 +109,7 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
           coachProfileId: coachProfileId || null,
           classTypeId: classTypeId || null,
           level,
+          fileSize: file.size,
         }),
       });
 

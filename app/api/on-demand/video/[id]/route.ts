@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
+import { signThumbnailUrl } from "@/lib/cloudflare-stream";
 
 export async function GET(
   _request: NextRequest,
@@ -27,7 +28,28 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ video });
+    let signedThumb: string | null = null;
+    if (
+      !video.thumbnailUrl &&
+      video.cloudflareThumbnailUrl &&
+      video.cloudflareStreamUid
+    ) {
+      try {
+        signedThumb = await signThumbnailUrl({
+          videoUid: video.cloudflareStreamUid,
+          rawThumbnailUrl: video.cloudflareThumbnailUrl,
+        });
+      } catch (e) {
+        console.warn(
+          `[on-demand] failed to sign thumbnail for ${video.id}:`,
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }
+
+    return NextResponse.json({
+      video: { ...video, signedThumbnailUrl: signedThumb },
+    });
   } catch (err) {
     console.error("GET /api/on-demand/video/[id] error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
