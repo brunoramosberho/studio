@@ -88,8 +88,6 @@ export async function GET(request: NextRequest) {
           { eventType: "CLASS_COMPLETED", visibility: "STUDIO_WIDE" },
           // STUDIO_POST always visible (studio announcements)
           { eventType: "STUDIO_POST", visibility: "STUDIO_WIDE" },
-          // ON_DEMAND_VIDEO_PUBLISHED always visible (new video drops)
-          { eventType: "ON_DEMAND_VIDEO_PUBLISHED", visibility: "STUDIO_WIDE" },
         ],
       };
     }

@@ -73,9 +73,6 @@ export async function PATCH(
       );
     }
 
-    const isFirstPublish =
-      body.published === true && !existing.published && !existing.publishedAt;
-
     const updated = await prisma.onDemandVideo.update({
       where: { id },
       data: {
@@ -90,37 +87,7 @@ export async function PATCH(
           publishedAt: body.published && !existing.publishedAt ? new Date() : existing.publishedAt,
         }),
       },
-      include: {
-        coachProfile: { select: { id: true, name: true, photoUrl: true } },
-        classType: { select: { id: true, name: true, color: true } },
-      },
     });
-
-    // Surface a feed entry the first time a video is published. We don't
-    // re-emit on unpublish + re-publish so admins can iterate on metadata
-    // without spamming the feed.
-    if (isFirstPublish) {
-      await prisma.feedEvent.create({
-        data: {
-          userId: ctx.session.user.id,
-          tenantId: ctx.tenant.id,
-          eventType: "ON_DEMAND_VIDEO_PUBLISHED",
-          visibility: "STUDIO_WIDE",
-          payload: {
-            videoId: updated.id,
-            title: updated.title,
-            description: updated.description,
-            durationSeconds: updated.durationSeconds,
-            thumbnailUrl: updated.thumbnailUrl ?? updated.cloudflareThumbnailUrl,
-            level: updated.level,
-            coachName: updated.coachProfile?.name ?? null,
-            coachPhotoUrl: updated.coachProfile?.photoUrl ?? null,
-            classTypeName: updated.classType?.name ?? null,
-            classTypeColor: updated.classType?.color ?? null,
-          },
-        },
-      });
-    }
 
     return NextResponse.json({ video: updated });
   } catch (err) {

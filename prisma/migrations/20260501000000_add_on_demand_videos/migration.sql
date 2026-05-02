@@ -4,9 +4,6 @@ ALTER TYPE "PackageType" ADD VALUE IF NOT EXISTS 'ON_DEMAND_SUBSCRIPTION';
 -- Add on_demand to EntitlementType enum.
 ALTER TYPE "EntitlementType" ADD VALUE IF NOT EXISTS 'on_demand';
 
--- Add ON_DEMAND_VIDEO_PUBLISHED so admin publishes surface in the feed.
-ALTER TYPE "FeedEventType" ADD VALUE IF NOT EXISTS 'ON_DEMAND_VIDEO_PUBLISHED';
-
 -- Add includesOnDemand flag on Package (lets existing unlimited subs grant
 -- on-demand access without a separate Stripe charge).
 ALTER TABLE "Package"

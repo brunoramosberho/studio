@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowRight, Clock, Dumbbell, Instagram, ListMusic, Lock, Music, ChevronUp, PlayCircle, Video } from "lucide-react";
+import { ArrowRight, Dumbbell, Instagram, ListMusic, Lock, Music, ChevronUp } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
@@ -911,111 +911,6 @@ function extractDiscipline(payload: Record<string, unknown>): DisciplineData {
   };
 }
 
-function formatVideoDuration(seconds: number | null | undefined): string | null {
-  if (!seconds || seconds <= 0) return null;
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-function OnDemandVideoCard({ event }: FeedEventCardProps) {
-  const t = useTranslations("feed");
-  const timeAgo = useTimeAgo();
-  const { studioName, appIconUrl } = useBranding();
-  const p = event.payload;
-  const videoId = p.videoId as string | undefined;
-  const title = (p.title as string) ?? "On-Demand";
-  const description = (p.description as string | null) ?? null;
-  const thumbnail = (p.thumbnailUrl as string | null) ?? null;
-  const durationLabel = formatVideoDuration(p.durationSeconds as number | null);
-  const coachName = (p.coachName as string | null) ?? null;
-  const classTypeName = (p.classTypeName as string | null) ?? null;
-  const href = videoId ? `/on-demand/${videoId}` : "/on-demand";
-
-  return (
-    <div>
-      <div className="flex items-center gap-3 px-4 py-3">
-        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full">
-          {appIconUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={appIconUrl} alt={studioName} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-accent/10">
-              <Video className="h-5 w-5 text-accent" />
-            </div>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold leading-tight text-foreground">
-            {studioName}
-          </p>
-          <p className="flex items-center gap-2 text-[12px] text-muted">
-            <span>{t("newOnDemand")}</span>
-            <span className="text-muted/40">·</span>
-            <span>{timeAgo(event.createdAt)}</span>
-          </p>
-        </div>
-      </div>
-
-      <Link href={href} className="block">
-        <div className="relative aspect-video w-full overflow-hidden bg-foreground/5">
-          {thumbnail ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumbnail} alt={title} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <Video className="h-10 w-10 text-muted/30" />
-            </div>
-          )}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity hover:opacity-100">
-            <PlayCircle className="h-14 w-14 text-white drop-shadow-lg" />
-          </div>
-          {durationLabel && (
-            <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-white">
-              <Clock className="h-3 w-3" />
-              {durationLabel}
-            </div>
-          )}
-        </div>
-      </Link>
-
-      <div className="px-4 pt-3">
-        <Link href={href} className="block">
-          <h3 className="line-clamp-2 text-[15px] font-semibold leading-tight text-foreground">
-            {title}
-          </h3>
-        </Link>
-        {(coachName || classTypeName) && (
-          <p className="mt-1 text-[12px] text-muted">
-            {[coachName, classTypeName].filter(Boolean).join(" · ")}
-          </p>
-        )}
-        {description && (
-          <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-foreground/80">
-            {description}
-          </p>
-        )}
-        <Link
-          href={href}
-          className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-accent hover:underline"
-        >
-          {t("watchNow")}
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
-
-      <div className="flex items-center gap-1 px-2 py-1.5">
-        <LikeButton
-          eventId={event.id}
-          initialLiked={event.liked}
-          initialCount={event.likeCount}
-        />
-        <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
-      </div>
-    </div>
-  );
-}
-
 export function FeedEventCard({ event }: FeedEventCardProps) {
   const [disciplineOpen, setDisciplineOpen] = useState(false);
   const discipline = extractDiscipline(event.payload);
@@ -1032,8 +927,6 @@ export function FeedEventCard({ event }: FeedEventCardProps) {
     >
       {event.eventType === "STUDIO_POST" ? (
         <StudioPostCard event={event} />
-      ) : event.eventType === "ON_DEMAND_VIDEO_PUBLISHED" ? (
-        <OnDemandVideoCard event={event} />
       ) : event.eventType === "ACHIEVEMENT_UNLOCKED" ? (
         <AchievementCard event={event} />
       ) : event.eventType === "LEVEL_UP" ? (

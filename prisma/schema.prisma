@@ -1004,7 +1004,6 @@ enum FeedEventType {
   ACHIEVEMENT_UNLOCKED
   LEVEL_UP
   STUDIO_POST
-  ON_DEMAND_VIDEO_PUBLISHED
 }
 
 enum FeedVisibility {
