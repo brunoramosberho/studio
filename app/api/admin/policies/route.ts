@@ -20,6 +20,7 @@ export async function GET() {
       noShowFeeAmountUnlimited: tenant.noShowFeeAmountUnlimited,
       noShowPenaltyGraceHours: tenant.noShowPenaltyGraceHours,
       visibleScheduleDays: tenant.visibleScheduleDays,
+      hideCoachUntilClassEnds: tenant.hideCoachUntilClassEnds,
     });
   } catch {
     return NextResponse.json({
@@ -31,6 +32,7 @@ export async function GET() {
       noShowFeeAmountUnlimited: null,
       noShowPenaltyGraceHours: 24,
       visibleScheduleDays: 7,
+      hideCoachUntilClassEnds: false,
     });
   }
 }
@@ -53,6 +55,7 @@ export async function POST(request: NextRequest) {
       noShowFeeAmountUnlimited,
       noShowPenaltyGraceHours,
       visibleScheduleDays,
+      hideCoachUntilClassEnds,
     } = body;
 
     const data: Record<string, unknown> = {};
@@ -94,6 +97,10 @@ export async function POST(request: NextRequest) {
       data.visibleScheduleDays = days;
     }
 
+    if (hideCoachUntilClassEnds !== undefined) {
+      data.hideCoachUntilClassEnds = Boolean(hideCoachUntilClassEnds);
+    }
+
     const updated = await prisma.tenant.update({
       where: { id: ctx.tenant.id },
       data,
@@ -106,6 +113,7 @@ export async function POST(request: NextRequest) {
         noShowFeeAmountUnlimited: true,
         noShowPenaltyGraceHours: true,
         visibleScheduleDays: true,
+        hideCoachUntilClassEnds: true,
       },
     });
 

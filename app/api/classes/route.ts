@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireTenant, requireRole, getAuthContext } from "@/lib/tenant";
+import { requireTenant, requireRole, getAuthContext, roleAtLeast } from "@/lib/tenant";
+import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,6 +40,15 @@ export async function GET(request: NextRequest) {
 
     const authCtx = await getAuthContext();
     const currentUserId = authCtx?.session?.user?.id;
+    const isStaff = !!authCtx && roleAtLeast(authCtx.membership.role, "COACH");
+    const hideCoachForClient = !isStaff && tenant.hideCoachUntilClassEnds;
+
+    // If clients shouldn't see the coach, ignore the coachId filter — otherwise
+    // a brute-forced id would silently filter the schedule and leak which
+    // classes belong to which coach.
+    if (hideCoachForClient && coachId) {
+      delete where.coachId;
+    }
 
     let friendIds: string[] = [];
     if (currentUserId) {
@@ -122,13 +132,19 @@ export async function GET(request: NextRequest) {
       for (const b of myBookings) myBookingMap.set(b.classId, b.id);
     }
 
-    const result = classes.map((c) => ({
-      ...c,
-      coach: { ...c.coach, name: c.coach.name || c.coach.user?.name || null },
-      friendsGoing: friendBookings.get(c.id) ?? [],
-      isBooked: myBookingMap.has(c.id),
-      myBookingId: myBookingMap.get(c.id) ?? null,
-    }));
+    const now = new Date();
+    const result = classes.map((c) => {
+      const baseCoach = { ...c.coach, name: c.coach.name || c.coach.user?.name || null };
+      const hideCoach =
+        hideCoachForClient && shouldHideCoach(tenant, { endsAt: c.endsAt }, now);
+      return {
+        ...c,
+        coach: hideCoach ? redactedCoach(baseCoach) : baseCoach,
+        friendsGoing: friendBookings.get(c.id) ?? [],
+        isBooked: myBookingMap.has(c.id),
+        myBookingId: myBookingMap.get(c.id) ?? null,
+      };
+    });
 
     return NextResponse.json(result);
   } catch (error) {

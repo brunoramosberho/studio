@@ -52,6 +52,13 @@ interface Product {
   externalUrl: string | null;
   categoryId: string;
   category: { id: string; name: string };
+  availableForPreOrder: boolean;
+  studioIds: string[];
+}
+
+interface StudioOption {
+  id: string;
+  name: string;
 }
 
 function buildEmptyProduct(defaultCurrency: string) {
@@ -64,6 +71,8 @@ function buildEmptyProduct(defaultCurrency: string) {
     isVisible: true,
     externalUrl: "",
     categoryId: "",
+    availableForPreOrder: false,
+    studioIds: [] as string[],
   };
 }
 
@@ -104,6 +113,18 @@ export default function AdminShopPage() {
       if (!res.ok) throw new Error("Failed to load products");
       const data = await res.json();
       return Array.isArray(data) ? data : [];
+    },
+  });
+
+  const { data: studios = [] } = useQuery<StudioOption[]>({
+    queryKey: ["admin-studios-min"],
+    queryFn: async () => {
+      const res = await fetch("/api/studios");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data)
+        ? data.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name }))
+        : [];
     },
   });
 
@@ -202,6 +223,8 @@ export default function AdminShopPage() {
       isVisible: p.isVisible,
       externalUrl: p.externalUrl || "",
       categoryId: p.categoryId,
+      availableForPreOrder: p.availableForPreOrder ?? false,
+      studioIds: p.studioIds ?? [],
     });
     setProdDialog(true);
   }
@@ -240,6 +263,8 @@ export default function AdminShopPage() {
         isVisible: form.isVisible,
         externalUrl: form.externalUrl || null,
         categoryId: form.categoryId,
+        availableForPreOrder: form.availableForPreOrder,
+        studioIds: form.studioIds,
       } as { id: string } & Partial<Product>);
     } else {
       createProdMut.mutate(form);
@@ -705,6 +730,69 @@ export default function AdminShopPage() {
                 </p>
               </div>
             </div>
+
+            <div className="flex items-center gap-3 rounded-xl border border-border p-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setForm((f) => ({ ...f, availableForPreOrder: !f.availableForPreOrder }))
+                }
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                  form.availableForPreOrder ? "bg-admin" : "bg-border",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 rounded-full bg-card transition-transform",
+                    form.availableForPreOrder ? "translate-x-6" : "translate-x-1",
+                  )}
+                />
+              </button>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{t("preOrderForBookings")}</p>
+                <p className="text-[11px] text-muted">{t("preOrderForBookingsDesc")}</p>
+              </div>
+            </div>
+
+            {form.availableForPreOrder && studios.length > 0 && (
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted">
+                  {t("availableInStudios")}
+                </label>
+                <div className="space-y-1 rounded-lg border border-border bg-card p-2">
+                  {studios.map((s) => {
+                    const checked = form.studioIds.includes(s.id);
+                    return (
+                      <label
+                        key={s.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-surface/70"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            setForm((f) => ({
+                              ...f,
+                              studioIds: e.target.checked
+                                ? [...f.studioIds, s.id]
+                                : f.studioIds.filter((id) => id !== s.id),
+                            }));
+                          }}
+                          className="h-4 w-4 rounded border-border text-admin accent-admin"
+                        />
+                        {s.name}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-[11px] text-muted">
+                  {form.studioIds.length === 0
+                    ? t("availableInStudiosAllHint")
+                    : t("availableInStudiosSomeHint", { count: form.studioIds.length })}
+                </p>
+              </div>
+            )}
           </div>
 
           <Button

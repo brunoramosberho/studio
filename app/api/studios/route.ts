@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const { tenant } = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { name, address, cityId, latitude, longitude } = body;
+    const { name, address, cityId, latitude, longitude, productsEnabled } = body;
 
     if (!name || !cityId) {
       return NextResponse.json({ error: "Name and city are required" }, { status: 400 });
@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
         city: { connect: { id: cityId } },
         tenant: { connect: { id: tenant.id } },
         latitude: latitude ?? null, longitude: longitude ?? null,
+        productsEnabled: productsEnabled === true,
       },
       include: {
         city: { include: { country: true } },

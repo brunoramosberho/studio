@@ -46,6 +46,12 @@ interface ScheduleClientProps {
   title?: string;
   hideCoachFilter?: boolean;
   hideCredits?: boolean;
+  /**
+   * When true, coach name/avatar are hidden everywhere on this surface — strip,
+   * filter chip, per-card "with [Name]". The schedule still renders the
+   * discipline + room. Used for tenants with `hideCoachUntilClassEnds`.
+   */
+  hideCoachAttribution?: boolean;
 }
 
 interface StudioItem { id: string; name: string; cityId: string }
@@ -58,7 +64,12 @@ export function ScheduleClient({
   title: titleProp,
   hideCoachFilter = false,
   hideCredits = false,
+  hideCoachAttribution = false,
 }: ScheduleClientProps = {}) {
+  // The strip and per-class coach attribution are both gated by attribution
+  // hiding; the existing `hideCoachFilter` prop only suppresses the strip
+  // (used by the coach portal where it's redundant).
+  const showCoachStrip = !hideCoachFilter && !hideCoachAttribution;
   const tf = useTranslations("footer");
   const t = useTranslations("schedule");
   const policies = usePolicies();
@@ -496,7 +507,7 @@ export function ScheduleClient({
         </div>
 
         {/* Coach avatar strip */}
-        {!hideCoachFilter && coaches.length > 0 && (
+        {showCoachStrip && coaches.length > 0 && (
           <>
             <div className="-mx-4 mb-2 overflow-x-auto px-4 scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
               <div className="flex gap-4">
@@ -743,7 +754,7 @@ export function ScheduleClient({
         )}
 
         {/* Coach avatar strip — desktop */}
-        {!hideCoachFilter && coaches.length > 0 && (
+        {showCoachStrip && coaches.length > 0 && (
           <div className="mb-5">
             <div className="flex items-start gap-5 overflow-x-auto scrollbar-none">
               {coaches.map((c) => {
@@ -1127,6 +1138,9 @@ function MobileClassCard({
   const hasWaitlist = (cls._count?.waitlist ?? 0) > 0;
   const myBookingId = cls.myBookingId;
   const isCancelling = cancellingId === myBookingId;
+  // Server redacts coach.name to "" when it should be hidden until the class
+  // ends. Past classes always reveal the real coach.
+  const coachHidden = !cls.coach.name;
 
   return (
     <Link
@@ -1165,7 +1179,23 @@ function MobileClassCard({
 
         {/* Coach photo + info */}
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          {(cls.coach.photoUrl || cls.coach.user?.image) ? (
+          {coachHidden ? (
+            (() => {
+              const Icon = getIconComponent(cls.classType.icon ?? "") ?? Dumbbell;
+              return (
+                <div
+                  className={cn(
+                    "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-white",
+                    past && "opacity-50",
+                  )}
+                  style={{ backgroundColor: cls.classType.color || "#475569" }}
+                  aria-hidden
+                >
+                  <Icon className="h-4 w-4" />
+                </div>
+              );
+            })()
+          ) : (cls.coach.photoUrl || cls.coach.user?.image) ? (
             <img
               src={cls.coach.photoUrl || cls.coach.user?.image!}
               alt={cls.coach.name || "Coach"}
@@ -1204,9 +1234,15 @@ function MobileClassCard({
               )}
             </div>
             <p className="truncate text-[13px] text-muted">
-              {t("with")} {cls.coach.name?.split(" ")[0]}
-              {cls.room?.studio?.name && (
-                <span className="text-muted/50"> · {cls.room.studio.name}</span>
+              {coachHidden ? (
+                cls.room?.studio?.name
+              ) : (
+                <>
+                  {t("with")} {cls.coach.name?.split(" ")[0]}
+                  {cls.room?.studio?.name && (
+                    <span className="text-muted/50"> · {cls.room.studio.name}</span>
+                  )}
+                </>
               )}
             </p>
             {!past && cls.friendsGoing && cls.friendsGoing.length > 0 && (
@@ -1322,6 +1358,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
   const hasWaitlist = (cls._count?.waitlist ?? 0) > 0;
   const myBookingId = cls.myBookingId;
   const isCancelling = cancellingId === myBookingId;
+  const coachHidden = !cls.coach.name;
 
   return (
     <Link href={`${classLinkPrefix}/${cls.id}`} className={cn(past && "pointer-events-none")}>
@@ -1367,37 +1404,46 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
               </span>
             )}
           </div>
-          <div className="mt-1 flex items-center gap-1.5">
-            {(cls.coach.photoUrl || cls.coach.user?.image) ? (
-              <img
-                src={cls.coach.photoUrl || cls.coach.user?.image!}
-                alt={cls.coach.name || "Coach"}
+          {!coachHidden && (
+            <div className="mt-1 flex items-center gap-1.5">
+              {(cls.coach.photoUrl || cls.coach.user?.image) ? (
+                <img
+                  src={cls.coach.photoUrl || cls.coach.user?.image!}
+                  alt={cls.coach.name || "Coach"}
+                  className={cn(
+                    "h-5 w-5 rounded-full object-cover",
+                    past && "grayscale",
+                  )}
+                />
+              ) : (
+                <div
+                  className={cn(
+                    "flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[9px] font-bold text-accent",
+                    past && "opacity-50",
+                  )}
+                >
+                  {cls.coach.name?.charAt(0) || "C"}
+                </div>
+              )}
+              <p
                 className={cn(
-                  "h-5 w-5 rounded-full object-cover",
-                  past && "grayscale",
-                )}
-              />
-            ) : (
-              <div
-                className={cn(
-                  "flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[9px] font-bold text-accent",
-                  past && "opacity-50",
+                  "truncate text-[12px]",
+                  past ? "text-muted/40" : "text-muted",
                 )}
               >
-                {cls.coach.name?.charAt(0) || "C"}
-              </div>
-            )}
+                {cls.coach.name?.split(" ")[0]}
+              </p>
+            </div>
+          )}
+          {cls.room?.studio?.name && (
             <p
               className={cn(
-                "truncate text-[12px]",
-                past ? "text-muted/40" : "text-muted",
+                coachHidden ? "mt-1.5" : "mt-0.5",
+                "truncate",
+                coachHidden ? "text-[12px]" : "text-[10px]",
+                past ? "text-muted/40" : coachHidden ? "text-muted" : "text-muted/50",
               )}
             >
-              {cls.coach.name?.split(" ")[0]}
-            </p>
-          </div>
-          {cls.room?.studio?.name && (
-            <p className={cn("mt-0.5 truncate text-[10px]", past ? "text-muted/30" : "text-muted/50")}>
               {cls.room.studio.name}
             </p>
           )}

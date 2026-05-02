@@ -40,6 +40,7 @@ import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { MediaGallery } from "@/components/feed/media-gallery";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
+import { RequestSubstituteButton } from "@/components/coach/request-substitute-button";
 import type { ClassWithDetails, BookingStatus } from "@/types";
 
 interface FavoriteSong {
@@ -606,6 +607,11 @@ export default function ClassRosterPage() {
                 {capacity - enrolled} lugares disponibles
               </span>
             </div>
+            {!isPastClass && !isCompleted && (
+              <div className="mt-4 flex justify-end">
+                <RequestSubstituteButton classId={classData.id} />
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

@@ -54,8 +54,27 @@ export interface ClassWithDetails extends Class {
   songRequestCriteria: string[];
 }
 
+export interface BookingProductOrderItemSummary {
+  id: string;
+  productId: string;
+  nameSnapshot: string;
+  quantity: number;
+  unitPriceCents: number;
+}
+
+export interface BookingProductOrderSummary {
+  id: string;
+  status: "PENDING_PAYMENT" | "PAID" | "READY" | "PICKED_UP" | "CANCELLED";
+  pickupAt: string;
+  subtotalCents: number;
+  currency: string;
+  notes: string | null;
+  items: BookingProductOrderItemSummary[];
+}
+
 export interface BookingWithDetails extends Booking {
   class: ClassWithDetails;
+  productOrder?: BookingProductOrderSummary | null;
 }
 
 export interface CreditUsageDetail {

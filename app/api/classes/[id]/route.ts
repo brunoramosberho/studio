@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireTenant, requireRole, getAuthContext } from "@/lib/tenant";
+import { requireTenant, requireRole, getAuthContext, roleAtLeast } from "@/lib/tenant";
 import { cancelClassWithRefunds } from "@/lib/class-cancel";
 import { BookingStatus } from "@prisma/client";
+import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 
 export async function GET(
   _request: NextRequest,
@@ -247,10 +248,14 @@ export async function GET(
       if (nm) myNotifyMe = nm;
     }
 
-    const coach = {
+    const baseCoach = {
       ...classData.coach,
       name: classData.coach.name || classData.coach.user?.name || null,
     };
+    const isStaff = !!authCtx && roleAtLeast(authCtx.membership.role, "COACH");
+    const hideCoach =
+      !isStaff && shouldHideCoach(tenant, { endsAt: classData.endsAt });
+    const coach = hideCoach ? redactedCoach(baseCoach) : baseCoach;
 
     return NextResponse.json({ ...classData, coach, bookings, spotsLeft, spotMap, myWaitlistEntry, myNotifyMe });
   } catch (error) {

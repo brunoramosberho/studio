@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
+import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 
 export async function GET() {
   try {
@@ -30,7 +31,13 @@ export async function GET() {
       orderBy: { class: { startsAt: "asc" } },
     });
 
-    return NextResponse.json(entries);
+    const result = entries.map((e) =>
+      shouldHideCoach(tenant, { endsAt: e.class.endsAt })
+        ? { ...e, class: { ...e.class, coach: redactedCoach(e.class.coach) } }
+        : e,
+    );
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("GET /api/waitlist/my error:", error);
     return NextResponse.json(
