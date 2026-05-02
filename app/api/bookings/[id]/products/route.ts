@@ -47,6 +47,7 @@ export async function GET(
         studio: { id: studio.id, name: studio.name, productsEnabled: false },
         products: [],
         existingOrder: booking.productOrder,
+        classEndsAt: booking.class.endsAt,
       });
     }
 
@@ -80,6 +81,7 @@ export async function GET(
         category: p.category,
       })),
       existingOrder: booking.productOrder,
+      classEndsAt: booking.class.endsAt,
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error";
