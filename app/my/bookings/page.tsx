@@ -647,12 +647,13 @@ function PreOrderSummary({
 }: {
   order: NonNullable<EnrichedBooking["productOrder"]>;
 }) {
+  const t = useTranslations("booking.preOrder");
   const statusLabel: Record<typeof order.status, string> = {
-    PENDING_PAYMENT: "Pago pendiente",
-    PAID: "Listo para preparar",
-    READY: "¡Listo en el bar!",
-    PICKED_UP: "Recogido",
-    CANCELLED: "Cancelado",
+    PENDING_PAYMENT: t("summaryStatusPendingPayment"),
+    PAID: t("summaryStatusPaid"),
+    READY: t("summaryStatusReady"),
+    PICKED_UP: t("summaryStatusPickedUp"),
+    CANCELLED: t("summaryStatusCancelled"),
   };
   const isCelebrate = order.status === "READY";
   return (
@@ -668,7 +669,7 @@ function PreOrderSummary({
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground">
-          Pre-orden bar
+          {t("summaryTitle")}
         </p>
         <span
           className={cn(

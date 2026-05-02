@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import {
   Coffee,
   Loader2,
@@ -61,6 +62,7 @@ function urgencyOf(pickupAt: string, nowMs: number): "overdue" | "urgent" | "soo
 }
 
 export default function AdminOrdersPage() {
+  const t = useTranslations("admin");
   const qc = useQueryClient();
   const [studioFilter, setStudioFilter] = useState<string>("all");
   const [showCompleted, setShowCompleted] = useState(false);
@@ -175,10 +177,8 @@ export default function AdminOrdersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold text-foreground">Órdenes del bar</h1>
-        <p className="mt-1 text-sm text-muted">
-          Pre-órdenes que los clientes hicieron al reservar su clase.
-        </p>
+        <h1 className="font-display text-2xl font-bold text-foreground">{t("ordersTitle")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("ordersDescription")}</p>
       </div>
 
       {/* Toolbar */}
@@ -189,7 +189,7 @@ export default function AdminOrdersPage() {
             value={studioFilter}
             onChange={(e) => setStudioFilter(e.target.value)}
           >
-            <option value="all">Todos los estudios</option>
+            <option value="all">{t("ordersAllStudios")}</option>
             {studios.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -201,12 +201,18 @@ export default function AdminOrdersPage() {
         {urgentCount > 0 && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
             <AlertTriangle className="h-3.5 w-3.5" />
-            {urgentCount} urgente{urgentCount === 1 ? "" : "s"}
+            {urgentCount === 1
+              ? t("ordersUrgent", { count: urgentCount })
+              : t("ordersUrgentPlural", { count: urgentCount })}
           </span>
         )}
 
         <span className="ml-auto text-xs text-muted">
-          {totalActive} activa{totalActive === 1 ? "" : "s"} · {completed.length} hoy
+          {totalActive === 1
+            ? t("ordersActiveCount", { count: totalActive })
+            : t("ordersActiveCountPlural", { count: totalActive })}
+          {" · "}
+          {t("ordersTodayCount", { count: completed.length })}
         </span>
       </div>
 
@@ -221,11 +227,9 @@ export default function AdminOrdersPage() {
           <CardContent className="flex flex-col items-center py-16 text-center">
             <Coffee className="h-10 w-10 text-muted/30" />
             <p className="mt-3 font-display text-base font-semibold text-foreground">
-              Nada por aquí
+              {t("ordersEmptyTitle")}
             </p>
-            <p className="mt-1 text-xs text-muted">
-              Cuando un cliente pre-ordene un producto al reservar, aparecerá aquí.
-            </p>
+            <p className="mt-1 text-xs text-muted">{t("ordersEmptyDesc")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -234,7 +238,7 @@ export default function AdminOrdersPage() {
           {ready.length > 0 && (
             <Section
               icon={<Bell className="h-4 w-4 text-emerald-700" />}
-              title="Listas para entregar"
+              title={t("ordersSectionReady")}
               count={ready.length}
               tone="ready"
             >
@@ -254,7 +258,7 @@ export default function AdminOrdersPage() {
           {active.length > 0 && (
             <Section
               icon={<Coffee className="h-4 w-4 text-foreground/70" />}
-              title="En preparación"
+              title={t("ordersSectionActive")}
               count={active.length}
             >
               {active.map((o) => (
@@ -278,7 +282,7 @@ export default function AdminOrdersPage() {
               >
                 <span className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4" />
-                  Completadas hoy
+                  {t("ordersSectionCompletedToday")}
                   <Badge variant="secondary" className="text-[10px]">
                     {completed.length}
                   </Badge>
@@ -376,6 +380,7 @@ function OrderCard({
   onAdvance: (status: OrderStatus) => void;
   busy: boolean;
 }) {
+  const t = useTranslations("admin");
   const pickupAt = new Date(order.pickupAt);
   const minutesUntil = Math.round((pickupAt.getTime() - nowMs) / 60_000);
   const urgency = urgencyOf(order.pickupAt, nowMs);
@@ -442,14 +447,14 @@ function OrderCard({
               >
                 <Clock className="h-3 w-3" />
                 {isPickedUp
-                  ? "Entregado"
+                  ? t("ordersDelivered")
                   : isCancelled
-                    ? "Cancelado"
+                    ? t("ordersCardCancelled")
                     : isReady
-                      ? "Listo"
+                      ? t("ordersCardReady")
                       : minutesUntil <= 0
-                        ? `Atrasado ${Math.abs(minutesUntil)} min`
-                        : `en ${minutesUntil} min`}
+                        ? t("ordersCardOverdue", { minutes: Math.abs(minutesUntil) })
+                        : t("ordersInMinutes", { minutes: minutesUntil })}
               </span>
               <p className="mt-0.5 font-mono text-[11px] text-muted">
                 {formatTime(order.pickupAt)}
@@ -484,7 +489,7 @@ function OrderCard({
                   onClick={() => onAdvance("READY")}
                 >
                   {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
-                  Marcar lista
+                  {t("ordersMarkReady")}
                 </Button>
               )}
               {order.status === "READY" && (
@@ -499,7 +504,7 @@ function OrderCard({
                   ) : (
                     <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
                   )}
-                  Entregada
+                  {t("ordersMarkDelivered")}
                 </Button>
               )}
               <Button
@@ -508,7 +513,7 @@ function OrderCard({
                 className="text-red-600 hover:bg-red-50"
                 disabled={busy}
                 onClick={() => {
-                  if (confirm("¿Cancelar esta orden?")) onAdvance("CANCELLED");
+                  if (confirm(t("ordersCancelConfirm"))) onAdvance("CANCELLED");
                 }}
               >
                 <X className="h-3.5 w-3.5" />
