@@ -679,21 +679,13 @@ export function BookingSheet({
               </motion.div>
             )}
 
-            {/* ── Step 3.5: Pre-order at the bar ── */}
+            {/* ── Step 3.5: Pre-order at the bar (renders as portal sheet) ── */}
             {step === "product" && result && (
-              <motion.div
-                key="product"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ProductPickStep
-                  bookingId={result.bookingId}
-                  onComplete={() => setStep("done")}
-                  onSkip={() => setStep("done")}
-                />
-              </motion.div>
+              <ProductPickStep
+                bookingId={result.bookingId}
+                onComplete={() => setStep("done")}
+                onSkip={() => setStep("done")}
+              />
             )}
 
             {/* ── Step 4: Done ── */}
