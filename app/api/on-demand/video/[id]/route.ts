@@ -19,7 +19,15 @@ export async function GET(
         status: "ready",
       },
       include: {
-        coachProfile: { select: { id: true, name: true, photoUrl: true, bio: true } },
+        coachProfile: {
+          select: {
+            id: true,
+            userId: true,
+            name: true,
+            photoUrl: true,
+            bio: true,
+          },
+        },
         classType: { select: { id: true, name: true, color: true } },
       },
     });

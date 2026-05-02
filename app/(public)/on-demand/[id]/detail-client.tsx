@@ -32,6 +32,7 @@ interface VideoDetail {
   level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "ALL";
   coachProfile: {
     id: string;
+    userId: string | null;
     name: string;
     photoUrl: string | null;
     bio: string | null;
@@ -173,40 +174,50 @@ export function OnDemandDetailClient({ videoId }: { videoId: string }) {
               </div>
             </div>
 
-            {/* Coach row */}
-            {video.coachProfile && (
-              <Link
-                href={`/instructors/${video.coachProfile.id}`}
-                className="mt-4 flex items-center gap-3 rounded-2xl border border-border/50 px-3 py-2.5 transition-colors hover:bg-foreground/[0.03] active:bg-foreground/5"
-              >
-                <Avatar className="h-10 w-10">
-                  {video.coachProfile.photoUrl && (
-                    <AvatarImage
-                      src={video.coachProfile.photoUrl}
-                      alt={video.coachProfile.name}
-                    />
-                  )}
-                  <AvatarFallback>
-                    {video.coachProfile.name
-                      .split(" ")
-                      .slice(0, 2)
-                      .map((s) => s[0])
-                      .join("")
-                      .toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
-                    {/* "Instructor" generic label, fallback if not translated */}
-                    {t("instructor")}
-                  </p>
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {video.coachProfile.name}
-                  </p>
+            {/* Coach row. Only an interactive link when the coach is also a
+                user (has a profile page at /my/user/<userId>). Otherwise we
+                render a static card so we don't ship a dead chevron. */}
+            {video.coachProfile && (() => {
+              const coach = video.coachProfile;
+              const inner = (
+                <>
+                  <Avatar className="h-10 w-10">
+                    {coach.photoUrl && (
+                      <AvatarImage src={coach.photoUrl} alt={coach.name} />
+                    )}
+                    <AvatarFallback>
+                      {coach.name
+                        .split(" ")
+                        .slice(0, 2)
+                        .map((s) => s[0])
+                        .join("")
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
+                      {t("instructor")}
+                    </p>
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {coach.name}
+                    </p>
+                  </div>
+                </>
+              );
+              return coach.userId ? (
+                <Link
+                  href={`/my/user/${coach.userId}`}
+                  className="mt-4 flex items-center gap-3 rounded-2xl border border-border/50 px-3 py-2.5 transition-colors hover:bg-foreground/[0.03] active:bg-foreground/5"
+                >
+                  {inner}
+                  <ChevronRight className="h-4 w-4 text-muted" />
+                </Link>
+              ) : (
+                <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border/50 px-3 py-2.5">
+                  {inner}
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted" />
-              </Link>
-            )}
+              );
+            })()}
 
             {/* Description */}
             {video.description && (
