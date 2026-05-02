@@ -126,7 +126,6 @@
     "discounts": "Discounts",
     "giftPackages": "Gifts",
     "subscriptions": "Subscriptions",
-    "onDemand": "On-Demand",
     "store": "Store",
     "platforms": "Platforms",
     "metrics": "Metrics",
@@ -381,6 +380,10 @@
     "packagesTitle": "Packages",
     "offers": "Offers",
     "packs": "Packages",
+    "onDemandSubscriptions": "On-Demand",
+    "onDemandBadge": "Includes On-Demand",
+    "includesOnDemandLabel": "Includes On-Demand access",
+    "includesOnDemandHint": "Members on this subscription can also stream the on-demand library.",
     "allDisciplinesLabel": "All disciplines",
     "monthly": "Monthly",
     "annual": "Annual",
@@ -1388,6 +1391,9 @@
     "classUnit": "class",
     "classesUnit": "classes",
     "unlimitedClasses": "Unlimited classes",
+    "onDemandUnlimited": "Unlimited on-demand video access",
+    "onDemandBadge": "On-Demand",
+    "plusOnDemandIncluded": "Includes on-demand videos",
     "validity": "Valid for",
     "buy": "Buy",
     "viewAllPackages": "View all packages",
@@ -2560,6 +2566,8 @@
     "noSubscriptionTitle": "No active subscription",
     "noSubscriptionDesc": "Subscribe to watch On-Demand classes anytime",
     "bundledTitle": "Access included",
-    "bundledDesc": "Your {packageName} plan includes On-Demand access"
+    "bundledDesc": "Your {packageName} plan includes On-Demand access",
+    "instructor": "Instructor",
+    "descriptionLabel": "About this class"
   }
 }

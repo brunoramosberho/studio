@@ -52,7 +52,11 @@ export async function POST(request: NextRequest) {
         ...(payload.input?.height && { heightPx: payload.input.height }),
         ...(payload.thumbnail && {
           cloudflareThumbnailUrl: payload.thumbnail,
-          ...(video.thumbnailUrl ? {} : { thumbnailUrl: payload.thumbnail }),
+          // Do NOT mirror payload.thumbnail into `thumbnailUrl`. That field is
+          // reserved for an admin-uploaded override (a poster image hosted
+          // somewhere unauthenticated). Cloudflare's raw thumbnail URL is
+          // useless on its own when `requireSignedURLs=true` — it returns 401.
+          // The frontend signs it on the fly via `signedThumbnailUrl`.
         }),
         ...(cfState === "error" && {
           errorMessage: payload.status?.errorReasonText ?? "Cloudflare reported error",

@@ -54,22 +54,44 @@ async function request<T>(
 /**
  * Request a one-time TUS upload URL. The frontend then uploads directly to
  * Cloudflare via the TUS protocol — bytes never pass through Vercel.
+ *
+ * `uploadLength` is the file size in bytes. Cloudflare requires it upfront
+ * (TUS spec `Upload-Length` header) because Stream rejects deferred-length
+ * uploads.
  */
 export async function createDirectUpload(params: {
+  uploadLength: number;
   maxDurationSeconds?: number;
   meta?: Record<string, string>;
   requireSignedURLs?: boolean;
+  /**
+   * Hosts allowed to perform the browser-side TUS upload (CORS).
+   * Pass hostnames only (e.g. ["betoro.localhost:3000", "*.mgic.app"]).
+   * Cloudflare echoes these into the upload's CORS allowlist.
+   */
+  allowedOrigins?: string[];
 }): Promise<DirectUploadResponse> {
   // Cloudflare's TUS upload endpoint sits at /stream and uses a special POST
   // contract: empty body + custom headers. The response Location header is
   // the resumable upload URL; the Stream-Media-Id header is the future video uid.
+  //
+  // `direct_user=true` is REQUIRED for browser-side uploads. Without it, Cloudflare
+  // returns a Location on the auth-gated `edge-production.gateway.api.cloudflare.com`
+  // endpoint, which rejects CORS preflights (no `Access-Control-Allow-Origin` and
+  // requires `Authorization` headers the browser cannot supply on resumable PATCHes).
+  // With the flag set, the Location points to `upload.videodelivery.net`-style
+  // tokenized URL that handles CORS correctly.
   const accountId = cloudflareAccountId();
-  const url = `${STREAM_API_BASE}/accounts/${accountId}/stream`;
+  const url = `${STREAM_API_BASE}/accounts/${accountId}/stream?direct_user=true`;
+
+  if (!Number.isFinite(params.uploadLength) || params.uploadLength <= 0) {
+    throw new Error("uploadLength must be a positive integer");
+  }
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${cloudflareStreamApiToken()}`,
     "Tus-Resumable": "1.0.0",
-    "Upload-Length": "0",
+    "Upload-Length": String(Math.floor(params.uploadLength)),
   };
 
   const metaParts: string[] = [];
@@ -85,6 +107,12 @@ export async function createDirectUpload(params: {
   }
   if (params.requireSignedURLs !== false) {
     metaParts.push(`requiresignedurls ${Buffer.from("true").toString("base64")}`);
+  }
+  if (params.allowedOrigins && params.allowedOrigins.length > 0) {
+    const value = params.allowedOrigins.join(",");
+    metaParts.push(
+      `allowedorigins ${Buffer.from(value).toString("base64")}`,
+    );
   }
   if (metaParts.length) {
     headers["Upload-Metadata"] = metaParts.join(",");

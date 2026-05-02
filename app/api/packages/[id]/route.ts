@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireRole, getTenantCurrency } from "@/lib/tenant";
 
-const PACKAGE_TYPES = ["OFFER", "PACK", "SUBSCRIPTION"] as const;
+const PACKAGE_TYPES = ["OFFER", "PACK", "SUBSCRIPTION", "ON_DEMAND_SUBSCRIPTION"] as const;
 
 const classTypesInclude = { select: { id: true, name: true } } as const;
 const creditAllocationsInclude = { include: { classType: { select: { id: true, name: true } } } } as const;
@@ -71,11 +71,14 @@ export async function PUT(
     if (type !== undefined) {
       if (!PACKAGE_TYPES.includes(type)) {
         return NextResponse.json(
-          { error: "type must be OFFER, PACK, or SUBSCRIPTION" },
+          { error: "type must be OFFER, PACK, SUBSCRIPTION, or ON_DEMAND_SUBSCRIPTION" },
           { status: 400 },
         );
       }
       data.type = type;
+    }
+    if (body.includesOnDemand !== undefined) {
+      data.includesOnDemand = Boolean(body.includesOnDemand);
     }
     if (credits !== undefined) {
       if (credits === null) {

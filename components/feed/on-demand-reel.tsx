@@ -12,6 +12,7 @@ interface VideoCard {
   durationSeconds: number | null;
   thumbnailUrl: string | null;
   cloudflareThumbnailUrl: string | null;
+  signedThumbnailUrl: string | null;
   level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "ALL";
   coachProfile: { id: string; name: string } | null;
   classType: { id: string; name: string; color: string } | null;
@@ -78,7 +79,7 @@ export function OnDemandReel() {
         className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-4 pb-2 scrollbar-none sm:-mx-6 sm:scroll-pl-6"
       >
         {videos.map((v, i) => {
-          const thumb = v.thumbnailUrl ?? v.cloudflareThumbnailUrl;
+          const thumb = v.thumbnailUrl ?? v.signedThumbnailUrl;
           const duration = formatDuration(v.durationSeconds);
           const isFirst = i === 0;
           const isLast = i === videos.length - 1;

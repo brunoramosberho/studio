@@ -8,7 +8,15 @@ import { Footer } from "@/components/shared/footer";
 import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
 import { UtmTracker } from "@/components/shared/utm-tracker";
 
-const sidebarPaths = ["/schedule", "/instructors", "/class/", "/book/", "/packages", "/shop"];
+const sidebarPaths = [
+  "/schedule",
+  "/instructors",
+  "/class/",
+  "/book/",
+  "/packages",
+  "/shop",
+  "/on-demand",
+];
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();

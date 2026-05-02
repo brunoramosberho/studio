@@ -17,6 +17,34 @@ function clientIp(request: NextRequest): string | null {
 }
 
 /**
+ * Whether `ip` is a loopback / link-local / RFC1918 private address.
+ *
+ * Used to skip IP-binding the playback JWT when Next.js sees the request as
+ * coming from a private network (typical in local dev: `::1` / `127.0.0.1`).
+ * Cloudflare's edge sees the user's *public* IP, so binding the token to the
+ * private address would always fail — Cloudflare returns 401 for the manifest.
+ *
+ * In production behind Vercel, the first `x-forwarded-for` value is the
+ * client's real public IP, which both Vercel and Cloudflare see — binding
+ * works as intended.
+ */
+function isLoopbackOrPrivate(ip: string): boolean {
+  if (ip === "::1") return true;
+  if (ip === "0.0.0.0") return true;
+  if (ip.startsWith("127.")) return true;
+  if (ip.startsWith("10.")) return true;
+  if (ip.startsWith("169.254.")) return true;
+  if (ip.startsWith("192.168.")) return true;
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)) return true;
+  if (ip.startsWith("::ffff:127.")) return true;
+  if (ip.startsWith("::ffff:10.")) return true;
+  if (ip.startsWith("::ffff:192.168.")) return true;
+  if (ip.toLowerCase().startsWith("fc") || ip.toLowerCase().startsWith("fd")) return true; // fc00::/7 unique-local
+  if (ip.toLowerCase().startsWith("fe80")) return true; // fe80::/10 link-local
+  return false;
+}
+
+/**
  * Mint a signed playback token for a member to stream an on-demand video.
  *
  * Steps (any failure aborts the chain — token is never minted speculatively):
@@ -71,10 +99,15 @@ export async function POST(request: NextRequest) {
       userAgent: userAgent,
     });
 
+    // Only IP-bind the token when we have a public IP. In local dev the
+    // request IP is loopback, but Cloudflare sees the real public IP, so
+    // binding here would guarantee a 401 on the manifest.
+    const ipBindable = ip && !isLoopbackOrPrivate(ip) ? ip : undefined;
+
     const { token, expiresAt } = await signPlaybackToken({
       videoUid: video.cloudflareStreamUid,
       ttlSeconds: 60 * 60,
-      clientIp: ip ?? undefined,
+      clientIp: ipBindable,
     });
 
     await prisma.onDemandVideo.update({

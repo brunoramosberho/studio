@@ -33,6 +33,7 @@ interface VideoRow {
   durationSeconds: number | null;
   thumbnailUrl: string | null;
   cloudflareThumbnailUrl: string | null;
+  signedThumbnailUrl: string | null;
   level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "ALL";
   viewCount: number;
   errorMessage: string | null;
@@ -141,7 +142,7 @@ export function OnDemandLibraryTab() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {videos.map((v) => {
-            const thumb = v.thumbnailUrl ?? v.cloudflareThumbnailUrl;
+            const thumb = v.thumbnailUrl ?? v.signedThumbnailUrl;
             return (
               <Card key={v.id} className="overflow-hidden">
                 <div className="relative aspect-video w-full bg-foreground/5">

@@ -4,17 +4,22 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   Video as VideoIcon,
   Clock,
   Lock,
+  Sparkles,
+  Check,
+  Play,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useBranding } from "@/components/branding-provider";
 import { SubscribeOnDemandSheet } from "@/components/on-demand/subscribe-sheet";
+import { PageTransition } from "@/components/shared/page-transition";
+import { cn } from "@/lib/utils";
 
 interface VideoCard {
   id: string;
@@ -23,6 +28,7 @@ interface VideoCard {
   durationSeconds: number | null;
   thumbnailUrl: string | null;
   cloudflareThumbnailUrl: string | null;
+  signedThumbnailUrl: string | null;
   level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "ALL";
   coachProfile: {
     id: string;
@@ -61,22 +67,31 @@ interface CatalogResponse {
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "—";
   const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+  const s = Math.floor(seconds % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function classNamesByLevel(level: string, t: (k: string) => string): string {
-  switch (level) {
-    case "BEGINNER":
-      return t("levelBeginner");
-    case "INTERMEDIATE":
-      return t("levelIntermediate");
-    case "ADVANCED":
-      return t("levelAdvanced");
-    default:
-      return t("levelAll");
+function formatExpiry(iso: string | undefined): string | null {
+  if (!iso) return null;
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      day: "numeric",
+      month: "short",
+    }).format(new Date(iso));
+  } catch {
+    return null;
   }
 }
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" as const } },
+};
 
 export function OnDemandCatalogClient() {
   const t = useTranslations("onDemand");
@@ -106,10 +121,14 @@ export function OnDemandCatalogClient() {
   }, [data?.videos]);
 
   const disciplines = useMemo(() => {
-    const map = new Map<string, { id: string; name: string }>();
+    const map = new Map<string, { id: string; name: string; color: string }>();
     (data?.videos ?? []).forEach((v) => {
       if (v.classType) {
-        map.set(v.classType.id, { id: v.classType.id, name: v.classType.name });
+        map.set(v.classType.id, {
+          id: v.classType.id,
+          name: v.classType.name,
+          color: v.classType.color,
+        });
       }
     });
     return Array.from(map.values());
@@ -124,100 +143,150 @@ export function OnDemandCatalogClient() {
   const hasAccess = data?.access.hasAccess ?? false;
   const enabled = data?.config?.enabled ?? false;
   const pkg = data?.config?.package ?? null;
+  const expiry = formatExpiry(data?.access.expiresAt);
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            {t("title")}
-          </h1>
-          <p className="mt-1 text-sm text-muted">{t("subtitle")}</p>
-        </div>
-      </header>
-
-      {!hasAccess && enabled && pkg && (
-        <Card>
-          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-                style={{ backgroundColor: `${colorAccent}1a`, color: colorAccent }}
+    <PageTransition>
+      <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
+        {/* Header */}
+        <header className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              {t("title")}
+            </h1>
+            {hasAccess && (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300"
               >
-                <Lock className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-base font-semibold text-foreground">{t("unlockTitle")}</p>
-                <p className="mt-0.5 text-sm text-muted">
-                  {data?.config?.description ?? t("unlockSubtitle")}
-                </p>
-                <p className="mt-2 text-sm font-semibold" style={{ color: colorAccent }}>
-                  {pkg.price} {pkg.currency} / {pkg.recurringInterval ?? "month"}
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={() => setShowSubscribe(true)}
-              className="self-stretch sm:self-center"
-              style={{ backgroundColor: colorAccent, color: "white" }}
-            >
-              {t("subscribeCTA")}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+                <Check className="h-3 w-3" />
+                {t("subActive")}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-muted">
+            {hasAccess && expiry
+              ? `${t("accessUntil")} ${expiry}`
+              : t("subtitle")}
+          </p>
+        </header>
 
-      {!enabled && (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <VideoIcon className="h-10 w-10 text-muted/40" />
-            <p className="text-sm font-medium text-foreground">{t("notAvailableTitle")}</p>
-            <p className="max-w-sm text-xs text-muted">{t("notAvailableDesc")}</p>
-          </CardContent>
-        </Card>
-      )}
+        {/* Paywall card (when no access yet) */}
+        {!hasAccess && enabled && pkg && (
+          <Card
+            className="relative overflow-hidden border-0 shadow-warm-md"
+            style={{
+              background: `linear-gradient(135deg, ${colorAccent}1a 0%, ${colorAccent}05 100%)`,
+            }}
+          >
+            <CardContent className="space-y-4 p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: `${colorAccent}26`, color: colorAccent }}
+                >
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold text-foreground sm:text-lg">
+                    {t("unlockTitle")}
+                  </p>
+                  <p className="mt-0.5 text-sm text-muted">
+                    {data?.config?.description ?? t("unlockSubtitle")}
+                  </p>
+                </div>
+              </div>
 
-      {enabled && (coaches.length > 0 || disciplines.length > 0) && (
-        <div className="flex flex-wrap gap-2">
-          {disciplines.length > 0 && (
-            <select
-              value={disciplineFilter}
-              onChange={(e) => setDisciplineFilter(e.target.value)}
-              className="h-9 rounded-md border border-border/60 bg-card px-3 text-sm"
-            >
-              <option value="">{t("allDisciplines")}</option>
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <span
+                    className="font-mono text-2xl font-bold sm:text-3xl"
+                    style={{ color: colorAccent }}
+                  >
+                    {pkg.price} {pkg.currency}
+                  </span>
+                  <span className="ml-1 text-sm text-muted">
+                    /{pkg.recurringInterval === "year" ? "año" : "mes"}
+                  </span>
+                </div>
+                <Button
+                  onClick={() => setShowSubscribe(true)}
+                  className="rounded-full px-5 font-semibold"
+                  style={{ backgroundColor: colorAccent, color: "white" }}
+                >
+                  {t("subscribeCTA")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tenant has not enabled On-Demand at all */}
+        {!enabled && !isLoading && (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+              <VideoIcon className="h-10 w-10 text-muted/40" />
+              <p className="text-sm font-medium text-foreground">{t("notAvailableTitle")}</p>
+              <p className="max-w-sm text-xs text-muted">{t("notAvailableDesc")}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Filter chips: bleed off the page padding for an app-like horizontal scroll */}
+        {enabled && (disciplines.length > 0 || coaches.length > 0) && (
+          <div className="-mx-4 overflow-x-auto scrollbar-none sm:-mx-6">
+            <div className="flex gap-2 px-4 pb-1 sm:px-6">
+              <FilterChip
+                active={!disciplineFilter && !coachFilter}
+                onClick={() => {
+                  setDisciplineFilter("");
+                  setCoachFilter("");
+                }}
+              >
+                {t("levelAll")}
+              </FilterChip>
               {disciplines.map((d) => (
-                <option key={d.id} value={d.id}>
+                <FilterChip
+                  key={`disc-${d.id}`}
+                  active={disciplineFilter === d.id}
+                  color={d.color}
+                  onClick={() =>
+                    setDisciplineFilter(disciplineFilter === d.id ? "" : d.id)
+                  }
+                >
                   {d.name}
-                </option>
+                </FilterChip>
               ))}
-            </select>
-          )}
-          {coaches.length > 0 && (
-            <select
-              value={coachFilter}
-              onChange={(e) => setCoachFilter(e.target.value)}
-              className="h-9 rounded-md border border-border/60 bg-card px-3 text-sm"
-            >
-              <option value="">{t("allCoaches")}</option>
+              {coaches.length > 0 && disciplines.length > 0 && (
+                <span className="my-auto h-5 w-px shrink-0 bg-border/60" aria-hidden />
+              )}
               {coaches.map((c) => (
-                <option key={c.id} value={c.id}>
+                <FilterChip
+                  key={`coach-${c.id}`}
+                  active={coachFilter === c.id}
+                  onClick={() => setCoachFilter(coachFilter === c.id ? "" : c.id)}
+                >
                   {c.name}
-                </option>
+                </FilterChip>
               ))}
-            </select>
-          )}
-        </div>
-      )}
+            </div>
+          </div>
+        )}
 
-      {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full rounded-lg" />
-          ))}
-        </div>
-      ) : videos.length === 0 ? (
-        enabled && (
+        {/* Loading skeleton */}
+        {isLoading && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="aspect-video w-full rounded-2xl" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!isLoading && enabled && videos.length === 0 && (
           <Card>
             <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
               <VideoIcon className="h-10 w-10 text-muted/40" />
@@ -225,65 +294,127 @@ export function OnDemandCatalogClient() {
               <p className="max-w-sm text-xs text-muted">{t("emptyDesc")}</p>
             </CardContent>
           </Card>
-        )
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {videos.map((v) => {
-            const thumb = v.thumbnailUrl ?? v.cloudflareThumbnailUrl;
-            const href = `/on-demand/${v.id}`;
-            return (
-              <Link key={v.id} href={href} className="group">
-                <Card className="overflow-hidden transition-transform group-hover:scale-[1.01]">
-                  <div className="relative aspect-video w-full bg-foreground/5">
-                    {thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={thumb}
-                        alt={v.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <VideoIcon className="h-10 w-10 text-muted/30" />
+        )}
+
+        {/* Video grid */}
+        {!isLoading && videos.length > 0 && (
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4"
+          >
+            {videos.map((v) => {
+              const thumb = v.thumbnailUrl ?? v.signedThumbnailUrl;
+              return (
+                <motion.div key={v.id} variants={fadeUp}>
+                  <Link href={`/on-demand/${v.id}`} className="group block">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-foreground/5 shadow-sm transition-transform duration-200 group-active:scale-[0.98] sm:group-hover:-translate-y-0.5 sm:group-hover:shadow-warm-md">
+                      {thumb ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={thumb}
+                          alt={v.title}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <VideoIcon className="h-10 w-10 text-muted/30" />
+                        </div>
+                      )}
+
+                      {/* Bottom gradient + duration */}
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/55 to-transparent" />
+                      {v.durationSeconds != null && v.durationSeconds > 0 && (
+                        <div className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-[11px]">
+                          <Clock className="h-3 w-3" />
+                          {formatDuration(v.durationSeconds)}
+                        </div>
+                      )}
+
+                      {/* Discipline chip top-left */}
+                      {v.classType && (
+                        <div
+                          className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm sm:text-[11px]"
+                          style={{ backgroundColor: v.classType.color }}
+                        >
+                          {v.classType.name}
+                        </div>
+                      )}
+
+                      {/* Hover/active play overlay (desktop only) */}
+                      <div className="pointer-events-none absolute inset-0 hidden items-center justify-center bg-black/15 opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:flex">
+                        <div
+                          className="flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg"
+                          style={{ backgroundColor: colorAccent }}
+                        >
+                          <Play className="h-5 w-5 fill-white" />
+                        </div>
                       </div>
-                    )}
-                    {v.durationSeconds && (
-                      <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-white">
-                        <Clock className="h-3 w-3" />
-                        {formatDuration(v.durationSeconds)}
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-3">
-                    <h3 className="line-clamp-2 text-sm font-semibold text-foreground">
-                      {v.title}
-                    </h3>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-muted">
-                      {v.coachProfile?.name && <span>{v.coachProfile.name}</span>}
-                      {v.classType?.name && (
-                        <>
-                          <span>·</span>
-                          <span>{v.classType.name}</span>
-                        </>
+
+                      {/* Locked overlay if no access */}
+                      {!hasAccess && (
+                        <div className="absolute right-2 top-2 inline-flex items-center justify-center rounded-full bg-black/60 p-1.5 text-white">
+                          <Lock className="h-3 w-3" />
+                        </div>
                       )}
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      <Badge variant="outline" className="text-[10px]">
-                        {classNamesByLevel(v.level, t)}
-                      </Badge>
+
+                    {/* Meta */}
+                    <div className="mt-2 space-y-0.5 px-0.5">
+                      <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug text-foreground sm:text-sm">
+                        {v.title}
+                      </h3>
+                      {v.coachProfile?.name && (
+                        <p className="line-clamp-1 text-[11px] text-muted sm:text-xs">
+                          {v.coachProfile.name}
+                        </p>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </div>
 
       <SubscribeOnDemandSheet
         open={showSubscribe}
         onOpenChange={setShowSubscribe}
       />
-    </div>
+    </PageTransition>
+  );
+}
+
+function FilterChip({
+  active,
+  color,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  color?: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      type="button"
+      className={cn(
+        "shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors active:scale-[0.97]",
+        active
+          ? "border-transparent text-white shadow-sm"
+          : "border-border/60 bg-card text-muted hover:bg-foreground/5 hover:text-foreground",
+      )}
+      style={
+        active
+          ? { backgroundColor: color ?? "var(--color-foreground)" }
+          : undefined
+      }
+    >
+      {children}
+    </button>
   );
 }

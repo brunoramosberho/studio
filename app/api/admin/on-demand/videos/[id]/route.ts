@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { hasPermission } from "@/lib/permissions";
-import { deleteVideo as cfDeleteVideo } from "@/lib/cloudflare-stream";
+import {
+  deleteVideo as cfDeleteVideo,
+  signThumbnailUrl,
+} from "@/lib/cloudflare-stream";
 import type { Level } from "@prisma/client";
 
 async function ensureAdminOnDemand() {
@@ -29,7 +32,28 @@ export async function GET(
       },
     });
     if (!video) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ video });
+
+    let signedThumb: string | null = null;
+    if (
+      video.status === "ready" &&
+      !video.thumbnailUrl &&
+      video.cloudflareThumbnailUrl &&
+      video.cloudflareStreamUid
+    ) {
+      try {
+        signedThumb = await signThumbnailUrl({
+          videoUid: video.cloudflareStreamUid,
+          rawThumbnailUrl: video.cloudflareThumbnailUrl,
+        });
+      } catch (e) {
+        console.warn(
+          `[on-demand] failed to sign thumbnail for ${video.id}:`,
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }
+
+    return NextResponse.json({ video: { ...video, signedThumbnailUrl: signedThumb } });
   } catch (err) {
     if (err instanceof Error && err.message === "Forbidden") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
