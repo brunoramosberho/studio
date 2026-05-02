@@ -14,6 +14,7 @@ import {
   Layers,
   CalendarSync,
   ChevronRight,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,7 +39,7 @@ interface PackageData {
   id: string;
   name: string;
   description: string | null;
-  type: "OFFER" | "PACK" | "SUBSCRIPTION";
+  type: "OFFER" | "PACK" | "SUBSCRIPTION" | "ON_DEMAND_SUBSCRIPTION";
   credits: number | null;
   validDays: number;
   price: number;
@@ -49,6 +50,7 @@ interface PackageData {
   creditAllocations?: CreditAlloc[];
   recurringInterval: string | null;
   sortOrder: number;
+  includesOnDemand?: boolean;
 }
 
 interface UserPackageSummary {
@@ -60,6 +62,18 @@ interface UserPackageSummary {
 }
 
 type TabType = "OFFER" | "PACK" | "SUBSCRIPTION";
+
+// ON_DEMAND_SUBSCRIPTION packages are surfaced inside the "Subscriptions" tab
+// (no dedicated tab) — they're billed and rendered the same way; only the
+// access they grant differs. We tag the card with a badge instead.
+const SUBSCRIPTION_TYPES: PackageData["type"][] = [
+  "SUBSCRIPTION",
+  "ON_DEMAND_SUBSCRIPTION",
+];
+
+function isSubscriptionType(t: PackageData["type"]): boolean {
+  return SUBSCRIPTION_TYPES.includes(t);
+}
 
 // TABS defined inside component for translation access
 
@@ -103,6 +117,14 @@ export default function PackagesPage() {
   function buildFeatures(pkg: PackageData): string[] {
     const features: string[] = [];
 
+    if (pkg.type === "ON_DEMAND_SUBSCRIPTION") {
+      // Pure on-demand sub: credits / disciplines don't apply, the value prop
+      // is unlimited streaming of the studio's pre-recorded video library.
+      features.push(t("onDemandUnlimited"));
+      features.push(pkg.recurringInterval === "year" ? t("annualRenewal") : t("monthlyRenewal"));
+      return features;
+    }
+
     if (pkg.creditAllocations && pkg.creditAllocations.length > 0) {
       pkg.creditAllocations.forEach((a) => {
         features.push(`${a.credits} ${a.classType.name}`);
@@ -123,6 +145,10 @@ export default function PackagesPage() {
       features.push(pkg.classTypes.map((c) => c.name).join(", "));
     } else {
       features.push(t("anyDiscipline"));
+    }
+
+    if (pkg.type === "SUBSCRIPTION" && pkg.includesOnDemand) {
+      features.push(t("plusOnDemandIncluded"));
     }
 
     return features;
@@ -169,14 +195,21 @@ export default function PackagesPage() {
   );
 
   const availableTabs = useMemo(() => {
-    return TABS.filter((tab) => visiblePackages.some((p) => p.type === tab.type));
+    return TABS.filter((tab) =>
+      visiblePackages.some((p) =>
+        tab.type === "SUBSCRIPTION" ? isSubscriptionType(p.type) : p.type === tab.type,
+      ),
+    );
   }, [visiblePackages]);
 
   const [activeTab, setActiveTab] = useState<TabType | null>(null);
   const currentTab = activeTab ?? availableTabs[0]?.type ?? "PACK";
 
   const filtered = useMemo(
-    () => visiblePackages.filter((p) => p.type === currentTab),
+    () =>
+      visiblePackages.filter((p) =>
+        currentTab === "SUBSCRIPTION" ? isSubscriptionType(p.type) : p.type === currentTab,
+      ),
     [visiblePackages, currentTab],
   );
 
@@ -296,13 +329,24 @@ export default function PackagesPage() {
                     )}
 
                     <div className="mb-3 sm:mb-4">
-                      <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wider text-muted sm:mb-1 sm:text-[11px]">
-                        {pkg.type === "OFFER"
-                          ? t("offer")
-                          : pkg.type === "SUBSCRIPTION"
-                            ? t("subscription")
-                            : t("package")}
-                      </p>
+                      <div className="mb-0.5 flex items-center gap-2 sm:mb-1">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted sm:text-[11px]">
+                          {pkg.type === "OFFER"
+                            ? t("offer")
+                            : isSubscriptionType(pkg.type)
+                              ? t("subscription")
+                              : t("package")}
+                        </p>
+                        {(pkg.type === "ON_DEMAND_SUBSCRIPTION" ||
+                          (pkg.type === "SUBSCRIPTION" && pkg.includesOnDemand)) && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent sm:text-[10px]"
+                          >
+                            <Video className="h-2.5 w-2.5" />
+                            {t("onDemandBadge")}
+                          </span>
+                        )}
+                      </div>
                       <h3 className="font-display text-lg font-bold text-foreground sm:text-xl">
                         {pkg.name}
                       </h3>
@@ -321,7 +365,7 @@ export default function PackagesPage() {
                           / {pkg.credits} {pkg.credits === 1 ? "clase" : "clases"}
                         </span>
                       ) : null}
-                      {pkg.type === "SUBSCRIPTION" && (
+                      {isSubscriptionType(pkg.type) && (
                         <span className="ml-1 text-xs text-muted sm:text-sm">
                           / {pkg.recurringInterval === "year" ? "año" : "mes"}
                         </span>
@@ -347,7 +391,7 @@ export default function PackagesPage() {
                       >
                         {pkg.isPromo
                           ? t("tryNow")
-                          : pkg.type === "SUBSCRIPTION"
+                          : isSubscriptionType(pkg.type)
                             ? t("subscribe")
                             : t("buyFor", { price: formatCurrency(pkg.price, pkg.currency) })}
                       </Button>
@@ -366,7 +410,7 @@ export default function PackagesPage() {
 
       {/* Purchase / Subscribe Sheet */}
       <AnimatePresence>
-        {sheetOpen && selectedPkg && selectedPkg.type === "SUBSCRIPTION" ? (
+        {sheetOpen && selectedPkg && isSubscriptionType(selectedPkg.type) ? (
           <SubscribeSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}

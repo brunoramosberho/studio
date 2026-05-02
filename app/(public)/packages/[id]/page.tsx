@@ -15,6 +15,7 @@ import {
   Ticket,
   Share2,
   Check,
+  Video,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ interface PackageData {
   id: string;
   name: string;
   description: string | null;
-  type: "OFFER" | "PACK" | "SUBSCRIPTION";
+  type: "OFFER" | "PACK" | "SUBSCRIPTION" | "ON_DEMAND_SUBSCRIPTION";
   credits: number | null;
   validDays: number;
   price: number;
@@ -52,6 +53,16 @@ interface PackageData {
   creditAllocations?: CreditAlloc[];
   recurringInterval: string | null;
   sortOrder: number;
+  includesOnDemand?: boolean;
+}
+
+const SUBSCRIPTION_TYPES_DETAIL: PackageData["type"][] = [
+  "SUBSCRIPTION",
+  "ON_DEMAND_SUBSCRIPTION",
+];
+
+function isSubscription(t: PackageData["type"]): boolean {
+  return SUBSCRIPTION_TYPES_DETAIL.includes(t);
 }
 
 const TYPE_META: Record<
@@ -61,6 +72,7 @@ const TYPE_META: Record<
   OFFER: { label: "Oferta", icon: Gift },
   PACK: { label: "Paquete de clases", icon: Layers },
   SUBSCRIPTION: { label: "Suscripción", icon: CalendarSync },
+  ON_DEMAND_SUBSCRIPTION: { label: "Suscripción On-Demand", icon: Video },
 };
 
 function validDaysLabel(days: number): string {
@@ -195,7 +207,7 @@ export default function PackageDetailPage() {
             <div className="flex items-center gap-2.5 text-sm text-muted">
               <Clock className="h-4 w-4 flex-shrink-0" />
               <span>
-                {pkg.type === "SUBSCRIPTION"
+                {isSubscription(pkg.type)
                   ? `Renovación ${pkg.recurringInterval === "year" ? "anual" : "mensual"}`
                   : `Caduca despues de ${validDaysLabel(pkg.validDays)}`}
               </span>
@@ -204,11 +216,23 @@ export default function PackageDetailPage() {
               <CreditCard className="h-4 w-4 flex-shrink-0" />
               <span>
                 {formatCurrency(pkg.price, pkg.currency)}
-                {pkg.type === "SUBSCRIPTION" && (
+                {isSubscription(pkg.type) && (
                   <span> / {pkg.recurringInterval === "year" ? "año" : "mes"}</span>
                 )}
               </span>
             </div>
+            {pkg.type === "ON_DEMAND_SUBSCRIPTION" && (
+              <div className="flex items-center gap-2.5 text-sm text-muted">
+                <Video className="h-4 w-4 flex-shrink-0" />
+                <span>Acceso ilimitado a videos on-demand</span>
+              </div>
+            )}
+            {pkg.type === "SUBSCRIPTION" && pkg.includesOnDemand && (
+              <div className="flex items-center gap-2.5 text-sm text-muted">
+                <Video className="h-4 w-4 flex-shrink-0" />
+                <span>Incluye videos on-demand</span>
+              </div>
+            )}
             {pkg.creditAllocations && pkg.creditAllocations.length > 0 ? (
               pkg.creditAllocations.map((alloc) => (
                 <div key={alloc.classTypeId} className="flex items-center gap-2.5 text-sm text-muted">
@@ -330,7 +354,7 @@ export default function PackageDetailPage() {
             className="w-full rounded-full py-6 text-base"
             onClick={() => setSheetOpen(true)}
           >
-            {pkg.type === "SUBSCRIPTION"
+            {isSubscription(pkg.type)
               ? `Suscribirme por ${formatCurrency(pkg.price, pkg.currency)}/${pkg.recurringInterval === "year" ? "año" : "mes"}`
               : pkg.isPromo
                 ? "Probar ahora"
@@ -341,7 +365,7 @@ export default function PackageDetailPage() {
 
       {/* Purchase / Subscribe Sheet */}
       <AnimatePresence>
-        {sheetOpen && pkg && pkg.type === "SUBSCRIPTION" ? (
+        {sheetOpen && pkg && isSubscription(pkg.type) ? (
           <SubscribeSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}

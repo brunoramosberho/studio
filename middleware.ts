@@ -59,7 +59,8 @@ function isTenantOnlyPath(pathname: string): boolean {
     pathname.startsWith("/shop") ||
     pathname.startsWith("/rate") ||
     pathname.startsWith("/waiver") ||
-    pathname.startsWith("/install")
+    pathname.startsWith("/install") ||
+    pathname.startsWith("/on-demand")
   );
 }
 

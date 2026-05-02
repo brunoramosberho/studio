@@ -27,6 +27,7 @@ export type AdminPermission =
   | "subscriptions"
   | "shop"
   | "platforms"
+  | "onDemand"
   // Metrics
   | "reports"
   | "analytics"
@@ -49,7 +50,7 @@ const ALL_PERMISSIONS: AdminPermission[] = [
   "dashboard", "schedule", "classes", "checkIn", "noShowReview", "clients",
   "feed", "achievements", "pos", "waitlist", "orders",
   "coaches", "availability", "disciplines",
-  "finance", "packages", "subscriptions", "shop", "platforms",
+  "finance", "packages", "subscriptions", "shop", "platforms", "onDemand",
   "reports", "analytics", "conversion",
   "marketing", "highlights", "referrals",
   "billing", "policies", "waiver", "branding", "team", "studios", "language", "embed",

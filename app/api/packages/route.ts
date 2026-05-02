@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireTenant, getAuthContext, requireRole, getTenantCurrency } from "@/lib/tenant";
 import { ensureStripePrice } from "@/lib/stripe/subscriptions";
 
-const PACKAGE_TYPES = ["OFFER", "PACK", "SUBSCRIPTION"] as const;
+const PACKAGE_TYPES = ["OFFER", "PACK", "SUBSCRIPTION", "ON_DEMAND_SUBSCRIPTION"] as const;
 
 export async function GET(request: NextRequest) {
   try {
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     if (type !== undefined && type !== null) {
       if (!PACKAGE_TYPES.includes(type as PackageType)) {
         return NextResponse.json(
-          { error: "type must be OFFER, PACK, or SUBSCRIPTION" },
+          { error: "type must be OFFER, PACK, SUBSCRIPTION, or ON_DEMAND_SUBSCRIPTION" },
           { status: 400 },
         );
       }
@@ -181,6 +181,8 @@ export async function POST(request: NextRequest) {
         allowGuests: Boolean(body.allowGuests),
         maxGuestsPerBooking: body.maxGuestsPerBooking != null && !Number.isNaN(Number(body.maxGuestsPerBooking)) ? Number(body.maxGuestsPerBooking) : null,
         monthlyGuestPasses: body.monthlyGuestPasses != null && !Number.isNaN(Number(body.monthlyGuestPasses)) ? Number(body.monthlyGuestPasses) : null,
+        includesOnDemand:
+          pkgType === PackageType.SUBSCRIPTION ? Boolean(body.includesOnDemand) : false,
         ...(Array.isArray(classTypeIds) && classTypeIds.length > 0
           ? {
               classTypes: {
@@ -205,7 +207,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (pkgType === PackageType.SUBSCRIPTION && ctx.tenant.stripeAccountId) {
+    const isRecurring =
+      pkgType === PackageType.SUBSCRIPTION || pkgType === PackageType.ON_DEMAND_SUBSCRIPTION;
+    if (isRecurring && ctx.tenant.stripeAccountId) {
       try {
         await ensureStripePrice(created.id, ctx.tenant.stripeAccountId);
       } catch (e) {

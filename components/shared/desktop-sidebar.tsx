@@ -16,6 +16,7 @@ import {
   Loader2,
   Check,
   ArrowRightLeft,
+  Video,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const sidebarLinks = [
   { href: "/instructors", icon: Users, labelKey: "coaches" },
   { href: "/my/bookings", icon: CalendarCheck, labelKey: "myBookings" },
   { href: "/my/packages", icon: Package, labelKey: "myPackages" },
+  { href: "/on-demand", icon: Video, labelKey: "onDemand" },
   { href: "/shop", icon: ShoppingBag, labelKey: "shop" },
   { href: "/my/profile", icon: User, labelKey: "profile" },
 ];

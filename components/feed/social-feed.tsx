@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { FeedEventCard } from "./feed-event-card";
 import { FeedPwaHint } from "./feed-pwa-hint";
 import { DiscoverDisciplines } from "./discover-disciplines";
+import { OnDemandReel } from "./on-demand-reel";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -165,6 +166,8 @@ export function SocialFeed() {
   return (
     <div className="space-y-4">
       <FeedPwaHint />
+
+      {!isLoading && <OnDemandReel />}
 
       {showDiscover && !isLoading && (
         <DiscoverDisciplines disciplines={disciplines} />
