@@ -1,4 +1,4 @@
-import { SignJWT, importPKCS8, type KeyLike } from "jose";
+import { SignJWT, importPKCS8 } from "jose";
 import {
   cloudflareStreamSigningKeyId,
   cloudflareStreamSigningKeyPem,
@@ -20,10 +20,11 @@ const DEFAULT_TTL_SECONDS = 60 * 60;
 // Cache the imported signing key for the lifetime of the process. importPKCS8
 // is otherwise called on every signPlaybackToken() invocation (e.g. when
 // listing N videos and signing N thumbnail URLs).
-let cachedSigningKey: Promise<KeyLike> | null = null;
-function getSigningKey(): Promise<KeyLike> {
+type SigningKey = Awaited<ReturnType<typeof importPKCS8>>;
+let cachedSigningKey: Promise<SigningKey> | null = null;
+function getSigningKey(): Promise<SigningKey> {
   if (!cachedSigningKey) {
-    cachedSigningKey = importPKCS8(cloudflareStreamSigningKeyPem(), "RS256") as Promise<KeyLike>;
+    cachedSigningKey = importPKCS8(cloudflareStreamSigningKeyPem(), "RS256");
   }
   return cachedSigningKey;
 }
