@@ -17,29 +17,6 @@ interface RequestBody {
 const DEFAULT_MAX_DURATION = 60 * 60 * 3;
 const MAX_UPLOAD_BYTES = 30 * 1024 * 1024 * 1024;
 
-function hostFromUrl(value: string | null | undefined): string | null {
-  if (!value) return null;
-  try {
-    return new URL(value).host;
-  } catch {
-    return null;
-  }
-}
-
-function collectAllowedOrigins(request: NextRequest): string[] {
-  const origins = new Set<string>();
-  const requestHost = hostFromUrl(request.headers.get("origin")) ?? request.headers.get("host");
-  if (requestHost) origins.add(requestHost);
-
-  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
-  if (root) {
-    origins.add(root);
-    if (!root.includes("*")) origins.add(`*.${root}`);
-  }
-
-  return [...origins];
-}
-
 /**
  * Mint a one-time TUS upload URL for the admin's browser to upload directly
  * to Cloudflare Stream. We immediately create the OnDemandVideo row in
@@ -72,17 +49,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build the CORS allowlist Cloudflare echoes onto the upload session.
-    // We allow the origin issuing this admin request (the studio's tenant
-    // subdomain) plus the configured public root domain (covers all
-    // <slug>.<root> subdomains in production).
-    const allowedOrigins = collectAllowedOrigins(request);
-
+    // We intentionally do NOT set `allowedOrigins` on the video. Cloudflare
+    // applies that field as a domain whitelist for playback and would block
+    // any other tenant subdomain (e.g. videos uploaded from local dev cannot
+    // play on *.mgic.app). The real protection is `requireSignedURLs=true`:
+    // the iframe loads a JWT-signed URL that only our server can mint, and
+    // only for users who pass `checkOnDemandAccess()`.
     const { uploadURL, uid } = await createDirectUpload({
       uploadLength: fileSize,
       maxDurationSeconds: body.maxDurationSeconds ?? DEFAULT_MAX_DURATION,
       requireSignedURLs: true,
-      allowedOrigins,
       meta: {
         name: body.title,
         tenantId: ctx.tenant.id,
