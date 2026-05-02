@@ -67,7 +67,12 @@ export async function POST(request: NextRequest) {
       where: { id: packageId, tenantId: tenant.id },
     });
 
-    if (!pkg || pkg.type !== "SUBSCRIPTION" || !pkg.isActive) {
+    // Both SUBSCRIPTION (in-studio unlimited) and ON_DEMAND_SUBSCRIPTION
+    // (video library access) are billed as recurring Stripe subscriptions and
+    // share the same checkout flow.
+    const isSubscriptionPackage =
+      pkg && (pkg.type === "SUBSCRIPTION" || pkg.type === "ON_DEMAND_SUBSCRIPTION");
+    if (!pkg || !isSubscriptionPackage || !pkg.isActive) {
       return NextResponse.json(
         { error: "Subscription plan not found" },
         { status: 404 },

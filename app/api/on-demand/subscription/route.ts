@@ -80,12 +80,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Block re-subscribe only for *truly* active states. A previous attempt
+    // can leave behind an `incomplete` row (Stripe creates the subscription as
+    // incomplete until the first invoice is paid; if the user closes the sheet
+    // before confirming, the row stays). We delete those orphans so the user
+    // can retry instead of getting "Already subscribed". Stripe auto-expires
+    // incomplete subs after ~24h on its side.
     const existing = await prisma.memberSubscription.findFirst({
       where: {
         tenantId: ctx.tenant.id,
         userId: ctx.session.user.id,
         packageId: config.packageId,
-        status: { in: ["active", "trialing", "past_due", "incomplete", "paused"] },
+        status: { in: ["active", "trialing", "past_due", "paused"] },
       },
     });
     if (existing) {
@@ -93,6 +99,18 @@ export async function POST(request: NextRequest) {
         { error: "Already subscribed", subscription: existing },
         { status: 409 },
       );
+    }
+
+    const orphan = await prisma.memberSubscription.findFirst({
+      where: {
+        tenantId: ctx.tenant.id,
+        userId: ctx.session.user.id,
+        packageId: config.packageId,
+        status: { in: ["incomplete", "incomplete_expired", "canceled"] },
+      },
+    });
+    if (orphan) {
+      await prisma.memberSubscription.delete({ where: { id: orphan.id } });
     }
 
     const subscription = await createMemberSubscription({
