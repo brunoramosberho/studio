@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import {
   Loader2,
   Minus,
@@ -61,6 +62,7 @@ const brandLabels: Record<string, string> = {
 type Phase = "browse" | "success";
 
 export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickStepProps) {
+  const t = useTranslations("booking.preOrder");
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("browse");
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -152,7 +154,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
   async function handleSubmit() {
     if (!hasCart) return;
     if (!selectedCardId) {
-      setError("Agrega un método de pago para pre-ordenar.");
+      setError(t("addPaymentMethodError"));
       return;
     }
     setSubmitting(true);
@@ -168,13 +170,13 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "No se pudo procesar el pago");
+        throw new Error(body.error ?? t("paymentFailed"));
       }
       setConfirmedItems(cartItems);
       if (data?.classEndsAt) setPickupAt(new Date(data.classEndsAt));
       setPhase("success");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo procesar el pago");
+      setError(e instanceof Error ? e.message : t("paymentFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -217,9 +219,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
             "sm:inset-x-auto sm:left-1/2 sm:bottom-auto sm:top-1/2 sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:max-h-[88dvh]",
           )}
         >
-          <DialogPrimitive.Title className="sr-only">
-            Pre-ordenar productos para tu clase
-          </DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">{t("title")}</DialogPrimitive.Title>
 
           {/* Drag handle (mobile) */}
           <div className="flex justify-center pb-1 pt-2 sm:hidden">
@@ -230,7 +230,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
           {phase === "browse" && (
             <DialogPrimitive.Close
               className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-card/70 text-muted shadow-sm transition-colors hover:bg-card hover:text-foreground sm:right-4 sm:top-4"
-              aria-label="Cerrar"
+              aria-label={t("close")}
             >
               <X className="h-4 w-4" />
             </DialogPrimitive.Close>
@@ -281,23 +281,23 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
                       <Card className="mt-5 rounded-2xl border border-accent/20 bg-card">
                         <CardContent className="space-y-3 p-4">
                           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                            Método de pago
+                            {t("paymentMethod")}
                           </p>
                           {cardsLoading ? (
                             <div className="flex items-center gap-2 text-xs text-muted">
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              Cargando métodos de pago…
+                              {t("loadingPaymentMethods")}
                             </div>
                           ) : cards.length === 0 ? (
                             <div className="rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted">
-                              <p>No tienes una tarjeta guardada.</p>
+                              <p>{t("noSavedCard")}</p>
                               <Button
                                 asChild
                                 variant="link"
                                 size="sm"
                                 className="mt-1 h-auto p-0 text-xs"
                               >
-                                <Link href="/my">Agregar una tarjeta</Link>
+                                <Link href="/my">{t("addCard")}</Link>
                               </Button>
                             </div>
                           ) : (
@@ -325,7 +325,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
                                   <span className="text-muted">•••• {c.last4}</span>
                                   {c.isDefault && (
                                     <span className="ml-auto rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
-                                      Última usada
+                                      {t("lastUsed")}
                                     </span>
                                   )}
                                 </label>
@@ -378,7 +378,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
                           <p className="text-xs text-muted">
                             {cartItems.length === 1
                               ? cartItems[0].product.name
-                              : `${cartItems.length} productos`}
+                              : t("cartLineMany", { count: cartItems.length })}
                           </p>
                         </div>
                         <motion.p
@@ -400,12 +400,12 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
                         {submitting ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Procesando…
+                            {t("processing")}
                           </>
                         ) : (
                           <>
                             <Sparkles className="mr-2 h-4 w-4" />
-                            Pre-ordenar
+                            {t("preorderCta")}
                           </>
                         )}
                       </Button>
@@ -414,7 +414,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
                         onClick={handleSkip}
                         className="block w-full py-1 text-center text-[11px] text-muted hover:text-foreground"
                       >
-                        Saltar y solo reservar la clase
+                        {t("skipAndBook")}
                       </button>
                     </motion.div>
                   ) : (
@@ -430,7 +430,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
                         className="w-full text-muted"
                         onClick={handleSkip}
                       >
-                        No, gracias
+                        {t("noThanks")}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </motion.div>
@@ -446,6 +446,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
 }
 
 function Hero({ studioName }: { studioName: string }) {
+  const t = useTranslations("booking.preOrder");
   return (
     <div className="relative overflow-hidden rounded-3xl border border-accent/15 bg-gradient-to-br from-accent/15 via-accent/5 to-transparent p-6 pb-7 text-center">
       <motion.div
@@ -482,7 +483,7 @@ function Hero({ studioName }: { studioName: string }) {
         className="relative inline-flex items-center gap-1.5 rounded-full bg-card/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
       >
         <Sparkles className="h-3 w-3" />
-        Nuevo
+        {t("newBadge")}
       </motion.div>
 
       <motion.h2
@@ -491,9 +492,7 @@ function Hero({ studioName }: { studioName: string }) {
         transition={{ delay: 0.22 }}
         className="relative mt-2 font-display text-2xl font-bold leading-tight text-foreground"
       >
-        ¿Algo rico para
-        <br />
-        después de tu clase?
+        {t("heroHeadline")}
       </motion.h2>
 
       <motion.p
@@ -502,8 +501,12 @@ function Hero({ studioName }: { studioName: string }) {
         transition={{ delay: 0.32 }}
         className="relative mt-2 text-sm leading-relaxed text-muted"
       >
-        Pídelo ahora y recógelo en el bar de{" "}
-        <span className="font-semibold text-foreground">{studioName}</span> al salir.
+        {t.rich("heroDescription", {
+          studioName,
+          studio: (chunks) => (
+            <span className="font-semibold text-foreground">{chunks}</span>
+          ),
+        })}
       </motion.p>
     </div>
   );
@@ -540,6 +543,7 @@ function ProductRow({
   onInc: () => void;
   onDec: () => void;
 }) {
+  const t = useTranslations("booking.preOrder");
   const inCart = quantity > 0;
   return (
     <motion.div whileTap={{ scale: 0.99 }}>
@@ -601,14 +605,14 @@ function ProductRow({
               onClick={onInc}
             >
               <Plus className="h-3.5 w-3.5" />
-              Añadir
+              {t("addToCart")}
             </Button>
           ) : (
             <div className="flex items-center gap-1.5 rounded-full bg-card p-1 shadow-sm ring-1 ring-accent/30">
               <button
                 type="button"
                 onClick={onDec}
-                aria-label="Restar"
+                aria-label={t("decrement")}
                 className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface"
               >
                 <Minus className="h-3.5 w-3.5" />
@@ -625,7 +629,7 @@ function ProductRow({
               <button
                 type="button"
                 onClick={onInc}
-                aria-label="Sumar"
+                aria-label={t("increment")}
                 className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent/90"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -653,6 +657,7 @@ function SuccessScreen({
   pickupAt: Date | null;
   onContinue: () => void;
 }) {
+  const t = useTranslations("booking.preOrder");
   // Math.random can't be called during render (React Compiler), so seed
   // particles once via lazy state init.
   const [particles] = useState(() =>
@@ -720,7 +725,7 @@ function SuccessScreen({
           className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700"
         >
           <Sparkles className="h-3 w-3" />
-          Pago confirmado
+          {t("successPaymentConfirmed")}
         </motion.div>
 
         <motion.h2
@@ -729,7 +734,7 @@ function SuccessScreen({
           transition={{ delay: 0.55 }}
           className="font-display text-2xl font-bold leading-tight text-foreground"
         >
-          ¡Lo tendremos listo!
+          {t("successHeadline")}
         </motion.h2>
 
         <motion.p
@@ -738,9 +743,12 @@ function SuccessScreen({
           transition={{ delay: 0.7 }}
           className="mt-2 max-w-xs text-sm leading-relaxed text-muted"
         >
-          Pasa al bar de{" "}
-          <span className="font-semibold text-foreground">{studioName}</span> al
-          terminar tu clase para recoger tu pedido.
+          {t.rich("successDescription", {
+            studioName,
+            studio: (chunks) => (
+              <span className="font-semibold text-foreground">{chunks}</span>
+            ),
+          })}
         </motion.p>
 
         {pickupAt && (
@@ -751,7 +759,7 @@ function SuccessScreen({
             className="mt-6 flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/5 px-4 py-2.5"
           >
             <Clock className="h-4 w-4 text-accent" />
-            <span className="text-xs font-medium text-muted">Listo a las</span>
+            <span className="text-xs font-medium text-muted">{t("readyAt")}</span>
             <span className="font-mono text-sm font-bold text-accent">
               {formatTime(pickupAt)}
             </span>
@@ -767,7 +775,7 @@ function SuccessScreen({
           <Card className="rounded-2xl border-border/50">
             <CardContent className="p-4 text-left">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                Tu pedido
+                {t("yourOrder")}
               </p>
               <ul className="mt-2 space-y-1 text-sm">
                 {items.map((it) => (
@@ -789,7 +797,7 @@ function SuccessScreen({
               </ul>
               <div className="mt-3 flex items-baseline justify-between border-t border-border/50 pt-2.5">
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  Total cobrado
+                  {t("totalCharged")}
                 </span>
                 <span className="font-display text-lg font-bold text-foreground">
                   {formatCurrency(totalAmount, currency)}
@@ -809,7 +817,7 @@ function SuccessScreen({
           className="w-full bg-gradient-to-r from-accent to-accent/80 text-white shadow-md hover:from-accent/90 hover:to-accent/70"
           onClick={onContinue}
         >
-          Continuar
+          {t("continue")}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
