@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { getStripe } from "./client";
-import { toStripeAmount } from "./helpers";
+import { getSubscriptionPeriod, toStripeAmount } from "./helpers";
 import { prisma } from "@/lib/db";
 
 /**
@@ -104,6 +104,22 @@ export async function createMemberSubscription({
     stripeAccount: tenant.stripeAccountId,
   });
 
+  const pkg = await prisma.package.findUniqueOrThrow({
+    where: { id: packageId },
+    select: { recurringInterval: true },
+  });
+
+  const period = getSubscriptionPeriod(subscription);
+  const nowSec = Math.floor(Date.now() / 1000);
+  const periodStart = period?.start ?? nowSec;
+  // Without an explicit period from Stripe (rare — happens for `incomplete`
+  // subs that haven't fully materialized) we still need a valid future date
+  // so gating doesn't treat the row as already expired. Fall back to one
+  // billing interval out from now.
+  const intervalSec =
+    pkg.recurringInterval === "year" ? 365 * 24 * 3600 : 30 * 24 * 3600;
+  const periodEnd = period?.end ?? nowSec + intervalSec;
+
   await prisma.memberSubscription.create({
     data: {
       tenantId,
@@ -112,8 +128,8 @@ export async function createMemberSubscription({
       stripeSubscriptionId: subscription.id,
       stripePriceId,
       status: subscription.status,
-      currentPeriodStart: new Date(((subscription as unknown as Record<string, number>).current_period_start ?? Date.now() / 1000) * 1000),
-      currentPeriodEnd: new Date(((subscription as unknown as Record<string, number>).current_period_end ?? Date.now() / 1000) * 1000),
+      currentPeriodStart: new Date(periodStart * 1000),
+      currentPeriodEnd: new Date(periodEnd * 1000),
     },
   });
 

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { createCreditUsagesForPackage } from "@/lib/credits";
 import { computeDebtAmount } from "@/lib/billing/debt";
+import { getSubscriptionPeriod } from "@/lib/stripe/helpers";
 import type Stripe from "stripe";
 
 async function cancelFutureBookingsForPackage(userPackageId: string) {
@@ -480,16 +481,17 @@ export async function POST(request: NextRequest) {
         if (!memberSub) break;
 
         const isPaused = !!sub.pause_collection;
-        const periodStart = sub.current_period_start as number | undefined;
-        const periodEnd = sub.current_period_end as number | undefined;
+        const period = getSubscriptionPeriod(sub);
 
         await prisma.memberSubscription.update({
           where: { id: memberSub.id },
           data: {
             status: isPaused ? "paused" : (sub.status as string),
             cancelAtPeriodEnd: (sub.cancel_at_period_end as boolean) ?? false,
-            ...(periodStart && { currentPeriodStart: new Date(periodStart * 1000) }),
-            ...(periodEnd && { currentPeriodEnd: new Date(periodEnd * 1000) }),
+            ...(period && {
+              currentPeriodStart: new Date(period.start * 1000),
+              currentPeriodEnd: new Date(period.end * 1000),
+            }),
             ...(isPaused && !memberSub.pausedAt && { pausedAt: new Date() }),
             ...(!isPaused && memberSub.pausedAt && {
               pausedAt: null,
