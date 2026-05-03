@@ -187,6 +187,8 @@
       "config": "Configuración"
     },
     "tabs": {
+      "calendar": "Calendario",
+      "classesList": "Lista",
       "packages": "Paquetes",
       "subscriptions": "Suscripciones",
       "discounts": "Descuentos",
@@ -259,7 +261,8 @@
       "waiver": "responsabilidad legal firmar",
       "embed": "iframe widget",
       "language": "locale i18n traduccion",
-      "createClient": "nuevo cliente agregar miembro"
+      "createClient": "nuevo cliente agregar miembro",
+      "classesList": "lista clases proximas pasadas calendario"
     },
     "mgicAI": "Spark",
     "clientView": "Vista de cliente",

@@ -5,6 +5,8 @@ import {
   Ticket,
   Gift,
   CalendarSync,
+  CalendarDays,
+  ClipboardList,
   BarChart3,
   Activity,
   ArrowRightLeft,
@@ -23,6 +25,11 @@ import {
   Building2,
 } from "lucide-react";
 import type { SectionTab } from "./section-tabs";
+
+export const SCHEDULE_TABS: SectionTab[] = [
+  { href: "/admin/schedule", labelKey: "tabs.calendar", icon: CalendarDays },
+  { href: "/admin/classes", labelKey: "tabs.classesList", icon: ClipboardList },
+];
 
 export const PRICING_TABS: SectionTab[] = [
   { href: "/admin/packages", labelKey: "tabs.packages", icon: Package },

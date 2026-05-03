@@ -26,6 +26,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { SCHEDULE_TABS } from "@/components/admin/section-tab-configs";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -185,6 +187,7 @@ export default function AdminClassesPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      <SectionTabs tabs={SCHEDULE_TABS} ariaLabel="Schedule view" />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("classes")}</h1>
