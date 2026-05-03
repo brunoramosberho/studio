@@ -32,6 +32,8 @@ import {
 import { formatCurrency, cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useCurrency } from "@/components/tenant-provider";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { PRICING_TABS } from "@/components/admin/section-tab-configs";
 
 interface CreditAllocation {
   classTypeId: string;
@@ -417,6 +419,7 @@ export default function AdminPackagesPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      <SectionTabs tabs={PRICING_TABS} ariaLabel="Pricing sections" />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("packagesAndPricing")}</h1>

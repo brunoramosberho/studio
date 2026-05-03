@@ -16,6 +16,8 @@ import {
 import { cn, formatCurrency } from "@/lib/utils";
 import { useCurrency } from "@/components/tenant-provider";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { FINANCE_TABS } from "@/components/admin/section-tab-configs";
 
 interface RevenueReport {
   tenantId: string;
@@ -140,6 +142,7 @@ export default function RevenueRecognitionPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
+      <SectionTabs tabs={FINANCE_TABS} ariaLabel="Finance sections" />
       <header className="space-y-3">
         <Link
           href="/admin/finance"

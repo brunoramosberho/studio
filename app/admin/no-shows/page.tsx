@@ -18,6 +18,8 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/components/tenant-provider";
 import { formatMoney as formatMoneyWithCurrency } from "@/lib/currency";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { CHECK_IN_TABS } from "@/components/admin/section-tab-configs";
 
 type ActionKind = "confirm" | "waive" | "revert";
 
@@ -139,6 +141,7 @@ export default function NoShowsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      <SectionTabs tabs={CHECK_IN_TABS} ariaLabel="Check-in sections" />
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
           <ShieldAlert className="h-5 w-5 text-red-500" />

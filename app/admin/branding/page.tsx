@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { type StudioBranding, DEFAULTS, FONT_PAIRINGS, deriveAccentSoft, withDerivedColors } from "@/lib/branding";
 import { useBranding } from "@/components/branding-provider";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
 
 const colorFields: { key: keyof StudioBranding; labelKey: string; hintKey: string }[] = [
   { key: "colorAccent", labelKey: "brandColorLabel", hintKey: "brandColorHint" },
@@ -238,6 +240,7 @@ export default function BrandingPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
+      <SectionTabs tabs={STUDIO_CONFIG_TABS} ariaLabel="Studio configuration sections" />
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between">
           <div>

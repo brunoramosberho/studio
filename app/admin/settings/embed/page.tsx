@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { Code2, Check, Copy, Loader2, ExternalLink, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
 
 export default function EmbedSettingsPage() {
   const t = useTranslations("embed.admin");
@@ -57,6 +59,7 @@ export default function EmbedSettingsPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+      <SectionTabs tabs={STUDIO_CONFIG_TABS} ariaLabel="Studio configuration sections" />
       <div>
         <h1 className="font-display text-xl font-bold sm:text-2xl">
           {t("title")}

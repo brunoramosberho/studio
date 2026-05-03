@@ -23,6 +23,8 @@ import { AnalyticsKpis } from "@/components/analytics/analytics-kpis";
 import { ScheduleHeatmap } from "@/components/analytics/schedule-heatmap";
 import { InstructorTab } from "@/components/analytics/instructor-tab";
 import { CrossAnalysisTab } from "@/components/analytics/cross-analysis-tab";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { INSIGHTS_TABS } from "@/components/admin/section-tab-configs";
 
 function usePeriodLabels() {
   const t = useTranslations("admin");
@@ -60,6 +62,7 @@ export default function AnalyticsPage() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="mx-auto max-w-6xl space-y-8">
+        <SectionTabs tabs={INSIGHTS_TABS} ariaLabel="Insights sections" />
         {/* Sticky header with filters */}
         <div className="sticky top-[calc(3.5rem+4px)] z-20 -mx-4 bg-background/80 px-4 py-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

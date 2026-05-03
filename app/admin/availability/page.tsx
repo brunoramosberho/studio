@@ -23,6 +23,8 @@ import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { TEAM_TABS } from "@/components/admin/section-tab-configs";
 
 // ── Types ──
 
@@ -208,6 +210,7 @@ export default function AdminAvailabilityPage() {
   return (
     <div className="min-h-full bg-stone-50">
       <div className="mx-auto max-w-5xl space-y-6 p-4 lg:p-6">
+        <SectionTabs tabs={TEAM_TABS} ariaLabel="Team sections" />
         <div>
           <h1 className="text-2xl font-bold text-stone-900">
             {t("availability")}

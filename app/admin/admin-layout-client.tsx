@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,25 +12,16 @@ import {
   CalendarDays,
   CalendarOff,
   Dumbbell,
-  ClipboardList,
   ClipboardCheck,
   Users,
   UserCog,
   Package,
-  Ticket,
-  Gift,
   BarChart3,
-  Activity,
   Palette,
   Building2,
   ShieldCheck,
   Megaphone,
-  Link2,
   ShoppingBag,
-  Globe2,
-  ArrowRightLeft,
-  Trophy,
-  FileSignature,
   Sparkles,
   ArrowLeft,
   Menu,
@@ -43,17 +34,17 @@ import {
   UserCircle,
   ChevronRight,
   ChevronDown,
-  Settings,
-  Briefcase,
+  Settings2,
   TrendingUp,
-  Target,
-  CreditCard,
-  CalendarSync,
   Wallet,
-  ShieldAlert,
-  Code2,
   Video,
   Coffee,
+  Tag,
+  Search,
+  Command,
+  Home,
+  GraduationCap,
+  Sliders,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -64,106 +55,190 @@ import { MgicAIProvider, useMgicAI } from "@/components/admin/MgicAI";
 import { PosDialog } from "@/components/admin/pos/pos-dialog";
 import { usePosStore } from "@/store/pos-store";
 import { type AdminPermission, hasPermission } from "@/lib/permissions";
+import {
+  CommandPalette,
+  type PaletteItem,
+  type TenantFlags,
+} from "@/components/admin/command-palette";
 import type { Role } from "@prisma/client";
+
+type FeatureFlag = keyof TenantFlags;
 
 interface NavItem {
   href: string;
   labelKey: string;
   icon: LucideIcon;
   permission?: AdminPermission;
-  badgeKey?: "pendingWaitlist" | "newClients" | "recentFeed";
+  feature?: FeatureFlag;
+  badgeKey?: "pendingWaitlist" | "newClients" | "recentFeed" | "pendingNoShows" | "activeOrders";
   contextKey?: "activeClasses";
+  keywordsKey?: string;
 }
 
-interface FlyoutGroup {
+interface NavGroup {
   labelKey: string;
   icon: LucideIcon;
   permission?: AdminPermission;
   items: NavItem[];
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Sidebar configuration — single source of truth
+// ─────────────────────────────────────────────────────────────────────────────
+
 const directItems: NavItem[] = [
-  { href: "/admin", labelKey: "dashboard", icon: LayoutDashboard, permission: "dashboard" },
-  { href: "/admin/schedule", labelKey: "schedule", icon: CalendarDays, permission: "schedule", badgeKey: "pendingWaitlist" },
-  { href: "/admin/classes", labelKey: "classes", icon: ClipboardList, permission: "classes", contextKey: "activeClasses" },
-  { href: "/admin/check-in", labelKey: "checkIn", icon: ClipboardCheck, permission: "checkIn" },
-  { href: "/admin/no-shows", labelKey: "noShowReview", icon: ShieldAlert, permission: "noShowReview" },
-  { href: "/admin/clients", labelKey: "clients", icon: Users, permission: "clients", badgeKey: "newClients" },
-  { href: "/admin/feed", labelKey: "feed", icon: Megaphone, permission: "feed", badgeKey: "recentFeed" },
-  { href: "/admin/gamification", labelKey: "achievements", icon: Trophy, permission: "achievements" },
-  { href: "#pos", labelKey: "pos", icon: ShoppingBag, permission: "pos" },
-  { href: "/admin/orders", labelKey: "orders", icon: Coffee, permission: "orders" },
+  { href: "/admin", labelKey: "dashboard", icon: LayoutDashboard, permission: "dashboard", keywordsKey: "kw.dashboard" },
+  { href: "/admin/schedule", labelKey: "schedule", icon: CalendarDays, permission: "schedule", badgeKey: "pendingWaitlist", contextKey: "activeClasses", keywordsKey: "kw.schedule" },
+  { href: "/admin/check-in", labelKey: "checkIn", icon: ClipboardCheck, permission: "checkIn", badgeKey: "pendingNoShows", keywordsKey: "kw.checkIn" },
+  { href: "/admin/clients", labelKey: "clients", icon: Users, permission: "clients", badgeKey: "newClients", keywordsKey: "kw.clients" },
+  { href: "#pos", labelKey: "pos", icon: ShoppingBag, permission: "pos", keywordsKey: "kw.pos" },
 ];
 
-const flyoutGroups: FlyoutGroup[] = [
+const navGroups: NavGroup[] = [
   {
-    labelKey: "team",
-    icon: Users,
-    permission: "coaches",
+    labelKey: "groups.operations",
+    icon: ClipboardCheck,
     items: [
-      { href: "/admin/coaches", labelKey: "coaches", icon: UserCog, permission: "coaches" },
-      { href: "/admin/availability", labelKey: "availability", icon: CalendarOff, permission: "availability" },
-      { href: "/admin/class-types", labelKey: "disciplines", icon: Dumbbell, permission: "disciplines" },
+      { href: "/admin/orders", labelKey: "orders", icon: Coffee, permission: "orders", feature: "orders", badgeKey: "activeOrders", keywordsKey: "kw.orders" },
+      { href: "/admin/feed", labelKey: "memberHome", icon: Home, permission: "feed", badgeKey: "recentFeed", keywordsKey: "kw.memberHome" },
     ],
   },
   {
-    labelKey: "business",
-    icon: Briefcase,
+    labelKey: "groups.studio",
+    icon: Building2,
+    permission: "studios",
+    items: [
+      { href: "/admin/studios", labelKey: "locations", icon: Building2, permission: "studios", keywordsKey: "kw.locations" },
+      { href: "/admin/coaches", labelKey: "coaches", icon: UserCog, permission: "coaches", keywordsKey: "kw.coaches" },
+      { href: "/admin/class-types", labelKey: "disciplines", icon: Dumbbell, permission: "disciplines", keywordsKey: "kw.disciplines" },
+      { href: "/admin/team", labelKey: "staffPermissions", icon: ShieldCheck, permission: "team", keywordsKey: "kw.staff" },
+    ],
+  },
+  {
+    labelKey: "groups.sales",
+    icon: Tag,
+    permission: "packages",
+    items: [
+      { href: "/admin/packages", labelKey: "pricing", icon: Package, permission: "packages", keywordsKey: "kw.pricing" },
+      { href: "/admin/shop", labelKey: "store", icon: ShoppingBag, permission: "shop", feature: "shop", keywordsKey: "kw.shop" },
+      { href: "/admin/on-demand", labelKey: "onDemand.title", icon: Video, permission: "onDemand", feature: "onDemand", keywordsKey: "kw.onDemand" },
+    ],
+  },
+  {
+    labelKey: "groups.finance",
+    icon: Wallet,
     permission: "finance",
     items: [
-      { href: "/admin/finance", labelKey: "finance", icon: Wallet, permission: "finance" },
-      { href: "/admin/finance/recognition", labelKey: "revenueRecognition", icon: TrendingUp, permission: "finance" },
-      { href: "/admin/packages", labelKey: "packages", icon: Package, permission: "packages" },
-      { href: "/admin/discounts", labelKey: "discounts", icon: Ticket, permission: "packages" },
-      { href: "/admin/gift-packages", labelKey: "giftPackages", icon: Gift, permission: "packages" },
-      { href: "/admin/subscriptions", labelKey: "subscriptions", icon: CalendarSync, permission: "subscriptions" },
-      { href: "/admin/on-demand", labelKey: "onDemand.title", icon: Video, permission: "onDemand" },
-      { href: "/admin/shop", labelKey: "store", icon: ShoppingBag, permission: "shop" },
-      { href: "/admin/platforms", labelKey: "platforms", icon: Globe2, permission: "platforms" },
+      { href: "/admin/finance", labelKey: "finance", icon: Wallet, permission: "finance", keywordsKey: "kw.finance" },
+      { href: "/admin/settings/billing", labelKey: "billing", icon: Sliders, permission: "billing", keywordsKey: "kw.billing" },
     ],
   },
   {
-    labelKey: "metrics",
+    labelKey: "groups.growth",
     icon: TrendingUp,
     permission: "reports",
     items: [
-      { href: "/admin/reports", labelKey: "reports", icon: BarChart3, permission: "reports" },
-      { href: "/admin/analytics", labelKey: "performance", icon: Activity, permission: "analytics" },
-      { href: "/admin/conversion", labelKey: "conversion", icon: ArrowRightLeft, permission: "conversion" },
+      { href: "/admin/reports", labelKey: "insights", icon: BarChart3, permission: "reports", keywordsKey: "kw.insights" },
+      { href: "/admin/marketing", labelKey: "acquisition", icon: Megaphone, permission: "marketing", keywordsKey: "kw.acquisition" },
+      { href: "/admin/gamification", labelKey: "achievements", icon: GraduationCap, permission: "achievements", feature: "achievements", keywordsKey: "kw.achievements" },
     ],
   },
   {
-    labelKey: "marketing",
-    icon: Target,
-    permission: "marketing",
+    labelKey: "groups.config",
+    icon: Settings2,
+    permission: "branding",
     items: [
-      { href: "/admin/marketing", labelKey: "linksUtm", icon: Link2, permission: "marketing" },
-      { href: "/admin/marketing/highlights", labelKey: "highlights", icon: Sparkles, permission: "highlights" },
-      { href: "/admin/settings/referrals", labelKey: "referrals", icon: Users, permission: "referrals" },
-    ],
-  },
-  {
-    labelKey: "settings",
-    icon: Settings,
-    permission: "billing",
-    items: [
-      { href: "/admin/settings/billing", labelKey: "billing", icon: CreditCard, permission: "billing" },
-      { href: "/admin/settings/policies", labelKey: "policies", icon: ShieldAlert, permission: "policies" },
-      { href: "/admin/waiver", labelKey: "waiver", icon: FileSignature, permission: "waiver" },
-      { href: "/admin/branding", labelKey: "branding", icon: Palette, permission: "branding" },
-      { href: "/admin/settings/embed", labelKey: "embed", icon: Code2, permission: "embed" },
-      { href: "/admin/team", labelKey: "team", icon: ShieldCheck, permission: "team" },
-      { href: "/admin/studios", labelKey: "studios", icon: Building2, permission: "studios" },
-      { href: "/admin/settings/language", labelKey: "language", icon: Globe2, permission: "language" },
+      { href: "/admin/branding", labelKey: "studioConfig", icon: Palette, permission: "branding", keywordsKey: "kw.studioConfig" },
     ],
   },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Palette items derived from sidebar + extra deep links
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildPaletteItems(openPos: () => void, openCreateClient: () => void): PaletteItem[] {
+  const fromSidebar: PaletteItem[] = [];
+  for (const item of directItems) {
+    fromSidebar.push({
+      id: `direct:${item.href}`,
+      labelKey: item.labelKey,
+      groupKey: "groups.daily",
+      icon: item.icon,
+      href: item.href === "#pos" ? undefined : item.href,
+      action: item.href === "#pos" ? openPos : undefined,
+      keywordsKey: item.keywordsKey,
+      permission: item.permission,
+    });
+  }
+  for (const group of navGroups) {
+    for (const item of group.items) {
+      fromSidebar.push({
+        id: `group:${group.labelKey}:${item.href}`,
+        labelKey: item.labelKey,
+        groupKey: group.labelKey,
+        icon: item.icon,
+        href: item.href,
+        keywordsKey: item.keywordsKey,
+        permission: item.permission,
+        feature: item.feature,
+      });
+    }
+  }
+  // Deep links — internal pages reachable from within consolidated sections
+  const deepLinks: PaletteItem[] = [
+    { id: "deep:no-shows", labelKey: "tabs.noShows", groupKey: "groups.daily", icon: ClipboardCheck, href: "/admin/no-shows", permission: "noShowReview", feature: "noShows", keywordsKey: "kw.noShows" },
+    { id: "deep:highlights", labelKey: "tabs.highlights", groupKey: "groups.operations", icon: Sparkles, href: "/admin/marketing/highlights", permission: "highlights", feature: "highlights", keywordsKey: "kw.highlights" },
+    { id: "deep:availability", labelKey: "tabs.availability", groupKey: "groups.studio", icon: CalendarOff, href: "/admin/availability", permission: "availability", keywordsKey: "kw.availability" },
+    { id: "deep:platforms", labelKey: "tabs.platforms", groupKey: "groups.studio", icon: Building2, href: "/admin/platforms", permission: "platforms", feature: "platforms", keywordsKey: "kw.platforms" },
+    { id: "deep:subscriptions", labelKey: "tabs.subscriptions", groupKey: "groups.sales", icon: Package, href: "/admin/subscriptions", permission: "subscriptions", keywordsKey: "kw.subscriptions" },
+    { id: "deep:discounts", labelKey: "tabs.discounts", groupKey: "groups.sales", icon: Package, href: "/admin/discounts", permission: "packages", keywordsKey: "kw.discounts" },
+    { id: "deep:gifts", labelKey: "tabs.gifts", groupKey: "groups.sales", icon: Package, href: "/admin/gift-packages", permission: "packages", keywordsKey: "kw.gifts" },
+    { id: "deep:revenue-recognition", labelKey: "tabs.revenueRecognition", groupKey: "groups.finance", icon: TrendingUp, href: "/admin/finance/recognition", permission: "finance", keywordsKey: "kw.revenueRec" },
+    { id: "deep:analytics", labelKey: "tabs.performance", groupKey: "groups.growth", icon: BarChart3, href: "/admin/analytics", permission: "analytics", keywordsKey: "kw.analytics" },
+    { id: "deep:conversion", labelKey: "tabs.conversion", groupKey: "groups.growth", icon: TrendingUp, href: "/admin/conversion", permission: "conversion", keywordsKey: "kw.conversion" },
+    { id: "deep:referrals", labelKey: "tabs.referrals", groupKey: "groups.growth", icon: Users, href: "/admin/settings/referrals", permission: "referrals", feature: "referrals", keywordsKey: "kw.referrals" },
+    { id: "deep:policies", labelKey: "tabs.policies", groupKey: "groups.config", icon: Sliders, href: "/admin/settings/policies", permission: "policies", keywordsKey: "kw.policies" },
+    { id: "deep:waiver", labelKey: "tabs.waiver", groupKey: "groups.config", icon: Sliders, href: "/admin/waiver", permission: "waiver", keywordsKey: "kw.waiver" },
+    { id: "deep:embed", labelKey: "tabs.embed", groupKey: "groups.config", icon: Sliders, href: "/admin/settings/embed", permission: "embed", keywordsKey: "kw.embed" },
+    { id: "deep:language", labelKey: "tabs.language", groupKey: "groups.config", icon: Sliders, href: "/admin/settings/language", permission: "language", keywordsKey: "kw.language" },
+  ];
+  // Quick actions
+  const actions: PaletteItem[] = [
+    {
+      id: "action:create-client",
+      labelKey: "commandPalette.actionCreateClient",
+      groupKey: "commandPalette.actions",
+      icon: UserPlus,
+      action: openCreateClient,
+      keywordsKey: "kw.createClient",
+      permission: "clients",
+    },
+    {
+      id: "action:open-pos",
+      labelKey: "commandPalette.actionOpenPos",
+      groupKey: "commandPalette.actions",
+      icon: ShoppingBag,
+      action: openPos,
+      keywordsKey: "kw.pos",
+      permission: "pos",
+    },
+  ];
+  return [...actions, ...fromSidebar, ...deepLinks];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stats hook
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface SidebarStats {
   activeClasses: number;
   pendingWaitlist: number;
   newClients: number;
   recentFeed: number;
+  pendingNoShows: number;
+  activeOrders: number;
+  flags: TenantFlags;
 }
 
 function useAdminRole() {
@@ -248,17 +323,46 @@ function ContextTag({ label }: { label: string }) {
   );
 }
 
+function getBadgeVal(item: NavItem, stats: SidebarStats | null): number {
+  if (!item.badgeKey || !stats) return 0;
+  switch (item.badgeKey) {
+    case "pendingWaitlist": return stats.pendingWaitlist;
+    case "newClients": return stats.newClients;
+    case "recentFeed": return stats.recentFeed;
+    case "pendingNoShows": return stats.pendingNoShows;
+    case "activeOrders": return stats.activeOrders;
+    default: return 0;
+  }
+}
+
+function getContextLabel(item: NavItem, stats: SidebarStats | null, t: (key: string, values?: Record<string, string | number>) => string): string | null {
+  if (item.contextKey === "activeClasses" && stats?.activeClasses) {
+    return t("activeShort", { count: stats.activeClasses });
+  }
+  return null;
+}
+
+function filterNavItems(items: NavItem[], role: Role, flags: TenantFlags | null): NavItem[] {
+  return items.filter((i) => {
+    if (i.permission && !hasPermission(role, i.permission)) return false;
+    if (i.feature && flags && !flags[i.feature]) return false;
+    return true;
+  });
+}
+
 function SidebarFlyoutGroup({
   group,
   stats,
   pathname,
+  role,
   isOpen,
   onOpen,
   onClose,
 }: {
-  group: FlyoutGroup;
+  group: NavGroup;
   stats: SidebarStats | null;
   pathname: string;
+  role: Role;
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -267,10 +371,14 @@ function SidebarFlyoutGroup({
   const triggerRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
+  const visibleItems = filterNavItems(group.items, role, stats?.flags ?? null);
+
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
-  const hasActiveChild = group.items.some((item) => isActive(item.href));
+  const hasActiveChild = visibleItems.some((item) => isActive(item.href));
+
+  if (visibleItems.length === 0) return null;
 
   const handleEnter = () => {
     if (triggerRef.current) {
@@ -312,7 +420,7 @@ function SidebarFlyoutGroup({
       {isOpen &&
         createPortal(
           <div
-            className="fixed z-50 min-w-[200px] rounded-md border border-border/50 bg-card py-1.5 shadow-lg"
+            className="fixed z-50 min-w-[220px] rounded-md border border-border/50 bg-card py-1.5 shadow-lg"
             style={{ top: pos.top, left: pos.left }}
             onMouseEnter={handleEnter}
             onMouseLeave={onClose}
@@ -320,13 +428,10 @@ function SidebarFlyoutGroup({
             <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-muted/50">
               {t(group.labelKey)}
             </p>
-            {group.items.map((item) => {
+            {visibleItems.map((item) => {
               const active = isActive(item.href);
-              const badgeVal = item.badgeKey && stats ? stats[item.badgeKey] : 0;
-              const contextVal =
-                item.contextKey === "activeClasses" && stats?.activeClasses
-                  ? `${stats.activeClasses} activas`
-                  : null;
+              const badgeVal = getBadgeVal(item, stats);
+              const contextVal = getContextLabel(item, stats, t);
 
               return (
                 <Link
@@ -369,21 +474,26 @@ function MobileAccordionGroup({
   group,
   stats,
   pathname,
+  role,
   onNavigate,
   py,
 }: {
-  group: FlyoutGroup;
+  group: NavGroup;
   stats: SidebarStats | null;
   pathname: string;
+  role: Role;
   onNavigate?: () => void;
   py: string;
 }) {
   const t = useTranslations("admin");
+  const visibleItems = filterNavItems(group.items, role, stats?.flags ?? null);
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
-  const hasActiveChild = group.items.some((item) => isActive(item.href));
+  const hasActiveChild = visibleItems.some((item) => isActive(item.href));
   const [expanded, setExpanded] = useState(hasActiveChild);
+
+  if (visibleItems.length === 0) return null;
 
   return (
     <div>
@@ -424,13 +534,10 @@ function MobileAccordionGroup({
             className="overflow-hidden"
           >
             <div className="ml-4 space-y-px py-0.5">
-              {group.items.map((item) => {
+              {visibleItems.map((item) => {
                 const active = isActive(item.href);
-                const badgeVal = item.badgeKey && stats ? stats[item.badgeKey] : 0;
-                const contextVal =
-                  item.contextKey === "activeClasses" && stats?.activeClasses
-                    ? `${stats.activeClasses} activas`
-                    : null;
+                const badgeVal = getBadgeVal(item, stats);
+                const contextVal = getContextLabel(item, stats, t);
 
                 return (
                   <Link
@@ -497,6 +604,32 @@ function MgicAIButton() {
   );
 }
 
+const subscribeNoop = () => () => {};
+function useIsMac(): boolean {
+  return useSyncExternalStore(
+    subscribeNoop,
+    () => /Mac|iPod|iPhone|iPad/.test(navigator.platform),
+    () => true,
+  );
+}
+
+function SearchTrigger({ onClick }: { onClick: () => void }) {
+  const t = useTranslations("admin");
+  const isMac = useIsMac();
+  return (
+    <button
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-sm border border-border/50 bg-surface/50 px-2 py-1.5 text-left text-[12px] text-muted transition-colors hover:border-admin/30 hover:bg-admin/5"
+    >
+      <Search className="h-3.5 w-3.5 shrink-0" />
+      <span className="flex-1 truncate">{t("commandPalette.trigger")}</span>
+      <kbd className="rounded border border-border/40 px-1 py-px text-[10px] font-medium tabular-nums">
+        {isMac ? "⌘K" : "Ctrl K"}
+      </kbd>
+    </button>
+  );
+}
+
 function SidebarNav({
   stats,
   pathname,
@@ -537,16 +670,15 @@ function SidebarNav({
     };
   }, []);
 
+  const visibleDirect = filterNavItems(directItems, role, stats?.flags ?? null);
+
   return (
     <>
       <div className="space-y-px">
-        {directItems.filter((item) => !item.permission || hasPermission(role, item.permission)).map((item) => {
+        {visibleDirect.map((item) => {
           const active = isActive(item.href);
-          const badgeVal = item.badgeKey && stats ? stats[item.badgeKey] : 0;
-          const contextVal =
-            item.contextKey === "activeClasses" && stats?.activeClasses
-              ? `${stats.activeClasses} activas`
-              : null;
+          const badgeVal = getBadgeVal(item, stats);
+          const contextVal = getContextLabel(item, stats, t);
 
           if (item.href === "#pos") {
             return <PosSidebarButton key={item.href} py={py} onNavigate={onNavigate} />;
@@ -587,13 +719,14 @@ function SidebarNav({
       </div>
 
       <div className="mt-4 space-y-px">
-        {flyoutGroups.filter((g) => !g.permission || hasPermission(role, g.permission)).map((group) =>
+        {navGroups.map((group) =>
           mobile ? (
             <MobileAccordionGroup
               key={group.labelKey}
               group={group}
               stats={stats}
               pathname={pathname}
+              role={role}
               onNavigate={onNavigate}
               py={py}
             />
@@ -603,6 +736,7 @@ function SidebarNav({
               group={group}
               stats={stats}
               pathname={pathname}
+              role={role}
               isOpen={openGroup === group.labelKey}
               onOpen={() => openFlyout(group.labelKey)}
               onClose={closeFlyout}
@@ -647,28 +781,61 @@ function PosHeaderButton() {
   );
 }
 
+function PaletteHeaderButton({ onClick }: { onClick: () => void }) {
+  const isMac = useIsMac();
+  return (
+    <button
+      onClick={onClick}
+      className="hidden items-center gap-1.5 rounded-sm border border-border/50 bg-surface/30 px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:border-admin/30 hover:bg-admin/5 hover:text-foreground sm:flex"
+      title="Search (⌘K)"
+    >
+      <Command className="h-3.5 w-3.5" />
+      <kbd className="text-[10px] tabular-nums">{isMac ? "⌘K" : "Ctrl K"}</kbd>
+    </button>
+  );
+}
+
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const { studioName } = useBranding();
   const stats = useSidebarStats();
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const role = useAdminRole();
+  const { openPOS } = usePosStore();
 
   const [locations, setLocations] = useState<LocCountry[]>([]);
   const [locValue, setLocValue] = useState("");
   const [locSaving, setLocSaving] = useState(false);
   const [locSaved, setLocSaved] = useState(false);
 
+  const paletteItems = useMemo(
+    () => buildPaletteItems(() => openPOS(), () => setShowCreateClient(true)),
+    [openPOS],
+  );
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/login");
     }
   }, [status, router]);
+
+  // Global keyboard shortcut for the palette
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((p) => !p);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -799,7 +966,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* Quick actions -- hidden on mobile */}
+            <PaletteHeaderButton onClick={() => setPaletteOpen(true)} />
+
+            <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block" />
+
             <span className="hidden text-xs text-muted/70 sm:inline">{t("addLabel")}</span>
             <button
               onClick={() => setShowCreateClient(true)}
@@ -812,18 +982,6 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block" />
 
             <PosHeaderButton />
-            <Link
-              href="/admin/schedule"
-              className={cn(
-                "hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-medium transition-colors sm:flex",
-                pathname.startsWith("/admin/schedule")
-                  ? "border border-admin/20 bg-admin/5 text-admin"
-                  : "text-muted hover:bg-surface hover:text-foreground",
-              )}
-            >
-              <CalendarDays className="h-3.5 w-3.5" />
-              Schedule
-            </Link>
 
             <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block" />
 
@@ -855,8 +1013,13 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               <MgicAIButton />
             </div>
 
+            {/* Search trigger */}
+            <div className="px-3 pt-2">
+              <SearchTrigger onClick={() => setPaletteOpen(true)} />
+            </div>
+
             {/* Scrollable nav sections */}
-            <nav className="flex-1 overflow-y-auto p-3 pt-4">
+            <nav className="flex-1 overflow-y-auto p-3 pt-3">
               <SidebarNav stats={stats} pathname={pathname} role={role} />
             </nav>
 
@@ -900,9 +1063,17 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 transition={{ type: "spring", damping: 25, stiffness: 250 }}
                 className="fixed left-0 top-0 z-40 flex h-dvh w-64 flex-col border-r border-border/40 bg-card pt-16 shadow-warm-lg lg:hidden"
               >
-                {/* Spark AI protagonist (mobile) */}
                 <div className="px-3 pt-4 pb-1">
                   <MgicAIButton />
+                </div>
+
+                <div className="px-3 pt-2">
+                  <SearchTrigger
+                    onClick={() => {
+                      setSidebarOpen(false);
+                      setPaletteOpen(true);
+                    }}
+                  />
                 </div>
 
                 <nav className="flex-1 overflow-y-auto p-3">
@@ -956,6 +1127,13 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         onOpenChange={setShowCreateClient}
       />
       <PosDialog />
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        items={paletteItems}
+        role={role}
+        flags={stats?.flags ?? null}
+      />
     </div>
     </MgicAIProvider>
   );

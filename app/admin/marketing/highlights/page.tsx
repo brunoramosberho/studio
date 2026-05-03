@@ -27,6 +27,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { MEMBER_HOME_TABS } from "@/components/admin/section-tab-configs";
 
 interface HighlightItem {
   id: string;
@@ -508,6 +510,7 @@ export default function HighlightsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <SectionTabs tabs={MEMBER_HOME_TABS} ariaLabel="Member home sections" />
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}

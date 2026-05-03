@@ -44,6 +44,8 @@ import { PlacesAutocomplete, type PlaceResult } from "@/components/admin/places-
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
 
 interface City {
   id: string;
@@ -384,6 +386,7 @@ export default function AdminStudiosPage() {
 
   return (
     <div className="space-y-6">
+      <SectionTabs tabs={STUDIO_CONFIG_TABS} ariaLabel="Studio configuration sections" />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

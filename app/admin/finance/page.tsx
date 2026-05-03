@@ -27,6 +27,8 @@ import { format, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { useTranslations } from "next-intl";
 import { FinanceBriefingCard } from "@/components/admin/MgicAI/FinanceBriefingCard";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { FINANCE_TABS } from "@/components/admin/section-tab-configs";
 
 // ── Types ──
 
@@ -253,6 +255,7 @@ export default function FinancePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
+      <SectionTabs tabs={FINANCE_TABS} ariaLabel="Finance sections" />
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}

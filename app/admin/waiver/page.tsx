@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
 
 type Tab = "editor" | "signatures" | "settings";
 
@@ -261,6 +263,7 @@ export default function AdminWaiverPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
+      <SectionTabs tabs={STUDIO_CONFIG_TABS} ariaLabel="Studio configuration sections" />
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-foreground">Waiver digital</h1>
