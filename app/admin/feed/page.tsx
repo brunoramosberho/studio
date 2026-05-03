@@ -42,6 +42,8 @@ import { useBranding } from "@/components/branding-provider";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { MEMBER_HOME_TABS } from "@/components/admin/section-tab-configs";
 
 interface LinkedClassOption {
   id: string;
@@ -471,6 +473,7 @@ export default function AdminFeedPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      <SectionTabs tabs={MEMBER_HOME_TABS} ariaLabel="Member home sections" />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

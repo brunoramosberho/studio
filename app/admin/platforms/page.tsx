@@ -39,6 +39,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useCurrency } from "@/components/tenant-provider";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
 import { formatMoney } from "@/lib/currency";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -354,6 +356,7 @@ export default function AdminPlatformsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      <SectionTabs tabs={STUDIO_CONFIG_TABS} ariaLabel="Studio configuration sections" />
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}

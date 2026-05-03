@@ -26,6 +26,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn, formatCurrency } from "@/lib/utils";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { PRICING_TABS } from "@/components/admin/section-tab-configs";
 
 interface SubData {
   id: string;
@@ -122,6 +124,7 @@ export default function AdminSubscriptionsPage() {
 
   return (
     <div className="space-y-6">
+      <SectionTabs tabs={PRICING_TABS} ariaLabel="Pricing sections" />
       <div>
         <h1 className="font-display text-2xl font-bold text-foreground">
           {t("subscriptions")}

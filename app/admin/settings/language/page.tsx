@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Globe, Loader2 } from "lucide-react";
 import { LanguageSelector } from "@/components/shared/language-selector";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
 
 export default function LanguageSettingsPage() {
   const t = useTranslations("settings");
@@ -27,6 +29,7 @@ export default function LanguageSettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
+      <SectionTabs tabs={STUDIO_CONFIG_TABS} ariaLabel="Studio configuration sections" />
       <div>
         <h1 className="font-display text-2xl font-bold">{t("language")}</h1>
         <p className="mt-1 text-sm text-muted">{t("languageDescription")}</p>

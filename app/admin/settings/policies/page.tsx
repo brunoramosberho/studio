@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useCurrency } from "@/components/tenant-provider";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
 
 interface PoliciesConfig {
   cancellationWindowHours: number;
@@ -101,6 +103,7 @@ export default function PoliciesSettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
+      <SectionTabs tabs={STUDIO_CONFIG_TABS} ariaLabel="Studio configuration sections" />
       <div>
         <h1 className="font-display text-2xl font-bold">{t("title")}</h1>
         <p className="mt-1 text-sm text-muted">{t("subtitle")}</p>

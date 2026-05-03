@@ -52,6 +52,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/tenant-provider";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { ACQUISITION_TABS } from "@/components/admin/section-tab-configs";
 import { formatMoney, currencySymbolFor } from "@/lib/currency";
 
 // ─── Types ──────────────────────────────────────────────
@@ -1445,6 +1447,7 @@ export default function MarketingPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      <SectionTabs tabs={ACQUISITION_TABS} ariaLabel="Acquisition sections" />
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}

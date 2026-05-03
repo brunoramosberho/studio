@@ -18,6 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useCurrency } from "@/components/tenant-provider";
 import { useTranslations } from "next-intl";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { PRICING_TABS } from "@/components/admin/section-tab-configs";
 
 interface GiftData {
   id: string;
@@ -84,6 +86,7 @@ export default function GiftPackagesPage() {
 
   return (
     <div className="space-y-6">
+      <SectionTabs tabs={PRICING_TABS} ariaLabel="Pricing sections" />
       {/* Header */}
       <div className="flex items-center gap-3">
         <Gift className="h-6 w-6" />

@@ -34,6 +34,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFormatMoney } from "@/components/tenant-provider";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { INSIGHTS_TABS } from "@/components/admin/section-tab-configs";
 
 // ── Types ──
 
@@ -165,6 +167,7 @@ export default function ConversionPage() {
   return (
     <div className="min-h-screen bg-stone-50">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <SectionTabs tabs={INSIGHTS_TABS} ariaLabel="Insights sections" />
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-stone-900">
             {t("conversionToMembership")}

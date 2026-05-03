@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { ACQUISITION_TABS } from "@/components/admin/section-tab-configs";
 
 type RewardType = "class_credit" | "discount" | "days_free" | "manual";
 type TriggerStage = "installed" | "purchased" | "booked" | "attended" | "member";
@@ -129,6 +131,7 @@ export default function ReferralSettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
+      <SectionTabs tabs={ACQUISITION_TABS} ariaLabel="Acquisition sections" />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Programa de referidos</h1>

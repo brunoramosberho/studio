@@ -8,6 +8,8 @@ import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { ClassRoster } from "@/components/check-in/ClassRoster";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { CHECK_IN_TABS } from "@/components/admin/section-tab-configs";
 
 interface ClassItem {
   id: string;
@@ -133,6 +135,7 @@ export default function CheckInPage() {
 
   return (
     <div className="space-y-3 md:space-y-4">
+      <SectionTabs tabs={CHECK_IN_TABS} ariaLabel="Check-in sections" />
       {/* Page header — hidden on mobile when viewing roster */}
       <div className={cn(showMobileRoster && "hidden md:block")}>
         <h1 className="text-xl font-semibold text-stone-900 dark:text-foreground">{t("checkIn")}</h1>

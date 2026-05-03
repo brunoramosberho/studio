@@ -28,6 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { TEAM_TABS } from "@/components/admin/section-tab-configs";
 
 interface UpcomingClass {
   id: string;
@@ -181,6 +183,7 @@ export default function AdminCoachesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      <SectionTabs tabs={TEAM_TABS} ariaLabel="Team sections" />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>

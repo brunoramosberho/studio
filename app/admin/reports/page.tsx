@@ -24,6 +24,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RevenueChart } from "@/components/admin/revenue-chart";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { INSIGHTS_TABS } from "@/components/admin/section-tab-configs";
 
 interface ReportsData {
   revenueChart: { name: string; revenue: number }[];
@@ -66,6 +68,7 @@ export default function AdminReportsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      <SectionTabs tabs={INSIGHTS_TABS} ariaLabel="Insights sections" />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("reports")}</h1>
