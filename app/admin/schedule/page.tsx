@@ -37,6 +37,8 @@ import {
 import { cn, formatTime, getWallClockInZone } from "@/lib/utils";
 import { ClassFormDialog } from "@/components/admin/class-form-dialog";
 import { ClassDetailDialog } from "@/components/admin/class-detail-dialog";
+import { SectionTabs } from "@/components/admin/section-tabs";
+import { SCHEDULE_TABS } from "@/components/admin/section-tab-configs";
 import type { ClassWithDetails } from "@/types";
 
 type ColorMode = "coach" | "classType";
@@ -163,6 +165,7 @@ export default function AdminSchedulePage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
+      <SectionTabs tabs={SCHEDULE_TABS} ariaLabel="Schedule view" />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>

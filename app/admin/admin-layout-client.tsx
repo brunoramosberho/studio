@@ -13,6 +13,7 @@ import {
   CalendarOff,
   Dumbbell,
   ClipboardCheck,
+  ClipboardList,
   Users,
   UserCog,
   Package,
@@ -73,6 +74,7 @@ interface NavItem {
   badgeKey?: "pendingWaitlist" | "newClients" | "recentFeed" | "pendingNoShows" | "activeOrders";
   contextKey?: "activeClasses";
   keywordsKey?: string;
+  match?: (pathname: string) => boolean;
 }
 
 interface NavGroup {
@@ -88,21 +90,15 @@ interface NavGroup {
 
 const directItems: NavItem[] = [
   { href: "/admin", labelKey: "dashboard", icon: LayoutDashboard, permission: "dashboard", keywordsKey: "kw.dashboard" },
-  { href: "/admin/schedule", labelKey: "schedule", icon: CalendarDays, permission: "schedule", badgeKey: "pendingWaitlist", contextKey: "activeClasses", keywordsKey: "kw.schedule" },
-  { href: "/admin/check-in", labelKey: "checkIn", icon: ClipboardCheck, permission: "checkIn", badgeKey: "pendingNoShows", keywordsKey: "kw.checkIn" },
+  { href: "/admin/schedule", labelKey: "schedule", icon: CalendarDays, permission: "schedule", badgeKey: "pendingWaitlist", contextKey: "activeClasses", keywordsKey: "kw.schedule", match: (p) => p.startsWith("/admin/schedule") || p.startsWith("/admin/classes") || p.startsWith("/admin/class/") },
+  { href: "/admin/check-in", labelKey: "checkIn", icon: ClipboardCheck, permission: "checkIn", badgeKey: "pendingNoShows", keywordsKey: "kw.checkIn", match: (p) => p.startsWith("/admin/check-in") || p.startsWith("/admin/no-shows") },
   { href: "/admin/clients", labelKey: "clients", icon: Users, permission: "clients", badgeKey: "newClients", keywordsKey: "kw.clients" },
+  { href: "/admin/feed", labelKey: "memberHome", icon: Home, permission: "feed", badgeKey: "recentFeed", keywordsKey: "kw.memberHome" },
+  { href: "/admin/orders", labelKey: "orders", icon: Coffee, permission: "orders", feature: "orders", badgeKey: "activeOrders", keywordsKey: "kw.orders" },
   { href: "#pos", labelKey: "pos", icon: ShoppingBag, permission: "pos", keywordsKey: "kw.pos" },
 ];
 
 const navGroups: NavGroup[] = [
-  {
-    labelKey: "groups.operations",
-    icon: ClipboardCheck,
-    items: [
-      { href: "/admin/orders", labelKey: "orders", icon: Coffee, permission: "orders", feature: "orders", badgeKey: "activeOrders", keywordsKey: "kw.orders" },
-      { href: "/admin/feed", labelKey: "memberHome", icon: Home, permission: "feed", badgeKey: "recentFeed", keywordsKey: "kw.memberHome" },
-    ],
-  },
   {
     labelKey: "groups.studio",
     icon: Building2,
@@ -187,8 +183,9 @@ function buildPaletteItems(openPos: () => void, openCreateClient: () => void): P
   }
   // Deep links — internal pages reachable from within consolidated sections
   const deepLinks: PaletteItem[] = [
+    { id: "deep:classes-list", labelKey: "tabs.classesList", groupKey: "groups.daily", icon: ClipboardList, href: "/admin/classes", permission: "classes", keywordsKey: "kw.classesList" },
     { id: "deep:no-shows", labelKey: "tabs.noShows", groupKey: "groups.daily", icon: ClipboardCheck, href: "/admin/no-shows", permission: "noShowReview", feature: "noShows", keywordsKey: "kw.noShows" },
-    { id: "deep:highlights", labelKey: "tabs.highlights", groupKey: "groups.operations", icon: Sparkles, href: "/admin/marketing/highlights", permission: "highlights", feature: "highlights", keywordsKey: "kw.highlights" },
+    { id: "deep:highlights", labelKey: "tabs.highlights", groupKey: "groups.daily", icon: Sparkles, href: "/admin/marketing/highlights", permission: "highlights", feature: "highlights", keywordsKey: "kw.highlights" },
     { id: "deep:availability", labelKey: "tabs.availability", groupKey: "groups.studio", icon: CalendarOff, href: "/admin/availability", permission: "availability", keywordsKey: "kw.availability" },
     { id: "deep:platforms", labelKey: "tabs.platforms", groupKey: "groups.studio", icon: Building2, href: "/admin/platforms", permission: "platforms", feature: "platforms", keywordsKey: "kw.platforms" },
     { id: "deep:subscriptions", labelKey: "tabs.subscriptions", groupKey: "groups.sales", icon: Package, href: "/admin/subscriptions", permission: "subscriptions", keywordsKey: "kw.subscriptions" },
@@ -350,6 +347,13 @@ function filterNavItems(items: NavItem[], role: Role, flags: TenantFlags | null)
   });
 }
 
+function isItemActive(item: NavItem, pathname: string): boolean {
+  if (item.match) return item.match(pathname);
+  if (item.href === "/admin") return pathname === "/admin";
+  if (item.href === "#pos") return false;
+  return pathname.startsWith(item.href);
+}
+
 function SidebarFlyoutGroup({
   group,
   stats,
@@ -373,10 +377,7 @@ function SidebarFlyoutGroup({
 
   const visibleItems = filterNavItems(group.items, role, stats?.flags ?? null);
 
-  const isActive = (href: string) =>
-    href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
-
-  const hasActiveChild = visibleItems.some((item) => isActive(item.href));
+  const hasActiveChild = visibleItems.some((item) => isItemActive(item, pathname));
 
   if (visibleItems.length === 0) return null;
 
@@ -429,7 +430,7 @@ function SidebarFlyoutGroup({
               {t(group.labelKey)}
             </p>
             {visibleItems.map((item) => {
-              const active = isActive(item.href);
+              const active = isItemActive(item, pathname);
               const badgeVal = getBadgeVal(item, stats);
               const contextVal = getContextLabel(item, stats, t);
 
@@ -487,10 +488,8 @@ function MobileAccordionGroup({
 }) {
   const t = useTranslations("admin");
   const visibleItems = filterNavItems(group.items, role, stats?.flags ?? null);
-  const isActive = (href: string) =>
-    href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
-  const hasActiveChild = visibleItems.some((item) => isActive(item.href));
+  const hasActiveChild = visibleItems.some((item) => isItemActive(item, pathname));
   const [expanded, setExpanded] = useState(hasActiveChild);
 
   if (visibleItems.length === 0) return null;
@@ -535,7 +534,7 @@ function MobileAccordionGroup({
           >
             <div className="ml-4 space-y-px py-0.5">
               {visibleItems.map((item) => {
-                const active = isActive(item.href);
+                const active = isItemActive(item, pathname);
                 const badgeVal = getBadgeVal(item, stats);
                 const contextVal = getContextLabel(item, stats, t);
 
@@ -644,8 +643,6 @@ function SidebarNav({
   role: Role;
 }) {
   const t = useTranslations("admin");
-  const isActive = (href: string) =>
-    href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
   const py = mobile ? "py-2" : "py-1.5";
 
@@ -676,7 +673,7 @@ function SidebarNav({
     <>
       <div className="space-y-px">
         {visibleDirect.map((item) => {
-          const active = isActive(item.href);
+          const active = isItemActive(item, pathname);
           const badgeVal = getBadgeVal(item, stats);
           const contextVal = getContextLabel(item, stats, t);
 
