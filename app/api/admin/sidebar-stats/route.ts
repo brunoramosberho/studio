@@ -20,7 +20,6 @@ export async function GET() {
       onDemandConfig,
       gamificationConfig,
       referralConfig,
-      platformsCount,
     ] = await Promise.all([
       prisma.class.count({
         where: { tenantId: tenant.id, status: "SCHEDULED", startsAt: { gte: now } },
@@ -68,9 +67,6 @@ export async function GET() {
         where: { tenantId: tenant.id },
         select: { isEnabled: true },
       }),
-      prisma.studioPlatformConfig.count({
-        where: { tenantId: tenant.id },
-      }),
     ]);
 
     return NextResponse.json({
@@ -90,7 +86,10 @@ export async function GET() {
           (gamificationConfig?.achievementsEnabled ?? false) ||
           (gamificationConfig?.levelsEnabled ?? false),
         referrals: referralConfig?.isEnabled ?? false,
-        platforms: platformsCount > 0,
+        // Always-on: the platforms hub doubles as the discovery entry point
+        // for Wellhub / ClassPass — must be reachable from ⌘K and the sidebar
+        // even before any partner config exists.
+        platforms: true,
       },
     });
   } catch {
