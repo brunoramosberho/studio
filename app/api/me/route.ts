@@ -3,20 +3,41 @@ import { auth } from "@/lib/auth";
 import { getTenant, getTenantCurrency, getMembership } from "@/lib/tenant";
 import { FALLBACK_CURRENCY } from "@/lib/currency";
 import { prisma } from "@/lib/db";
+import { resolveStripePublishableKey } from "@/lib/stripe/publishable-key";
 
 export async function GET() {
   try {
     const session = await auth();
+    const tenant = await getTenant();
+    const stripeSandboxMode = tenant?.stripeSandboxMode ?? false;
+    const stripePublishableKey = resolveStripePublishableKey(stripeSandboxMode);
+
     if (!session?.user?.id) {
-      return NextResponse.json({ role: null, isSuperAdmin: false, currency: FALLBACK_CURRENCY });
+      const currency = tenant ? await getTenantCurrency() : FALLBACK_CURRENCY;
+      return NextResponse.json({
+        role: null,
+        isSuperAdmin: false,
+        tenantId: tenant?.id ?? null,
+        tenantSlug: tenant?.slug ?? null,
+        hasCoachProfile: false,
+        hasShopProducts: false,
+        currency,
+        stripeSandboxMode,
+        stripePublishableKey,
+      });
     }
 
-    const tenant = await getTenant();
     if (!tenant) {
       return NextResponse.json({
         role: null,
         isSuperAdmin: (session.user as Record<string, unknown>).isSuperAdmin ?? false,
+        tenantId: null,
+        tenantSlug: null,
+        hasCoachProfile: false,
+        hasShopProducts: false,
         currency: FALLBACK_CURRENCY,
+        stripeSandboxMode: false,
+        stripePublishableKey: resolveStripePublishableKey(false),
       });
     }
 
@@ -41,8 +62,20 @@ export async function GET() {
       tenantSlug: tenant.slug,
       isSuperAdmin: (session.user as Record<string, unknown>).isSuperAdmin ?? false,
       currency,
+      stripeSandboxMode,
+      stripePublishableKey,
     });
   } catch {
-    return NextResponse.json({ role: null, isSuperAdmin: false, currency: FALLBACK_CURRENCY });
+    return NextResponse.json({
+      role: null,
+      isSuperAdmin: false,
+      tenantId: null,
+      tenantSlug: null,
+      hasCoachProfile: false,
+      hasShopProducts: false,
+      currency: FALLBACK_CURRENCY,
+      stripeSandboxMode: false,
+      stripePublishableKey: null,
+    });
   }
 }

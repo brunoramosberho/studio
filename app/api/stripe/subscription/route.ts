@@ -1,23 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
-import { getStripe } from "@/lib/stripe/client";
-import { STRIPE_PLANS, type StripePlanKey } from "@/lib/stripe/products";
+import { resolveSaasStripePriceId } from "@/lib/stripe/saas-plans";
+import { getTenantStripeContext } from "@/lib/stripe/tenant-stripe";
 
 export async function POST(request: NextRequest) {
   try {
     const { tenant } = await requireRole("ADMIN");
-    const stripe = getStripe();
     const body = await request.json();
-    const { planId } = body as { planId: StripePlanKey };
+    const { planId, planKey } = body as {
+      planId?: string;
+      planKey?: string;
+    };
+    const key = (planKey ?? planId ?? "").trim().toLowerCase();
+    if (!key) {
+      return NextResponse.json(
+        { error: "planKey or planId is required" },
+        { status: 400 },
+      );
+    }
 
-    const plan = STRIPE_PLANS[planId];
-    if (!plan || !plan.priceId) {
+    const resolved = await resolveSaasStripePriceId(tenant.id, key);
+    if (!resolved?.stripePriceId) {
       return NextResponse.json(
         { error: "Invalid plan or plan not configured" },
         { status: 400 },
       );
     }
+
+    const { stripe } = await getTenantStripeContext(tenant.id);
 
     let customerId = tenant.stripeCustomerId;
 
@@ -34,9 +45,9 @@ export async function POST(request: NextRequest) {
 
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
-      items: [{ price: plan.priceId }],
+      items: [{ price: resolved.stripePriceId }],
       trial_period_days: 14,
-      metadata: { tenantId: tenant.id },
+      metadata: { tenantId: tenant.id, saasPlanKey: key },
       payment_behavior: "default_incomplete",
       expand: ["latest_invoice.payment_intent"],
     });
@@ -45,7 +56,7 @@ export async function POST(request: NextRequest) {
       where: { id: tenant.id },
       data: {
         stripeSubscriptionId: subscription.id,
-        stripePlanId: plan.priceId,
+        stripePlanId: resolved.stripePriceId,
         subscriptionStatus: subscription.status,
         trialEndsAt: subscription.trial_end
           ? new Date(subscription.trial_end * 1000)

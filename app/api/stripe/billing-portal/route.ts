@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/tenant";
-import { getStripe } from "@/lib/stripe/client";
+import { getStripeClientForTenantId } from "@/lib/stripe/tenant-stripe";
 
 export async function POST() {
   try {
     const { tenant } = await requireRole("ADMIN");
-    const stripe = getStripe();
+    const stripe = await getStripeClientForTenantId(tenant.id);
 
     if (!tenant.stripeCustomerId) {
       return NextResponse.json(

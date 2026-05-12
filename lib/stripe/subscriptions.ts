@@ -1,7 +1,7 @@
 import type Stripe from "stripe";
-import { getStripe } from "./client";
 import { getSubscriptionPeriod, toStripeAmount } from "./helpers";
 import { prisma } from "@/lib/db";
+import { getStripeClientForTenantId } from "./tenant-stripe";
 
 /**
  * Create a recurring Stripe Price on the connected account.
@@ -17,7 +17,7 @@ export async function ensureStripePrice(
 
   if (pkg.stripePriceId) return pkg.stripePriceId;
 
-  const stripe = getStripe();
+  const stripe = await getStripeClientForTenantId(pkg.tenantId);
 
   const product = await stripe.products.create(
     {
@@ -62,14 +62,14 @@ export async function createMemberSubscription({
   packageId: string;
   paymentMethodId?: string;
 }): Promise<Stripe.Subscription> {
-  const stripe = getStripe();
-
   const tenant = await prisma.tenant.findUniqueOrThrow({
     where: { id: tenantId },
   });
   if (!tenant.stripeAccountId) {
     throw new Error("Studio has no connected Stripe account");
   }
+
+  const stripe = await getStripeClientForTenantId(tenantId);
 
   const stripeCustomer = await getOrCreateStripeCustomer(
     userId,
@@ -152,7 +152,7 @@ export async function cancelMemberSubscription(
     throw new Error("No connected account");
   }
 
-  const stripe = getStripe();
+  const stripe = await getStripeClientForTenantId(memberSub.tenantId);
 
   if (immediately) {
     await stripe.subscriptions.cancel(subscriptionId, {
@@ -193,7 +193,7 @@ export async function reactivateMemberSubscription(subscriptionId: string) {
     throw new Error("Cannot reactivate a fully canceled subscription");
   }
 
-  const stripe = getStripe();
+  const stripe = await getStripeClientForTenantId(memberSub.tenantId);
 
   await stripe.subscriptions.update(
     subscriptionId,
@@ -223,7 +223,7 @@ export async function pauseSubscription(
     throw new Error("No connected account");
   }
 
-  const stripe = getStripe();
+  const stripe = await getStripeClientForTenantId(memberSub.tenantId);
 
   await stripe.subscriptions.update(
     subscriptionId,
@@ -261,7 +261,7 @@ export async function resumeSubscription(subscriptionId: string) {
     throw new Error("No connected account");
   }
 
-  const stripe = getStripe();
+  const stripe = await getStripeClientForTenantId(memberSub.tenantId);
 
   await stripe.subscriptions.update(
     subscriptionId,
@@ -293,7 +293,7 @@ async function getOrCreateStripeCustomer(
     where: { id: userId },
   });
 
-  const stripe = getStripe();
+  const stripe = await getStripeClientForTenantId(tenantId);
   const customer = await stripe.customers.create(
     {
       email: user.email,

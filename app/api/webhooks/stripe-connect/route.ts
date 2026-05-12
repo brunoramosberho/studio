@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe } from "@/lib/stripe/client";
+import { constructConnectStripeWebhookEvent } from "@/lib/stripe/webhook-verify";
 import { currencySymbolFor } from "@/lib/currency";
 import { prisma } from "@/lib/db";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
@@ -67,11 +67,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const event = getStripe().webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_CONNECT_WEBHOOK_SECRET!,
-    );
+    const event = constructConnectStripeWebhookEvent(body, signature);
 
     const connectedAccountId = event.account;
 

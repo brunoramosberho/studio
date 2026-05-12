@@ -8,46 +8,78 @@ import Stripe from "stripe";
  *   • payouts land in a local bank account without FX fees,
  *   • Stripe Connect onboarding can offer local payment methods (OXXO, SEPA…).
  *
- * Today only the ES entity is live (`STRIPE_SECRET_KEY_ES`). The legacy
- * `STRIPE_SECRET_KEY` env var is treated as the default and is the same key
- * that signed off all currently-connected accounts, so we keep it as the
- * fallback for any country we haven't explicitly wired up yet.
+ * **Live keys:** `STRIPE_SECRET_KEY`, `STRIPE_SECRET_KEY_<CC>` (e.g. ES, MX).
  *
- * To add a new entity later: set `STRIPE_SECRET_KEY_<COUNTRY_CODE>` (e.g.
- * `STRIPE_SECRET_KEY_MX`) — no code change is required, the resolver picks it
- * up automatically.
+ * **Test keys (per-tenant `stripeSandboxMode`):**
+ * `STRIPE_SECRET_KEY_TEST`, `STRIPE_SECRET_KEY_<CC>_TEST` — same fallback chain as live.
  */
 
 const _instances = new Map<string, Stripe>();
 
-function envKeyFor(countryCode: string | null | undefined): string | undefined {
+function envKeyFor(
+  countryCode: string | null | undefined,
+  sandbox: boolean,
+): string | undefined {
+  if (sandbox) {
+    if (countryCode) {
+      const fromCountry =
+        process.env[`STRIPE_SECRET_KEY_${countryCode.toUpperCase()}_TEST`];
+      if (fromCountry?.trim()) return fromCountry.trim();
+    }
+    const test = process.env.STRIPE_SECRET_KEY_TEST?.trim();
+    if (test) return test;
+    return undefined;
+  }
+
   if (countryCode) {
-    const fromCountry = process.env[`STRIPE_SECRET_KEY_${countryCode.toUpperCase()}`];
+    const fromCountry =
+      process.env[`STRIPE_SECRET_KEY_${countryCode.toUpperCase()}`]?.trim();
     if (fromCountry) return fromCountry;
   }
-  return process.env.STRIPE_SECRET_KEY;
+  return process.env.STRIPE_SECRET_KEY?.trim();
 }
 
+function cacheKey(
+  countryCode: string | null | undefined,
+  sandbox: boolean,
+): string {
+  return `${countryCode?.toUpperCase() ?? "_default"}_${sandbox ? "test" : "live"}`;
+}
+
+export type StripeCountryOptions = {
+  /** Use Stripe test-mode secret keys for this tenant. */
+  sandbox?: boolean;
+};
+
 /**
- * Default platform Stripe instance. Use this for non-tenant-bound calls (e.g.
- * webhook signature verification where the platform signs across all
- * accounts). For tenant-bound calls, prefer `getStripeForCountry`.
+ * Default platform Stripe instance (**live**). Use for calls that are not
+ * tied to a tenant (e.g. webhook verification attempts with the primary secret).
  */
 export function getStripe(): Stripe {
-  return getStripeForCountry(null);
+  return getStripeForCountry(null, { sandbox: false });
 }
 
 /**
- * Resolve the right platform Stripe instance for a tenant's billing country.
- * Falls back to the default key when no country-specific key exists.
+ * Resolve the platform Stripe instance for a billing country and mode.
  */
-export function getStripeForCountry(countryCode: string | null | undefined): Stripe {
-  const cacheKey = countryCode?.toUpperCase() ?? "_default";
-  const cached = _instances.get(cacheKey);
+export function getStripeForCountry(
+  countryCode: string | null | undefined,
+  options?: StripeCountryOptions,
+): Stripe {
+  const sandbox = options?.sandbox ?? false;
+  const key = cacheKey(countryCode, sandbox);
+  const cached = _instances.get(key);
   if (cached) return cached;
 
-  const secret = envKeyFor(countryCode);
+  const secret = envKeyFor(countryCode, sandbox);
   if (!secret) {
+    if (sandbox) {
+      throw new Error(
+        countryCode
+          ? `Stripe sandbox: set STRIPE_SECRET_KEY_${countryCode.toUpperCase()}_TEST or STRIPE_SECRET_KEY_TEST`
+          : "Stripe sandbox: set STRIPE_SECRET_KEY_TEST",
+      );
+    }
     throw new Error(
       countryCode
         ? `STRIPE_SECRET_KEY_${countryCode.toUpperCase()} (and STRIPE_SECRET_KEY fallback) not set`
@@ -55,6 +87,6 @@ export function getStripeForCountry(countryCode: string | null | undefined): Str
     );
   }
   const instance = new Stripe(secret);
-  _instances.set(cacheKey, instance);
+  _instances.set(key, instance);
   return instance;
 }

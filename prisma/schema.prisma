@@ -8,6 +8,31 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ── Platform SaaS (studio subscription to Mgic; not tenant-scoped) ──
+
+/// Catalog row for Stripe Price IDs per logical plan and optional country.
+/// Use `countryCode` `"__"` for the default/fallback price when no country-specific row exists.
+model SaasPlan {
+  id                   String   @id @default(cuid())
+  planKey              String
+  countryCode          String   @default("__")
+  stripePriceId        String
+  /// Optional Stripe Price ID for test mode (`Tenant.stripeSandboxMode`).
+  stripePriceIdSandbox String?
+  currency             String   @default("eur")
+  /// Display cache only — Stripe Prices are billing source of truth.
+  amountCents          Int?
+  name                 String?
+  sortOrder            Int      @default(0)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([planKey, countryCode])
+  @@index([planKey, isActive])
+  @@map("saas_plans")
+}
+
 // ── Multi-tenant ──
 
 model Tenant {
@@ -37,14 +62,18 @@ model Tenant {
   landingUrl        String?
   communityHeadline String  @default("Tu comunidad en movimiento")
 
-  stripeCustomerId      String? // cus_xxx — Tenant as customer of Magic Payments (SaaS fee)
-  stripeAccountId       String? // acct_xxx — Connected Account for receiving student payments
-  stripeAccountStatus   String? // 'pending' | 'active' | 'restricted'
-  stripeSubscriptionId  String? // sub_xxx — Active SaaS subscription
-  stripePlanId          String? // price_xxx — Contracted plan
-  subscriptionStatus    String? // 'active' | 'past_due' | 'canceled' | 'trialing'
-  trialEndsAt           DateTime?
-  applicationFeePercent Float     @default(0) // % fee Magic charges per transaction
+  stripeCustomerId          String? // cus_xxx — Tenant as customer of Magic Payments (SaaS fee)
+  stripeAccountId           String? // acct_xxx — Connected Account for receiving student payments
+  stripeAccountStatus       String? // 'pending' | 'active' | 'restricted'
+  stripeSubscriptionId      String? // sub_xxx — Active SaaS subscription
+  stripePlanId              String? // price_xxx — Contracted plan
+  subscriptionStatus        String? // 'active' | 'past_due' | 'canceled' | 'trialing'
+  trialEndsAt               DateTime?
+  applicationFeePercent     Float     @default(0) // % fee Magic charges per transaction
+  /// Negotiated SaaS price: when set, overrides `SaasPlan` catalog for new subscriptions.
+  saasStripePriceIdOverride String?
+  /// When true, API calls use Stripe test keys (`STRIPE_SECRET_KEY_*_TEST` / `STRIPE_SECRET_KEY_TEST`).
+  stripeSandboxMode         Boolean   @default(false)
 
   zoneRedDays    Int @default(14)
   zoneYellowDays Int @default(30)
@@ -81,35 +110,35 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships             Membership[]
-  studios                 Studio[]
-  classTypes              ClassType[]
-  coachProfiles           CoachProfile[]
-  classes                 Class[]
-  bookings                Booking[]
-  waitlists               Waitlist[]
-  spotNotifyMe            ClassNotifyMe[]
-  packages                Package[]
-  userPackages            UserPackage[]
-  rooms                   Room[]
-  feedEvents              FeedEvent[]
-  notifications           Notification[]
-  achievements            Achievement[]
-  memberProgress          MemberProgress[]
-  memberRewards           MemberReward[]
-  memberAchievements      MemberAchievement[]
-  blockedSpots            BlockedSpot[]
-  friendships             Friendship[]
-  pushSubscriptions       PushSubscription[]
-  productCategories       ProductCategory[]
-  products                Product[]
+  memberships               Membership[]
+  studios                   Studio[]
+  classTypes                ClassType[]
+  coachProfiles             CoachProfile[]
+  classes                   Class[]
+  bookings                  Booking[]
+  waitlists                 Waitlist[]
+  spotNotifyMe              ClassNotifyMe[]
+  packages                  Package[]
+  userPackages              UserPackage[]
+  rooms                     Room[]
+  feedEvents                FeedEvent[]
+  notifications             Notification[]
+  achievements              Achievement[]
+  memberProgress            MemberProgress[]
+  memberRewards             MemberReward[]
+  memberAchievements        MemberAchievement[]
+  blockedSpots              BlockedSpot[]
+  friendships               Friendship[]
+  pushSubscriptions         PushSubscription[]
+  productCategories         ProductCategory[]
+  products                  Product[]
   productStudioAvailability ProductStudioAvailability[]
-  bookingProductOrders    BookingProductOrder[]
-  songRequests            ClassSongRequest[]
-  coachPayRates           CoachPayRate[]
-  coachAvailabilityBlocks CoachAvailabilityBlock[]
-  substitutionRequests    SubstitutionRequest[]
-  checkIns                CheckIn[]
+  bookingProductOrders      BookingProductOrder[]
+  songRequests              ClassSongRequest[]
+  coachPayRates             CoachPayRate[]
+  coachAvailabilityBlocks   CoachAvailabilityBlock[]
+  substitutionRequests      SubstitutionRequest[]
+  checkIns                  CheckIn[]
 
   instagramIntegration InstagramIntegration?
 
@@ -441,19 +470,19 @@ enum Role {
 // ── Studio domain models (tenant-scoped) ──
 
 model CoachProfile {
-  id          String         @id @default(cuid())
-  name        String
-  userId      String?
-  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-  tenantId    String
-  tenant      Tenant         @relation(fields: [tenantId], references: [id])
-  bio         String?
-  specialties String[]
-  photoUrl    String?
-  color       String         @default("#C9A96E")
-  classes     Class[]        @relation("ClassCurrentCoach")
-  classesAsOriginalCoach Class[] @relation("ClassOriginalCoach")
-  payRates    CoachPayRate[]
+  id                     String         @id @default(cuid())
+  name                   String
+  userId                 String?
+  user                   User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenantId               String
+  tenant                 Tenant         @relation(fields: [tenantId], references: [id])
+  bio                    String?
+  specialties            String[]
+  photoUrl               String?
+  color                  String         @default("#C9A96E")
+  classes                Class[]        @relation("ClassCurrentCoach")
+  classesAsOriginalCoach Class[]        @relation("ClassOriginalCoach")
+  payRates               CoachPayRate[]
 
   onDemandVideos OnDemandVideo[]
 
@@ -541,40 +570,40 @@ enum Level {
 }
 
 model Class {
-  id                  String                  @id @default(cuid())
-  classTypeId         String
-  classType           ClassType               @relation(fields: [classTypeId], references: [id])
-  coachId             String
-  coach               CoachProfile            @relation("ClassCurrentCoach", fields: [coachId], references: [id])
-  originalCoachId     String?
-  originalCoach       CoachProfile?           @relation("ClassOriginalCoach", fields: [originalCoachId], references: [id])
-  roomId              String
-  room                Room                    @relation(fields: [roomId], references: [id])
-  tenantId            String
-  tenant              Tenant                  @relation(fields: [tenantId], references: [id])
-  startsAt            DateTime
-  endsAt              DateTime
-  status              ClassStatus             @default(SCHEDULED)
-  isRecurring         Boolean                 @default(false)
-  recurringId         String?
-  notes               String?
-  tag                 String?
-  bookings            Booking[]
-  waitlist            Waitlist[]
-  spotNotifyMe        ClassNotifyMe[]
-  blockedSpots        BlockedSpot[]
-  songRequests        ClassSongRequest[]
-  songRequestsEnabled Boolean                 @default(true)
-  songRequestCriteria String[]                @default(["ALL"])
-  playlistTracks      ClassPlaylistTrack[]
-  blockingNotes       String?
-  checkIns            CheckIn[]
-  platformQuotas      SchedulePlatformQuota[]
-  platformBookings    PlatformBooking[]
-  ratings             ClassRating[]
-  ratingEmailSent     Boolean                 @default(false)
-  entitlements        Entitlement[]
-  revenueEvents       RevenueEvent[]
+  id                   String                  @id @default(cuid())
+  classTypeId          String
+  classType            ClassType               @relation(fields: [classTypeId], references: [id])
+  coachId              String
+  coach                CoachProfile            @relation("ClassCurrentCoach", fields: [coachId], references: [id])
+  originalCoachId      String?
+  originalCoach        CoachProfile?           @relation("ClassOriginalCoach", fields: [originalCoachId], references: [id])
+  roomId               String
+  room                 Room                    @relation(fields: [roomId], references: [id])
+  tenantId             String
+  tenant               Tenant                  @relation(fields: [tenantId], references: [id])
+  startsAt             DateTime
+  endsAt               DateTime
+  status               ClassStatus             @default(SCHEDULED)
+  isRecurring          Boolean                 @default(false)
+  recurringId          String?
+  notes                String?
+  tag                  String?
+  bookings             Booking[]
+  waitlist             Waitlist[]
+  spotNotifyMe         ClassNotifyMe[]
+  blockedSpots         BlockedSpot[]
+  songRequests         ClassSongRequest[]
+  songRequestsEnabled  Boolean                 @default(true)
+  songRequestCriteria  String[]                @default(["ALL"])
+  playlistTracks       ClassPlaylistTrack[]
+  blockingNotes        String?
+  checkIns             CheckIn[]
+  platformQuotas       SchedulePlatformQuota[]
+  platformBookings     PlatformBooking[]
+  ratings              ClassRating[]
+  ratingEmailSent      Boolean                 @default(false)
+  entitlements         Entitlement[]
+  revenueEvents        RevenueEvent[]
   substitutionRequests SubstitutionRequest[]
 
   @@index([startsAt])
@@ -683,10 +712,10 @@ enum PendingPenaltyStatus {
 // marking. Auto-confirms after the tenant's configured grace window, or is
 // resolved manually from /admin/no-shows.
 model PendingPenalty {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   tenantId  String
-  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookingId String @unique
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId String  @unique
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   classId   String
   userId    String?
@@ -694,7 +723,7 @@ model PendingPenalty {
 
   loseCredit     Boolean @default(false) // Snapshot: does this penalty imply credit loss?
   chargeFee      Boolean @default(false) // Snapshot: should we charge a fee?
-  feeAmountCents Int     @default(0)     // Snapshot of fee amount at creation time
+  feeAmountCents Int     @default(0) // Snapshot of fee amount at creation time
   isUnlimited    Boolean @default(false) // Was the booking on an unlimited package?
 
   status PendingPenaltyStatus @default(pending)
@@ -1371,26 +1400,26 @@ enum BookingProductOrderStatus {
 // member will pick up at the studio bar after class. Paid online up-front
 // via Stripe Connect; staff marks it as ready / picked up from /admin/orders.
 model BookingProductOrder {
-  id            String                    @id @default(cuid())
-  tenantId      String
-  tenant        Tenant                    @relation(fields: [tenantId], references: [id])
-  bookingId     String                    @unique
-  booking       Booking                   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  userId        String
-  user          User                      @relation("UserBookingProductOrders", fields: [userId], references: [id])
-  studioId      String
-  studio        Studio                    @relation(fields: [studioId], references: [id])
-  status        BookingProductOrderStatus @default(PENDING_PAYMENT)
+  id              String                    @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                    @relation(fields: [tenantId], references: [id])
+  bookingId       String                    @unique
+  booking         Booking                   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User                      @relation("UserBookingProductOrders", fields: [userId], references: [id])
+  studioId        String
+  studio          Studio                    @relation(fields: [studioId], references: [id])
+  status          BookingProductOrderStatus @default(PENDING_PAYMENT)
   // Snapshot of the class end time so the bar view can sort by pickup window
   // without joining back to Class.
-  pickupAt      DateTime
-  notes         String?
-  subtotalCents Int
-  currency      String
+  pickupAt        DateTime
+  notes           String?
+  subtotalCents   Int
+  currency        String
   // Link to the StripePayment row (which itself references the Stripe
   // PaymentIntent). Nullable while the intent is being created.
   stripePaymentId String?
-  stripePayment   StripePayment? @relation("StripePaymentForProductOrder", fields: [stripePaymentId], references: [id])
+  stripePayment   StripePayment?            @relation("StripePaymentForProductOrder", fields: [stripePaymentId], references: [id])
   paidAt          DateTime?
   readyAt         DateTime?
   pickedUpAt      DateTime?
@@ -1406,15 +1435,15 @@ model BookingProductOrder {
 }
 
 model BookingProductOrderItem {
-  id            String              @id @default(cuid())
-  orderId       String
-  order         BookingProductOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId     String
-  product       Product             @relation(fields: [productId], references: [id])
+  id             String              @id @default(cuid())
+  orderId        String
+  order          BookingProductOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product             @relation(fields: [productId], references: [id])
   // Snapshot fields so historical orders survive product edits/deletes.
-  nameSnapshot  String
+  nameSnapshot   String
   unitPriceCents Int
-  quantity      Int                 @default(1)
+  quantity       Int                 @default(1)
 
   @@index([orderId])
   @@index([productId])
@@ -2339,18 +2368,18 @@ enum OnDemandSessionEndReason {
 // client can detect it and surface a "viewing stopped" message. Stale sessions
 // (no heartbeat for >90s) are cleaned up by the cron job.
 model OnDemandStreamSession {
-  id       String @id @default(cuid())
+  id       String        @id @default(cuid())
   tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId   String
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   videoId  String
   video    OnDemandVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
-  startedAt        DateTime  @default(now())
-  lastHeartbeatAt  DateTime  @default(now())
-  endedAt          DateTime?
-  endedReason      OnDemandSessionEndReason?
+  startedAt       DateTime                  @default(now())
+  lastHeartbeatAt DateTime                  @default(now())
+  endedAt         DateTime?
+  endedReason     OnDemandSessionEndReason?
 
   clientIp  String?
   userAgent String? @db.Text
@@ -2403,27 +2432,27 @@ enum SubstitutionStatus {
 }
 
 model SubstitutionRequest {
-  id                  String              @id @default(cuid())
-  tenantId            String
-  classId             String
-  requestingCoachId   String
-  originalCoachId     String
-  targetCoachId       String?
-  acceptedByCoachId   String?
-  mode                SubstitutionMode
-  status              SubstitutionStatus  @default(PENDING)
-  note                String?             @db.Text
-  rejectionNote       String?             @db.Text
-  notifiedCoachIds    String[]            @default([])
-  createdAt           DateTime            @default(now())
-  respondedAt         DateTime?
+  id                String             @id @default(cuid())
+  tenantId          String
+  classId           String
+  requestingCoachId String
+  originalCoachId   String
+  targetCoachId     String?
+  acceptedByCoachId String?
+  mode              SubstitutionMode
+  status            SubstitutionStatus @default(PENDING)
+  note              String?            @db.Text
+  rejectionNote     String?            @db.Text
+  notifiedCoachIds  String[]           @default([])
+  createdAt         DateTime           @default(now())
+  respondedAt       DateTime?
 
-  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  class             Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
-  requestingCoach   CoachProfile @relation("SubstitutionRequestingCoach", fields: [requestingCoachId], references: [id])
-  originalCoach     CoachProfile @relation("SubstitutionOriginalCoach", fields: [originalCoachId], references: [id])
-  targetCoach       CoachProfile? @relation("SubstitutionTargetCoach", fields: [targetCoachId], references: [id])
-  acceptedByCoach   CoachProfile? @relation("SubstitutionAcceptedCoach", fields: [acceptedByCoachId], references: [id])
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class           Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  requestingCoach CoachProfile  @relation("SubstitutionRequestingCoach", fields: [requestingCoachId], references: [id])
+  originalCoach   CoachProfile  @relation("SubstitutionOriginalCoach", fields: [originalCoachId], references: [id])
+  targetCoach     CoachProfile? @relation("SubstitutionTargetCoach", fields: [targetCoachId], references: [id])
+  acceptedByCoach CoachProfile? @relation("SubstitutionAcceptedCoach", fields: [acceptedByCoachId], references: [id])
 
   @@index([tenantId, status])
   @@index([classId])

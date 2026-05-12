@@ -12,6 +12,10 @@ interface TenantContextValue {
   hasCoachProfile: boolean;
   hasShopProducts: boolean;
   currency: CurrencyConfig;
+  /** When true, this tenant uses Stripe test-mode API keys and test publishable key. */
+  stripeSandboxMode: boolean;
+  /** Platform publishable key for Stripe.js (from server; null if not configured). */
+  stripePublishableKey: string | null;
   loading: boolean;
   refresh: () => void;
 }
@@ -24,6 +28,8 @@ const TenantContext = createContext<TenantContextValue>({
   hasCoachProfile: false,
   hasShopProducts: false,
   currency: FALLBACK_CURRENCY,
+  stripeSandboxMode: false,
+  stripePublishableKey: null,
   loading: true,
   refresh: () => {},
 });
@@ -67,36 +73,31 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     hasCoachProfile: false,
     hasShopProducts: false,
     currency: FALLBACK_CURRENCY,
+    stripeSandboxMode: false,
+    stripePublishableKey: null,
   });
   const [loading, setLoading] = useState(true);
 
   const fetchMembership = useCallback(() => {
     if (status === "loading") return;
-    if (!session?.user) {
-      setState({
-        role: null,
-        tenantId: null,
-        tenantSlug: null,
-        isSuperAdmin: false,
-        hasCoachProfile: false,
-        hasShopProducts: false,
-        currency: FALLBACK_CURRENCY,
-      });
-      setLoading(false);
-      return;
-    }
 
     fetch("/api/me")
       .then((r) => r.json())
       .then((data) => {
+        const authed = Boolean(session?.user);
         setState({
-          role: data.role ?? null,
+          role: authed ? (data.role ?? null) : null,
           tenantId: data.tenantId ?? null,
           tenantSlug: data.tenantSlug ?? null,
-          isSuperAdmin: data.isSuperAdmin ?? false,
-          hasCoachProfile: data.hasCoachProfile ?? false,
-          hasShopProducts: data.hasShopProducts ?? false,
+          isSuperAdmin: authed ? Boolean(data.isSuperAdmin) : false,
+          hasCoachProfile: authed ? Boolean(data.hasCoachProfile) : false,
+          hasShopProducts: authed ? Boolean(data.hasShopProducts) : false,
           currency: (data.currency as CurrencyConfig | undefined) ?? FALLBACK_CURRENCY,
+          stripeSandboxMode: Boolean(data.stripeSandboxMode),
+          stripePublishableKey:
+            typeof data.stripePublishableKey === "string"
+              ? data.stripePublishableKey
+              : null,
         });
       })
       .catch(() => {})

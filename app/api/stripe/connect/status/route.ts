@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/tenant";
-import { getStripe } from "@/lib/stripe/client";
+import { getStripeClientForTenantId } from "@/lib/stripe/tenant-stripe";
 
 export async function GET() {
   try {
@@ -15,7 +15,7 @@ export async function GET() {
       });
     }
 
-    const stripe = getStripe();
+    const stripe = await getStripeClientForTenantId(tenant.id);
     const account = await stripe.accounts.retrieve(tenant.stripeAccountId);
 
     let status: "pending" | "active" | "restricted" = "pending";

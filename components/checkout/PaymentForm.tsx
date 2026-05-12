@@ -9,19 +9,21 @@ import {
 } from "@stripe/react-stripe-js";
 import { loadStripe, type Stripe as StripeJS } from "@stripe/stripe-js";
 import { Loader2, Lock } from "lucide-react";
+import { useTenant } from "@/components/tenant-provider";
 
 const stripePromiseCache = new Map<string, Promise<StripeJS | null>>();
 
-function getStripePromise(stripeAccountId: string) {
-  if (!stripePromiseCache.has(stripeAccountId)) {
+function getStripePromise(stripeAccountId: string, publishableKey: string) {
+  const cacheKey = `${publishableKey}:${stripeAccountId}`;
+  if (!stripePromiseCache.has(cacheKey)) {
     stripePromiseCache.set(
-      stripeAccountId,
-      loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!, {
+      cacheKey,
+      loadStripe(publishableKey, {
         stripeAccount: stripeAccountId,
       }),
     );
   }
-  return stripePromiseCache.get(stripeAccountId)!;
+  return stripePromiseCache.get(cacheKey)!;
 }
 
 interface PaymentFormProps {
@@ -41,9 +43,40 @@ export function PaymentForm({
   onSuccess,
   returnUrl,
 }: PaymentFormProps) {
+  const {
+    stripePublishableKey,
+    stripeSandboxMode,
+    loading: tenantLoading,
+  } = useTenant();
+
+  const fallbackLivePk =
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
+  const publishableKey =
+    stripePublishableKey?.trim() ||
+    (!stripeSandboxMode ? fallbackLivePk : "") ||
+    "";
+
+  if (tenantLoading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin text-muted" />
+      </div>
+    );
+  }
+
+  if (!publishableKey) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        {stripeSandboxMode
+          ? "Configura STRIPE_PUBLISHABLE_KEY_TEST en el servidor para pagos de prueba."
+          : "Configura STRIPE_PUBLISHABLE_KEY o NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY para pagos."}
+      </div>
+    );
+  }
+
   return (
     <Elements
-      stripe={getStripePromise(stripeAccountId)}
+      stripe={getStripePromise(stripeAccountId, publishableKey)}
       options={{
         clientSecret,
         appearance: { theme: "flat" },
