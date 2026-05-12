@@ -4,7 +4,7 @@ import { getStripe } from "./client";
 function constructWithFirstMatchingSecret(
   body: string,
   signature: string,
-  secrets: string[],
+  secrets: ReadonlyArray<string | undefined>,
 ): Stripe.Event {
   const stripe = getStripe();
   let last: unknown;
