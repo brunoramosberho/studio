@@ -303,15 +303,143 @@ function DemoBanner() {
       <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
       <p className="text-xs font-medium text-amber-800">
         <span className="font-semibold">Modo demo</span> — Estás viendo datos de ejemplo.
-        Configura ClassPass o Wellhub para usar datos reales.
+        Conecta Wellhub para usar datos reales.
       </p>
-      <Link href="/admin/platforms/setup/classpass" className="ml-auto shrink-0">
+      <Link href="/admin/platforms/setup/wellhub" className="ml-auto shrink-0">
         <Button variant="outline" size="sm" className="h-7 gap-1 border-amber-300 text-xs text-amber-700 hover:bg-amber-100">
           <Plus className="h-3 w-3" />
-          Conectar
+          Conectar Wellhub
         </Button>
       </Link>
     </div>
+  );
+}
+
+// ─── Integrations Landing ──────────────────────────────
+//
+// Always-visible quick access to the two platform integrations. Shows status
+// per platform (active / pending / coming soon) so the admin lands here once
+// and can pick where to go in two clicks.
+
+function IntegrationsLanding({ configs }: { configs: PlatformConfig[] }) {
+  const wellhubConfig = configs.find((c) => c.platform === "wellhub");
+  const wellhubActive = wellhubConfig?.isActive ?? false;
+
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <PlatformCard
+        name="Wellhub"
+        tagline="Antes Gympass. Integración por API: schedule, reservas y check-in en tiempo real."
+        accent="#E4572E"
+        available
+        active={wellhubActive}
+        configured={!!wellhubConfig}
+        href="/admin/platforms/setup/wellhub"
+        logo={<WellhubMark />}
+      />
+      <PlatformCard
+        name="ClassPass"
+        tagline="Integración por API próximamente. Por ahora puedes seguir el flujo manual de reservas por email."
+        accent="#5B5EA6"
+        available={false}
+        active={false}
+        configured={false}
+        href="/admin/platforms/setup/classpass"
+        logo={<ClassPassMark />}
+      />
+    </div>
+  );
+}
+
+function PlatformCard({
+  name,
+  tagline,
+  accent,
+  available,
+  active,
+  configured,
+  href,
+  logo,
+}: {
+  name: string;
+  tagline: string;
+  accent: string;
+  available: boolean;
+  active: boolean;
+  configured: boolean;
+  href: string;
+  logo: React.ReactNode;
+}) {
+  const status = !available
+    ? { label: "Próximamente", cls: "bg-stone-100 text-stone-500 ring-stone-200" }
+    : active
+      ? { label: "Activo", cls: "bg-emerald-50 text-emerald-700 ring-emerald-200" }
+      : configured
+        ? { label: "Configurado", cls: "bg-amber-50 text-amber-700 ring-amber-200" }
+        : { label: "No conectado", cls: "bg-stone-50 text-stone-600 ring-stone-200" };
+
+  const cta = !available
+    ? "Próximamente"
+    : active
+      ? "Gestionar"
+      : configured
+        ? "Continuar configuración"
+        : "Conectar";
+
+  const cardBody = (
+    <Card
+      className={cn(
+        "relative overflow-hidden border transition-all",
+        available ? "hover:shadow-md hover:border-stone-300 cursor-pointer" : "opacity-70 cursor-not-allowed",
+      )}
+    >
+      <div
+        className="absolute inset-x-0 top-0 h-1"
+        style={{ backgroundColor: accent }}
+      />
+      <CardContent className="flex items-start gap-4 p-5">
+        <div
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white"
+          style={{ backgroundColor: accent }}
+        >
+          {logo}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="font-display text-lg font-bold">{name}</h3>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1",
+                status.cls,
+              )}
+            >
+              {status.label}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-muted">{tagline}</p>
+          <div className="mt-3 flex items-center gap-1 text-xs font-medium" style={{ color: available ? accent : undefined }}>
+            <span className={available ? "" : "text-stone-400"}>{cta}</span>
+            {available && <span aria-hidden>→</span>}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  if (!available) return cardBody;
+  return <Link href={href}>{cardBody}</Link>;
+}
+
+function WellhubMark() {
+  // Simple barbell-style wordmark to evoke fitness; brand-color background.
+  return (
+    <span className="font-display text-xl font-black tracking-tight">W</span>
+  );
+}
+
+function ClassPassMark() {
+  return (
+    <span className="font-display text-xl font-black tracking-tight">cp</span>
   );
 }
 
@@ -374,6 +502,8 @@ export default function AdminPlatformsPage() {
       </motion.div>
 
       {isDemo && <DemoBanner />}
+
+      <IntegrationsLanding configs={configs ?? []} />
 
       <Tabs defaultValue="resumen">
         <TabsList>
