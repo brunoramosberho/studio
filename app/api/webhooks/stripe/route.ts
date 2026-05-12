@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe } from "@/lib/stripe/client";
 import { prisma } from "@/lib/db";
+import { constructPlatformStripeWebhookEvent } from "@/lib/stripe/webhook-verify";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,11 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const event = getStripe().webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!,
-    );
+    const event = constructPlatformStripeWebhookEvent(body, signature);
 
     switch (event.type) {
       // ── Legacy: package purchase via Checkout ──

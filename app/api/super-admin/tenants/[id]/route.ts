@@ -82,6 +82,9 @@ export async function PUT(req: Request, { params }: Params) {
       colorHeroBg,
       colorCoach,
       colorAdmin,
+      applicationFeePercent,
+      saasStripePriceIdOverride,
+      stripeSandboxMode,
     } = body;
 
     if (slug !== undefined && !SLUG_REGEX.test(slug)) {
@@ -123,6 +126,39 @@ export async function PUT(req: Request, { params }: Params) {
     if (colorHeroBg !== undefined) data.colorHeroBg = colorHeroBg;
     if (colorCoach !== undefined) data.colorCoach = colorCoach;
     if (colorAdmin !== undefined) data.colorAdmin = colorAdmin;
+
+    if (applicationFeePercent !== undefined) {
+      if (
+        typeof applicationFeePercent !== "number" ||
+        Number.isNaN(applicationFeePercent) ||
+        applicationFeePercent < 0 ||
+        applicationFeePercent > 100
+      ) {
+        return NextResponse.json(
+          { error: "applicationFeePercent debe ser un número entre 0 y 100" },
+          { status: 400 },
+        );
+      }
+      data.applicationFeePercent = applicationFeePercent;
+    }
+
+    if (saasStripePriceIdOverride !== undefined) {
+      data.saasStripePriceIdOverride =
+        saasStripePriceIdOverride === null ||
+        saasStripePriceIdOverride === ""
+          ? null
+          : String(saasStripePriceIdOverride).trim() || null;
+    }
+
+    if (stripeSandboxMode !== undefined) {
+      if (typeof stripeSandboxMode !== "boolean") {
+        return NextResponse.json(
+          { error: "stripeSandboxMode debe ser booleano" },
+          { status: 400 },
+        );
+      }
+      data.stripeSandboxMode = stripeSandboxMode;
+    }
 
     const tenant = await prisma.tenant.update({
       where: { id },

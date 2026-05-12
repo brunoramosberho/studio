@@ -441,6 +441,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Push refreshed total_booked to Wellhub so their app reflects reality.
+    // No-op for classes not synced to Wellhub.
+    try {
+      const { patchWellhubCapacityForClass } = await import("@/lib/platforms/wellhub");
+      await patchWellhubCapacityForClass(classId);
+    } catch (err) {
+      console.error("[wellhub] capacity patch after booking create failed", err);
+    }
+
     const baseUrl = getTenantBaseUrl(tenant.slug);
     const hideCoach = shouldHideCoach(tenant, classData);
     const emailCoachName = hideCoach ? null : (classData.coach.name ?? "Coach");

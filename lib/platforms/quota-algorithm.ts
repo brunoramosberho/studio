@@ -1,6 +1,6 @@
 export interface QuotaSuggestion {
   classpass: number;
-  gympass: number;
+  wellhub: number;
   direct: number;
 }
 
@@ -35,11 +35,11 @@ export function suggestQuota({
   );
 
   const cp = Math.floor(totalPlatform / 2);
-  const gp = totalPlatform - cp;
+  const wh = totalPlatform - cp;
 
   return {
     classpass: cp,
-    gympass: gp,
-    direct: capacity - cp - gp,
+    wellhub: wh,
+    direct: capacity - cp - wh,
   };
 }

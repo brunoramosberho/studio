@@ -57,7 +57,7 @@ function getMethodLabel(source: string): string {
   if (source === "tpv") return "TPV banco";
   if (source === "cash") return "Efectivo";
   if (source === "classpass") return "ClassPass";
-  if (source === "gympass") return "Gympass";
+  if (source === "wellhub") return "Wellhub";
   return source;
 }
 

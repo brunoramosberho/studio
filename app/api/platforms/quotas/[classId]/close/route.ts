@@ -13,7 +13,7 @@ export async function POST(
     const body = await request.json();
     const { platform } = body as { platform: PlatformType };
 
-    if (!platform || !["classpass", "gympass"].includes(platform)) {
+    if (!platform || !["classpass", "wellhub"].includes(platform)) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
     }
 

@@ -128,7 +128,7 @@ const methodStyles: Record<string, string> = {
   tpv: "bg-emerald-50 text-emerald-700",
   cash: "bg-amber-50 text-amber-700",
   classpass: "bg-purple-50 text-purple-700",
-  gympass: "bg-purple-50 text-purple-700",
+  wellhub: "bg-purple-50 text-purple-700",
 };
 
 const methodLabelKeys: Record<string, string> = {
@@ -136,7 +136,7 @@ const methodLabelKeys: Record<string, string> = {
   tpv: "tpv",
   cash: "cash",
   classpass: "externalPlatforms",
-  gympass: "gympass",
+  wellhub: "wellhub",
 };
 
 const conceptTypeStyles: Record<string, string> = {

@@ -141,7 +141,7 @@ ACCIONES DE LECTURA:
 - Puedes analizar suscripciones recurrentes: activas, churn, MRR, pausadas, por cancelar
 - Puedes ver finanzas detalladas: Stripe + POS, comisiones, neto, desglose por tipo/día/método de pago
 - Puedes ver check-ins del día: asistencia, no-shows, métodos de check-in, tendencias
-- Puedes monitorear plataformas externas (ClassPass/Gympass): alertas, reservas, cuotas, ingresos estimados
+- Puedes monitorear plataformas externas (ClassPass/Wellhub): alertas, reservas, cuotas, ingresos estimados
 - Puedes obtener el perfil completo de un cliente: paquetes, pagos, waiver, gamificación, suscripción
 - Puedes obtener el perfil completo de un coach: tarifas, ratings, estadísticas, disponibilidad
 - Puedes analizar ratings de clases: promedio, distribución, razones, por coach o disciplina
@@ -238,7 +238,7 @@ Mapa de páginas del admin:
 - [Paquetes](/admin/packages) — paquetes de créditos, crear/editar paquetes
 - [Suscripciones](/admin/subscriptions) — suscripciones recurrentes, estado, gestión
 - [Tienda](/admin/shop) — productos, categorías, POS
-- [Plataformas](/admin/platforms) — ClassPass, Gympass, configuración, cuotas, alertas
+- [Plataformas](/admin/platforms) — ClassPass, Wellhub, configuración, cuotas, alertas
 - [Reportes](/admin/reports) — reportes detallados, exportar datos
 - [Rendimiento](/admin/analytics) — analytics avanzados, tendencias
 - [Conversión](/admin/conversion) — funnel, nudges, intro offers

@@ -26,6 +26,7 @@ interface TenantDetail {
   slug: string;
   name: string;
   isActive: boolean;
+  stripeSandboxMode: boolean;
   tagline: string;
   slogan: string;
   logoUrl: string | null;
@@ -127,6 +128,21 @@ export default function TenantDetailPage({
       setTimeout(() => setSavedColors(false), 2000);
     }
     setSavingColors(false);
+  }
+
+  async function toggleStripeSandbox() {
+    if (!tenant) return;
+    const res = await fetch(`/api/super-admin/tenants/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stripeSandboxMode: !tenant.stripeSandboxMode }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setTenant((prev) =>
+        prev ? { ...prev, stripeSandboxMode: updated.stripeSandboxMode } : prev,
+      );
+    }
   }
 
   async function toggleActive() {
@@ -282,6 +298,33 @@ export default function TenantDetailPage({
           </Card>
         ))}
       </div>
+
+      <Card className="border border-gray-100">
+        <CardHeader>
+          <CardTitle className="text-base">Stripe</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={tenant.stripeSandboxMode ?? false}
+              onChange={toggleStripeSandbox}
+              className="mt-1 h-4 w-4 rounded border-gray-300"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-900">
+                Modo prueba (sandbox)
+              </span>
+              <span className="mt-0.5 block text-xs text-gray-500">
+                Usa{" "}
+                <code className="rounded bg-gray-100 px-1">STRIPE_SECRET_KEY_TEST</code>{" "}
+                y cuenta conectada de test. Desactiva al pasar el estudio a
+                cobros reales (live).
+              </span>
+            </span>
+          </label>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Edit form */}

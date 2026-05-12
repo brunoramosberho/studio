@@ -86,8 +86,10 @@ export async function POST(request: NextRequest) {
     let stripeCouponId: string | null = null;
     if (ctx.tenant.stripeAccountId) {
       try {
-        const { getStripe } = await import("@/lib/stripe/client");
-        const stripe = getStripe();
+        const { getStripeClientForTenantId } = await import(
+          "@/lib/stripe/tenant-stripe"
+        );
+        const stripe = await getStripeClientForTenantId(ctx.tenant.id);
         const couponData: Record<string, unknown> = {
           name: `${normalizedCode} — ${description || normalizedCode}`,
           metadata: { tenantId: ctx.tenant.id, code: normalizedCode },

@@ -95,8 +95,10 @@ export async function DELETE(
     // Deactivate Stripe coupon if exists
     if (existing.stripeCouponId && ctx.tenant.stripeAccountId) {
       try {
-        const { getStripe } = await import("@/lib/stripe/client");
-        const stripe = getStripe();
+        const { getStripeClientForTenantId } = await import(
+          "@/lib/stripe/tenant-stripe"
+        );
+        const stripe = await getStripeClientForTenantId(ctx.tenant.id);
         await stripe.coupons.del(existing.stripeCouponId, {
           stripeAccount: ctx.tenant.stripeAccountId,
         });

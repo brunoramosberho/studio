@@ -71,6 +71,22 @@ interface WaitlistMember {
   since: string;
 }
 
+interface WellhubBooking {
+  platformBookingId: string;
+  source: "wellhub";
+  status: "confirmed" | "checked_in" | "pending_confirmation";
+  memberName: string;
+  initials: string;
+  wellhubUniqueToken: string | null;
+  wellhubBookingNumber: string | null;
+  wellhubProductId: number | null;
+  email: string | null;
+  phone: string | null;
+  magicUserId: string | null;
+  checkedInAt: string | null;
+  createdAt: string;
+}
+
 interface SearchResult {
   id: string;
   name: string | null;
@@ -190,6 +206,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const { data, isLoading } = useQuery<{
     roster: RosterMember[];
     waitlist: WaitlistMember[];
+    wellhubBookings: WellhubBooking[];
     blockCheckinWithoutWaiver: boolean;
   }>({
     queryKey: rosterKey,
@@ -200,6 +217,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const roster = data?.roster ?? [];
   const blockWaiver = data?.blockCheckinWithoutWaiver ?? false;
   const waitlist = data?.waitlist ?? [];
+  const wellhubBookings = data?.wellhubBookings ?? [];
 
   const [optimisticRoster, addOptimistic] = useOptimistic(
     roster,
@@ -417,6 +435,15 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
               }
             />
           ))
+        )}
+
+        {/* Wellhub bookings on this class */}
+        {wellhubBookings.length > 0 && (
+          <WellhubBookingsSection
+            bookings={wellhubBookings}
+            classId={classId}
+            isFinished={classInfo.isFinished}
+          />
         )}
 
         {/* Waitlist section */}
@@ -733,6 +760,91 @@ function RosterRow({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Wellhub Bookings Section ──
+
+function WellhubBookingsSection({
+  bookings,
+  classId,
+  isFinished,
+}: {
+  bookings: WellhubBooking[];
+  classId: string;
+  isFinished: boolean;
+}) {
+  const queryClient = useQueryClient();
+
+  const checkInMutation = useMutation({
+    mutationFn: async (platformBookingId: string) => {
+      const res = await fetch(`/api/platforms/bookings/${platformBookingId}/checkin`, {
+        method: "POST",
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        const message =
+          body?.error === "wellhub_checkin_pending"
+            ? "El miembro aún no ha hecho check-in en la app de Wellhub. Pídele que abra Wellhub y reintenta."
+            : body?.message ?? body?.error ?? "Falló el check-in";
+        throw new Error(message);
+      }
+      return body;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["check-in-roster", classId] });
+      toast.success("Check-in registrado en Wellhub");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  return (
+    <div className="bg-orange-50/50 border-t border-orange-100 px-4 py-3">
+      <p className="text-[10px] font-medium text-orange-600 uppercase tracking-wider mb-2">
+        Reservas Wellhub · {bookings.length}
+      </p>
+      {bookings.map((b) => {
+        const isCheckedIn = b.status === "checked_in";
+        return (
+          <div key={b.platformBookingId} className="flex items-center gap-3 py-2">
+            <div className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 bg-orange-500 text-white">
+              {b.initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-stone-900 truncate">{b.memberName}</p>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold uppercase tracking-wide">
+                  Wellhub
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-stone-500">
+                {b.email && <span className="truncate">{b.email}</span>}
+                {b.wellhubUniqueToken && (
+                  <span className="font-mono">#{b.wellhubUniqueToken.slice(-6)}</span>
+                )}
+              </div>
+            </div>
+            {isCheckedIn ? (
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700">
+                ✓ {b.checkedInAt ? format(new Date(b.checkedInAt), "HH:mm") : "Asistió"}
+              </span>
+            ) : !isFinished ? (
+              <button
+                onClick={() => checkInMutation.mutate(b.platformBookingId)}
+                disabled={checkInMutation.isPending}
+                className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:opacity-50"
+              >
+                Check-in
+              </button>
+            ) : (
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-stone-100 text-stone-500">
+                No asistió
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

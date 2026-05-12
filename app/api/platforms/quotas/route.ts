@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "classId, platform, and quotaSpots are required" }, { status: 400 });
     }
 
-    if (!["classpass", "gympass"].includes(platform)) {
+    if (!["classpass", "wellhub"].includes(platform)) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
     }
 

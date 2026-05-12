@@ -69,6 +69,7 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.product.deleteMany();
   await prisma.productCategory.deleteMany();
+  await prisma.saasPlan.deleteMany();
   await prisma.tenant.deleteMany();
 
   console.log("✓ Cleared existing data");
@@ -1527,6 +1528,48 @@ async function main() {
 
   const shopCount = await seedBeToroShop(prisma, tenantId);
   console.log(`   Shop Be-Toro:   ✓ ${shopCount} productos (Shopify)`);
+
+  const saasFromEnv: {
+    planKey: string;
+    priceEnv: string | undefined;
+    amountCents: number;
+    sortOrder: number;
+    name: string;
+  }[] = [
+    {
+      planKey: "starter",
+      priceEnv: process.env.STRIPE_PRICE_STARTER?.trim(),
+      amountCents: 14900,
+      sortOrder: 0,
+      name: "Mgic Studio Starter",
+    },
+    {
+      planKey: "growth",
+      priceEnv: process.env.STRIPE_PRICE_GROWTH?.trim(),
+      amountCents: 44900,
+      sortOrder: 1,
+      name: "Mgic Studio Growth",
+    },
+  ];
+  let saasRows = 0;
+  for (const row of saasFromEnv) {
+    if (!row.priceEnv) continue;
+    await prisma.saasPlan.create({
+      data: {
+        planKey: row.planKey,
+        countryCode: "__",
+        stripePriceId: row.priceEnv,
+        currency: "eur",
+        amountCents: row.amountCents,
+        name: row.name,
+        sortOrder: row.sortOrder,
+      },
+    });
+    saasRows++;
+  }
+  if (saasRows > 0) {
+    console.log(`   SaaS catalog:   ✓ ${saasRows} plan(es) global(es) desde STRIPE_PRICE_*`);
+  }
 
   console.log("\n✅ Seed completed successfully!");
 }

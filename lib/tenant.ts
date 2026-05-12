@@ -134,9 +134,17 @@ async function ensureMembership(
     return existing;
   }
 
-  return prisma.membership.create({
+  const created = await prisma.membership.create({
     data: { userId, tenantId, role: isSuperAdmin ? "ADMIN" : "CLIENT" },
   });
+
+  // New Membership → opportunistically bridge to a pre-existing Wellhub
+  // visitor (email/phone match). Fire-and-forget; never block auth on this.
+  import("@/lib/platforms/wellhub")
+    .then(({ tryLinkMagicUserToWellhub }) => tryLinkMagicUserToWellhub({ tenantId, userId }))
+    .catch((err) => console.error("[wellhub] auto-link on new membership failed", err));
+
+  return created;
 }
 
 const LAST_SEEN_THROTTLE_MS = 60 * 60 * 1000; // 1 hour

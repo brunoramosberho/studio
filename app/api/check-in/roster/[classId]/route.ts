@@ -232,9 +232,88 @@ export async function GET(
       since: w.createdAt.toISOString(),
     }));
 
+    // ── Wellhub bookings on this class ───────────────────────────────────
+    // Surfaced as a separate list so the UI can render them with a Wellhub
+    // badge and the right check-in action (which calls /access/v1/validate).
+    const wellhubBookingsRaw = await prisma.platformBooking.findMany({
+      where: {
+        classId,
+        platform: "wellhub",
+        status: { in: ["confirmed", "checked_in", "pending_confirmation"] },
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        status: true,
+        memberName: true,
+        wellhubUserUniqueToken: true,
+        wellhubBookingNumber: true,
+        wellhubProductId: true,
+        checkedInAt: true,
+        createdAt: true,
+      },
+    });
+
+    // Enrich with the latest profile from WellhubUserLink so we surface
+    // first/last name + email when Wellhub provided them via webhook.
+    const uniqueTokens = wellhubBookingsRaw
+      .map((b) => b.wellhubUserUniqueToken)
+      .filter((t): t is string => !!t);
+    const userLinks = uniqueTokens.length > 0
+      ? await prisma.wellhubUserLink.findMany({
+          where: {
+            tenantId: ctx.tenant.id,
+            wellhubUniqueToken: { in: uniqueTokens },
+          },
+          select: {
+            wellhubUniqueToken: true,
+            fullName: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            userId: true,
+          },
+        })
+      : [];
+    const linkByToken = new Map(userLinks.map((l) => [l.wellhubUniqueToken, l]));
+
+    const wellhubRoster = wellhubBookingsRaw.map((b) => {
+      const link = b.wellhubUserUniqueToken
+        ? linkByToken.get(b.wellhubUserUniqueToken)
+        : undefined;
+      const composedName = [link?.firstName, link?.lastName].filter(Boolean).join(" ").trim();
+      const displayName =
+        link?.fullName ||
+        composedName ||
+        b.memberName ||
+        (b.wellhubUserUniqueToken ? `Wellhub ${b.wellhubUserUniqueToken.slice(-4)}` : "Wellhub");
+      const initials = displayName
+        .split(/\s+/)
+        .map((p) => p[0]?.toUpperCase() ?? "")
+        .slice(0, 2)
+        .join("") || "W";
+      return {
+        platformBookingId: b.id,
+        source: "wellhub" as const,
+        status: b.status,
+        memberName: displayName,
+        initials,
+        wellhubUniqueToken: b.wellhubUserUniqueToken,
+        wellhubBookingNumber: b.wellhubBookingNumber,
+        wellhubProductId: b.wellhubProductId,
+        email: link?.email ?? null,
+        phone: link?.phone ?? null,
+        magicUserId: link?.userId ?? null,
+        checkedInAt: b.checkedInAt?.toISOString() ?? null,
+        createdAt: b.createdAt.toISOString(),
+      };
+    });
+
     return NextResponse.json({
       roster,
       waitlist: waitlistData,
+      wellhubBookings: wellhubRoster,
       blockCheckinWithoutWaiver: activeWaiver?.blockCheckinWithoutSignature ?? false,
     });
   } catch (error) {

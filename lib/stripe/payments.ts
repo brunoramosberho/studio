@@ -1,8 +1,7 @@
 import type Stripe from "stripe";
-import { getStripeForCountry } from "./client";
 import { toStripeAmount, fromStripeAmount, calculateFee } from "./helpers";
-import { resolveTenantCurrency } from "@/lib/currency";
 import { prisma } from "@/lib/db";
+import { getTenantStripeContext } from "./tenant-stripe";
 
 export interface CreateMemberPaymentParams {
   tenantId: string;
@@ -21,21 +20,6 @@ export interface CreateMemberPaymentParams {
    * Stripe charge matches what the user saw.
    */
   currency?: string;
-}
-
-/**
- * Resolve the platform Stripe instance + currency for a tenant in a single
- * round-trip. Centralised here so every Stripe call site uses the same logic.
- */
-async function getTenantStripeContext(
-  tenantId: string,
-): Promise<{ stripe: Stripe; currency: string; countryCode: string | null }> {
-  const cfg = await resolveTenantCurrency(tenantId);
-  return {
-    stripe: getStripeForCountry(cfg.countryCode),
-    currency: cfg.code.toLowerCase(),
-    countryCode: cfg.countryCode,
-  };
 }
 
 /**

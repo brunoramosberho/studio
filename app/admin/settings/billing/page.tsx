@@ -8,8 +8,11 @@ import {
   Loader2,
   CreditCard,
   Zap,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/currency";
+import { useCurrency } from "@/components/tenant-provider";
 
 interface ConnectStatus {
   status: "not_connected" | "pending" | "active" | "restricted";
@@ -18,7 +21,19 @@ interface ConnectStatus {
   requirementsCount: number;
 }
 
+interface SaaSPlanRow {
+  planKey: string;
+  name: string;
+  currency: string;
+  amountCents: number | null;
+  countryCode: string;
+  fromEnvFallback: boolean;
+}
+
 export default function BillingPage() {
+  const tenantCurrency = useCurrency();
+  const [saasPlans, setSaasPlans] = useState<SaaSPlanRow[]>([]);
+  const [stripeSandboxMode, setStripeSandboxMode] = useState(false);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(
     null,
   );
@@ -28,9 +43,17 @@ export default function BillingPage() {
 
   const loadStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/stripe/connect/status");
-      if (res.ok) {
-        setConnectStatus(await res.json());
+      const [statusRes, plansRes] = await Promise.all([
+        fetch("/api/stripe/connect/status"),
+        fetch("/api/stripe/plans"),
+      ]);
+      if (statusRes.ok) {
+        setConnectStatus(await statusRes.json());
+      }
+      if (plansRes.ok) {
+        const data = await plansRes.json();
+        setSaasPlans(Array.isArray(data.plans) ? data.plans : []);
+        setStripeSandboxMode(Boolean(data.stripeSandboxMode));
       }
     } catch {
       // silently fail
@@ -103,6 +126,14 @@ export default function BillingPage() {
         </p>
       </div>
 
+      {stripeSandboxMode && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <span className="font-semibold">Modo prueba Stripe.</span> Este estudio
+          usa claves de test (`pk_test` / `sk_test`). Los cobros no son reales.
+          Super-admin puede desactivarlo en el tenant cuando paséis a producción.
+        </div>
+      )}
+
       {/* ── SaaS Subscription Section ── */}
       <section className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -119,7 +150,42 @@ export default function BillingPage() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-border/60 bg-surface/50 p-4">
+        <div className="rounded-lg border border-border/60 bg-surface/50 p-4 space-y-3">
+          {saasPlans.length > 0 ? (
+            <ul className="space-y-2">
+              {saasPlans.map((p) => (
+                <li
+                  key={`${p.planKey}-${p.countryCode}-${p.fromEnvFallback}`}
+                  className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                >
+                  <span className="font-medium text-foreground">{p.name}</span>
+                  <span className="text-muted tabular-nums">
+                    {p.amountCents != null
+                      ? formatMoney(
+                          p.amountCents / 100,
+                          tenantCurrency,
+                          p.currency.toUpperCase(),
+                        )
+                      : "—"}
+                  </span>
+                  {p.fromEnvFallback && (
+                    <span className="flex w-full items-center gap-1 text-xs text-amber-700">
+                      <Globe className="h-3 w-3 shrink-0" />
+                      Precio desde variables de entorno (sin fila en base de
+                      datos)
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted">
+              No hay planes configurados en la base de datos ni en variables de
+              entorno. Añade filas en la tabla{" "}
+              <code className="rounded bg-muted px-1">saas_plans</code> o define{" "}
+              <code className="rounded bg-muted px-1">STRIPE_PRICE_*</code>.
+            </p>
+          )}
           <p className="text-sm text-muted">
             Contacta al equipo de Mgic para activar tu plan.
           </p>

@@ -81,10 +81,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// After the Wellhub API migration only ClassPass uses email-driven inbound
+// reservations. Wellhub bookings now arrive via /api/webhooks/wellhub/*.
 async function processEmailAsync(
   emailBody: string,
   tenantId: string,
-  platform: "classpass" | "gympass",
+  platform: "classpass",
   subject: string | null,
 ) {
   const fullText = subject ? `Subject: ${subject}\n\n${emailBody}` : emailBody;

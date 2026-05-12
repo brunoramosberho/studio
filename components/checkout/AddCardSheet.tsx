@@ -10,19 +10,21 @@ import {
 import { loadStripe, type Stripe as StripeJS } from "@stripe/stripe-js";
 import { motion } from "framer-motion";
 import { Loader2, X, Check, Lock } from "lucide-react";
+import { useTenant } from "@/components/tenant-provider";
 
 const stripePromiseCache = new Map<string, Promise<StripeJS | null>>();
 
-function getStripePromise(stripeAccountId: string) {
-  if (!stripePromiseCache.has(stripeAccountId)) {
+function getStripePromise(stripeAccountId: string, publishableKey: string) {
+  const cacheKey = `${publishableKey}:${stripeAccountId}`;
+  if (!stripePromiseCache.has(cacheKey)) {
     stripePromiseCache.set(
-      stripeAccountId,
-      loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!, {
+      cacheKey,
+      loadStripe(publishableKey, {
         stripeAccount: stripeAccountId,
       }),
     );
   }
-  return stripePromiseCache.get(stripeAccountId)!;
+  return stripePromiseCache.get(cacheKey)!;
 }
 
 interface AddCardSheetProps {
@@ -32,6 +34,18 @@ interface AddCardSheetProps {
 }
 
 export function AddCardSheet({ open, onClose, onSuccess }: AddCardSheetProps) {
+  const {
+    stripePublishableKey,
+    stripeSandboxMode,
+    loading: tenantLoading,
+  } = useTenant();
+  const fallbackLivePk =
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
+  const publishableKey =
+    stripePublishableKey?.trim() ||
+    (!stripeSandboxMode ? fallbackLivePk : "") ||
+    "";
+
   const [setupData, setSetupData] = useState<{
     clientSecret: string;
     stripeAccountId: string;
@@ -41,22 +55,40 @@ export function AddCardSheet({ open, onClose, onSuccess }: AddCardSheetProps) {
 
   useEffect(() => {
     if (!open) {
-      setSetupData(null);
-      setError(null);
+      queueMicrotask(() => {
+        setSetupData(null);
+        setError(null);
+      });
       return;
     }
-    setLoading(true);
-    fetch("/api/stripe/setup-intent", { method: "POST" })
-      .then(async (res) => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/stripe/setup-intent", { method: "POST" });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `Error ${res.status}`);
+          throw new Error(
+            (body as { error?: string }).error || `Error ${res.status}`,
+          );
         }
-        return res.json();
-      })
-      .then(setSetupData)
-      .catch((err) => setError(err.message || "No se pudo iniciar. Intenta de nuevo."))
-      .finally(() => setLoading(false));
+        const data = await res.json();
+        if (!cancelled) setSetupData(data);
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "No se pudo iniciar. Intenta de nuevo.",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   if (!open) return null;
@@ -110,9 +142,23 @@ export function AddCardSheet({ open, onClose, onSuccess }: AddCardSheetProps) {
             </div>
           )}
 
-          {setupData && (
+          {setupData && tenantLoading && (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted" />
+            </div>
+          )}
+
+          {setupData && !tenantLoading && !publishableKey && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {stripeSandboxMode
+                ? "Configura STRIPE_PUBLISHABLE_KEY_TEST para añadir tarjetas en modo prueba."
+                : "Configura la clave pública de Stripe para añadir tarjetas."}
+            </div>
+          )}
+
+          {setupData && !tenantLoading && publishableKey && (
             <Elements
-              stripe={getStripePromise(setupData.stripeAccountId)}
+              stripe={getStripePromise(setupData.stripeAccountId, publishableKey)}
               options={{
                 clientSecret: setupData.clientSecret,
                 appearance: { theme: "flat" },
