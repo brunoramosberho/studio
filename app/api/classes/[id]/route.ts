@@ -289,6 +289,12 @@ export async function PUT(
     // If cancelling via PUT, use the full cancel flow (refund + email)
     if (status === "CANCELLED" && existing.status !== "CANCELLED") {
       const refundedCount = await cancelClassWithRefunds(id, ctx.tenant.id);
+      try {
+        const { unsyncClassFromWellhub } = await import("@/lib/platforms/wellhub");
+        await unsyncClassFromWellhub(id);
+      } catch (syncError) {
+        console.error("[wellhub] unsync after class cancel failed", syncError);
+      }
       return NextResponse.json({ id, status: "CANCELLED", refundedBookings: refundedCount });
     }
 
@@ -315,6 +321,14 @@ export async function PUT(
         },
       },
     });
+
+    // Push the change to Wellhub. Errors land on Class.wellhubLastError.
+    try {
+      const { syncClassToWellhub } = await import("@/lib/platforms/wellhub");
+      await syncClassToWellhub(id);
+    } catch (syncError) {
+      console.error("[wellhub] sync after class update failed", syncError);
+    }
 
     return NextResponse.json({
       ...updated,
@@ -349,6 +363,13 @@ export async function DELETE(
     }
 
     const refundedCount = await cancelClassWithRefunds(id, ctx.tenant.id);
+
+    try {
+      const { unsyncClassFromWellhub } = await import("@/lib/platforms/wellhub");
+      await unsyncClassFromWellhub(id);
+    } catch (syncError) {
+      console.error("[wellhub] unsync after class delete failed", syncError);
+    }
 
     return NextResponse.json({ id, status: "CANCELLED", refundedBookings: refundedCount });
   } catch (error) {

@@ -384,6 +384,15 @@ export async function DELETE(
       .then(() => notifySpotWatchers(booking.classId, tenant.id))
       .catch((err) => console.error("Waitlist promotion / spot notify failed:", err));
 
+    // Refresh Wellhub's view of availability — Magic cancellation may free up
+    // space that should resurface in Wellhub.
+    try {
+      const { patchWellhubCapacityForClass } = await import("@/lib/platforms/wellhub");
+      await patchWellhubCapacityForClass(booking.classId);
+    } catch (err) {
+      console.error("[wellhub] capacity patch after booking cancel failed", err);
+    }
+
     return NextResponse.json(cancelled);
   } catch (error) {
     console.error("DELETE /api/bookings/[id] error:", error);

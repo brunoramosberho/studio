@@ -251,13 +251,13 @@ export const tools: Anthropic.Tool[] = [
   {
     name: "get_platform_status",
     description:
-      "Estado de plataformas externas (ClassPass, Gympass): configuración activa, alertas pendientes, reservas recientes, cuotas y ocupación. Útil para monitorear la integración con plataformas.",
+      "Estado de plataformas externas (ClassPass, Wellhub): configuración activa, alertas pendientes, reservas recientes, cuotas y ocupación. Útil para monitorear la integración con plataformas.",
     input_schema: {
       type: "object" as const,
       properties: {
         platform: {
           type: "string",
-          enum: ["classpass", "gympass", "all"],
+          enum: ["classpass", "wellhub", "all"],
           description: "Filtrar por plataforma o ver todas (default: all)",
         },
         period_days: {

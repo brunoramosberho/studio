@@ -211,6 +211,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Best-effort sync to Wellhub. Errors are recorded on Class.wellhubLastError
+    // and surfaced via PlatformAlert; we never block class creation on them.
+    try {
+      const { syncClassToWellhub } = await import("@/lib/platforms/wellhub");
+      await syncClassToWellhub(newClass.id);
+    } catch (syncError) {
+      console.error("[wellhub] sync after class create failed", syncError);
+    }
+
     return NextResponse.json({
       ...newClass,
       coach: { ...newClass.coach, name: newClass.coach.name || newClass.coach.user?.name || null },

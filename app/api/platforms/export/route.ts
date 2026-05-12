@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
     const platform = searchParams.get("platform") as PlatformType | null;
     const weekStart = searchParams.get("weekStart");
 
-    if (!platform || !["classpass", "gympass"].includes(platform)) {
-      return NextResponse.json({ error: "platform query param required (classpass|gympass)" }, { status: 400 });
+    if (!platform || !["classpass", "wellhub"].includes(platform)) {
+      return NextResponse.json({ error: "platform query param required (classpass|wellhub)" }, { status: 400 });
     }
 
     if (!weekStart) {

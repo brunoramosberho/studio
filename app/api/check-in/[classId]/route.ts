@@ -71,7 +71,21 @@ export async function POST(
       (err) => console.error("Lifecycle update (attended) failed:", err),
     );
 
-    return NextResponse.json(checkIn, { status: 201 });
+    // If this member came via Wellhub, mirror the check-in there so payment
+    // triggers (Automated Trigger requirement). No-op for direct members.
+    let wellhubValidation: { validated: boolean; reason?: string } | null = null;
+    try {
+      const { validateWellhubVisitForCheckin } = await import("@/lib/platforms/wellhub");
+      wellhubValidation = await validateWellhubVisitForCheckin({
+        tenantId: ctx.tenant.id,
+        classId,
+        memberId,
+      });
+    } catch (err) {
+      console.error("Wellhub validate from check-in failed:", err);
+    }
+
+    return NextResponse.json({ ...checkIn, wellhubValidation }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });

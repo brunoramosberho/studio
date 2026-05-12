@@ -74,7 +74,7 @@ import { cn } from "@/lib/utils";
 
 interface PlatformConfig {
   id: string;
-  platform: "classpass" | "gympass";
+  platform: "classpass" | "wellhub";
   inboundEmail: string;
   portalUrl: string | null;
   ratePerVisit: number | null;
@@ -85,7 +85,7 @@ interface PlatformConfig {
 
 interface PlatformBooking {
   id: string;
-  platform: "classpass" | "gympass";
+  platform: "classpass" | "wellhub";
   platformBookingId: string | null;
   memberName: string | null;
   status: "confirmed" | "cancelled" | "checked_in" | "absent";
@@ -101,7 +101,7 @@ interface PlatformBooking {
 interface PlatformQuota {
   id: string;
   classId: string;
-  platform: "classpass" | "gympass";
+  platform: "classpass" | "wellhub";
   quotaSpots: number;
   bookedSpots: number;
   isClosedManually: boolean;
@@ -116,7 +116,7 @@ interface PlatformQuota {
 
 interface PlatformAlert {
   id: string;
-  platform: "classpass" | "gympass";
+  platform: "classpass" | "wellhub";
   type: string;
   message: string;
   classId: string | null;
@@ -126,7 +126,7 @@ interface PlatformAlert {
 interface LiquidationData {
   month: string;
   platforms: Array<{
-    platform: "classpass" | "gympass";
+    platform: "classpass" | "wellhub";
     checkedIn: Array<{ className: string; date: string; bookingId: string }>;
     absent: Array<{ className: string; date: string; bookingId: string }>;
     rate: number;
@@ -139,12 +139,12 @@ interface LiquidationData {
 
 const PLATFORM_LABEL: Record<string, string> = {
   classpass: "ClassPass",
-  gympass: "Gympass",
+  wellhub: "Wellhub",
 };
 
 const PLATFORM_COLOR: Record<string, string> = {
   classpass: "#5B5EA6",
-  gympass: "#E4572E",
+  wellhub: "#E4572E",
 };
 
 // ─── Demo Data ──────────────────────────────────────────
@@ -209,7 +209,7 @@ function buildDemoQuotas(weekStart: Date): PlatformQuota[] {
         quotas.push({
           id: `demo-gp-${idx}`,
           classId,
-          platform: "gympass",
+          platform: "wellhub",
           quotaSpots: gpSpots,
           bookedSpots: gpBooked,
           isClosedManually: false,
@@ -241,8 +241,8 @@ const DEMO_CONFIGS: PlatformConfig[] = [
   },
   {
     id: "demo-gp",
-    platform: "gympass",
-    inboundEmail: "gympass.demo@in.mgic.app",
+    platform: "wellhub",
+    inboundEmail: "wellhub.demo@in.mgic.app",
     portalUrl: "https://partners.wellhub.com",
     ratePerVisit: 5.0,
     isActive: true,
@@ -261,7 +261,7 @@ function buildDemoBookings(): PlatformBooking[] {
     startsAt.setHours(7 + i * 1.5, 0, 0, 0);
     return {
       id: `demo-bk-${i}`,
-      platform: i % 3 === 0 ? "gympass" : "classpass",
+      platform: i % 3 === 0 ? "wellhub" : "classpass",
       platformBookingId: `${i % 3 === 0 ? "GP" : "CP"}-${10000 + i}`,
       memberName: name,
       status: statuses[i % statuses.length],
@@ -288,7 +288,7 @@ function buildDemoAlerts(): PlatformAlert[] {
     },
     {
       id: "demo-alert-2",
-      platform: "gympass",
+      platform: "wellhub",
       type: "unmatched_booking",
       message: "Reserva GP-10003 no coincide con ninguna clase — verificar manualmente",
       classId: null,
@@ -303,7 +303,7 @@ function DemoBanner() {
       <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
       <p className="text-xs font-medium text-amber-800">
         <span className="font-semibold">Modo demo</span> — Estás viendo datos de ejemplo.
-        Configura ClassPass o Gympass para usar datos reales.
+        Configura ClassPass o Wellhub para usar datos reales.
       </p>
       <Link href="/admin/platforms/setup/classpass" className="ml-auto shrink-0">
         <Button variant="outline" size="sm" className="h-7 gap-1 border-amber-300 text-xs text-amber-700 hover:bg-amber-100">
@@ -380,6 +380,7 @@ export default function AdminPlatformsPage() {
           <TabsTrigger value="resumen">{t("summaryTab")}</TabsTrigger>
           <TabsTrigger value="quotas">Quotas</TabsTrigger>
           <TabsTrigger value="reservas">{t("bookingsTab")}</TabsTrigger>
+          <TabsTrigger value="conversion">Conversión</TabsTrigger>
           <TabsTrigger value="exportar">{t("exportTab")}</TabsTrigger>
           <TabsTrigger value="liquidacion">{t("settlementTab")}</TabsTrigger>
         </TabsList>
@@ -387,6 +388,7 @@ export default function AdminPlatformsPage() {
         <TabsContent value="resumen"><ResumenTab demo={isDemo} /></TabsContent>
         <TabsContent value="quotas"><QuotasTab demo={isDemo} /></TabsContent>
         <TabsContent value="reservas"><ReservasTab demo={isDemo} /></TabsContent>
+        <TabsContent value="conversion"><WellhubConversionTab /></TabsContent>
         <TabsContent value="exportar"><ExportarTab demo={isDemo} /></TabsContent>
         <TabsContent value="liquidacion"><LiquidacionTab demo={isDemo} /></TabsContent>
       </Tabs>
@@ -488,7 +490,7 @@ function ResumenTab({ demo }: { demo: boolean }) {
               No hay plataformas configuradas
             </p>
             <p className="mt-1 text-sm text-muted">
-              Conecta ClassPass o Gympass para recibir reservas automáticamente
+              Conecta ClassPass o Wellhub para recibir reservas automáticamente
             </p>
           </div>
           <div className="mt-2 flex gap-2">
@@ -498,10 +500,10 @@ function ResumenTab({ demo }: { demo: boolean }) {
                 ClassPass
               </Button>
             </Link>
-            <Link href="/admin/platforms/setup/gympass">
+            <Link href="/admin/platforms/setup/wellhub">
               <Button variant="outline" size="sm" className="gap-1.5">
                 <Plus className="h-3.5 w-3.5" />
-                Gympass
+                Wellhub
               </Button>
             </Link>
           </div>
@@ -690,7 +692,7 @@ function PendingCheckinRow({ booking, demo }: { booking: PlatformBooking; demo?:
 function QuotasTab({ demo }: { demo: boolean }) {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [editingQuota, setEditingQuota] = useState<{ classId: string; className: string; maxCapacity: number } | null>(null);
-  const [quotaValues, setQuotaValues] = useState<{ classpass: string; gympass: string }>({ classpass: "0", gympass: "0" });
+  const [quotaValues, setQuotaValues] = useState<{ classpass: string; wellhub: string }>({ classpass: "0", wellhub: "0" });
   const [demoOverrides, setDemoOverrides] = useState<Record<string, { cp: number; gp: number }>>({});
   const queryClient = useQueryClient();
 
@@ -751,7 +753,7 @@ function QuotasTab({ demo }: { demo: boolean }) {
       if (suggestion) {
         setQuotaValues({
           classpass: String(suggestion.classpass),
-          gympass: String(suggestion.gympass),
+          wellhub: String(suggestion.wellhub),
         });
         toast.info("Sugerencia aplicada — revisa y guarda");
       }
@@ -760,10 +762,10 @@ function QuotasTab({ demo }: { demo: boolean }) {
 
   function openEditor(classId: string, className: string, maxCapacity: number) {
     const cpQuota = effectiveQuotas?.find((q) => q.classId === classId && q.platform === "classpass");
-    const gpQuota = effectiveQuotas?.find((q) => q.classId === classId && q.platform === "gympass");
+    const gpQuota = effectiveQuotas?.find((q) => q.classId === classId && q.platform === "wellhub");
     setQuotaValues({
       classpass: String(cpQuota?.quotaSpots ?? 0),
-      gympass: String(gpQuota?.quotaSpots ?? 0),
+      wellhub: String(gpQuota?.quotaSpots ?? 0),
     });
     setEditingQuota({ classId, className, maxCapacity });
   }
@@ -771,7 +773,7 @@ function QuotasTab({ demo }: { demo: boolean }) {
   async function handleSave() {
     if (!editingQuota) return;
     const cp = parseInt(quotaValues.classpass) || 0;
-    const gp = parseInt(quotaValues.gympass) || 0;
+    const gp = parseInt(quotaValues.wellhub) || 0;
 
     if (demo) {
       setDemoOverrides((prev) => ({ ...prev, [editingQuota.classId]: { cp, gp } }));
@@ -782,7 +784,7 @@ function QuotasTab({ demo }: { demo: boolean }) {
 
     await Promise.all([
       saveMutation.mutateAsync({ classId: editingQuota.classId, platform: "classpass", quotaSpots: cp }),
-      saveMutation.mutateAsync({ classId: editingQuota.classId, platform: "gympass", quotaSpots: gp }),
+      saveMutation.mutateAsync({ classId: editingQuota.classId, platform: "wellhub", quotaSpots: gp }),
     ]);
     setEditingQuota(null);
   }
@@ -881,7 +883,7 @@ function QuotasTab({ demo }: { demo: boolean }) {
                       {gpSpots > 0 && (
                         <div
                           className="h-full"
-                          style={{ width: `${(gpSpots / max) * 100}%`, backgroundColor: PLATFORM_COLOR.gympass }}
+                          style={{ width: `${(gpSpots / max) * 100}%`, backgroundColor: PLATFORM_COLOR.wellhub }}
                           title={`GP: ${gpBooked}/${gpSpots}`}
                         />
                       )}
@@ -916,13 +918,13 @@ function QuotasTab({ demo }: { demo: boolean }) {
               <span className="text-xs text-muted">spots</span>
             </div>
             <div className="flex items-center gap-3">
-              <PlatformDot platform="gympass" />
-              <label className="w-20 text-sm font-medium">Gympass</label>
+              <PlatformDot platform="wellhub" />
+              <label className="w-20 text-sm font-medium">Wellhub</label>
               <Input
                 type="number"
                 min={0}
-                value={quotaValues.gympass}
-                onChange={(e) => setQuotaValues((v) => ({ ...v, gympass: e.target.value }))}
+                value={quotaValues.wellhub}
+                onChange={(e) => setQuotaValues((v) => ({ ...v, wellhub: e.target.value }))}
                 className="w-20 text-center"
               />
               <span className="text-xs text-muted">spots</span>
@@ -931,7 +933,7 @@ function QuotasTab({ demo }: { demo: boolean }) {
             {/* Visual bar */}
             {editingQuota && (() => {
               const cp = parseInt(quotaValues.classpass) || 0;
-              const gp = parseInt(quotaValues.gympass) || 0;
+              const gp = parseInt(quotaValues.wellhub) || 0;
               const max = editingQuota.maxCapacity;
               const direct = max - cp - gp;
               const over = cp + gp > max;
@@ -941,7 +943,7 @@ function QuotasTab({ demo }: { demo: boolean }) {
                   <div className="flex h-7 overflow-hidden rounded-lg bg-surface">
                     {direct > 0 && <div className="flex items-center justify-center bg-emerald-400 text-[10px] font-bold text-white" style={{ width: `${(direct / max) * 100}%` }}>D:{direct}</div>}
                     {cp > 0 && <div className="flex items-center justify-center text-[10px] font-bold text-white" style={{ width: `${(cp / max) * 100}%`, backgroundColor: PLATFORM_COLOR.classpass }}>CP:{cp}</div>}
-                    {gp > 0 && <div className="flex items-center justify-center text-[10px] font-bold text-white" style={{ width: `${(gp / max) * 100}%`, backgroundColor: PLATFORM_COLOR.gympass }}>GP:{gp}</div>}
+                    {gp > 0 && <div className="flex items-center justify-center text-[10px] font-bold text-white" style={{ width: `${(gp / max) * 100}%`, backgroundColor: PLATFORM_COLOR.wellhub }}>GP:{gp}</div>}
                   </div>
                   {over && (
                     <p className="flex items-center gap-1 text-xs text-destructive">
@@ -1056,7 +1058,7 @@ function ReservasTab({ demo }: { demo: boolean }) {
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="classpass">ClassPass</SelectItem>
-            <SelectItem value="gympass">Gympass</SelectItem>
+            <SelectItem value="wellhub">Wellhub</SelectItem>
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -1210,7 +1212,7 @@ function ManualBookingDialog({
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="classpass">ClassPass</SelectItem>
-                <SelectItem value="gympass">Gympass</SelectItem>
+                <SelectItem value="wellhub">Wellhub</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1422,7 +1424,7 @@ function buildDemoLiquidation(month: string): LiquidationData {
         totalEstimated: cpCheckedIn.length * 6.5,
       },
       {
-        platform: "gympass",
+        platform: "wellhub",
         checkedIn: gpCheckedIn,
         absent: [
           { className: "Barre", date: `${month}-14`, bookingId: "GP-30099" },
@@ -1557,6 +1559,135 @@ function LiquidacionTab({ demo }: { demo: boolean }) {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Wellhub Conversion Tab ────────────────────────────
+
+interface ConversionResponse {
+  funnel: {
+    visitors_total: number;
+    with_profile: number;
+    linked_to_user: number;
+    with_active_membership: number;
+    with_active_package: number;
+    with_active_subscription: number;
+  };
+  avgDaysToConvert: number | null;
+  recentConversions: Array<{
+    id: string;
+    name: string;
+    image: string | null;
+    email: string | null;
+    firstSeenAt: string;
+    linkedAt: string | null;
+    linkedVia: string | null;
+  }>;
+}
+
+function WellhubConversionTab() {
+  const { data, isLoading } = useQuery<ConversionResponse>({
+    queryKey: ["wellhub-conversion"],
+    queryFn: async () => (await fetch("/api/platforms/wellhub/conversion")).json(),
+  });
+
+  if (isLoading) {
+    return <div className="py-12 text-center text-sm text-muted">Calculando…</div>;
+  }
+  if (!data) {
+    return <div className="py-12 text-center text-sm text-muted">Sin datos.</div>;
+  }
+
+  const f = data.funnel;
+  const pct = (n: number) =>
+    f.visitors_total > 0 ? Math.round((n / f.visitors_total) * 100) : 0;
+
+  const stages = [
+    { label: "Visitantes Wellhub vistos", value: f.visitors_total, hint: "Total único de gympass_ids." },
+    { label: "Con email o teléfono", value: f.with_profile, hint: "Wellhub nos mandó datos suficientes para matchear." },
+    { label: "Vinculados a User Magic", value: f.linked_to_user, hint: "Email / teléfono coincide con un User del estudio." },
+    { label: "Con paquete activo", value: f.with_active_package, hint: "Compraron al menos un paquete Magic." },
+    { label: "Con suscripción activa", value: f.with_active_subscription, hint: "Pagan suscripción recurrente." },
+  ];
+
+  return (
+    <div className="space-y-6 py-4">
+      <div>
+        <h3 className="font-display text-lg font-semibold">Migración desde Wellhub</h3>
+        <p className="text-xs text-muted">
+          Mide cuántos visitantes que llegaron por Wellhub terminaron como miembros directos.
+          El match es automático por email o teléfono — sólo cuenta si el usuario ya tiene una Membership del estudio.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+        {stages.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-2xl border border-stone-200 bg-card p-4 dark:border-border"
+          >
+            <p className="font-display text-2xl font-bold">{s.value}</p>
+            <p className="mt-1 text-[11px] font-medium text-stone-600 dark:text-muted">
+              {s.label}
+            </p>
+            <p className="mt-1 text-[10px] text-stone-400 dark:text-muted/70">{s.hint}</p>
+            {f.visitors_total > 0 && (
+              <p className="mt-2 text-[10px] font-medium text-orange-600">
+                {pct(s.value)}% del total
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {data.avgDaysToConvert !== null && (
+        <div className="rounded-xl border border-stone-200 bg-orange-50/50 p-4 text-sm dark:border-border dark:bg-orange-500/10">
+          Tiempo promedio de conversión: <strong>{data.avgDaysToConvert.toFixed(1)} días</strong>{" "}
+          desde la primera visita Wellhub hasta el vínculo con cuenta Magic.
+        </div>
+      )}
+
+      <div>
+        <h4 className="mb-2 text-sm font-semibold">Conversiones recientes</h4>
+        {data.recentConversions.length === 0 ? (
+          <p className="text-xs text-muted">Sin conversiones aún.</p>
+        ) : (
+          <div className="space-y-2">
+            {data.recentConversions.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center gap-3 rounded-xl border border-stone-100 bg-card p-3 dark:border-border"
+              >
+                <div className="h-9 w-9 shrink-0 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center text-xs font-semibold">
+                  {c.name[0]?.toUpperCase() ?? "?"}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{c.name}</p>
+                  {c.email && (
+                    <p className="truncate text-[11px] text-muted">{c.email}</p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] text-muted">
+                    Vinculado{" "}
+                    {c.linkedAt
+                      ? new Date(c.linkedAt).toLocaleDateString("es-ES")
+                      : "—"}
+                  </p>
+                  <p className="text-[10px] text-stone-400 dark:text-muted/70">
+                    {c.linkedVia === "email_match"
+                      ? "Match por email"
+                      : c.linkedVia === "phone_match"
+                        ? "Match por teléfono"
+                        : "Manual"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

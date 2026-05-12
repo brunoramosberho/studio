@@ -11,7 +11,7 @@ export async function GET(
     const { tenant } = await requireRole("ADMIN");
     const { platform } = await params;
 
-    if (!["classpass", "gympass"].includes(platform)) {
+    if (!["classpass", "wellhub"].includes(platform)) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
     }
 
@@ -40,7 +40,7 @@ export async function PATCH(
     const body = await request.json();
     const { mappings } = body as { mappings: Record<string, string> };
 
-    if (!["classpass", "gympass"].includes(platform)) {
+    if (!["classpass", "wellhub"].includes(platform)) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
     }
 

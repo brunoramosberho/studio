@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { platform } = body as { platform: PlatformType };
 
-    if (!platform || !["classpass", "gympass"].includes(platform)) {
+    if (!platform || !["classpass", "wellhub"].includes(platform)) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
     }
 
@@ -74,7 +74,7 @@ export async function PATCH(request: NextRequest) {
       isActive?: boolean;
     };
 
-    if (!platform || !["classpass", "gympass"].includes(platform)) {
+    if (!platform || !["classpass", "wellhub"].includes(platform)) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
     }
 

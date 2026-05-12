@@ -2119,7 +2119,7 @@ async function getPlatformStatus(
   const days = input.period_days ?? 7;
   const since = daysAgo(days);
   const platformFilter = input.platform && input.platform !== "all"
-    ? { platform: input.platform as "classpass" | "gympass" }
+    ? { platform: input.platform as "classpass" | "wellhub" }
     : {};
 
   const [configs, alerts, bookings, quotas] = await Promise.all([

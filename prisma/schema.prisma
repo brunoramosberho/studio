@@ -147,6 +147,9 @@ model Tenant {
   platformBookings PlatformBooking[]
   platformAlerts   PlatformAlert[]
 
+  wellhubProducts  WellhubProduct[]
+  wellhubUserLinks WellhubUserLink[]
+
   waivers          Waiver[]
   waiverSignatures WaiverSignature[]
 
@@ -441,6 +444,7 @@ model User {
   debts                    Debt[]                   @relation("UserDebts")
   debtsResolved            Debt[]                   @relation("DebtResolver")
   onDemandStreamSessions   OnDemandStreamSession[]
+  wellhubUserLinks         WellhubUserLink[]
 
   @@index([countryId])
   @@index([cityId])
@@ -559,6 +563,14 @@ model ClassType {
   userPackageCreditUsages  UserPackageCreditUsage[]
   onDemandVideos           OnDemandVideo[]
 
+  // Wellhub mapping — populated when this ClassType is exposed in Wellhub.
+  // wellhubClassId is the Wellhub "class" id (template). wellhubProductId is
+  // the Wellhub product (yoga / swimming / virtual etc.) chosen for this type.
+  wellhubClassId     Int?
+  wellhubProductId   Int?
+  wellhubCategoryIds Int[] @default([])
+
+  @@unique([tenantId, wellhubClassId])
   @@index([tenantId])
 }
 
@@ -606,12 +618,20 @@ model Class {
   revenueEvents        RevenueEvent[]
   substitutionRequests SubstitutionRequest[]
 
+  // Wellhub Booking API mirror — wellhubSlotId is the Wellhub slot id for
+  // this specific class occurrence. excluded = ClassType not mapped to Wellhub.
+  wellhubSlotId     Int?              @unique
+  wellhubSyncStatus WellhubSyncStatus @default(excluded)
+  wellhubLastSyncAt DateTime?
+  wellhubLastError  String?
+
   @@index([startsAt])
   @@index([classTypeId])
   @@index([coachId])
   @@index([roomId])
   @@index([status])
   @@index([tenantId])
+  @@index([wellhubSyncStatus])
 }
 
 enum ClassStatus {
@@ -1570,11 +1590,11 @@ model CheckIn {
   @@index([tenantId, classId])
 }
 
-// ── External Platforms (ClassPass / Gympass) ──
+// ── External Platforms (ClassPass / Wellhub) ──
 
 enum PlatformType {
   classpass
-  gympass
+  wellhub
 }
 
 enum PlatformBookingStatus {
@@ -1582,6 +1602,26 @@ enum PlatformBookingStatus {
   cancelled
   checked_in
   absent
+  pending_confirmation
+  rejected
+}
+
+enum WellhubMode {
+  disabled
+  legacy_email
+  api
+}
+
+enum WellhubSyncStatus {
+  synced
+  pending
+  error
+  excluded
+}
+
+enum WellhubImplementationMethod {
+  attendance_trigger
+  gate_trigger
 }
 
 model StudioPlatformConfig {
@@ -1598,6 +1638,16 @@ model StudioPlatformConfig {
   isActive       Boolean   @default(false)
   activatedAt    DateTime?
   lastExportedAt DateTime?
+
+  // Wellhub API integration (only meaningful when platform = wellhub)
+  wellhubGymId              Int?                        @unique
+  wellhubMode               WellhubMode                 @default(disabled)
+  wellhubImplMethod         WellhubImplementationMethod @default(attendance_trigger)
+  wellhubLocale             String?
+  wellhubWebhooksRegistered Boolean                     @default(false)
+  wellhubWebhookSecret      String?
+  wellhubLastSyncAt         DateTime?
+  wellhubLastError          String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1636,19 +1686,31 @@ model PlatformBooking {
   platformBookingId String?
   memberName        String?
   status            PlatformBookingStatus @default(confirmed)
+  source            String                @default("email")
   rawEmail          String?               @db.Text
   parsedAt          DateTime?
   checkedInAt       DateTime?
   checkedInBy       String?
   notes             String?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
+
+  // Wellhub API fields (null when source = "email")
+  wellhubBookingNumber   String?   @unique
+  wellhubSlotId          Int?
+  wellhubUserUniqueToken String?
+  wellhubProductId       Int?
+  confirmationDeadline   DateTime?
+  rejectionReason        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, classId])
   @@index([tenantId, platform])
+  @@index([wellhubUserUniqueToken])
+  @@index([status, confirmationDeadline])
 }
 
 model PlatformAlert {
@@ -1666,6 +1728,61 @@ model PlatformAlert {
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId, isResolved])
+}
+
+/// Cache of Wellhub `product_id` values per gym. Populated via
+/// GET /setup/v1/gyms/:gym_id/products. Used to map ClassType.wellhubProductId.
+model WellhubProduct {
+  id        String   @id @default(cuid())
+  tenantId  String
+  gymId     Int
+  productId Int
+  name      String
+  virtual   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, productId])
+  @@index([tenantId])
+}
+
+/// Links a Magic User (or anonymous visitor) to a Wellhub `unique_token` /
+/// `gympass_id` and optional `custom_code` for offline check-in validation.
+/// Profile fields are populated opportunistically from webhook payloads —
+/// Wellhub sends them on `checkin` and (sometimes) on `booking-requested`.
+model WellhubUserLink {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  userId             String?
+  wellhubUniqueToken String
+  customCode         String?
+
+  /// Best-known display name composed from first/last when available.
+  fullName    String?
+  firstName   String?
+  lastName    String?
+  email       String?
+  phone       String?
+
+  firstSeenAt        DateTime  @default(now())
+  lastValidatedAt    DateTime?
+
+  /// When the link to a Magic User was established. Powers the conversion
+  /// funnel metric (Wellhub-only visitors → Magic members).
+  userLinkedAt       DateTime?
+  /// "email_match" | "phone_match" | "manual" — how the association happened.
+  linkedVia          String?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@unique([tenantId, wellhubUniqueToken])
+  @@index([tenantId, customCode])
+  @@index([userId])
+  @@index([tenantId, email])
+  @@index([tenantId, userLinkedAt])
 }
 
 // ── Waiver (digital liability waiver per tenant) ──

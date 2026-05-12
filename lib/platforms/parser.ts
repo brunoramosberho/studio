@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { PlatformType } from "@prisma/client";
 
 function getAnthropic() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -25,12 +24,12 @@ const FALLBACK: ParsedPlatformEmail = {
   confidence: "low",
 };
 
+// Wellhub no longer routes through email; only ClassPass uses this parser.
 export async function parsePlatformEmail(
   emailBody: string,
-  platform: PlatformType,
+  _platform: "classpass",
 ): Promise<ParsedPlatformEmail> {
-  const platformName =
-    platform === "classpass" ? "ClassPass" : "Gympass/Wellhub";
+  const platformName = "ClassPass";
 
   const client = getAnthropic();
 

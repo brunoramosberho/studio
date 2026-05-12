@@ -23,8 +23,9 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/tenant-provider";
+import { WellhubApiSetup } from "./wellhub-api-setup";
 
-type Platform = "classpass" | "gympass";
+type Platform = "classpass" | "wellhub";
 
 interface PlatformConfig {
   id: string;
@@ -43,7 +44,7 @@ export default function PlatformSetupPage({
   params: Promise<{ platform: string }>;
 }) {
   const { platform } = use(params);
-  const isValidPlatform = platform === "classpass" || platform === "gympass";
+  const isValidPlatform = platform === "classpass" || platform === "wellhub";
 
   if (!isValidPlatform) {
     return (
@@ -63,7 +64,7 @@ function SetupFlow({ platform }: { platform: Platform }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const isCP = platform === "classpass";
-  const label = isCP ? "ClassPass" : "Gympass / Wellhub";
+  const label = isCP ? "ClassPass" : "Wellhub";
   const color = isCP ? "#5B5EA6" : "#E4572E";
 
   const [partnerId, setPartnerId] = useState("");
@@ -201,33 +202,22 @@ function SetupFlow({ platform }: { platform: Platform }) {
         </Card>
       )}
 
-      {config && !config.isActive && (
+      {/* Wellhub: use the API-driven flow instead of the legacy email steps. */}
+      {!isCP && config && <WellhubApiSetup />}
+
+      {isCP && config && !config.isActive && (
         <div className="space-y-4">
-          {isCP ? (
-            <ClassPassSteps
-              inboundEmail={inboundEmail}
-              partnerId={partnerId}
-              setPartnerId={setPartnerId}
-              portalUrl={portalUrl}
-              setPortalUrl={setPortalUrl}
-              rate={rate}
-              setRate={setRate}
-              onCopy={handleCopy}
-              copied={copied}
-            />
-          ) : (
-            <GympassSteps
-              inboundEmail={inboundEmail}
-              locations={locations}
-              setLocations={setLocations}
-              portalUrl={portalUrl}
-              setPortalUrl={setPortalUrl}
-              rate={rate}
-              setRate={setRate}
-              onCopy={handleCopy}
-              copied={copied}
-            />
-          )}
+          <ClassPassSteps
+            inboundEmail={inboundEmail}
+            partnerId={partnerId}
+            setPartnerId={setPartnerId}
+            portalUrl={portalUrl}
+            setPortalUrl={setPortalUrl}
+            rate={rate}
+            setRate={setRate}
+            onCopy={handleCopy}
+            copied={copied}
+          />
 
           <Button
             onClick={() => activateMutation.mutate()}
@@ -241,7 +231,7 @@ function SetupFlow({ platform }: { platform: Platform }) {
         </div>
       )}
 
-      {config?.isActive && (
+      {isCP && config?.isActive && (
         <Card className="border-green-200 bg-green-50/30">
           <CardContent className="flex items-center gap-3 p-4">
             <Check className="h-5 w-5 text-green-600" />
@@ -350,129 +340,8 @@ function ClassPassSteps({
   );
 }
 
-// ─── Gympass Steps ───────────────────────────────────────
-
-function GympassSteps({
-  inboundEmail,
-  locations,
-  setLocations,
-  portalUrl,
-  setPortalUrl,
-  rate,
-  setRate,
-  onCopy,
-  copied,
-}: {
-  inboundEmail: string;
-  locations: Array<{ name: string; gymId: string }>;
-  setLocations: (v: Array<{ name: string; gymId: string }>) => void;
-  portalUrl: string;
-  setPortalUrl: (v: string) => void;
-  rate: string;
-  setRate: (v: string) => void;
-  onCopy: (text: string) => void;
-  copied: boolean;
-}) {
-  const currency = useCurrency();
-  function updateLocation(index: number, field: "name" | "gymId", value: string) {
-    const next = [...locations];
-    next[index] = { ...next[index], [field]: value };
-    setLocations(next);
-  }
-
-  return (
-    <div className="space-y-3">
-      <Step number={1} title="Crea tu cuenta en el Wellhub Partner Hub">
-        <a
-          href="https://partners.wellhub.com"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Button variant="outline" size="sm" className="gap-1.5">
-            Abrir Wellhub Partner Hub
-            <ExternalLink className="h-3 w-3" />
-          </Button>
-        </a>
-      </Step>
-
-      <Step number={2} title="Contacta a Wellhub indicando que usas Mgic Studio">
-        <p className="text-xs text-muted">
-          Ellos configurarán su sistema para trabajar con Mgic. Indícales que
-          usas Mgic Studio como plataforma de gestión.
-        </p>
-      </Step>
-
-      <Step number={3} title="Wellhub te asignará un Gym ID por sede">
-        <div className="space-y-2">
-          {locations.map((loc, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Input
-                placeholder="Nombre sede"
-                value={loc.name}
-                onChange={(e) => updateLocation(i, "name", e.target.value)}
-                className="flex-1"
-              />
-              <Input
-                placeholder="Gym ID"
-                value={loc.gymId}
-                onChange={(e) => updateLocation(i, "gymId", e.target.value)}
-                className="w-36"
-              />
-              {locations.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 shrink-0 text-muted hover:text-destructive"
-                  onClick={() => setLocations(locations.filter((_, j) => j !== i))}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          ))}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1 text-xs"
-            onClick={() => setLocations([...locations, { name: "", gymId: "" }])}
-          >
-            <Plus className="h-3 w-3" />
-            Añadir sede
-          </Button>
-        </div>
-      </Step>
-
-      <Step number={4} title="Configura notificaciones de reservas">
-        <p className="text-xs text-muted">
-          Añade este email en Wellhub → Configuración → Notificaciones:
-        </p>
-        <CopyField value={inboundEmail} onCopy={onCopy} copied={copied} />
-      </Step>
-
-      <Step number={5} title="Tarifa estimada por visita">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted">{currency.symbol}</span>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={rate}
-            onChange={(e) => setRate(e.target.value)}
-            className="w-28"
-          />
-        </div>
-      </Step>
-
-      <Step number={6} title="URL del Wellhub Partner Hub (opcional)">
-        <Input
-          placeholder="https://partners.wellhub.com/..."
-          value={portalUrl}
-          onChange={(e) => setPortalUrl(e.target.value)}
-        />
-      </Step>
-    </div>
-  );
-}
+// Note: the legacy email-based WellhubSteps component was removed when the
+// Wellhub flow migrated to the API integration in `wellhub-api-setup.tsx`.
 
 // ─── Shared components ──────────────────────────────────
 
