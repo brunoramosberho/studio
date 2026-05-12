@@ -29,7 +29,7 @@ export function SectionTabs({ tabs, ariaLabel, className }: SectionTabsProps) {
     <nav
       aria-label={ariaLabel ?? "Section tabs"}
       className={cn(
-        "mb-6 flex gap-1 overflow-x-auto rounded-xl bg-surface p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "mb-6 grid auto-cols-[minmax(110px,1fr)] grid-flow-col gap-1 overflow-x-auto rounded-xl bg-surface p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >
@@ -44,7 +44,7 @@ export function SectionTabs({ tabs, ariaLabel, className }: SectionTabsProps) {
             href={tab.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all sm:text-sm",
+              "flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors sm:text-sm",
               active
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted hover:text-foreground",
