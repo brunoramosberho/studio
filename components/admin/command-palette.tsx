@@ -100,22 +100,20 @@ export function CommandPalette({ open, onOpenChange, items, role, flags }: Comma
 
   const ranked = useMemo(() => {
     const q = query.trim();
-    const scored = enrichedItems.map((entry) => {
-      const labelScore = fuzzyScore(q, entry.label);
-      const groupScore = fuzzyScore(q, entry.group) * 0.3;
-      const keywordsScore = entry.keywords ? fuzzyScore(q, entry.keywords) * 0.5 : 0;
-      const baseScore = Math.max(labelScore, groupScore, keywordsScore);
-      const score = entry.featureOn ? baseScore : baseScore * 0.5;
-      return { ...entry, score };
-    });
-    const filtered = q
-      ? scored.filter((s) => s.score > 0)
-      : scored.filter((s) => s.featureOn);
-    filtered.sort((a, b) => {
-      if (a.featureOn !== b.featureOn) return a.featureOn ? -1 : 1;
-      return b.score - a.score;
-    });
-    return filtered;
+    return enrichedItems
+      .map((entry) => {
+        const labelScore = fuzzyScore(q, entry.label);
+        const groupScore = fuzzyScore(q, entry.group) * 0.3;
+        const keywordsScore = entry.keywords ? fuzzyScore(q, entry.keywords) * 0.5 : 0;
+        const baseScore = Math.max(labelScore, groupScore, keywordsScore);
+        const score = entry.featureOn ? baseScore : baseScore * 0.5;
+        return { ...entry, score };
+      })
+      .filter((s) => s.score > 0)
+      .sort((a, b) => {
+        if (a.featureOn !== b.featureOn) return a.featureOn ? -1 : 1;
+        return b.score - a.score;
+      });
   }, [enrichedItems, query]);
 
   useEffect(() => {
@@ -162,16 +160,16 @@ export function CommandPalette({ open, onOpenChange, items, role, flags }: Comma
     }
   }
 
-  // Group adjacent items by group
-  const grouped: { group: string; items: typeof ranked }[] = [];
-  ranked.forEach((entry) => {
-    const last = grouped[grouped.length - 1];
-    if (last && last.group === entry.group) {
-      last.items.push(entry);
-    } else {
-      grouped.push({ group: entry.group, items: [entry] });
+  // Dedup by group label — the same groupKey appears for sidebar items and deep links.
+  const grouped = useMemo(() => {
+    const map = new Map<string, typeof ranked>();
+    for (const entry of ranked) {
+      const list = map.get(entry.group);
+      if (list) list.push(entry);
+      else map.set(entry.group, [entry]);
     }
-  });
+    return Array.from(map, ([group, items]) => ({ group, items }));
+  }, [ranked]);
 
   let runningIndex = 0;
 
