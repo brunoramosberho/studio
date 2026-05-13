@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  TrendingUp,
   AlertTriangle,
   Clock,
   Package,
@@ -15,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBranding } from "@/components/branding-provider";
-import { RevenueChart } from "@/components/admin/revenue-chart";
 import { MgicAIBriefing } from "@/components/admin/MgicAI/BriefingCard";
 import { AdminActionItems } from "@/components/admin/action-items";
 import {
@@ -198,85 +196,45 @@ export default function AdminDashboard() {
 
       {!isEmpty && (
       <>
-      {/* Charts + Recent */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* Recent bookings — live activity feed */}
+      {!isLoading && data?.recentBookings && data.recentBookings.length > 0 && (
         <motion.div
-          className="lg:col-span-2"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.25 }}
+          className="rounded-2xl border border-border/60 bg-card p-5"
         >
-          {isLoading ? (
-            <Skeleton className="h-96 rounded-2xl" />
-          ) : (
-            <RevenueChart
-              data={data?.revenueChart ?? []}
-              title={t("weeklyRevenue")}
-            />
-          )}
-        </motion.div>
-
-        <motion.div
-          className="space-y-4"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          {/* Popular class */}
-          <Card className="border-accent/20 bg-gradient-to-br from-accent/5 to-transparent">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-accent" />
-                <span className="text-xs font-medium text-accent">{t("mostPopular")}</span>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+              {t("recentBookings")}
+            </h2>
+            <Link
+              href="/admin/clients"
+              className="text-xs font-medium text-muted hover:text-foreground"
+            >
+              Ver todo
+            </Link>
+          </div>
+          <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            {data.recentBookings.slice(0, 6).map((booking) => (
+              <div key={booking.id} className="flex items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-admin/10">
+                  <span className="text-xs font-semibold text-admin">
+                    {booking.userName?.[0] ?? "?"}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{booking.userName}</p>
+                  <p className="truncate text-xs text-muted">{booking.className}</p>
+                </div>
+                <span className="shrink-0 text-xs text-muted">
+                  {timeAgo(booking.createdAt)}
+                </span>
               </div>
-              {isLoading ? (
-                <Skeleton className="mt-2 h-6 w-32" />
-              ) : (
-                <p className="mt-2 font-display text-lg font-bold">
-                  {data?.popularClassType ?? "—"}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recent bookings */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("recentBookings")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {isLoading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-10" />
-                  ))
-                : data?.recentBookings?.length
-                  ? data.recentBookings.slice(0, 6).map((booking) => (
-                      <div key={booking.id} className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-admin/10">
-                          <span className="text-xs font-semibold text-admin">
-                            {booking.userName?.[0] ?? "?"}
-                          </span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {booking.userName}
-                          </p>
-                          <p className="truncate text-xs text-muted">
-                            {booking.className}
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-xs text-muted">
-                          {timeAgo(booking.createdAt)}
-                        </span>
-                      </div>
-                    ))
-                  : (
-                      <p className="text-sm text-muted/60">{t("noRecentBookings")}</p>
-                    )}
-            </CardContent>
-          </Card>
+            ))}
+          </div>
         </motion.div>
-      </div>
+      )}
 
       {/* Alerts */}
       {!isLoading && totalAlerts > 0 && (
