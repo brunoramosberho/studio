@@ -57,7 +57,25 @@ function getGreeting(firstName: string): string {
 }
 
 function getBriefingPrompt(firstName: string): string {
-  return `${firstName} acaba de abrir el dashboard. Dame 2-3 bullets cortos de lo más relevante del studio hoy/esta semana. Sé directo y personal — háblale por su nombre. No uses encabezados. Solo bullets concisos y accionables.`;
+  return `${firstName} acaba de abrir el dashboard. Tu trabajo: encontrar 1-2 cosas CONCRETAS sobre las que pueda actuar HOY. No le des un resumen genérico.
+
+ANTES de responder, usa tus tools para investigar lo que pueda ser más urgente. Pista de dónde buscar:
+- get_class_stats — clases en las próximas 48-72h con baja ocupación (<30%)
+- get_subscriptions_status — suscripciones en riesgo (cancel_at_period_end o churn reciente)
+- get_packages_overview — paquetes por vencer en 7 días o paquetes sin ventas en 30+ días
+- get_ratings_summary — coaches con ratings bajos recientes
+- get_retention_metrics — miembros antes activos que llevan 14+ días dormidos
+- get_finance_summary — tendencia vs semana anterior si hay drop notorio
+- get_platform_status — alertas sin resolver
+
+REGLAS DE FORMATO:
+- 1-2 bullets MÁXIMO. No más.
+- Cada bullet debe ser ESPECÍFICO con dato + acción sugerida ("Tu clase del jueves 8am tiene 1/12 reservas — considera bajar precio o cancelar antes de 24h").
+- Si todo va bien, da 1 bullet POSITIVO con dato concreto ("Vas +18% en ingresos vs semana pasada — ${firstName}, buen ritmo").
+- NO digas "todo bien" sin respaldo numérico.
+- NO uses encabezados (##), tablas ni gráficas. Solo bullets cortos.
+- NO termines invitándolo a abrir Spark — ya hay un botón aparte.
+- Háblale de tú, en español, tono cercano.`;
 }
 
 function todayKey(prefix: string) {
@@ -67,11 +85,27 @@ function todayKey(prefix: string) {
 const DISMISS_KEY_PREFIX = "mgic-ai-briefing-dismissed";
 const CACHE_KEY_PREFIX = "mgic-ai-briefing-cache";
 
+const TOOL_LABELS: Record<string, string> = {
+  get_class_stats: "ocupación de clases",
+  get_subscriptions_status: "suscripciones",
+  get_packages_overview: "paquetes",
+  get_ratings_summary: "ratings",
+  get_retention_metrics: "retención",
+  get_finance_summary: "finanzas",
+  get_platform_status: "plataformas",
+  get_studio_overview: "métricas generales",
+  get_coach_performance: "coaches",
+  get_member_activity: "actividad de miembros",
+  get_checkin_stats: "check-ins",
+  get_packages_expiring: "paquetes por vencer",
+};
+
 export function MgicAIBriefing() {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
   const [error, setError] = useState(false);
+  const [activeTools, setActiveTools] = useState<string[]>([]);
   const { colorAdmin } = useBranding();
   const { open } = useMgicAI();
   const { data: session } = useSession();
@@ -137,6 +171,8 @@ export function MgicAIBriefing() {
             if (event.type === "text_delta") {
               fullText += event.text;
               setContent(fullText);
+            } else if (event.type === "tool_call") {
+              setActiveTools((prev) => Array.from(new Set([...prev, ...event.tools])));
             }
           } catch {}
         }
@@ -213,6 +249,17 @@ export function MgicAIBriefing() {
           {/* Content */}
           {loading && !content ? (
             <div className="space-y-3 pl-[52px]">
+              {activeTools.length > 0 && (
+                <p className="text-xs text-muted/80">
+                  Analizando{" "}
+                  <span className="font-medium text-foreground/70">
+                    {activeTools
+                      .map((t) => TOOL_LABELS[t] ?? t.replace(/^get_/, "").replace(/_/g, " "))
+                      .join(", ")}
+                  </span>
+                  …
+                </p>
+              )}
               <div className="flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 animate-pulse text-muted/30" />
                 <Skeleton className="h-4 w-4/5" />
@@ -220,10 +267,6 @@ export function MgicAIBriefing() {
               <div className="flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 animate-pulse text-muted/30" />
                 <Skeleton className="h-4 w-3/5" />
-              </div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 animate-pulse text-muted/30" />
-                <Skeleton className="h-4 w-2/5" />
               </div>
             </div>
           ) : error ? (

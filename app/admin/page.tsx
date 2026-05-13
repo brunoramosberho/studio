@@ -25,6 +25,7 @@ import { KpiCard } from "@/components/admin/kpi-card";
 import { useBranding } from "@/components/branding-provider";
 import { RevenueChart } from "@/components/admin/revenue-chart";
 import { MgicAIBriefing } from "@/components/admin/MgicAI/BriefingCard";
+import { AdminActionItems } from "@/components/admin/action-items";
 import { useTranslations } from "next-intl";
 import { cn, timeAgo, formatDate } from "@/lib/utils";
 import { useFormatMoney } from "@/components/tenant-provider";
@@ -114,6 +115,8 @@ export default function AdminDashboard() {
       </motion.div>
 
       <MgicAIBriefing />
+
+      <AdminActionItems />
 
       {/* KPI Cards */}
       <motion.div
