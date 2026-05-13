@@ -11,9 +11,21 @@ export async function POST() {
     let stripeAccountId = tenant.stripeAccountId;
 
     if (!stripeAccountId) {
+      const tenantWithCountry = await prisma.tenant.findUnique({
+        where: { id: tenant.id },
+        include: { defaultCountry: true },
+      });
+      const countryCode = tenantWithCountry?.defaultCountry?.code;
+      if (!countryCode) {
+        return NextResponse.json(
+          { error: "Tenant has no default country configured. Set it before Stripe onboarding." },
+          { status: 400 },
+        );
+      }
+
       const account = await stripe.accounts.create({
         type: "express",
-        country: "ES",
+        country: countryCode,
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
