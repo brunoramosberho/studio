@@ -10,6 +10,8 @@ import { prisma } from "./db";
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
 const rootHostname = ROOT_DOMAIN.split(":")[0];
 const isProduction = process.env.NODE_ENV === "production";
+const proxyProtocol = rootHostname === "localhost" ? "http" : "https";
+const proxyOrigin = `${proxyProtocol}://${ROOT_DOMAIN}`;
 
 const providers: Provider[] = [];
 
@@ -225,6 +227,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...shared,
   pages: { signIn: "/login", verifyRequest: "/login?verify=true" },
   cookies: makeCookies(),
+  redirectProxyUrl: `${proxyOrigin}/api/auth`,
 });
 
 // ── Staff auth (for /admin, /coach) ──
@@ -239,6 +242,7 @@ export const {
   basePath: "/api/auth-admin",
   pages: { signIn: "/login?portal=admin", verifyRequest: "/login?portal=admin&verify=true" },
   cookies: makeCookies("admin"),
+  redirectProxyUrl: `${proxyOrigin}/api/auth-admin`,
 });
 
 // Cookie name constants for client-side / middleware use
