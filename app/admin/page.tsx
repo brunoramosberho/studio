@@ -4,14 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  AlertTriangle,
   Clock,
   Package,
   Cake,
+  ArrowUpRight,
+  type LucideIcon,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBranding } from "@/components/branding-provider";
 import { MgicAIBriefing } from "@/components/admin/MgicAI/BriefingCard";
@@ -117,10 +115,6 @@ export default function AdminDashboard() {
     },
   });
   const { data: checklist } = useOnboardingChecklist();
-
-  const totalAlerts =
-    (data?.lowOccupancyClasses?.length ?? 0) +
-    (data?.expiringPackages?.length ?? 0);
 
   const isEmpty = checklist?.isStudioEmpty === true;
 
@@ -236,179 +230,155 @@ export default function AdminDashboard() {
         </motion.div>
       )}
 
-      {/* Alerts */}
-      {!isLoading && totalAlerts > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-        >
-          <div className="mb-4 flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-orange-500" />
-            <h2 className="font-display text-lg font-bold">
-              {t("alerts")}
-            </h2>
-            <Badge variant="danger" className="ml-1 text-xs">
-              {totalAlerts}
-            </Badge>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Esta semana — operational outlook (consistent with hero language) */}
+      {!isLoading &&
+        ((data?.lowOccupancyClasses?.length ?? 0) > 0 ||
+          (data?.expiringPackages?.length ?? 0) > 0 ||
+          (data?.birthdaysThisWeek?.length ?? 0) > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="grid gap-4 lg:grid-cols-3"
+          >
             {/* Low occupancy */}
             {data?.lowOccupancyClasses && data.lowOccupancyClasses.length > 0 && (
-              <Card className="border-orange-200 bg-orange-50/50">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-orange-600" />
-                    <span className="text-sm font-semibold text-orange-900">
-                      {t("lowOccupancy")}
-                    </span>
-                    <Badge className="ml-auto bg-orange-100 text-orange-700">
-                      {data.lowOccupancyClasses.length}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 text-xs text-orange-700">
-                    {t("lowOccupancyDesc")}
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    {data.lowOccupancyClasses.slice(0, 3).map((c) => (
-                      <div
-                        key={c.id}
-                        className="flex items-center justify-between rounded-lg bg-white/60 px-3 py-2"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-orange-900">
-                            {c.name}
-                          </p>
-                          <p className="text-xs text-orange-600">
-                            {c.enrolled}/{c.capacity} {t("spots")}
-                          </p>
-                        </div>
-                        <span className="font-mono text-sm font-bold text-orange-700">
-                          {c.occupancyPct}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className="mt-3 w-full text-orange-700 hover:bg-orange-100"
+              <WeeklySection
+                icon={Clock}
+                label="Clases con baja ocupación"
+                count={data.lowOccupancyClasses.length}
+                href="/admin/schedule"
+              >
+                {data.lowOccupancyClasses.slice(0, 4).map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/admin/class/${c.id}`}
+                    className="group flex items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-surface/50"
                   >
-                    <Link href="/admin/classes">{t("viewClasses")}</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-medium text-foreground/90">
+                        {c.name}
+                      </p>
+                      <p className="truncate text-[11px] text-muted/70">
+                        {c.coachName ?? "Sin coach"} · {c.enrolled}/{c.capacity}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-md bg-red-500/10 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-red-600">
+                      {c.occupancyPct}%
+                    </span>
+                  </Link>
+                ))}
+              </WeeklySection>
             )}
 
             {/* Expiring packages */}
             {data?.expiringPackages && data.expiringPackages.length > 0 && (
-              <Card className="border-amber-200 bg-amber-50/50">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-amber-600" />
-                    <span className="text-sm font-semibold text-amber-900">
-                      {t("expiringPackages")}
-                    </span>
-                    <Badge className="ml-auto bg-amber-100 text-amber-700">
-                      {data.expiringPackages.length}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 text-xs text-amber-700">
-                    {t("expiringInWeek")}
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    {data.expiringPackages.slice(0, 3).map((p, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between rounded-lg bg-white/60 px-3 py-2"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-amber-900">
-                            {p.userName ?? tc("noName")}
-                          </p>
-                          <p className="text-xs text-amber-600">
-                            {p.packageName}
-                          </p>
-                        </div>
-                        <span className="text-xs text-amber-700">
-                          {formatDate(p.expiresAt)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className="mt-3 w-full text-amber-700 hover:bg-amber-100"
+              <WeeklySection
+                icon={Package}
+                label="Paquetes por vencer"
+                count={data.expiringPackages.length}
+                href="/admin/clients"
+              >
+                {data.expiringPackages.slice(0, 4).map((p, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5"
                   >
-                    <Link href="/admin/clients">{t("clients")}</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-medium text-foreground/90">
+                        {p.userName ?? tc("noName")}
+                      </p>
+                      <p className="truncate text-[11px] text-muted/70">
+                        {p.packageName}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[11px] text-muted/70">
+                      {formatDate(p.expiresAt)}
+                    </span>
+                  </div>
+                ))}
+              </WeeklySection>
             )}
 
-          </div>
-        </motion.div>
-      )}
-
-      {/* Birthdays */}
-      {!isLoading &&
-        data?.birthdaysThisWeek &&
-        data.birthdaysThisWeek.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <Cake className="h-5 w-5 text-pink-500" />
-                  <CardTitle className="text-base">
-                    {t("birthdaysThisWeek")}
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-4">
-                  {data.birthdaysThisWeek.map((u) => (
-                    <div key={u.id} className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pink-100">
-                        {u.image ? (
-                          <img
-                            src={u.image}
-                            alt=""
-                            className="h-10 w-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-sm font-semibold text-pink-600">
-                            {(u.name ?? "?")[0]}
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {u.name ?? tc("noName")}
-                        </p>
-                        <p className="text-xs text-muted">
-                          {new Date(u.birthday).toLocaleDateString("es", {
-                            day: "numeric",
-                            month: "long",
-                          })}
-                        </p>
-                      </div>
+            {/* Birthdays */}
+            {data?.birthdaysThisWeek && data.birthdaysThisWeek.length > 0 && (
+              <WeeklySection
+                icon={Cake}
+                label="Cumpleaños esta semana"
+                count={data.birthdaysThisWeek.length}
+                href="/admin/clients"
+              >
+                {data.birthdaysThisWeek.slice(0, 4).map((u) => (
+                  <div
+                    key={u.id}
+                    className="flex items-center gap-3 rounded-md px-2 py-1.5"
+                  >
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pink-500/10">
+                      <span className="text-[11px] font-semibold text-pink-600">
+                        {(u.name ?? "?")[0]}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-medium text-foreground/90">
+                        {u.name ?? tc("noName")}
+                      </p>
+                      <p className="truncate text-[11px] text-muted/70">
+                        {new Date(u.birthday).toLocaleDateString("es", {
+                          day: "numeric",
+                          month: "long",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </WeeklySection>
+            )}
           </motion.div>
         )}
       </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Compact card matching the hero widget language — small uppercase label,
+ * count, child list, and a "Ver todo" link. Used by the "Esta semana"
+ * operational outlook (low occupancy, expiring packages, birthdays).
+ */
+function WeeklySection({
+  icon: Icon,
+  label,
+  count,
+  href,
+  children,
+}: {
+  icon: LucideIcon;
+  label: string;
+  count: number;
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <Icon className="h-4 w-4 shrink-0 text-muted/70" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted/60 truncate">
+            {label}
+          </span>
+          <span className="shrink-0 rounded-full bg-foreground/[0.06] px-1.5 py-px text-[10px] font-bold tabular-nums text-foreground/70">
+            {count}
+          </span>
+        </div>
+        <Link
+          href={href}
+          className="group inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-foreground"
+        >
+          <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        </Link>
+      </div>
+      <div className="space-y-0.5">{children}</div>
     </div>
   );
 }
