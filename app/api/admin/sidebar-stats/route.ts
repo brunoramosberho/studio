@@ -17,6 +17,7 @@ export async function GET() {
       activeOrders,
       tenantFlags,
       anyShop,
+      preOrderableCount,
       onDemandConfig,
       gamificationConfig,
       referralConfig,
@@ -55,6 +56,11 @@ export async function GET() {
       prisma.studio.count({
         where: { tenantId: tenant.id, productsEnabled: true },
       }),
+      // Bar orders is only meaningful when at least one product is
+      // pre-orderable. Plain retail products (clothing, etc.) don't enable it.
+      prisma.product.count({
+        where: { tenantId: tenant.id, availableForPreOrder: true, isActive: true },
+      }),
       prisma.onDemandConfig.findUnique({
         where: { tenantId: tenant.id },
         select: { enabled: true },
@@ -80,7 +86,7 @@ export async function GET() {
         highlights: tenantFlags?.highlightsEnabled ?? false,
         noShows: tenantFlags?.noShowPenaltyEnabled ?? false,
         shop: anyShop > 0,
-        orders: anyShop > 0,
+        orders: preOrderableCount > 0,
         onDemand: onDemandConfig?.enabled ?? false,
         achievements:
           (gamificationConfig?.achievementsEnabled ?? false) ||
