@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   AlertTriangle,
   AlertCircle,
@@ -21,55 +22,64 @@ import type {
   ActionItemsResponse,
 } from "@/app/api/admin/action-items/route";
 
-interface PillConfig {
-  icon: LucideIcon;
-  label: (count: number) => string;
-}
+type LabelFn = (
+  t: (key: string, values?: Record<string, string | number>) => string,
+  count: number,
+) => string;
 
-const PILLS: Record<ActionItemKey, PillConfig> = {
+const PILLS: Record<ActionItemKey, { icon: LucideIcon; label: LabelFn }> = {
   no_shows: {
     icon: AlertTriangle,
-    label: (c) => (c === 1 ? "1 no-show por revisar" : `${c} no-shows por revisar`),
+    label: (t, c) =>
+      c === 1
+        ? t("admin.actionItems.noShowsOne")
+        : t("admin.actionItems.noShowsMany", { count: c }),
   },
   connect_missing: {
     icon: CreditCard,
-    label: () => "Conectar tu cuenta de Stripe",
+    label: (t) => t("admin.actionItems.connectMissing"),
   },
   connect_pending: {
     icon: CreditCard,
-    label: () => "Stripe: verificación pendiente",
+    label: (t) => t("admin.actionItems.connectPending"),
   },
   connect_restricted: {
     icon: CreditCard,
-    label: () => "Stripe: cuenta restringida",
+    label: (t) => t("admin.actionItems.connectRestricted"),
   },
   trial_ending: {
     icon: Clock,
-    label: (days) =>
+    label: (t, days) =>
       days === 0
-        ? "Tu trial termina hoy"
+        ? t("admin.actionItems.trialEndingToday")
         : days === 1
-          ? "Tu trial termina mañana"
-          : `Tu trial termina en ${days} días`,
+          ? t("admin.actionItems.trialEndingTomorrow")
+          : t("admin.actionItems.trialEndingDays", { days }),
   },
   saas_payment_failed: {
     icon: AlertCircle,
-    label: () => "Tu suscripción tiene un pago fallido",
+    label: (t) => t("admin.actionItems.saasPaymentFailed"),
   },
   platform_alerts: {
     icon: Layers,
-    label: (c) => (c === 1 ? "1 alerta de plataformas" : `${c} alertas de plataformas`),
+    label: (t, c) =>
+      c === 1
+        ? t("admin.actionItems.platformAlertsOne")
+        : t("admin.actionItems.platformAlertsMany", { count: c }),
   },
   open_debts: {
     icon: Banknote,
-    label: (c) => (c === 1 ? "1 deuda abierta" : `${c} deudas abiertas`),
+    label: (t, c) =>
+      c === 1
+        ? t("admin.actionItems.openDebtsOne")
+        : t("admin.actionItems.openDebtsMany", { count: c }),
   },
   pending_availability: {
     icon: CalendarOff,
-    label: (c) =>
+    label: (t, c) =>
       c === 1
-        ? "1 solicitud de disponibilidad"
-        : `${c} solicitudes de disponibilidad`,
+        ? t("admin.actionItems.pendingAvailabilityOne")
+        : t("admin.actionItems.pendingAvailabilityMany", { count: c }),
   },
 };
 
@@ -89,6 +99,7 @@ const SEVERITY_ICON_STYLES: Record<ActionItemSeverity, string> = {
 };
 
 export function AdminActionItems() {
+  const t = useTranslations();
   const { data } = useQuery<ActionItemsResponse>({
     queryKey: ["admin-action-items"],
     queryFn: async () => {
@@ -107,18 +118,26 @@ export function AdminActionItems() {
   return (
     <div className="flex flex-col gap-2">
       <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted/60">
-        {hasUrgent ? "Necesita tu atención" : "Para revisar"}
+        {hasUrgent
+          ? t("admin.actionItems.needsAttention")
+          : t("admin.actionItems.toReview")}
       </p>
       <div className="flex flex-wrap gap-2">
         {items.map((item) => (
-          <ActionPill key={item.key} item={item} />
+          <ActionPill key={item.key} item={item} t={t} />
         ))}
       </div>
     </div>
   );
 }
 
-function ActionPill({ item }: { item: ActionItem }) {
+function ActionPill({
+  item,
+  t,
+}: {
+  item: ActionItem;
+  t: (key: string, values?: Record<string, string | number>) => string;
+}) {
   const cfg = PILLS[item.key];
   if (!cfg) return null;
   const Icon = cfg.icon;
@@ -132,7 +151,7 @@ function ActionPill({ item }: { item: ActionItem }) {
       )}
     >
       <Icon className={cn("h-3.5 w-3.5 shrink-0", SEVERITY_ICON_STYLES[item.severity])} />
-      <span>{cfg.label(item.count)}</span>
+      <span>{cfg.label(t, item.count)}</span>
       <ChevronRight className="h-3 w-3 opacity-50 transition-transform group-hover:translate-x-0.5" />
     </Link>
   );

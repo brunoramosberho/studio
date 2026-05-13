@@ -2,6 +2,7 @@
 
 import { Wallet } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { useTranslations } from "next-intl";
 import { useFormatMoney } from "@/components/tenant-provider";
 
 export interface RevenueMixSlice {
@@ -9,11 +10,11 @@ export interface RevenueMixSlice {
   amount: number;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  PACK: "Packs",
-  SUBSCRIPTION: "Suscripciones",
-  ON_DEMAND_SUBSCRIPTION: "On-demand",
-  OFFER: "Intro offers",
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  PACK: "typePack",
+  SUBSCRIPTION: "typeSubscription",
+  ON_DEMAND_SUBSCRIPTION: "typeOnDemand",
+  OFFER: "typeOffer",
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -38,11 +39,12 @@ export function RevenueMixDonut({
   mix: RevenueMixSlice[];
   activeSubsCount: number;
 }) {
+  const t = useTranslations("admin.revenueMixDonut");
   const formatMoney = useFormatMoney();
   const total = mix.reduce((s, x) => s + x.amount, 0);
 
   const data: PieEntry[] = mix.map((m, i) => ({
-    name: TYPE_LABELS[m.type] ?? m.type,
+    name: TYPE_LABEL_KEYS[m.type] ? t(TYPE_LABEL_KEYS[m.type]) : m.type,
     value: m.amount,
     color: TYPE_COLORS[m.type] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
   }));
@@ -56,7 +58,7 @@ export function RevenueMixDonut({
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-muted/70" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
-            Ingresos del mes
+            {t("kicker")}
           </span>
         </div>
         <p className="mt-1 text-[15px] font-semibold text-foreground">
@@ -66,9 +68,7 @@ export function RevenueMixDonut({
 
       {total === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center">
-          <p className="text-sm text-muted">
-            Sin ingresos este mes todavía.
-          </p>
+          <p className="text-sm text-muted">{t("noRevenue")}</p>
         </div>
       ) : (
         <div className="flex items-center gap-4">
@@ -102,9 +102,9 @@ export function RevenueMixDonut({
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span className="text-[10px] text-muted/70">Activas</span>
+              <span className="text-[10px] text-muted/70">{t("active")}</span>
               <span className="text-base font-bold tabular-nums">{activeSubsCount}</span>
-              <span className="text-[9px] text-muted/60 leading-tight">subs</span>
+              <span className="text-[9px] text-muted/60 leading-tight">{t("subs")}</span>
             </div>
           </div>
           <ul className="flex-1 space-y-1.5">

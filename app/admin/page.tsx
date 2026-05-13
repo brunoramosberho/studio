@@ -206,7 +206,7 @@ export default function AdminDashboard() {
               href="/admin/clients"
               className="text-xs font-medium text-muted hover:text-foreground"
             >
-              Ver todo
+              {t("weeklyOutlook.viewAll")}
             </Link>
           </div>
           <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -245,7 +245,7 @@ export default function AdminDashboard() {
             {data?.lowOccupancyClasses && data.lowOccupancyClasses.length > 0 && (
               <WeeklySection
                 icon={Clock}
-                label="Clases con baja ocupación"
+                label={t("weeklyOutlook.lowOccupancy")}
                 count={data.lowOccupancyClasses.length}
                 href="/admin/schedule"
               >
@@ -260,7 +260,7 @@ export default function AdminDashboard() {
                         {c.name}
                       </p>
                       <p className="truncate text-[11px] text-muted/70">
-                        {c.coachName ?? "Sin coach"} · {c.enrolled}/{c.capacity}
+                        {c.coachName ?? t("weeklyOutlook.noCoach")} · {c.enrolled}/{c.capacity}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-md bg-red-500/10 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-red-600">
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
             {data?.expiringPackages && data.expiringPackages.length > 0 && (
               <WeeklySection
                 icon={Package}
-                label="Paquetes por vencer"
+                label={t("weeklyOutlook.expiringPackages")}
                 count={data.expiringPackages.length}
                 href="/admin/clients"
               >
@@ -304,7 +304,7 @@ export default function AdminDashboard() {
             {data?.birthdaysThisWeek && data.birthdaysThisWeek.length > 0 && (
               <WeeklySection
                 icon={Cake}
-                label="Cumpleaños esta semana"
+                label={t("weeklyOutlook.birthdaysThisWeek")}
                 count={data.birthdaysThisWeek.length}
                 href="/admin/clients"
               >

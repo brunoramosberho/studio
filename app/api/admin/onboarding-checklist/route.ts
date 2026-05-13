@@ -18,10 +18,11 @@ export type ChecklistItemKey =
   | "classes"
   | "members";
 
+/** Label and description live client-side as i18n keys; the API only
+ * tells the client which steps exist, which are completed, and where to
+ * link to. */
 export interface ChecklistItem {
   key: ChecklistItemKey;
-  label: string;
-  description: string;
   completed: boolean;
   href: string;
 }
@@ -70,62 +71,14 @@ export async function GET() {
       !!ctx.tenant.logoUrl || ctx.tenant.colorAccent !== "#FF5A2C";
 
     const items: ChecklistItem[] = [
-      {
-        key: "stripe",
-        label: "Conectar Stripe",
-        description: "Para recibir pagos de tus alumnos.",
-        completed: stripeConnected,
-        href: "/admin/settings/billing",
-      },
-      {
-        key: "branding",
-        label: "Personalizar tu marca",
-        description: "Sube tu logo y elige tus colores.",
-        completed: brandingConfigured,
-        href: "/admin/branding",
-      },
-      {
-        key: "studio",
-        label: "Configurar tu ubicación",
-        description: "Define dónde se imparten las clases.",
-        completed: studioCount > 0,
-        href: "/admin/studios",
-      },
-      {
-        key: "disciplines",
-        label: "Crear tus disciplinas",
-        description: "Pilates, Yoga, Cycling, etc.",
-        completed: disciplineCount > 0,
-        href: "/admin/class-types",
-      },
-      {
-        key: "coaches",
-        label: "Invitar a tus coaches",
-        description: "Añade a tu equipo de instructores.",
-        completed: coachCount > 0,
-        href: "/admin/coaches",
-      },
-      {
-        key: "packages",
-        label: "Crear tus paquetes",
-        description: "Define lo que vendes a tus alumnos.",
-        completed: packageCount > 0,
-        href: "/admin/packages",
-      },
-      {
-        key: "classes",
-        label: "Programar tu primera semana",
-        description: "Arma el horario que vas a impartir.",
-        completed: futureClassCount > 0,
-        href: "/admin/schedule",
-      },
-      {
-        key: "members",
-        label: "Invitar a tus primeros miembros",
-        description: "Que tus alumnos se registren y reserven.",
-        completed: clientMemberCount > 0,
-        href: "/admin/clients",
-      },
+      { key: "stripe", completed: stripeConnected, href: "/admin/settings/billing" },
+      { key: "branding", completed: brandingConfigured, href: "/admin/branding" },
+      { key: "studio", completed: studioCount > 0, href: "/admin/studios" },
+      { key: "disciplines", completed: disciplineCount > 0, href: "/admin/class-types" },
+      { key: "coaches", completed: coachCount > 0, href: "/admin/coaches" },
+      { key: "packages", completed: packageCount > 0, href: "/admin/packages" },
+      { key: "classes", completed: futureClassCount > 0, href: "/admin/schedule" },
+      { key: "members", completed: clientMemberCount > 0, href: "/admin/clients" },
     ];
 
     const completedCount = items.filter((i) => i.completed).length;

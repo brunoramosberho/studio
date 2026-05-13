@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CalendarDays, ArrowUpRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 export interface HeatmapClass {
@@ -35,6 +36,8 @@ function fillColor(pct: number): string {
 }
 
 export function WeekHeatmap({ classes }: { classes: HeatmapClass[] }) {
+  const t = useTranslations("admin.weekHeatmap");
+
   // Group by day + hour bucket, average fill
   const matrix: { count: number; sumPct: number; classes: HeatmapClass[] }[][] =
     DAY_ORDER.map(() => HOUR_BUCKETS.map(() => ({ count: 0, sumPct: 0, classes: [] })));
@@ -61,29 +64,27 @@ export function WeekHeatmap({ classes }: { classes: HeatmapClass[] }) {
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-muted/70" />
             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
-              Semana
+              {t("kicker")}
             </span>
           </div>
           <p className="mt-1 text-[15px] font-semibold text-foreground">
             {totalClasses === 0
-              ? "Sin clases esta semana"
-              : `${totalClasses} clases programadas`}
+              ? t("noClasses")
+              : t("summary", { count: totalClasses })}
           </p>
         </div>
         <Link
           href="/admin/schedule"
           className="group inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-foreground"
         >
-          Ver horario
+          {t("viewSchedule")}
           <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </Link>
       </div>
 
       {totalClasses === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center">
-          <p className="text-sm text-muted">
-            Sin clases programadas esta semana.
-          </p>
+          <p className="text-sm text-muted">{t("emptyMessage")}</p>
         </div>
       ) : (
         <>
@@ -105,6 +106,9 @@ export function WeekHeatmap({ classes }: { classes: HeatmapClass[] }) {
                 key={bucket.label}
                 label={bucket.label}
                 cells={matrix.map((day) => day[rowIdx])}
+                tooltipOne={t("tooltipOne")}
+                tooltipMany={t("tooltipMany")}
+                tooltipEmpty={t("tooltipEmpty")}
               />
             ))}
           </div>
@@ -125,9 +129,15 @@ export function WeekHeatmap({ classes }: { classes: HeatmapClass[] }) {
 function Row({
   label,
   cells,
+  tooltipOne,
+  tooltipMany,
+  tooltipEmpty,
 }: {
   label: string;
   cells: { count: number; sumPct: number; classes: HeatmapClass[] }[];
+  tooltipOne: string;
+  tooltipMany: string;
+  tooltipEmpty: string;
 }) {
   return (
     <>
@@ -140,16 +150,19 @@ function Row({
             <div
               key={i}
               className="aspect-square rounded-md border border-dashed border-border/50"
-              title="Sin clases"
+              title={tooltipEmpty}
             />
           );
         }
         const avg = Math.round(cell.sumPct / cell.count);
+        const tooltip = (cell.count === 1 ? tooltipOne : tooltipMany)
+          .replace("{count}", String(cell.count))
+          .replace("{pct}", String(avg));
         return (
           <div
             key={i}
             className={cn("aspect-square rounded-md", fillColor(avg))}
-            title={`${cell.count} ${cell.count === 1 ? "clase" : "clases"} · ${avg}% ocupación promedio`}
+            title={tooltip}
           />
         );
       })}

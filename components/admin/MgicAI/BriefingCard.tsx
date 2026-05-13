@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, ArrowRight } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { useBranding } from "@/components/branding-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMgicAI } from "./index";
@@ -85,22 +86,24 @@ function todayKey(prefix: string) {
 const DISMISS_KEY_PREFIX = "mgic-ai-briefing-dismissed";
 const CACHE_KEY_PREFIX = "mgic-ai-briefing-cache";
 
-const TOOL_LABELS: Record<string, string> = {
-  get_class_stats: "ocupación de clases",
-  get_subscriptions_status: "suscripciones",
-  get_packages_overview: "paquetes",
-  get_ratings_summary: "ratings",
-  get_retention_metrics: "retención",
-  get_finance_summary: "finanzas",
-  get_platform_status: "plataformas",
-  get_studio_overview: "métricas generales",
-  get_coach_performance: "coaches",
-  get_member_activity: "actividad de miembros",
-  get_checkin_stats: "check-ins",
-  get_packages_expiring: "paquetes por vencer",
+const TOOL_LABEL_KEYS: Record<string, string> = {
+  get_class_stats: "classStats",
+  get_subscriptions_status: "subscriptionsStatus",
+  get_packages_overview: "packagesOverview",
+  get_ratings_summary: "ratingsSummary",
+  get_retention_metrics: "retentionMetrics",
+  get_finance_summary: "financeSummary",
+  get_platform_status: "platformStatus",
+  get_studio_overview: "studioOverview",
+  get_coach_performance: "coachPerformance",
+  get_member_activity: "memberActivity",
+  get_checkin_stats: "checkinStats",
+  get_packages_expiring: "packagesExpiring",
 };
 
 export function MgicAIBriefing() {
+  const t = useTranslations("admin.briefingTools");
+  const tCard = useTranslations("admin.briefingCard");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
@@ -239,7 +242,7 @@ export function MgicAIBriefing() {
                   {greeting}
                 </h3>
                 <p className="text-xs text-muted/70 mt-0.5">
-                  Spark te preparó un resumen rápido
+                  {tCard("subheading")}
                 </p>
               </div>
             </div>
@@ -256,10 +259,13 @@ export function MgicAIBriefing() {
             <div className="space-y-3 pl-[52px]">
               {activeTools.length > 0 && (
                 <p className="text-xs text-muted/80">
-                  Analizando{" "}
+                  {t("analyzing")}{" "}
                   <span className="font-medium text-foreground/70">
                     {activeTools
-                      .map((t) => TOOL_LABELS[t] ?? t.replace(/^get_/, "").replace(/_/g, " "))
+                      .map((tool) => {
+                        const key = TOOL_LABEL_KEYS[tool];
+                        return key ? t(key) : tool.replace(/^get_/, "").replace(/_/g, " ");
+                      })
                       .join(", ")}
                   </span>
                   …
@@ -277,13 +283,10 @@ export function MgicAIBriefing() {
           ) : error ? (
             <div className="space-y-3 pl-[52px]">
               <p className="text-sm text-foreground/80 leading-relaxed">
-                {firstName}, aún no hay suficiente actividad para preparar un
-                resumen. En cuanto empieces a registrar clases, ventas y
-                check-ins, te paso lo más relevante cada día.
+                {tCard("fallbackPrimary", { firstName })}
               </p>
               <p className="text-xs text-muted/70">
-                Mientras tanto, pregúntame lo que necesites — puedo armar
-                horarios, invitar coaches, crear clases y más.
+                {tCard("fallbackSecondary")}
               </p>
             </div>
           ) : (
@@ -299,7 +302,7 @@ export function MgicAIBriefing() {
               className="group inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:gap-2.5"
               style={{ color: colorAdmin, backgroundColor: `${colorAdmin}10` }}
             >
-              Preguntarle algo a Spark
+              {tCard("askSpark")}
               <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
             </button>
           </div>

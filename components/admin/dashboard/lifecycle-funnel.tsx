@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Users, ArrowUpRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export interface LifecycleData {
   lead: number;
@@ -19,13 +20,15 @@ interface Stage {
 }
 
 export function LifecycleFunnel({ data }: { data: LifecycleData }) {
+  const t = useTranslations("admin.lifecycleFunnel");
+
   const stages: Stage[] = [
-    { label: "Leads", count: data.lead, color: "#94a3b8" },
-    { label: "Instalado", count: data.installed, color: "#7c8db5" },
-    { label: "Comprado", count: data.purchased, color: "#6478b8" },
-    { label: "Reservó", count: data.booked, color: "#5266c0" },
-    { label: "Asistió", count: data.attended, color: "#3f55c2" },
-    { label: "Recurrente", count: data.member, color: "#2c44c2" },
+    { label: t("stageLead"), count: data.lead, color: "#94a3b8" },
+    { label: t("stageInstalled"), count: data.installed, color: "#7c8db5" },
+    { label: t("stagePurchased"), count: data.purchased, color: "#6478b8" },
+    { label: t("stageBooked"), count: data.booked, color: "#5266c0" },
+    { label: t("stageAttended"), count: data.attended, color: "#3f55c2" },
+    { label: t("stageMember"), count: data.member, color: "#2c44c2" },
   ];
 
   const total = stages.reduce((s, x) => s + x.count, 0);
@@ -38,29 +41,29 @@ export function LifecycleFunnel({ data }: { data: LifecycleData }) {
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted/70" />
             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
-              Lifecycle
+              {t("kicker")}
             </span>
           </div>
           <p className="mt-1 text-[15px] font-semibold text-foreground">
             {total === 0
-              ? "Aún no hay miembros"
-              : `${total} ${total === 1 ? "miembro" : "miembros"} en tu funnel`}
+              ? t("noMembers")
+              : total === 1
+                ? t("summaryOne")
+                : t("summaryMany", { count: total })}
           </p>
         </div>
         <Link
           href="/admin/clients"
           className="group inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-foreground"
         >
-          Ver clientes
+          {t("viewClients")}
           <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </Link>
       </div>
 
       {total === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center">
-          <p className="text-sm text-muted">
-            Cuando empieces a recibir registros, los verás moverse por aquí.
-          </p>
+          <p className="text-sm text-muted">{t("emptyMessage")}</p>
         </div>
       ) : (
         <div className="space-y-1.5">

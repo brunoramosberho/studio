@@ -3,14 +3,51 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { Check, ChevronRight, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useBranding } from "@/components/branding-provider";
 import { cn } from "@/lib/utils";
 import type {
   ChecklistItem,
+  ChecklistItemKey,
   OnboardingChecklistResponse,
 } from "@/app/api/admin/onboarding-checklist/route";
+
+const ITEM_LABEL_KEYS: Record<ChecklistItemKey, { label: string; description: string }> = {
+  stripe: {
+    label: "admin.onboardingHero.stripeLabel",
+    description: "admin.onboardingHero.stripeDescription",
+  },
+  branding: {
+    label: "admin.onboardingHero.brandingLabel",
+    description: "admin.onboardingHero.brandingDescription",
+  },
+  studio: {
+    label: "admin.onboardingHero.studioLabel",
+    description: "admin.onboardingHero.studioDescription",
+  },
+  disciplines: {
+    label: "admin.onboardingHero.disciplinesLabel",
+    description: "admin.onboardingHero.disciplinesDescription",
+  },
+  coaches: {
+    label: "admin.onboardingHero.coachesLabel",
+    description: "admin.onboardingHero.coachesDescription",
+  },
+  packages: {
+    label: "admin.onboardingHero.packagesLabel",
+    description: "admin.onboardingHero.packagesDescription",
+  },
+  classes: {
+    label: "admin.onboardingHero.classesLabel",
+    description: "admin.onboardingHero.classesDescription",
+  },
+  members: {
+    label: "admin.onboardingHero.membersLabel",
+    description: "admin.onboardingHero.membersDescription",
+  },
+};
 
 export function useOnboardingChecklist() {
   return useQuery<OnboardingChecklistResponse>({
@@ -34,6 +71,7 @@ export function OnboardingChecklistHero({
 }: {
   data: OnboardingChecklistResponse;
 }) {
+  const t = useTranslations();
   const { studioName, colorAdmin } = useBranding();
   const { data: session } = useSession();
   const firstName = (session?.user?.name ?? "").split(" ")[0] || "Admin";
@@ -62,15 +100,14 @@ export function OnboardingChecklistHero({
                 className="text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: colorAdmin }}
               >
-                Configuración inicial
+                {t("admin.onboardingHero.kicker")}
               </span>
             </div>
             <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl">
-              Vamos a poner en marcha {studioName}, {firstName}.
+              {t("admin.onboardingHero.heroTitle", { studioName, firstName })}
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Termina estos pasos y este dashboard se convierte en tu centro
-              de operaciones diario.
+              {t("admin.onboardingHero.heroSubtitle")}
             </p>
           </div>
           <div className="hidden sm:block">
@@ -81,13 +118,16 @@ export function OnboardingChecklistHero({
         <div className="sm:hidden mb-6">
           <ProgressBar pct={pct} accentColor={colorAdmin} />
           <p className="mt-1.5 text-xs text-muted">
-            {completedCount} de {totalCount} completados
+            {t("admin.onboardingHero.progressLabel", {
+              completed: completedCount,
+              total: totalCount,
+            })}
           </p>
         </div>
 
         <ul className="divide-y divide-border/50">
           {items.map((item) => (
-            <ChecklistRow key={item.key} item={item} accentColor={colorAdmin} />
+            <ChecklistRow key={item.key} item={item} accentColor={colorAdmin} t={t} />
           ))}
         </ul>
       </div>
@@ -98,10 +138,13 @@ export function OnboardingChecklistHero({
 function ChecklistRow({
   item,
   accentColor,
+  t,
 }: {
   item: ChecklistItem;
   accentColor: string;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }) {
+  const labels = ITEM_LABEL_KEYS[item.key];
   const content = (
     <div className="flex items-start gap-3.5 py-3.5">
       <div
@@ -126,10 +169,10 @@ function ChecklistRow({
             item.completed ? "text-muted line-through" : "text-foreground",
           )}
         >
-          {item.label}
+          {t(labels.label)}
         </p>
         <p className="mt-0.5 text-xs text-muted/80 leading-snug">
-          {item.description}
+          {t(labels.description)}
         </p>
       </div>
       {!item.completed && (

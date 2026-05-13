@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Clock, ArrowUpRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
 
@@ -32,6 +33,7 @@ function fillTone(pct: number): { fg: string; bg: string; ring: string } {
 }
 
 export function TodayTimeline({ classes }: { classes: TodayClass[] }) {
+  const t = useTranslations("admin.todayTimeline");
   const { colorAdmin } = useBranding();
   const total = classes.length;
   const totalEnrolled = classes.reduce((s, c) => s + c.enrolled, 0);
@@ -45,20 +47,26 @@ export function TodayTimeline({ classes }: { classes: TodayClass[] }) {
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted/70" />
             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
-              Hoy
+              {t("kicker")}
             </span>
           </div>
           <p className="mt-1 text-[15px] font-semibold text-foreground">
             {total === 0
-              ? "No tienes clases programadas"
-              : `${total} ${total === 1 ? "clase" : "clases"} · ${totalEnrolled}/${totalCapacity} reservas · ${avgFill}% ocupación`}
+              ? t("noClasses")
+              : t("summary", {
+                  count: total,
+                  classWord: total === 1 ? t("classOne") : t("classMany"),
+                  enrolled: totalEnrolled,
+                  capacity: totalCapacity,
+                  pct: avgFill,
+                })}
           </p>
         </div>
         <Link
           href="/admin/schedule"
           className="group inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-foreground"
         >
-          Ver horario
+          {t("viewSchedule")}
           <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </Link>
       </div>
@@ -66,15 +74,15 @@ export function TodayTimeline({ classes }: { classes: TodayClass[] }) {
       {total === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center">
           <p className="text-sm text-muted">
-            Sin clases hoy. ¿Quieres{" "}
+            {t("emptyPrefix")}{" "}
             <Link
               href="/admin/schedule"
               className="font-semibold underline-offset-2 hover:underline"
               style={{ color: colorAdmin }}
             >
-              programar una
+              {t("emptyLink")}
             </Link>
-            ?
+            {t("emptySuffix")}
           </p>
         </div>
       ) : (
@@ -104,7 +112,7 @@ export function TodayTimeline({ classes }: { classes: TodayClass[] }) {
                   {c.name}
                 </p>
                 <p className="mt-0.5 truncate text-[11px] text-muted/80">
-                  {c.coachName ?? "Sin coach"} · {c.enrolled}/{c.capacity}
+                  {c.coachName ?? t("noCoach")} · {c.enrolled}/{c.capacity}
                 </p>
               </Link>
             );
