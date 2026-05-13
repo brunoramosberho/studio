@@ -1,4 +1,4 @@
-export type StripePlanKey = "starter" | "growth";
+export type StripePlanKey = "starter" | "growth" | "scale";
 
 export type SaasPlanEnvFallback = {
   priceId: string;
@@ -21,7 +21,7 @@ export function getSaasPlanEnvFallback(
       return {
         priceId,
         name: "Mgic Studio Starter",
-        amountCents: 14900,
+        amountCents: 29900,
       };
     }
     case "growth": {
@@ -34,6 +34,18 @@ export function getSaasPlanEnvFallback(
         priceId,
         name: "Mgic Studio Growth",
         amountCents: 44900,
+      };
+    }
+    case "scale": {
+      const priceId = sandbox
+        ? process.env.STRIPE_PRICE_SCALE_TEST?.trim() ||
+          process.env.STRIPE_PRICE_SCALE?.trim() ||
+          ""
+        : process.env.STRIPE_PRICE_SCALE?.trim() ?? "";
+      return {
+        priceId,
+        name: "Mgic Studio Scale",
+        amountCents: 69900,
       };
     }
     default:
@@ -52,11 +64,16 @@ export const STRIPE_PLANS: Record<
   starter: {
     name: "Mgic Studio Starter",
     priceId: process.env.STRIPE_PRICE_STARTER ?? "",
-    amount: 14900,
+    amount: 29900,
   },
   growth: {
     name: "Mgic Studio Growth",
     priceId: process.env.STRIPE_PRICE_GROWTH ?? "",
     amount: 44900,
+  },
+  scale: {
+    name: "Mgic Studio Scale",
+    priceId: process.env.STRIPE_PRICE_SCALE ?? "",
+    amount: 69900,
   },
 };

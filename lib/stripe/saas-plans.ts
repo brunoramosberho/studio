@@ -171,7 +171,7 @@ export async function listSaasPlansForTenant(
   }));
 
   const keysFromDb = new Set(stripped.map((p) => p.planKey));
-  const envKeys = ["starter", "growth"] as const;
+  const envKeys = ["starter", "growth", "scale"] as const;
   for (const k of envKeys) {
     if (keysFromDb.has(k)) continue;
     const fb = getSaasPlanEnvFallback(k, sandbox);
