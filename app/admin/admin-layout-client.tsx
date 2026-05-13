@@ -381,6 +381,39 @@ function SidebarFlyoutGroup({
 
   if (visibleItems.length === 0) return null;
 
+  // Collapse a single-child group into a direct link — no flyout needed.
+  if (visibleItems.length === 1) {
+    const item = visibleItems[0];
+    const active = isItemActive(item, pathname);
+    const badgeVal = getBadgeVal(item, stats);
+    const contextVal = getContextLabel(item, stats, t);
+    return (
+      <Link
+        href={item.href}
+        className={cn(
+          "group flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+          active
+            ? "bg-admin/8 font-semibold text-admin"
+            : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+        )}
+      >
+        <group.icon
+          className={cn(
+            "h-4 w-4 shrink-0",
+            active ? "text-admin" : "text-foreground/40 group-hover:text-foreground/60",
+          )}
+          strokeWidth={active ? 2.25 : 1.75}
+        />
+        <span className="flex-1 truncate">{t(group.labelKey)}</span>
+        {badgeVal ? (
+          <Badge count={badgeVal} variant={item.badgeKey === "newClients" ? "green" : "red"} />
+        ) : contextVal ? (
+          <ContextTag label={contextVal} />
+        ) : null}
+      </Link>
+    );
+  }
+
   const handleEnter = () => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -493,6 +526,41 @@ function MobileAccordionGroup({
   const [expanded, setExpanded] = useState(hasActiveChild);
 
   if (visibleItems.length === 0) return null;
+
+  // Collapse a single-child group into a direct link — no accordion needed.
+  if (visibleItems.length === 1) {
+    const item = visibleItems[0];
+    const active = isItemActive(item, pathname);
+    const badgeVal = getBadgeVal(item, stats);
+    const contextVal = getContextLabel(item, stats, t);
+    return (
+      <Link
+        href={item.href}
+        onClick={onNavigate}
+        className={cn(
+          "group flex items-center gap-2.5 rounded-sm px-2.5 text-[13px] font-medium transition-colors",
+          py,
+          active
+            ? "bg-admin/8 font-semibold text-admin"
+            : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+        )}
+      >
+        <group.icon
+          className={cn(
+            "h-4 w-4 shrink-0",
+            active ? "text-admin" : "text-foreground/40 group-hover:text-foreground/60",
+          )}
+          strokeWidth={active ? 2.25 : 1.75}
+        />
+        <span className="flex-1 truncate">{t(group.labelKey)}</span>
+        {badgeVal ? (
+          <Badge count={badgeVal} variant={item.badgeKey === "newClients" ? "green" : "red"} />
+        ) : contextVal ? (
+          <ContextTag label={contextVal} />
+        ) : null}
+      </Link>
+    );
+  }
 
   return (
     <div>
