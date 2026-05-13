@@ -197,7 +197,7 @@ export async function GET() {
       // Revenue this month
       prisma.userPackage.findMany({
         where: { purchasedAt: { gte: monthStart }, tenantId },
-        include: { package: { select: { price: true } } },
+        include: { package: { select: { price: true, type: true } } },
       }),
 
       // Revenue prev month
@@ -253,6 +253,60 @@ export async function GET() {
       }),
 
     ]);
+
+    // ── Phase 2: data for the new visual hero widgets ──
+
+    const sevenDaysAhead = new Date(weekStart);
+    sevenDaysAhead.setDate(sevenDaysAhead.getDate() + 7);
+
+    const [todayClassesRaw, weekClassesRaw, lifecycleGroups, monthSubsPayments] =
+      await Promise.all([
+        // Today's timeline
+        prisma.class.findMany({
+          where: {
+            tenantId,
+            startsAt: { gte: todayStart, lte: todayEnd },
+            status: { in: ["SCHEDULED", "COMPLETED"] },
+          },
+          include: {
+            classType: { select: { name: true } },
+            coach: { select: { name: true, user: { select: { name: true } } } },
+            room: { select: { maxCapacity: true } },
+            _count: {
+              select: {
+                bookings: { where: { status: confirmedOrAttended } },
+              },
+            },
+          },
+          orderBy: { startsAt: "asc" },
+        }),
+        // This week's classes (for heatmap)
+        prisma.class.findMany({
+          where: {
+            tenantId,
+            startsAt: { gte: weekStart, lt: sevenDaysAhead },
+            status: { in: ["SCHEDULED", "COMPLETED"] },
+          },
+          include: {
+            room: { select: { maxCapacity: true } },
+            _count: {
+              select: {
+                bookings: { where: { status: confirmedOrAttended } },
+              },
+            },
+          },
+        }),
+        // Lifecycle funnel
+        prisma.membership.groupBy({
+          by: ["lifecycleStage"],
+          where: { tenantId, role: "CLIENT" },
+          _count: true,
+        }),
+        // Active subscriptions count
+        prisma.memberSubscription.count({
+          where: { tenantId, status: "active" },
+        }),
+      ]);
 
     // Run queries with complex includes separately for type inference
     const [lowOccupancyRaw, expiringPkgs, birthdayUsers] =
@@ -462,6 +516,65 @@ export async function GET() {
 
       // Birthdays
       birthdaysThisWeek,
+
+      // ── Phase 2 visual hero data ──
+      todayTimeline: todayClassesRaw.map((c) => {
+        const cap = c.room.maxCapacity;
+        const enrolled = c._count.bookings;
+        const durMin = Math.max(
+          1,
+          Math.round((c.endsAt.getTime() - c.startsAt.getTime()) / 60000),
+        );
+        return {
+          id: c.id,
+          name: c.classType.name,
+          coachName: c.coach?.name ?? c.coach?.user?.name ?? null,
+          startsAt: c.startsAt.toISOString(),
+          durationMinutes: durMin,
+          enrolled,
+          capacity: cap,
+          fillPct: cap > 0 ? Math.round((enrolled / cap) * 100) : 0,
+          status: c.status,
+        };
+      }),
+      weekHeatmap: weekClassesRaw.map((c) => {
+        const cap = c.room.maxCapacity;
+        const enrolled = c._count.bookings;
+        return {
+          id: c.id,
+          startsAt: c.startsAt.toISOString(),
+          dayOfWeek: c.startsAt.getDay(),
+          hour: c.startsAt.getHours(),
+          enrolled,
+          capacity: cap,
+          fillPct: cap > 0 ? Math.round((enrolled / cap) * 100) : 0,
+        };
+      }),
+      lifecycle: {
+        lead: lifecycleGroups.find((g) => g.lifecycleStage === "lead")?._count ?? 0,
+        installed:
+          lifecycleGroups.find((g) => g.lifecycleStage === "installed")?._count ?? 0,
+        purchased:
+          lifecycleGroups.find((g) => g.lifecycleStage === "purchased")?._count ?? 0,
+        booked:
+          lifecycleGroups.find((g) => g.lifecycleStage === "booked")?._count ?? 0,
+        attended:
+          lifecycleGroups.find((g) => g.lifecycleStage === "attended")?._count ?? 0,
+        member:
+          lifecycleGroups.find((g) => g.lifecycleStage === "member")?._count ?? 0,
+      },
+      revenueMix: (() => {
+        const byType: Record<string, number> = {};
+        for (const p of monthPurchases) {
+          const t = p.package.type ?? "PACK";
+          byType[t] = (byType[t] ?? 0) + p.package.price;
+        }
+        return Object.entries(byType).map(([type, amount]) => ({
+          type,
+          amount,
+        }));
+      })(),
+      activeSubscriptionsCount: monthSubsPayments,
     });
   } catch (error) {
     console.error("GET /api/admin/reports error:", error);

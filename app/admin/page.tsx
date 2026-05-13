@@ -4,31 +4,42 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  CalendarCheck,
-  DollarSign,
-  PieChart,
-  UserPlus,
   TrendingUp,
   AlertTriangle,
   Clock,
   Package,
   Cake,
-  Users,
-  CheckCircle,
-  Calendar,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { KpiCard } from "@/components/admin/kpi-card";
 import { useBranding } from "@/components/branding-provider";
 import { RevenueChart } from "@/components/admin/revenue-chart";
 import { MgicAIBriefing } from "@/components/admin/MgicAI/BriefingCard";
 import { AdminActionItems } from "@/components/admin/action-items";
+import {
+  OnboardingChecklistHero,
+  useOnboardingChecklist,
+} from "@/components/admin/onboarding-checklist";
+import {
+  TodayTimeline,
+  type TodayClass,
+} from "@/components/admin/dashboard/today-timeline";
+import {
+  WeekHeatmap,
+  type HeatmapClass,
+} from "@/components/admin/dashboard/week-heatmap";
+import {
+  LifecycleFunnel,
+  type LifecycleData,
+} from "@/components/admin/dashboard/lifecycle-funnel";
+import {
+  RevenueMixDonut,
+  type RevenueMixSlice,
+} from "@/components/admin/dashboard/revenue-mix-donut";
 import { useTranslations } from "next-intl";
-import { cn, timeAgo, formatDate } from "@/lib/utils";
-import { useFormatMoney } from "@/components/tenant-provider";
+import { timeAgo, formatDate } from "@/lib/utils";
 
 interface DashboardData {
   bookingsToday: number;
@@ -77,6 +88,12 @@ interface DashboardData {
     image: string | null;
     birthday: string;
   }[];
+  // Hero visualization data
+  todayTimeline: TodayClass[];
+  weekHeatmap: HeatmapClass[];
+  lifecycle: LifecycleData;
+  revenueMix: RevenueMixSlice[];
+  activeSubscriptionsCount: number;
 }
 
 const stagger = {
@@ -93,7 +110,6 @@ export default function AdminDashboard() {
   const { studioName } = useBranding();
   const t = useTranslations("admin");
   const tc = useTranslations("common");
-  const formatCurrency = useFormatMoney();
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["admin-reports"],
     queryFn: async () => {
@@ -102,10 +118,13 @@ export default function AdminDashboard() {
       return res.json();
     },
   });
+  const { data: checklist } = useOnboardingChecklist();
 
   const totalAlerts =
     (data?.lowOccupancyClasses?.length ?? 0) +
     (data?.expiringPackages?.length ?? 0);
+
+  const isEmpty = checklist?.isStudioEmpty === true;
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -116,157 +135,69 @@ export default function AdminDashboard() {
 
       <MgicAIBriefing />
 
-      <AdminActionItems />
+      {/* Empty state: onboarding checklist replaces KPIs/visualizations entirely */}
+      {isEmpty && checklist && (
+        <OnboardingChecklistHero data={checklist} />
+      )}
 
-      {/* KPI Cards */}
-      <motion.div
-        variants={stagger}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
-      >
-        {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <motion.div key={i} variants={fadeUp}>
-              <Skeleton className="h-32 rounded-2xl" />
-            </motion.div>
-          ))
-        ) : (
-          <>
-            <motion.div variants={fadeUp}>
-              <KpiCard
-                icon={CalendarCheck}
-                label={t("bookingsToday")}
-                value={data?.bookingsToday ?? 0}
-                change={data?.bookingsTodayChange}
-                accentColor="var(--color-admin)"
-              />
-            </motion.div>
-            <motion.div variants={fadeUp}>
-              <KpiCard
-                icon={DollarSign}
-                label={t("revenueThisWeek")}
-                value={formatCurrency(data?.revenueThisWeek ?? 0)}
-                change={data?.revenueWeekChange}
-                accentColor="var(--color-accent)"
-              />
-            </motion.div>
-            <motion.div variants={fadeUp}>
-              <KpiCard
-                icon={PieChart}
-                label={t("avgOccupancy")}
-                value={`${data?.avgOccupancy ?? 0}%`}
-                change={data?.occupancyChange}
-                accentColor="#7C6D5D"
-              />
-            </motion.div>
-            <motion.div variants={fadeUp}>
-              <KpiCard
-                icon={UserPlus}
-                label={t("newClients")}
-                value={data?.newClientsThisWeek ?? 0}
-                change={data?.newClientsChange}
-                accentColor="var(--color-coach)"
-              />
-            </motion.div>
-          </>
-        )}
-      </motion.div>
+      {!isEmpty && (
+        <>
+          <AdminActionItems />
 
-      {/* Monthly Metrics */}
-      <motion.div
-        variants={stagger}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
-      >
-        {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <motion.div key={i} variants={fadeUp}>
-              <Skeleton className="h-24 rounded-2xl" />
-            </motion.div>
-          ))
-        ) : (
-          <>
-            <motion.div variants={fadeUp}>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-muted">
-                    <DollarSign className="h-4 w-4" />
-                    <span className="text-xs">{t("revenueThisMonth")}</span>
-                  </div>
-                  <p className="mt-1 font-mono text-lg font-bold">
-                    {formatCurrency(data?.revenueThisMonth ?? 0)}
-                  </p>
-                  {data?.revenueMonthChange !== undefined && (
-                    <span
-                      className={cn(
-                        "text-xs font-medium",
-                        data.revenueMonthChange >= 0
-                          ? "text-green-600"
-                          : "text-red-600",
-                      )}
-                    >
-                      {data.revenueMonthChange >= 0 ? "+" : ""}
-                      {data.revenueMonthChange}{t("vsLastMonth")}
-                    </span>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div variants={fadeUp}>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-muted">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-xs">{t("classesCompleted")}</span>
-                  </div>
-                  <p className="mt-1 font-mono text-lg font-bold">
-                    {data?.completedClassesMonth ?? 0}
-                  </p>
-                  <span className="text-xs text-muted">{t("classesThisMonth")}</span>
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div variants={fadeUp}>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-muted">
-                    <Users className="h-4 w-4" />
-                    <span className="text-xs">{t("activeMembers")}</span>
-                  </div>
-                  <p className="mt-1 font-mono text-lg font-bold">
-                    {data?.activeMembersCount ?? 0}
-                  </p>
-                  <span className="text-xs text-muted">
-                    {t("attendedIn30Days")}
-                  </span>
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div variants={fadeUp}>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-muted">
-                    <Calendar className="h-4 w-4" />
-                    <span className="text-xs">{t("today")}</span>
-                  </div>
-                  <p className="mt-1 font-mono text-lg font-bold">
-                    {data?.classesToday ?? 0}{" "}
-                    <span className="text-sm font-normal text-muted">
-                      {t("classesCount")}
-                    </span>
-                  </p>
-                  <span className="text-xs text-muted">
-                    {data?.attendanceToday ?? 0} {t("checkIns")}
-                  </span>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </>
-        )}
-      </motion.div>
+          {/* Hero visualizations replacing the old KPI grid */}
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            animate="show"
+            className="space-y-4"
+          >
+            {isLoading ? (
+              <>
+                <Skeleton className="h-32 rounded-2xl" />
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <Skeleton className="h-48 rounded-2xl" />
+                  <Skeleton className="h-48 rounded-2xl" />
+                  <Skeleton className="h-48 rounded-2xl" />
+                </div>
+              </>
+            ) : (
+              <>
+                <motion.div variants={fadeUp}>
+                  <TodayTimeline classes={data?.todayTimeline ?? []} />
+                </motion.div>
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <motion.div variants={fadeUp}>
+                    <WeekHeatmap classes={data?.weekHeatmap ?? []} />
+                  </motion.div>
+                  <motion.div variants={fadeUp}>
+                    <LifecycleFunnel
+                      data={
+                        data?.lifecycle ?? {
+                          lead: 0,
+                          installed: 0,
+                          purchased: 0,
+                          booked: 0,
+                          attended: 0,
+                          member: 0,
+                        }
+                      }
+                    />
+                  </motion.div>
+                  <motion.div variants={fadeUp}>
+                    <RevenueMixDonut
+                      mix={data?.revenueMix ?? []}
+                      activeSubsCount={data?.activeSubscriptionsCount ?? 0}
+                    />
+                  </motion.div>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </>
+      )}
 
+      {!isEmpty && (
+      <>
       {/* Charts + Recent */}
       <div className="grid gap-6 lg:grid-cols-3">
         <motion.div
@@ -518,6 +449,8 @@ export default function AdminDashboard() {
             </Card>
           </motion.div>
         )}
+      </>
+      )}
     </div>
   );
 }
