@@ -60,7 +60,7 @@ async function main() {
   for (const e of ents) console.log(`  ${e.tenant.slug.padEnd(8)} | ${e.type.padEnd(12)} | ${e.status} | id=${e.id}`);
 
   const pays = await prisma.stripePayment.findMany({
-    where: { userId: user.id },
+    where: { memberId: user.id },
     select: { id: true, amount: true, currency: true, status: true, type: true, tenant: { select: { slug: true } } },
   });
   console.log(`\nStripePayments: ${pays.length}`);
@@ -68,7 +68,7 @@ async function main() {
 
   const bookings = await prisma.booking.count({ where: { userId: user.id } });
   const customers = await prisma.stripeCustomer.findMany({
-    where: { userId: user.id },
+    where: { memberId: user.id },
     select: { id: true, stripeCustomerId: true, tenant: { select: { slug: true } } },
   });
   console.log(`\nBookings:           ${bookings}`);
