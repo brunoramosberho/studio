@@ -180,6 +180,11 @@ export function MgicAIBriefing() {
 
       if (fullText) {
         try { localStorage.setItem(todayKey(CACHE_KEY_PREFIX), fullText); } catch {}
+      } else {
+        // Stream finished with no text — Spark probably had nothing notable
+        // to report (empty studio, all-zero data). Treat as soft error so we
+        // render a fallback instead of an empty card.
+        setError(true);
       }
 
       setLoading(false);
@@ -270,9 +275,17 @@ export function MgicAIBriefing() {
               </div>
             </div>
           ) : error ? (
-            <p className="pl-[52px] text-sm text-muted">
-              No pude preparar el resumen hoy. Abre Spark para consultar.
-            </p>
+            <div className="space-y-3 pl-[52px]">
+              <p className="text-sm text-foreground/80 leading-relaxed">
+                {firstName}, aún no hay suficiente actividad para preparar un
+                resumen. En cuanto empieces a registrar clases, ventas y
+                check-ins, te paso lo más relevante cada día.
+              </p>
+              <p className="text-xs text-muted/70">
+                Mientras tanto, pregúntame lo que necesites — puedo armar
+                horarios, invitar coaches, crear clases y más.
+              </p>
+            </div>
           ) : (
             <div className="pl-[52px]">
               <BriefingMarkdown content={content} accentColor={colorAdmin} />

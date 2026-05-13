@@ -102,11 +102,18 @@ export function AdminActionItems() {
   const items = data?.items ?? [];
   if (items.length === 0) return null;
 
+  const hasUrgent = items.some((i) => i.severity === "urgent");
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {items.map((item) => (
-        <ActionPill key={item.key} item={item} />
-      ))}
+    <div className="flex flex-col gap-2">
+      <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+        {hasUrgent ? "Necesita tu atención" : "Para revisar"}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <ActionPill key={item.key} item={item} />
+        ))}
+      </div>
     </div>
   );
 }
