@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { getZone, getStatusForZone } from "@/lib/availability";
+import { notifyAdminsOfAvailabilityRequest } from "@/lib/availability-notifications";
 
 export async function GET() {
   try {
@@ -66,6 +67,32 @@ export async function POST(request: NextRequest) {
         status,
       },
     });
+
+    if (status === "pending_approval") {
+      const zone = block.startDate ? getZone(block.startDate, tenant) : "green";
+      const coachName =
+        session.user.name ?? session.user.email ?? "Un instructor";
+      notifyAdminsOfAvailabilityRequest({
+        tenantId: tenant.id,
+        tenantSlug: tenant.slug,
+        block: {
+          id: block.id,
+          type: block.type as "one_time" | "recurring",
+          startDate: block.startDate,
+          endDate: block.endDate,
+          dayOfWeek: block.dayOfWeek,
+          startTime: block.startTime,
+          endTime: block.endTime,
+          isAllDay: block.isAllDay,
+          reasonType: block.reasonType,
+          reasonNote: block.reasonNote,
+        },
+        coachName,
+        zone,
+      }).catch((err) => {
+        console.error("Failed to notify admins of availability request:", err);
+      });
+    }
 
     return NextResponse.json(block, { status: 201 });
   } catch (error) {

@@ -49,6 +49,57 @@ export type CoverageStatus =
   | "pending"
   | "empty";
 
+export interface AvailabilityBlockLite {
+  type: string;
+  dayOfWeek: number[];
+  startTime: string | null;
+  endTime: string | null;
+  startDate: Date | null;
+  endDate: Date | null;
+  isAllDay: boolean;
+  status: string;
+}
+
+/**
+ * Is the given hour on the given day blocked for this coach? Treats both
+ * `active` and `pending_approval` blocks as conservatively unavailable — admins
+ * should resolve the pending request before assigning a class.
+ */
+export function isHourBlocked(
+  coachBlocks: AvailabilityBlockLite[],
+  date: Date,
+  hour: number,
+): boolean {
+  const dow = getJsDow(date);
+  const dayStart = startOfDay(date);
+
+  for (const b of coachBlocks) {
+    if (b.status !== "active" && b.status !== "pending_approval") continue;
+
+    if (b.type === "one_time" && b.startDate && b.endDate) {
+      const s = startOfDay(b.startDate);
+      const e = startOfDay(b.endDate);
+      if (dayStart < s || dayStart > e) continue;
+      if (b.isAllDay) return true;
+      if (b.startTime && b.endTime) {
+        const sh = parseInt(b.startTime.split(":")[0]);
+        const eh = parseInt(b.endTime.split(":")[0]);
+        if (hour >= sh && hour < eh) return true;
+      } else {
+        return true;
+      }
+    }
+
+    if (b.type === "recurring" && b.dayOfWeek.includes(dow)) {
+      if (!b.startTime || !b.endTime) return true;
+      const sh = parseInt(b.startTime.split(":")[0]);
+      const eh = parseInt(b.endTime.split(":")[0]);
+      if (hour >= sh && hour < eh) return true;
+    }
+  }
+  return false;
+}
+
 export function getCoverageStatus(
   coachBlocks: {
     type: string;

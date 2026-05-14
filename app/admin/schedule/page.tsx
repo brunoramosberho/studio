@@ -11,6 +11,7 @@ import {
   Plus,
   X,
   Filter,
+  CalendarOff,
 } from "lucide-react";
 import {
   format,
@@ -34,6 +35,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn, formatTime, getWallClockInZone } from "@/lib/utils";
 import { ClassFormDialog } from "@/components/admin/class-form-dialog";
 import { ClassDetailDialog } from "@/components/admin/class-detail-dialog";
@@ -43,11 +50,26 @@ import type { ClassWithDetails } from "@/types";
 
 type ColorMode = "coach" | "classType";
 
+interface WeekSlotsResponse {
+  coaches: {
+    id: string;
+    userId: string;
+    name: string;
+    initials: string;
+    color: string;
+    image: string | null;
+  }[];
+  slots: Record<string, string[]>;
+  openHour: number;
+  closeHour: number;
+}
+
 export default function AdminSchedulePage() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [colorMode, setColorMode] = useState<ColorMode>("classType");
+  const [showAvailability, setShowAvailability] = useState(false);
 
   const [filterStudio, setFilterStudio] = useState<string>("all");
   const [filterCoach, setFilterCoach] = useState<string>("all");
@@ -74,6 +96,24 @@ export default function AdminSchedulePage() {
       return res.json();
     },
   });
+
+  const { data: weekSlots } = useQuery<WeekSlotsResponse>({
+    queryKey: ["admin-schedule-week-slots", from],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/admin/availability/week-slots?weekStart=${from}`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch week slots");
+      return res.json();
+    },
+    enabled: showAvailability,
+  });
+
+  const coachById = useMemo(() => {
+    const map = new Map<string, WeekSlotsResponse["coaches"][number]>();
+    for (const c of weekSlots?.coaches ?? []) map.set(c.id, c);
+    return map;
+  }, [weekSlots]);
 
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
   const hours = Array.from({ length: 16 }, (_, i) => i + 6);
@@ -164,6 +204,7 @@ export default function AdminSchedulePage() {
   }
 
   return (
+    <TooltipProvider delayDuration={120}>
     <div className="mx-auto max-w-7xl space-y-5">
       <SectionTabs tabs={SCHEDULE_TABS} ariaLabel="Schedule view" />
       {/* Header */}
@@ -174,6 +215,16 @@ export default function AdminSchedulePage() {
         </motion.div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant={showAvailability ? "secondary" : "ghost"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setShowAvailability((v) => !v)}
+            title="Mostrar disponibilidad de instructores"
+          >
+            <CalendarOff className="h-4 w-4" />
+            Disponibilidad
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -317,6 +368,17 @@ export default function AdminSchedulePage() {
                         wc.hour === hour
                       );
                     });
+                    const slotKey = `${format(day, "yyyy-MM-dd")}-${hour}`;
+                    const availableIds =
+                      showAvailability && weekSlots
+                        ? weekSlots.slots[slotKey] ?? []
+                        : [];
+                    // Skip coaches already assigned in this cell — their chip
+                    // is already implied by the class card.
+                    const teachingHere = new Set(dayClasses.map((c) => c.coach.id));
+                    const availableOthers = availableIds.filter(
+                      (id) => !teachingHere.has(id),
+                    );
                     return (
                       <div
                         key={day.toISOString()}
@@ -360,6 +422,72 @@ export default function AdminSchedulePage() {
                             </div>
                           );
                         })}
+                        {showAvailability && availableOthers.length > 0 && (
+                          <div
+                            className="mt-0.5 flex flex-wrap items-center gap-0.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {availableOthers.slice(0, 4).map((id) => {
+                              const coach = coachById.get(id);
+                              if (!coach) return null;
+                              return (
+                                <Tooltip key={id}>
+                                  <TooltipTrigger asChild>
+                                    <span
+                                      className="inline-flex h-[16px] min-w-[16px] cursor-default items-center justify-center rounded-full px-1 text-[8px] font-bold text-white ring-1 ring-white/60"
+                                      style={{ backgroundColor: coach.color }}
+                                    >
+                                      {coach.initials[0]}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="top"
+                                    className="px-2 py-1"
+                                  >
+                                    <span className="flex items-center gap-1.5">
+                                      <span
+                                        className="inline-block h-2 w-2 rounded-full"
+                                        style={{ backgroundColor: coach.color }}
+                                      />
+                                      {coach.name}
+                                    </span>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            })}
+                            {availableOthers.length > 4 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-default text-[8px] font-medium text-muted">
+                                    +{availableOthers.length - 4}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                  <div className="flex flex-col gap-1">
+                                    {availableOthers.slice(4).map((id) => {
+                                      const coach = coachById.get(id);
+                                      if (!coach) return null;
+                                      return (
+                                        <span
+                                          key={id}
+                                          className="flex items-center gap-1.5"
+                                        >
+                                          <span
+                                            className="inline-block h-2 w-2 rounded-full"
+                                            style={{
+                                              backgroundColor: coach.color,
+                                            }}
+                                          />
+                                          {coach.name}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -387,5 +515,6 @@ export default function AdminSchedulePage() {
         defaultTime={defaultTime}
       />
     </div>
+    </TooltipProvider>
   );
 }

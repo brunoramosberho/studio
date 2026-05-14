@@ -1208,3 +1208,279 @@ export async function sendSubstitutionRejected({
     console.error("Failed to send substitution rejected email:", error);
   }
 }
+
+const AVAILABILITY_REASON_LABELS: Record<string, string> = {
+  vacation: "Vacaciones",
+  personal: "Personal",
+  training: "Capacitación",
+  other: "Otro",
+};
+
+export async function sendAvailabilityRequestToAdmin({
+  to,
+  toName,
+  coachName,
+  type,
+  startDate,
+  endDate,
+  dayOfWeek,
+  startTime,
+  endTime,
+  isAllDay,
+  reasonType,
+  reasonNote,
+  zone,
+  reviewUrl,
+  branding,
+}: {
+  to: string;
+  toName: string;
+  coachName: string;
+  type: "one_time" | "recurring";
+  startDate: Date | null;
+  endDate: Date | null;
+  dayOfWeek: number[];
+  startTime: string | null;
+  endTime: string | null;
+  isAllDay: boolean;
+  reasonType: string;
+  reasonNote: string | null;
+  zone: "green" | "yellow" | "red";
+  reviewUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = toName?.split(" ")[0] || "";
+    const reasonLabel =
+      AVAILABILITY_REASON_LABELS[reasonType] || reasonType;
+
+    const dayNames = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
+    const rangeText =
+      type === "one_time" && startDate
+        ? endDate && startDate.getTime() !== endDate.getTime()
+          ? `${formatDate(startDate)} – ${formatDate(endDate)}`
+          : formatDate(startDate)
+        : `Recurrente · ${dayOfWeek
+            .map((d) => dayNames[d] ?? "")
+            .filter(Boolean)
+            .join(", ")}`;
+
+    const hoursText = isAllDay
+      ? "Todo el día"
+      : startTime && endTime
+        ? `${startTime} – ${endTime}`
+        : "Todo el día";
+
+    const zoneBadge =
+      zone === "yellow"
+        ? `<span style="display:inline-block;background:#fef3c7;color:#92400e;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;">Zona amarilla</span>`
+        : zone === "red"
+          ? `<span style="display:inline-block;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;">Zona roja</span>`
+          : "";
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:${b.colorAccent}15;line-height:56px;font-size:28px;">&#128197;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          Solicitud de disponibilidad
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          ${firstName ? `Hola ${firstName}. ` : ""}<strong>${coachName}</strong> envió una solicitud para bloquear su disponibilidad.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>Fechas</strong></td>
+              <td style="padding:3px 0 3px 16px;">${rangeText}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Horario</strong></td>
+              <td style="padding:3px 0 3px 16px;">${hoursText}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Motivo</strong></td>
+              <td style="padding:3px 0 3px 16px;">${reasonLabel}</td>
+            </tr>
+            ${reasonNote ? `<tr>
+              <td style="padding:3px 0;vertical-align:top;"><strong>Nota</strong></td>
+              <td style="padding:3px 0 3px 16px;font-style:italic;">"${reasonNote}"</td>
+            </tr>` : ""}
+          </table>
+          ${zoneBadge ? `<div style="margin-top:12px;">${zoneBadge}</div>` : ""}
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${reviewUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Revisar solicitud
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Aprueba o rechaza la solicitud desde el panel de disponibilidad.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Disponibilidad: ${coachName} — ${rangeText}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send availability request email:", error);
+  }
+}
+
+export async function sendAvailabilityApprovedToCoach({
+  to,
+  toName,
+  startDate,
+  endDate,
+  reasonType,
+  scheduleUrl,
+  branding,
+}: {
+  to: string;
+  toName: string;
+  startDate: Date | null;
+  endDate: Date | null;
+  reasonType: string;
+  scheduleUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = toName?.split(" ")[0] || "";
+    const reasonLabel =
+      AVAILABILITY_REASON_LABELS[reasonType] || reasonType;
+    const rangeText =
+      startDate && endDate
+        ? startDate.getTime() === endDate.getTime()
+          ? formatDate(startDate)
+          : `${formatDate(startDate)} – ${formatDate(endDate)}`
+        : "las fechas solicitadas";
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#dcfce7;line-height:56px;font-size:28px;">&#10003;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          Solicitud aprobada
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          ${firstName ? `Hola ${firstName}, ` : ""}tu bloqueo de disponibilidad ha sido aprobado.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>Fechas</strong></td>
+              <td style="padding:3px 0 3px 16px;">${rangeText}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Motivo</strong></td>
+              <td style="padding:3px 0 3px 16px;">${reasonLabel}</td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:16px;">
+        <a href="${scheduleUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Ver mi disponibilidad
+        </a>
+      </div>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Disponibilidad aprobada — ${rangeText}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send availability approved email:", error);
+  }
+}
+
+export async function sendAvailabilityRejectedToCoach({
+  to,
+  toName,
+  startDate,
+  endDate,
+  reasonType,
+  rejectionNote,
+  scheduleUrl,
+  branding,
+}: {
+  to: string;
+  toName: string;
+  startDate: Date | null;
+  endDate: Date | null;
+  reasonType: string;
+  rejectionNote: string | null;
+  scheduleUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = toName?.split(" ")[0] || "";
+    const reasonLabel =
+      AVAILABILITY_REASON_LABELS[reasonType] || reasonType;
+    const rangeText =
+      startDate && endDate
+        ? startDate.getTime() === endDate.getTime()
+          ? formatDate(startDate)
+          : `${formatDate(startDate)} – ${formatDate(endDate)}`
+        : "las fechas solicitadas";
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#fef2f2;line-height:56px;font-size:28px;">&#10007;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          Solicitud no aprobada
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          ${firstName ? `Hola ${firstName}, ` : ""}tu solicitud de disponibilidad para ${rangeText} no fue aprobada.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>Fechas</strong></td>
+              <td style="padding:3px 0 3px 16px;">${rangeText}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Motivo</strong></td>
+              <td style="padding:3px 0 3px 16px;">${reasonLabel}</td>
+            </tr>
+          </table>
+          ${rejectionNote ? `<p style="margin:12px 0 0;padding:10px 12px;background:#ffffff;border-radius:10px;font-size:13px;color:${b.colorMuted};font-style:italic;">"${rejectionNote}"</p>` : ""}
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:16px;">
+        <a href="${scheduleUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Solicitar otra fecha
+        </a>
+      </div>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Disponibilidad no aprobada — ${rangeText}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send availability rejected email:", error);
+  }
+}

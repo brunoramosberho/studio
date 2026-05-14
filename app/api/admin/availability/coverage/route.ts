@@ -5,6 +5,8 @@ import { getCoverageStatus, type CoverageStatus } from "@/lib/availability";
 import {
   startOfWeek,
   endOfWeek,
+  startOfMonth,
+  endOfMonth,
   eachDayOfInterval,
   format,
   isToday,
@@ -15,11 +17,32 @@ export async function GET(request: NextRequest) {
   try {
     const { tenant } = await requireRole("ADMIN");
 
+    const view = (request.nextUrl.searchParams.get("view") || "week") as
+      | "week"
+      | "month";
     const weekStartParam = request.nextUrl.searchParams.get("weekStart");
     const baseDate = weekStartParam ? new Date(weekStartParam) : new Date();
-    const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(baseDate, { weekStartsOn: 1 });
-    const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+    // For month view we anchor on the calendar month containing baseDate, but
+    // pad to whole weeks (Mon–Sun) so the grid lays out cleanly.
+    let rangeStart: Date;
+    let rangeEnd: Date;
+    let label: string;
+    if (view === "month") {
+      const monthStart = startOfMonth(baseDate);
+      const monthEnd = endOfMonth(baseDate);
+      rangeStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+      rangeEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+      label = format(monthStart, "MMMM yyyy", { locale: es });
+    } else {
+      rangeStart = startOfWeek(baseDate, { weekStartsOn: 1 });
+      rangeEnd = endOfWeek(baseDate, { weekStartsOn: 1 });
+      label = `${format(rangeStart, "d", { locale: es })} – ${format(rangeEnd, "d MMM yyyy", { locale: es })}`;
+    }
+
+    const weekStart = rangeStart;
+    const weekEnd = rangeEnd;
+    const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
 
     const coachProfiles = await prisma.coachProfile.findMany({
       where: { tenantId: tenant.id },
@@ -113,10 +136,13 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({
+      view,
       coaches,
       dayHeaders,
       disciplines: classTypes.map((ct) => ct.name),
-      weekLabel: `${format(weekStart, "d", { locale: es })} – ${format(weekEnd, "d MMM yyyy", { locale: es })}`,
+      weekLabel: label,
+      rangeStart: format(rangeStart, "yyyy-MM-dd"),
+      rangeEnd: format(rangeEnd, "yyyy-MM-dd"),
     });
   } catch (error) {
     console.error("GET /api/admin/availability/coverage error:", error);

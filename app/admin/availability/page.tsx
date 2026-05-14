@@ -14,8 +14,11 @@ import {
 import {
   format,
   addWeeks,
+  addMonths,
   addDays,
   startOfWeek,
+  startOfMonth,
+  isSameMonth,
   isToday as dateIsToday,
   isTomorrow,
 } from "date-fns";
@@ -76,6 +79,7 @@ interface CoachCoverage {
 }
 
 interface CoverageData {
+  view: "week" | "month";
   coaches: CoachCoverage[];
   dayHeaders: {
     date: string;
@@ -85,6 +89,8 @@ interface CoverageData {
   }[];
   disciplines: string[];
   weekLabel: string;
+  rangeStart: string;
+  rangeEnd: string;
 }
 
 type HourlySlot = {
@@ -146,9 +152,12 @@ async function fetchPending(): Promise<PendingBlock[]> {
   return res.json();
 }
 
-async function fetchCoverage(weekStart: string): Promise<CoverageData> {
+async function fetchCoverage(
+  weekStart: string,
+  view: "week" | "month" = "week",
+): Promise<CoverageData> {
   const res = await fetch(
-    `/api/admin/availability/coverage?weekStart=${weekStart}`,
+    `/api/admin/availability/coverage?weekStart=${weekStart}&view=${view}`,
   );
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
@@ -538,19 +547,24 @@ function RequestCard({ block }: { block: PendingBlock }) {
 // ── Tab 2: Coverage ──
 
 function CoverageTab() {
+  const [view, setView] = useState<"week" | "month">("week");
   const [weekOffset, setWeekOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState(0);
   const [disciplineFilter, setDisciplineFilter] = useState<string | null>(null);
 
-  const weekStart = useMemo(() => {
+  const anchorDate = useMemo(() => {
+    if (view === "month") {
+      return addMonths(startOfMonth(new Date()), monthOffset);
+    }
     const base = startOfWeek(new Date(), { weekStartsOn: 1 });
     return addWeeks(base, weekOffset);
-  }, [weekOffset]);
+  }, [view, weekOffset, monthOffset]);
 
-  const weekStartStr = format(weekStart, "yyyy-MM-dd");
+  const anchorDateStr = format(anchorDate, "yyyy-MM-dd");
 
   const { data } = useQuery({
-    queryKey: ["admin-availability-coverage", weekStartStr],
-    queryFn: () => fetchCoverage(weekStartStr),
+    queryKey: ["admin-availability-coverage", anchorDateStr, view],
+    queryFn: () => fetchCoverage(anchorDateStr, view),
   });
 
   const { data: pending = [] } = useQuery({
@@ -559,6 +573,25 @@ function CoverageTab() {
   });
 
   const totalGaps = pending.reduce((s, b) => s + b.uncoveredCount, 0);
+
+  // Group days into weeks of 7 for the month view's calendar-style layout.
+  const dayGroups = useMemo<CoverageData["dayHeaders"][]>(() => {
+    if (!data) return [];
+    const groups: CoverageData["dayHeaders"][] = [];
+    for (let i = 0; i < data.dayHeaders.length; i += 7) {
+      groups.push(data.dayHeaders.slice(i, i + 7));
+    }
+    return groups;
+  }, [data]);
+
+  function handlePrev() {
+    if (view === "month") setMonthOffset((v) => v - 1);
+    else setWeekOffset((v) => v - 1);
+  }
+  function handleNext() {
+    if (view === "month") setMonthOffset((v) => v + 1);
+    else setWeekOffset((v) => v + 1);
+  }
 
   return (
     <div className="space-y-4">
@@ -581,20 +614,44 @@ function CoverageTab() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setWeekOffset((v) => v - 1)}
+            onClick={handlePrev}
             className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-stone-100"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <span className="min-w-[160px] text-center text-sm font-semibold text-stone-800">
+          <span className="min-w-[180px] text-center text-sm font-semibold capitalize text-stone-800">
             {data?.weekLabel ?? "…"}
           </span>
           <button
-            onClick={() => setWeekOffset((v) => v + 1)}
+            onClick={handleNext}
             className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-stone-100"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
+          <div className="ml-2 inline-flex rounded-lg bg-stone-100 p-0.5">
+            <button
+              onClick={() => setView("week")}
+              className={cn(
+                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                view === "week"
+                  ? "bg-card text-stone-900 shadow-sm"
+                  : "text-stone-500 hover:text-stone-700",
+              )}
+            >
+              Semana
+            </button>
+            <button
+              onClick={() => setView("month")}
+              className={cn(
+                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                view === "month"
+                  ? "bg-card text-stone-900 shadow-sm"
+                  : "text-stone-500 hover:text-stone-700",
+              )}
+            >
+              Mes
+            </button>
+          </div>
         </div>
 
         {data && data.disciplines.length > 0 && (
@@ -630,7 +687,7 @@ function CoverageTab() {
         )}
       </div>
 
-      {data && (
+      {data && view === "week" && (
         <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-card p-4">
           <div
             className="grid gap-px"
@@ -688,6 +745,127 @@ function CoverageTab() {
                 ))}
               </div>
             ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-4 border-t border-stone-100 pt-3">
+            <LegendItem className="bg-emerald-50" label="Disponible" />
+            <LegendItem className="bg-stone-200" label="Bloqueado (recurrente)" />
+            <LegendItem
+              className="bg-amber-50"
+              pattern
+              label="Pendiente aprobación"
+            />
+            <LegendItem className="bg-red-50" label="Sin cobertura" />
+            <LegendItem className="bg-stone-50" label="No programado" />
+          </div>
+        </div>
+      )}
+
+      {data && view === "month" && (
+        <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-card p-4">
+          <div className="space-y-3">
+            {dayGroups.map((week, weekIdx) => {
+              const firstOfMonth = data.dayHeaders.find(
+                (d) => new Date(d.date).getDate() === 1,
+              );
+              const monthDate = firstOfMonth
+                ? new Date(firstOfMonth.date)
+                : new Date(data.rangeStart);
+              return (
+                <div key={weekIdx}>
+                  <div
+                    className="grid gap-px"
+                    style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
+                  >
+                    <div />
+                    {week.map((dh) => {
+                      const dayDate = new Date(dh.date);
+                      const outOfMonth = !isSameMonth(dayDate, monthDate);
+                      return (
+                        <div
+                          key={dh.date}
+                          className="flex flex-col items-center py-1"
+                        >
+                          {weekIdx === 0 && (
+                            <span className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
+                              {dh.label}
+                            </span>
+                          )}
+                          <span
+                            className={cn(
+                              "mt-0.5 flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px] font-semibold",
+                              dh.isToday
+                                ? "bg-[#3730B8] text-white"
+                                : outOfMonth
+                                  ? "text-stone-300"
+                                  : "text-stone-700",
+                            )}
+                          >
+                            {dh.dayNum}
+                          </span>
+                        </div>
+                      );
+                    })}
+
+                    {data.coaches.map((coach) => (
+                      <div key={coach.id} className="contents">
+                        <div className="flex h-[24px] items-center gap-2 pr-2">
+                          {weekIdx === 0 ? (
+                            <>
+                              <div
+                                className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white"
+                                style={{ backgroundColor: coach.color }}
+                              >
+                                {coach.initials}
+                              </div>
+                              <span className="truncate text-xs font-medium text-stone-700">
+                                {coach.name.split(" ")[0]}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="truncate text-[10px] text-stone-400">
+                              {coach.name.split(" ")[0]}
+                            </span>
+                          )}
+                        </div>
+                        {week.map((dh) => {
+                          const day = coach.days.find((d) => d.date === dh.date);
+                          if (!day) {
+                            return (
+                              <div
+                                key={dh.date}
+                                className="h-[24px] rounded-sm bg-stone-50/40"
+                              />
+                            );
+                          }
+                          const dayDate = new Date(dh.date);
+                          const outOfMonth = !isSameMonth(dayDate, monthDate);
+                          return (
+                            <div
+                              key={dh.date}
+                              className={cn(
+                                "h-[24px] rounded-sm transition-colors",
+                                statusCellClass(day.status),
+                                outOfMonth && "opacity-30",
+                              )}
+                              style={
+                                day.status === "pending"
+                                  ? {
+                                      backgroundImage:
+                                        "repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(251,191,36,0.3) 3px, rgba(251,191,36,0.3) 6px)",
+                                    }
+                                  : undefined
+                              }
+                              title={`${coach.name} · ${day.label} · ${statusLabel(day.status)}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="mt-4 flex flex-wrap gap-4 border-t border-stone-100 pt-3">

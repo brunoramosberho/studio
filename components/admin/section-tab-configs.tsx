@@ -63,6 +63,7 @@ export const CHECK_IN_TABS: SectionTab[] = [
 export const TEAM_TABS: SectionTab[] = [
   { href: "/admin/coaches", labelKey: "tabs.coaches", icon: UserCog },
   { href: "/admin/availability", labelKey: "tabs.availability", icon: CalendarOff },
+  { href: "/admin/substitutions", labelKey: "tabs.substitutions", icon: ArrowRightLeft },
 ];
 
 export const FINANCE_TABS: SectionTab[] = [

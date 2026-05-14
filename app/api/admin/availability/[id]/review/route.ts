@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { notifyCoachOfAvailabilityReview } from "@/lib/availability-notifications";
 
 export async function PATCH(
   request: NextRequest,
@@ -19,6 +18,9 @@ export async function PATCH(
 
     const block = await prisma.coachAvailabilityBlock.findFirst({
       where: { id, tenantId: tenant.id, status: "pending_approval" },
+      include: {
+        coach: { select: { id: true, name: true, email: true } },
+      },
     });
 
     if (!block) {
@@ -27,11 +29,6 @@ export async function PATCH(
         { status: 404 },
       );
     }
-
-    const dateRange =
-      block.startDate && block.endDate
-        ? `${format(block.startDate, "d MMM", { locale: es })} – ${format(block.endDate, "d MMM", { locale: es })}`
-        : "fechas indicadas";
 
     if (action === "approve") {
       await prisma.coachAvailabilityBlock.update({
@@ -69,6 +66,21 @@ export async function PATCH(
         },
       });
     }
+
+    notifyCoachOfAvailabilityReview({
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      action,
+      coachUserId: block.coachId,
+      coachEmail: block.coach.email,
+      coachName: block.coach.name ?? "",
+      startDate: block.startDate,
+      endDate: block.endDate,
+      reasonType: block.reasonType,
+      rejectionNote: rejectionNote || null,
+    }).catch((err) => {
+      console.error("Failed to notify coach of availability review:", err);
+    });
 
     return NextResponse.json({ ok: true, action });
   } catch (error) {
