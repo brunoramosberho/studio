@@ -74,7 +74,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh bg-background">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-coach/10 bg-card/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-coach/10 bg-card/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
         <div className="h-1 bg-gradient-to-r from-coach/80 to-coach/30" />
         <div className="flex h-14 items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-3">

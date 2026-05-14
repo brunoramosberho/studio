@@ -126,6 +126,13 @@ export function middleware(req: NextRequest) {
 
   if (needsAdminAuth) {
     if (!hasAdminCookie(req)) {
+      // If the user already has a client session, try to silently promote it
+      // to an admin-portal session (same user) before falling back to /login.
+      if (hasClientCookie(req)) {
+        const ssoUrl = new URL("/api/auth/portal-sso", req.url);
+        ssoUrl.searchParams.set("to", pathname + req.nextUrl.search);
+        return NextResponse.redirect(ssoUrl);
+      }
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("portal", "admin");
       loginUrl.searchParams.set("callbackUrl", pathname);
