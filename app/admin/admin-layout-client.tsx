@@ -46,12 +46,14 @@ import {
   Home,
   GraduationCap,
   Sliders,
+  Clock,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useBranding } from "@/components/branding-provider";
 import { CreateClientDialog } from "@/components/admin/create-client-dialog";
+import { StaffClockInWidget } from "@/components/staff/clock-in-widget";
 import { MgicAIProvider, useMgicAI } from "@/components/admin/MgicAI";
 import { PosDialog } from "@/components/admin/pos/pos-dialog";
 import { usePosStore } from "@/store/pos-store";
@@ -108,6 +110,7 @@ const navGroups: NavGroup[] = [
       { href: "/admin/coaches", labelKey: "coaches", icon: UserCog, permission: "coaches", keywordsKey: "kw.coaches" },
       { href: "/admin/class-types", labelKey: "disciplines", icon: Dumbbell, permission: "disciplines", keywordsKey: "kw.disciplines" },
       { href: "/admin/team", labelKey: "staffPermissions", icon: ShieldCheck, permission: "team", keywordsKey: "kw.staff" },
+      { href: "/admin/staff", labelKey: "staffManagement", icon: Clock, permission: "staffManagement", keywordsKey: "kw.staffManagement" },
     ],
   },
   {
@@ -1109,6 +1112,12 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             {/* Search trigger */}
             <div className="px-3 pt-2">
               <SearchTrigger onClick={() => setPaletteOpen(true)} />
+            </div>
+
+            {/* Clock in/out widget (FRONT_DESK + ADMIN only; the widget
+                self-hides for other roles). */}
+            <div className="px-3 pt-2">
+              <StaffClockInWidget />
             </div>
 
             {/* Scrollable nav sections */}
