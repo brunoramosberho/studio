@@ -71,6 +71,7 @@ interface StudioData {
   city: City;
   rooms: RoomData[];
   productsEnabled: boolean;
+  geofenceRadiusMeters: number;
 }
 
 interface ClassType {
@@ -109,6 +110,7 @@ export default function AdminStudiosPage() {
     name: "", address: "", cityId: "",
     latitude: null as number | null, longitude: null as number | null,
     productsEnabled: false,
+    geofenceRadiusMeters: 150,
   });
 
   const [cityDialogOpen, setCityDialogOpen] = useState(false);
@@ -193,7 +195,7 @@ export default function AdminStudiosPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setStudioDialogOpen(false);
-      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false });
+      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false, geofenceRadiusMeters: 150 });
       toast.success(t("studioCreated"));
     },
     onError: (err: Error) => toast.error(err.message || t("studioCreateError")),
@@ -217,7 +219,7 @@ export default function AdminStudiosPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setStudioDialogOpen(false);
       setEditingStudio(null);
-      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false });
+      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false, geofenceRadiusMeters: 150 });
       toast.success(t("studioUpdated"));
     },
     onError: (err: Error) => toast.error(err.message || t("studioUpdateError")),
@@ -335,7 +337,7 @@ export default function AdminStudiosPage() {
 
   function openCreateStudio() {
     setEditingStudio(null);
-    setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false });
+    setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false, geofenceRadiusMeters: 150 });
     setStudioDialogOpen(true);
   }
 
@@ -345,6 +347,7 @@ export default function AdminStudiosPage() {
       name: studio.name, address: studio.address ?? "", cityId: studio.cityId,
       latitude: studio.latitude ?? null, longitude: studio.longitude ?? null,
       productsEnabled: studio.productsEnabled ?? false,
+      geofenceRadiusMeters: studio.geofenceRadiusMeters ?? 150,
     });
     setStudioDialogOpen(true);
   }
@@ -694,6 +697,43 @@ export default function AdminStudiosPage() {
                 <p className="text-[11px] text-muted">
                   {t("productPreOrderEnabledDesc")}
                 </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <MapPin className="h-3.5 w-3.5 text-muted" />
+                <p className="text-sm font-medium">Radio de checada (metros)</p>
+              </div>
+              <p className="mb-2 text-[11px] text-muted">
+                El staff sólo puede registrar entrada si está dentro de este radio
+                desde el centro del estudio. Recomendado 100-200m. Si el GPS es
+                impreciso en interiores, sube el valor.
+              </p>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={20}
+                  max={2000}
+                  step={10}
+                  value={studioForm.geofenceRadiusMeters}
+                  onChange={(e) =>
+                    setStudioForm((f) => ({
+                      ...f,
+                      geofenceRadiusMeters: Math.max(
+                        20,
+                        Math.min(2000, parseInt(e.target.value || "150", 10) || 150),
+                      ),
+                    }))
+                  }
+                  className="w-28"
+                />
+                <span className="text-xs text-muted">m</span>
+                {studioForm.latitude == null && (
+                  <span className="ml-auto text-[11px] text-amber-600 dark:text-amber-400">
+                    Configura la dirección para activar geofence
+                  </span>
+                )}
               </div>
             </div>
 

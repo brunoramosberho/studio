@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const { tenant } = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { name, address, cityId, latitude, longitude, productsEnabled } = body;
+    const { name, address, cityId, latitude, longitude, productsEnabled, geofenceRadiusMeters } = body;
 
     if (!name || !cityId) {
       return NextResponse.json({ error: "Name and city are required" }, { status: 400 });
@@ -50,6 +50,9 @@ export async function POST(request: NextRequest) {
         tenant: { connect: { id: tenant.id } },
         latitude: latitude ?? null, longitude: longitude ?? null,
         productsEnabled: productsEnabled === true,
+        ...(typeof geofenceRadiusMeters === "number" && geofenceRadiusMeters > 0
+          ? { geofenceRadiusMeters: Math.min(2000, Math.max(20, Math.round(geofenceRadiusMeters))) }
+          : {}),
       },
       include: {
         city: { include: { country: true } },

@@ -11,7 +11,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, address, cityId, latitude, longitude, productsEnabled } = body;
+    const { name, address, cityId, latitude, longitude, productsEnabled, geofenceRadiusMeters } = body;
 
     const studio = await prisma.studio.update({
       where: { id, tenantId: tenant.id },
@@ -22,6 +22,9 @@ export async function PUT(
         ...(latitude !== undefined && { latitude: latitude ?? null }),
         ...(longitude !== undefined && { longitude: longitude ?? null }),
         ...(productsEnabled !== undefined && { productsEnabled: productsEnabled === true }),
+        ...(typeof geofenceRadiusMeters === "number" && geofenceRadiusMeters > 0
+          ? { geofenceRadiusMeters: Math.min(2000, Math.max(20, Math.round(geofenceRadiusMeters))) }
+          : {}),
       },
       include: {
         city: { include: { country: true } },
