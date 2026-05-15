@@ -2,9 +2,28 @@ import { prisma } from "@/lib/db";
 
 export interface OnDemandAccessResult {
   hasAccess: boolean;
-  reason: "active_subscription" | "bundled_with_package" | "no_access";
+  reason:
+    | "active_subscription"
+    | "bundled_with_package"
+    | "free_video"
+    | "no_access";
   subscriptionId?: string;
   expiresAt?: Date;
+}
+
+/**
+ * Combine a per-tenant access decision with a per-video `isFree` flag.
+ * Free videos are watchable by any signed-in user regardless of subscription
+ * state — but the tenant-wide access fields (subscriptionId, expiresAt) stay
+ * as-is so callers can still show the user's plan status alongside.
+ */
+export function videoAccess(
+  tenantAccess: OnDemandAccessResult,
+  isFree: boolean,
+): OnDemandAccessResult {
+  if (tenantAccess.hasAccess) return tenantAccess;
+  if (isFree) return { hasAccess: true, reason: "free_video" };
+  return tenantAccess;
 }
 
 /**

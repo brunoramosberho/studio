@@ -206,6 +206,7 @@ model Tenant {
   discountCodes        DiscountCode[]
   giftPackages         GiftPackage[]
   sparkFeatureRequests SparkFeatureRequest[]
+  schedulePlans        SchedulePlanConversation[]
 
   entitlements  Entitlement[]
   revenueEvents RevenueEvent[]
@@ -216,6 +217,7 @@ model Tenant {
   onDemandVideos         OnDemandVideo[]
   onDemandConfig         OnDemandConfig?
   onDemandStreamSessions OnDemandStreamSession[]
+  onDemandCategories     OnDemandCategory[]
 
   // ── Staff management (clock-in, payroll, commissions) ──
   // Auto-close an OPEN StaffShift after this many hours. Prevents a forgotten
@@ -2483,7 +2485,13 @@ model OnDemandVideo {
   classTypeId String?
   classType   ClassType? @relation(fields: [classTypeId], references: [id], onDelete: SetNull)
 
+  categoryId String?
+  category   OnDemandCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   level Level @default(ALL)
+
+  // Free videos are playable without an on-demand subscription (login still required).
+  isFree Boolean @default(false)
 
   durationSeconds Int?
   widthPx         Int?
@@ -2506,6 +2514,28 @@ model OnDemandVideo {
   @@index([tenantId, status])
   @@index([coachProfileId])
   @@index([classTypeId])
+  @@index([categoryId])
+}
+
+// Admin-managed categories for organising the on-demand library (e.g.
+// "Yoga", "HIIT", "Pilates en casa"). Tenant-scoped. Soft-deactivated via
+// isActive — videos retain the FK if a category is hidden.
+model OnDemandCategory {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name      String
+  color     String  @default("#C9A96E")
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  videos OnDemandVideo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, isActive, sortOrder])
 }
 
 // Singleton-per-tenant config for the on-demand product (price, copy, link to
@@ -2846,4 +2876,53 @@ model StaffCommissionEarning {
   @@index([tenantId, userId, occurredAt])
   @@index([tenantId, studioId, occurredAt])
   @@index([tenantId, status])
+}
+
+// ── Spark Schedule Planner ──
+//
+// Multi-turn conversations between an admin and Spark to build a class
+// schedule. Spark gathers constraints (studios, time windows to exclude,
+// discipline mix, horizon, instructor caps) across the conversation,
+// analyses availability and historical fill rates, and proposes classes
+// the admin can review and apply in bulk. `contextJson` holds the
+// running structured constraints; `proposalJson` holds the latest
+// pending proposal (a list of classes ready to create); `appliedClassIds`
+// snapshots the class ids created when the admin applied the plan.
+enum SchedulePlanStatus {
+  GATHERING
+  PROPOSED
+  APPLIED
+  ARCHIVED
+}
+
+model SchedulePlanConversation {
+  id           String             @id @default(cuid())
+  tenantId    String
+  adminUserId String
+  title       String             @default("Planeación de horario")
+  status      SchedulePlanStatus @default(GATHERING)
+  contextJson Json?
+  proposalJson Json?
+  appliedClassIds String[]       @default([])
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant   Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  messages SchedulePlanMessage[]
+
+  @@index([tenantId, adminUserId, updatedAt])
+  @@index([tenantId, status])
+}
+
+model SchedulePlanMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  content        String   @db.Text
+  toolsUsed      String[] @default([])
+  createdAt      DateTime @default(now())
+
+  conversation SchedulePlanConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }

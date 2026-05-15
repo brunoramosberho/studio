@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 
 interface UploadDialogProps {
   open: boolean;
@@ -40,6 +41,13 @@ interface ClassTypeOption {
   name: string;
 }
 
+interface CategoryOption {
+  id: string;
+  name: string;
+  color: string;
+  isActive: boolean;
+}
+
 type Level = "ALL" | "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 
 export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogProps) {
@@ -50,6 +58,8 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
   const [description, setDescription] = useState("");
   const [coachProfileId, setCoachProfileId] = useState<string>("");
   const [classTypeId, setClassTypeId] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string>("");
+  const [isFree, setIsFree] = useState(false);
   const [level, setLevel] = useState<Level>("ALL");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState<number>(0);
@@ -78,6 +88,16 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
     },
   });
 
+  const { data: categories } = useQuery({
+    queryKey: ["admin-on-demand-categories"],
+    enabled: open,
+    queryFn: async () => {
+      const res = await fetch("/api/admin/on-demand/categories");
+      if (!res.ok) return { categories: [] as CategoryOption[] };
+      return (await res.json()) as { categories: CategoryOption[] };
+    },
+  });
+
   useEffect(() => {
     if (!open) {
       uploadAbort.current?.abort();
@@ -85,6 +105,8 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
       setDescription("");
       setCoachProfileId("");
       setClassTypeId("");
+      setCategoryId("");
+      setIsFree(false);
       setLevel("ALL");
       setFile(null);
       setProgress(0);
@@ -108,6 +130,8 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
           description: description.trim() || undefined,
           coachProfileId: coachProfileId || null,
           classTypeId: classTypeId || null,
+          categoryId: categoryId || null,
+          isFree,
           level,
           fileSize: file.size,
         }),
@@ -229,19 +253,52 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>{t("levelLabel")}</Label>
-            <Select value={level} onValueChange={(v) => setLevel(v as Level)} disabled={uploading}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">{t("levelAll")}</SelectItem>
-                <SelectItem value="BEGINNER">{t("levelBeginner")}</SelectItem>
-                <SelectItem value="INTERMEDIATE">{t("levelIntermediate")}</SelectItem>
-                <SelectItem value="ADVANCED">{t("levelAdvanced")}</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{t("categoryLabel")}</Label>
+              <Select
+                value={categoryId || "__none__"}
+                onValueChange={(v) => setCategoryId(v === "__none__" ? "" : v)}
+                disabled={uploading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("categoryPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{t("noCategory")}</SelectItem>
+                  {(categories?.categories ?? [])
+                    .filter((c) => c.isActive)
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("levelLabel")}</Label>
+              <Select value={level} onValueChange={(v) => setLevel(v as Level)} disabled={uploading}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">{t("levelAll")}</SelectItem>
+                  <SelectItem value="BEGINNER">{t("levelBeginner")}</SelectItem>
+                  <SelectItem value="INTERMEDIATE">{t("levelIntermediate")}</SelectItem>
+                  <SelectItem value="ADVANCED">{t("levelAdvanced")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-border/60 p-3">
+            <div className="min-w-0 flex-1">
+              <Label className="text-sm font-semibold">{t("freeLabel")}</Label>
+              <p className="mt-0.5 text-xs text-muted">{t("freeHelp")}</p>
+            </div>
+            <Switch checked={isFree} onCheckedChange={setIsFree} disabled={uploading} />
           </div>
 
           <div className="space-y-2">

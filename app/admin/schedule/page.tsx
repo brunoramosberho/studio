@@ -12,6 +12,7 @@ import {
   X,
   Filter,
   CalendarOff,
+  Sparkles,
 } from "lucide-react";
 import {
   format,
@@ -46,6 +47,7 @@ import { ClassFormDialog } from "@/components/admin/class-form-dialog";
 import { ClassDetailDialog } from "@/components/admin/class-detail-dialog";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { SCHEDULE_TABS } from "@/components/admin/section-tab-configs";
+import { PlannerPanel } from "@/components/admin/schedule-planner/PlannerPanel";
 import type { ClassWithDetails } from "@/types";
 
 type ColorMode = "coach" | "classType";
@@ -66,7 +68,6 @@ interface WeekSlotsResponse {
 
 export default function AdminSchedulePage() {
   const t = useTranslations("admin");
-  const tc = useTranslations("common");
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [colorMode, setColorMode] = useState<ColorMode>("classType");
   const [showAvailability, setShowAvailability] = useState(false);
@@ -82,6 +83,8 @@ export default function AdminSchedulePage() {
   const [editingClass, setEditingClass] = useState<ClassWithDetails | null>(null);
   const [defaultDate, setDefaultDate] = useState("");
   const [defaultTime, setDefaultTime] = useState("");
+
+  const [plannerOpen, setPlannerOpen] = useState(false);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -214,7 +217,15 @@ export default function AdminSchedulePage() {
           <p className="mt-1 text-sm text-muted">{t("scheduleSubtitle")}</p>
         </motion.div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => setPlannerOpen(true)}
+            size="sm"
+            className="gap-1.5 bg-gradient-to-r from-admin to-admin/80 text-white shadow-sm hover:from-admin/90 hover:to-admin/70"
+          >
+            <Sparkles className="h-4 w-4" />
+            Planea con Spark
+          </Button>
           <Button
             variant={showAvailability ? "secondary" : "ghost"}
             size="sm"
@@ -514,6 +525,8 @@ export default function AdminSchedulePage() {
         defaultDate={defaultDate}
         defaultTime={defaultTime}
       />
+
+      <PlannerPanel open={plannerOpen} onOpenChange={setPlannerOpen} />
     </div>
     </TooltipProvider>
   );

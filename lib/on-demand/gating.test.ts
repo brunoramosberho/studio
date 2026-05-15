@@ -10,7 +10,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-import { checkOnDemandAccess } from "./gating";
+import { checkOnDemandAccess, videoAccess } from "./gating";
 
 const NOW = new Date("2026-05-01T12:00:00Z");
 const FUTURE = new Date("2026-06-01T12:00:00Z");
@@ -112,6 +112,30 @@ describe("checkOnDemandAccess", () => {
     });
 
     expect(result.hasAccess).toBe(false);
+  });
+
+  it("videoAccess: returns subscription access untouched when the user already has access", () => {
+    const tenant = {
+      hasAccess: true as const,
+      reason: "active_subscription" as const,
+      subscriptionId: "sub-1",
+      expiresAt: FUTURE,
+    };
+    expect(videoAccess(tenant, true)).toBe(tenant);
+    expect(videoAccess(tenant, false)).toBe(tenant);
+  });
+
+  it("videoAccess: grants free_video access when the video is free and user has no sub", () => {
+    const tenant = { hasAccess: false as const, reason: "no_access" as const };
+    expect(videoAccess(tenant, true)).toEqual({
+      hasAccess: true,
+      reason: "free_video",
+    });
+  });
+
+  it("videoAccess: leaves no_access when video is not free and user has no sub", () => {
+    const tenant = { hasAccess: false as const, reason: "no_access" as const };
+    expect(videoAccess(tenant, false)).toBe(tenant);
   });
 
   it("queries with the right active+future-period filter", async () => {

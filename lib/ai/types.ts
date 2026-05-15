@@ -42,9 +42,15 @@ export interface ConfirmationRequiredEvent {
   }[];
 }
 
+export interface ProposalReadyEvent {
+  type: "proposal_ready";
+  conversationId: string;
+}
+
 export type StreamEvent =
   | ToolCallEvent
   | TextDeltaEvent
   | DoneEvent
   | ErrorEvent
-  | ConfirmationRequiredEvent;
+  | ConfirmationRequiredEvent
+  | ProposalReadyEvent;

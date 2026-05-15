@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const coachProfileId = searchParams.get("coachProfileId");
     const classTypeId = searchParams.get("classTypeId");
+    const categoryId = searchParams.get("categoryId");
     const minDuration = searchParams.get("minDurationMinutes");
     const maxDuration = searchParams.get("maxDurationMinutes");
 
@@ -37,22 +38,31 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const videos = await prisma.onDemandVideo.findMany({
-      where: {
-        tenantId: tenant.id,
-        published: true,
-        status: "ready",
-        ...(coachProfileId && { coachProfileId }),
-        ...(classTypeId && { classTypeId }),
-        ...(minDuration && { durationSeconds: { gte: Number(minDuration) * 60 } }),
-        ...(maxDuration && { durationSeconds: { lte: Number(maxDuration) * 60 } }),
-      },
-      include: {
-        coachProfile: { select: { id: true, name: true, photoUrl: true } },
-        classType: { select: { id: true, name: true, color: true } },
-      },
-      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    });
+    const [videos, categories] = await Promise.all([
+      prisma.onDemandVideo.findMany({
+        where: {
+          tenantId: tenant.id,
+          published: true,
+          status: "ready",
+          ...(coachProfileId && { coachProfileId }),
+          ...(classTypeId && { classTypeId }),
+          ...(categoryId && { categoryId }),
+          ...(minDuration && { durationSeconds: { gte: Number(minDuration) * 60 } }),
+          ...(maxDuration && { durationSeconds: { lte: Number(maxDuration) * 60 } }),
+        },
+        include: {
+          coachProfile: { select: { id: true, name: true, photoUrl: true } },
+          classType: { select: { id: true, name: true, color: true } },
+          category: { select: { id: true, name: true, color: true } },
+        },
+        orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+      }),
+      prisma.onDemandCategory.findMany({
+        where: { tenantId: tenant.id, isActive: true },
+        select: { id: true, name: true, color: true, sortOrder: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      }),
+    ]);
 
     const withSignedThumbs = await Promise.all(
       videos.map(async (v) => {
@@ -80,6 +90,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       videos: withSignedThumbs,
+      categories,
       config: config
         ? {
             enabled: config.enabled,

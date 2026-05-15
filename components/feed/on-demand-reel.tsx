@@ -4,18 +4,20 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRef } from "react";
-import { Clock, Lock, PlayCircle, Video } from "lucide-react";
+import { Clock, Lock, PlayCircle, Sparkles, Video } from "lucide-react";
 
 interface VideoCard {
   id: string;
   title: string;
   durationSeconds: number | null;
+  isFree: boolean;
   thumbnailUrl: string | null;
   cloudflareThumbnailUrl: string | null;
   signedThumbnailUrl: string | null;
   level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "ALL";
   coachProfile: { id: string; name: string } | null;
   classType: { id: string; name: string; color: string } | null;
+  category: { id: string; name: string; color: string } | null;
 }
 
 interface CatalogResponse {
@@ -41,6 +43,7 @@ function formatDuration(seconds: number | null): string | null {
  */
 export function OnDemandReel() {
   const t = useTranslations("feed");
+  const tOd = useTranslations("onDemand");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data } = useQuery({
@@ -115,13 +118,21 @@ export function OnDemandReel() {
                 {/* Play icon */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
-                    {hasAccess ? (
+                    {hasAccess || v.isFree ? (
                       <PlayCircle className="h-7 w-7 text-white" />
                     ) : (
                       <Lock className="h-5 w-5 text-white" />
                     )}
                   </div>
                 </div>
+
+                {/* Free badge top-right */}
+                {v.isFree && (
+                  <div className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                    <Sparkles className="h-3 w-3" />
+                    {tOd("freeBadge")}
+                  </div>
+                )}
 
                 {/* Duration pill */}
                 {duration && (
@@ -131,15 +142,22 @@ export function OnDemandReel() {
                   </div>
                 )}
 
-                {/* Discipline pill bottom-left */}
-                {v.classType && (
+                {/* Bottom-left pill: category if assigned, otherwise discipline */}
+                {v.category ? (
+                  <div
+                    className="absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+                    style={{ backgroundColor: v.category.color }}
+                  >
+                    {v.category.name}
+                  </div>
+                ) : v.classType ? (
                   <div
                     className="absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
                     style={{ backgroundColor: v.classType.color }}
                   >
                     {v.classType.name}
                   </div>
-                )}
+                ) : null}
               </div>
 
               <div className="mt-2 space-y-0.5">
