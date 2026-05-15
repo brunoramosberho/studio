@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     if (all) {
       await requireRole("ADMIN");
       const packages = await prisma.package.findMany({
-        where: { tenantId: tenant.id },
+        where: { tenantId: tenant.id, deletedAt: null },
         orderBy: [{ sortOrder: "asc" }, { price: "asc" }],
         include: {
           classTypes: { select: { id: true, name: true } },
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     }
 
     const packages = await prisma.package.findMany({
-      where: { isActive: true, tenantId: tenant.id, ...countryFilter },
+      where: { isActive: true, deletedAt: null, tenantId: tenant.id, ...countryFilter },
       orderBy: [{ sortOrder: "asc" }, { price: "asc" }],
       include: {
         classTypes: { select: { id: true, name: true } },
