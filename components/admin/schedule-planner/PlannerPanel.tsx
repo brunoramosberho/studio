@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X,
@@ -10,6 +10,8 @@ import {
   Trash2,
   Eye,
   Sparkles,
+  PanelRight,
+  PanelRightClose,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
@@ -24,6 +26,16 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+type PanelMode = "sidebar" | "floating";
+
+const DEFAULT_PANEL_WIDTH = 480;
+const MIN_PANEL_WIDTH = 360;
+const MAX_PANEL_WIDTH = 700;
+const MODE_KEY = "schedule-planner-mode";
+const WIDTH_KEY = "schedule-planner-width";
+// Matches MgicAI sidebar: panel sits below the admin top bar.
+const HEADER_HEIGHT = "calc(3.5rem + 4px)";
+
 export function PlannerPanel({ open, onOpenChange }: Props) {
   const planner = useSchedulePlanner();
   const { studioName, colorAdmin } = useBranding();
@@ -31,6 +43,38 @@ export function PlannerPanel({ open, onOpenChange }: Props) {
   const [showHistory, setShowHistory] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const lastOpenedProposalAt = useRef<string | null>(null);
+  const [mode, setModeState] = useState<PanelMode>("sidebar");
+  const [panelWidth, setPanelWidthState] = useState(DEFAULT_PANEL_WIDTH);
+
+  useEffect(() => {
+    try {
+      const savedMode = localStorage.getItem(MODE_KEY) as PanelMode | null;
+      if (savedMode === "sidebar" || savedMode === "floating") setModeState(savedMode);
+      const savedWidth = localStorage.getItem(WIDTH_KEY);
+      if (savedWidth) {
+        const w = parseInt(savedWidth, 10);
+        if (w >= MIN_PANEL_WIDTH && w <= MAX_PANEL_WIDTH) setPanelWidthState(w);
+      }
+    } catch {}
+  }, []);
+
+  const setMode = useCallback((m: PanelMode) => {
+    setModeState(m);
+    try { localStorage.setItem(MODE_KEY, m); } catch {}
+  }, []);
+
+  const setPanelWidth = useCallback((w: number) => {
+    const clamped = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, w));
+    setPanelWidthState(clamped);
+    try { localStorage.setItem(WIDTH_KEY, String(clamped)); } catch {}
+  }, []);
+
+  const handleResize = useCallback(
+    (delta: number) => setPanelWidth(panelWidth + delta),
+    [panelWidth, setPanelWidth],
+  );
+
+  const isSidebar = mode === "sidebar";
 
   // Auto-open the review modal when a fresh proposal lands.
   useEffect(() => {
@@ -75,20 +119,39 @@ export function PlannerPanel({ open, onOpenChange }: Props) {
       <AnimatePresence>
         {open && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-[2px]"
-              onClick={() => onOpenChange(false)}
-            />
+            {/* Backdrop only in floating mode — sidebar mode coexists with the schedule. */}
+            {!isSidebar && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-[2px]"
+                onClick={() => onOpenChange(false)}
+              />
+            )}
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 280 }}
-              className="fixed right-0 top-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-border/50 bg-card shadow-2xl"
+              className={cn(
+                "fixed right-0 flex max-w-full flex-col border-l border-border/50 bg-card",
+                isSidebar
+                  ? "z-30 shadow-sm"
+                  : "top-0 z-50 h-dvh shadow-2xl",
+              )}
+              style={{
+                width: `${panelWidth}px`,
+                ...(isSidebar
+                  ? { top: HEADER_HEIGHT, height: `calc(100dvh - ${HEADER_HEIGHT})` }
+                  : {}),
+              }}
             >
+              {isSidebar && (
+                <div className="hidden sm:block">
+                  <PlannerResizeHandle onResize={handleResize} />
+                </div>
+              )}
               <div
                 className="flex shrink-0 items-center justify-between px-4 py-3"
                 style={{ backgroundColor: colorAdmin }}
@@ -131,6 +194,17 @@ export function PlannerPanel({ open, onOpenChange }: Props) {
                     title="Historial"
                   >
                     <History className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setMode(isSidebar ? "floating" : "sidebar")}
+                    className="hidden h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:flex"
+                    title={isSidebar ? "Modo flotante" : "Modo sidebar"}
+                  >
+                    {isSidebar ? (
+                      <PanelRightClose className="h-3.5 w-3.5" />
+                    ) : (
+                      <PanelRight className="h-3.5 w-3.5" />
+                    )}
                   </button>
                   <button
                     onClick={() => onOpenChange(false)}
@@ -211,6 +285,47 @@ export function PlannerPanel({ open, onOpenChange }: Props) {
         }}
       />
     </>
+  );
+}
+
+function PlannerResizeHandle({ onResize }: { onResize: (delta: number) => void }) {
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    isDragging.current = true;
+    startX.current = e.clientX;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging.current) return;
+      const delta = startX.current - e.clientX;
+      startX.current = e.clientX;
+      onResize(delta);
+    },
+    [onResize],
+  );
+
+  const handlePointerUp = useCallback(() => {
+    isDragging.current = false;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  }, []);
+
+  return (
+    <div
+      className="absolute left-0 top-0 z-10 flex h-full w-2 cursor-col-resize items-center justify-center hover:bg-admin/10 active:bg-admin/20"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      <div className="h-8 w-0.5 rounded-full bg-border/60" />
+    </div>
   );
 }
 
