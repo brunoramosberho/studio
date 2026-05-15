@@ -44,7 +44,11 @@ export type AdminPermission =
   | "team"
   | "studios"
   | "language"
-  | "embed";
+  | "embed"
+  // Staff management (pay rates, commission rules, payroll reports, edit
+  // shifts). ADMIN-only. FRONT_DESK can self-clock-in and view their own
+  // timesheet without this permission.
+  | "staffManagement";
 
 const ALL_PERMISSIONS: AdminPermission[] = [
   "dashboard", "schedule", "classes", "checkIn", "noShowReview", "clients",
@@ -54,6 +58,7 @@ const ALL_PERMISSIONS: AdminPermission[] = [
   "reports", "analytics", "conversion",
   "marketing", "highlights", "referrals",
   "billing", "policies", "waiver", "branding", "team", "studios", "language", "embed",
+  "staffManagement",
 ];
 
 const FRONT_DESK_PERMISSIONS: Set<AdminPermission> = new Set([
