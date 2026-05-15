@@ -41,29 +41,29 @@ export function CustomerStep() {
   } = usePosStore();
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { data: clients = [], isLoading } = useQuery<ClientResult[]>({
-    queryKey: ["admin-clients-search"],
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search.trim()), 200);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  const { data: filtered = [], isLoading } = useQuery<ClientResult[]>({
+    queryKey: ["admin-clients-search", debouncedSearch],
     queryFn: async () => {
-      const res = await fetch("/api/admin/clients");
+      const qs = new URLSearchParams();
+      if (debouncedSearch) qs.set("q", debouncedSearch);
+      const res = await fetch(`/api/admin/clients/search?${qs.toString()}`);
       if (!res.ok) return [];
       return res.json();
     },
     staleTime: 30_000,
   });
-
-  const filtered = search.trim()
-    ? clients.filter(
-        (c) =>
-          c.name?.toLowerCase().includes(search.toLowerCase()) ||
-          c.email.toLowerCase().includes(search.toLowerCase()),
-      )
-    : clients;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
