@@ -884,11 +884,40 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     [openPOS],
   );
 
+  // Verify-before-redirect: when nested SessionProviders share next-auth's
+  // module-level singleton (one for the client portal in app/providers.tsx,
+  // one here for the admin portal), `useSession()` can transiently report
+  // `unauthenticated` even though the admin cookie is still valid — that bug
+  // was kicking admins out of /admin/platforms and /admin/settings/embed.
+  // Confirm with a direct fetch to /api/auth-admin/session before redirecting,
+  // and pass `portal=admin` + `callbackUrl` so the user lands back where they
+  // were instead of on the client login.
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/login");
-    }
-  }, [status, router]);
+    if (status !== "unauthenticated") return;
+    let cancelled = false;
+    const verify = async () => {
+      try {
+        const res = await fetch("/api/auth-admin/session", {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (cancelled) return;
+        const data = res.ok ? await res.json() : null;
+        if (data && (data as { user?: unknown }).user) return; // false alarm
+        const target = `/login?portal=admin&callbackUrl=${encodeURIComponent(
+          pathname || "/admin",
+        )}`;
+        router.replace(target);
+      } catch {
+        // Network blip — don't kick the user out
+      }
+    };
+    const t = setTimeout(verify, 800);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [status, router, pathname]);
 
   // Global keyboard shortcut for the palette
   useEffect(() => {
@@ -943,7 +972,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, [session?.user]);
 
-  if (status === "loading") {
+  // Treat "unauthenticated" the same as "loading" until the verification
+  // effect above either confirms the user is gone (it redirects) or learns it
+  // was a false alarm (status flips back to "authenticated").
+  if (status === "loading" || status === "unauthenticated") {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -952,10 +984,6 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
-  }
-
-  if (status === "unauthenticated") {
-    return null;
   }
 
   const userName = session?.user?.name ?? "Admin";
