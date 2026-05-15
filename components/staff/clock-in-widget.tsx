@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Clock, MapPin, Loader2, LogIn, LogOut, AlertCircle } from "lucide-react";
+import { Clock, MapPin, Loader2, LogIn, LogOut, AlertCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -283,6 +284,13 @@ export function StaffClockInWidget() {
           {extraMessage}
         </div>
       )}
+      <Link
+        href="/admin/me/timesheet"
+        className="flex items-center justify-between rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      >
+        <span>Ver mis horas y nómina</span>
+        <ChevronRight className="h-3.5 w-3.5" />
+      </Link>
     </div>
   );
 }

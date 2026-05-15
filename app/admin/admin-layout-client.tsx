@@ -1127,6 +1127,23 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
             {/* Bottom: profile + location */}
             <div className="border-t border-border/40 p-3 space-y-1">
+              {(role === "FRONT_DESK" || role === "ADMIN") && (
+                <Link
+                  href="/admin/me/timesheet"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                    pathname === "/admin/me/timesheet"
+                      ? "bg-admin/8 font-semibold text-admin"
+                      : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+                  )}
+                >
+                  <Clock
+                    className={cn("h-4 w-4", pathname === "/admin/me/timesheet" ? "text-admin" : "text-foreground/40")}
+                    strokeWidth={pathname === "/admin/me/timesheet" ? 2.25 : 1.75}
+                  />
+                  Mi tiempo y nómina
+                </Link>
+              )}
               <Link
                 href="/admin/profile"
                 className={cn(
@@ -1178,6 +1195,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   />
                 </div>
 
+                <div className="px-3 pt-2">
+                  <StaffClockInWidget />
+                </div>
+
                 <nav className="flex-1 overflow-y-auto p-3">
                   <SidebarNav
                     stats={stats}
@@ -1189,6 +1210,24 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 </nav>
 
                 <div className="border-t border-border/40 p-3 space-y-1">
+                  {(role === "FRONT_DESK" || role === "ADMIN") && (
+                    <Link
+                      href="/admin/me/timesheet"
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] font-medium transition-colors",
+                        pathname === "/admin/me/timesheet"
+                          ? "bg-admin/8 font-semibold text-admin"
+                          : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+                      )}
+                    >
+                      <Clock
+                        className={cn("h-4 w-4", pathname === "/admin/me/timesheet" ? "text-admin" : "text-foreground/40")}
+                        strokeWidth={pathname === "/admin/me/timesheet" ? 2.25 : 1.75}
+                      />
+                      Mi tiempo y nómina
+                    </Link>
+                  )}
                   <Link
                     href="/admin/profile"
                     onClick={() => setSidebarOpen(false)}
