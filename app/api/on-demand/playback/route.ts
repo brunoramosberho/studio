@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
-import { checkOnDemandAccess, startStreamSession } from "@/lib/on-demand";
+import {
+  checkOnDemandAccess,
+  startStreamSession,
+  videoAccess,
+} from "@/lib/on-demand";
 import { signPlaybackToken } from "@/lib/cloudflare-stream";
 
 interface RequestBody {
@@ -50,10 +54,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
-    const access = await checkOnDemandAccess({
+    const tenantAccess = await checkOnDemandAccess({
       userId: ctx.session.user.id,
       tenantId: ctx.tenant.id,
     });
+    const access = videoAccess(tenantAccess, video.isFree);
     if (!access.hasAccess) {
       return NextResponse.json(
         { error: "No active on-demand subscription", access },

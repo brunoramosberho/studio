@@ -26,6 +26,7 @@ interface VideoDetail {
   title: string;
   description: string | null;
   durationSeconds: number | null;
+  isFree: boolean;
   thumbnailUrl: string | null;
   cloudflareThumbnailUrl: string | null;
   signedThumbnailUrl: string | null;
@@ -38,6 +39,7 @@ interface VideoDetail {
     bio: string | null;
   } | null;
   classType: { id: string; name: string; color: string } | null;
+  category: { id: string; name: string; color: string } | null;
 }
 
 interface AccessInfo {
@@ -92,7 +94,8 @@ export function OnDemandDetailClient({ videoId }: { videoId: string }) {
   const [showSubscribe, setShowSubscribe] = useState(false);
 
   const video = videoData?.video;
-  const hasAccess = catalogData?.access.hasAccess ?? false;
+  const tenantAccess = catalogData?.access.hasAccess ?? false;
+  const canWatch = tenantAccess || (video?.isFree ?? false);
   const poster = video?.thumbnailUrl ?? video?.signedThumbnailUrl ?? null;
 
   return (
@@ -111,14 +114,29 @@ export function OnDemandDetailClient({ videoId }: { videoId: string }) {
             <span className="hidden sm:inline">{t("backToCatalog")}</span>
           </Link>
 
-          {video?.classType && (
-            <span
-              className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
-              style={{ backgroundColor: video.classType.color }}
-            >
-              {video.classType.name}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5">
+            {video?.isFree && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                <Sparkles className="h-3 w-3" />
+                {t("freeBadge")}
+              </span>
+            )}
+            {video?.category ? (
+              <span
+                className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
+                style={{ backgroundColor: video.category.color }}
+              >
+                {video.category.name}
+              </span>
+            ) : video?.classType ? (
+              <span
+                className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
+                style={{ backgroundColor: video.classType.color }}
+              >
+                {video.classType.name}
+              </span>
+            ) : null}
+          </div>
         </div>
 
         {/* Loading state */}
@@ -137,7 +155,7 @@ export function OnDemandDetailClient({ videoId }: { videoId: string }) {
             {/* Player / locked state. Mobile: full-bleed (escape page padding).
                 Desktop: rounded card. */}
             <div className="-mx-4 sm:mx-0 sm:overflow-hidden sm:rounded-2xl">
-              {hasAccess ? (
+              {canWatch ? (
                 <OnDemandVideoPlayer
                   videoId={video.id}
                   title={video.title}
@@ -232,7 +250,7 @@ export function OnDemandDetailClient({ videoId }: { videoId: string }) {
             )}
 
             {/* Subscription paywall card (only when no access) */}
-            {!hasAccess && (
+            {!canWatch && (
               <Card
                 className="mt-4 overflow-hidden border-0 shadow-warm-md sm:mt-5"
                 style={{

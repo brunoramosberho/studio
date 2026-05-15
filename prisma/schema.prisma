@@ -216,6 +216,7 @@ model Tenant {
   onDemandVideos         OnDemandVideo[]
   onDemandConfig         OnDemandConfig?
   onDemandStreamSessions OnDemandStreamSession[]
+  onDemandCategories     OnDemandCategory[]
 }
 
 model InstagramIntegration {
@@ -2438,7 +2439,13 @@ model OnDemandVideo {
   classTypeId String?
   classType   ClassType? @relation(fields: [classTypeId], references: [id], onDelete: SetNull)
 
+  categoryId String?
+  category   OnDemandCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   level Level @default(ALL)
+
+  // Free videos are playable without an on-demand subscription (login still required).
+  isFree Boolean @default(false)
 
   durationSeconds Int?
   widthPx         Int?
@@ -2461,6 +2468,28 @@ model OnDemandVideo {
   @@index([tenantId, status])
   @@index([coachProfileId])
   @@index([classTypeId])
+  @@index([categoryId])
+}
+
+// Admin-managed categories for organising the on-demand library (e.g.
+// "Yoga", "HIIT", "Pilates en casa"). Tenant-scoped. Soft-deactivated via
+// isActive — videos retain the FK if a category is hidden.
+model OnDemandCategory {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name      String
+  color     String  @default("#C9A96E")
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  videos OnDemandVideo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, isActive, sortOrder])
 }
 
 // Singleton-per-tenant config for the on-demand product (price, copy, link to

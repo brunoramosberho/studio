@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("q")?.trim();
     const status = searchParams.get("status");
     const published = searchParams.get("published");
+    const categoryId = searchParams.get("categoryId");
 
     const videos = await prisma.onDemandVideo.findMany({
       where: {
@@ -28,10 +29,12 @@ export async function GET(request: NextRequest) {
         ...(status && ["processing", "ready", "errored"].includes(status) && { status: status as "processing" | "ready" | "errored" }),
         ...(published === "true" && { published: true }),
         ...(published === "false" && { published: false }),
+        ...(categoryId === "__none__" ? { categoryId: null } : categoryId ? { categoryId } : {}),
       },
       include: {
         coachProfile: { select: { id: true, name: true } },
         classType: { select: { id: true, name: true } },
+        category: { select: { id: true, name: true, color: true } },
       },
       orderBy: { createdAt: "desc" },
     });

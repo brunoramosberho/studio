@@ -29,6 +29,7 @@ export async function GET(
           },
         },
         classType: { select: { id: true, name: true, color: true } },
+        category: { select: { id: true, name: true, color: true } },
       },
     });
 
