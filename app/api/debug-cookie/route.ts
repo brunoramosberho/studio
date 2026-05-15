@@ -10,7 +10,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { CLIENT_SESSION_COOKIE, ADMIN_SESSION_COOKIE } from "@/lib/auth";
+import { CLIENT_SESSION_COOKIE, ADMIN_SESSION_COOKIE, auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
 export async function GET(request: NextRequest) {
@@ -61,6 +61,23 @@ export async function GET(request: NextRequest) {
       })
     : null;
 
+  // What does NextAuth's `auth()` itself return? If this is null while the
+  // cookie + DB session are valid, the bug is in the sessionCallback or the
+  // adapter call, not in cookie scoping.
+  let authResult: unknown;
+  let authError: string | null = null;
+  try {
+    const session = await auth();
+    authResult = session
+      ? {
+          userId: (session as { user?: { id?: string } }).user?.id ?? null,
+          expires: (session as { expires?: string }).expires ?? null,
+        }
+      : null;
+  } catch (e) {
+    authError = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+  }
+
   return NextResponse.json(
     {
       host,
@@ -71,6 +88,8 @@ export async function GET(request: NextRequest) {
       client: clientLookup,
       admin: adminLookup,
       validSessionsForUser: allUserSessions,
+      authResult,
+      authError,
       now: new Date(),
     },
     {
