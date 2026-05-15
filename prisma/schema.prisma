@@ -218,6 +218,17 @@ model Tenant {
   onDemandConfig         OnDemandConfig?
   onDemandStreamSessions OnDemandStreamSession[]
   onDemandCategories     OnDemandCategory[]
+
+  // ── Staff management (clock-in, payroll, commissions) ──
+  // Auto-close an OPEN StaffShift after this many hours. Prevents a forgotten
+  // clock-out from accruing 24h+ of payable time. The cron flips status to
+  // AUTO_CLOSED and synthesises a clock-out at clockInAt + maxShiftHours.
+  staffMaxShiftHours Int @default(12)
+
+  staffShifts              StaffShift[]
+  staffPayRates            StaffPayRate[]
+  staffCommissionRules     StaffCommissionRule[]
+  staffCommissionEarnings  StaffCommissionEarning[]
 }
 
 model InstagramIntegration {
@@ -273,6 +284,8 @@ model Membership {
   referrals              Membership[] @relation("MemberReferrals")
 
   referralRewards ReferralReward[] @relation("MemberReferralRewards")
+
+  staffShifts StaffShift[]
 
   @@unique([userId, tenantId])
   @@index([tenantId])
@@ -447,6 +460,14 @@ model User {
   debtsResolved            Debt[]                   @relation("DebtResolver")
   onDemandStreamSessions   OnDemandStreamSession[]
   wellhubUserLinks         WellhubUserLink[]
+
+  // ── Staff management ──
+  staffShifts            StaffShift[]              @relation("UserStaffShifts")
+  staffShiftsEdited      StaffShift[]              @relation("UserStaffShiftsEdited")
+  staffPayRates          StaffPayRate[]            @relation("UserStaffPayRates")
+  staffCommissionRules   StaffCommissionRule[]     @relation("UserStaffCommissionRules")
+  staffCommissionEarnings StaffCommissionEarning[] @relation("UserStaffCommissionEarnings")
+  stripePaymentsSold     StripePayment[]           @relation("StripePaymentSoldBy")
 
   @@index([countryId])
   @@index([cityId])
@@ -872,6 +893,8 @@ model Package {
   creditAllocations   PackageCreditAllocation[]
   onDemandConfigs     OnDemandConfig[]
 
+  staffCommissionRules StaffCommissionRule[]
+
   @@index([countryId])
   @@index([tenantId])
   @@index([tenantId, deletedAt])
@@ -1007,6 +1030,17 @@ model Studio {
 
   productAvailability  ProductStudioAvailability[]
   bookingProductOrders BookingProductOrder[]
+
+  // Radius (in meters) within which a staff member is allowed to clock-in/out
+  // for this studio. Used as the geofence when matching a GPS point to a
+  // studio at clock-in time. Defaults to a sensible value; tenants can tighten
+  // or loosen per-location depending on how rural / dense the area is.
+  geofenceRadiusMeters Int @default(150)
+
+  staffShifts      StaffShift[]
+  staffPayRates    StaffPayRate[]
+  staffCommissionRules    StaffCommissionRule[]
+  staffCommissionEarnings StaffCommissionEarning[]
 
   @@index([cityId])
   @@index([tenantId])
@@ -1396,6 +1430,8 @@ model Product {
 
   studioAvailability ProductStudioAvailability[]
   orderItems         BookingProductOrderItem[]
+
+  staffCommissionRules StaffCommissionRule[]
 
   @@index([tenantId])
   @@index([categoryId])
@@ -2053,18 +2089,24 @@ model StripePayment {
   conceptSub            String?
   referenceId           String?
   metadata              Json?
+  // Staff member credited as the seller — used for commission attribution on
+  // online sales. Set manually from admin; null = unattributed (no commission).
+  soldByUserId          String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   member User?  @relation("UserStripePayments", fields: [memberId], references: [id])
+  soldBy User?  @relation("StripePaymentSoldBy", fields: [soldByUserId], references: [id])
 
   bookingProductOrders BookingProductOrder[] @relation("StripePaymentForProductOrder")
+  staffCommissionEarnings StaffCommissionEarning[]
 
   @@index([tenantId])
   @@index([memberId])
   @@index([status])
   @@index([tenantId, createdAt])
+  @@index([tenantId, soldByUserId])
 }
 
 model Debt {
@@ -2125,9 +2167,12 @@ model PosTransaction {
   member      User?  @relation("PosMember", fields: [memberId], references: [id])
   processedBy User?  @relation("PosProcessedBy", fields: [processedById], references: [id])
 
+  staffCommissionEarnings StaffCommissionEarning[]
+
   @@index([tenantId])
   @@index([memberId])
   @@index([tenantId, createdAt])
+  @@index([tenantId, processedById])
 }
 
 model StripeCustomer {
@@ -2612,6 +2657,225 @@ model SubstitutionRequest {
   @@index([classId])
   @@index([requestingCoachId])
   @@index([targetCoachId, status])
+}
+
+// ── Staff Management ─────────────────────────────────────────────────────
+//
+// FRONT_DESK staff clock in/out at the start/end of their shift. Every
+// clock-in is geofenced against a Studio (Studio.geofenceRadiusMeters), and
+// the matched studio is snapshotted on the shift so payroll can apply per-
+// studio rates without re-computing geometry later.
+//
+// Money convention: integer cents (StaffPayRate / StaffCommissionEarning) to
+// align with the revenue subsystem. The legacy Float-based money columns on
+// PosTransaction / StripePayment are converted to cents at the point we read
+// from them — do not mix the two.
+
+enum ShiftStatus {
+  // Clock-in recorded, awaiting clock-out.
+  OPEN
+  // Clock-out recorded by the staff member themselves.
+  CLOSED
+  // Auto-closed by the staff-auto-close-shifts cron after exceeding
+  // tenant.staffMaxShiftHours. clockOutAt is synthesised; lat/lng are null.
+  AUTO_CLOSED
+  // Modified after the fact by an admin (edit reason recorded).
+  EDITED
+  // Voided by an admin (e.g. accidental clock-in). Excluded from payroll.
+  VOIDED
+}
+
+// A single shift = one clock-in plus its matching clock-out (if any).
+// Duration is denormalised on clock-out for fast payroll aggregation.
+model StaffShift {
+  id           String      @id @default(cuid())
+  tenantId     String
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User        @relation("UserStaffShifts", fields: [userId], references: [id], onDelete: Cascade)
+  membershipId String?
+  membership   Membership? @relation(fields: [membershipId], references: [id])
+  studioId     String
+  studio       Studio      @relation(fields: [studioId], references: [id])
+
+  clockInAt        DateTime
+  clockInLat       Float
+  clockInLng       Float
+  clockInAccuracy  Float?
+  // Distance from studio centroid at clock-in, in meters. Helpful for fraud
+  // audits ("staff member was 130m away — was that inside the building?").
+  clockInDistance  Float?
+
+  clockOutAt       DateTime?
+  clockOutLat      Float?
+  clockOutLng      Float?
+  clockOutAccuracy Float?
+  clockOutDistance Float?
+
+  status          ShiftStatus @default(OPEN)
+  // Minutes between clockInAt and clockOutAt. Populated on close so payroll
+  // sums don't have to walk every shift to compute duration.
+  durationMinutes Int?
+
+  notes String?
+
+  editedById String?
+  editedBy   User?     @relation("UserStaffShiftsEdited", fields: [editedById], references: [id])
+  editReason String?
+  editedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, userId, clockInAt])
+  @@index([tenantId, studioId, clockInAt])
+  @@index([tenantId, status])
+  @@index([userId, status])
+}
+
+// Per-staff compensation config. studioId nullable = applies to every studio
+// of the tenant (default rate); a non-null studioId overrides for that
+// specific location. effectiveFrom / effectiveTo support versioning: when a
+// raise lands you mark the old rate effectiveTo=today and create a new one
+// effectiveFrom=tomorrow without losing history.
+model StaffPayRate {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User    @relation("UserStaffPayRates", fields: [userId], references: [id], onDelete: Cascade)
+  studioId String?
+  studio   Studio? @relation(fields: [studioId], references: [id])
+
+  // Hourly wage in cents (e.g. 8000 = $80.00). Either field may be null;
+  // both populated means "fixed monthly + hourly top-up" if you want both,
+  // but the typical setup is one-or-the-other.
+  hourlyRateCents    Int?
+  monthlyFixedCents  Int?
+  currency           String @default("MXN")
+
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  isActive      Boolean   @default(true)
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, userId, isActive])
+  @@index([tenantId, studioId])
+}
+
+enum CommissionSource {
+  // Any sale via POS, regardless of type.
+  POS_ANY
+  // Package / pack / subscription SKU sold.
+  PACKAGE
+  // Physical product (merch, smoothie, etc.).
+  PRODUCT
+  // Recurring subscription payment (e.g. unlimited members).
+  SUBSCRIPTION
+  // Late cancel / no-show fee collected.
+  PENALTY
+}
+
+// A rule that grants commission to a staff member when a sale of a certain
+// type happens. percentBps OR flatAmountCents (not both). A rule can scope
+// to a specific Package or Product via packageId / productId; null = applies
+// to anything of that source type.
+model StaffCommissionRule {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User    @relation("UserStaffCommissionRules", fields: [userId], references: [id], onDelete: Cascade)
+  studioId String?
+  studio   Studio? @relation(fields: [studioId], references: [id])
+
+  sourceType CommissionSource
+  // Optional scope refinements. Both null = matches any PACKAGE / PRODUCT.
+  packageId  String?
+  package    Package? @relation(fields: [packageId], references: [id])
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id])
+
+  // Basis points: 500 = 5%, 1000 = 10%.
+  percentBps      Int?
+  // Alternative to percent: flat amount in cents per matching sale.
+  flatAmountCents Int?
+
+  isActive      Boolean   @default(true)
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  notes         String?
+
+  earnings StaffCommissionEarning[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, userId, isActive])
+  @@index([tenantId, sourceType])
+  @@index([tenantId, studioId])
+}
+
+enum CommissionStatus {
+  // Default — earned, will be included in payroll.
+  EARNED
+  // Marked paid in a payroll run.
+  PAID
+  // Voided (e.g. refunded sale, dispute) and excluded from payroll.
+  VOIDED
+}
+
+// Immutable snapshot of a commission accrued by a staff member on a single
+// sale. Created by the commission hook on PosTransaction completion or
+// StripePayment.success. The (sale, rule) uniqueness gives idempotency: the
+// hook can be replayed safely.
+model StaffCommissionEarning {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User    @relation("UserStaffCommissionEarnings", fields: [userId], references: [id], onDelete: Cascade)
+  studioId String?
+  studio   Studio? @relation(fields: [studioId], references: [id])
+
+  ruleId String?
+  rule   StaffCommissionRule? @relation(fields: [ruleId], references: [id])
+
+  sourceType CommissionSource
+
+  // Polymorphic source: exactly one of these is set.
+  posTransactionId String?
+  posTransaction   PosTransaction? @relation(fields: [posTransactionId], references: [id], onDelete: Cascade)
+  stripePaymentId  String?
+  stripePayment    StripePayment?  @relation(fields: [stripePaymentId], references: [id], onDelete: Cascade)
+
+  // The sale amount the commission was calculated against, in cents.
+  baseAmountCents       Int
+  percentBps            Int?
+  commissionAmountCents Int
+  currency              String @default("MXN")
+
+  // The wall-clock time of the sale (PosTransaction.createdAt or
+  // StripePayment.createdAt). Used for period-bucketing in payroll.
+  occurredAt DateTime
+  status     CommissionStatus @default(EARNED)
+  voidReason String?
+  // When marked PAID, the payroll period ("2026-05") it was paid out in.
+  paidInPeriod String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Idempotency: at most one earning per (sale, rule). Allows the hook to
+  // be re-run on webhook retries without double-counting.
+  @@unique([posTransactionId, ruleId])
+  @@unique([stripePaymentId, ruleId])
+  @@index([tenantId, userId, occurredAt])
+  @@index([tenantId, studioId, occurredAt])
+  @@index([tenantId, status])
 }
 
 // ── Spark Schedule Planner ──

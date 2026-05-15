@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
             ? item.referenceId
             : undefined;
 
-      await prisma.posTransaction.create({
+      const tx = await prisma.posTransaction.create({
         data: {
           tenantId,
           memberId: customerId,
@@ -327,6 +327,14 @@ export async function POST(request: NextRequest) {
           }),
         },
       });
+
+      // Fire-and-forget commission accrual. Idempotent — replays are safe.
+      try {
+        const { onPosTransactionCompleted } = await import("@/lib/staff");
+        await onPosTransactionCompleted(tx.id);
+      } catch (err) {
+        console.error("[pos-sale] commission accrual failed", tx.id, err);
+      }
     }
 
     // Update lifecycle
