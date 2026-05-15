@@ -9,6 +9,8 @@ interface RequestBody {
   description?: string;
   coachProfileId?: string | null;
   classTypeId?: string | null;
+  categoryId?: string | null;
+  isFree?: boolean;
   level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "ALL";
   maxDurationSeconds?: number;
   fileSize?: number;
@@ -73,6 +75,8 @@ export async function POST(request: NextRequest) {
         description: body.description?.trim() || null,
         coachProfileId: body.coachProfileId || null,
         classTypeId: body.classTypeId || null,
+        categoryId: body.categoryId || null,
+        isFree: body.isFree ?? false,
         level: body.level ?? "ALL",
         status: "processing",
         published: false,

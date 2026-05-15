@@ -14,6 +14,7 @@ import {
   EyeOff,
   AlertTriangle,
   Clock,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ interface VideoRow {
   description: string | null;
   status: "processing" | "ready" | "errored";
   published: boolean;
+  isFree: boolean;
   durationSeconds: number | null;
   thumbnailUrl: string | null;
   cloudflareThumbnailUrl: string | null;
@@ -40,6 +42,7 @@ interface VideoRow {
   createdAt: string;
   coachProfile: { id: string; name: string } | null;
   classType: { id: string; name: string } | null;
+  category: { id: string; name: string; color: string } | null;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -178,6 +181,20 @@ export function OnDemandLibraryTab() {
                     <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-white">
                       <Clock className="h-3 w-3" />
                       {formatDuration(v.durationSeconds)}
+                    </div>
+                  )}
+                  {v.isFree && (
+                    <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                      <Sparkles className="h-3 w-3" />
+                      {t("freeBadge")}
+                    </div>
+                  )}
+                  {v.category && (
+                    <div
+                      className="absolute right-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm"
+                      style={{ backgroundColor: v.category.color }}
+                    >
+                      {v.category.name}
                     </div>
                   )}
                 </div>

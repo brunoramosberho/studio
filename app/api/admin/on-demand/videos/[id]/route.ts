@@ -29,6 +29,7 @@ export async function GET(
       include: {
         coachProfile: { select: { id: true, name: true } },
         classType: { select: { id: true, name: true } },
+        category: { select: { id: true, name: true, color: true } },
       },
     });
     if (!video) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -71,6 +72,8 @@ interface UpdateBody {
   description?: string | null;
   coachProfileId?: string | null;
   classTypeId?: string | null;
+  categoryId?: string | null;
+  isFree?: boolean;
   level?: Level;
   published?: boolean;
   thumbnailUrl?: string | null;
@@ -104,6 +107,8 @@ export async function PATCH(
         ...(body.description !== undefined && { description: body.description }),
         ...(body.coachProfileId !== undefined && { coachProfileId: body.coachProfileId }),
         ...(body.classTypeId !== undefined && { classTypeId: body.classTypeId }),
+        ...(body.categoryId !== undefined && { categoryId: body.categoryId }),
+        ...(body.isFree !== undefined && { isFree: body.isFree }),
         ...(body.level !== undefined && { level: body.level }),
         ...(body.thumbnailUrl !== undefined && { thumbnailUrl: body.thumbnailUrl }),
         ...(body.published !== undefined && {

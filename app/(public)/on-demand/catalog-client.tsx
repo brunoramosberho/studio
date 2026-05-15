@@ -26,6 +26,7 @@ interface VideoCard {
   title: string;
   description: string | null;
   durationSeconds: number | null;
+  isFree: boolean;
   thumbnailUrl: string | null;
   cloudflareThumbnailUrl: string | null;
   signedThumbnailUrl: string | null;
@@ -40,16 +41,33 @@ interface VideoCard {
     name: string;
     color: string;
   } | null;
+  category: {
+    id: string;
+    name: string;
+    color: string;
+  } | null;
+}
+
+interface CategoryOption {
+  id: string;
+  name: string;
+  color: string;
+  sortOrder: number;
 }
 
 interface AccessInfo {
   hasAccess: boolean;
-  reason: "active_subscription" | "bundled_with_package" | "no_access";
+  reason:
+    | "active_subscription"
+    | "bundled_with_package"
+    | "free_video"
+    | "no_access";
   expiresAt?: string;
 }
 
 interface CatalogResponse {
   videos: VideoCard[];
+  categories: CategoryOption[];
   config: {
     enabled: boolean;
     description: string | null;
@@ -107,7 +125,8 @@ export function OnDemandCatalogClient() {
   });
 
   const [coachFilter, setCoachFilter] = useState<string>("");
-  const [disciplineFilter, setDisciplineFilter] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [freeOnly, setFreeOnly] = useState(false);
   const [showSubscribe, setShowSubscribe] = useState(false);
 
   const coaches = useMemo(() => {
@@ -120,23 +139,15 @@ export function OnDemandCatalogClient() {
     return Array.from(map.values());
   }, [data?.videos]);
 
-  const disciplines = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; color: string }>();
-    (data?.videos ?? []).forEach((v) => {
-      if (v.classType) {
-        map.set(v.classType.id, {
-          id: v.classType.id,
-          name: v.classType.name,
-          color: v.classType.color,
-        });
-      }
-    });
-    return Array.from(map.values());
-  }, [data?.videos]);
+  // Categories come from the tenant config (admin-managed), not derived from
+  // videos — so empty categories also appear once a video is assigned later.
+  const categories = data?.categories ?? [];
+  const hasFreeVideos = (data?.videos ?? []).some((v) => v.isFree);
 
   const videos = (data?.videos ?? []).filter((v) => {
     if (coachFilter && v.coachProfile?.id !== coachFilter) return false;
-    if (disciplineFilter && v.classType?.id !== disciplineFilter) return false;
+    if (categoryFilter && v.category?.id !== categoryFilter) return false;
+    if (freeOnly && !v.isFree) return false;
     return true;
   });
 
@@ -232,31 +243,41 @@ export function OnDemandCatalogClient() {
         )}
 
         {/* Filter chips: bleed off the page padding for an app-like horizontal scroll */}
-        {enabled && (disciplines.length > 0 || coaches.length > 0) && (
+        {enabled && (categories.length > 0 || coaches.length > 0 || hasFreeVideos) && (
           <div className="-mx-4 overflow-x-auto scrollbar-none sm:-mx-6">
             <div className="flex gap-2 px-4 pb-1 sm:px-6">
               <FilterChip
-                active={!disciplineFilter && !coachFilter}
+                active={!categoryFilter && !coachFilter && !freeOnly}
                 onClick={() => {
-                  setDisciplineFilter("");
+                  setCategoryFilter("");
                   setCoachFilter("");
+                  setFreeOnly(false);
                 }}
               >
                 {t("levelAll")}
               </FilterChip>
-              {disciplines.map((d) => (
+              {hasFreeVideos && (
                 <FilterChip
-                  key={`disc-${d.id}`}
-                  active={disciplineFilter === d.id}
-                  color={d.color}
+                  active={freeOnly}
+                  color="#10b981"
+                  onClick={() => setFreeOnly(!freeOnly)}
+                >
+                  {t("freeBadge")}
+                </FilterChip>
+              )}
+              {categories.map((c) => (
+                <FilterChip
+                  key={`cat-${c.id}`}
+                  active={categoryFilter === c.id}
+                  color={c.color}
                   onClick={() =>
-                    setDisciplineFilter(disciplineFilter === d.id ? "" : d.id)
+                    setCategoryFilter(categoryFilter === c.id ? "" : c.id)
                   }
                 >
-                  {d.name}
+                  {c.name}
                 </FilterChip>
               ))}
-              {coaches.length > 0 && disciplines.length > 0 && (
+              {coaches.length > 0 && (categories.length > 0 || hasFreeVideos) && (
                 <span className="my-auto h-5 w-px shrink-0 bg-border/60" aria-hidden />
               )}
               {coaches.map((c) => (
@@ -306,6 +327,7 @@ export function OnDemandCatalogClient() {
           >
             {videos.map((v) => {
               const thumb = v.thumbnailUrl ?? v.signedThumbnailUrl;
+              const unlocked = hasAccess || v.isFree;
               return (
                 <motion.div key={v.id} variants={fadeUp}>
                   <Link href={`/on-demand/${v.id}`} className="group block">
@@ -332,15 +354,22 @@ export function OnDemandCatalogClient() {
                         </div>
                       )}
 
-                      {/* Discipline chip top-left */}
-                      {v.classType && (
+                      {/* Top-left chip: category > discipline fallback */}
+                      {v.category ? (
+                        <div
+                          className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm sm:text-[11px]"
+                          style={{ backgroundColor: v.category.color }}
+                        >
+                          {v.category.name}
+                        </div>
+                      ) : v.classType ? (
                         <div
                           className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm sm:text-[11px]"
                           style={{ backgroundColor: v.classType.color }}
                         >
                           {v.classType.name}
                         </div>
-                      )}
+                      ) : null}
 
                       {/* Hover/active play overlay (desktop only) */}
                       <div className="pointer-events-none absolute inset-0 hidden items-center justify-center bg-black/15 opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:flex">
@@ -352,12 +381,17 @@ export function OnDemandCatalogClient() {
                         </div>
                       </div>
 
-                      {/* Locked overlay if no access */}
-                      {!hasAccess && (
+                      {/* Top-right: free badge for free videos, lock for locked ones */}
+                      {v.isFree ? (
+                        <div className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm sm:text-[11px]">
+                          <Sparkles className="h-3 w-3" />
+                          {t("freeBadge")}
+                        </div>
+                      ) : !unlocked ? (
                         <div className="absolute right-2 top-2 inline-flex items-center justify-center rounded-full bg-black/60 p-1.5 text-white">
                           <Lock className="h-3 w-3" />
                         </div>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* Meta */}
