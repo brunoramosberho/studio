@@ -578,7 +578,8 @@ export default function BrandingPage() {
         </Card>
       </motion.div>
 
-      {/* Fonts */}
+      {/* Fonts — hidden for now, may re-enable later */}
+      {/*
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
         <Card>
           <CardContent className="p-6">
@@ -673,6 +674,7 @@ export default function BrandingPage() {
           </CardContent>
         </Card>
       </motion.div>
+      */}
 
       {/* Colors */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
