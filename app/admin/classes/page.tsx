@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import {
@@ -75,6 +75,7 @@ export default function AdminClassesPage() {
   const [editingClass, setEditingClass] = useState<ClassWithDetails | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("upcoming");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [cancelTarget, setCancelTarget] = useState<ClassWithDetails | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
@@ -83,14 +84,42 @@ export default function AdminClassesPage() {
     dir: statusFilter === "past" ? "desc" : "asc",
   });
 
-  const { data: classes, isLoading } = useQuery<ClassWithDetails[]>({
-    queryKey: ["admin-classes"],
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 250);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, debouncedSearch, sort.key, sort.dir, pageSize]);
+
+  const { data, isLoading } = useQuery<{
+    classes: ClassWithDetails[];
+    total: number;
+    upcomingCount: number;
+    skip: number;
+    take: number;
+    hasMore: boolean;
+  }>({
+    queryKey: ["admin-classes", statusFilter, debouncedSearch, sort.key, sort.dir, page, pageSize],
     queryFn: async () => {
-      const res = await fetch("/api/classes?includeCancelled=true");
+      const qs = new URLSearchParams({
+        status: statusFilter,
+        sortKey: sort.key,
+        sortDir: sort.dir,
+        skip: String((page - 1) * pageSize),
+        take: String(pageSize),
+      });
+      if (debouncedSearch) qs.set("search", debouncedSearch);
+      const res = await fetch(`/api/admin/classes?${qs.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
+    placeholderData: keepPreviousData,
   });
+  const classes = data?.classes;
+  const total = data?.total ?? 0;
+  const upcomingCount = data?.upcomingCount ?? 0;
 
   function openCreateDialog() {
     setEditingClass(null);
@@ -138,52 +167,19 @@ export default function AdminClassesPage() {
     onError: (err: Error) => toast.error(err.message || t("classCancelError")),
   });
 
-  const filtered = useMemo(() => {
-    const base = (classes ?? [])
-      .filter((c) => {
-        if (statusFilter === "upcoming") return c.status === "SCHEDULED" && !isPast(new Date(c.endsAt));
-        if (statusFilter === "past") return c.status !== "CANCELLED" && isPast(new Date(c.endsAt));
-        if (statusFilter === "CANCELLED") return c.status === "CANCELLED";
-        return true;
-      })
-      .filter((c) => {
-        if (!searchQuery) return true;
-        const q = searchQuery.toLowerCase();
-        return (
-          c.classType.name.toLowerCase().includes(q) ||
-          c.coach.name?.toLowerCase().includes(q) ||
-          c.tag?.toLowerCase().includes(q) ||
-          c.room?.studio?.name?.toLowerCase().includes(q) ||
-          c.room?.name?.toLowerCase().includes(q)
-        );
-      });
-
-    const sorted = base.slice().sort((a, b) => {
-      const dir = sort.dir === "asc" ? 1 : -1;
-      if (sort.key === "startsAt") return (new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()) * dir;
-      if (sort.key === "classType") return a.classType.name.localeCompare(b.classType.name) * dir;
-      if (sort.key === "coach") return (a.coach.name ?? "").localeCompare(b.coach.name ?? "") * dir;
-      if (sort.key === "studio") return (a.room?.studio?.name ?? "").localeCompare(b.room?.studio?.name ?? "") * dir;
-      const aEnrolled = a._count?.bookings ?? 0;
-      const bEnrolled = b._count?.bookings ?? 0;
-      return (aEnrolled - bEnrolled) * dir;
-    });
-
-    return sorted;
-  }, [classes, searchQuery, sort.dir, sort.key, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  // Server handles filter, search, sort, and pagination. Both the table
+  // page and the mobile card list now read from the same paged slice.
+  const filtered = classes ?? [];
+  const paged = filtered;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const pageSafe = Math.min(Math.max(1, page), totalPages);
-  const paged = filtered.slice((pageSafe - 1) * pageSize, pageSafe * pageSize);
 
   function toggleSort(key: typeof sort.key) {
     setSort((prev) => {
       if (prev.key === key) return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
-      return { key, dir: "asc" };
+      return { key, dir: key === "startsAt" && statusFilter === "past" ? "desc" : "asc" };
     });
   }
-
-  const upcomingCount = classes?.filter((c) => c.status === "SCHEDULED" && !isPast(new Date(c.endsAt))).length ?? 0;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -419,7 +415,7 @@ export default function AdminClassesPage() {
 
           {/* Mobile: Cards */}
           <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-2 sm:hidden">
-          {filtered.map((cls) => {
+          {paged.map((cls) => {
             const enrolled = cls._count?.bookings ?? 0;
             const maxCap = cls.room?.maxCapacity ?? 0;
             const past = isPast(new Date(cls.endsAt));
@@ -508,6 +504,21 @@ export default function AdminClassesPage() {
               </motion.div>
             );
           })}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <p className="text-xs text-muted">
+                {tc("page", { current: pageSafe, total: totalPages })}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe <= 1}>
+                  {tc("previous")}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={pageSafe >= totalPages}>
+                  {tc("next")}
+                </Button>
+              </div>
+            </div>
+          )}
           </motion.div>
         </>
       )}
