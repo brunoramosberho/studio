@@ -206,6 +206,7 @@ model Tenant {
   discountCodes        DiscountCode[]
   giftPackages         GiftPackage[]
   sparkFeatureRequests SparkFeatureRequest[]
+  schedulePlans        SchedulePlanConversation[]
 
   entitlements  Entitlement[]
   revenueEvents RevenueEvent[]
@@ -2582,4 +2583,53 @@ model SubstitutionRequest {
   @@index([classId])
   @@index([requestingCoachId])
   @@index([targetCoachId, status])
+}
+
+// ── Spark Schedule Planner ──
+//
+// Multi-turn conversations between an admin and Spark to build a class
+// schedule. Spark gathers constraints (studios, time windows to exclude,
+// discipline mix, horizon, instructor caps) across the conversation,
+// analyses availability and historical fill rates, and proposes classes
+// the admin can review and apply in bulk. `contextJson` holds the
+// running structured constraints; `proposalJson` holds the latest
+// pending proposal (a list of classes ready to create); `appliedClassIds`
+// snapshots the class ids created when the admin applied the plan.
+enum SchedulePlanStatus {
+  GATHERING
+  PROPOSED
+  APPLIED
+  ARCHIVED
+}
+
+model SchedulePlanConversation {
+  id           String             @id @default(cuid())
+  tenantId    String
+  adminUserId String
+  title       String             @default("Planeación de horario")
+  status      SchedulePlanStatus @default(GATHERING)
+  contextJson Json?
+  proposalJson Json?
+  appliedClassIds String[]       @default([])
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant   Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  messages SchedulePlanMessage[]
+
+  @@index([tenantId, adminUserId, updatedAt])
+  @@index([tenantId, status])
+}
+
+model SchedulePlanMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  content        String   @db.Text
+  toolsUsed      String[] @default([])
+  createdAt      DateTime @default(now())
+
+  conversation SchedulePlanConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }

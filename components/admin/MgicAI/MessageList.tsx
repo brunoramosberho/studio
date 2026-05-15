@@ -51,6 +51,9 @@ const TOOL_LABELS: Record<string, string> = {
   get_gamification_overview: "Revisando gamificación",
   get_referral_metrics: "Analizando programa de referidos",
   propose_weekly_schedule: "Diseñando el horario ideal",
+  get_planner_resources: "Cargando catálogo del studio",
+  get_coach_availability_window: "Revisando disponibilidad de coaches",
+  propose_schedule_plan: "Armando la propuesta del horario",
 };
 
 const FITNESS_THINKING_PHRASES = [
