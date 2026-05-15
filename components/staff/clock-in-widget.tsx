@@ -122,7 +122,7 @@ export function StaffClockInWidget() {
   });
 
   const role = roleQuery.data?.role;
-  const canUse = role === "FRONT_DESK" || role === "ADMIN";
+  const canUse = role === "FRONT_DESK";
 
   const query = useQuery<ActiveShiftResponse>({
     queryKey: ["staff", "active-shift"],

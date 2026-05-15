@@ -1127,7 +1127,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
             {/* Bottom: profile + location */}
             <div className="border-t border-border/40 p-3 space-y-1">
-              {(role === "FRONT_DESK" || role === "ADMIN") && (
+              {role === "FRONT_DESK" && (
                 <Link
                   href="/admin/me/timesheet"
                   className={cn(
@@ -1210,7 +1210,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 </nav>
 
                 <div className="border-t border-border/40 p-3 space-y-1">
-                  {(role === "FRONT_DESK" || role === "ADMIN") && (
+                  {role === "FRONT_DESK" && (
                     <Link
                       href="/admin/me/timesheet"
                       onClick={() => setSidebarOpen(false)}
