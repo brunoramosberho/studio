@@ -26,8 +26,20 @@ interface RatingReason {
 
 export function RatingSheet() {
   const pathname = usePathname();
-  const isAdmin = pathname.startsWith("/admin");
-  const isEmbed = pathname.startsWith("/embed");
+  // Skip the pending-rating fetch on every staff surface (admin / coach /
+  // super-admin) and on iframe embeds. Returning 500 from /api/ratings/pending
+  // when admins hit it (admin cookie without a client session) was polluting
+  // the console — restrict the surface instead of widening the API.
+  const skipFetch =
+    !pathname ||
+    pathname === "/" ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/coach") ||
+    pathname.startsWith("/super-admin") ||
+    pathname.startsWith("/embed") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/rate") ||
+    pathname.startsWith("/waiver");
   const t = useTranslations("rating");
 
   const [pending, setPending] = useState<PendingClass | null>(null);
@@ -42,7 +54,7 @@ export function RatingSheet() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isAdmin || isEmbed) return;
+    if (skipFetch) return;
     fetch("/api/ratings/pending")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: PendingClass | null) => {
@@ -55,7 +67,7 @@ export function RatingSheet() {
         }, 1500);
       })
       .catch(() => {});
-  }, [isAdmin, isEmbed]);
+  }, [skipFetch]);
 
   const dismiss = useCallback(() => {
     if (pending) {
@@ -131,7 +143,7 @@ export function RatingSheet() {
     return () => clearTimeout(timer);
   }, [submitted, dismiss]);
 
-  if (!pending || isAdmin || isEmbed) return null;
+  if (!pending || skipFetch) return null;
 
   const stars = [1, 2, 3, 4, 5];
   const activeRating = hovered || rating;

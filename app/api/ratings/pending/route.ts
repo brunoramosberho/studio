@@ -53,6 +53,16 @@ export async function GET() {
       endsAt: c.endsAt,
     });
   } catch (error) {
+    const msg = error instanceof Error ? error.message : "";
+    if (msg === "Unauthorized") {
+      return NextResponse.json(null, { status: 401 });
+    }
+    if (msg === "Tenant not found") {
+      return NextResponse.json(null, { status: 404 });
+    }
+    if (msg === "Forbidden" || msg === "Insufficient role") {
+      return NextResponse.json(null, { status: 403 });
+    }
     console.error("GET /api/ratings/pending error:", error);
     return NextResponse.json({ error: "Failed to fetch pending rating" }, { status: 500 });
   }
