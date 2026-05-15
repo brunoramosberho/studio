@@ -527,17 +527,24 @@ export async function sendRoleInvitation({
   to,
   role,
   invitedBy,
-  loginUrl,
+  origin,
 }: {
   to: string;
   role: "ADMIN" | "FRONT_DESK" | "COACH";
   invitedBy: string;
-  loginUrl: string;
+  /** Request origin (e.g. "https://betoro.mgic.app"). The admin portal path is appended internally. */
+  origin: string;
 }) {
   try {
     const b = await getServerBranding();
     const studioFull = `${b.studioName} Studio`;
 
+    // All three roles live on the admin portal — never link to /login (client portal),
+    // which signs them into a separate cookie/session and lands them on /my.
+    // ADMIN/FRONT_DESK land on /admin (the login page's default for ?portal=admin).
+    // COACH gets an explicit callbackUrl so they land on the coach surface.
+    const callbackPath = role === "COACH" ? "/coach" : "/admin";
+    const loginUrl = `${origin}/login?portal=admin&callbackUrl=${encodeURIComponent(callbackPath)}`;
     const roleLabel = role === "ADMIN" ? "Administrador" : "Coach";
     const roleColor = role === "ADMIN" ? b.colorAdmin : b.colorCoach;
     const emoji = role === "ADMIN" ? "&#128272;" : "&#127947;";

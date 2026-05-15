@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       to: email,
       role: "COACH",
       invitedBy: ctx.session.user.name || "Un administrador",
-      loginUrl: `${origin}/login`,
+      origin,
     });
 
     const coach = await prisma.coachProfile.findFirst({
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     to: email,
     role: "COACH",
     invitedBy: ctx.session.user.name || "Un administrador",
-    loginUrl: `${origin}/login`,
+    origin,
   });
 
   return NextResponse.json(coach, { status: 201 });

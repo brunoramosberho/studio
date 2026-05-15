@@ -79,7 +79,7 @@ export async function POST(
       to: normalizedEmail,
       role: "COACH",
       invitedBy: ctx.session.user.name || "Un administrador",
-      loginUrl: `${origin}/login`,
+      origin,
     });
 
     const updated = await prisma.coachProfile.findFirst({

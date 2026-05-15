@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       to: normalizedEmail,
       role: targetRole,
       invitedBy: ctx.session.user.name || "Un administrador",
-      loginUrl: `${origin}/login`,
+      origin,
     });
 
     return NextResponse.json(
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     to: normalizedEmail,
     role: targetRole,
     invitedBy: ctx.session.user.name || "Un administrador",
-    loginUrl: `${origin}/login`,
+    origin,
   });
 
   return NextResponse.json(user, { status: 201 });
@@ -146,7 +146,7 @@ export async function PUT(request: NextRequest) {
     to: user!.email,
     role: "ADMIN",
     invitedBy: ctx.session.user.name || "Un administrador",
-    loginUrl: `${origin}/login`,
+    origin,
   });
 
   return NextResponse.json(user);
