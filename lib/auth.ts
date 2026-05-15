@@ -138,16 +138,53 @@ providers.push(
 
 const sessionCallback = {
   async session({ session, user }: { session: any; user: any }) {
-    if (session.user) {
-      session.user.id = user.id;
-      const dbUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { isSuperAdmin: true },
-      });
-      (session.user as unknown as Record<string, unknown>).isSuperAdmin =
-        dbUser?.isSuperAdmin ?? false;
+    // TEMPORARY: hard log everything we touch so we can see why auth() is
+    // silently returning null for the coach user on sandbox-revive even
+    // though the cookie + DB session are valid.
+    try {
+      const tenantSlug =
+        (typeof globalThis !== "undefined" &&
+          (globalThis as { __TENANT_SLUG__?: string }).__TENANT_SLUG__) ||
+        "unknown";
+      console.log(
+        "[auth/sessionCallback] in",
+        JSON.stringify({
+          tenantSlug,
+          hasSession: !!session,
+          hasSessionUser: !!session?.user,
+          sessionUserKeys: session?.user ? Object.keys(session.user) : null,
+          userId: user?.id ?? null,
+          userKeys: user ? Object.keys(user) : null,
+        }),
+      );
+
+      if (session.user) {
+        session.user.id = user.id;
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { isSuperAdmin: true },
+        });
+        (session.user as unknown as Record<string, unknown>).isSuperAdmin =
+          dbUser?.isSuperAdmin ?? false;
+      }
+
+      console.log(
+        "[auth/sessionCallback] out",
+        JSON.stringify({
+          userId: session?.user?.id ?? null,
+          isSuperAdmin: session?.user?.isSuperAdmin ?? null,
+        }),
+      );
+
+      return session;
+    } catch (e) {
+      console.error(
+        "[auth/sessionCallback] threw",
+        e instanceof Error ? `${e.name}: ${e.message}\n${e.stack}` : String(e),
+      );
+      // Re-throw — NextAuth's session.js will catch it, log it, and we'll see it
+      throw e;
     }
-    return session;
   },
 };
 
@@ -212,6 +249,7 @@ function makeCookies(suffix?: string) {
 
 const shared = {
   trustHost: true,
+  debug: true, // TEMPORARY for sandbox-revive coach-session bug
   adapter: PrismaAdapter(prisma),
   providers,
   callbacks: sessionCallback,
