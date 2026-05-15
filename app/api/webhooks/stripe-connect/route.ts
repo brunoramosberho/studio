@@ -124,6 +124,13 @@ export async function POST(request: NextRequest) {
             (err) => console.error("Lifecycle update (purchased) failed:", err),
           );
         }
+        if (payment?.id) {
+          import("@/lib/staff")
+            .then(({ onStripePaymentSucceeded }) => onStripePaymentSucceeded(payment.id))
+            .catch((err) =>
+              console.error("[stripe-webhook] commission accrual failed", payment.id, err),
+            );
+        }
         break;
       }
 
