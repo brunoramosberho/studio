@@ -247,10 +247,42 @@ function makeCookies(suffix?: string) {
   };
 }
 
+// TEMPORARY: wrap the adapter so we can see when getSessionAndUser is being
+// called and whether the token resolves. NextAuth's session callback was
+// never reached during the bounce, which means the lookup failed at this
+// layer. Verify exactly what token NextAuth is asking for vs what the DB has.
+const baseAdapter = PrismaAdapter(prisma);
+const instrumentedAdapter = {
+  ...baseAdapter,
+  async getSessionAndUser(sessionToken: string) {
+    const tokenPrefix = sessionToken?.slice?.(0, 8) ?? "(no-token)";
+    try {
+      const result = await baseAdapter.getSessionAndUser!(sessionToken);
+      console.log(
+        "[auth/adapter.getSessionAndUser]",
+        JSON.stringify({
+          tokenPrefix,
+          found: !!result,
+          userId: result?.user?.id ?? null,
+          expires: result?.session?.expires?.toISOString?.() ?? null,
+        }),
+      );
+      return result;
+    } catch (e) {
+      console.error(
+        "[auth/adapter.getSessionAndUser] threw",
+        JSON.stringify({ tokenPrefix }),
+        e instanceof Error ? `${e.name}: ${e.message}\n${e.stack}` : String(e),
+      );
+      throw e;
+    }
+  },
+};
+
 const shared = {
   trustHost: true,
   debug: true, // TEMPORARY for sandbox-revive coach-session bug
-  adapter: PrismaAdapter(prisma),
+  adapter: instrumentedAdapter,
   providers,
   callbacks: sessionCallback,
   events: signInEvent,
