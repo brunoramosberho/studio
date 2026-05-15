@@ -1640,6 +1640,8 @@ model CheckIn {
 enum PlatformType {
   classpass
   wellhub
+  totalpass
+  fitpass
 }
 
 enum PlatformBookingStatus {

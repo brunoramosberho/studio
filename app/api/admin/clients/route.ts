@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
+
+type ClientFilter = "all" | "active" | "expiring" | "inactive" | "new" | "pwa";
+
+const PAGE_SIZE_DEFAULT = 50;
+const PAGE_SIZE_MAX = 200;
 
 export async function GET(request: NextRequest) {
   const ctx = await requireRole("ADMIN", "FRONT_DESK");
   const tenantId = ctx.tenant.id;
-  const filter = request.nextUrl.searchParams.get("filter") ?? "all";
+
+  const params = request.nextUrl.searchParams;
+  const filter = (params.get("filter") ?? "all") as ClientFilter;
+  const search = params.get("search")?.trim() ?? "";
+  const skip = Math.max(0, parseInt(params.get("skip") ?? "0", 10) || 0);
+  const take = Math.min(
+    PAGE_SIZE_MAX,
+    Math.max(1, parseInt(params.get("take") ?? `${PAGE_SIZE_DEFAULT}`, 10) || PAGE_SIZE_DEFAULT),
+  );
 
   const now = new Date();
   const thirtyDaysAgo = new Date(now);
@@ -16,84 +30,144 @@ export async function GET(request: NextRequest) {
   sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const memberships = await prisma.membership.findMany({
-    where: {
-      tenantId,
-      role: "CLIENT",
-      user: {
-        NOT: [
-          { email: { contains: "filler" } },
-          { email: { contains: "waitlist" } },
-        ],
-      },
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          createdAt: true,
-          packages: {
-            where: { tenantId },
-            orderBy: { expiresAt: "desc" },
-            take: 3,
-            include: { package: { select: { name: true } } },
-          },
+  const userWhere: Prisma.UserWhereInput = {
+    NOT: [
+      { email: { contains: "filler" } },
+      { email: { contains: "waitlist" } },
+    ],
+  };
+
+  if (search) {
+    userWhere.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const baseWhere: Prisma.MembershipWhereInput = {
+    tenantId,
+    role: "CLIENT",
+    user: userWhere,
+  };
+
+  switch (filter) {
+    case "active":
+      userWhere.packages = { some: { tenantId, expiresAt: { gt: now } } };
+      break;
+    case "expiring":
+      userWhere.packages = {
+        some: { tenantId, expiresAt: { gt: now, lte: sevenDaysFromNow } },
+      };
+      break;
+    case "inactive":
+      userWhere.AND = [
+        { bookings: { some: { status: "ATTENDED", class: { tenantId } } } },
+        {
           bookings: {
-            where: { class: { tenantId } },
-            orderBy: { createdAt: "desc" },
-            take: 10,
-            include: {
-              class: {
-                include: { classType: { select: { name: true } } },
-              },
+            none: {
+              status: "ATTENDED",
+              class: { tenantId, startsAt: { gte: fourteenDaysAgo } },
             },
           },
-          _count: {
-            select: {
-              bookings: { where: { class: { tenantId } } },
+        },
+      ];
+      break;
+    case "new":
+      baseWhere.createdAt = { gte: thirtyDaysAgo };
+      break;
+    case "pwa":
+      baseWhere.pwaInstalledAt = { not: null };
+      break;
+    case "all":
+    default:
+      break;
+  }
+
+  const [total, memberships] = await Promise.all([
+    prisma.membership.count({ where: baseWhere }),
+    prisma.membership.findMany({
+      where: baseWhere,
+      skip,
+      take,
+      orderBy: { createdAt: "asc" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            createdAt: true,
+            packages: {
+              where: { tenantId, expiresAt: { gt: now } },
+              orderBy: { expiresAt: "desc" },
+              take: 1,
+              include: { package: { select: { name: true } } },
+            },
+            _count: {
+              select: {
+                bookings: { where: { class: { tenantId } } },
+              },
             },
           },
         },
       },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+    }),
+  ]);
 
-  const result = memberships.map((m) => {
-    const c = m.user;
-    const activePkg = c.packages.find(
-      (p) => new Date(p.expiresAt) > now,
-    );
+  const userIds = memberships.map((m) => m.userId);
 
-    const attendedBookings = c.bookings.filter(
-      (b) => b.status === "ATTENDED",
-    );
-    const lastAttended = attendedBookings[0];
+  // Per-user "this month" attended count + last attended class — done in
+  // small aggregate queries instead of pulling the full booking history per
+  // user (which was the 7MB-payload culprit on the previous design).
+  const [thisMonthCounts, lastAttendedRows] = userIds.length
+    ? await Promise.all([
+        prisma.booking.groupBy({
+          by: ["userId"],
+          where: {
+            userId: { in: userIds },
+            status: "ATTENDED",
+            class: { tenantId, startsAt: { gte: monthStart } },
+          },
+          _count: { id: true },
+        }),
+        prisma.$queryRaw<
+          { userId: string; lastStartsAt: Date }[]
+        >`
+          SELECT b."userId" AS "userId", MAX(c."startsAt") AS "lastStartsAt"
+          FROM "Booking" b
+          INNER JOIN "Class" c ON c."id" = b."classId"
+          WHERE b."userId" = ANY(${userIds}::text[])
+            AND b."status" = 'ATTENDED'
+            AND c."tenantId" = ${tenantId}
+          GROUP BY b."userId"
+        `,
+      ])
+    : [[], []];
 
-    const classesThisMonth = c.bookings.filter(
-      (b) =>
-        b.status === "ATTENDED" &&
-        new Date(b.class.startsAt) >= monthStart,
-    ).length;
+  const thisMonthByUser = new Map(
+    thisMonthCounts.map((r) => [r.userId!, r._count.id]),
+  );
+  const lastAttendedByUser = new Map(
+    lastAttendedRows.map((r) => [r.userId, r.lastStartsAt]),
+  );
 
-    const lastVisitedDate = lastAttended
-      ? new Date(lastAttended.class.startsAt)
-      : null;
+  const clients = memberships.map((m) => {
+    const u = m.user;
+    const activePkg = u.packages[0] ?? null;
+    const lastVisitedDate = lastAttendedByUser.get(u.id) ?? null;
     const daysSinceLastVisit = lastVisitedDate
       ? Math.floor((now.getTime() - lastVisitedDate.getTime()) / 86400000)
       : null;
 
     return {
-      id: c.id,
-      name: c.name,
-      email: c.email,
-      image: c.image,
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      image: u.image,
       memberSince: m.createdAt.toISOString(),
       pwaInstalledAt: m.pwaInstalledAt?.toISOString() ?? null,
-      classesThisMonth,
+      classesThisMonth: thisMonthByUser.get(u.id) ?? 0,
       daysSinceLastVisit,
       activePackage: activePkg
         ? {
@@ -106,42 +180,16 @@ export async function GET(request: NextRequest) {
             expiresAt: activePkg.expiresAt.toISOString(),
           }
         : null,
-      bookingsCount: c._count.bookings,
-      lastVisited: lastAttended
-        ? lastAttended.class.startsAt.toISOString()
-        : null,
-      bookingHistory: c.bookings.slice(0, 5).map((b) => ({
-        id: b.id,
-        className: b.class.classType.name,
-        date: b.class.startsAt.toISOString(),
-        status: b.status,
-      })),
+      bookingsCount: u._count.bookings,
+      lastVisited: lastVisitedDate?.toISOString() ?? null,
     };
   });
 
-  // Apply filter
-  const filtered = result.filter((client) => {
-    switch (filter) {
-      case "active":
-        return client.activePackage !== null;
-      case "expiring":
-        return (
-          client.activePackage !== null &&
-          new Date(client.activePackage.expiresAt) <= sevenDaysFromNow
-        );
-      case "inactive":
-        return (
-          client.daysSinceLastVisit !== null &&
-          client.daysSinceLastVisit > 14
-        );
-      case "new":
-        return new Date(client.memberSince) >= thirtyDaysAgo;
-      case "pwa":
-        return client.pwaInstalledAt !== null;
-      default:
-        return true;
-    }
+  return NextResponse.json({
+    clients,
+    total,
+    skip,
+    take,
+    hasMore: skip + clients.length < total,
   });
-
-  return NextResponse.json(filtered);
 }

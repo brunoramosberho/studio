@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -42,13 +42,17 @@ interface ClientData {
   } | null;
   bookingsCount: number;
   lastVisited: string | null;
-  bookingHistory?: {
-    id: string;
-    className: string;
-    date: string;
-    status: string;
-  }[];
 }
+
+interface ClientsResponse {
+  clients: ClientData[];
+  total: number;
+  skip: number;
+  take: number;
+  hasMore: boolean;
+}
+
+const PAGE_SIZE = 50;
 
 interface AtRiskMember {
   id: string;
@@ -127,9 +131,20 @@ export default function AdminClientsPage() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const [showInsights, setShowInsights] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [pages, setPages] = useState(1);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 250);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPages(1);
+  }, [activeFilter, debouncedSearch]);
 
   const FILTERS: { key: Filter; label: string }[] = [
     { key: "all", label: t("filterAll") },
@@ -140,16 +155,25 @@ export default function AdminClientsPage() {
     { key: "pwa", label: t("filterPWA") },
   ];
 
-  const { data: clients, isLoading } = useQuery<ClientData[]>({
-    queryKey: ["admin-clients", activeFilter],
+  const take = pages * PAGE_SIZE;
+  const { data, isLoading, isFetching } = useQuery<ClientsResponse>({
+    queryKey: ["admin-clients", activeFilter, debouncedSearch, take],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/admin/clients?filter=${activeFilter}`,
-      );
+      const qs = new URLSearchParams({
+        filter: activeFilter,
+        skip: "0",
+        take: String(take),
+      });
+      if (debouncedSearch) qs.set("search", debouncedSearch);
+      const res = await fetch(`/api/admin/clients?${qs.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
+    placeholderData: keepPreviousData,
   });
+  const clients = data?.clients;
+  const total = data?.total ?? 0;
+  const hasMore = data?.hasMore ?? false;
 
   const { data: insights, isLoading: insightsLoading } =
     useQuery<InsightsData>({
@@ -161,6 +185,8 @@ export default function AdminClientsPage() {
       },
     });
 
+  // Server already applies search; this stays for snappy local filtering
+  // between debounce cycles so the user sees instant feedback as they type.
   const filtered = clients?.filter(
     (c) =>
       !searchQuery ||
@@ -179,7 +205,7 @@ export default function AdminClientsPage() {
             {t("clients")}
           </h1>
           <p className="mt-1 text-muted">
-            {t("clientsCount", { num: clients?.length ?? 0 })}
+            {t("clientsCount", { num: total })}
           </p>
         </motion.div>
         <Button
@@ -502,6 +528,20 @@ export default function AdminClientsPage() {
                 </Card>
               </motion.div>
           ))}
+          {hasMore && (
+            <div className="pt-2 text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPages((p) => p + 1)}
+                disabled={isFetching}
+              >
+                {isFetching
+                  ? tc("loading")
+                  : `${tc("loadMore")} (${(clients?.length ?? 0)}/${total})`}
+              </Button>
+            </div>
+          )}
         </motion.div>
       )}
     </div>

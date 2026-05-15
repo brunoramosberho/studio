@@ -15,16 +15,13 @@ export async function GET() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     // -- At risk: members who attended before but not in last 14 days --
-    const allClientMemberships = await prisma.membership.findMany({
-      where: { tenantId, role: "CLIENT" },
-      select: { userId: true },
-    });
-    const clientIds = allClientMemberships.map((m) => m.userId);
-
+    // Tenant-scoped via Class.tenantId on the booking; we no longer need to
+    // pre-fetch the full client roster (broke at scale on tenants with
+    // thousands of imported members).
     const [recentAttendees, historicalAttendees] = await Promise.all([
       prisma.booking.findMany({
         where: {
-          userId: { in: clientIds },
+          userId: { not: null },
           status: "ATTENDED",
           class: { tenantId, startsAt: { gte: fourteenDaysAgo } },
         },
@@ -33,7 +30,7 @@ export async function GET() {
       }),
       prisma.booking.findMany({
         where: {
-          userId: { in: clientIds },
+          userId: { not: null },
           status: "ATTENDED",
           class: { tenantId, startsAt: { lt: fourteenDaysAgo } },
         },
