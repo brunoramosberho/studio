@@ -72,10 +72,58 @@ export async function GET(request: NextRequest) {
       ? {
           userId: (session as { user?: { id?: string } }).user?.id ?? null,
           expires: (session as { expires?: string }).expires ?? null,
+          hasUser: !!(session as { user?: unknown }).user,
         }
       : null;
   } catch (e) {
     authError = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+  }
+
+  // Manually reproduce what NextAuth's auth() does so we can see exactly
+  // which step returns null. The Prisma adapter's getSessionAndUser is
+  // basically: find Session by token, then find related User. If the session
+  // expires < now, NextAuth deletes it and returns null. If sessionCallback
+  // returns null/undefined, NextAuth also returns null.
+  let manualUser: unknown = null;
+  let manualSessionCallbackResult: unknown = null;
+  let manualError: string | null = null;
+  try {
+    if (clientToken && clientLookup.userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: clientLookup.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          isSuperAdmin: true,
+        },
+      });
+      manualUser = user
+        ? {
+            id: user.id,
+            hasName: !!user.name,
+            hasEmail: !!user.email,
+            isSuperAdmin: user.isSuperAdmin,
+          }
+        : null;
+
+      if (user) {
+        // Replicate the inputs that NextAuth would pass to sessionCallback.
+        const session = {
+          user: { name: user.name, email: user.email, image: user.image },
+          expires: clientLookup.expires?.toISOString?.() ?? null,
+        };
+        manualSessionCallbackResult = {
+          inputHadUser: !!session.user,
+          inputExpires: session.expires,
+          // We don't import the callback directly to avoid circular imports;
+          // we just confirm the inputs that would be passed.
+        };
+      }
+    }
+  } catch (e) {
+    manualError = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
   }
 
   return NextResponse.json(
@@ -90,6 +138,17 @@ export async function GET(request: NextRequest) {
       validSessionsForUser: allUserSessions,
       authResult,
       authError,
+      manualUser,
+      manualSessionCallbackResult,
+      manualError,
+      env: {
+        hasAuthSecret: !!process.env.AUTH_SECRET,
+        hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
+        hasNextAuthUrl: !!process.env.NEXTAUTH_URL,
+        nextAuthUrl: process.env.NEXTAUTH_URL ?? null,
+        rootDomain: process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? null,
+        nodeEnv: process.env.NODE_ENV ?? null,
+      },
       now: new Date(),
     },
     {
