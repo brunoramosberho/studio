@@ -859,6 +859,12 @@ model Package {
   // tiers without adding a second Stripe charge.
   includesOnDemand Boolean @default(false)
 
+  // Soft-delete marker. We hard-delete a Package when nothing references it,
+  // but if there are existing UserPackage / MemberSubscription rows pointing at
+  // it (FK with no cascade), we instead stamp deletedAt + flip isActive so the
+  // catalog hides it everywhere while preserving historical purchases.
+  deletedAt DateTime?
+
   userPackages        UserPackage[]
   memberSubscriptions MemberSubscription[]
   creditAllocations   PackageCreditAllocation[]
@@ -866,6 +872,7 @@ model Package {
 
   @@index([countryId])
   @@index([tenantId])
+  @@index([tenantId, deletedAt])
 }
 
 model MemberSubscription {

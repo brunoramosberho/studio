@@ -31,7 +31,7 @@ export async function PUT(
     const { id } = await params;
 
     const existing = await prisma.package.findFirst({
-      where: { id, tenantId: ctx.tenant.id },
+      where: { id, tenantId: ctx.tenant.id, deletedAt: null },
     });
     if (!existing) {
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
@@ -246,12 +246,25 @@ export async function DELETE(
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
     }
 
-    await prisma.package.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    // If anything points at this package via a no-cascade FK, we can't drop
+    // the row without breaking history. Soft-delete instead: clear it from
+    // every catalog (admin + public) while keeping the row for joins.
+    const [userPackageCount, subscriptionCount] = await Promise.all([
+      prisma.userPackage.count({ where: { packageId: id } }),
+      prisma.memberSubscription.count({ where: { packageId: id } }),
+    ]);
+    const hasReferences = userPackageCount > 0 || subscriptionCount > 0;
 
-    return NextResponse.json({ ok: true });
+    if (hasReferences) {
+      await prisma.package.update({
+        where: { id },
+        data: { deletedAt: new Date(), isActive: false },
+      });
+      return NextResponse.json({ ok: true, softDeleted: true });
+    }
+
+    await prisma.package.delete({ where: { id } });
+    return NextResponse.json({ ok: true, softDeleted: false });
   } catch (error) {
     if (error instanceof Error && authErrorMessages.includes(error.message as (typeof authErrorMessages)[number])) {
       return authErrorResponse(error);

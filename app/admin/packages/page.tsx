@@ -14,7 +14,9 @@ import {
   Layers,
   CalendarSync,
   Video,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -313,6 +315,22 @@ export default function AdminPackagesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-packages"] }),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/packages/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || tc("errorSaving"));
+      }
+      return res.json() as Promise<{ ok: true; softDeleted: boolean }>;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-packages"] });
+      toast.success(result.softDeleted ? t("packageArchived") : t("packageDeleted"));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const saveMutation = useMutation({
     mutationFn: async (payload: ReturnType<typeof buildPayload>) => {
       const url = editingId ? `/api/packages/${editingId}` : "/api/packages";
@@ -587,6 +605,20 @@ export default function AdminPackagesPage() {
                     >
                       <Pencil className="h-3.5 w-3.5" />
                       {tc("edit")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-red-600 hover:text-red-700"
+                      onClick={() => {
+                        if (confirm(t("deletePackageConfirm", { name: pkg.name }))) {
+                          deleteMutation.mutate(pkg.id);
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {tc("delete")}
                     </Button>
                   </div>
                 </CardContent>
