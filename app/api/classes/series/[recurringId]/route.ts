@@ -58,7 +58,7 @@ export async function PUT(
   { params }: { params: Promise<{ recurringId: string }> },
 ) {
   try {
-    const ctx = await requireRole("ADMIN", "FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
     const { recurringId } = await params;
     const scope = request.nextUrl.searchParams.get("scope") ?? "all";
     const fromId = request.nextUrl.searchParams.get("fromId");
@@ -121,7 +121,7 @@ export async function DELETE(
   { params }: { params: Promise<{ recurringId: string }> },
 ) {
   try {
-    const ctx = await requireRole("ADMIN", "FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
     const { recurringId } = await params;
     const futureOnly = request.nextUrl.searchParams.get("futureOnly") !== "false";
 

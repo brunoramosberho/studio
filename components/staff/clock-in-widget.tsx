@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Clock, MapPin, Loader2, LogIn, LogOut, AlertCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -96,7 +95,6 @@ function formatElapsed(sinceIso: string, now: Date) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function StaffClockInWidget() {
-  const { data: session, status } = useSession();
   const qc = useQueryClient();
   const [now, setNow] = useState(() => new Date());
   const [busy, setBusy] = useState<"in" | "out" | null>(null);
@@ -109,11 +107,22 @@ export function StaffClockInWidget() {
     return () => clearInterval(t);
   }, []);
 
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  const canUse = useMemo(() => {
-    if (status !== "authenticated") return false;
-    return role === "FRONT_DESK" || role === "ADMIN";
-  }, [status, role]);
+  // Role comes from the per-tenant membership, not the global session. The
+  // NextAuth session in this app only carries id/email/isSuperAdmin — the
+  // tenant role lives in Membership and is exposed via /api/admin/me.
+  const roleQuery = useQuery<{ role: string }>({
+    queryKey: ["admin", "me-role"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/me");
+      if (!res.ok) throw new Error("Not admin");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const role = roleQuery.data?.role;
+  const canUse = role === "FRONT_DESK" || role === "ADMIN";
 
   const query = useQuery<ActiveShiftResponse>({
     queryKey: ["staff", "active-shift"],
@@ -196,7 +205,8 @@ export function StaffClockInWidget() {
     onSettled: () => setBusy(null),
   });
 
-  if (!canUse) return null;
+  // Hide entirely until we know the role, and for non-staff roles.
+  if (roleQuery.isLoading || !canUse) return null;
   if (query.isLoading) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground">

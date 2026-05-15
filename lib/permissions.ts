@@ -61,15 +61,19 @@ const ALL_PERMISSIONS: AdminPermission[] = [
   "staffManagement",
 ];
 
+// FRONT_DESK is an operational role: day-to-day check-in, POS, client lookup.
+// They explicitly cannot see the dashboard (business metrics / revenue mix) or
+// any Growth surface — including "achievements", which lives in the Growth
+// group and is gamification *configuration*, not operational work. The
+// schedule is visible read-only: class creation, editing and cancellation are
+// gated to ADMIN at the API layer.
 const FRONT_DESK_PERMISSIONS: Set<AdminPermission> = new Set([
-  "dashboard",
   "schedule",
   "classes",
   "checkIn",
   "noShowReview",
   "clients",
   "feed",
-  "achievements",
   "pos",
   "waitlist",
   "orders",
