@@ -25,7 +25,7 @@ const FALLBACK_TZ = "Europe/Madrid";
  */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN", "FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
 
     const body = await request.json();
     const {

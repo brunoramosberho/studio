@@ -351,7 +351,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await requireRole("ADMIN", "FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
 
     const { id } = await params;
 

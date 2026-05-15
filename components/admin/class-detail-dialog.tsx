@@ -35,6 +35,9 @@ interface ClassDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (cls: ClassWithDetails) => void;
+  // Defaults to true to preserve existing call sites; FRONT_DESK passes false
+  // to render a read-only dialog (no edit / cancel / cancel-series buttons).
+  canEdit?: boolean;
 }
 
 export function ClassDetailDialog({
@@ -42,6 +45,7 @@ export function ClassDetailDialog({
   open,
   onOpenChange,
   onEdit,
+  canEdit = true,
 }: ClassDetailDialogProps) {
   const t = useTranslations("admin.classDetail");
   const queryClient = useQueryClient();
@@ -230,7 +234,7 @@ export function ClassDetailDialog({
                 </a>
               </Button>
 
-              {!isCancelled && !past && (
+              {canEdit && !isCancelled && !past && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -247,7 +251,7 @@ export function ClassDetailDialog({
             </div>
 
             {/* Destructive actions */}
-            {!isCancelled && !past && (
+            {canEdit && !isCancelled && !past && (
               <div className="flex gap-2">
                 <Button
                   variant="destructive"

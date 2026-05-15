@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN", "FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
 
     const body = await request.json();
     const { classTypeId, coachId, startsAt, endsAt, roomId, isRecurring, recurringId, notes, tag, songRequestsEnabled, songRequestCriteria } = body;

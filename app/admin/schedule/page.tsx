@@ -72,6 +72,20 @@ export default function AdminSchedulePage() {
   const [colorMode, setColorMode] = useState<ColorMode>("classType");
   const [showAvailability, setShowAvailability] = useState(false);
 
+  // FRONT_DESK gets a read-only schedule: no create/edit/cancel buttons, no
+  // empty-cell click to open the create form, no instructor-availability
+  // overlay (its API is ADMIN-only). API routes enforce the same boundary.
+  const { data: me } = useQuery<{ role: string }>({
+    queryKey: ["admin", "me-role"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/me");
+      if (!res.ok) throw new Error("Not admin");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const canEdit = me?.role === "ADMIN";
+
   const [filterStudio, setFilterStudio] = useState<string>("all");
   const [filterCoach, setFilterCoach] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
@@ -218,24 +232,28 @@ export default function AdminSchedulePage() {
         </motion.div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            onClick={() => setPlannerOpen(true)}
-            size="sm"
-            className="gap-1.5 bg-gradient-to-r from-admin to-admin/80 text-white shadow-sm hover:from-admin/90 hover:to-admin/70"
-          >
-            <Sparkles className="h-4 w-4" />
-            Planea con Spark
-          </Button>
-          <Button
-            variant={showAvailability ? "secondary" : "ghost"}
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setShowAvailability((v) => !v)}
-            title="Mostrar disponibilidad de instructores"
-          >
-            <CalendarOff className="h-4 w-4" />
-            Disponibilidad
-          </Button>
+          {canEdit && (
+            <Button
+              onClick={() => setPlannerOpen(true)}
+              size="sm"
+              className="gap-1.5 bg-gradient-to-r from-admin to-admin/80 text-white shadow-sm hover:from-admin/90 hover:to-admin/70"
+            >
+              <Sparkles className="h-4 w-4" />
+              Planea con Spark
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              variant={showAvailability ? "secondary" : "ghost"}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setShowAvailability((v) => !v)}
+              title="Mostrar disponibilidad de instructores"
+            >
+              <CalendarOff className="h-4 w-4" />
+              Disponibilidad
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -245,10 +263,12 @@ export default function AdminSchedulePage() {
             <Palette className="h-4 w-4" />
             {colorMode === "coach" ? t("byType") : t("byCoach")}
           </Button>
-          <Button onClick={handleCreate} size="sm" className="gap-1.5 bg-admin hover:bg-admin/90">
-            <Plus className="h-4 w-4" />
-            {t("createClass")}
-          </Button>
+          {canEdit && (
+            <Button onClick={handleCreate} size="sm" className="gap-1.5 bg-admin hover:bg-admin/90">
+              <Plus className="h-4 w-4" />
+              {t("createClass")}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -393,11 +413,13 @@ export default function AdminSchedulePage() {
                     return (
                       <div
                         key={day.toISOString()}
-                        onClick={() => dayClasses.length === 0 && handleCellClick(day, hour)}
+                        onClick={() =>
+                          canEdit && dayClasses.length === 0 && handleCellClick(day, hour)
+                        }
                         className={cn(
                           "relative min-h-[52px] border-l p-0.5 transition-colors",
                           isSameDay(day, new Date()) && "bg-admin/[0.02]",
-                          dayClasses.length === 0 && "cursor-pointer hover:bg-surface/60",
+                          canEdit && dayClasses.length === 0 && "cursor-pointer hover:bg-surface/60",
                         )}
                       >
                         {dayClasses.map((cls) => {
@@ -515,18 +537,21 @@ export default function AdminSchedulePage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         onEdit={handleEdit}
+        canEdit={canEdit}
       />
 
-      {/* Create / Edit class dialog */}
-      <ClassFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        editingClass={editingClass}
-        defaultDate={defaultDate}
-        defaultTime={defaultTime}
-      />
+      {/* Create / Edit class dialog (only mounted for ADMIN) */}
+      {canEdit && (
+        <ClassFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          editingClass={editingClass}
+          defaultDate={defaultDate}
+          defaultTime={defaultTime}
+        />
+      )}
 
-      <PlannerPanel open={plannerOpen} onOpenChange={setPlannerOpen} />
+      {canEdit && <PlannerPanel open={plannerOpen} onOpenChange={setPlannerOpen} />}
     </div>
     </TooltipProvider>
   );
