@@ -224,35 +224,41 @@ export function StaffClockInWidget() {
     <div className="flex flex-col gap-2">
       <div
         className={cn(
-          "flex items-center gap-3 rounded-lg border px-3 py-2 text-sm",
+          "flex flex-col gap-2.5 rounded-lg border px-3 py-2.5 text-sm",
           isOpen
             ? "border-emerald-500/40 bg-emerald-500/5"
             : "border-border bg-card",
         )}
       >
-        <div className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-full",
-          isOpen ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground",
-        )}>
-          <Clock className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          {isOpen ? (
-            <>
-              <div className="font-medium tabular-nums">{elapsed}</div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <MapPin className="h-3 w-3" />
-                <span className="truncate">{shift.studio.name}</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="font-medium">Sin turno abierto</div>
-              <div className="text-xs text-muted-foreground">
-                Cheka entrada cuando llegues al estudio
-              </div>
-            </>
-          )}
+        <div className="flex items-center gap-2.5">
+          <div
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+              isOpen
+                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                : "bg-muted text-muted-foreground",
+            )}
+          >
+            <Clock className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            {isOpen ? (
+              <>
+                <div className="font-medium tabular-nums leading-tight">{elapsed}</div>
+                <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{shift.studio.name}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="font-medium leading-tight">Sin turno abierto</div>
+                <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                  Checa entrada al llegar al estudio
+                </div>
+              </>
+            )}
+          </div>
         </div>
         {isOpen ? (
           <Button
@@ -260,6 +266,7 @@ export function StaffClockInWidget() {
             variant="outline"
             onClick={() => clockOut.mutate()}
             disabled={busy !== null}
+            className="w-full"
           >
             {busy === "out" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -273,6 +280,7 @@ export function StaffClockInWidget() {
             size="sm"
             onClick={() => clockIn.mutate()}
             disabled={busy !== null}
+            className="w-full"
           >
             {busy === "in" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
