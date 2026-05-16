@@ -73,6 +73,10 @@ interface MgicAIContextValue {
   pendingConfirmation: PendingConfirmation | null;
   confirmTools: () => void;
   cancelTools: () => void;
+  // Another Spark surface (e.g. the schedule PlannerPanel) is open and the
+  // floating FAB should yield so it doesn't overlap that panel's input.
+  suppressFab: boolean;
+  setSuppressFab: (suppress: boolean) => void;
 }
 
 const MgicAIContext = createContext<MgicAIContextValue>({
@@ -96,6 +100,8 @@ const MgicAIContext = createContext<MgicAIContextValue>({
   pendingConfirmation: null,
   confirmTools: () => {},
   cancelTools: () => {},
+  suppressFab: false,
+  setSuppressFab: () => {},
 });
 
 export function useMgicAI() {
@@ -165,6 +171,7 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
   const [currentConvId, setCurrentConvId] = useState<string>(crypto.randomUUID());
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
+  const [suppressFab, setSuppressFab] = useState(false);
   const { studioName } = useBranding();
   const abortRef = useRef<AbortController | null>(null);
 
@@ -486,6 +493,8 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
         pendingConfirmation,
         confirmTools,
         cancelTools,
+        suppressFab,
+        setSuppressFab,
       }}
     >
       {children}
@@ -496,11 +505,11 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
 }
 
 function MgicAIButton() {
-  const { toggle, isOpen } = useMgicAI();
+  const { toggle, isOpen, suppressFab } = useMgicAI();
 
   return (
     <AnimatePresence>
-      {!isOpen && (
+      {!isOpen && !suppressFab && (
         <motion.button
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
