@@ -26,13 +26,17 @@ export function buildSchedulePlannerPrompt(ctx: PlannerSystemContext): string {
     ? `\nCONTEXTO YA RECOLECTADO:\n${JSON.stringify(ctx.currentConstraints, null, 2)}\n`
     : "";
   const proposalBlock = ctx.currentProposal
-    ? `\nPROPUESTA ACTUAL (status: pendiente de revisión, ${ctx.currentProposal.classes.length} clases):\n${ctx.currentProposal.classes
-        .slice(0, 12)
-        .map(
-          (c) =>
-            `  - ${c.classTypeName} | ${c.startsAt} | ${c.coachName} | ${c.studioName}/${c.roomName}`,
-        )
-        .join("\n")}${ctx.currentProposal.classes.length > 12 ? `\n  … +${ctx.currentProposal.classes.length - 12} más` : ""}\n`
+    ? (() => {
+        const total = ctx.currentProposal.classes.length;
+        const span = `${ctx.currentProposal.horizon.startDate} → ${ctx.currentProposal.horizon.endDate} (${ctx.currentProposal.horizon.days} días)`;
+        const byDiscipline = countBy(ctx.currentProposal.classes, (c) => c.classTypeName);
+        const byCoach = countBy(ctx.currentProposal.classes, (c) => c.coachName);
+        const fmt = (m: Record<string, number>) =>
+          Object.entries(m)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(", ");
+        return `\nPROPUESTA ACTUAL (status: pendiente de revisión):\n  - Total: ${total} clases en ${span}\n  - Por disciplina: ${fmt(byDiscipline)}\n  - Por coach: ${fmt(byCoach)}\n\nIMPORTANTE: si el admin pide cambios (más/menos clases, más intensidad, otro mix), DEBES re-emitir el array \`proposal\` COMPLETO con TODAS las clases nuevas. NUNCA reuses el array anterior — genera todo desde cero con los nuevos parámetros. Si dice "más clases por día", apunta a una densidad mayor (p.ej. 4–5 clases entre semana × 14 días ≈ 28–35 clases).\n`;
+      })()
     : "";
 
   return `Eres Spark, copilot de planeación de horarios de ${ctx.studioName}. Hoy es ${ctx.todayIso}.
@@ -84,4 +88,13 @@ Coaches:
 ${coachList || "  (no hay coaches registrados)"}
 ${constraintsBlock}${proposalBlock}
 Cuando recolectes una nueva pieza de información estructurable, actualiza tu modelo mental de las restricciones. Cuando llames a propose_schedule_plan, pasa el OBJETO COMPLETO de restricciones (lo que ya tenías + lo nuevo), no solo el delta.`;
+}
+
+function countBy<T>(arr: T[], keyFn: (item: T) => string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const item of arr) {
+    const k = keyFn(item);
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
 }

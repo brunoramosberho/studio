@@ -111,8 +111,12 @@ export async function POST(
             iteration++;
 
             const response = await anthropic.messages.create({
-              model: "claude-sonnet-4-20250514",
-              max_tokens: 4096,
+              model: "claude-sonnet-4-6",
+              // Each class in propose_schedule_plan is ~200-300 output tokens
+              // (3 cuids + 2 ISO timestamps + rationale). A 40-class proposal
+              // needs ~10-12k tokens; truncation here silently drops the
+              // tool_use block and the prior proposal sticks around.
+              max_tokens: 16384,
               system: [
                 {
                   type: "text",
@@ -123,6 +127,30 @@ export async function POST(
               tools: plannerTools,
               messages: history,
             });
+
+            if (response.stop_reason === "max_tokens") {
+              const truncatedToolUse = response.content.some(
+                (b) => b.type === "tool_use",
+              );
+              const partialText = response.content
+                .filter((b): b is Anthropic.TextBlock => b.type === "text")
+                .map((b) => b.text)
+                .join("");
+              if (partialText) {
+                assistantText += partialText;
+                controller.enqueue(
+                  encoder.encode(encodeSSE({ type: "text_delta", text: partialText })),
+                );
+              }
+              const warning = truncatedToolUse
+                ? "\n\n⚠️ La propuesta era demasiado grande para emitir de una sola vez. Pídeme que la divida (por ejemplo, una semana a la vez) o reduce el número de clases."
+                : "\n\n⚠️ Respuesta truncada por límite de tokens. Pídeme que continúe o sé más específico.";
+              assistantText += warning;
+              controller.enqueue(
+                encoder.encode(encodeSSE({ type: "text_delta", text: warning })),
+              );
+              break;
+            }
 
             if (response.stop_reason === "tool_use") {
               const toolUseBlocks = response.content.filter(
