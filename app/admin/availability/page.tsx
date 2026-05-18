@@ -25,6 +25,7 @@ import {
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import Link from "next/link";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { TEAM_TABS } from "@/components/admin/section-tab-configs";
@@ -229,36 +230,40 @@ export default function AdminAvailabilityPage() {
           </p>
         </div>
 
-        <div className="inline-flex rounded-lg bg-stone-100 p-1">
-          <TabButton
-            active={tab === "requests"}
-            onClick={() => setTab("requests")}
-            badge={pendingCount > 0 ? pendingCount : undefined}
-          >
-            {t("availRequests")}
-          </TabButton>
-          <TabButton
-            active={tab === "coverage"}
-            onClick={() => setTab("coverage")}
-          >
-            {t("availTeamCoverage")}
-          </TabButton>
-          <TabButton
-            active={tab === "hourly"}
-            onClick={() => setTab("hourly")}
-          >
-            {t("availHourlyView")}
-          </TabButton>
-          <TabButton
-            active={tab === "settings"}
-            onClick={() => setTab("settings")}
-          >
-            {t("settings")}
-          </TabButton>
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <div className="inline-flex w-max max-w-none rounded-lg bg-stone-100 p-1 whitespace-nowrap">
+            <TabButton
+              active={tab === "requests"}
+              onClick={() => setTab("requests")}
+              badge={pendingCount > 0 ? pendingCount : undefined}
+            >
+              {t("availRequests")}
+            </TabButton>
+            <TabButton
+              active={tab === "coverage"}
+              onClick={() => setTab("coverage")}
+            >
+              {t("availTeamCoverage")}
+            </TabButton>
+            <TabButton
+              active={tab === "hourly"}
+              onClick={() => setTab("hourly")}
+            >
+              {t("availHourlyView")}
+            </TabButton>
+            <TabButton
+              active={tab === "settings"}
+              onClick={() => setTab("settings")}
+            >
+              {t("settings")}
+            </TabButton>
+          </div>
         </div>
 
         {tab === "requests" && <RequestsTab pending={pending} />}
-        {tab === "coverage" && <CoverageTab />}
+        {tab === "coverage" && (
+          <CoverageTab onGoToRequests={() => setTab("requests")} />
+        )}
         {tab === "hourly" && <HourlyTab />}
         {tab === "settings" && <SettingsTab />}
       </div>
@@ -546,11 +551,21 @@ function RequestCard({ block }: { block: PendingBlock }) {
 
 // ── Tab 2: Coverage ──
 
-function CoverageTab() {
+interface SelectedCell {
+  coachName: string;
+  coachColor: string;
+  coachInitials: string;
+  date: string;
+  dateLabel: string;
+  status: "available" | "partial" | "blocked" | "pending" | "empty";
+}
+
+function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
   const [view, setView] = useState<"week" | "month">("week");
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [disciplineFilter, setDisciplineFilter] = useState<string | null>(null);
+  const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
 
   const anchorDate = useMemo(() => {
     if (view === "month") {
@@ -691,7 +706,7 @@ function CoverageTab() {
         <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-card p-4">
           <div
             className="grid gap-px"
-            style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
+            style={{ gridTemplateColumns: "minmax(72px, 96px) repeat(7, minmax(0, 1fr))" }}
           >
             <div />
             {data.dayHeaders.map((dh) => (
@@ -725,39 +740,37 @@ function CoverageTab() {
                     {coach.name.split(" ")[0]}
                   </span>
                 </div>
-                {coach.days.map((day) => (
-                  <div
-                    key={day.date}
-                    className={cn(
-                      "h-[38px] rounded-sm transition-colors",
-                      statusCellClass(day.status),
-                    )}
-                    style={
-                      day.status === "pending"
-                        ? {
-                            backgroundImage:
-                              "repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(251,191,36,0.3) 3px, rgba(251,191,36,0.3) 6px)",
-                          }
-                        : undefined
-                    }
-                    title={`${coach.name} · ${day.label} · ${statusLabel(day.status)}`}
-                  />
-                ))}
+                {coach.days.map((day) => {
+                  const pattern = statusCellPattern(day.status);
+                  return (
+                    <button
+                      key={day.date}
+                      type="button"
+                      onClick={() =>
+                        setSelectedCell({
+                          coachName: coach.name,
+                          coachColor: coach.color,
+                          coachInitials: coach.initials,
+                          date: day.date,
+                          dateLabel: day.label,
+                          status: day.status,
+                        })
+                      }
+                      className={cn(
+                        "h-[38px] w-full rounded-sm transition-colors hover:ring-2 hover:ring-stone-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400",
+                        statusCellClass(day.status),
+                      )}
+                      style={pattern ? { backgroundImage: pattern } : undefined}
+                      title={`${coach.name} · ${day.label} · ${statusLabel(day.status)}`}
+                      aria-label={`${coach.name} ${day.label}: ${statusLabel(day.status)}`}
+                    />
+                  );
+                })}
               </div>
             ))}
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-4 border-t border-stone-100 pt-3">
-            <LegendItem className="bg-emerald-50" label="Disponible" />
-            <LegendItem className="bg-stone-200" label="Bloqueado (recurrente)" />
-            <LegendItem
-              className="bg-amber-50"
-              pattern
-              label="Pendiente aprobación"
-            />
-            <LegendItem className="bg-red-50" label="Sin cobertura" />
-            <LegendItem className="bg-stone-50" label="No programado" />
-          </div>
+          <CoverageLegend />
         </div>
       )}
 
@@ -775,7 +788,7 @@ function CoverageTab() {
                 <div key={weekIdx}>
                   <div
                     className="grid gap-px"
-                    style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
+                    style={{ gridTemplateColumns: "minmax(72px, 96px) repeat(7, minmax(0, 1fr))" }}
                   >
                     <div />
                     {week.map((dh) => {
@@ -840,23 +853,29 @@ function CoverageTab() {
                           }
                           const dayDate = new Date(dh.date);
                           const outOfMonth = !isSameMonth(dayDate, monthDate);
+                          const pattern = statusCellPattern(day.status);
                           return (
-                            <div
+                            <button
                               key={dh.date}
+                              type="button"
+                              onClick={() =>
+                                setSelectedCell({
+                                  coachName: coach.name,
+                                  coachColor: coach.color,
+                                  coachInitials: coach.initials,
+                                  date: day.date,
+                                  dateLabel: day.label,
+                                  status: day.status,
+                                })
+                              }
                               className={cn(
-                                "h-[24px] rounded-sm transition-colors",
+                                "h-[24px] w-full rounded-sm transition-colors hover:ring-2 hover:ring-stone-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400",
                                 statusCellClass(day.status),
                                 outOfMonth && "opacity-30",
                               )}
-                              style={
-                                day.status === "pending"
-                                  ? {
-                                      backgroundImage:
-                                        "repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(251,191,36,0.3) 3px, rgba(251,191,36,0.3) 6px)",
-                                    }
-                                  : undefined
-                              }
+                              style={pattern ? { backgroundImage: pattern } : undefined}
                               title={`${coach.name} · ${day.label} · ${statusLabel(day.status)}`}
+                              aria-label={`${coach.name} ${day.label}: ${statusLabel(day.status)}`}
                             />
                           );
                         })}
@@ -868,21 +887,116 @@ function CoverageTab() {
             })}
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-4 border-t border-stone-100 pt-3">
-            <LegendItem className="bg-emerald-50" label="Disponible" />
-            <LegendItem className="bg-stone-200" label="Bloqueado (recurrente)" />
-            <LegendItem
-              className="bg-amber-50"
-              pattern
-              label="Pendiente aprobación"
-            />
-            <LegendItem className="bg-red-50" label="Sin cobertura" />
-            <LegendItem className="bg-stone-50" label="No programado" />
-          </div>
+          <CoverageLegend />
         </div>
       )}
+
+      <CellDetailDialog
+        cell={selectedCell}
+        onClose={() => setSelectedCell(null)}
+        onGoToRequests={() => {
+          setSelectedCell(null);
+          onGoToRequests();
+        }}
+      />
     </div>
   );
+}
+
+function CellDetailDialog({
+  cell,
+  onClose,
+  onGoToRequests,
+}: {
+  cell: SelectedCell | null;
+  onClose: () => void;
+  onGoToRequests: () => void;
+}) {
+  // Render nothing once the cell is cleared so the Radix portal also unmounts
+  // — keeps the page interactive in case the dialog's transition lags.
+  if (!cell) return null;
+
+  const dateStr = format(new Date(cell.date), "EEEE d 'de' MMMM", { locale: es });
+  const description = cellStatusDescription(cell.status);
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="p-0 sm:max-w-md">
+        <DialogTitle className="sr-only">
+          {cell.coachName} — {statusLabel(cell.status)}
+        </DialogTitle>
+        <div className="space-y-4 p-5">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+              style={{ backgroundColor: cell.coachColor }}
+            >
+              {cell.coachInitials}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-stone-900">
+                {cell.coachName}
+              </p>
+              <p className="truncate text-xs capitalize text-stone-500">
+                {dateStr}
+              </p>
+            </div>
+          </div>
+
+          <div
+            className={cn(
+              "flex items-start gap-3 rounded-xl border border-stone-100 p-3",
+            )}
+          >
+            <div
+              className={cn(
+                "mt-0.5 h-4 w-4 shrink-0 rounded-sm border border-stone-200/60",
+                statusCellClass(cell.status),
+              )}
+              style={(() => {
+                const p = statusCellPattern(cell.status);
+                return p ? { backgroundImage: p } : undefined;
+              })()}
+            />
+            <div className="min-w-0 space-y-0.5">
+              <p className="text-sm font-medium text-stone-800">
+                {statusLabel(cell.status)}
+              </p>
+              <p className="text-xs leading-relaxed text-stone-500">
+                {description}
+              </p>
+            </div>
+          </div>
+
+          {cell.status === "pending" && (
+            <button
+              type="button"
+              onClick={onGoToRequests}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C2340] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#252d52]"
+            >
+              Ir a la solicitud
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function cellStatusDescription(status: SelectedCell["status"]): string {
+  switch (status) {
+    case "available":
+      return "El coach está libre ese día — no hay bloqueos activos.";
+    case "partial":
+      return "Bloqueo recurrente de parte del día configurado por el coach. Ya está confirmado, no requiere tu aprobación.";
+    case "blocked":
+      return "Día completo bloqueado por una regla recurrente del coach. Ya está confirmado.";
+    case "pending":
+      return "Solicitud puntual de ausencia esperando que la apruebes o rechaces.";
+    case "empty":
+      return "No hay clases programadas con este coach ese día.";
+  }
 }
 
 // ── Tab 3: Hourly ──
@@ -1578,7 +1692,10 @@ function statusCellClass(
     case "available":
       return "bg-emerald-50";
     case "partial":
-      return "bg-amber-50";
+      // Recurring partial block — already confirmed by the coach, no admin
+      // action needed. Gray-striped so it reads as "blocked part of the day",
+      // never as "pending" (yellow is reserved for that).
+      return "bg-stone-100";
     case "blocked":
       return "bg-stone-200";
     case "pending":
@@ -1586,6 +1703,18 @@ function statusCellClass(
     case "empty":
       return "bg-stone-50";
   }
+}
+
+// Background pattern overlay per status. Centralised so cells, the dialog
+// swatch and the legend stay in sync.
+function statusCellPattern(status: string): string | undefined {
+  if (status === "pending") {
+    return "repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(251,191,36,0.45) 3px, rgba(251,191,36,0.45) 6px)";
+  }
+  if (status === "partial") {
+    return "repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(120,113,108,0.35) 3px, rgba(120,113,108,0.35) 6px)";
+  }
+  return undefined;
 }
 
 function statusLabel(status: string): string {
@@ -1606,22 +1735,39 @@ function LegendItem({
 }: {
   className: string;
   label: string;
-  pattern?: boolean;
+  // The status whose pattern this swatch should mirror — keeps cell + legend
+  // in sync. Omit for solid swatches.
+  pattern?: "partial" | "pending";
 }) {
+  const patternImage = pattern ? statusCellPattern(pattern) : undefined;
   return (
     <div className="flex items-center gap-1.5">
       <div
-        className={cn("h-3 w-3 rounded-sm", className)}
-        style={
-          pattern
-            ? {
-                backgroundImage:
-                  "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(251,191,36,0.3) 2px, rgba(251,191,36,0.3) 4px)",
-              }
-            : undefined
-        }
+        className={cn("h-3 w-3 shrink-0 rounded-sm border border-stone-200/60", className)}
+        style={patternImage ? { backgroundImage: patternImage } : undefined}
       />
-      <span className="text-xs text-stone-500">{label}</span>
+      <span className="text-[11px] text-stone-500 sm:text-xs">{label}</span>
+    </div>
+  );
+}
+
+function CoverageLegend() {
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-stone-100 pt-3 sm:flex sm:flex-wrap sm:gap-4">
+      <LegendItem className="bg-emerald-50" label="Disponible" />
+      <LegendItem className="bg-stone-200" label="Bloqueado" />
+      <LegendItem
+        className="bg-stone-100"
+        pattern="partial"
+        label="Parcial (recurrente)"
+      />
+      <LegendItem
+        className="bg-amber-50"
+        pattern="pending"
+        label="Pendiente aprobación"
+      />
+      <LegendItem className="bg-red-50" label="Sin cobertura" />
+      <LegendItem className="bg-stone-50" label="No programado" />
     </div>
   );
 }
