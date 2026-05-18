@@ -10,28 +10,37 @@ import {
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
 const rootHostname = ROOT_DOMAIN.split(":")[0];
 const isProduction = process.env.NODE_ENV === "production";
+const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
-// Promote a logged-in client session to an admin-portal session (same user)
-// so /coach and /admin don't require a second login when the user already
-// has a /my session and the required role/coach profile.
+// Bridge a session between the two portals (same user, parallel Session row)
+// so the user doesn't have to re-login when one cookie survives but the
+// other doesn't. Direction is inferred from `to`:
+//   - to=/coach or /admin → uses the client cookie to mint an admin cookie
+//   - to=/my              → uses the admin cookie to mint a client cookie
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const rawTo = url.searchParams.get("to") ?? "/coach";
   const to = rawTo.startsWith("/") && !rawTo.startsWith("//") ? rawTo : "/coach";
+  const wantsClient = to.startsWith("/my");
 
   const loginUrl = new URL("/login", url);
-  loginUrl.searchParams.set("portal", "admin");
+  if (!wantsClient) loginUrl.searchParams.set("portal", "admin");
   loginUrl.searchParams.set("callbackUrl", to);
 
-  const clientToken =
-    request.cookies.get(CLIENT_SESSION_COOKIE)?.value ??
-    request.cookies.get("authjs.session-token")?.value ??
-    request.cookies.get("__Secure-authjs.session-token")?.value;
+  const sourceCookieName = wantsClient ? ADMIN_SESSION_COOKIE : CLIENT_SESSION_COOKIE;
+  const targetCookieName = wantsClient ? CLIENT_SESSION_COOKIE : ADMIN_SESSION_COOKIE;
 
-  if (!clientToken) return NextResponse.redirect(loginUrl);
+  const sourceToken =
+    request.cookies.get(sourceCookieName)?.value ??
+    // Fallback for the non-prefixed dev cookies; harmless in prod.
+    (wantsClient
+      ? request.cookies.get("authjs.session-token.admin")?.value
+      : request.cookies.get("authjs.session-token")?.value);
+
+  if (!sourceToken) return NextResponse.redirect(loginUrl);
 
   const dbSession = await prisma.session.findUnique({
-    where: { sessionToken: clientToken },
+    where: { sessionToken: sourceToken },
     select: { userId: true, expires: true },
   });
 
@@ -61,25 +70,33 @@ export async function GET(request: NextRequest) {
   const isSuperAdmin = user?.isSuperAdmin ?? false;
   const isCoach = !!coachProfile || role === "COACH";
   const isStaff = role === "FRONT_DESK" || role === "ADMIN" || isSuperAdmin;
-
   const wantsCoach = to.startsWith("/coach");
-  const allowed = wantsCoach ? isCoach || isStaff : isStaff;
+
+  // Access rules (studio policy):
+  //   /admin  → staff only (ADMIN / FRONT_DESK / superadmin)
+  //   /coach  → coaches only (must have CoachProfile or COACH role)
+  //   /my     → clients and coaches-who-are-clients; never staff
+  const allowed = wantsClient
+    ? !!membership && !isStaff
+    : wantsCoach
+      ? isCoach
+      : isStaff;
   if (!allowed) return NextResponse.redirect(loginUrl);
 
   const sessionToken = crypto.randomUUID();
-  const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const expires = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
   await prisma.session.create({
     data: { sessionToken, userId: dbSession.userId, expires },
   });
 
   const response = NextResponse.redirect(new URL(to, url));
-  response.cookies.set(ADMIN_SESSION_COOKIE, sessionToken, {
+  response.cookies.set(targetCookieName, sessionToken, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
     secure: isProduction,
     domain: isProduction ? `.${rootHostname}` : undefined,
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: SESSION_MAX_AGE_SECONDS,
   });
   return response;
 }

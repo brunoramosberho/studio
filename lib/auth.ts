@@ -138,53 +138,29 @@ providers.push(
 
 const sessionCallback = {
   async session({ session, user }: { session: any; user: any }) {
-    // TEMPORARY: hard log everything we touch so we can see why auth() is
-    // silently returning null for the coach user on sandbox-revive even
-    // though the cookie + DB session are valid.
+    // Never throw from here: if this callback rejects, @auth/core's session
+    // handler returns an empty body, the client reads `unauthenticated`, and
+    // the verify-before-redirect bounces the user to /login — even though
+    // the cookie and DB session are valid. That manifested as "PWA pide
+    // login en cada apertura" on iOS. Always return the session object;
+    // degrade `isSuperAdmin` to false if the lookup fails.
+    if (!session?.user) return session;
+    session.user.id = user.id;
     try {
-      const tenantSlug =
-        (typeof globalThis !== "undefined" &&
-          (globalThis as { __TENANT_SLUG__?: string }).__TENANT_SLUG__) ||
-        "unknown";
-      console.log(
-        "[auth/sessionCallback] in",
-        JSON.stringify({
-          tenantSlug,
-          hasSession: !!session,
-          hasSessionUser: !!session?.user,
-          sessionUserKeys: session?.user ? Object.keys(session.user) : null,
-          userId: user?.id ?? null,
-          userKeys: user ? Object.keys(user) : null,
-        }),
-      );
-
-      if (session.user) {
-        session.user.id = user.id;
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { isSuperAdmin: true },
-        });
-        (session.user as unknown as Record<string, unknown>).isSuperAdmin =
-          dbUser?.isSuperAdmin ?? false;
-      }
-
-      console.log(
-        "[auth/sessionCallback] out",
-        JSON.stringify({
-          userId: session?.user?.id ?? null,
-          isSuperAdmin: session?.user?.isSuperAdmin ?? null,
-        }),
-      );
-
-      return session;
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { isSuperAdmin: true },
+      });
+      (session.user as unknown as Record<string, unknown>).isSuperAdmin =
+        dbUser?.isSuperAdmin ?? false;
     } catch (e) {
       console.error(
-        "[auth/sessionCallback] threw",
-        e instanceof Error ? `${e.name}: ${e.message}\n${e.stack}` : String(e),
+        "[auth/sessionCallback] isSuperAdmin lookup failed, defaulting to false",
+        e instanceof Error ? `${e.name}: ${e.message}` : String(e),
       );
-      // Re-throw — NextAuth's session.js will catch it, log it, and we'll see it
-      throw e;
+      (session.user as unknown as Record<string, unknown>).isSuperAdmin = false;
     }
+    return session;
   },
 };
 
@@ -219,6 +195,8 @@ const signInEvent = {
   },
 };
 
+const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
+
 function cookieOptions(domain: boolean) {
   return {
     httpOnly: true,
@@ -226,6 +204,10 @@ function cookieOptions(domain: boolean) {
     path: "/",
     secure: isProduction,
     domain: domain && isProduction ? `.${rootHostname}` : undefined,
+    // Explicit Max-Age in addition to NextAuth's `Expires`. iOS Safari /
+    // standalone PWAs are more reliable about persisting cookies across
+    // app relaunches when both attributes are present.
+    maxAge: SESSION_MAX_AGE_SECONDS,
   };
 }
 
@@ -247,46 +229,19 @@ function makeCookies(suffix?: string) {
   };
 }
 
-// TEMPORARY: wrap the adapter so we can see when getSessionAndUser is being
-// called and whether the token resolves. NextAuth's session callback was
-// never reached during the bounce, which means the lookup failed at this
-// layer. Verify exactly what token NextAuth is asking for vs what the DB has.
-const baseAdapter = PrismaAdapter(prisma);
-const instrumentedAdapter = {
-  ...baseAdapter,
-  async getSessionAndUser(sessionToken: string) {
-    const tokenPrefix = sessionToken?.slice?.(0, 8) ?? "(no-token)";
-    try {
-      const result = await baseAdapter.getSessionAndUser!(sessionToken);
-      console.log(
-        "[auth/adapter.getSessionAndUser]",
-        JSON.stringify({
-          tokenPrefix,
-          found: !!result,
-          userId: result?.user?.id ?? null,
-          expires: result?.session?.expires?.toISOString?.() ?? null,
-        }),
-      );
-      return result;
-    } catch (e) {
-      console.error(
-        "[auth/adapter.getSessionAndUser] threw",
-        JSON.stringify({ tokenPrefix }),
-        e instanceof Error ? `${e.name}: ${e.message}\n${e.stack}` : String(e),
-      );
-      throw e;
-    }
-  },
-};
-
 const shared = {
   trustHost: true,
-  debug: true, // TEMPORARY for sandbox-revive coach-session bug
-  adapter: instrumentedAdapter,
+  adapter: PrismaAdapter(prisma),
   providers,
   callbacks: sessionCallback,
   events: signInEvent,
-  session: { strategy: "database" as const },
+  session: {
+    strategy: "database" as const,
+    // Match the cookie's Max-Age. NextAuth defaults to 30 days too, but
+    // making it explicit avoids any drift between the cookie attribute
+    // and the DB session's `expires` field.
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  },
 };
 
 // ── Client auth (for /my, public pages, super-admin) ──

@@ -140,6 +140,16 @@ export function middleware(req: NextRequest) {
     }
   } else if (pathname.startsWith("/my")) {
     if (!hasClientCookie(req)) {
+      // Mirror the /coach SSO path: if the admin cookie is still valid we
+      // can mint a client cookie silently instead of forcing a re-login.
+      // This rescues users who landed on /my with only the admin cookie
+      // surviving (e.g. iOS PWA cookie isolation, or one of the two
+      // cookies got cleared while the other didn't).
+      if (hasAdminCookie(req)) {
+        const ssoUrl = new URL("/api/auth/portal-sso", req.url);
+        ssoUrl.searchParams.set("to", pathname + req.nextUrl.search);
+        return NextResponse.redirect(ssoUrl);
+      }
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
