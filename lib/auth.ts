@@ -211,19 +211,36 @@ function cookieOptions(domain: boolean) {
   };
 }
 
+// The role tag goes BEFORE the cookie kind, never after. @auth/core's
+// SessionStore reassembles "chunked" session cookies by collecting every
+// cookie whose name `startsWith(sessionTokenCookieName)`. With the old
+// suffix-after layout (`session-token` vs `session-token.admin`), the
+// client instance picked up the admin cookie as a phantom chunk,
+// concatenated both UUIDs, failed the DB lookup, and called
+// sessionStore.clean() — which deletes EVERY chunk it collected. The
+// result was: log in, both cookies set, refresh, server silently wipes
+// both cookies, user bounces back to /login. By putting the tag in
+// front (`session-token` vs `admin.session-token`) no name is a prefix
+// of another, so each NextAuth instance only ever sees its own cookie.
 function makeCookies(suffix?: string) {
-  const sfx = suffix ? `.${suffix}` : "";
+  const tag = suffix ? `${suffix}.` : "";
   return {
     sessionToken: {
-      name: isProduction ? `__Secure-authjs.session-token${sfx}` : `authjs.session-token${sfx}`,
+      name: isProduction
+        ? `__Secure-authjs.${tag}session-token`
+        : `authjs.${tag}session-token`,
       options: cookieOptions(true),
     },
     csrfToken: {
-      name: isProduction ? `__Host-authjs.csrf-token${sfx}` : `authjs.csrf-token${sfx}`,
+      name: isProduction
+        ? `__Host-authjs.${tag}csrf-token`
+        : `authjs.${tag}csrf-token`,
       options: cookieOptions(false),
     },
     callbackUrl: {
-      name: isProduction ? `__Secure-authjs.callback-url${sfx}` : `authjs.callback-url${sfx}`,
+      name: isProduction
+        ? `__Secure-authjs.${tag}callback-url`
+        : `authjs.${tag}callback-url`,
       options: cookieOptions(true),
     },
   };
@@ -249,7 +266,13 @@ const shared = {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...shared,
   pages: { signIn: "/login", verifyRequest: "/login?verify=true" },
-  cookies: makeCookies(),
+  // Tag the client cookie ("client.session-token") even though there is
+  // no parallel instance to collide with — without a tag, any old
+  // pre-rename `session-token.admin` / `session-token.super` cookie still
+  // sitting in a browser would be picked up as a phantom chunk of the
+  // client session (it `startsWith`es `session-token`). With the tag in
+  // front, the client SessionStore matches only its own cookie.
+  cookies: makeCookies("client"),
 });
 
 // ── Staff auth (for /admin, /coach) ──

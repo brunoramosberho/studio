@@ -147,10 +147,11 @@ export async function GET(request: NextRequest) {
     const redirectUrl = new URL(redirectPath, `${protocol}://${host}`);
     const response = NextResponse.redirect(redirectUrl);
 
-    const cookieSuffix = isStaffRole ? ".admin" : "";
+    // Role tag goes BEFORE `session-token` (see lib/auth.ts for why).
+    const cookieTag = isStaffRole ? "admin" : "client";
     const cookieName = isSecure
-      ? `__Secure-authjs.session-token${cookieSuffix}`
-      : `authjs.session-token${cookieSuffix}`;
+      ? `__Secure-authjs.${cookieTag}.session-token`
+      : `authjs.${cookieTag}.session-token`;
 
     response.cookies.set(cookieName, sessionToken, {
       expires,

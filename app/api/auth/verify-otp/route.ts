@@ -10,10 +10,13 @@ const rootHostname = ROOT_DOMAIN.split(":")[0];
 const isProduction = process.env.NODE_ENV === "production";
 
 function sessionCookieName(kind: "client" | "admin") {
-  const suffix = kind === "admin" ? ".admin" : "";
+  // Must match lib/auth.ts `makeCookies(kind)`. Role tag goes before
+  // `session-token` to avoid the SessionStore prefix-collision bug
+  // (a cookie named `…session-token.admin` would otherwise be picked up
+  // by the client SessionStore as a phantom chunk of the client cookie).
   return isProduction
-    ? `__Secure-authjs.session-token${suffix}`
-    : `authjs.session-token${suffix}`;
+    ? `__Secure-authjs.${kind}.session-token`
+    : `authjs.${kind}.session-token`;
 }
 
 function cookieOpts() {

@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
 
   const sourceToken =
     request.cookies.get(sourceCookieName)?.value ??
-    // Fallback for the non-prefixed dev cookies; harmless in prod.
+    // Fallback for the non-prefixed dev cookie variant.
     (wantsClient
-      ? request.cookies.get("authjs.session-token.admin")?.value
-      : request.cookies.get("authjs.session-token")?.value);
+      ? request.cookies.get("authjs.admin.session-token")?.value
+      : request.cookies.get("authjs.client.session-token")?.value);
 
   if (!sourceToken) return NextResponse.redirect(loginUrl);
 

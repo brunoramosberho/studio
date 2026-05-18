@@ -56,9 +56,12 @@ export async function POST(request: NextRequest) {
     const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
     const rootHostname = ROOT_DOMAIN.split(":")[0];
     const isSecure = request.url.startsWith("https://");
+    // Must match lib/auth.ts `makeCookies("super")`. Role tag in front so
+    // this cookie's name is not a prefix of the client/admin session
+    // cookies (which would break NextAuth's SessionStore reassembly).
     const cookieName = isSecure
-      ? "__Secure-authjs.session-token.super"
-      : "authjs.session-token.super";
+      ? "__Secure-authjs.super.session-token"
+      : "authjs.super.session-token";
 
     const response = NextResponse.json({ success: true });
 

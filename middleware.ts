@@ -31,17 +31,20 @@ function isAdminPortalPath(pathname: string): boolean {
   );
 }
 
+// Cookie names must mirror lib/auth.ts `makeCookies("client" | "admin")`.
+// The role tag is BEFORE `session-token` so neither name is a prefix of
+// the other — see the comment in lib/auth.ts for why that matters.
 function hasClientCookie(req: NextRequest): boolean {
   return !!(
-    req.cookies.get("authjs.session-token")?.value ||
-    req.cookies.get("__Secure-authjs.session-token")?.value
+    req.cookies.get("authjs.client.session-token")?.value ||
+    req.cookies.get("__Secure-authjs.client.session-token")?.value
   );
 }
 
 function hasAdminCookie(req: NextRequest): boolean {
   return !!(
-    req.cookies.get("authjs.session-token.admin")?.value ||
-    req.cookies.get("__Secure-authjs.session-token.admin")?.value
+    req.cookies.get("authjs.admin.session-token")?.value ||
+    req.cookies.get("__Secure-authjs.admin.session-token")?.value
   );
 }
 
