@@ -24,6 +24,13 @@ import { useMgicAI, type AiMessage } from "@/components/admin/MgicAI";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Optional seed message — when present, the planner starts a fresh
+   * conversation and sends this as the first user message automatically.
+   * Used by the Spark chat → planner hand-off.
+   */
+  seedMessage?: string | null;
+  onSeedConsumed?: () => void;
 }
 
 type PanelMode = "sidebar" | "floating";
@@ -36,7 +43,7 @@ const WIDTH_KEY = "schedule-planner-width";
 // Matches MgicAI sidebar: panel sits below the admin top bar.
 const HEADER_HEIGHT = "calc(3.5rem + 4px)";
 
-export function PlannerPanel({ open, onOpenChange }: Props) {
+export function PlannerPanel({ open, onOpenChange, seedMessage, onSeedConsumed }: Props) {
   const planner = useSchedulePlanner();
   const { studioName, colorAdmin } = useBranding();
   const { setSuppressFab } = useMgicAI();
@@ -104,12 +111,32 @@ export function PlannerPanel({ open, onOpenChange }: Props) {
   }, [open, setSuppressFab]);
 
   // Auto-start a new conversation when opening with none active.
+  // When a seed message is provided (Spark chat hand-off), start fresh and
+  // immediately send it as the first planner message.
+  const seedConsumedRef = useRef(false);
   useEffect(() => {
-    if (open && !planner.conversationId && !planner.isLoadingHistory) {
+    if (!open) {
+      seedConsumedRef.current = false;
+      return;
+    }
+    if (planner.isLoadingHistory) return;
+
+    // Seed flow: dedicated new conversation seeded with the chat's request.
+    if (seedMessage && !seedConsumedRef.current) {
+      seedConsumedRef.current = true;
+      (async () => {
+        const id = await planner.startNew();
+        if (id) await planner.sendMessage(seedMessage);
+        onSeedConsumed?.();
+      })();
+      return;
+    }
+
+    if (!planner.conversationId) {
       planner.startNew();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, seedMessage]);
 
   const aiMessages: AiMessage[] = planner.messages.map((m: PlannerMessage) => ({
     id: m.id,

@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import {
@@ -99,6 +100,26 @@ export default function AdminSchedulePage() {
   const [defaultTime, setDefaultTime] = useState("");
 
   const [plannerOpen, setPlannerOpen] = useState(false);
+  const [plannerSeed, setPlannerSeed] = useState<string | null>(null);
+
+  // Spark chat can hand off planning intent here via ?planner=spark + a seed
+  // message in sessionStorage. Open the panel and pass the seed through so
+  // PlannerPanel sends it as the first planner message.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  useEffect(() => {
+    if (searchParams.get("planner") !== "spark") return;
+    let seed: string | null = null;
+    try {
+      seed = sessionStorage.getItem("spark-planner-seed");
+      sessionStorage.removeItem("spark-planner-seed");
+    } catch {}
+    if (seed) setPlannerSeed(seed);
+    setPlannerOpen(true);
+    // Strip the query param so a reload doesn't re-trigger.
+    router.replace("/admin/schedule", { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -551,7 +572,17 @@ export default function AdminSchedulePage() {
         />
       )}
 
-      {canEdit && <PlannerPanel open={plannerOpen} onOpenChange={setPlannerOpen} />}
+      {canEdit && (
+        <PlannerPanel
+          open={plannerOpen}
+          onOpenChange={(o) => {
+            setPlannerOpen(o);
+            if (!o) setPlannerSeed(null);
+          }}
+          seedMessage={plannerSeed}
+          onSeedConsumed={() => setPlannerSeed(null)}
+        />
+      )}
     </div>
     </TooltipProvider>
   );

@@ -47,10 +47,16 @@ export interface ProposalReadyEvent {
   conversationId: string;
 }
 
+export interface OpenPlannerEvent {
+  type: "open_planner";
+  request: string;
+}
+
 export type StreamEvent =
   | ToolCallEvent
   | TextDeltaEvent
   | DoneEvent
   | ErrorEvent
   | ConfirmationRequiredEvent
-  | ProposalReadyEvent;
+  | ProposalReadyEvent
+  | OpenPlannerEvent;

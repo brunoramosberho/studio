@@ -82,6 +82,8 @@ export async function executeTool(name: string, input: any, tenantId: string, ad
       return logFeatureRequest(input, tenantId, adminUserId);
     case "propose_weekly_schedule":
       return proposeWeeklySchedule(input, tenantId);
+    case "open_schedule_planner":
+      return openSchedulePlanner(input);
     case "create_class_batch":
       return createClassBatch(input, tenantId);
     case "update_class":
@@ -2723,5 +2725,27 @@ async function getReferralMetrics(
       code: m.referralCode,
     })),
     members_with_code: membershipsWithReferrals.length,
+  };
+}
+
+// Hand-off tool: the chat itself does NOT plan the schedule. It validates the
+// request and returns a payload the API route inspects to emit an open_planner
+// stream event. The client navigates to the schedule page, which seeds the
+// dedicated planner with this exact `request`. The actual planning then
+// happens inside the planner's own conversation loop.
+async function openSchedulePlanner(input: { request?: unknown }) {
+  const request = typeof input.request === "string" ? input.request.trim() : "";
+  if (!request) {
+    return {
+      error:
+        "Falta el campo 'request'. Reescribe la solicitud del admin de forma clara antes de abrir el planeador.",
+    };
+  }
+  return {
+    ok: true,
+    action: "open_planner" as const,
+    request,
+    instruction:
+      "El planeador ya se está abriendo con esta solicitud cargada. Respóndele al admin con UNA frase: que abriste el planeador y que en unos segundos verá la propuesta o las preguntas que el planeador necesita. NO repitas la solicitud ni propongas clases aquí — eso lo hace el planeador.",
   };
 }
