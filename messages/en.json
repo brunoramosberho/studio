@@ -1511,7 +1511,21 @@
     "cancelAction": "Cancel",
     "saving": "Saving...",
     "saveBlock": "Save block",
-    "pendingApproval48h": "Pending approval (up to 48h)"
+    "pendingApproval48h": "Pending approval (up to 48h)",
+    "tapToSelectRange": "Tap a start date and an end date (Airbnb-style).",
+    "tapEndDate": "Now tap the end date",
+    "selectedRange": "Selected range",
+    "oneDay": "1 day",
+    "nDays": "{n} days",
+    "deleteBlock": "Delete block",
+    "blockDeleted": "Block deleted",
+    "blockCreated": "Block saved",
+    "confirmDelete": "Delete this block?",
+    "cancelRequest": "Cancel request",
+    "noBlocksYet": "No blocks yet",
+    "contactAdminToDelete": "Contact admin to delete",
+    "previous": "Previous",
+    "next": "Next"
   },
   "member": {
     "greeting": "Hi, {name}",

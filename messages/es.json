@@ -1511,7 +1511,21 @@
     "cancelAction": "Cancelar",
     "saving": "Guardando…",
     "saveBlock": "Guardar bloqueo",
-    "pendingApproval48h": "Pendiente de aprobación (hasta 48h)"
+    "pendingApproval48h": "Pendiente de aprobación (hasta 48h)",
+    "tapToSelectRange": "Toca una fecha de inicio y otra de fin (estilo Airbnb).",
+    "tapEndDate": "Ahora toca la fecha final",
+    "selectedRange": "Rango seleccionado",
+    "oneDay": "1 día",
+    "nDays": "{n} días",
+    "deleteBlock": "Eliminar bloque",
+    "blockDeleted": "Bloque eliminado",
+    "blockCreated": "Bloque guardado",
+    "confirmDelete": "¿Eliminar este bloque?",
+    "cancelRequest": "Cancelar solicitud",
+    "noBlocksYet": "Aún no tienes bloques",
+    "contactAdminToDelete": "Contacta al admin para eliminar",
+    "previous": "Anterior",
+    "next": "Siguiente"
   },
   "member": {
     "greeting": "Hola, {name}",
