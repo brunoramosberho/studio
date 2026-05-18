@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -161,7 +161,14 @@ function clearCurrentConv() {
   } catch {}
 }
 
+// Stash a one-shot seed for the schedule planner here when Spark hands off
+// from chat → planner. The schedule page picks it up on mount and feeds it
+// into the planner's first message. We use a session-scoped storage key
+// instead of the URL so long requests don't get truncated.
+const PLANNER_SEED_STORAGE_KEY = "spark-planner-seed";
+
 export function MgicAIProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -298,6 +305,20 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
                     assistantMsgId,
                   });
                   break;
+                case "open_planner":
+                  // Spark wants to hand the planning intent off to the
+                  // dedicated planner. Stash the seed message and navigate to
+                  // the schedule page, which auto-opens the PlannerPanel and
+                  // sends this as the first planner message.
+                  try {
+                    sessionStorage.setItem(
+                      PLANNER_SEED_STORAGE_KEY,
+                      event.request,
+                    );
+                  } catch {}
+                  setIsOpen(false);
+                  router.push("/admin/schedule?planner=spark");
+                  break;
                 case "error":
                   fullText += `\n\n⚠ Error: ${event.message}`;
                   setMessages((prev) =>
@@ -338,7 +359,7 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
         abortRef.current = null;
       }
     },
-    [],
+    [router],
   );
 
   const sendMessage = useCallback(

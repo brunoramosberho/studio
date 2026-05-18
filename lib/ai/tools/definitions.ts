@@ -457,6 +457,23 @@ export const tools: Anthropic.Tool[] = [
   },
 
   {
+    name: "open_schedule_planner",
+    description:
+      "Abre el planeador dedicado de horario con la solicitud del admin ya cargada. Úsalo SIEMPRE que el admin quiera armar/proponer/restructurar el horario de una semana o más (ej: 'arma el horario de la próxima semana', 'propón clases para junio', 'replantéa los lunes'). El planeador es mucho mejor que este chat para eso: recolecta restricciones de forma estructurada, genera una propuesta revisable en tabla, y aplica todas las clases con un solo click. NO uses propose_weekly_schedule cuando el admin quiera construir el horario — propose_weekly_schedule es solo para análisis rápido de fill rates.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        request: {
+          type: "string",
+          description:
+            "La solicitud del admin reescrita de forma clara y completa para sembrar el planeador. Incluye contexto relevante: rango de fechas, énfasis en disciplinas/coaches, restricciones mencionadas. Mantenlo en una sola oración o párrafo corto. Ej: 'Arma el horario semanal del 26 may al 1 jun, énfasis en yoga matutino y HIIT por las tardes, evita clases después de las 8pm'.",
+        },
+      },
+      required: ["request"],
+    },
+  },
+
+  {
     name: "propose_weekly_schedule",
     description:
       "Analiza datos históricos de fill rate, disponibilidad de coaches, y demanda para proponer un horario semanal optimizado. Devuelve una propuesta con slots, disciplinas, coaches y salas sugeridas. Úsalo cuando el admin pida armar el horario de una semana.",

@@ -237,23 +237,46 @@ export async function POST(request: NextRequest) {
                   try {
                     const result = await executeTool(block.name, block.input, tenantId, adminUserId);
                     return {
-                      type: "tool_result" as const,
-                      tool_use_id: block.id,
+                      block,
+                      result,
                       content: JSON.stringify(result),
+                      is_error: false as boolean,
                     };
                   } catch (err) {
                     return {
-                      type: "tool_result" as const,
-                      tool_use_id: block.id,
+                      block,
+                      result: null as unknown,
                       content: JSON.stringify({ error: err instanceof Error ? err.message : "Tool execution failed" }),
-                      is_error: true,
+                      is_error: true as boolean,
                     };
                   }
                 }),
               );
 
+              // Hand-off events: certain tools (e.g. open_schedule_planner)
+              // signal the chat UI to navigate elsewhere. Emit those events
+              // alongside the regular tool result so the client can react.
+              for (const tr of toolResults) {
+                const r = tr.result as { action?: string; request?: string } | null;
+                if (r && r.action === "open_planner" && typeof r.request === "string") {
+                  controller.enqueue(
+                    new TextEncoder().encode(
+                      encodeSSE({ type: "open_planner", request: r.request }),
+                    ),
+                  );
+                }
+              }
+
               messages.push({ role: "assistant", content: response.content });
-              messages.push({ role: "user", content: toolResults });
+              messages.push({
+                role: "user",
+                content: toolResults.map((tr) => ({
+                  type: "tool_result" as const,
+                  tool_use_id: tr.block.id,
+                  content: tr.content,
+                  ...(tr.is_error ? { is_error: true } : {}),
+                })),
+              });
               continue;
             }
 
