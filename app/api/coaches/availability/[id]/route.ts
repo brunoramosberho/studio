@@ -19,21 +19,24 @@ export async function DELETE(
       return NextResponse.json({ error: "Block not found" }, { status: 404 });
     }
 
-    if (block.type === "one_time" && block.startDate) {
+    // Zone restriction only applies to active one-time blocks (i.e. already
+    // approved time off). Pending requests can always be cancelled, recurring
+    // blocks have no date so they're always deletable, and rejected blocks
+    // are cleanup.
+    if (
+      block.status === "active" &&
+      block.type === "one_time" &&
+      block.startDate
+    ) {
       const zone = getZone(block.startDate, tenant);
       if (zone !== "green") {
         return NextResponse.json(
-          { error: `Solo puedes eliminar bloques en zona verde (>${tenant.zoneYellowDays} días)` },
+          {
+            error: `Solo puedes eliminar bloques en zona verde (>${tenant.zoneYellowDays} días). Contacta al administrador.`,
+          },
           { status: 403 },
         );
       }
-    }
-
-    if (block.status !== "active") {
-      return NextResponse.json(
-        { error: "Solo puedes eliminar bloques activos" },
-        { status: 403 },
-      );
     }
 
     await prisma.coachAvailabilityBlock.delete({ where: { id } });
