@@ -115,9 +115,21 @@ export async function POST(request: NextRequest) {
     // re-login. Pure admins (staff without a CoachProfile) only get the
     // admin cookie — admins don't enter as clients (per studio rules).
     //
-    // Tenant comes from the middleware header so we only grant the extra
-    // cookie for the studio the user is actually visiting.
-    const tenantSlug = request.headers.get("x-tenant-slug");
+    // Resolve the tenant from the middleware-injected header first; fall
+    // back to parsing the Host header so we never miss the dual-cookie
+    // path because of header-forwarding quirks.
+    let tenantSlug = request.headers.get("x-tenant-slug");
+    if (!tenantSlug) {
+      const host = request.headers.get("host") ?? "";
+      const hostname = host.split(":")[0];
+      if (
+        hostname !== rootHostname &&
+        hostname !== `www.${rootHostname}` &&
+        hostname.endsWith(`.${rootHostname}`)
+      ) {
+        tenantSlug = hostname.replace(`.${rootHostname}`, "");
+      }
+    }
     if (tenantSlug && tenantSlug !== "__super_admin__") {
       const tenant = await prisma.tenant.findUnique({
         where: { slug: tenantSlug, isActive: true },

@@ -290,6 +290,10 @@ export const {
 });
 
 // Cookie name constants for client-side / middleware use
-export const CLIENT_SESSION_COOKIE = makeCookies().sessionToken.name;
+// Must mirror the `cookies:` passed into NextAuth() above. The client
+// instance uses `makeCookies("client")`, so the exported constant must
+// match — otherwise portal-sso / debug-cookie / etc. look up the wrong
+// cookie name and the user looks logged-out from the server's POV.
+export const CLIENT_SESSION_COOKIE = makeCookies("client").sessionToken.name;
 export const ADMIN_SESSION_COOKIE = makeCookies("admin").sessionToken.name;
 export const SUPER_SESSION_COOKIE = makeCookies("super").sessionToken.name;

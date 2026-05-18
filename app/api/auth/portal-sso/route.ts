@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/db";
-import { getTenant } from "@/lib/tenant";
 import {
   CLIENT_SESSION_COOKIE,
   ADMIN_SESSION_COOKIE,
@@ -48,7 +47,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const tenant = await getTenant();
+  // Resolve the tenant from the middleware-injected header first; fall
+  // back to parsing the Host header so this works even if the header
+  // forwarding is flaky for any reason.
+  let tenantSlug = request.headers.get("x-tenant-slug");
+  if (!tenantSlug) {
+    const host = request.headers.get("host") ?? "";
+    const hostname = host.split(":")[0];
+    if (
+      hostname !== rootHostname &&
+      hostname !== `www.${rootHostname}` &&
+      hostname.endsWith(`.${rootHostname}`)
+    ) {
+      tenantSlug = hostname.replace(`.${rootHostname}`, "");
+    }
+  }
+  const tenant = tenantSlug
+    ? await prisma.tenant.findUnique({
+        where: { slug: tenantSlug, isActive: true },
+        select: { id: true },
+      })
+    : null;
   if (!tenant) return NextResponse.redirect(loginUrl);
 
   const [membership, coachProfile, user] = await Promise.all([
