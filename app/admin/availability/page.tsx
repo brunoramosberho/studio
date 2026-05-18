@@ -10,6 +10,7 @@ import {
   Check,
   X as XIcon,
   ExternalLink,
+  Plus,
 } from "lucide-react";
 import {
   format,
@@ -25,7 +26,20 @@ import {
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Link from "next/link";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { TEAM_TABS } from "@/components/admin/section-tab-configs";
@@ -552,6 +566,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
 // ── Tab 2: Coverage ──
 
 interface SelectedCell {
+  coachUserId: string;
   coachName: string;
   coachColor: string;
   coachInitials: string;
@@ -560,12 +575,26 @@ interface SelectedCell {
   status: "available" | "partial" | "blocked" | "pending" | "empty";
 }
 
+// State for the "create block" dialog. `open` means the admin clicked the
+// global "Add block" CTA (no prefill); `prefilled` means they clicked a
+// specific empty/available cell and we should pre-populate the coach +
+// date in the form.
+type CreateBlockOpen =
+  | { kind: "open" }
+  | {
+      kind: "prefilled";
+      coachUserId: string;
+      coachName: string;
+      date: string;
+    };
+
 function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
   const [view, setView] = useState<"week" | "month">("week");
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [disciplineFilter, setDisciplineFilter] = useState<string | null>(null);
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
+  const [createBlock, setCreateBlock] = useState<CreateBlockOpen | null>(null);
 
   const anchorDate = useMemo(() => {
     if (view === "month") {
@@ -667,6 +696,15 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
               Mes
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setCreateBlock({ kind: "open" })}
+            className="ml-1 inline-flex items-center gap-1.5 rounded-lg bg-[#1C2340] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#252d52]"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Añadir bloqueo
+          </button>
         </div>
 
         {data && data.disciplines.length > 0 && (
@@ -748,6 +786,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
                       type="button"
                       onClick={() =>
                         setSelectedCell({
+                          coachUserId: coach.userId,
                           coachName: coach.name,
                           coachColor: coach.color,
                           coachInitials: coach.initials,
@@ -860,6 +899,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
                               type="button"
                               onClick={() =>
                                 setSelectedCell({
+                                  coachUserId: coach.userId,
                                   coachName: coach.name,
                                   coachColor: coach.color,
                                   coachInitials: coach.initials,
@@ -898,6 +938,21 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
           setSelectedCell(null);
           onGoToRequests();
         }}
+        onBlockDay={(c) => {
+          setSelectedCell(null);
+          setCreateBlock({
+            kind: "prefilled",
+            coachUserId: c.coachUserId,
+            coachName: c.coachName,
+            date: c.date,
+          });
+        }}
+      />
+
+      <CreateBlockDialog
+        state={createBlock}
+        coaches={data?.coaches ?? []}
+        onClose={() => setCreateBlock(null)}
       />
     </div>
   );
@@ -907,10 +962,12 @@ function CellDetailDialog({
   cell,
   onClose,
   onGoToRequests,
+  onBlockDay,
 }: {
   cell: SelectedCell | null;
   onClose: () => void;
   onGoToRequests: () => void;
+  onBlockDay: (cell: SelectedCell) => void;
 }) {
   // Render nothing once the cell is cleared so the Radix portal also unmounts
   // — keeps the page interactive in case the dialog's transition lags.
@@ -978,6 +1035,16 @@ function CellDetailDialog({
               <ExternalLink className="h-3.5 w-3.5" />
             </button>
           )}
+          {(cell.status === "available" || cell.status === "empty") && (
+            <button
+              type="button"
+              onClick={() => onBlockDay(cell)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C2340] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#252d52]"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Bloquear este día
+            </button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -997,6 +1064,337 @@ function cellStatusDescription(status: SelectedCell["status"]): string {
     case "empty":
       return "No hay clases programadas con este coach ese día.";
   }
+}
+
+const DAY_LABELS_SHORT = ["L", "M", "M", "J", "V", "S", "D"];
+
+// Admin-side create dialog. Mirrors the coach's NewBlockForm contract but
+// posts to `/api/admin/availability/blocks` (which always creates an
+// `active` block and pushes a notification to the coach). Two open modes:
+// - "open": empty form, admin picks coach + type + dates
+// - "prefilled": coach + a single day baked in from a CoverageTab cell tap
+function CreateBlockDialog({
+  state,
+  coaches,
+  onClose,
+}: {
+  state: CreateBlockOpen | null;
+  coaches: CoachCoverage[];
+  onClose: () => void;
+}) {
+  if (!state) return null;
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="flex max-h-[95vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+        <DialogHeader className="border-b border-stone-100 px-5 pb-3 pt-5">
+          <DialogTitle className="text-lg">Añadir bloqueo</DialogTitle>
+          <DialogDescription className="text-sm">
+            Bloquea la disponibilidad de un coach. Queda confirmado al
+            instante y se le notifica.
+          </DialogDescription>
+        </DialogHeader>
+        <CreateBlockForm
+          state={state}
+          coaches={coaches}
+          onCancel={onClose}
+          onCreated={onClose}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CreateBlockForm({
+  state,
+  coaches,
+  onCancel,
+  onCreated,
+}: {
+  state: CreateBlockOpen;
+  coaches: CoachCoverage[];
+  onCancel: () => void;
+  onCreated: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const prefilled = state.kind === "prefilled" ? state : null;
+
+  const [coachUserId, setCoachUserId] = useState<string>(
+    prefilled?.coachUserId ?? coaches[0]?.userId ?? "",
+  );
+  const [type, setType] = useState<"one_time" | "recurring">("one_time");
+  const [startDate, setStartDate] = useState(prefilled?.date ?? "");
+  const [endDate, setEndDate] = useState(prefilled?.date ?? "");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [reasonType, setReasonType] = useState<string>("personal");
+  const [reasonNote, setReasonNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const res = await fetch("/api/admin/availability/blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Error al crear el bloqueo");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin-availability-coverage"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["admin-availability-pending"],
+      });
+      onCreated();
+    },
+    onError: (err) => setError(err instanceof Error ? err.message : "Error"),
+  });
+
+  function toggleDay(d: number) {
+    setSelectedDays((prev) =>
+      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d],
+    );
+  }
+
+  const canSubmit =
+    !mutation.isPending &&
+    coachUserId &&
+    (type === "one_time"
+      ? Boolean(startDate && endDate)
+      : selectedDays.length > 0 && Boolean(startTime && endTime));
+
+  function handleSubmit() {
+    if (!canSubmit) return;
+    setError(null);
+    const payload: Record<string, unknown> = {
+      coachUserId,
+      type,
+      reasonType,
+      reasonNote: reasonNote || null,
+    };
+    if (type === "one_time") {
+      payload.startDate = startDate;
+      payload.endDate = endDate;
+      payload.isAllDay = !startTime && !endTime;
+      if (startTime) payload.startTime = startTime;
+      if (endTime) payload.endTime = endTime;
+      payload.dayOfWeek = [];
+    } else {
+      payload.dayOfWeek = selectedDays;
+      payload.startTime = startTime;
+      payload.endTime = endTime;
+      payload.isAllDay = false;
+    }
+    mutation.mutate(payload);
+  }
+
+  return (
+    <>
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700">
+              Coach
+            </label>
+            <Select
+              value={coachUserId}
+              onValueChange={setCoachUserId}
+              disabled={Boolean(prefilled)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un coach" />
+              </SelectTrigger>
+              <SelectContent>
+                {coaches.map((c) => (
+                  <SelectItem key={c.userId} value={c.userId}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-stone-700">
+              Tipo
+            </label>
+            <div className="inline-flex w-full rounded-lg bg-stone-100 p-1">
+              <button
+                type="button"
+                onClick={() => setType("one_time")}
+                className={cn(
+                  "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                  type === "one_time"
+                    ? "bg-white text-stone-900 shadow-sm"
+                    : "text-stone-500",
+                )}
+              >
+                Fecha puntual
+              </button>
+              <button
+                type="button"
+                onClick={() => setType("recurring")}
+                className={cn(
+                  "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                  type === "recurring"
+                    ? "bg-white text-stone-900 shadow-sm"
+                    : "text-stone-500",
+                )}
+              >
+                Recurrente
+              </button>
+            </div>
+          </div>
+
+          {type === "one_time" ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-stone-700">
+                    Desde
+                  </label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-stone-700">
+                    Hasta
+                  </label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-stone-500">
+                  Hora (opcional — vacío = todo el día)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    placeholder="Desde"
+                  />
+                  <Input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    placeholder="Hasta"
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-stone-700">
+                  Días de la semana
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {DAY_LABELS_SHORT.map((label, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => toggleDay(i)}
+                      className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-all",
+                        selectedDays.includes(i)
+                          ? "bg-[#1C2340] text-white"
+                          : "border border-stone-200 text-stone-600 hover:border-stone-400 active:scale-95",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-stone-700">
+                  No disponible de
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                  <Input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700">
+              Razón
+            </label>
+            <Select value={reasonType} onValueChange={setReasonType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="vacation">Vacaciones</SelectItem>
+                <SelectItem value="personal">Personal</SelectItem>
+                <SelectItem value="training">Capacitación</SelectItem>
+                <SelectItem value="other">Otro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700">
+              Nota
+            </label>
+            <Input
+              value={reasonNote}
+              onChange={(e) => setReasonNote(e.target.value)}
+              placeholder="Opcional"
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-lg bg-red-50 p-2.5 text-xs text-red-700">
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex gap-3 border-t border-stone-100 bg-stone-50/50 px-5 py-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          disabled={!canSubmit}
+          onClick={handleSubmit}
+          className="flex-1 rounded-xl bg-[#1C2340] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#1C2340]/90 disabled:opacity-50"
+        >
+          {mutation.isPending ? "Guardando…" : "Crear bloqueo"}
+        </button>
+      </div>
+    </>
+  );
 }
 
 // ── Tab 3: Hourly ──

@@ -202,3 +202,71 @@ export async function notifyCoachOfAvailabilityReview(
     }
   }
 }
+
+// Fired when an admin creates a block on the coach's behalf. Push-only —
+// the coach hasn't asked for anything, this is purely informational so they
+// see it in their feed instead of being surprised on next login. Email is
+// skipped to avoid spamming for routine admin entries (sick day, vacation
+// already discussed in person, etc.); easy to add later if needed.
+export interface AvailabilityCreatedByAdminArgs {
+  tenantId: string;
+  tenantSlug: string;
+  coachUserId: string;
+  block: {
+    id: string;
+    type: "one_time" | "recurring";
+    startDate: Date | null;
+    endDate: Date | null;
+    dayOfWeek: number[];
+    startTime: string | null;
+    endTime: string | null;
+    isAllDay: boolean;
+    reasonType: string;
+    reasonNote: string | null;
+  };
+}
+
+export async function notifyCoachOfAdminCreatedBlock(
+  args: AvailabilityCreatedByAdminArgs,
+): Promise<void> {
+  const { block } = args;
+
+  let body: string;
+  if (block.type === "one_time" && block.startDate) {
+    const sameDay =
+      !block.endDate || block.startDate.getTime() === block.endDate.getTime();
+    const rangeText = sameDay
+      ? format(block.startDate, "EEEE d MMM", { locale: es })
+      : `${format(block.startDate, "d MMM", { locale: es })} – ${format(
+          block.endDate!,
+          "d MMM",
+          { locale: es },
+        )}`;
+    body = `Admin agregó un bloqueo en tu calendario: ${rangeText}`;
+  } else if (block.type === "recurring" && block.dayOfWeek.length > 0) {
+    const dayNames = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
+    const days = block.dayOfWeek
+      .slice()
+      .sort((a, b) => a - b)
+      .map((d) => dayNames[d] ?? "")
+      .filter(Boolean)
+      .join(", ");
+    const timeText =
+      block.startTime && block.endTime
+        ? ` · ${block.startTime}–${block.endTime}`
+        : "";
+    body = `Admin agregó un bloqueo recurrente: ${days}${timeText}`;
+  } else {
+    body = "Admin agregó un bloqueo en tu calendario";
+  }
+
+  await sendPushToUser(
+    args.coachUserId,
+    {
+      title: "Nuevo bloqueo en tu calendario",
+      body,
+      url: "/coach/availability",
+    },
+    args.tenantId,
+  );
+}
