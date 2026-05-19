@@ -106,7 +106,7 @@ export function BookingFlowOptions({
               {featured ? (
                 <strong>{featured.name}</strong>
               ) : (
-                "el mensual"
+                "la membresía"
               )}{" "}
               te sale mejor que comprar sueltas.
             </span>
