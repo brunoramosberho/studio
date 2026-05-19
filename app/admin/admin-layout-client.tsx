@@ -119,8 +119,11 @@ const navGroups: NavGroup[] = [
     permission: "packages",
     items: [
       { href: "/admin/packages", labelKey: "pricing", icon: Package, permission: "packages", keywordsKey: "kw.pricing" },
-      { href: "/admin/shop", labelKey: "store", icon: ShoppingBag, permission: "shop", feature: "shop", keywordsKey: "kw.shop" },
-      { href: "/admin/on-demand", labelKey: "onDemand.title", icon: Video, permission: "onDemand", feature: "onDemand", keywordsKey: "kw.onDemand" },
+      // Shop + On-Demand are always-on entry points: hiding them when there
+      // are no products / no on-demand config creates a chicken-and-egg
+      // problem (can't add what you can't reach).
+      { href: "/admin/shop", labelKey: "store", icon: ShoppingBag, permission: "shop", keywordsKey: "kw.shop" },
+      { href: "/admin/on-demand", labelKey: "onDemand.title", icon: Video, permission: "onDemand", keywordsKey: "kw.onDemand" },
     ],
   },
   {
