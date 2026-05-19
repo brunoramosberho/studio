@@ -62,6 +62,16 @@ interface PickerCoach {
   classesThisWeek: number;
 }
 
+interface PickerClassType {
+  id: string;
+  name: string;
+  color: string;
+  duration: number;
+  weeklyAtStudio: number | null;
+  dailyAtStudio: number | null;
+  parallelAtOtherStudios: { studioId: string; studioName: string }[];
+}
+
 type ScheduleMode = "single" | "recurring";
 type EditScope = "this" | "thisAndFuture" | "all";
 
@@ -198,6 +208,34 @@ export function ClassFormDialog({
       if (editingClass?.id) params.set("excludeClassId", editingClass.id);
       const res = await fetch(`/api/admin/coaches/picker?${params.toString()}`);
       if (!res.ok) return { coaches: [], studioResolved: false };
+      return res.json();
+    },
+    enabled: Boolean(pickerStartsAt && formData.duration > 0),
+  });
+
+  // Same idea for the class type dropdown — slot-aware counts at the
+  // selected studio + warning if the same type is taught in parallel at
+  // another studio.
+  const { data: classTypePickerData } = useQuery<{
+    classTypes: PickerClassType[];
+    studioResolved: boolean;
+  }>({
+    queryKey: [
+      "class-type-picker",
+      pickerStartsAt,
+      formData.duration,
+      formData.roomId,
+      editingClass?.id ?? null,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        startsAt: pickerStartsAt!,
+        duration: String(formData.duration),
+      });
+      if (formData.roomId) params.set("roomId", formData.roomId);
+      if (editingClass?.id) params.set("excludeClassId", editingClass.id);
+      const res = await fetch(`/api/admin/class-types/picker?${params.toString()}`);
+      if (!res.ok) return { classTypes: [], studioResolved: false };
       return res.json();
     },
     enabled: Boolean(pickerStartsAt && formData.duration > 0),
@@ -500,9 +538,13 @@ export function ClassFormDialog({
                   <SelectValue placeholder={t("select")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {classTypes?.map((ct) => (
-                    <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>
-                  ))}
+                  {classTypePickerData?.classTypes?.length
+                    ? classTypePickerData.classTypes.map((ct) => (
+                        <ClassTypePickerItem key={ct.id} classType={ct} />
+                      ))
+                    : classTypes?.map((ct) => (
+                        <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             </div>
@@ -889,6 +931,46 @@ function CoachPickerItem({ coach: c }: { coach: PickerCoach }) {
             className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${toneClass[pill.tone]}`}
           >
             {pill.label}
+          </span>
+        )}
+      </div>
+    </SelectItem>
+  );
+}
+
+// ── Class type picker item ────────────────────────────────────────────
+// Renders one row in the class type dropdown. Shows slot-aware context:
+// how many of this type are already scheduled at the studio today and
+// this week, and a warning pill when the same type is taught at another
+// studio in parallel.
+
+function ClassTypePickerItem({ classType: ct }: { classType: PickerClassType }) {
+  const subParts: string[] = [];
+  if (ct.dailyAtStudio != null && ct.dailyAtStudio > 0) {
+    subParts.push(`${ct.dailyAtStudio} hoy`);
+  }
+  if (ct.weeklyAtStudio != null && ct.weeklyAtStudio > 0) {
+    subParts.push(`${ct.weeklyAtStudio} esta semana`);
+  }
+
+  const parallelPill = ct.parallelAtOtherStudios.length
+    ? `También en ${ct.parallelAtOtherStudios.map((p) => p.studioName).join(", ")}`
+    : null;
+
+  return (
+    <SelectItem value={ct.id}>
+      <div className="flex w-full items-center justify-between gap-2 pr-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm">{ct.name}</span>
+          {subParts.length > 0 && (
+            <span className="text-muted-foreground truncate text-[11px]">
+              {subParts.join(" · ")}
+            </span>
+          )}
+        </div>
+        {parallelPill && (
+          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+            {parallelPill}
           </span>
         )}
       </div>
