@@ -111,6 +111,9 @@ interface ClassFormDialogProps {
   editingClass?: ClassWithDetails | null;
   defaultDate?: string;
   defaultTime?: string;
+  /** Pre-scope the room picker to a specific studio. Rooms in other
+   * studios are hidden entirely. */
+  defaultStudioId?: string;
   onSaved?: () => void;
 }
 
@@ -120,6 +123,7 @@ export function ClassFormDialog({
   editingClass,
   defaultDate,
   defaultTime,
+  defaultStudioId,
   onSaved,
 }: ClassFormDialogProps) {
   const t = useTranslations("admin.classForm");
@@ -208,9 +212,14 @@ export function ClassFormDialog({
   }, [open, editingClass, defaultDate, defaultTime]);
 
   const availableRooms = studios?.flatMap((s) =>
-    s.rooms
-      .filter((r) => !formData.classTypeId || r.classTypes.some((ct) => ct.id === formData.classTypeId))
-      .map((r) => ({ ...r, studioName: s.name, studioTimezone: s.city?.timezone ?? null })),
+    // Honour the schedule's studio scoping (if any): the picker shouldn't
+    // surface rooms from other studios when the admin is clearly working
+    // in one specific studio's calendar.
+    defaultStudioId && s.id !== defaultStudioId
+      ? []
+      : s.rooms
+          .filter((r) => !formData.classTypeId || r.classTypes.some((ct) => ct.id === formData.classTypeId))
+          .map((r) => ({ ...r, studioName: s.name, studioTimezone: s.city?.timezone ?? null })),
   ) ?? [];
 
   // Auto-pick the room when there's only one valid option for the current

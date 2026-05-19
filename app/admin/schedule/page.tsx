@@ -596,6 +596,10 @@ export default function AdminSchedulePage() {
           editingClass={editingClass}
           defaultDate={defaultDate}
           defaultTime={defaultTime}
+          // Scope room options to the studio currently selected in the
+          // schedule filter — saves the admin from picking a room in the
+          // wrong studio.
+          defaultStudioId={filterStudio}
         />
       )}
 
