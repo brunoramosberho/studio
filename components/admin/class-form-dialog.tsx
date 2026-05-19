@@ -172,75 +172,6 @@ export function ClassFormDialog({
     },
   });
 
-  // Picker context: query the enriched availability/workload endpoint
-  // for the slot the admin is about to assign. We need date+time+duration
-  // at minimum; roomId is optional but unlocks per-studio preference.
-  const pickerStartsAt = useMemo(() => {
-    if (!formData.date || !formData.time) return null;
-    const tz = resolveStudioTimezone();
-    const [y, m, d] = formData.date.split("-").map(Number);
-    const [hh, mm] = formData.time.split(":").map(Number);
-    try {
-      return zonedWallTimeToUtc(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, tz).toISOString();
-    } catch {
-      return null;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.date, formData.time, formData.roomId, editingClass?.id]);
-
-  const { data: pickerData } = useQuery<{
-    coaches: PickerCoach[];
-    studioResolved: boolean;
-  }>({
-    queryKey: [
-      "coach-picker",
-      pickerStartsAt,
-      formData.duration,
-      formData.roomId,
-      editingClass?.id ?? null,
-    ],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        startsAt: pickerStartsAt!,
-        duration: String(formData.duration),
-      });
-      if (formData.roomId) params.set("roomId", formData.roomId);
-      if (editingClass?.id) params.set("excludeClassId", editingClass.id);
-      const res = await fetch(`/api/admin/coaches/picker?${params.toString()}`);
-      if (!res.ok) return { coaches: [], studioResolved: false };
-      return res.json();
-    },
-    enabled: Boolean(pickerStartsAt && formData.duration > 0),
-  });
-
-  // Same idea for the class type dropdown — slot-aware counts at the
-  // selected studio + warning if the same type is taught in parallel at
-  // another studio.
-  const { data: classTypePickerData } = useQuery<{
-    classTypes: PickerClassType[];
-    studioResolved: boolean;
-  }>({
-    queryKey: [
-      "class-type-picker",
-      pickerStartsAt,
-      formData.duration,
-      formData.roomId,
-      editingClass?.id ?? null,
-    ],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        startsAt: pickerStartsAt!,
-        duration: String(formData.duration),
-      });
-      if (formData.roomId) params.set("roomId", formData.roomId);
-      if (editingClass?.id) params.set("excludeClassId", editingClass.id);
-      const res = await fetch(`/api/admin/class-types/picker?${params.toString()}`);
-      if (!res.ok) return { classTypes: [], studioResolved: false };
-      return res.json();
-    },
-    enabled: Boolean(pickerStartsAt && formData.duration > 0),
-  });
-
   useEffect(() => {
     if (!open) return;
     setEditScope(null);
@@ -304,6 +235,72 @@ export function ClassFormDialog({
     }
     return editingClass?.room?.studio?.city?.timezone ?? FALLBACK_TZ;
   }
+
+  // Picker context — declared AFTER availableRooms + resolveStudioTimezone
+  // because the useMemo callback runs synchronously during render and would
+  // hit a TDZ on `availableRooms` if placed earlier.
+  const pickerStartsAt = useMemo(() => {
+    if (!formData.date || !formData.time) return null;
+    const tz = resolveStudioTimezone();
+    const [y, m, d] = formData.date.split("-").map(Number);
+    const [hh, mm] = formData.time.split(":").map(Number);
+    try {
+      return zonedWallTimeToUtc(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, tz).toISOString();
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.date, formData.time, formData.roomId, editingClass?.id]);
+
+  const { data: pickerData } = useQuery<{
+    coaches: PickerCoach[];
+    studioResolved: boolean;
+  }>({
+    queryKey: [
+      "coach-picker",
+      pickerStartsAt,
+      formData.duration,
+      formData.roomId,
+      editingClass?.id ?? null,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        startsAt: pickerStartsAt!,
+        duration: String(formData.duration),
+      });
+      if (formData.roomId) params.set("roomId", formData.roomId);
+      if (editingClass?.id) params.set("excludeClassId", editingClass.id);
+      const res = await fetch(`/api/admin/coaches/picker?${params.toString()}`);
+      if (!res.ok) return { coaches: [], studioResolved: false };
+      return res.json();
+    },
+    enabled: Boolean(pickerStartsAt && formData.duration > 0),
+  });
+
+  const { data: classTypePickerData } = useQuery<{
+    classTypes: PickerClassType[];
+    studioResolved: boolean;
+  }>({
+    queryKey: [
+      "class-type-picker",
+      pickerStartsAt,
+      formData.duration,
+      formData.roomId,
+      editingClass?.id ?? null,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        startsAt: pickerStartsAt!,
+        duration: String(formData.duration),
+      });
+      if (formData.roomId) params.set("roomId", formData.roomId);
+      if (editingClass?.id) params.set("excludeClassId", editingClass.id);
+      const res = await fetch(`/api/admin/class-types/picker?${params.toString()}`);
+      if (!res.ok) return { classTypes: [], studioResolved: false };
+      return res.json();
+    },
+    enabled: Boolean(pickerStartsAt && formData.duration > 0),
+  });
 
   // Preview class count for recurring mode
   const previewCount = useMemo(() => {
