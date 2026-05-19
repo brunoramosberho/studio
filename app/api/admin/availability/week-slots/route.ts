@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
-import { isHourBlocked } from "@/lib/availability";
+import {
+  type AvailabilityBlockLite,
+  getCoachStatusForSlot,
+} from "@/lib/availability";
 import {
   startOfWeek,
   endOfWeek,
@@ -20,14 +23,22 @@ interface CoachSummary {
 }
 
 /**
- * Returns, for every (day, hour) slot of the requested week, the list of
- * CoachProfile IDs that are available — i.e. not blocked by a time-off block
- * (active or pending) and not already teaching an overlapping class.
+ * Returns, for every (day, hour, studio) slot of the requested week, the
+ * list of CoachProfile IDs broken down by preference:
+ *   {
+ *     coaches: CoachSummary[],
+ *     studios: { id, name }[],
+ *     slots: {
+ *       [`${YYYY-MM-DD}-${hour}-${studioId}`]: {
+ *         preferred: string[],
+ *         okIfNeeded: string[],
+ *       }
+ *     },
+ *     openHour, closeHour
+ *   }
  *
- * Response shape:
- *   { coaches: CoachSummary[],
- *     slots:   { [`${YYYY-MM-DD}-${hour}`]: string[] },
- *     openHour: number, closeHour: number }
+ * A coach without any availability blocks defined is treated as "preferred"
+ * for every studio (so we don't disappear them from the slot picker).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -47,10 +58,17 @@ export async function GET(request: NextRequest) {
       10,
     );
 
-    const coachProfiles = await prisma.coachProfile.findMany({
-      where: { tenantId: tenant.id, userId: { not: null } },
-      include: { user: { select: { id: true, image: true } } },
-    });
+    const [studios, coachProfiles] = await Promise.all([
+      prisma.studio.findMany({
+        where: { tenantId: tenant.id },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.coachProfile.findMany({
+        where: { tenantId: tenant.id, userId: { not: null } },
+        include: { user: { select: { id: true, image: true } } },
+      }),
+    ]);
 
     const coachUserIds = coachProfiles
       .map((p) => p.userId)
@@ -63,6 +81,9 @@ export async function GET(request: NextRequest) {
           tenantId: tenant.id,
           coachId: { in: coachUserIds },
           status: { in: ["active", "pending_approval"] },
+        },
+        include: {
+          studioPreferences: { select: { studioId: true, preference: true } },
         },
       }),
       prisma.class.findMany({
@@ -90,7 +111,7 @@ export async function GET(request: NextRequest) {
       classesByCoach.set(c.coachId, list);
     }
 
-    const slots: Record<string, string[]> = {};
+    const slots: Record<string, { preferred: string[]; okIfNeeded: string[] }> = {};
 
     for (const day of days) {
       const dayKey = format(day, "yyyy-MM-dd");
@@ -100,22 +121,48 @@ export async function GET(request: NextRequest) {
         const slotEnd = new Date(slotStart);
         slotEnd.setHours(hour + 1, 0, 0, 0);
 
-        const available: string[] = [];
-        for (const profile of coachProfiles) {
-          if (!profile.userId) continue;
-          const coachBlocks = blocksByUser.get(profile.userId) ?? [];
-          if (isHourBlocked(coachBlocks, day, hour)) continue;
+        for (const studio of studios) {
+          const preferred: string[] = [];
+          const okIfNeeded: string[] = [];
 
-          const myClasses = classesByCoach.get(profile.id) ?? [];
-          const conflict = myClasses.some(
-            (c) => c.startsAt < slotEnd && c.endsAt > slotStart,
-          );
-          if (conflict) continue;
+          for (const profile of coachProfiles) {
+            if (!profile.userId) continue;
+            const coachBlocks =
+              (blocksByUser.get(profile.userId) as unknown as AvailabilityBlockLite[]) ?? [];
 
-          available.push(profile.id);
+            // Class conflict at this hour
+            const myClasses = classesByCoach.get(profile.id) ?? [];
+            const conflict = myClasses.some(
+              (c) => c.startsAt < slotEnd && c.endsAt > slotStart,
+            );
+            if (conflict) continue;
+
+            const hasAnyAvailability = coachBlocks.some(
+              (b) => b.kind === "availability",
+            );
+
+            const status = getCoachStatusForSlot({
+              blocks: coachBlocks,
+              date: day,
+              startMin: hour * 60,
+              endMin: (hour + 1) * 60,
+              studioId: studio.id,
+            });
+
+            if (status === "time_off") continue;
+            if (status === "preferred") {
+              preferred.push(profile.id);
+            } else if (status === "ok_if_needed") {
+              okIfNeeded.push(profile.id);
+            } else if (!hasAnyAvailability) {
+              // Coach hasn't configured a calendar yet — treat as preferred
+              // so they remain visible in the picker.
+              preferred.push(profile.id);
+            }
+          }
+
+          slots[`${dayKey}-${hour}-${studio.id}`] = { preferred, okIfNeeded };
         }
-
-        slots[`${dayKey}-${hour}`] = available;
       }
     }
 
@@ -158,7 +205,13 @@ export async function GET(request: NextRequest) {
       image: p.photoUrl ?? p.user?.image ?? null,
     }));
 
-    return NextResponse.json({ coaches, slots, openHour, closeHour });
+    return NextResponse.json({
+      coaches,
+      studios,
+      slots,
+      openHour,
+      closeHour,
+    });
   } catch (error) {
     console.error("GET /api/admin/availability/week-slots error:", error);
     return NextResponse.json(

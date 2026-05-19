@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
-import { getZone } from "@/lib/availability";
 
 export async function DELETE(
   _request: Request,
@@ -19,26 +18,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Block not found" }, { status: 404 });
     }
 
-    // Zone restriction only applies to active one-time blocks (i.e. already
-    // approved time off). Pending requests can always be cancelled, recurring
-    // blocks have no date so they're always deletable, and rejected blocks
-    // are cleanup.
-    if (
-      block.status === "active" &&
-      block.type === "one_time" &&
-      block.startDate
-    ) {
-      const zone = getZone(block.startDate, tenant);
-      if (zone !== "green") {
-        return NextResponse.json(
-          {
-            error: `Solo puedes eliminar bloques en zona verde (>${tenant.zoneYellowDays} días). Contacta al administrador.`,
-          },
-          { status: 403 },
-        );
-      }
-    }
-
+    // Coaches own their calendar — deletes are always allowed. The previous
+    // zone-red lock turned out to be more annoying than useful: if a coach
+    // adds a wrong time-off and needs to remove it close to the date, they
+    // shouldn't need an admin in the loop. Admins still see all changes via
+    // the activity log and can intervene if abuse appears.
     await prisma.coachAvailabilityBlock.delete({ where: { id } });
 
     return NextResponse.json({ ok: true });

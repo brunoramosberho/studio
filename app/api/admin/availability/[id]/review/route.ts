@@ -76,7 +76,7 @@ export async function PATCH(
       coachName: block.coach.name ?? "",
       startDate: block.startDate,
       endDate: block.endDate,
-      reasonType: block.reasonType,
+      reasonType: block.reasonType ?? "other",
       rejectionNote: rejectionNote || null,
     }).catch((err) => {
       console.error("Failed to notify coach of availability review:", err);

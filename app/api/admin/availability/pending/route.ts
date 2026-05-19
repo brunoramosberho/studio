@@ -15,6 +15,7 @@ export async function GET() {
         coach: {
           select: { id: true, name: true, email: true, image: true },
         },
+        studioPreferences: { select: { studioId: true, preference: true } },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -40,7 +41,14 @@ export async function GET() {
           } | null;
         }[] = [];
 
-        if (block.type === "one_time" && block.startDate && block.endDate) {
+        // Only time_off pending blocks remove the coach from existing classes
+        // — availability requests don't affect scheduled classes.
+        if (
+          block.kind === "time_off" &&
+          block.type === "one_time" &&
+          block.startDate &&
+          block.endDate
+        ) {
           const days = eachDayOfInterval({
             start: startOfDay(block.startDate),
             end: startOfDay(block.endDate),

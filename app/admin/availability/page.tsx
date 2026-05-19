@@ -1087,10 +1087,10 @@ function CreateBlockDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex max-h-[95vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
         <DialogHeader className="border-b border-stone-100 px-5 pb-3 pt-5">
-          <DialogTitle className="text-lg">Añadir bloqueo</DialogTitle>
+          <DialogTitle className="text-lg">Añadir entrada</DialogTitle>
           <DialogDescription className="text-sm">
-            Bloquea la disponibilidad de un coach. Queda confirmado al
-            instante y se le notifica.
+            Crea disponibilidad o tiempo libre en nombre de un coach. Queda
+            confirmado al instante y se le notifica.
           </DialogDescription>
         </DialogHeader>
         <CreateBlockForm
@@ -1118,6 +1118,20 @@ function CreateBlockForm({
   const queryClient = useQueryClient();
   const prefilled = state.kind === "prefilled" ? state : null;
 
+  // Studios list — needed when kind = "availability" to ask the admin
+  // which locations the coach can / can't work at.
+  const { data: studiosData } = useQuery({
+    queryKey: ["admin-studios"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/studios");
+      if (!res.ok) return { studios: [] as { id: string; name: string }[] };
+      return res.json() as Promise<{ studios: { id: string; name: string }[] }>;
+    },
+    staleTime: 60_000,
+  });
+  const studios = studiosData?.studios ?? [];
+
+  const [blockKind, setBlockKind] = useState<"time_off" | "availability">("time_off");
   const [coachUserId, setCoachUserId] = useState<string>(
     prefilled?.coachUserId ?? coaches[0]?.userId ?? "",
   );
@@ -1129,6 +1143,20 @@ function CreateBlockForm({
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [reasonType, setReasonType] = useState<string>("personal");
   const [reasonNote, setReasonNote] = useState("");
+  // For kind=availability: per-studio preference (defaults to "preferred"
+  // for every studio so the form is usable with one click).
+  const [studioPrefs, setStudioPrefs] = useState<Record<string, "preferred" | "ok_if_needed" | "unavailable">>({});
+  useEffect(() => {
+    if (studios.length === 0) return;
+    setStudioPrefs((prev) => {
+      const next = { ...prev };
+      for (const s of studios) {
+        if (!next[s.id]) next[s.id] = "preferred";
+      }
+      return next;
+    });
+  }, [studios]);
+
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -1166,22 +1194,43 @@ function CreateBlockForm({
     !mutation.isPending &&
     coachUserId &&
     (type === "one_time"
-      ? Boolean(startDate && endDate)
+      ? Boolean(startDate && endDate) &&
+        (blockKind === "time_off" || Boolean(startTime && endTime))
       : selectedDays.length > 0 && Boolean(startTime && endTime));
 
   function handleSubmit() {
     if (!canSubmit) return;
     setError(null);
+
+    const studioPreferences = studios
+      .map((s) => ({ studioId: s.id, preference: studioPrefs[s.id] ?? "preferred" }))
+      .filter((p) => p.preference !== "unavailable") as {
+        studioId: string;
+        preference: "preferred" | "ok_if_needed";
+      }[];
+
+    if (blockKind === "availability" && studios.length > 0 && studioPreferences.length === 0) {
+      setError("Selecciona al menos un estudio");
+      return;
+    }
+
     const payload: Record<string, unknown> = {
       coachUserId,
+      kind: blockKind,
       type,
-      reasonType,
       reasonNote: reasonNote || null,
     };
+
+    if (blockKind === "time_off") {
+      payload.reasonType = reasonType;
+    } else {
+      payload.studioPreferences = studioPreferences;
+    }
+
     if (type === "one_time") {
       payload.startDate = startDate;
       payload.endDate = endDate;
-      payload.isAllDay = !startTime && !endTime;
+      payload.isAllDay = blockKind === "time_off" && !startTime && !endTime;
       if (startTime) payload.startTime = startTime;
       if (endTime) payload.endTime = endTime;
       payload.dayOfWeek = [];
@@ -1198,6 +1247,43 @@ function CreateBlockForm({
     <>
       <div className="flex-1 overflow-y-auto px-5 py-4">
         <div className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-stone-700">
+              ¿Qué quieres registrar?
+            </label>
+            <div className="inline-flex w-full rounded-lg bg-stone-100 p-1">
+              <button
+                type="button"
+                onClick={() => setBlockKind("availability")}
+                className={cn(
+                  "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                  blockKind === "availability"
+                    ? "bg-white text-stone-900 shadow-sm"
+                    : "text-stone-500",
+                )}
+              >
+                Disponibilidad
+              </button>
+              <button
+                type="button"
+                onClick={() => setBlockKind("time_off")}
+                className={cn(
+                  "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                  blockKind === "time_off"
+                    ? "bg-white text-stone-900 shadow-sm"
+                    : "text-stone-500",
+                )}
+              >
+                Tiempo libre
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs text-stone-500">
+              {blockKind === "availability"
+                ? "Cuándo SÍ puede dar clase."
+                : "Cuándo NO puede dar clase (vacaciones, citas, etc.)."}
+            </p>
+          </div>
+
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700">
               Coach
@@ -1340,22 +1426,63 @@ function CreateBlockForm({
             </>
           )}
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700">
-              Razón
-            </label>
-            <Select value={reasonType} onValueChange={setReasonType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="vacation">Vacaciones</SelectItem>
-                <SelectItem value="personal">Personal</SelectItem>
-                <SelectItem value="training">Capacitación</SelectItem>
-                <SelectItem value="other">Otro</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {blockKind === "time_off" && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700">
+                Razón
+              </label>
+              <Select value={reasonType} onValueChange={setReasonType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vacation">Vacaciones</SelectItem>
+                  <SelectItem value="personal">Personal</SelectItem>
+                  <SelectItem value="other">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {blockKind === "availability" && studios.length > 1 && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-stone-700">
+                Estudios
+              </label>
+              <div className="space-y-2">
+                {studios.map((s) => {
+                  const v = studioPrefs[s.id] ?? "preferred";
+                  const options: { key: "preferred" | "ok_if_needed" | "unavailable"; label: string; tone: string }[] = [
+                    { key: "preferred", label: "Sí puede", tone: "bg-emerald-100 text-emerald-800 ring-emerald-500/60" },
+                    { key: "ok_if_needed", label: "Si urge", tone: "bg-amber-100 text-amber-800 ring-amber-500/60" },
+                    { key: "unavailable", label: "No puede", tone: "bg-rose-100 text-rose-800 ring-rose-500/60" },
+                  ];
+                  return (
+                    <div key={s.id} className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-sm font-medium">{s.name}</span>
+                      <div className="inline-flex overflow-hidden rounded-full border">
+                        {options.map((opt) => (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => setStudioPrefs({ ...studioPrefs, [s.id]: opt.key })}
+                            className={cn(
+                              "px-2.5 py-1 text-xs transition",
+                              v === opt.key
+                                ? cn(opt.tone, "ring-2 ring-inset")
+                                : "bg-transparent text-stone-500 hover:bg-stone-50",
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700">

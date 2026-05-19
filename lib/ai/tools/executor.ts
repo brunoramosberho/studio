@@ -1632,7 +1632,9 @@ async function getAvailabilityPending(tenantId: string) {
         end_date: block.endDate
           ? format(block.endDate, "d MMM yyyy", { locale: es })
           : null,
-        reason: reasonLabels[block.reasonType] || block.reasonType,
+        reason: block.reasonType
+          ? reasonLabels[block.reasonType] || block.reasonType
+          : null,
         reason_note: block.reasonNote,
         zone,
         affected_classes: affectedClasses,

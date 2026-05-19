@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
+import { validateBlockPayload } from "@/lib/availability-validation";
 import { notifyCoachOfAdminCreatedBlock } from "@/lib/availability-notifications";
 
 // Admin-side block creation. Unlike `/api/coaches/availability` (which the
@@ -13,54 +14,12 @@ export async function POST(request: NextRequest) {
   try {
     const { session, tenant } = await requireRole("ADMIN");
     const body = await request.json();
-
-    const {
-      coachUserId,
-      type,
-      dayOfWeek,
-      startTime,
-      endTime,
-      startDate,
-      endDate,
-      isAllDay,
-      reasonType,
-      reasonNote,
-    } = body as {
+    const { coachUserId, ...payload } = body as {
       coachUserId?: string;
-      type?: "recurring" | "one_time";
-      dayOfWeek?: number[];
-      startTime?: string | null;
-      endTime?: string | null;
-      startDate?: string | null;
-      endDate?: string | null;
-      isAllDay?: boolean;
-      reasonType?: "vacation" | "personal" | "training" | "other";
-      reasonNote?: string | null;
-    };
+    } & Record<string, unknown>;
 
     if (!coachUserId) {
       return NextResponse.json({ error: "coachUserId is required" }, { status: 400 });
-    }
-    if (type !== "recurring" && type !== "one_time") {
-      return NextResponse.json({ error: "invalid type" }, { status: 400 });
-    }
-    if (!reasonType) {
-      return NextResponse.json({ error: "reasonType is required" }, { status: 400 });
-    }
-    if (type === "one_time" && (!startDate || !endDate)) {
-      return NextResponse.json(
-        { error: "startDate and endDate are required for one_time" },
-        { status: 400 },
-      );
-    }
-    if (
-      type === "recurring" &&
-      (!Array.isArray(dayOfWeek) || dayOfWeek.length === 0 || !startTime || !endTime)
-    ) {
-      return NextResponse.json(
-        { error: "dayOfWeek, startTime and endTime are required for recurring" },
-        { status: 400 },
-      );
     }
 
     // Ensure the target coach belongs to this tenant (anti cross-tenant leak)
@@ -79,23 +38,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const studios = await prisma.studio.findMany({
+      where: { tenantId: tenant.id },
+      select: { id: true },
+    });
+    const validStudioIds = new Set(studios.map((s) => s.id));
+
+    const validation = validateBlockPayload(
+      payload,
+      {
+        studioOpenTime: tenant.studioOpenTime,
+        studioCloseTime: tenant.studioCloseTime,
+        operatingDays: tenant.operatingDays,
+      },
+      { validStudioIds },
+    );
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+    const data = validation.data;
+
     const now = new Date();
     const block = await prisma.coachAvailabilityBlock.create({
       data: {
         tenantId: tenant.id,
         coachId: coachProfile.userId!,
-        type,
-        dayOfWeek: dayOfWeek ?? [],
-        startTime: startTime || null,
-        endTime: endTime || null,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
-        isAllDay: isAllDay ?? (!startTime && !endTime),
-        reasonType,
-        reasonNote: reasonNote || null,
+        kind: data.kind,
+        type: data.type,
+        dayOfWeek: data.dayOfWeek,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        isAllDay: data.isAllDay,
+        reasonType: data.reasonType,
+        reasonNote: data.reasonNote,
         status: "active",
         approvedBy: session.user.id,
         approvedAt: now,
+        studioPreferences:
+          data.studioPreferences.length > 0
+            ? {
+                create: data.studioPreferences.map((p) => ({
+                  studioId: p.studioId,
+                  preference: p.preference,
+                  tenantId: tenant.id,
+                })),
+              }
+            : undefined,
+      },
+      include: {
+        studioPreferences: { select: { studioId: true, preference: true } },
       },
     });
 
@@ -107,6 +100,7 @@ export async function POST(request: NextRequest) {
       coachUserId: coachProfile.user.id,
       block: {
         id: block.id,
+        kind: block.kind as "availability" | "time_off",
         type: block.type as "one_time" | "recurring",
         startDate: block.startDate,
         endDate: block.endDate,

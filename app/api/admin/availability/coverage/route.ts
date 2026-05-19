@@ -57,6 +57,9 @@ export async function GET(request: NextRequest) {
         coachId: { in: coachProfiles.map((p) => p.userId).filter((id): id is string => id != null) },
         status: { in: ["active", "pending_approval"] },
       },
+      include: {
+        studioPreferences: { select: { studioId: true, preference: true } },
+      },
     });
 
     const scheduledClasses = await prisma.class.findMany({

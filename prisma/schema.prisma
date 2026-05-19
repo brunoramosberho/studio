@@ -110,35 +110,36 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships               Membership[]
-  studios                   Studio[]
-  classTypes                ClassType[]
-  coachProfiles             CoachProfile[]
-  classes                   Class[]
-  bookings                  Booking[]
-  waitlists                 Waitlist[]
-  spotNotifyMe              ClassNotifyMe[]
-  packages                  Package[]
-  userPackages              UserPackage[]
-  rooms                     Room[]
-  feedEvents                FeedEvent[]
-  notifications             Notification[]
-  achievements              Achievement[]
-  memberProgress            MemberProgress[]
-  memberRewards             MemberReward[]
-  memberAchievements        MemberAchievement[]
-  blockedSpots              BlockedSpot[]
-  friendships               Friendship[]
-  pushSubscriptions         PushSubscription[]
-  productCategories         ProductCategory[]
-  products                  Product[]
-  productStudioAvailability ProductStudioAvailability[]
-  bookingProductOrders      BookingProductOrder[]
-  songRequests              ClassSongRequest[]
-  coachPayRates             CoachPayRate[]
-  coachAvailabilityBlocks   CoachAvailabilityBlock[]
-  substitutionRequests      SubstitutionRequest[]
-  checkIns                  CheckIn[]
+  memberships                        Membership[]
+  studios                            Studio[]
+  classTypes                         ClassType[]
+  coachProfiles                      CoachProfile[]
+  classes                            Class[]
+  bookings                           Booking[]
+  waitlists                          Waitlist[]
+  spotNotifyMe                       ClassNotifyMe[]
+  packages                           Package[]
+  userPackages                       UserPackage[]
+  rooms                              Room[]
+  feedEvents                         FeedEvent[]
+  notifications                      Notification[]
+  achievements                       Achievement[]
+  memberProgress                     MemberProgress[]
+  memberRewards                      MemberReward[]
+  memberAchievements                 MemberAchievement[]
+  blockedSpots                       BlockedSpot[]
+  friendships                        Friendship[]
+  pushSubscriptions                  PushSubscription[]
+  productCategories                  ProductCategory[]
+  products                           Product[]
+  productStudioAvailability          ProductStudioAvailability[]
+  bookingProductOrders               BookingProductOrder[]
+  songRequests                       ClassSongRequest[]
+  coachPayRates                      CoachPayRate[]
+  coachAvailabilityBlocks            CoachAvailabilityBlock[]
+  coachAvailabilityStudioPreferences CoachAvailabilityStudioPreference[]
+  substitutionRequests               SubstitutionRequest[]
+  checkIns                           CheckIn[]
 
   instagramIntegration InstagramIntegration?
 
@@ -225,10 +226,10 @@ model Tenant {
   // AUTO_CLOSED and synthesises a clock-out at clockInAt + maxShiftHours.
   staffMaxShiftHours Int @default(12)
 
-  staffShifts              StaffShift[]
-  staffPayRates            StaffPayRate[]
-  staffCommissionRules     StaffCommissionRule[]
-  staffCommissionEarnings  StaffCommissionEarning[]
+  staffShifts             StaffShift[]
+  staffPayRates           StaffPayRate[]
+  staffCommissionRules    StaffCommissionRule[]
+  staffCommissionEarnings StaffCommissionEarning[]
 }
 
 model InstagramIntegration {
@@ -462,12 +463,12 @@ model User {
   wellhubUserLinks         WellhubUserLink[]
 
   // ── Staff management ──
-  staffShifts            StaffShift[]              @relation("UserStaffShifts")
-  staffShiftsEdited      StaffShift[]              @relation("UserStaffShiftsEdited")
-  staffPayRates          StaffPayRate[]            @relation("UserStaffPayRates")
-  staffCommissionRules   StaffCommissionRule[]     @relation("UserStaffCommissionRules")
+  staffShifts             StaffShift[]             @relation("UserStaffShifts")
+  staffShiftsEdited       StaffShift[]             @relation("UserStaffShiftsEdited")
+  staffPayRates           StaffPayRate[]           @relation("UserStaffPayRates")
+  staffCommissionRules    StaffCommissionRule[]    @relation("UserStaffCommissionRules")
   staffCommissionEarnings StaffCommissionEarning[] @relation("UserStaffCommissionEarnings")
-  stripePaymentsSold     StripePayment[]           @relation("StripePaymentSoldBy")
+  stripePaymentsSold      StripePayment[]          @relation("StripePaymentSoldBy")
 
   @@index([countryId])
   @@index([cityId])
@@ -1037,10 +1038,12 @@ model Studio {
   // or loosen per-location depending on how rural / dense the area is.
   geofenceRadiusMeters Int @default(150)
 
-  staffShifts      StaffShift[]
-  staffPayRates    StaffPayRate[]
+  staffShifts             StaffShift[]
+  staffPayRates           StaffPayRate[]
   staffCommissionRules    StaffCommissionRule[]
   staffCommissionEarnings StaffCommissionEarning[]
+
+  coachAvailabilityStudioPreferences CoachAvailabilityStudioPreference[]
 
   @@index([cityId])
   @@index([tenantId])
@@ -1576,30 +1579,66 @@ enum AvailabilityStatus {
   rejected
 }
 
+// `availability` = "I CAN teach in this window" (positive). `time_off` =
+// "I CANNOT teach in this window" (vacation/personal/training, overrides
+// availability). A coach is available for a (day, hour, studio) iff some
+// availability block covers it, no time_off block covers it, and the studio
+// is in the block's preferences (not "unavailable").
+enum AvailabilityKind {
+  availability
+  time_off
+}
+
+// Per-studio preference for a positive availability block. Missing row for
+// a studio = coach explicitly cannot work at that location.
+enum CoachStudioPreference {
+  preferred // first choice
+  ok_if_needed // only if no preferred coach is available
+}
+
 model CoachAvailabilityBlock {
-  id            String                 @id @default(cuid())
+  id            String                  @id @default(cuid())
   tenantId      String
   coachId       String
+  kind          AvailabilityKind        @default(time_off)
   type          AvailabilityBlockType
   dayOfWeek     Int[] // 0=Lu, 1=Ma, ... 6=Do
   startTime     String? // "14:00"
   endTime       String? // "21:00"
-  startDate     DateTime?              @db.Date
-  endDate       DateTime?              @db.Date
-  isAllDay      Boolean                @default(true)
-  reasonType    AvailabilityReasonType
+  startDate     DateTime?               @db.Date
+  endDate       DateTime?               @db.Date
+  isAllDay      Boolean                 @default(true)
+  reasonType    AvailabilityReasonType?
   reasonNote    String?
-  status        AvailabilityStatus     @default(active)
+  status        AvailabilityStatus      @default(active)
   rejectionNote String?
   approvedBy    String?
   approvedAt    DateTime?
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  coach  User   @relation("CoachAvailabilityBlocks", fields: [coachId], references: [id])
+  tenant            Tenant                              @relation(fields: [tenantId], references: [id])
+  coach             User                                @relation("CoachAvailabilityBlocks", fields: [coachId], references: [id])
+  studioPreferences CoachAvailabilityStudioPreference[]
 
   @@index([tenantId, coachId])
+  @@index([tenantId, kind])
+}
+
+model CoachAvailabilityStudioPreference {
+  id         String                 @id @default(cuid())
+  blockId    String
+  block      CoachAvailabilityBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  studioId   String
+  studio     Studio                 @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  tenantId   String
+  tenant     Tenant                 @relation(fields: [tenantId], references: [id])
+  preference CoachStudioPreference  @default(preferred)
+  createdAt  DateTime               @default(now())
+
+  @@unique([blockId, studioId])
+  @@index([studioId])
+  @@index([tenantId])
 }
 
 // ── Check-in ──
@@ -1800,27 +1839,27 @@ model WellhubProduct {
 /// Profile fields are populated opportunistically from webhook payloads —
 /// Wellhub sends them on `checkin` and (sometimes) on `booking-requested`.
 model WellhubUserLink {
-  id                 String    @id @default(cuid())
+  id                 String  @id @default(cuid())
   tenantId           String
   userId             String?
   wellhubUniqueToken String
   customCode         String?
 
   /// Best-known display name composed from first/last when available.
-  fullName    String?
-  firstName   String?
-  lastName    String?
-  email       String?
-  phone       String?
+  fullName  String?
+  firstName String?
+  lastName  String?
+  email     String?
+  phone     String?
 
-  firstSeenAt        DateTime  @default(now())
-  lastValidatedAt    DateTime?
+  firstSeenAt     DateTime  @default(now())
+  lastValidatedAt DateTime?
 
   /// When the link to a Magic User was established. Powers the conversion
   /// funnel metric (Wellhub-only visitors → Magic members).
-  userLinkedAt       DateTime?
+  userLinkedAt DateTime?
   /// "email_match" | "phone_match" | "manual" — how the association happened.
-  linkedVia          String?
+  linkedVia    String?
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User?  @relation(fields: [userId], references: [id])
@@ -2101,7 +2140,7 @@ model StripePayment {
   member User?  @relation("UserStripePayments", fields: [memberId], references: [id])
   soldBy User?  @relation("StripePaymentSoldBy", fields: [soldByUserId], references: [id])
 
-  bookingProductOrders BookingProductOrder[] @relation("StripePaymentForProductOrder")
+  bookingProductOrders    BookingProductOrder[]    @relation("StripePaymentForProductOrder")
   staffCommissionEarnings StaffCommissionEarning[]
 
   @@index([tenantId])
@@ -2700,13 +2739,13 @@ model StaffShift {
   studioId     String
   studio       Studio      @relation(fields: [studioId], references: [id])
 
-  clockInAt        DateTime
-  clockInLat       Float
-  clockInLng       Float
-  clockInAccuracy  Float?
+  clockInAt       DateTime
+  clockInLat      Float
+  clockInLng      Float
+  clockInAccuracy Float?
   // Distance from studio centroid at clock-in, in meters. Helpful for fraud
   // audits ("staff member was 130m away — was that inside the building?").
-  clockInDistance  Float?
+  clockInDistance Float?
 
   clockOutAt       DateTime?
   clockOutLat      Float?
@@ -2752,9 +2791,9 @@ model StaffPayRate {
   // Hourly wage in cents (e.g. 8000 = $80.00). Either field may be null;
   // both populated means "fixed monthly + hourly top-up" if you want both,
   // but the typical setup is one-or-the-other.
-  hourlyRateCents    Int?
-  monthlyFixedCents  Int?
-  currency           String @default("MXN")
+  hourlyRateCents   Int?
+  monthlyFixedCents Int?
+  currency          String @default("MXN")
 
   effectiveFrom DateTime  @default(now())
   effectiveTo   DateTime?
@@ -2797,9 +2836,9 @@ model StaffCommissionRule {
   sourceType CommissionSource
   // Optional scope refinements. Both null = matches any PACKAGE / PRODUCT.
   packageId  String?
-  package    Package? @relation(fields: [packageId], references: [id])
+  package    Package?         @relation(fields: [packageId], references: [id])
   productId  String?
-  product    Product? @relation(fields: [productId], references: [id])
+  product    Product?         @relation(fields: [productId], references: [id])
 
   // Basis points: 500 = 5%, 1000 = 10%.
   percentBps      Int?
@@ -2862,9 +2901,9 @@ model StaffCommissionEarning {
 
   // The wall-clock time of the sale (PosTransaction.createdAt or
   // StripePayment.createdAt). Used for period-bucketing in payroll.
-  occurredAt DateTime
-  status     CommissionStatus @default(EARNED)
-  voidReason String?
+  occurredAt   DateTime
+  status       CommissionStatus @default(EARNED)
+  voidReason   String?
   // When marked PAID, the payroll period ("2026-05") it was paid out in.
   paidInPeriod String?
 
@@ -2898,18 +2937,18 @@ enum SchedulePlanStatus {
 }
 
 model SchedulePlanConversation {
-  id           String             @id @default(cuid())
-  tenantId    String
-  adminUserId String
-  title       String             @default("Planeación de horario")
-  status      SchedulePlanStatus @default(GATHERING)
-  contextJson Json?
-  proposalJson Json?
-  appliedClassIds String[]       @default([])
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id              String             @id @default(cuid())
+  tenantId        String
+  adminUserId     String
+  title           String             @default("Planeación de horario")
+  status          SchedulePlanStatus @default(GATHERING)
+  contextJson     Json?
+  proposalJson    Json?
+  appliedClassIds String[]           @default([])
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
-  tenant   Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   messages SchedulePlanMessage[]
 
   @@index([tenantId, adminUserId, updatedAt])

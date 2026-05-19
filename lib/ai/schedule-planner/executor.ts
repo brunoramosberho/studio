@@ -166,10 +166,17 @@ async function getCoachAvailabilityWindow(
 
   // Blocks are stored with coachId = User.id. We resolve back to
   // CoachProfile.id so Spark can match them against the catalog.
+  //
+  // We only surface time_off blocks here: this tool is consumed by the
+  // schedule planner as "windows the coach must NOT be scheduled into".
+  // Positive availability blocks (kind=availability) represent the inverse
+  // problem and aren't safe to feed into this tool as-is; planner support
+  // for positive availability is a follow-up.
   const blocks = await prisma.coachAvailabilityBlock.findMany({
     where: {
       tenantId,
       status: "active",
+      kind: "time_off",
       OR: [
         { startDate: { lte: end }, endDate: { gte: start } },
         { startDate: { lte: end }, endDate: null },

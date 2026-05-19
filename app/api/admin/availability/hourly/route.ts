@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { startOfDay, endOfDay } from "date-fns";
+import {
+  type AvailabilityBlockLite,
+  getMondayBasedDow,
+  parseHhmm,
+} from "@/lib/availability";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +37,10 @@ export async function GET(request: NextRequest) {
       where: {
         tenantId: tenant.id,
         coachId: { in: coachProfiles.map((p) => p.userId).filter((id): id is string => id != null) },
-        status: "active",
+        status: { in: ["active", "pending_approval"] },
+      },
+      include: {
+        studioPreferences: { select: { studioId: true, preference: true } },
       },
     });
 
@@ -47,11 +55,35 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const dow = date.getDay();
-    const jsDow = dow === 0 ? 6 : dow - 1;
+    const dow = getMondayBasedDow(date);
 
-    type SlotStatus = "available" | "blocked" | "class" | "empty";
+    type SlotStatus =
+      | "available_preferred"
+      | "available_secondary"
+      | "blocked"
+      | "class"
+      | "empty";
     type Slot = { hour: number; status: SlotStatus; className?: string };
+
+    function blockCoversHour(b: AvailabilityBlockLite, hour: number): boolean {
+      if (b.type === "one_time" && b.startDate && b.endDate) {
+        const s = startOfDay(b.startDate);
+        const e = startOfDay(b.endDate);
+        if (dayStart < s || dayStart > e) return false;
+        if (b.isAllDay) return true;
+        const sm = parseHhmm(b.startTime);
+        const em = parseHhmm(b.endTime);
+        if (sm == null || em == null) return true;
+        return hour * 60 < em && (hour + 1) * 60 > sm;
+      }
+      if (b.type === "recurring" && b.dayOfWeek.includes(dow)) {
+        const sm = parseHhmm(b.startTime);
+        const em = parseHhmm(b.endTime);
+        if (sm == null || em == null) return true;
+        return hour * 60 < em && (hour + 1) * 60 > sm;
+      }
+      return false;
+    }
 
     const coaches = coachProfiles.map((profile) => {
       const initials = (profile.name || "C")
@@ -63,18 +95,17 @@ export async function GET(request: NextRequest) {
 
       const coachBlocks = allBlocks.filter(
         (b) => b.coachId === profile.userId,
-      );
+      ) as unknown as AvailabilityBlockLite[];
       const coachClasses = dayClasses.filter(
         (c) => c.coachId === profile.id,
       );
 
+      const hasAnyAvailability = coachBlocks.some((b) => b.kind === "availability");
+
       const slots: Slot[] = [];
 
       for (let h = openH; h < closeH; h++) {
-        const classAtHour = coachClasses.find((c) => {
-          const classH = c.startsAt.getHours();
-          return classH === h;
-        });
+        const classAtHour = coachClasses.find((c) => c.startsAt.getHours() === h);
 
         if (classAtHour) {
           slots.push({
@@ -85,50 +116,42 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        let isBlocked = false;
-        for (const b of coachBlocks) {
-          if (b.type === "one_time" && b.startDate && b.endDate) {
-            const s = startOfDay(b.startDate);
-            const e = startOfDay(b.endDate);
-            if (dayStart >= s && dayStart <= e) {
-              if (b.isAllDay) {
-                isBlocked = true;
-                break;
-              }
-              if (b.startTime && b.endTime) {
-                const bStartH = parseInt(b.startTime.split(":")[0]);
-                const bEndH = parseInt(b.endTime.split(":")[0]);
-                if (h >= bStartH && h < bEndH) {
-                  isBlocked = true;
-                  break;
-                }
-              }
-            }
-          }
-          if (
-            b.type === "recurring" &&
-            b.dayOfWeek.includes(jsDow)
-          ) {
-            if (!b.startTime || !b.endTime) {
-              isBlocked = true;
-              break;
-            }
-            const bStartH = parseInt(b.startTime.split(":")[0]);
-            const bEndH = parseInt(b.endTime.split(":")[0]);
-            if (h >= bStartH && h < bEndH) {
-              isBlocked = true;
-              break;
-            }
-          }
+        // 1) time_off carve-out wins
+        const blockedByTimeOff = coachBlocks.some(
+          (b) => b.kind === "time_off" && blockCoversHour(b, h),
+        );
+        if (blockedByTimeOff) {
+          slots.push({ hour: h, status: "blocked" });
+          continue;
         }
 
-        if (isBlocked) {
-          slots.push({ hour: h, status: "blocked" });
-        } else if (coachClasses.length > 0 || coachBlocks.length > 0) {
-          slots.push({ hour: h, status: "available" });
-        } else {
-          slots.push({ hour: h, status: "empty" });
+        // 2) positive availability for this hour (any studio)?
+        const matching = coachBlocks.filter(
+          (b) =>
+            b.kind === "availability" &&
+            b.status === "active" &&
+            blockCoversHour(b, h),
+        );
+        if (matching.length > 0) {
+          const anyPreferred = matching.some((b) =>
+            b.studioPreferences?.some((p) => p.preference === "preferred"),
+          );
+          slots.push({
+            hour: h,
+            status: anyPreferred ? "available_preferred" : "available_secondary",
+          });
+          continue;
         }
+
+        // 3) no availability defined at all → keep showing as "available"
+        //    to preserve the pre-migration behaviour for coaches who have
+        //    not yet entered their calendar.
+        if (!hasAnyAvailability) {
+          slots.push({ hour: h, status: "available_preferred" });
+          continue;
+        }
+
+        slots.push({ hour: h, status: "empty" });
       }
 
       return {

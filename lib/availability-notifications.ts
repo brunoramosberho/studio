@@ -52,6 +52,7 @@ export interface AvailabilityRequestArgs {
   tenantSlug: string;
   block: {
     id: string;
+    kind: "availability" | "time_off";
     type: "one_time" | "recurring";
     startDate: Date | null;
     endDate: Date | null;
@@ -59,7 +60,7 @@ export interface AvailabilityRequestArgs {
     startTime: string | null;
     endTime: string | null;
     isAllDay: boolean;
-    reasonType: string;
+    reasonType: string | null;
     reasonNote: string | null;
   };
   coachName: string;
@@ -86,6 +87,11 @@ export async function notifyAdminsOfAvailabilityRequest(
         : format(args.block.startDate, "d MMM", { locale: es })
       : "horario recurrente";
 
+  const verb =
+    args.block.kind === "availability"
+      ? "agregar disponibilidad"
+      : "bloquear";
+
   // In-app notifications (always — they're cheap and surface in the bell).
   await prisma.notification.createMany({
     data: admins.map((a) => ({
@@ -100,7 +106,7 @@ export async function notifyAdminsOfAvailabilityRequest(
       admins.map((a) => a.userId),
       {
         title: `Solicitud de disponibilidad`,
-        body: `${args.coachName} solicita bloquear ${summary}`,
+        body: `${args.coachName} solicita ${verb} ${summary}`,
         url: "/admin/availability",
         tag: `availability-${args.block.id}`,
       },
@@ -124,7 +130,7 @@ export async function notifyAdminsOfAvailabilityRequest(
             startTime: args.block.startTime,
             endTime: args.block.endTime,
             isAllDay: args.block.isAllDay,
-            reasonType: args.block.reasonType,
+            reasonType: args.block.reasonType ?? "other",
             reasonNote: args.block.reasonNote,
             zone: args.zone,
             reviewUrl,
@@ -214,6 +220,7 @@ export interface AvailabilityCreatedByAdminArgs {
   coachUserId: string;
   block: {
     id: string;
+    kind: "availability" | "time_off";
     type: "one_time" | "recurring";
     startDate: Date | null;
     endDate: Date | null;
@@ -221,7 +228,7 @@ export interface AvailabilityCreatedByAdminArgs {
     startTime: string | null;
     endTime: string | null;
     isAllDay: boolean;
-    reasonType: string;
+    reasonType: string | null;
     reasonNote: string | null;
   };
 }
@@ -230,6 +237,7 @@ export async function notifyCoachOfAdminCreatedBlock(
   args: AvailabilityCreatedByAdminArgs,
 ): Promise<void> {
   const { block } = args;
+  const noun = block.kind === "availability" ? "disponibilidad" : "bloqueo";
 
   let body: string;
   if (block.type === "one_time" && block.startDate) {
@@ -242,7 +250,7 @@ export async function notifyCoachOfAdminCreatedBlock(
           "d MMM",
           { locale: es },
         )}`;
-    body = `Admin agregó un bloqueo en tu calendario: ${rangeText}`;
+    body = `Admin agregó ${noun} en tu calendario: ${rangeText}`;
   } else if (block.type === "recurring" && block.dayOfWeek.length > 0) {
     const dayNames = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
     const days = block.dayOfWeek
@@ -255,15 +263,18 @@ export async function notifyCoachOfAdminCreatedBlock(
       block.startTime && block.endTime
         ? ` · ${block.startTime}–${block.endTime}`
         : "";
-    body = `Admin agregó un bloqueo recurrente: ${days}${timeText}`;
+    body = `Admin agregó ${noun} recurrente: ${days}${timeText}`;
   } else {
-    body = "Admin agregó un bloqueo en tu calendario";
+    body = `Admin agregó ${noun} en tu calendario`;
   }
 
   await sendPushToUser(
     args.coachUserId,
     {
-      title: "Nuevo bloqueo en tu calendario",
+      title:
+        block.kind === "availability"
+          ? "Nueva disponibilidad en tu calendario"
+          : "Nuevo bloqueo en tu calendario",
       body,
       url: "/coach/availability",
     },

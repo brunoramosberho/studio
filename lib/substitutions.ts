@@ -8,14 +8,19 @@ import {
   sendSubstitutionRequest,
 } from "@/lib/email";
 import { getBrandingForTenantId } from "@/lib/branding.server";
-import { getCoverageStatus } from "@/lib/availability";
+import {
+  type AvailabilityBlockLite,
+  type CoachSlotStatus,
+  getCoachStatusForSlot,
+} from "@/lib/availability";
 
 /**
  * A coach is "eligible" to substitute on a class when:
  *  - They are not the requesting coach
  *  - They have a linked User (so we can notify them)
  *  - Their specialties include the class's discipline (ClassType name)
- *  - Their availability for that day isn't fully blocked
+ *  - The slot status at the class's studio is preferred/ok_if_needed
+ *    (or the coach has no availability defined yet, treated as available)
  *  - They don't already teach an overlapping class
  */
 export interface EligibleCoach {
@@ -26,6 +31,7 @@ export interface EligibleCoach {
   image: string | null;
   hasDiscipline: boolean;
   available: boolean;
+  slotStatus: CoachSlotStatus;
   hasConflict: boolean;
   weekLoad: number;
 }
@@ -39,6 +45,7 @@ export async function getEligibleCoaches(
     include: {
       classType: { select: { name: true } },
       coach: { select: { id: true } },
+      room: { select: { studioId: true } },
     },
   });
   if (!cls) return [];
@@ -59,6 +66,9 @@ export async function getEligibleCoaches(
 
   const blocks = await prisma.coachAvailabilityBlock.findMany({
     where: { tenantId, coachId: { in: userIds } },
+    include: {
+      studioPreferences: { select: { studioId: true, preference: true } },
+    },
   });
 
   const conflicts = await prisma.class.findMany({
@@ -96,11 +106,28 @@ export async function getEligibleCoaches(
   }
 
   const discipline = cls.classType.name.toLowerCase();
+  const studioId = cls.room?.studioId ?? "";
+  const classStartMin = cls.startsAt.getHours() * 60 + cls.startsAt.getMinutes();
+  const classEndMin = cls.endsAt.getHours() * 60 + cls.endsAt.getMinutes();
 
   const result: EligibleCoach[] = profiles.map((p) => {
-    const coachBlocks = blocks.filter((b) => b.coachId === p.userId);
-    const coverage = getCoverageStatus(coachBlocks, cls.startsAt);
-    const available = coverage === "available" || coverage === "empty";
+    const coachBlocks = blocks.filter(
+      (b) => b.coachId === p.userId,
+    ) as unknown as AvailabilityBlockLite[];
+    const slotStatus = getCoachStatusForSlot({
+      blocks: coachBlocks,
+      date: cls.startsAt,
+      startMin: classStartMin,
+      endMin: classEndMin,
+      studioId,
+    });
+    const hasAnyAvailability = coachBlocks.some((b) => b.kind === "availability");
+    // Until a coach has populated their availability we treat them as
+    // available rather than dropping them off the picker — matches the
+    // pre-migration behaviour.
+    const available = hasAnyAvailability
+      ? slotStatus === "preferred" || slotStatus === "ok_if_needed"
+      : slotStatus !== "time_off";
     const hasDiscipline = p.specialties.some(
       (s) => s.toLowerCase() === discipline,
     );
@@ -117,14 +144,22 @@ export async function getEligibleCoaches(
       image: p.photoUrl ?? p.user?.image ?? null,
       hasDiscipline,
       available,
+      slotStatus,
       hasConflict,
       weekLoad: loadByCoach[p.id] || 0,
     };
   });
 
+  const priority: Record<CoachSlotStatus, number> = {
+    preferred: 0,
+    ok_if_needed: 1,
+    unavailable: 2,
+    time_off: 3,
+  };
+
   result.sort((a, b) => {
     if (a.hasConflict !== b.hasConflict) return a.hasConflict ? 1 : -1;
-    if (a.available !== b.available) return a.available ? -1 : 1;
+    if (a.slotStatus !== b.slotStatus) return priority[a.slotStatus] - priority[b.slotStatus];
     if (a.hasDiscipline !== b.hasDiscipline) return a.hasDiscipline ? -1 : 1;
     return a.weekLoad - b.weekLoad;
   });
