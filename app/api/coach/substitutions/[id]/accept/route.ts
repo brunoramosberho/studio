@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import {
   checkCoachCanTakeClass,
+  notifyAdminsOfSubFlow,
   notifyRequestAccepted,
 } from "@/lib/substitutions";
 
@@ -48,20 +49,58 @@ export async function POST(
         { status: 400 },
       );
     }
-    if (reqRow.mode === "DIRECT" && reqRow.targetCoachId !== coach.id) {
+    // Mode-specific eligibility for accepting:
+    // - DIRECT (legacy) / SWAP: only the named target can accept
+    // - OPEN / REQUEST: any coach in notifiedCoachIds can accept
+    if (
+      (reqRow.mode === "DIRECT" || reqRow.mode === "SWAP") &&
+      reqRow.targetCoachId !== coach.id
+    ) {
       return NextResponse.json(
         { error: "This request is for another instructor" },
         { status: 403 },
       );
     }
     if (
-      reqRow.mode === "OPEN" &&
+      (reqRow.mode === "OPEN" || reqRow.mode === "REQUEST") &&
       !reqRow.notifiedCoachIds.includes(coach.id)
     ) {
       return NextResponse.json(
         { error: "You are not eligible for this request" },
         { status: 403 },
       );
+    }
+
+    // SWAP acceptance does NOT immediately reassign — it transitions to
+    // PENDING_ADMIN so the admin can rubber-stamp before both classes get
+    // re-routed. Everything else takes the existing accept path.
+    if (reqRow.mode === "SWAP") {
+      const updated = await prisma.substitutionRequest.updateMany({
+        where: { id: reqRow.id, status: "PENDING" },
+        data: {
+          status: "PENDING_ADMIN",
+          acceptedByCoachId: coach.id,
+          respondedAt: new Date(),
+        },
+      });
+      if (updated.count === 0) {
+        return NextResponse.json(
+          { error: "Request was already updated" },
+          { status: 409 },
+        );
+      }
+      await notifyAdminsOfSubFlow({
+        tenantId: tenant.id,
+        tenantSlug: tenant.slug,
+        requestId: reqRow.id,
+        classId: reqRow.classId,
+        className: reqRow.class.classType.name,
+        startsAt: reqRow.class.startsAt,
+        fromCoachName: coach.name,
+        mode: "SWAP",
+        needsApproval: true,
+      });
+      return NextResponse.json({ ok: true, awaitingAdmin: true });
     }
 
     const reason = await checkCoachCanTakeClass(

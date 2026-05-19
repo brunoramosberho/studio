@@ -400,3 +400,335 @@ export async function notifyRequestRejected(
     });
   }
 }
+
+// ── Substitutions v2 ──────────────────────────────────────────────────
+
+/**
+ * Decide whether a sub request created right now would be "urgent"
+ * (skip admin approval, go straight to notifying coaches) or needs admin
+ * review. The threshold is tenant-configurable.
+ */
+export function isUrgentSubRequest(
+  classStartsAt: Date,
+  thresholdHours: number,
+): boolean {
+  const hoursUntil = (classStartsAt.getTime() - Date.now()) / 3_600_000;
+  return hoursUntil <= thresholdHours;
+}
+
+export interface SwapCandidate {
+  classId: string;
+  classTypeName: string;
+  startsAt: Date;
+  endsAt: Date;
+  coach: { profileId: string; userId: string; name: string; image: string | null };
+  studio: { id: string; name: string };
+}
+
+/**
+ * For coach A's class X, find FUTURE classes by OTHER coaches that A
+ * could swap into. A swap is valid iff:
+ *   - Both classes are SCHEDULED and in the future
+ *   - A can teach the other coach's class (discipline + availability + no time_off)
+ *   - The other coach can teach A's class (same)
+ *
+ * Returns a flat list of candidate classes ordered by start date. The
+ * admin still has to approve the swap; this is just the picker payload.
+ */
+export async function getSwapCandidates(
+  classId: string,
+  tenantId: string,
+  options?: { horizonDays?: number },
+): Promise<SwapCandidate[]> {
+  const horizonDays = options?.horizonDays ?? 28;
+
+  const cls = await prisma.class.findFirst({
+    where: { id: classId, tenantId },
+    include: {
+      classType: { select: { name: true } },
+      coach: { select: { id: true, userId: true, specialties: true } },
+      room: {
+        select: {
+          studioId: true,
+          studio: { select: { city: { select: { timezone: true } } } },
+        },
+      },
+    },
+  });
+  if (!cls || !cls.coach.userId || !cls.room) return [];
+
+  const now = new Date();
+  const horizonEnd = new Date(now.getTime() + horizonDays * 86_400_000);
+
+  const future = await prisma.class.findMany({
+    where: {
+      tenantId,
+      status: "SCHEDULED",
+      startsAt: { gt: now, lt: horizonEnd },
+      coachId: { not: cls.coach.id },
+    },
+    include: {
+      classType: { select: { name: true } },
+      coach: {
+        select: {
+          id: true,
+          userId: true,
+          name: true,
+          photoUrl: true,
+          specialties: true,
+        },
+      },
+      room: {
+        select: {
+          studio: {
+            select: {
+              id: true,
+              name: true,
+              city: { select: { timezone: true } },
+            },
+          },
+          studioId: true,
+        },
+      },
+    },
+    orderBy: { startsAt: "asc" },
+  });
+
+  // Pull both source coach blocks (to check A taking B's class) and the
+  // candidate coaches' blocks (to check B taking A's class) in one go.
+  const candidateUserIds = Array.from(
+    new Set(future.map((c) => c.coach.userId).filter((id): id is string => !!id)),
+  );
+
+  const [sourceBlocks, candidateBlocks] = await Promise.all([
+    prisma.coachAvailabilityBlock.findMany({
+      where: {
+        tenantId,
+        coachId: cls.coach.userId,
+        status: { in: ["active", "pending_approval"] },
+      },
+      include: {
+        studioPreferences: { select: { studioId: true, preference: true } },
+      },
+    }),
+    prisma.coachAvailabilityBlock.findMany({
+      where: {
+        tenantId,
+        coachId: { in: candidateUserIds },
+        status: { in: ["active", "pending_approval"] },
+      },
+      include: {
+        studioPreferences: { select: { studioId: true, preference: true } },
+      },
+    }),
+  ]);
+
+  const blocksByUser = new Map<string, typeof candidateBlocks>();
+  for (const b of candidateBlocks) {
+    const arr = blocksByUser.get(b.coachId) ?? [];
+    arr.push(b);
+    blocksByUser.set(b.coachId, arr);
+  }
+
+  // Source class wall-time context
+  const sourceTz = cls.room.studio?.city?.timezone ?? "Europe/Madrid";
+  const sourceStartWall = getWallClockInZone(cls.startsAt, sourceTz);
+  const sourceEndWall = getWallClockInZone(cls.endsAt, sourceTz);
+  const sourceStartMin = sourceStartWall.hour * 60 + sourceStartWall.minute;
+  const sourceEndMin = sourceEndWall.hour * 60 + sourceEndWall.minute;
+  const sourceDate = new Date(
+    sourceStartWall.year,
+    sourceStartWall.month - 1,
+    sourceStartWall.day,
+  );
+  const sourceDiscipline = cls.classType.name.toLowerCase();
+  const sourceStudioId = cls.room.studioId;
+
+  const sourceHasAnyAvailability = sourceBlocks.some((b) => b.kind === "availability");
+
+  // Pre-fetch each candidate coach's other classes so we can rule out
+  // ones that would conflict if they took A's class.
+  const candidateProfileIds = Array.from(new Set(future.map((c) => c.coach.id)));
+  const candidateOtherClasses = await prisma.class.findMany({
+    where: {
+      tenantId,
+      status: "SCHEDULED",
+      coachId: { in: candidateProfileIds },
+      AND: [
+        { startsAt: { lt: cls.endsAt } },
+        { endsAt: { gt: cls.startsAt } },
+      ],
+    },
+    select: { coachId: true },
+  });
+  const candidateConflictAtSource = new Set(
+    candidateOtherClasses.map((c) => c.coachId),
+  );
+
+  const out: SwapCandidate[] = [];
+
+  for (const b of future) {
+    if (!b.coach.userId || !b.room?.studio) continue;
+
+    // Discipline checks both ways
+    const bCanTeachSource = b.coach.specialties.some(
+      (s) => s.toLowerCase() === sourceDiscipline,
+    );
+    const sourceCanTeachB = cls.coach.specialties.some(
+      (s) => s.toLowerCase() === b.classType.name.toLowerCase(),
+    );
+    if (!bCanTeachSource || !sourceCanTeachB) continue;
+
+    // B has a conflicting class at A's time? Then they can't take it.
+    // (Their own teaching schedule prevents the swap regardless of avail.)
+    if (candidateConflictAtSource.has(b.coach.id)) continue;
+
+    // Availability checks
+    const bBlocks = (blocksByUser.get(b.coach.userId) ?? []) as unknown as AvailabilityBlockLite[];
+    const bHasAvail = bBlocks.some((bb) => bb.kind === "availability");
+    const bStatusForSource = getCoachStatusForSlot({
+      blocks: bBlocks,
+      date: sourceDate,
+      startMin: sourceStartMin,
+      endMin: sourceEndMin,
+      studioId: sourceStudioId,
+    });
+    if (bStatusForSource === "time_off") continue;
+    const bAvailableForSource = bHasAvail
+      ? bStatusForSource === "preferred" || bStatusForSource === "ok_if_needed"
+      : true;
+    if (!bAvailableForSource) continue;
+
+    const bTz = b.room.studio.city?.timezone ?? "Europe/Madrid";
+    const bStartWall = getWallClockInZone(b.startsAt, bTz);
+    const bEndWall = getWallClockInZone(b.endsAt, bTz);
+    const bStartMin = bStartWall.hour * 60 + bStartWall.minute;
+    const bEndMin = bEndWall.hour * 60 + bEndWall.minute;
+    const bDate = new Date(bStartWall.year, bStartWall.month - 1, bStartWall.day);
+
+    const sourceStatusForB = getCoachStatusForSlot({
+      blocks: sourceBlocks as unknown as AvailabilityBlockLite[],
+      date: bDate,
+      startMin: bStartMin,
+      endMin: bEndMin,
+      studioId: b.room.studio.id,
+    });
+    if (sourceStatusForB === "time_off") continue;
+    const sourceAvailableForB = sourceHasAnyAvailability
+      ? sourceStatusForB === "preferred" || sourceStatusForB === "ok_if_needed"
+      : true;
+    if (!sourceAvailableForB) continue;
+
+    out.push({
+      classId: b.id,
+      classTypeName: b.classType.name,
+      startsAt: b.startsAt,
+      endsAt: b.endsAt,
+      coach: {
+        profileId: b.coach.id,
+        userId: b.coach.userId,
+        name: b.coach.name,
+        image: b.coach.photoUrl ?? null,
+      },
+      studio: { id: b.room.studio.id, name: b.room.studio.name },
+    });
+  }
+
+  return out;
+}
+
+// ── Notification helpers for the v2 flows ─────────────────────────────
+
+async function getAdminUserIds(tenantId: string): Promise<string[]> {
+  const memberships = await prisma.membership.findMany({
+    where: { tenantId, role: "ADMIN" },
+    select: { userId: true },
+  });
+  return memberships.map((m) => m.userId);
+}
+
+interface NotifyAdminPendingArgs {
+  tenantId: string;
+  tenantSlug: string;
+  requestId: string;
+  classId: string;
+  className: string;
+  startsAt: Date;
+  fromCoachName: string;
+  mode: "REQUEST" | "MANUAL_ASSIGN" | "SWAP";
+  needsApproval: boolean;
+}
+
+/**
+ * Push to admins when a new sub flow needs their attention:
+ *  - PENDING_ADMIN request (needsApproval=true) — they have to approve before notifying coaches
+ *  - MANUAL_ASSIGN / urgent REQUEST (needsApproval=false) — informational only
+ *  - SWAP after the target accepted — they have to approve the swap
+ */
+export async function notifyAdminsOfSubFlow(
+  args: NotifyAdminPendingArgs,
+): Promise<void> {
+  const adminIds = await getAdminUserIds(args.tenantId);
+  if (adminIds.length === 0) return;
+
+  await prisma.notification.createMany({
+    data: adminIds.map((userId) => ({
+      userId,
+      tenantId: args.tenantId,
+      type: args.needsApproval ? "substitution_pending_admin" : "substitution_informational",
+    })),
+  });
+
+  const subject =
+    args.mode === "SWAP"
+      ? args.needsApproval
+        ? `Aprobar intercambio: ${args.className}`
+        : `Intercambio creado: ${args.className}`
+      : args.mode === "MANUAL_ASSIGN"
+      ? `Cobertura asignada: ${args.className}`
+      : args.needsApproval
+      ? `Aprobar suplencia: ${args.className}`
+      : `Solicitud de suplencia: ${args.className}`;
+
+  await sendPushToMany(
+    adminIds,
+    {
+      title: subject,
+      body: `${args.fromCoachName} · ${args.className}`,
+      url: "/admin/substitutions",
+      tag: `sub-admin-${args.requestId}`,
+    },
+    args.tenantId,
+  );
+}
+
+interface NotifySwapTargetArgs {
+  tenantId: string;
+  tenantSlug: string;
+  targetCoachUserId: string;
+  fromCoachName: string;
+  yourClassName: string;
+  yourClassStartsAt: Date;
+  theirClassName: string;
+  theirClassStartsAt: Date;
+}
+
+export async function notifySwapTarget(args: NotifySwapTargetArgs): Promise<void> {
+  await prisma.notification.create({
+    data: {
+      userId: args.targetCoachUserId,
+      tenantId: args.tenantId,
+      type: "substitution_swap_requested",
+    },
+  });
+
+  await sendPushToUser(
+    args.targetCoachUserId,
+    {
+      title: `Propuesta de intercambio`,
+      body: `${args.fromCoachName} te propone cambiar tu clase de ${args.yourClassName} por la suya de ${args.theirClassName}`,
+      url: "/coach/substitutions",
+    },
+    args.tenantId,
+  );
+}
