@@ -80,7 +80,7 @@ export function BookingFlowOptions({
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 flex-shrink-0" />
             <span>
-              Con membresía, tus {data.classesBoughtThisMonth} clases este mes te habrían salido a{" "}
+              Con {featured ? <strong>{featured.name}</strong> : "la membresía"}, tus {data.classesBoughtThisMonth} clases este mes te habrían salido a{" "}
               <strong>
                 {formatCurrency(
                   data.membershipPrice / Math.max(1, data.classesBoughtThisMonth),
@@ -102,7 +102,13 @@ export function BookingFlowOptions({
                 {data.classesToBreakEven} vez
                 {data.classesToBreakEven !== 1 ? "es" : ""} más
               </strong>{" "}
-              este mes, el mensual empieza a salirte a cuenta.
+              este mes,{" "}
+              {featured ? (
+                <strong>{featured.name}</strong>
+              ) : (
+                "el mensual"
+              )}{" "}
+              te sale mejor que comprar sueltas.
             </span>
           </div>
         </div>
