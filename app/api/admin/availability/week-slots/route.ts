@@ -23,19 +23,19 @@ interface CoachSummary {
 }
 
 /**
- * Returns, for every (day, hour, studio) slot of the requested week, the
- * list of CoachProfile IDs broken down by preference:
- *   {
- *     coaches: CoachSummary[],
- *     studios: { id, name }[],
- *     slots: {
- *       [`${YYYY-MM-DD}-${hour}-${studioId}`]: {
- *         preferred: string[],
- *         okIfNeeded: string[],
- *       }
- *     },
- *     openHour, closeHour
- *   }
+ * Returns coach availability for every (day, hour, studio) slot of the
+ * requested week. Two shapes:
+ *
+ *   - `slots` (legacy / overview): a flat per-(day, hour) list of coach
+ *     IDs available at ANY studio with ANY positive preference. Consumed
+ *     by `/admin/schedule` where the overlay just shows "who's around
+ *     this hour" without studio context.
+ *
+ *   - `slotsByStudio` (granular): per-(day, hour, studio) split into
+ *     `preferred` vs `okIfNeeded` — consumed by views that already know
+ *     which studio a class is being assigned to.
+ *
+ * Both share the same `coaches` and `studios` arrays.
  *
  * A coach without any availability blocks defined is treated as "preferred"
  * for every studio (so we don't disappear them from the slot picker).
@@ -111,7 +111,8 @@ export async function GET(request: NextRequest) {
       classesByCoach.set(c.coachId, list);
     }
 
-    const slots: Record<string, { preferred: string[]; okIfNeeded: string[] }> = {};
+    const slotsByStudio: Record<string, { preferred: string[]; okIfNeeded: string[] }> = {};
+    const slots: Record<string, string[]> = {};
 
     for (const day of days) {
       const dayKey = format(day, "yyyy-MM-dd");
@@ -120,6 +121,11 @@ export async function GET(request: NextRequest) {
         slotStart.setHours(hour, 0, 0, 0);
         const slotEnd = new Date(slotStart);
         slotEnd.setHours(hour + 1, 0, 0, 0);
+
+        // Aggregate per-(day, hour) across all studios for the legacy `slots`
+        // shape. A coach is in the flat list if they show up as preferred or
+        // backup at any studio.
+        const aggregated = new Set<string>();
 
         for (const studio of studios) {
           const preferred: string[] = [];
@@ -152,17 +158,22 @@ export async function GET(request: NextRequest) {
             if (status === "time_off") continue;
             if (status === "preferred") {
               preferred.push(profile.id);
+              aggregated.add(profile.id);
             } else if (status === "ok_if_needed") {
               okIfNeeded.push(profile.id);
+              aggregated.add(profile.id);
             } else if (!hasAnyAvailability) {
               // Coach hasn't configured a calendar yet — treat as preferred
               // so they remain visible in the picker.
               preferred.push(profile.id);
+              aggregated.add(profile.id);
             }
           }
 
-          slots[`${dayKey}-${hour}-${studio.id}`] = { preferred, okIfNeeded };
+          slotsByStudio[`${dayKey}-${hour}-${studio.id}`] = { preferred, okIfNeeded };
         }
+
+        slots[`${dayKey}-${hour}`] = Array.from(aggregated);
       }
     }
 
@@ -209,6 +220,7 @@ export async function GET(request: NextRequest) {
       coaches,
       studios,
       slots,
+      slotsByStudio,
       openHour,
       closeHour,
     });
