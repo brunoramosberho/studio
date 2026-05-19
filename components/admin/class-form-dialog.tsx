@@ -760,7 +760,11 @@ export function ClassFormDialog({
 // back from the API sorted to the bottom and disable selection here.
 
 function CoachPickerItem({ coach: c }: { coach: PickerCoach }) {
-  const disabled = c.status === "time_off" || c.status === "conflict" || c.status === "no_availability";
+  // Only hard conflicts (already teaching another class at the same time)
+  // are physically impossible. Everything else is a soft warning — the
+  // admin may have context outside the system to override (e.g. the
+  // coach already agreed to cover).
+  const disabled = c.status === "conflict";
 
   const pill = (() => {
     switch (c.status) {
@@ -771,9 +775,9 @@ function CoachPickerItem({ coach: c }: { coach: PickerCoach }) {
       case "available_unconfigured":
         return { label: "Sin configurar", tone: "neutral" as const };
       case "no_availability":
-        return { label: "Sin disponibilidad", tone: "muted" as const };
+        return { label: "No marcó disponible", tone: "muted" as const };
       case "time_off":
-        return { label: "Tiempo libre", tone: "rose" as const };
+        return { label: "Ausente", tone: "rose" as const };
       case "conflict":
         return { label: "Tiene clase", tone: "rose" as const };
       default:

@@ -293,6 +293,45 @@ describe("getCoachStatusForSlot", () => {
     ).toBe("preferred");
   });
 
+  it("when studioId is empty, takes the best preference across all studios", () => {
+    const block = recurringAvailability({
+      dayOfWeek: [1],
+      startTime: "12:00",
+      endTime: "18:00",
+      prefs: [
+        { studioId: STUDIO_A, preference: "ok_if_needed" },
+        { studioId: STUDIO_B, preference: "preferred" },
+      ],
+    });
+    expect(
+      getCoachStatusForSlot({
+        blocks: [block],
+        date: tuesday,
+        startMin: 13 * 60,
+        endMin: 14 * 60,
+        studioId: "",
+      }),
+    ).toBe("preferred");
+  });
+
+  it("when studioId is empty and only ok_if_needed exists, returns ok_if_needed", () => {
+    const block = recurringAvailability({
+      dayOfWeek: [1],
+      startTime: "12:00",
+      endTime: "18:00",
+      prefs: [{ studioId: STUDIO_A, preference: "ok_if_needed" }],
+    });
+    expect(
+      getCoachStatusForSlot({
+        blocks: [block],
+        date: tuesday,
+        startMin: 13 * 60,
+        endMin: 14 * 60,
+        studioId: "",
+      }),
+    ).toBe("ok_if_needed");
+  });
+
   it("ignores rejected blocks", () => {
     const block = recurringAvailability({
       dayOfWeek: [1],

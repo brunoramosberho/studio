@@ -209,6 +209,11 @@ export type CoachSlotStatus =
  * If the window straddles multiple availability blocks with different prefs,
  * the highest-priority one (preferred > ok_if_needed) wins.
  *
+ * When `studioId` is an empty string (or omitted), the coach is evaluated
+ * against the BEST preference across all studios — useful for early-stage
+ * pickers where the admin hasn't selected a room yet, so we don't
+ * artificially mark the coach as unavailable.
+ *
  * When checking time-off overlap we treat both `active` and `pending_approval`
  * as blocking, the same conservative rule we used before — admins should
  * resolve the pending request before assigning.
@@ -222,6 +227,7 @@ export function getCoachStatusForSlot(args: {
 }): CoachSlotStatus {
   const { blocks, date, startMin, endMin, studioId } = args;
   const slot: CoverageRange = { startMin, endMin };
+  const studioAgnostic = !studioId;
 
   // 1) Time-off check (active + pending_approval both block).
   for (const b of blocks) {
@@ -242,6 +248,18 @@ export function getCoachStatusForSlot(args: {
     if (b.status !== "active") continue;
     const cov = blockCoverageOnDate(b, date);
     if (!cov.some((c) => rangesOverlap(c, slot))) continue;
+
+    if (studioAgnostic) {
+      // No specific studio context — take the best preference present on
+      // this block regardless of which location it points at.
+      for (const p of b.studioPreferences ?? []) {
+        if (p.preference === "preferred") return "preferred";
+        if (p.preference === "ok_if_needed" && best === "unavailable") {
+          best = "ok_if_needed";
+        }
+      }
+      continue;
+    }
 
     const pref = b.studioPreferences?.find((p) => p.studioId === studioId);
     if (!pref) continue;
