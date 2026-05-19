@@ -117,6 +117,10 @@ export function ClassFormDialog({
   const [formData, setFormData] = useState<ClassFormData>(emptyForm);
   const [mode, setMode] = useState<ScheduleMode>("single");
   const [editScope, setEditScope] = useState<EditScope | null>(null);
+  // When the admin picks a coach with a soft-warning status (didn't mark
+  // themselves available, or is on time-off), we stage it here and prompt
+  // for explicit confirmation before applying to formData.
+  const [pendingCoach, setPendingCoach] = useState<PickerCoach | null>(null);
 
   const isEditingSeries = !!(editingClass?.recurringId);
 
@@ -420,6 +424,7 @@ export function ClassFormDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -506,7 +511,20 @@ export function ClassFormDialog({
               <label className="mb-1.5 block text-xs font-medium text-muted">{t("coach")}</label>
               <Select
                 value={formData.coachProfileId}
-                onValueChange={(v) => setFormData({ ...formData, coachProfileId: v })}
+                onValueChange={(v) => {
+                  const picked = pickerData?.coaches.find((c) => c.id === v);
+                  // Soft-warning statuses require explicit confirmation —
+                  // they didn't mark themselves available, so we want the
+                  // admin to acknowledge they have context to override.
+                  if (
+                    picked &&
+                    (picked.status === "no_availability" || picked.status === "time_off")
+                  ) {
+                    setPendingCoach(picked);
+                  } else {
+                    setFormData({ ...formData, coachProfileId: v });
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={t("select")} />
@@ -750,6 +768,46 @@ export function ClassFormDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Confirmation dialog for soft-warning coach selection */}
+    <Dialog
+      open={!!pendingCoach}
+      onOpenChange={(o) => !o && setPendingCoach(null)}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Confirmar asignación</DialogTitle>
+          <DialogDescription>
+            {pendingCoach && pendingCoach.status === "time_off" && (
+              <>
+                <strong>{pendingCoach.name}</strong> marcó este día como ausente. ¿Confirmar que la asignas de todas formas?
+              </>
+            )}
+            {pendingCoach && pendingCoach.status === "no_availability" && (
+              <>
+                <strong>{pendingCoach.name}</strong> no marcó este horario como disponible. ¿Confirmar que la asignas de todas formas?
+              </>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setPendingCoach(null)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => {
+              if (pendingCoach) {
+                setFormData({ ...formData, coachProfileId: pendingCoach.id });
+              }
+              setPendingCoach(null);
+            }}
+          >
+            Sí, asignar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
