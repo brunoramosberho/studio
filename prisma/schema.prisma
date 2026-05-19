@@ -78,6 +78,12 @@ model Tenant {
   zoneRedDays    Int @default(14)
   zoneYellowDays Int @default(30)
 
+  // Substitution requests created less than X hours before the class are
+  // treated as "urgent" and bypass admin approval — they go straight to
+  // notifying the selected coaches. Anything earlier than that requires
+  // an admin to approve / pick the substitutes first.
+  subRequestAdminApprovalHours Int @default(24)
+
   studioOpenTime  String @default("07:00")
   studioCloseTime String @default("21:00")
   operatingDays   Int[]  @default([0, 1, 2, 3, 4])
@@ -640,7 +646,8 @@ model Class {
   ratingEmailSent      Boolean                 @default(false)
   entitlements         Entitlement[]
   revenueEvents        RevenueEvent[]
-  substitutionRequests SubstitutionRequest[]
+  substitutionRequests SubstitutionRequest[]   @relation("SubstitutionClass")
+  swapRequests         SubstitutionRequest[]   @relation("SubstitutionSwapWithClass")
 
   // Wellhub Booking API mirror — wellhubSlotId is the Wellhub slot id for
   // this specific class occurrence. excluded = ClassType not mapped to Wellhub.
@@ -2659,20 +2666,32 @@ model SparkFeatureRequest {
 // already-booked members.
 
 enum SubstitutionMode {
-  OPEN
-  DIRECT
+  OPEN // legacy — historical broadcast requests
+  DIRECT // legacy — historical single-target requests
+  REQUEST // unified ask-N-coaches flow (replaces OPEN+DIRECT)
+  MANUAL_ASSIGN // coach assigns someone off-system; auto-accepted
+  SWAP // two-way class exchange between coaches
 }
 
 enum SubstitutionStatus {
-  PENDING
+  PENDING // notified coaches can accept
+  PENDING_ADMIN // outside the urgent window — admin must approve before notifying
   ACCEPTED
   REJECTED
   CANCELLED
   EXPIRED
 }
 
+enum SubstitutionReasonType {
+  PERSONAL
+  ILLNESS
+  EMERGENCY
+  TRAVEL
+  OTHER
+}
+
 model SubstitutionRequest {
-  id                String             @id @default(cuid())
+  id                String                  @id @default(cuid())
   tenantId          String
   classId           String
   requestingCoachId String
@@ -2680,15 +2699,25 @@ model SubstitutionRequest {
   targetCoachId     String?
   acceptedByCoachId String?
   mode              SubstitutionMode
-  status            SubstitutionStatus @default(PENDING)
-  note              String?            @db.Text
-  rejectionNote     String?            @db.Text
-  notifiedCoachIds  String[]           @default([])
-  createdAt         DateTime           @default(now())
+  status            SubstitutionStatus      @default(PENDING)
+  // Required reason for new requests (nullable for back-compat with legacy rows).
+  reasonType        SubstitutionReasonType?
+  reasonNote        String?                 @db.Text
+  note              String?                 @db.Text
+  rejectionNote     String?                 @db.Text
+  notifiedCoachIds  String[]                @default([])
+  // SWAP only: the other coach's class that A would teach instead. When
+  // accepted+admin-approved, both classes' coachId are swapped atomically.
+  swapWithClassId   String?
+  // Stamped when the admin acts on PENDING_ADMIN (approve / assign / cancel).
+  adminReviewedAt   DateTime?
+  adminReviewedBy   String?
+  createdAt         DateTime                @default(now())
   respondedAt       DateTime?
 
   tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  class           Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  class           Class         @relation("SubstitutionClass", fields: [classId], references: [id], onDelete: Cascade)
+  swapWithClass   Class?        @relation("SubstitutionSwapWithClass", fields: [swapWithClassId], references: [id], onDelete: SetNull)
   requestingCoach CoachProfile  @relation("SubstitutionRequestingCoach", fields: [requestingCoachId], references: [id])
   originalCoach   CoachProfile  @relation("SubstitutionOriginalCoach", fields: [originalCoachId], references: [id])
   targetCoach     CoachProfile? @relation("SubstitutionTargetCoach", fields: [targetCoachId], references: [id])
@@ -2696,6 +2725,7 @@ model SubstitutionRequest {
 
   @@index([tenantId, status])
   @@index([classId])
+  @@index([swapWithClassId])
   @@index([requestingCoachId])
   @@index([targetCoachId, status])
 }
