@@ -87,9 +87,31 @@ export default function AdminSchedulePage() {
   });
   const canEdit = me?.role === "ADMIN";
 
-  const [filterStudio, setFilterStudio] = useState<string>("all");
+  // Studio filter is single-select (not multi/All): the calendar grid
+  // can't visually overlay multiple studios meaningfully. We default to
+  // the first studio and hide the picker if the tenant only has one.
+  const { data: tenantStudios } = useQuery<{ studios: { id: string; name: string }[] }>({
+    queryKey: ["admin-schedule-studios"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/studios");
+      if (!res.ok) return { studios: [] };
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const [filterStudio, setFilterStudio] = useState<string>("");
   const [filterCoach, setFilterCoach] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
+
+  // Seed filterStudio with the first available studio once the list loads,
+  // and re-seed if the current pick disappears from the tenant.
+  useEffect(() => {
+    const list = tenantStudios?.studios ?? [];
+    if (list.length === 0) return;
+    if (filterStudio && list.some((s) => s.id === filterStudio)) return;
+    setFilterStudio(list[0].id);
+  }, [tenantStudios, filterStudio]);
 
   const [selectedClass, setSelectedClass] = useState<ClassWithDetails | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -177,14 +199,16 @@ export default function AdminSchedulePage() {
     return (classes ?? []).filter((c) => {
       // Hide cancelled classes unless they had bookings (so admin sees them)
       if (c.status === "CANCELLED" && (c._count?.bookings ?? 0) === 0) return false;
-      if (filterStudio !== "all" && c.room?.studio?.id !== filterStudio) return false;
+      if (filterStudio && c.room?.studio?.id !== filterStudio) return false;
       if (filterCoach !== "all" && c.coach.id !== filterCoach) return false;
       if (filterType !== "all" && c.classType.id !== filterType) return false;
       return true;
     });
   }, [classes, filterStudio, filterCoach, filterType]);
 
-  const hasFilters = filterStudio !== "all" || filterCoach !== "all" || filterType !== "all";
+  // Studio filter doesn't count as "active" since it's always set — it's
+  // the scoping context, not an optional narrowing.
+  const hasFilters = filterCoach !== "all" || filterType !== "all";
 
   // Color assignment
   const coachColors: Record<string, string> = {};
@@ -236,7 +260,7 @@ export default function AdminSchedulePage() {
   }
 
   function clearFilters() {
-    setFilterStudio("all");
+    // Studio is the scoping context, not a filter — leave it as-is.
     setFilterCoach("all");
     setFilterType("all");
   }
@@ -296,17 +320,20 @@ export default function AdminSchedulePage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <Filter className="h-4 w-4 text-muted" />
-        <Select value={filterStudio} onValueChange={setFilterStudio}>
-          <SelectTrigger className="h-8 w-[160px] text-xs">
-            <SelectValue placeholder={t("studio")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("allStudios")}</SelectItem>
-            {filterOptions.studios.map(([id, name]) => (
-              <SelectItem key={id} value={id}>{name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Studio is single-select (calendar can't overlay multiple
+            cleanly). Hidden when the tenant only has one studio. */}
+        {(tenantStudios?.studios.length ?? 0) > 1 && (
+          <Select value={filterStudio} onValueChange={setFilterStudio}>
+            <SelectTrigger className="h-8 w-[160px] text-xs">
+              <SelectValue placeholder={t("studio")} />
+            </SelectTrigger>
+            <SelectContent>
+              {(tenantStudios?.studios ?? []).map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Select value={filterCoach} onValueChange={setFilterCoach}>
           <SelectTrigger className="h-8 w-[160px] text-xs">
