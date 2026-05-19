@@ -24,7 +24,7 @@ export const plannerTools: Anthropic.Tool[] = [
   {
     name: "get_coach_availability_window",
     description:
-      "Devuelve los bloques de no-disponibilidad aprobados de los coaches dentro de un rango. Úsalo antes de proponer para evitar agendar a un coach en un día que pidió libre.",
+      "Devuelve la disponibilidad de los coaches en el rango pedido. Trae DOS bloques: (1) `time_off_blocks` = restricción DURA (vacaciones/citas/ausencias — nunca agendes ahí), (2) `availability_blocks` = PREFERENCIAS suaves (horas que la coach marcó como 'sí puedo', con preferencia por estudio: 'preferred' o 'ok_if_needed'). Si una coach NO tiene availability_blocks en el periodo, trátala como 'sin restricción' (default optimista). Si tiene availability_blocks, prefiere agendarla DENTRO de esas franjas y respetando sus prefs por estudio (preferred > ok_if_needed). Una coach con availability pero sin coverage para un slot/estudio es una asignación posible pero menos deseable.",
     input_schema: {
       type: "object" as const,
       properties: {

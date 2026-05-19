@@ -164,19 +164,16 @@ async function getCoachAvailabilityWindow(
   const end = new Date(input.end_date);
   end.setHours(23, 59, 59, 999);
 
-  // Blocks are stored with coachId = User.id. We resolve back to
-  // CoachProfile.id so Spark can match them against the catalog.
-  //
-  // We only surface time_off blocks here: this tool is consumed by the
-  // schedule planner as "windows the coach must NOT be scheduled into".
-  // Positive availability blocks (kind=availability) represent the inverse
-  // problem and aren't safe to feed into this tool as-is; planner support
-  // for positive availability is a follow-up.
+  // We surface BOTH kinds of blocks so the planner can:
+  //   - Treat time_off as a HARD constraint (never schedule into).
+  //   - Treat availability windows + studio prefs as SOFT preferences
+  //     (prefer scheduling within them, prefer `preferred` over `ok_if_needed`).
+  // Blocks store coachId as User.id; we resolve to CoachProfile.id so Spark
+  // can match against the catalog.
   const blocks = await prisma.coachAvailabilityBlock.findMany({
     where: {
       tenantId,
       status: "active",
-      kind: "time_off",
       OR: [
         { startDate: { lte: end }, endDate: { gte: start } },
         { startDate: { lte: end }, endDate: null },
@@ -186,6 +183,7 @@ async function getCoachAvailabilityWindow(
     },
     select: {
       id: true,
+      kind: true,
       coachId: true,
       dayOfWeek: true,
       startTime: true,
@@ -193,6 +191,7 @@ async function getCoachAvailabilityWindow(
       startDate: true,
       endDate: true,
       reasonType: true,
+      studioPreferences: { select: { studioId: true, preference: true } },
     },
   });
 
@@ -207,10 +206,9 @@ async function getCoachAvailabilityWindow(
       .map((p) => [p.userId, p.id]),
   );
 
-  return {
-    start_date: input.start_date,
-    end_date: input.end_date,
-    blocks: blocks.map((b) => ({
+  const timeOffBlocks = blocks
+    .filter((b) => b.kind === "time_off")
+    .map((b) => ({
       block_id: b.id,
       coach_user_id: b.coachId,
       coach_profile_id: profileByUserId.get(b.coachId) ?? null,
@@ -220,7 +218,43 @@ async function getCoachAvailabilityWindow(
       start_date: b.startDate?.toISOString().slice(0, 10) ?? null,
       end_date: b.endDate?.toISOString().slice(0, 10) ?? null,
       reason: b.reasonType,
-    })),
+    }));
+
+  const availabilityBlocks = blocks
+    .filter((b) => b.kind === "availability")
+    .map((b) => ({
+      block_id: b.id,
+      coach_user_id: b.coachId,
+      coach_profile_id: profileByUserId.get(b.coachId) ?? null,
+      days_of_week: b.dayOfWeek,
+      start_time: b.startTime,
+      end_time: b.endTime,
+      start_date: b.startDate?.toISOString().slice(0, 10) ?? null,
+      end_date: b.endDate?.toISOString().slice(0, 10) ?? null,
+      // Per-studio preference: "preferred" or "ok_if_needed".
+      // Studios NOT in this list = the coach explicitly said they can't
+      // work at that location (treat as hard exclusion for studio
+      // assignment within this window).
+      studio_preferences: b.studioPreferences.map((p) => ({
+        studio_id: p.studioId,
+        preference: p.preference,
+      })),
+    }));
+
+  return {
+    start_date: input.start_date,
+    end_date: input.end_date,
+    // HARD constraint — never schedule a coach into one of their time_off windows.
+    time_off_blocks: timeOffBlocks,
+    // SOFT preference — when a coach has availability blocks for the period,
+    // prefer assigning them within those windows; respect their studio prefs
+    // (preferred > ok_if_needed). A coach with NO availability blocks at all
+    // for the period is treated as "unconstrained" (default optimistic).
+    availability_blocks: availabilityBlocks,
+    // Legacy field — kept for back-compat with older planner conversations
+    // that still reference `blocks` as the time-off list. New planning runs
+    // should use the split shape above.
+    blocks: timeOffBlocks,
   };
 }
 
