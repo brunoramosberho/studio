@@ -41,6 +41,27 @@ const FALLBACK_TZ = "Europe/Madrid";
 
 type CoachProfileWithUser = CoachProfile & { user?: Pick<User, "id" | "name" | "email" | "image"> | null };
 
+type PickerStatus =
+  | "preferred"
+  | "ok_if_needed"
+  | "available_unconfigured"
+  | "no_availability"
+  | "time_off"
+  | "conflict";
+
+interface PickerCoach {
+  id: string;
+  name: string;
+  image: string | null;
+  color: string;
+  status: PickerStatus;
+  conflictClass: { name: string; startsAt: string } | null;
+  priorClass: { name: string; startsAt: string; endsAt: string; gapMinutes: number } | null;
+  followingClass: { name: string; startsAt: string; endsAt: string; gapMinutes: number } | null;
+  classesThisDay: number;
+  classesThisWeek: number;
+}
+
 type ScheduleMode = "single" | "recurring";
 type EditScope = "this" | "thisAndFuture" | "all";
 
@@ -135,6 +156,47 @@ export function ClassFormDialog({
       if (!res.ok) return [];
       return res.json();
     },
+  });
+
+  // Picker context: query the enriched availability/workload endpoint
+  // for the slot the admin is about to assign. We need date+time+duration
+  // at minimum; roomId is optional but unlocks per-studio preference.
+  const pickerStartsAt = useMemo(() => {
+    if (!formData.date || !formData.time) return null;
+    const tz = resolveStudioTimezone();
+    const [y, m, d] = formData.date.split("-").map(Number);
+    const [hh, mm] = formData.time.split(":").map(Number);
+    try {
+      return zonedWallTimeToUtc(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, tz).toISOString();
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.date, formData.time, formData.roomId, editingClass?.id]);
+
+  const { data: pickerData } = useQuery<{
+    coaches: PickerCoach[];
+    studioResolved: boolean;
+  }>({
+    queryKey: [
+      "coach-picker",
+      pickerStartsAt,
+      formData.duration,
+      formData.roomId,
+      editingClass?.id ?? null,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        startsAt: pickerStartsAt!,
+        duration: String(formData.duration),
+      });
+      if (formData.roomId) params.set("roomId", formData.roomId);
+      if (editingClass?.id) params.set("excludeClassId", editingClass.id);
+      const res = await fetch(`/api/admin/coaches/picker?${params.toString()}`);
+      if (!res.ok) return { coaches: [], studioResolved: false };
+      return res.json();
+    },
+    enabled: Boolean(pickerStartsAt && formData.duration > 0),
   });
 
   useEffect(() => {
@@ -450,9 +512,13 @@ export function ClassFormDialog({
                   <SelectValue placeholder={t("select")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {coaches?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
+                  {pickerData?.coaches?.length
+                    ? pickerData.coaches.map((c) => (
+                        <CoachPickerItem key={c.id} coach={c} />
+                      ))
+                    : coaches?.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             </div>
@@ -684,5 +750,86 @@ export function ClassFormDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── Coach picker item ─────────────────────────────────────────────────
+// Renders one row in the instructor dropdown, enriched with availability
+// status (pill on the right) and workload/adjacency context (subline).
+// Unavailable statuses (time_off, conflict, no availability set) come
+// back from the API sorted to the bottom and disable selection here.
+
+function CoachPickerItem({ coach: c }: { coach: PickerCoach }) {
+  const disabled = c.status === "time_off" || c.status === "conflict" || c.status === "no_availability";
+
+  const pill = (() => {
+    switch (c.status) {
+      case "preferred":
+        return null;
+      case "ok_if_needed":
+        return { label: "De respaldo", tone: "amber" as const };
+      case "available_unconfigured":
+        return { label: "Sin configurar", tone: "neutral" as const };
+      case "no_availability":
+        return { label: "Sin disponibilidad", tone: "muted" as const };
+      case "time_off":
+        return { label: "Tiempo libre", tone: "rose" as const };
+      case "conflict":
+        return { label: "Tiene clase", tone: "rose" as const };
+      default:
+        return null;
+    }
+  })();
+
+  const toneClass: Record<"amber" | "rose" | "neutral" | "muted", string> = {
+    amber: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+    rose: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+    neutral: "bg-stone-100 text-stone-600 dark:bg-stone-500/15 dark:text-stone-300",
+    muted: "bg-stone-100 text-stone-500 dark:bg-stone-500/15 dark:text-stone-400",
+  };
+
+  const subParts: string[] = [];
+  if (c.status === "conflict" && c.conflictClass) {
+    subParts.push(
+      `Conflicto: ${c.conflictClass.name} ${new Date(c.conflictClass.startsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+    );
+  }
+  if (c.priorClass) {
+    subParts.push(
+      `← ${c.priorClass.name} hace ${c.priorClass.gapMinutes} min`,
+    );
+  }
+  if (c.followingClass) {
+    subParts.push(
+      `${c.followingClass.name} en ${c.followingClass.gapMinutes} min →`,
+    );
+  }
+  if (c.classesThisDay > 0) {
+    subParts.push(`${c.classesThisDay} hoy`);
+  }
+  if (c.classesThisWeek > 0) {
+    subParts.push(`${c.classesThisWeek} esta semana`);
+  }
+
+  return (
+    <SelectItem value={c.id} disabled={disabled}>
+      <div className="flex w-full items-center justify-between gap-2 pr-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm">{c.name}</span>
+          {subParts.length > 0 && (
+            <span className="text-muted-foreground truncate text-[11px]">
+              {subParts.join(" · ")}
+            </span>
+          )}
+        </div>
+        {pill && (
+          <span
+            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${toneClass[pill.tone]}`}
+          >
+            {pill.label}
+          </span>
+        )}
+      </div>
+    </SelectItem>
   );
 }
