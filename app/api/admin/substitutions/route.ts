@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/tenant";
 type StatusFilter =
   | "all"
   | "PENDING"
+  | "PENDING_ADMIN"
   | "ACCEPTED"
   | "REJECTED"
   | "CANCELLED"
@@ -27,6 +28,18 @@ export async function GET(request: NextRequest) {
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
       include: {
         class: {
+          include: {
+            classType: { select: { id: true, name: true, color: true } },
+            room: {
+              select: {
+                name: true,
+                studio: { select: { name: true } },
+              },
+            },
+          },
+        },
+        // For SWAP requests: the other class involved
+        swapWithClass: {
           include: {
             classType: { select: { id: true, name: true, color: true } },
             room: {
