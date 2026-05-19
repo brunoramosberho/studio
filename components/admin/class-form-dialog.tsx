@@ -282,6 +282,18 @@ export function ClassFormDialog({
       .map((r) => ({ ...r, studioName: s.name, studioTimezone: s.city?.timezone ?? null })),
   ) ?? [];
 
+  // Auto-pick the room when there's only one valid option for the current
+  // class type. Saves the admin a redundant click in single-room tenants
+  // and after a class-type change that narrows the room list to one.
+  useEffect(() => {
+    if (!open) return;
+    if (availableRooms.length !== 1) return;
+    const only = availableRooms[0];
+    if (formData.roomId === only.id) return;
+    setFormData((f) => ({ ...f, roomId: only.id }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, availableRooms.length, availableRooms[0]?.id, formData.classTypeId]);
+
   /** Resolve the IANA timezone for the currently selected room. Falls back to
    * the editing class's studio tz or Europe/Madrid. Class times must always be
    * anchored to the studio's timezone, never the admin's browser tz. */
