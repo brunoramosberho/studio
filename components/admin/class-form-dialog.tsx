@@ -623,6 +623,7 @@ export function ClassFormDialog({
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="text-sm pr-2 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
                   />
                 </div>
                 <div>
@@ -631,6 +632,7 @@ export function ClassFormDialog({
                     type="time"
                     value={formData.time}
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    className="text-sm pr-2 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
                   />
                 </div>
                 <div>
@@ -682,6 +684,7 @@ export function ClassFormDialog({
                       type="date"
                       value={formData.dateFrom}
                       onChange={(e) => setFormData({ ...formData, dateFrom: e.target.value })}
+                      className="text-sm pr-2 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
                     />
                   </div>
                   <div>
@@ -690,6 +693,7 @@ export function ClassFormDialog({
                       type="date"
                       value={formData.dateTo}
                       onChange={(e) => setFormData({ ...formData, dateTo: e.target.value })}
+                      className="text-sm pr-2 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
                     />
                   </div>
                 </div>
@@ -707,6 +711,7 @@ export function ClassFormDialog({
                       type="time"
                       value={formData.time}
                       onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                      className="text-sm pr-2 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
                     />
                   </div>
                   <div>
