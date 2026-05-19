@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getWallClockInZone } from "@/lib/utils";
 import {
   startOfWeek,
   endOfWeek,
@@ -347,7 +348,12 @@ export async function getSubstituteSuggestions(
     include: {
       classType: true,
       coach: { select: { userId: true } },
-      room: { select: { studioId: true } },
+      room: {
+        select: {
+          studioId: true,
+          studio: { select: { city: { select: { timezone: true } } } },
+        },
+      },
     },
   });
   if (!cls) return [];
@@ -390,8 +396,14 @@ export async function getSubstituteSuggestions(
   }
 
   const discipline = cls.classType.name.toLowerCase();
-  const classStartMin = cls.startsAt.getHours() * 60 + cls.startsAt.getMinutes();
-  const classEndMin = cls.endsAt.getHours() * 60 + cls.endsAt.getMinutes();
+  // Convert UTC instants to studio wall time so we compare against coach
+  // availability (stored as wall "HH:MM").
+  const tz = cls.room?.studio?.city?.timezone ?? "Europe/Madrid";
+  const startWall = getWallClockInZone(cls.startsAt, tz);
+  const endWall = getWallClockInZone(cls.endsAt, tz);
+  const classStartMin = startWall.hour * 60 + startWall.minute;
+  const classEndMin = endWall.hour * 60 + endWall.minute;
+  const slotDate = new Date(startWall.year, startWall.month - 1, startWall.day);
   const studioId = cls.room?.studioId ?? "";
 
   type Suggestion = {
@@ -409,7 +421,7 @@ export async function getSubstituteSuggestions(
     const coachBlocks = allBlocks.filter((b) => b.coachId === p.userId);
     const slotStatus = getCoachStatusForSlot({
       blocks: coachBlocks,
-      date: cls.startsAt,
+      date: slotDate,
       startMin: classStartMin,
       endMin: classEndMin,
       studioId,

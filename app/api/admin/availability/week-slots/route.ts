@@ -5,6 +5,7 @@ import {
   type AvailabilityBlockLite,
   getCoachStatusForSlot,
 } from "@/lib/availability";
+import { zonedWallTimeToUtc } from "@/lib/utils";
 import {
   startOfWeek,
   endOfWeek,
@@ -12,6 +13,8 @@ import {
   format,
   addDays,
 } from "date-fns";
+
+const FALLBACK_TZ = "Europe/Madrid";
 
 interface CoachSummary {
   id: string;
@@ -61,7 +64,11 @@ export async function GET(request: NextRequest) {
     const [studios, coachProfiles] = await Promise.all([
       prisma.studio.findMany({
         where: { tenantId: tenant.id },
-        select: { id: true, name: true },
+        select: {
+          id: true,
+          name: true,
+          city: { select: { timezone: true } },
+        },
         orderBy: { name: "asc" },
       }),
       prisma.coachProfile.findMany({
@@ -69,6 +76,13 @@ export async function GET(request: NextRequest) {
         include: { user: { select: { id: true, image: true } } },
       }),
     ]);
+
+    // The schedule grid renders one set of (day, hour) cells, so even if
+    // the tenant has studios in different cities we have to pick one TZ
+    // to interpret those cells. We use the first studio's TZ as canonical
+    // — in practice multi-studio tenants almost always share a TZ.
+    const tenantTimeZone =
+      studios[0]?.city?.timezone ?? FALLBACK_TZ;
 
     const coachUserIds = coachProfiles
       .map((p) => p.userId)
@@ -117,10 +131,25 @@ export async function GET(request: NextRequest) {
     for (const day of days) {
       const dayKey = format(day, "yyyy-MM-dd");
       for (let hour = openHour; hour < closeHour; hour++) {
-        const slotStart = new Date(day);
-        slotStart.setHours(hour, 0, 0, 0);
-        const slotEnd = new Date(slotStart);
-        slotEnd.setHours(hour + 1, 0, 0, 0);
+        // Build the UTC instant that corresponds to `hour:00` wall time
+        // in the tenant's TZ on `day`. Class conflicts compare against
+        // the UTC `startsAt` columns, so we need both sides in UTC.
+        const slotStart = zonedWallTimeToUtc(
+          day.getFullYear(),
+          day.getMonth(),
+          day.getDate(),
+          hour,
+          0,
+          tenantTimeZone,
+        );
+        const slotEnd = zonedWallTimeToUtc(
+          day.getFullYear(),
+          day.getMonth(),
+          day.getDate(),
+          hour + 1 >= 24 ? 23 : hour + 1,
+          hour + 1 >= 24 ? 59 : 0,
+          tenantTimeZone,
+        );
 
         // Aggregate per-(day, hour) across all studios for the legacy `slots`
         // shape. A coach is in the flat list if they show up as preferred or

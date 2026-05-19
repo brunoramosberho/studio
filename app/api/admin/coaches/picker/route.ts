@@ -6,7 +6,10 @@ import {
   type CoachSlotStatus,
   getCoachStatusForSlot,
 } from "@/lib/availability";
+import { getWallClockInZone } from "@/lib/utils";
 import { startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
+
+const FALLBACK_TZ = "Europe/Madrid";
 
 /**
  * Returns the coaches list enriched with availability + workload context
@@ -50,15 +53,43 @@ export async function GET(request: NextRequest) {
     const endsAt = new Date(startsAt.getTime() + duration * 60_000);
 
     // Resolve the studio (if a room was provided) so availability prefs
-    // can be evaluated per-studio.
+    // can be evaluated per-studio. We also need the studio's timezone to
+    // interpret the requested startsAt as the studio's wall time rather
+    // than the server's local time (Vercel = UTC ≠ studio TZ).
     let studioId = "";
+    let timeZone = FALLBACK_TZ;
     if (roomId) {
       const room = await prisma.room.findFirst({
         where: { id: roomId, tenantId: tenant.id },
-        select: { studioId: true },
+        select: {
+          studioId: true,
+          studio: { select: { city: { select: { timezone: true } } } },
+        },
       });
       studioId = room?.studioId ?? "";
+      timeZone = room?.studio?.city?.timezone ?? FALLBACK_TZ;
+    } else {
+      // No room context — fall back to the tenant's primary studio TZ so
+      // the picker still evaluates wall-time correctly.
+      const anyStudio = await prisma.studio.findFirst({
+        where: { tenantId: tenant.id },
+        select: { city: { select: { timezone: true } } },
+        orderBy: { name: "asc" },
+      });
+      timeZone = anyStudio?.city?.timezone ?? FALLBACK_TZ;
     }
+
+    // Convert the UTC instant to wall time in the studio's TZ. The engine
+    // needs wall-clock minute offsets to compare against coach availability
+    // (which is stored as "HH:MM" wall strings).
+    const wall = getWallClockInZone(startsAt, timeZone);
+    const startMin = wall.hour * 60 + wall.minute;
+    const endMinUnclamped = startMin + duration;
+    const endMin = endMinUnclamped > 24 * 60 ? 24 * 60 : endMinUnclamped;
+    // For the day-of-week check, build a Date that reads as the studio's
+    // wall date in the server's local TZ. The engine only uses getDay() /
+    // setHours() on it, so what matters is the local Y/M/D match.
+    const slotDate = new Date(wall.year, wall.month - 1, wall.day);
 
     const coachProfiles = await prisma.coachProfile.findMany({
       where: { tenantId: tenant.id, userId: { not: null } },
@@ -124,8 +155,8 @@ export async function GET(request: NextRequest) {
     }
 
     const ADJACENT_WINDOW_MIN = 60; // classes within ±60 min flagged as adjacent
-    const startMin = startsAt.getHours() * 60 + startsAt.getMinutes();
-    const endMin = endsAt.getHours() * 60 + endsAt.getMinutes();
+    // startMin / endMin / slotDate are already computed above in the
+    // studio's wall time.
 
     type PickerStatus =
       | "preferred"
@@ -206,7 +237,7 @@ export async function GET(request: NextRequest) {
       } else {
         const slotStatus: CoachSlotStatus = getCoachStatusForSlot({
           blocks: coachBlocks,
-          date: startsAt,
+          date: slotDate,
           startMin,
           endMin,
           studioId,

@@ -13,6 +13,7 @@ import {
   type CoachSlotStatus,
   getCoachStatusForSlot,
 } from "@/lib/availability";
+import { getWallClockInZone } from "@/lib/utils";
 
 /**
  * A coach is "eligible" to substitute on a class when:
@@ -45,7 +46,12 @@ export async function getEligibleCoaches(
     include: {
       classType: { select: { name: true } },
       coach: { select: { id: true } },
-      room: { select: { studioId: true } },
+      room: {
+        select: {
+          studioId: true,
+          studio: { select: { city: { select: { timezone: true } } } },
+        },
+      },
     },
   });
   if (!cls) return [];
@@ -107,8 +113,14 @@ export async function getEligibleCoaches(
 
   const discipline = cls.classType.name.toLowerCase();
   const studioId = cls.room?.studioId ?? "";
-  const classStartMin = cls.startsAt.getHours() * 60 + cls.startsAt.getMinutes();
-  const classEndMin = cls.endsAt.getHours() * 60 + cls.endsAt.getMinutes();
+  // Convert the UTC startsAt/endsAt to the studio's wall time so we can
+  // compare against coach availability stored as "HH:MM" wall strings.
+  const tz = cls.room?.studio?.city?.timezone ?? "Europe/Madrid";
+  const startWall = getWallClockInZone(cls.startsAt, tz);
+  const endWall = getWallClockInZone(cls.endsAt, tz);
+  const classStartMin = startWall.hour * 60 + startWall.minute;
+  const classEndMin = endWall.hour * 60 + endWall.minute;
+  const slotDate = new Date(startWall.year, startWall.month - 1, startWall.day);
 
   const result: EligibleCoach[] = profiles.map((p) => {
     const coachBlocks = blocks.filter(
@@ -116,7 +128,7 @@ export async function getEligibleCoaches(
     ) as unknown as AvailabilityBlockLite[];
     const slotStatus = getCoachStatusForSlot({
       blocks: coachBlocks,
-      date: cls.startsAt,
+      date: slotDate,
       startMin: classStartMin,
       endMin: classEndMin,
       studioId,
