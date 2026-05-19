@@ -609,7 +609,10 @@ export default function ClassRosterPage() {
             </div>
             {!isPastClass && !isCompleted && (
               <div className="mt-4 flex justify-end">
-                <RequestSubstituteButton classId={classData.id} />
+                <RequestSubstituteButton
+                  classId={classData.id}
+                  classStartsAt={new Date(classData.startsAt).toISOString()}
+                />
               </div>
             )}
           </CardContent>

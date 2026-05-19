@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requireAuth, requireRole } from "@/lib/tenant";
 
-/** Read the substitutions settings for this tenant. */
+/**
+ * Read the substitutions settings for this tenant. Coaches need this too
+ * so the "this request will need admin approval" banner is accurate on
+ * their side — kept open to any authenticated member of the tenant.
+ */
 export async function GET() {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireAuth();
     return NextResponse.json({
       subRequestAdminApprovalHours: tenant.subRequestAdminApprovalHours,
     });
