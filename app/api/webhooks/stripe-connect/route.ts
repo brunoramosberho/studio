@@ -3,22 +3,41 @@ import { constructConnectStripeWebhookEvent } from "@/lib/stripe/webhook-verify"
 import { currencySymbolFor } from "@/lib/currency";
 import { prisma } from "@/lib/db";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
-import { createCreditUsagesForPackage } from "@/lib/credits";
+import { createCreditUsagesForPackage, restoreCredit } from "@/lib/credits";
 import { computeDebtAmount } from "@/lib/billing/debt";
 import { getSubscriptionPeriod } from "@/lib/stripe/helpers";
 import type Stripe from "stripe";
 
-async function cancelFutureBookingsForPackage(userPackageId: string) {
-  // Clear spotNumber so the freed seat doesn't stay occupied at the DB
-  // unique-constraint level (`@@unique([classId, spotNumber])`).
-  await prisma.booking.updateMany({
+/**
+ * Cancel all CONFIRMED future bookings tied to a package and return any
+ * credits they were holding back to the package. Used when a payment is
+ * refunded or disputed — the buyer shouldn't owe anything for seats they
+ * haven't actually attended yet.
+ */
+async function cancelFutureBookingsForPackage(userPackageId: string): Promise<number> {
+  const futureBookings = await prisma.booking.findMany({
     where: {
       packageUsed: userPackageId,
       status: "CONFIRMED",
       class: { startsAt: { gt: new Date() } },
     },
+    include: { class: { select: { classTypeId: true } } },
+  });
+
+  if (futureBookings.length === 0) return 0;
+
+  for (const b of futureBookings) {
+    await restoreCredit(userPackageId, b.class.classTypeId);
+  }
+
+  // Clear spotNumber so the freed seat doesn't stay occupied at the DB
+  // unique-constraint level (`@@unique([classId, spotNumber])`).
+  await prisma.booking.updateMany({
+    where: { id: { in: futureBookings.map((b) => b.id) } },
     data: { status: "CANCELLED", spotNumber: null },
   });
+
+  return futureBookings.length;
 }
 
 async function restoreFutureBookingsForPackage(userPackageId: string) {
@@ -198,9 +217,17 @@ export async function POST(request: NextRequest) {
           const chargedAmount =
             typeof dispute.amount === "number" ? dispute.amount / 100 : payment.amount;
 
+          // Cancel future bookings + restore credits first so the debt
+          // calculation only counts what was actually consumed.
+          await cancelFutureBookingsForPackage(userPackage.id);
+          const refreshed = await prisma.userPackage.findUnique({
+            where: { id: userPackage.id },
+          });
+          const effectiveCreditsUsed = refreshed?.creditsUsed ?? userPackage.creditsUsed;
+
           const amount = pkg
             ? computeDebtAmount({
-                creditsUsed: userPackage.creditsUsed,
+                creditsUsed: effectiveCreditsUsed,
                 packageCredits: pkg.credits,
                 packagePrice: pkg.price,
                 hasAllocations: false,
@@ -221,7 +248,7 @@ export async function POST(request: NextRequest) {
               where: { stripePaymentIntentId: pi },
               data: { status: "refunded" },
             });
-            if (amount > 0 && payment.memberId) {
+            if (amount > 0 && effectiveCreditsUsed > 0 && payment.memberId) {
               await tx.debt.create({
                 data: {
                   tenantId: payment.tenantId,
@@ -232,12 +259,11 @@ export async function POST(request: NextRequest) {
                   currency: payment.currency,
                   reason: "chargeback",
                   status: "OPEN",
-                  notes: `Dispute lost for ${currencySymbolFor(payment.currency)}${chargedAmount}. Credits used: ${userPackage.creditsUsed}.`,
+                  notes: `Dispute lost for ${currencySymbolFor(payment.currency)}${chargedAmount}. Credits actually consumed: ${effectiveCreditsUsed}.`,
                 },
               });
             }
           });
-          await cancelFutureBookingsForPackage(userPackage.id);
         } else if (dispute.status === "won") {
           await prisma.userPackage.update({
             where: { id: userPackage.id },
@@ -268,9 +294,23 @@ export async function POST(request: NextRequest) {
           } | null;
 
           const refundedAmount = charge.amount_refunded / 100;
+
+          // Cancel future bookings + restore their credits FIRST. Otherwise
+          // creditsUsed still counts seats the buyer never attended and we'd
+          // generate a phantom debt for a refund that fully made the studio
+          // whole.
+          await cancelFutureBookingsForPackage(userPackage.id);
+
+          // Re-read the package so creditsUsed reflects only what's truly
+          // been consumed (past CONFIRMED, ATTENDED, NO_SHOW bookings).
+          const refreshed = await prisma.userPackage.findUnique({
+            where: { id: userPackage.id },
+          });
+          const effectiveCreditsUsed = refreshed?.creditsUsed ?? userPackage.creditsUsed;
+
           const amount = pkg
             ? computeDebtAmount({
-                creditsUsed: userPackage.creditsUsed,
+                creditsUsed: effectiveCreditsUsed,
                 packageCredits: pkg.credits,
                 packagePrice: pkg.price,
                 hasAllocations: false,
@@ -291,7 +331,7 @@ export async function POST(request: NextRequest) {
               where: { stripePaymentIntentId: pi },
               data: { status: "refunded" },
             });
-            if (amount > 0 && userPackage.creditsUsed > 0 && payment.memberId) {
+            if (amount > 0 && effectiveCreditsUsed > 0 && payment.memberId) {
               await tx.debt.create({
                 data: {
                   tenantId: payment.tenantId,
@@ -302,12 +342,11 @@ export async function POST(request: NextRequest) {
                   currency: payment.currency,
                   reason: "refund",
                   status: "OPEN",
-                  notes: `Refunded ${currencySymbolFor(payment.currency)}${refundedAmount}. Credits used: ${userPackage.creditsUsed}.`,
+                  notes: `Refunded ${currencySymbolFor(payment.currency)}${refundedAmount}. Credits actually consumed: ${effectiveCreditsUsed}.`,
                 },
               });
             }
           });
-          await cancelFutureBookingsForPackage(userPackage.id);
         } else {
           await prisma.stripePayment.update({
             where: { stripePaymentIntentId: pi },
