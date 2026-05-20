@@ -10,7 +10,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { getDayName, HOURS } from "@/lib/analytics/mock-data";
+import { getDayName, HOURS } from "@/lib/analytics/constants";
 import type { OccupancyCell, ScheduleSlot } from "@/lib/analytics/types";
 
 interface ScheduleHeatmapProps {

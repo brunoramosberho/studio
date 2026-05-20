@@ -14,7 +14,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
-import { getDayName } from "@/lib/analytics/mock-data";
+import { getDayName } from "@/lib/analytics/constants";
 import type {
   Coach,
   CoachMetrics,
