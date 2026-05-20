@@ -16,7 +16,11 @@ export async function POST(request: NextRequest) {
         id: true,
         name: true,
         packages: {
-          where: { tenantId: tenant.id, expiresAt: { gt: new Date() } },
+          where: {
+            tenantId: tenant.id,
+            status: "ACTIVE",
+            expiresAt: { gt: new Date() },
+          },
           select: {
             creditsTotal: true,
             creditsUsed: true,
