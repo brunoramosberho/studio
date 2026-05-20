@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useFormatMoney } from "@/components/tenant-provider";
-import { getDayName } from "@/lib/analytics/mock-data";
+import { getDayName } from "@/lib/analytics/constants";
 import type { Coach, CoachMetrics } from "@/lib/analytics/types";
 import {
   CalendarCheck,
