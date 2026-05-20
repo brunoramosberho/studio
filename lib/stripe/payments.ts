@@ -57,6 +57,15 @@ export async function createMemberPayment({
     stripe,
   );
 
+  // Stripe only sends a receipt email when receipt_email is set on the PI
+  // (or when explicitly enabled at account level). Pulling the buyer's
+  // current email here covers the guest checkout case where the customer
+  // record on Stripe might still have a stale email.
+  const member = await prisma.user.findUnique({
+    where: { id: memberId },
+    select: { email: true },
+  });
+
   const feeAmount = calculateFee(
     amountInCurrency,
     tenant.applicationFeePercent,
@@ -70,6 +79,7 @@ export async function createMemberPayment({
       description,
       application_fee_amount: feeAmount > 0 ? feeAmount : undefined,
       setup_future_usage: "off_session",
+      receipt_email: member?.email ?? undefined,
       metadata: {
         tenantId,
         memberId,

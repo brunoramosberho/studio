@@ -562,9 +562,21 @@ export async function POST(request: NextRequest) {
     const hideCoach = shouldHideCoach(tenant, classData);
     const emailCoachName = hideCoach ? null : (classData.coach.name ?? "Coach");
 
-    // Send confirmation to the main booker
-    const recipientEmail = session?.user?.email ?? guestEmail;
-    const recipientName = session?.user?.name ?? guestName;
+    // Send confirmation to the main booker. For the payment-authed guest
+    // path we don't have a session OR a guestEmail (the booking row is
+    // linked to the User), so resolve the email/name from the User record.
+    let recipientEmail: string | null =
+      session?.user?.email ?? guestEmail ?? null;
+    let recipientName: string | null =
+      session?.user?.name ?? guestName ?? null;
+    if (!recipientEmail && effectiveUserId) {
+      const u = await prisma.user.findUnique({
+        where: { id: effectiveUserId },
+        select: { email: true, name: true },
+      });
+      recipientEmail = u?.email ?? null;
+      recipientName = u?.name ?? recipientName;
+    }
     if (recipientEmail && recipientName) {
       sendBookingConfirmation({
         to: recipientEmail,
