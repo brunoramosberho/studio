@@ -21,10 +21,24 @@ export async function GET(request: NextRequest) {
     };
 
     if (from || to) {
-      where.startsAt = {
-        ...(from && { gte: new Date(from) }),
-        ...(to && { lte: new Date(to) }),
-      };
+      // `from` / `to` arrive as YYYY-MM-DD wall-clock dates. `new Date(str)`
+      // parses them as UTC midnight, so the upper bound clips off everything
+      // after 00:00 UTC on the last day — which is morning on the same day
+      // for studios west of UTC and the *prior* afternoon for studios east of
+      // UTC. Widen by ±1 day; the caller re-buckets by studio wall-clock so
+      // extras are filtered client-side.
+      const startsAtRange: { gte?: Date; lt?: Date } = {};
+      if (from) {
+        const d = new Date(`${from}T00:00:00Z`);
+        d.setUTCDate(d.getUTCDate() - 1);
+        startsAtRange.gte = d;
+      }
+      if (to) {
+        const d = new Date(`${to}T00:00:00Z`);
+        d.setUTCDate(d.getUTCDate() + 2);
+        startsAtRange.lt = d;
+      }
+      where.startsAt = startsAtRange;
     }
 
     if (typeId) where.classTypeId = typeId;
@@ -175,6 +189,36 @@ export async function POST(request: NextRequest) {
         { error: "Missing required fields: classTypeId, coachId, startsAt, endsAt, roomId" },
         { status: 400 },
       );
+    }
+
+    // Reject overlaps with an existing non-cancelled class for the same room
+    // or the same coach. The picker shows this as a soft warning in the UI,
+    // but a double-submit, network retry, or direct API call could otherwise
+    // race past it — and there's no DB-level uniqueness on Class.
+    const startsAtDate = new Date(startsAt);
+    const endsAtDate = new Date(endsAt);
+    const conflict = await prisma.class.findFirst({
+      where: {
+        tenantId: ctx.tenant.id,
+        status: { not: "CANCELLED" },
+        startsAt: { lt: endsAtDate },
+        endsAt: { gt: startsAtDate },
+        OR: [{ roomId }, { coachId }],
+      },
+      include: {
+        classType: { select: { name: true } },
+        coach: { select: { name: true } },
+        room: { select: { name: true } },
+      },
+    });
+    if (conflict) {
+      const reason =
+        conflict.coachId === coachId && conflict.roomId === roomId
+          ? `Ya hay una clase de ${conflict.classType.name} con ${conflict.coach.name} en ${conflict.room.name} en ese horario.`
+          : conflict.coachId === coachId
+            ? `${conflict.coach.name} ya tiene una clase de ${conflict.classType.name} en ese horario.`
+            : `La sala ${conflict.room.name} ya está ocupada por ${conflict.classType.name} en ese horario.`;
+      return NextResponse.json({ error: reason, conflictClassId: conflict.id }, { status: 409 });
     }
 
     const newClass = await prisma.class.create({

@@ -135,6 +135,58 @@ export async function POST(request: NextRequest) {
     // Sort by date
     classesToCreate.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
+    // Reject overlaps with existing non-cancelled classes for the same room
+    // or coach. We pull every candidate that overlaps the outer window in one
+    // query, then check each new occurrence against it in memory. All-or-
+    // nothing: if any single occurrence collides we bail before createMany,
+    // so the admin doesn't get a partial series.
+    const windowStart = classesToCreate[0].startsAt;
+    const windowEnd = classesToCreate[classesToCreate.length - 1].endsAt;
+    const existing = await prisma.class.findMany({
+      where: {
+        tenantId: ctx.tenant.id,
+        status: { not: "CANCELLED" },
+        startsAt: { lt: windowEnd },
+        endsAt: { gt: windowStart },
+        OR: [{ roomId }, { coachId }],
+      },
+      select: {
+        id: true,
+        coachId: true,
+        roomId: true,
+        startsAt: true,
+        endsAt: true,
+        classType: { select: { name: true } },
+        coach: { select: { name: true } },
+        room: { select: { name: true } },
+      },
+    });
+    const conflicts = classesToCreate
+      .map((c) => {
+        const overlap = existing.find(
+          (e) => e.startsAt < c.endsAt && e.endsAt > c.startsAt,
+        );
+        return overlap ? { candidate: c, overlap } : null;
+      })
+      .filter((x): x is { candidate: typeof classesToCreate[0]; overlap: typeof existing[0] } => x !== null);
+    if (conflicts.length > 0) {
+      const first = conflicts[0];
+      const sameRoom = first.overlap.roomId === roomId;
+      const sameCoach = first.overlap.coachId === coachId;
+      const subject = sameRoom && sameCoach
+        ? `${first.overlap.classType.name} con ${first.overlap.coach.name} en ${first.overlap.room.name}`
+        : sameCoach
+          ? `${first.overlap.coach.name}`
+          : `${first.overlap.room.name}`;
+      return NextResponse.json(
+        {
+          error: `No se creó nada: ${conflicts.length} clase(s) chocan con horarios ya ocupados (p. ej. ${format(first.candidate.startsAt, "yyyy-MM-dd HH:mm")} — ${subject}).`,
+          conflictCount: conflicts.length,
+        },
+        { status: 409 },
+      );
+    }
+
     // Bulk create
     const created = await prisma.class.createMany({
       data: classesToCreate.map(({ startsAt, endsAt }) => ({
