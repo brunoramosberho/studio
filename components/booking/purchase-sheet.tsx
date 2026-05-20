@@ -32,6 +32,11 @@ interface PurchaseSheetProps {
    * booking itself via onSuccess.
    */
   bookAfter?: { classId: string; spotNumber?: number | null };
+  /**
+   * Skip the guest-info step when the caller (e.g. booking sheet) already
+   * collected name + email upstream.
+   */
+  prefilledGuest?: { name: string; email: string };
 }
 
 interface PaymentData {
@@ -63,15 +68,22 @@ export function PurchaseSheet({
   pkg,
   onSuccess,
   bookAfter,
+  prefilledGuest,
 }: PurchaseSheetProps) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const router = useRouter();
   const isLoggedIn = !!session?.user;
 
-  const [step, setStep] = useState<Step>(isLoggedIn ? "confirm" : "guest");
-  const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
+  const hasPrefilledGuest = !!(
+    prefilledGuest?.name?.trim() && prefilledGuest?.email?.trim()
+  );
+
+  const [step, setStep] = useState<Step>(
+    isLoggedIn || hasPrefilledGuest ? "confirm" : "guest",
+  );
+  const [guestName, setGuestName] = useState(prefilledGuest?.name ?? "");
+  const [guestEmail, setGuestEmail] = useState(prefilledGuest?.email ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);

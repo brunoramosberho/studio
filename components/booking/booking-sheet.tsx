@@ -771,6 +771,11 @@ export function BookingSheet({
           pkg={purchaseInline}
           onClose={() => setPurchaseInline(null)}
           bookAfter={{ classId, spotNumber }}
+          prefilledGuest={
+            !isLoggedIn && guestName.trim() && guestEmail.trim()
+              ? { name: guestName, email: guestEmail }
+              : undefined
+          }
           onSuccess={async () => {
             const pkgBeingBooked = purchaseInline;
             if (!pkgBeingBooked) return;
