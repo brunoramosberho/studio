@@ -3,8 +3,14 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 
 export async function GET() {
+  let session: Awaited<ReturnType<typeof requireAuth>>["session"];
+  let tenant: Awaited<ReturnType<typeof requireAuth>>["tenant"];
   try {
-    const { session, tenant } = await requireAuth();
+    ({ session, tenant } = await requireAuth());
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user!.id! },
