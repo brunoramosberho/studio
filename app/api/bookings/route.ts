@@ -5,7 +5,7 @@ import { requireAuth, requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
-import { findPackageForClass, deductCredit, userPackageIncludeForBooking } from "@/lib/credits";
+import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeForBooking } from "@/lib/credits";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
@@ -306,6 +306,11 @@ export async function POST(request: NextRequest) {
     }
 
     let packageUsedId: string | null = null;
+    // Track how many credits we deducted so we can restore them if the
+    // booking insert later fails (e.g. spot conflict). Prevents charging the
+    // member without giving them a seat.
+    let creditsDeducted = 0;
+    let creditsDeductedClassTypeId: string | null = null;
 
     if (paymentAuthedPackage && !session?.user) {
       // Payment-authenticated path: use the just-purchased package directly.
@@ -347,6 +352,8 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < creditsNeeded; i++) {
         await deductCredit(up.id, classTypeId);
       }
+      creditsDeducted = creditsNeeded;
+      creditsDeductedClassTypeId = classTypeId;
       packageUsedId = up.id;
     } else if (session?.user) {
       if (await userHasOpenDebt(session.user.id, tenant.id)) {
@@ -457,31 +464,47 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < creditsNeeded; i++) {
         await deductCredit(userPackage.id, classTypeId);
       }
+      creditsDeducted = creditsNeeded;
+      creditsDeductedClassTypeId = classTypeId;
       packageUsedId = userPackage.id;
     }
 
-    // Create main booking
-    const booking = await prisma.booking.create({
-      data: {
-        tenantId: tenant.id,
-        classId,
-        userId: effectiveUserId,
-        guestName: isGuest ? guestName : null,
-        guestEmail: isGuest ? guestEmail : null,
-        spotNumber: spotNumber ?? null,
-        privacy: privacy === "PRIVATE" ? "PRIVATE" : "PUBLIC",
-        status: "CONFIRMED",
-        packageUsed: packageUsedId,
-      },
-      include: {
-        class: {
-          include: {
-            classType: true,
-            coach: { include: { user: { select: { name: true } } } },
+    // Create main booking — if the insert fails (e.g. another booking grabbed
+    // the spot first → P2002), restore any credits we already deducted so
+    // the buyer doesn't lose them without getting a seat.
+    let booking;
+    try {
+      booking = await prisma.booking.create({
+        data: {
+          tenantId: tenant.id,
+          classId,
+          userId: effectiveUserId,
+          guestName: isGuest ? guestName : null,
+          guestEmail: isGuest ? guestEmail : null,
+          spotNumber: spotNumber ?? null,
+          privacy: privacy === "PRIVATE" ? "PRIVATE" : "PUBLIC",
+          status: "CONFIRMED",
+          packageUsed: packageUsedId,
+        },
+        include: {
+          class: {
+            include: {
+              classType: true,
+              coach: { include: { user: { select: { name: true } } } },
+            },
           },
         },
-      },
-    });
+      });
+    } catch (err) {
+      if (packageUsedId && creditsDeducted > 0 && creditsDeductedClassTypeId) {
+        for (let i = 0; i < creditsDeducted; i++) {
+          await restoreCredit(packageUsedId, creditsDeductedClassTypeId).catch(
+            (e) => console.error("Failed to restore credit on booking error", e),
+          );
+        }
+      }
+      throw err;
+    }
 
     // Create guest bookings
     const guestBookings = [];

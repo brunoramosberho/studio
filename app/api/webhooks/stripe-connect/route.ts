@@ -9,13 +9,15 @@ import { getSubscriptionPeriod } from "@/lib/stripe/helpers";
 import type Stripe from "stripe";
 
 async function cancelFutureBookingsForPackage(userPackageId: string) {
+  // Clear spotNumber so the freed seat doesn't stay occupied at the DB
+  // unique-constraint level (`@@unique([classId, spotNumber])`).
   await prisma.booking.updateMany({
     where: {
       packageUsed: userPackageId,
       status: "CONFIRMED",
       class: { startsAt: { gt: new Date() } },
     },
-    data: { status: "CANCELLED" },
+    data: { status: "CANCELLED", spotNumber: null },
   });
 }
 
