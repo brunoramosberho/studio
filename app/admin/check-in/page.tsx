@@ -47,12 +47,14 @@ function formatHeaderDate(date: Date, td: (key: string) => string): string {
   return full.charAt(0).toUpperCase() + full.slice(1);
 }
 
+const STUDIO_STORAGE_KEY = "check-in-studio-id";
+
 export default function CheckInPage() {
   const t = useTranslations("admin");
   const td = useTranslations("dates");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [filterStudioId, setFilterStudioId] = useState<string>("all");
+  const [filterStudioId, setFilterStudioId] = useState<string | null>(null);
   const [showMobileRoster, setShowMobileRoster] = useState(false);
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -63,18 +65,32 @@ export default function CheckInPage() {
     queryFn: () => fetch(`/api/check-in/classes?date=${dateStr}`).then((r) => r.json()),
   });
 
-  // Derive unique studios from classes
-  const studios = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const c of allClasses) map.set(c.studioId, c.studioName);
-    return Array.from(map, ([id, name]) => ({ id, name }));
-  }, [allClasses]);
+  const { data: studios = [], isLoading: isLoadingStudios } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["check-in-studios"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/studios");
+      const data = await res.json();
+      return data.studios ?? [];
+    },
+  });
 
   const hasMultipleStudios = studios.length > 1;
 
-  // Filter classes by studio
+  useEffect(() => {
+    if (studios.length === 0) return;
+    if (filterStudioId && studios.some((s) => s.id === filterStudioId)) return;
+    const stored = typeof window !== "undefined" ? localStorage.getItem(STUDIO_STORAGE_KEY) : null;
+    const next = stored && studios.some((s) => s.id === stored) ? stored : studios[0].id;
+    setFilterStudioId(next);
+  }, [studios, filterStudioId]);
+
+  const handleStudioChange = useCallback((id: string) => {
+    setFilterStudioId(id);
+    if (typeof window !== "undefined") localStorage.setItem(STUDIO_STORAGE_KEY, id);
+  }, []);
+
   const classes = useMemo(
-    () => filterStudioId === "all" ? allClasses : allClasses.filter((c) => c.studioId === filterStudioId),
+    () => filterStudioId ? allClasses.filter((c) => c.studioId === filterStudioId) : [],
     [allClasses, filterStudioId],
   );
 
@@ -178,15 +194,14 @@ export default function CheckInPage() {
           </button>
         </div>
 
-        {hasMultipleStudios && (
+        {hasMultipleStudios && filterStudioId && (
           <div className="flex items-center gap-1.5">
             <MapPin size={14} className="text-stone-400 dark:text-muted" />
             <select
               value={filterStudioId}
-              onChange={(e) => setFilterStudioId(e.target.value)}
+              onChange={(e) => handleStudioChange(e.target.value)}
               className="appearance-none bg-card border border-stone-200 dark:border-border rounded-lg px-2.5 py-1 text-xs text-stone-700 dark:text-foreground focus:outline-none focus:ring-1 focus:ring-admin focus:border-admin cursor-pointer"
             >
-              <option value="all">{t("allStudios")}</option>
               {studios.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -211,7 +226,7 @@ export default function CheckInPage() {
             </span>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {isLoading ? (
+            {isLoading || isLoadingStudios ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="animate-spin text-stone-300 dark:text-muted/70" size={20} />
               </div>

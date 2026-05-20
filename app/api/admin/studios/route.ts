@@ -6,7 +6,7 @@ import { requireRole } from "@/lib/tenant";
 // Returns just id + name, sorted alphabetically.
 export async function GET() {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const studios = await prisma.studio.findMany({
       where: { tenantId: tenant.id },
       select: { id: true, name: true },
