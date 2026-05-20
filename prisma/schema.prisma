@@ -88,8 +88,23 @@ model Tenant {
   studioCloseTime String @default("21:00")
   operatingDays   Int[]  @default([0, 1, 2, 3, 4])
 
-  // How many days of schedule are visible to clients on the public /schedule page
-  visibleScheduleDays Int @default(7)
+  // How clients see the upcoming schedule:
+  //  - ROLLING_DAYS: a sliding window of the next `visibleScheduleDays` days.
+  //  - WEEKLY_RELEASE: a weekly drop. Every (scheduleReleaseDayOfWeek,
+  //    scheduleReleaseHour) in scheduleReleaseTimezone, the schedule extends
+  //    by one more ISO week, so visibility = current week + `scheduleReleaseWeeksAhead`
+  //    full weeks ahead. Use this for studios that drop e.g. every Sunday 22:00.
+  //
+  // visibleScheduleDays is only used in ROLLING_DAYS mode. The release fields
+  // are only used in WEEKLY_RELEASE mode. scheduleReleaseTimezone is optional;
+  // when null we resolve to the primary studio's city.timezone (helper:
+  // lib/schedule/visibility.ts).
+  scheduleVisibilityMode    ScheduleVisibilityMode @default(ROLLING_DAYS)
+  visibleScheduleDays       Int                    @default(7)
+  scheduleReleaseDayOfWeek  Int? // 0=Sun..6=Sat
+  scheduleReleaseHour       Int? // 0-23, local hour in release timezone
+  scheduleReleaseWeeksAhead Int? // full weeks ahead of current week visible after release
+  scheduleReleaseTimezone   String? // IANA, null = derive from primary studio
 
   // When true, the assigned coach is hidden from clients on the schedule, booking
   // flow, confirmation surfaces, /my upcoming classes, reminders and emails. The
@@ -669,6 +684,11 @@ enum ClassStatus {
   SCHEDULED
   CANCELLED
   COMPLETED
+}
+
+enum ScheduleVisibilityMode {
+  ROLLING_DAYS
+  WEEKLY_RELEASE
 }
 
 model ClassSongRequest {

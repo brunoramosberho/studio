@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+export type ScheduleVisibilityMode = "ROLLING_DAYS" | "WEEKLY_RELEASE";
+
 export interface TenantPolicies {
   cancellationWindowHours: number;
   noShowPenaltyEnabled: boolean;
@@ -10,7 +12,14 @@ export interface TenantPolicies {
   noShowPenaltyAmount: number | null;
   noShowFeeAmountUnlimited: number | null;
   noShowPenaltyGraceHours: number;
+  scheduleVisibilityMode: ScheduleVisibilityMode;
   visibleScheduleDays: number;
+  scheduleReleaseDayOfWeek: number | null;
+  scheduleReleaseHour: number | null;
+  scheduleReleaseWeeksAhead: number | null;
+  scheduleReleaseTimezone: string | null;
+  scheduleEffectiveTimezone: string;
+  visibleUntilIso: string | null;
 }
 
 const DEFAULTS: TenantPolicies = {
@@ -21,7 +30,14 @@ const DEFAULTS: TenantPolicies = {
   noShowPenaltyAmount: null,
   noShowFeeAmountUnlimited: null,
   noShowPenaltyGraceHours: 24,
+  scheduleVisibilityMode: "ROLLING_DAYS",
   visibleScheduleDays: 7,
+  scheduleReleaseDayOfWeek: null,
+  scheduleReleaseHour: null,
+  scheduleReleaseWeeksAhead: null,
+  scheduleReleaseTimezone: null,
+  scheduleEffectiveTimezone: "Europe/Madrid",
+  visibleUntilIso: null,
 };
 
 export function usePolicies() {
