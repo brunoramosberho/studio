@@ -123,11 +123,6 @@ function CheckoutForm({
         confirmParams: {
           return_url:
             returnUrl ?? `${window.location.origin}/payment/success`,
-          payment_method_data: {
-            billing_details: {
-              name: session?.user?.name?.trim() || "Cliente",
-            },
-          },
         },
       });
 
@@ -157,7 +152,12 @@ function CheckoutForm({
         options={{
           layout: "accordion",
           wallets: { applePay: "auto", googlePay: "auto" },
-          fields: { billingDetails: "never" },
+          defaultValues: {
+            billingDetails: {
+              name: session?.user?.name ?? undefined,
+              email: session?.user?.email ?? undefined,
+            },
+          },
         }}
       />
       {error && (
