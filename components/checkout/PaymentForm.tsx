@@ -9,6 +9,7 @@ import {
 } from "@stripe/react-stripe-js";
 import { loadStripe, type Stripe as StripeJS } from "@stripe/stripe-js";
 import { Loader2, Lock } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useTenant } from "@/components/tenant-provider";
 
 const stripePromiseCache = new Map<string, Promise<StripeJS | null>>();
@@ -105,6 +106,7 @@ function CheckoutForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,22 +117,32 @@ function CheckoutForm({
     setIsLoading(true);
     setError(null);
 
-    const { error: submitError } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url:
-          returnUrl ?? `${window.location.origin}/payment/success`,
-      },
-    });
+    try {
+      const { error: submitError } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url:
+            returnUrl ?? `${window.location.origin}/payment/success`,
+          payment_method_data: {
+            billing_details: {
+              name: session?.user?.name?.trim() || "Cliente",
+            },
+          },
+        },
+      });
 
-    // Reached only if the redirect failed (e.g. validation error before
-    // navigation). On success Stripe navigates to return_url and this code
-    // never runs.
-    if (submitError) {
-      setError(submitError.message ?? "Error al procesar el pago");
+      // Reached only if the redirect failed (e.g. validation error before
+      // navigation). On success Stripe navigates to return_url and this code
+      // never runs.
+      if (submitError) {
+        setError(submitError.message ?? "Error al procesar el pago");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Error al procesar el pago",
+      );
+    } finally {
       setIsLoading(false);
-    } else {
-      onSuccess?.();
     }
   };
 
