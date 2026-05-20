@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Check, X } from "lucide-react";
 
-type Status = "loading" | "booking" | "succeeded" | "failed";
+type Status = "loading" | "booking" | "succeeded" | "failed" | "paid-no-book";
 
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 20_000;
@@ -21,6 +21,7 @@ export default function PaymentSuccessPage() {
   const spotNumber = spotNumberParam ? Number(spotNumberParam) : null;
 
   const [status, setStatus] = useState<Status>("loading");
+  const [bookErrorMessage, setBookErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (redirectStatus === "failed") {
@@ -29,7 +30,7 @@ export default function PaymentSuccessPage() {
     }
 
     if (!paymentIntentId) {
-      router.replace("/my/packages");
+      router.replace(classId ? `/class/${classId}` : "/packages");
       return;
     }
 
@@ -48,23 +49,41 @@ export default function PaymentSuccessPage() {
           }),
         });
         if (!res.ok) {
-          // Booking failed (e.g., class full, already booked) — surface a
-          // pending state and send the member to their packages so they can
-          // try to book manually.
-          router.replace(`/my/packages?payment=success&bookFailed=1`);
+          let detail: string | null = null;
+          try {
+            const body = await res.json();
+            detail = typeof body?.error === "string" ? body.error : null;
+          } catch {
+            // ignore
+          }
+          if (!cancelled) {
+            setBookErrorMessage(detail);
+            setStatus("paid-no-book");
+          }
           return;
         }
-        router.replace(`/class/${classId}?bookedAfterPayment=1`);
+        if (!cancelled) {
+          setStatus("succeeded");
+          setTimeout(() => {
+            router.replace(`/class/${classId}?bookedAfterPayment=1`);
+          }, 700);
+        }
       } catch {
-        router.replace(`/my/packages?payment=success&bookFailed=1`);
+        if (!cancelled) {
+          setBookErrorMessage("No pudimos terminar la reserva por un problema de red.");
+          setStatus("paid-no-book");
+        }
       }
     }
 
     async function poll() {
+      let sawAuthError = false;
       while (!cancelled) {
         try {
           const res = await fetch("/api/packages/mine", { cache: "no-store" });
-          if (res.ok) {
+          if (res.status === 401) {
+            sawAuthError = true;
+          } else if (res.ok) {
             const packages: {
               id: string;
               packageId: string;
@@ -80,7 +99,10 @@ export default function PaymentSuccessPage() {
                   await bookAfterPayment(packageIdParam ?? match.packageId);
                 } else {
                   setStatus("succeeded");
-                  setTimeout(() => router.replace("/my/packages"), 800);
+                  setTimeout(
+                    () => router.replace(`/class/${classId ?? ""}`),
+                    700,
+                  );
                 }
               }
               return;
@@ -92,11 +114,16 @@ export default function PaymentSuccessPage() {
 
         if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
           if (!cancelled) {
-            router.replace(
-              shouldBook && classId
-                ? `/class/${classId}?payment=pending`
-                : "/my/packages?payment=pending",
-            );
+            // Either user is a guest (401) and we can't poll their packages,
+            // or the webhook is delayed. Either way, payment went through
+            // (Stripe redirected here with success). Hand off to the class
+            // page so the member can complete the booking from there.
+            if (sawAuthError) {
+              setBookErrorMessage(
+                "Pago confirmado. Inicia sesión para reservar tu lugar.",
+              );
+            }
+            setStatus("paid-no-book");
           }
           return;
         }
@@ -140,7 +167,27 @@ export default function PaymentSuccessPage() {
               <Check className="h-7 w-7 text-green-600" />
             </div>
             <p className="font-display text-lg font-bold">¡Pago confirmado!</p>
-            <p className="text-sm text-muted">Llevándote a tus paquetes…</p>
+            <p className="text-sm text-muted">Llevándote a tu clase…</p>
+          </>
+        )}
+        {status === "paid-no-book" && (
+          <>
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+              <Check className="h-7 w-7 text-green-600" />
+            </div>
+            <p className="font-display text-lg font-bold">¡Pago confirmado!</p>
+            <p className="text-sm text-muted">
+              {bookErrorMessage ??
+                "Tu paquete ya está activo, pero no pudimos reservar la clase automáticamente."}
+            </p>
+            <button
+              onClick={() =>
+                router.replace(classId ? `/class/${classId}` : "/packages")
+              }
+              className="mt-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background"
+            >
+              {classId ? "Reservar mi lugar" : "Ver mis paquetes"}
+            </button>
           </>
         )}
         {status === "failed" && (
