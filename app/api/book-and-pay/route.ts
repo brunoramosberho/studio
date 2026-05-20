@@ -154,6 +154,22 @@ export async function POST(request: NextRequest) {
     const stripePaymentId = needsPayment ? "pending_stripe" : `sim_${Date.now()}`;
     const initialStatus = needsPayment ? "PENDING_PAYMENT" : "ACTIVE";
 
+    // Block the "new card via inline confirm" path: the current client ignores
+    // the returned clientSecret, so the booking + package would activate
+    // without an actual charge. Until that flow is rebuilt around a saved-card
+    // setup, force the user to purchase the package separately so payment is
+    // captured by /api/packages/purchase before they reserve.
+    if (needsPayment && !paymentMethodId) {
+      return NextResponse.json(
+        {
+          error:
+            "Para reservar con un paquete nuevo, primero cómpralo desde la sección de paquetes. Después podrás reservar este lugar.",
+          code: "purchase_package_first",
+        },
+        { status: 402 },
+      );
+    }
+
     const hasAllocations = pkg.creditAllocations.length > 0;
 
     const { userPackage, booking } = await prisma.$transaction(async (tx) => {

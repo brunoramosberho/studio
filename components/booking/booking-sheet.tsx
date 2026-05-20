@@ -130,6 +130,7 @@ export function BookingSheet({
   const [guestPhone, setGuestPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsPackagePurchase, setNeedsPackagePurchase] = useState(false);
   const [result, setResult] = useState<{
     bookingId: string;
     spotNumber: number;
@@ -283,10 +284,12 @@ export function BookingSheet({
 
       if (!res.ok) {
         setError(data.error || t("bookingError"));
+        setNeedsPackagePurchase(data.code === "purchase_package_first");
         setStep("package");
         setLoading(false);
         return;
       }
+      setNeedsPackagePurchase(false);
 
       // Fire conversion tracking immediately, before state updates
       try {
@@ -591,7 +594,16 @@ export function BookingSheet({
 
                 {error && (
                   <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {error}
+                    <p>{error}</p>
+                    {needsPackagePurchase && (
+                      <button
+                        type="button"
+                        onClick={() => router.push("/packages")}
+                        className="mt-3 rounded-full bg-red-700 px-4 py-2 text-xs font-semibold text-white"
+                      >
+                        Ir a comprar paquete
+                      </button>
+                    )}
                   </div>
                 )}
 
