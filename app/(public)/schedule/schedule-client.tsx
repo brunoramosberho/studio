@@ -26,6 +26,7 @@ import {
   isSameDay,
   isToday,
   isPast,
+  differenceInCalendarDays,
 } from "date-fns";
 import { es, enUS } from "date-fns/locale";
 import { cn, formatTime, formatRelativeDay } from "@/lib/utils";
@@ -335,7 +336,17 @@ export function ScheduleClient({
   }, [studios, filterStudio]);
 
   const today = useMemo(() => startOfDay(new Date()), []);
-  const visibleDays = Math.max(1, policies.visibleScheduleDays);
+  // Prefer the server-computed `visibleUntilIso` (which knows the tenant's
+  // weekly-release config and timezone). Fall back to the legacy
+  // `visibleScheduleDays` window when the policy hasn't loaded yet.
+  const visibleDays = useMemo(() => {
+    if (policies.visibleUntilIso) {
+      const until = startOfDay(new Date(policies.visibleUntilIso));
+      const diff = differenceInCalendarDays(until, today) + 1;
+      return Math.max(1, Math.min(120, diff));
+    }
+    return Math.max(1, policies.visibleScheduleDays);
+  }, [policies.visibleUntilIso, policies.visibleScheduleDays, today]);
   const days = useMemo(
     () => Array.from({ length: visibleDays }, (_, i) => addDays(today, i)),
     [today, visibleDays],

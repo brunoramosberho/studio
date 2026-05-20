@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   ShieldAlert,
   DollarSign,
-  CalendarDays,
   Hourglass,
   EyeOff,
 } from "lucide-react";
@@ -20,6 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { useCurrency } from "@/components/tenant-provider";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
+import { ScheduleVisibilityConfig } from "@/components/admin/schedule-visibility-config";
+import type { ScheduleVisibilityMode } from "@/hooks/usePolicies";
 
 interface PoliciesConfig {
   cancellationWindowHours: number;
@@ -29,7 +30,14 @@ interface PoliciesConfig {
   noShowPenaltyAmount: number | null;
   noShowFeeAmountUnlimited: number | null;
   noShowPenaltyGraceHours: number;
+  scheduleVisibilityMode: ScheduleVisibilityMode;
   visibleScheduleDays: number;
+  scheduleReleaseDayOfWeek: number | null;
+  scheduleReleaseHour: number | null;
+  scheduleReleaseWeeksAhead: number | null;
+  scheduleReleaseTimezone: string | null;
+  scheduleEffectiveTimezone?: string;
+  visibleUntilIso?: string | null;
   hideCoachUntilClassEnds: boolean;
 }
 
@@ -41,7 +49,14 @@ const DEFAULT_CONFIG: PoliciesConfig = {
   noShowPenaltyAmount: null,
   noShowFeeAmountUnlimited: null,
   noShowPenaltyGraceHours: 24,
+  scheduleVisibilityMode: "ROLLING_DAYS",
   visibleScheduleDays: 7,
+  scheduleReleaseDayOfWeek: null,
+  scheduleReleaseHour: null,
+  scheduleReleaseWeeksAhead: null,
+  scheduleReleaseTimezone: null,
+  scheduleEffectiveTimezone: undefined,
+  visibleUntilIso: null,
   hideCoachUntilClassEnds: false,
 };
 
@@ -360,59 +375,18 @@ export default function PoliciesSettingsPage() {
       </div>
 
       {/* Schedule visibility */}
-      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
-            <CalendarDays className="h-5 w-5 text-blue-500" />
-          </div>
-          <div>
-            <h2 className="font-display text-lg font-bold">{t("visibleDaysTitle")}</h2>
-            <p className="text-sm text-muted">{t("visibleDaysDesc")}</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <Label className="text-sm font-medium">{t("visibleDaysLabel")}</Label>
-          <div className="flex items-center gap-3">
-            <Input
-              type="number"
-              min={1}
-              max={60}
-              step={1}
-              value={config.visibleScheduleDays}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  visibleScheduleDays: Math.max(1, Math.min(60, parseInt(e.target.value) || 1)),
-                })
-              }
-              className="w-24"
-            />
-            <span className="text-sm text-muted">{t("daysUnit")}</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {[7, 14, 21, 30].map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setConfig({ ...config, visibleScheduleDays: d })}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
-                  config.visibleScheduleDays === d
-                    ? "bg-admin text-white"
-                    : "bg-surface text-muted hover:text-foreground"
-                }`}
-              >
-                {t("daysShort", { days: d })}
-              </button>
-            ))}
-          </div>
-          <div className="rounded-lg bg-surface/60 px-3 py-2.5">
-            <p className="text-[13px] text-muted">
-              {t("visibleDaysExplain", { days: config.visibleScheduleDays })}
-            </p>
-          </div>
-        </div>
-      </div>
+      <ScheduleVisibilityConfig
+        value={{
+          scheduleVisibilityMode: config.scheduleVisibilityMode,
+          visibleScheduleDays: config.visibleScheduleDays,
+          scheduleReleaseDayOfWeek: config.scheduleReleaseDayOfWeek,
+          scheduleReleaseHour: config.scheduleReleaseHour,
+          scheduleReleaseWeeksAhead: config.scheduleReleaseWeeksAhead,
+        }}
+        onChange={(next) => setConfig({ ...config, ...next })}
+        visibleUntilIso={config.visibleUntilIso}
+        effectiveTimezone={config.scheduleEffectiveTimezone}
+      />
 
       {/* Hide coach until class ends */}
       <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">

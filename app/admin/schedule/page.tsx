@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
   Palette,
   Plus,
   X,
@@ -49,6 +50,7 @@ import { ClassDetailDialog } from "@/components/admin/class-detail-dialog";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { SCHEDULE_TABS } from "@/components/admin/section-tab-configs";
 import { PlannerPanel } from "@/components/admin/schedule-planner/PlannerPanel";
+import { ScheduleVisibilityDialog } from "@/components/admin/schedule-visibility-dialog";
 import type { ClassWithDetails } from "@/types";
 
 type ColorMode = "coach" | "classType";
@@ -123,6 +125,8 @@ export default function AdminSchedulePage() {
 
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerSeed, setPlannerSeed] = useState<string | null>(null);
+
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
 
   // Spark chat can hand off planning intent here via ?planner=spark + a seed
   // message in sessionStorage. Open the panel and pass the seed through so
@@ -297,6 +301,18 @@ export default function AdminSchedulePage() {
             >
               <CalendarOff className="h-4 w-4" />
               Disponibilidad
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setVisibilityOpen(true)}
+              title={t("openVisibilitySettings")}
+            >
+              <Eye className="h-4 w-4" />
+              {t("visibility")}
             </Button>
           )}
           <Button
@@ -613,6 +629,10 @@ export default function AdminSchedulePage() {
           seedMessage={plannerSeed}
           onSeedConsumed={() => setPlannerSeed(null)}
         />
+      )}
+
+      {canEdit && (
+        <ScheduleVisibilityDialog open={visibilityOpen} onOpenChange={setVisibilityOpen} />
       )}
     </div>
     </TooltipProvider>
