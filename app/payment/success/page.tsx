@@ -64,10 +64,36 @@ export default function PaymentSuccessPage() {
           });
 
           if (res.ok) {
+            // Pull data from response to hand off to the class page so it can
+            // render the "Spot reserved" confirmation + login CTA without
+            // needing a session.
+            let bookedSpot: number | null = spotNumber;
+            let bookedEmail: string | null = null;
+            try {
+              const data = await res.json();
+              if (typeof data?.spotNumber === "number") {
+                bookedSpot = data.spotNumber;
+              }
+              if (typeof data?.guestEmail === "string") {
+                bookedEmail = data.guestEmail;
+              } else if (typeof data?.userEmail === "string") {
+                bookedEmail = data.userEmail;
+              }
+            } catch {
+              // ignore — fall back to URL params
+            }
             if (!cancelled) {
               setStatus("succeeded");
+              const next = new URL(`/class/${classId}`, window.location.origin);
+              next.searchParams.set("bookedAfterPayment", "1");
+              if (bookedSpot != null) {
+                next.searchParams.set("spot", String(bookedSpot));
+              }
+              if (bookedEmail) {
+                next.searchParams.set("email", bookedEmail);
+              }
               setTimeout(() => {
-                router.replace(`/class/${classId}?bookedAfterPayment=1`);
+                router.replace(`${next.pathname}${next.search}`);
               }, 600);
             }
             return;

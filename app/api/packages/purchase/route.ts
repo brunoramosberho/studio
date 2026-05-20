@@ -183,6 +183,15 @@ export async function POST(request: NextRequest) {
       finalUserId = user.id;
     }
 
+    // Ensure the buyer has a Membership in this tenant so they show up in
+    // /admin/clients and so their packages/bookings can be administered.
+    // Guests who pay without ever logging in would otherwise stay invisible.
+    await prisma.membership.upsert({
+      where: { userId_tenantId: { userId: finalUserId, tenantId: tenant.id } },
+      create: { userId: finalUserId, tenantId: tenant.id, role: "CLIENT" },
+      update: {},
+    });
+
     if (await userHasOpenDebt(finalUserId, tenant.id)) {
       return NextResponse.json(
         {

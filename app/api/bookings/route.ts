@@ -638,7 +638,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ...booking, guestBookings }, { status: 201 });
+    // Expose the buyer's email so the /payment/success guest hand-off can
+    // surface the login CTA on /class/[id] without an active session.
+    let buyerEmail: string | null = booking.guestEmail ?? null;
+    if (!buyerEmail && effectiveUserId) {
+      const buyer = await prisma.user.findUnique({
+        where: { id: effectiveUserId },
+        select: { email: true },
+      });
+      buyerEmail = buyer?.email ?? null;
+    }
+
+    return NextResponse.json(
+      { ...booking, guestBookings, userEmail: buyerEmail },
+      { status: 201 },
+    );
   } catch (error: any) {
     console.error("POST /api/bookings error:", error);
 

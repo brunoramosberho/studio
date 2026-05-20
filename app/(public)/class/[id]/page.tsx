@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -175,6 +175,32 @@ export default function ClassDetailPage() {
   const [guests, setGuests] = useState<GuestEntry[]>([]);
   const [guestSpots, setGuestSpots] = useState<Record<number, number>>({}); // guestIndex → spotNumber
   const [selectingGuestSpot, setSelectingGuestSpot] = useState<number | null>(null); // index of guest we're assigning a spot to
+
+  // /payment/success hands off here with ?bookedAfterPayment=1&spot=N&email=…
+  // when a guest just paid + got their seat. Hydrate the local "you reserved"
+  // state from those params so the same confirmation UI that logged-in members
+  // see also renders for the guest, including the login CTA.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("bookedAfterPayment") !== "1") return;
+    const spotParam = searchParams.get("spot");
+    const emailParam = searchParams.get("email");
+    setBookingSuccess(true);
+    if (spotParam) {
+      const n = Number(spotParam);
+      if (Number.isFinite(n)) setBookedSpotNumber(n);
+    }
+    if (emailParam && !isAuthenticated) {
+      setGuestEmail(emailParam);
+    }
+    // Strip the params so a refresh doesn't keep re-triggering this.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("bookedAfterPayment");
+    url.searchParams.delete("spot");
+    url.searchParams.delete("email");
+    router.replace(`${url.pathname}${url.search}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const {
     data: cls,

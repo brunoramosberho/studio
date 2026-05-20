@@ -125,6 +125,15 @@ export async function POST(request: NextRequest) {
       finalName = user.name ?? name;
     }
 
+    // Ensure the buyer is enrolled in this tenant so admins can see them.
+    if (finalUserId) {
+      await prisma.membership.upsert({
+        where: { userId_tenantId: { userId: finalUserId, tenantId: tenant.id } },
+        create: { userId: finalUserId, tenantId: tenant.id, role: "CLIENT" },
+        update: {},
+      });
+    }
+
     const existingBooking = await prisma.booking.findFirst({
       where: { classId, tenantId: tenant.id, userId: finalUserId, status: "CONFIRMED" },
     });
