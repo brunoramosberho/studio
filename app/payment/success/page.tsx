@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Check, X } from "lucide-react";
 
-type Status = "loading" | "succeeded" | "failed";
+type Status = "loading" | "booking" | "succeeded" | "failed";
 
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 20_000;
@@ -14,6 +14,11 @@ export default function PaymentSuccessPage() {
   const params = useSearchParams();
   const redirectStatus = params.get("redirect_status");
   const paymentIntentId = params.get("payment_intent");
+  const shouldBook = params.get("book") === "1";
+  const classId = params.get("classId");
+  const spotNumberParam = params.get("spotNumber");
+  const packageIdParam = params.get("packageId");
+  const spotNumber = spotNumberParam ? Number(spotNumberParam) : null;
 
   const [status, setStatus] = useState<Status>("loading");
 
@@ -31,17 +36,52 @@ export default function PaymentSuccessPage() {
     let cancelled = false;
     const startedAt = Date.now();
 
+    async function bookAfterPayment(packageId: string) {
+      try {
+        const res = await fetch("/api/bookings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            classId,
+            packageId,
+            ...(spotNumber != null && { spotNumber }),
+          }),
+        });
+        if (!res.ok) {
+          // Booking failed (e.g., class full, already booked) — surface a
+          // pending state and send the member to their packages so they can
+          // try to book manually.
+          router.replace(`/my/packages?payment=success&bookFailed=1`);
+          return;
+        }
+        router.replace(`/class/${classId}?bookedAfterPayment=1`);
+      } catch {
+        router.replace(`/my/packages?payment=success&bookFailed=1`);
+      }
+    }
+
     async function poll() {
       while (!cancelled) {
         try {
           const res = await fetch("/api/packages/mine", { cache: "no-store" });
           if (res.ok) {
-            const packages: { stripePaymentId?: string }[] = await res.json();
-            const found = packages.some((p) => p.stripePaymentId === paymentIntentId);
-            if (found) {
+            const packages: {
+              id: string;
+              packageId: string;
+              stripePaymentId?: string;
+            }[] = await res.json();
+            const match = packages.find(
+              (p) => p.stripePaymentId === paymentIntentId,
+            );
+            if (match) {
               if (!cancelled) {
-                setStatus("succeeded");
-                setTimeout(() => router.replace("/my/packages"), 800);
+                if (shouldBook && classId) {
+                  setStatus("booking");
+                  await bookAfterPayment(packageIdParam ?? match.packageId);
+                } else {
+                  setStatus("succeeded");
+                  setTimeout(() => router.replace("/my/packages"), 800);
+                }
               }
               return;
             }
@@ -52,9 +92,11 @@ export default function PaymentSuccessPage() {
 
         if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
           if (!cancelled) {
-            // Webhook still hasn't landed. Redirect anyway — the package will
-            // appear shortly once the webhook fires.
-            router.replace("/my/packages?payment=pending");
+            router.replace(
+              shouldBook && classId
+                ? `/class/${classId}?payment=pending`
+                : "/my/packages?payment=pending",
+            );
           }
           return;
         }
@@ -67,7 +109,15 @@ export default function PaymentSuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [paymentIntentId, redirectStatus, router]);
+  }, [
+    paymentIntentId,
+    redirectStatus,
+    router,
+    shouldBook,
+    classId,
+    spotNumber,
+    packageIdParam,
+  ]);
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-6">
@@ -76,6 +126,12 @@ export default function PaymentSuccessPage() {
           <>
             <Loader2 className="h-10 w-10 animate-spin text-muted" />
             <p className="text-sm text-muted">Confirmando tu pago…</p>
+          </>
+        )}
+        {status === "booking" && (
+          <>
+            <Loader2 className="h-10 w-10 animate-spin text-muted" />
+            <p className="text-sm text-muted">Reservando tu lugar…</p>
           </>
         )}
         {status === "succeeded" && (
@@ -97,10 +153,12 @@ export default function PaymentSuccessPage() {
               Tu tarjeta no fue cobrada. Puedes intentarlo de nuevo.
             </p>
             <button
-              onClick={() => router.replace("/packages")}
+              onClick={() =>
+                router.replace(classId ? `/class/${classId}` : "/packages")
+              }
               className="mt-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background"
             >
-              Volver a paquetes
+              Volver
             </button>
           </>
         )}

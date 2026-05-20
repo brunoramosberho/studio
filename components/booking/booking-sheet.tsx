@@ -25,6 +25,7 @@ import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
 import { cn, formatTime } from "@/lib/utils";
 import type { Package } from "@prisma/client";
 import { ProductPickStep } from "./product-pick-step";
+import { PurchaseSheet } from "./purchase-sheet";
 
 function GuestLoginPrompt({ email, classId }: { email: string; classId: string }) {
   const t = useTranslations("bookingSheet");
@@ -131,6 +132,7 @@ export function BookingSheet({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsPackagePurchase, setNeedsPackagePurchase] = useState(false);
+  const [purchaseInline, setPurchaseInline] = useState<Package | null>(null);
   const [result, setResult] = useState<{
     bookingId: string;
     spotNumber: number;
@@ -283,8 +285,17 @@ export function BookingSheet({
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.code === "purchase_package_first") {
+          // Open the standard purchase flow inline; after success we book the
+          // class so the member never leaves /class/[id].
+          setPurchaseInline(pkg);
+          setStep("package");
+          setLoading(false);
+          bookingInFlight.current = false;
+          return;
+        }
         setError(data.error || t("bookingError"));
-        setNeedsPackagePurchase(data.code === "purchase_package_first");
+        setNeedsPackagePurchase(false);
         setStep("package");
         setLoading(false);
         return;
@@ -753,6 +764,50 @@ export function BookingSheet({
           <div className="h-1 w-10 rounded-full bg-border" />
         </div>
       </motion.div>
+
+      {purchaseInline && (
+        <PurchaseSheet
+          open
+          pkg={purchaseInline}
+          onClose={() => setPurchaseInline(null)}
+          bookAfter={{ classId, spotNumber }}
+          onSuccess={async () => {
+            const pkgBeingBooked = purchaseInline;
+            if (!pkgBeingBooked) return;
+            try {
+              const res = await fetch("/api/bookings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  classId,
+                  packageId: pkgBeingBooked.id,
+                  privacy,
+                  ...(spotNumber != null && { spotNumber }),
+                }),
+              });
+              const data = await res.json();
+              if (!res.ok) {
+                setError(data.error || t("bookingError"));
+                setPurchaseInline(null);
+                return;
+              }
+              setResult({
+                bookingId: data.id ?? data.bookingId,
+                spotNumber: data.spotNumber ?? spotNumber ?? 0,
+                packageName: pkgBeingBooked.name,
+              });
+              queryClient.invalidateQueries({ queryKey: ["classes"] });
+              queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
+              setPurchaseInline(null);
+              setStep(isLoggedIn ? "product" : "done");
+              onSuccess(isLoggedIn ? undefined : guestEmail);
+            } catch {
+              setError(t("connectionError"));
+              setPurchaseInline(null);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

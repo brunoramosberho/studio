@@ -25,6 +25,13 @@ interface PurchaseSheetProps {
   onClose: () => void;
   pkg: Package;
   onSuccess?: () => void;
+  /**
+   * When set, after the package is purchased the user is sent to the regular
+   * payment-success page with these params so it can chain a booking for the
+   * given class. Saved-card path stays in-context and the caller wires the
+   * booking itself via onSuccess.
+   */
+  bookAfter?: { classId: string; spotNumber?: number | null };
 }
 
 interface PaymentData {
@@ -55,6 +62,7 @@ export function PurchaseSheet({
   onClose,
   pkg,
   onSuccess,
+  bookAfter,
 }: PurchaseSheetProps) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -621,6 +629,15 @@ export function PurchaseSheet({
                   stripeAccountId={paymentData.stripeAccountId}
                   amount={paymentData.amount}
                   currency={pkg.currency}
+                  returnUrl={
+                    bookAfter
+                      ? `${window.location.origin}/payment/success?book=1&classId=${encodeURIComponent(bookAfter.classId)}&packageId=${encodeURIComponent(pkg.id)}${
+                          bookAfter.spotNumber != null
+                            ? `&spotNumber=${bookAfter.spotNumber}`
+                            : ""
+                        }`
+                      : undefined
+                  }
                   onSuccess={() => {
                     setStep("done");
                     queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
