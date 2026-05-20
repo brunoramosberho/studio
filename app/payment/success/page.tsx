@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Check, X } from "lucide-react";
 
 type Status = "loading" | "booking" | "succeeded" | "failed" | "paid-no-book";
 
-const POLL_INTERVAL_MS = 1500;
-const POLL_TIMEOUT_MS = 20_000;
+const RETRY_INTERVAL_MS = 1500;
+const RETRY_TIMEOUT_MS = 20_000;
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
@@ -17,13 +17,16 @@ export default function PaymentSuccessPage() {
   const shouldBook = params.get("book") === "1";
   const classId = params.get("classId");
   const spotNumberParam = params.get("spotNumber");
-  const packageIdParam = params.get("packageId");
   const spotNumber = spotNumberParam ? Number(spotNumberParam) : null;
 
   const [status, setStatus] = useState<Status>("loading");
   const [bookErrorMessage, setBookErrorMessage] = useState<string | null>(null);
+  const ranOnce = useRef(false);
 
   useEffect(() => {
+    if (ranOnce.current) return;
+    ranOnce.current = true;
+
     if (redirectStatus === "failed") {
       setStatus("failed");
       return;
@@ -35,20 +38,43 @@ export default function PaymentSuccessPage() {
     }
 
     let cancelled = false;
-    const startedAt = Date.now();
 
-    async function bookAfterPayment(packageId: string) {
-      try {
-        const res = await fetch("/api/bookings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            classId,
-            packageId,
-            ...(spotNumber != null && { spotNumber }),
-          }),
-        });
-        if (!res.ok) {
+    async function attemptBooking() {
+      if (!shouldBook || !classId) {
+        // Nothing to chain — just acknowledge the payment.
+        setStatus("succeeded");
+        setTimeout(() => router.replace("/my/packages"), 700);
+        return;
+      }
+
+      setStatus("booking");
+      const startedAt = Date.now();
+      let lastError: string | null = null;
+
+      while (!cancelled) {
+        try {
+          const res = await fetch("/api/bookings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              classId,
+              paymentIntentId,
+              ...(spotNumber != null && { spotNumber }),
+            }),
+          });
+
+          if (res.ok) {
+            if (!cancelled) {
+              setStatus("succeeded");
+              setTimeout(() => {
+                router.replace(`/class/${classId}?bookedAfterPayment=1`);
+              }, 600);
+            }
+            return;
+          }
+
+          // 402 = package not yet ACTIVE (webhook still pending). Retry.
+          // Any other error = real failure, surface immediately.
           let detail: string | null = null;
           try {
             const body = await res.json();
@@ -56,95 +82,34 @@ export default function PaymentSuccessPage() {
           } catch {
             // ignore
           }
-          if (!cancelled) {
-            setBookErrorMessage(detail);
-            setStatus("paid-no-book");
-          }
-          return;
-        }
-        if (!cancelled) {
-          setStatus("succeeded");
-          setTimeout(() => {
-            router.replace(`/class/${classId}?bookedAfterPayment=1`);
-          }, 700);
-        }
-      } catch {
-        if (!cancelled) {
-          setBookErrorMessage("No pudimos terminar la reserva por un problema de red.");
-          setStatus("paid-no-book");
-        }
-      }
-    }
-
-    async function poll() {
-      let sawAuthError = false;
-      while (!cancelled) {
-        try {
-          const res = await fetch("/api/packages/mine", { cache: "no-store" });
-          if (res.status === 401) {
-            sawAuthError = true;
-          } else if (res.ok) {
-            const packages: {
-              id: string;
-              packageId: string;
-              stripePaymentId?: string;
-            }[] = await res.json();
-            const match = packages.find(
-              (p) => p.stripePaymentId === paymentIntentId,
-            );
-            if (match) {
-              if (!cancelled) {
-                if (shouldBook && classId) {
-                  setStatus("booking");
-                  await bookAfterPayment(packageIdParam ?? match.packageId);
-                } else {
-                  setStatus("succeeded");
-                  setTimeout(
-                    () => router.replace(`/class/${classId ?? ""}`),
-                    700,
-                  );
-                }
-              }
-              return;
+          lastError = detail;
+          if (res.status !== 402) {
+            if (!cancelled) {
+              setBookErrorMessage(detail);
+              setStatus("paid-no-book");
             }
+            return;
           }
         } catch {
-          // ignore — retry next tick
+          lastError = "No pudimos terminar la reserva por un problema de red.";
         }
 
-        if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        if (Date.now() - startedAt > RETRY_TIMEOUT_MS) {
           if (!cancelled) {
-            // Either user is a guest (401) and we can't poll their packages,
-            // or the webhook is delayed. Either way, payment went through
-            // (Stripe redirected here with success). Hand off to the class
-            // page so the member can complete the booking from there.
-            if (sawAuthError) {
-              setBookErrorMessage(
-                "Pago confirmado. Inicia sesión para reservar tu lugar.",
-              );
-            }
+            setBookErrorMessage(lastError);
             setStatus("paid-no-book");
           }
           return;
         }
-
-        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        await new Promise((r) => setTimeout(r, RETRY_INTERVAL_MS));
       }
     }
 
-    poll();
+    attemptBooking();
     return () => {
       cancelled = true;
     };
-  }, [
-    paymentIntentId,
-    redirectStatus,
-    router,
-    shouldBook,
-    classId,
-    spotNumber,
-    packageIdParam,
-  ]);
+  }, [paymentIntentId, redirectStatus, router, shouldBook, classId, spotNumber]);
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-6">

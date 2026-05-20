@@ -129,7 +129,15 @@ export async function POST(request: NextRequest) {
   try {
     const tenant = await requireTenant();
     const body = await request.json();
-    const { classId, packageId, guestName, guestEmail, spotNumber, privacy } = body;
+    const {
+      classId,
+      packageId,
+      guestName,
+      guestEmail,
+      spotNumber,
+      privacy,
+      paymentIntentId,
+    } = body;
     const guests: { name: string; email: string; spotNumber?: number }[] = body.guests ?? [];
 
     if (!classId) {
@@ -140,7 +148,43 @@ export async function POST(request: NextRequest) {
     }
 
     const session = await auth();
-    const isGuest = !session?.user;
+
+    // Payment-authenticated guest booking: when /payment/success calls us
+    // straight after a successful charge, the paymentIntentId is proof the
+    // user paid for this package. Resolve the user from the StripePayment so
+    // the booking links to the correct User row even without a session.
+    let paymentAuthedUserId: string | null = null;
+    let paymentAuthedPackage: { id: string; userId: string } | null = null;
+    if (!session?.user && typeof paymentIntentId === "string" && paymentIntentId.length > 0) {
+      const sp = await prisma.stripePayment.findUnique({
+        where: { stripePaymentIntentId: paymentIntentId },
+      });
+      if (sp && sp.tenantId === tenant.id && sp.referenceId) {
+        // Promote the UserPackage to ACTIVE if the webhook hasn't landed yet.
+        // We only do this when Stripe already considers the payment paid
+        // (status === "succeeded" in our mirror table).
+        if (sp.status === "succeeded") {
+          await prisma.userPackage.updateMany({
+            where: {
+              id: sp.referenceId,
+              status: "PENDING_PAYMENT",
+            },
+            data: { status: "ACTIVE", stripePaymentId: paymentIntentId },
+          });
+        }
+        const up = await prisma.userPackage.findUnique({
+          where: { id: sp.referenceId },
+          select: { id: true, userId: true, status: true },
+        });
+        if (up && up.status === "ACTIVE") {
+          paymentAuthedUserId = up.userId;
+          paymentAuthedPackage = { id: up.id, userId: up.userId };
+        }
+      }
+    }
+
+    const effectiveUserId = session?.user?.id ?? paymentAuthedUserId;
+    const isGuest = !session?.user && !paymentAuthedUserId;
 
     if (isGuest && (!guestName || !guestEmail)) {
       return NextResponse.json(
@@ -244,12 +288,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (session?.user) {
+    if (effectiveUserId) {
       const existingBooking = await prisma.booking.findFirst({
         where: {
           tenantId: tenant.id,
           classId,
-          userId: session.user.id,
+          userId: effectiveUserId,
           status: "CONFIRMED",
         },
       });
@@ -263,7 +307,48 @@ export async function POST(request: NextRequest) {
 
     let packageUsedId: string | null = null;
 
-    if (session?.user) {
+    if (paymentAuthedPackage && !session?.user) {
+      // Payment-authenticated path: use the just-purchased package directly.
+      // We trust the StripePayment row we verified above; no debt or
+      // discovery query needed.
+      const classTypeId = classData.classTypeId;
+      const up = await prisma.userPackage.findUnique({
+        where: { id: paymentAuthedPackage.id },
+        include: {
+          ...userPackageIncludeForBooking,
+        },
+      });
+      if (!up || up.status !== "ACTIVE") {
+        return NextResponse.json(
+          { error: "Package not active" },
+          { status: 402 },
+        );
+      }
+      const creditsNeeded = totalPeople;
+      const hasAllocations = up.creditUsages.length > 0;
+      if (hasAllocations) {
+        const usage = up.creditUsages.find((u) => u.classTypeId === classTypeId);
+        const available = usage ? usage.creditsTotal - usage.creditsUsed : 0;
+        if (available < creditsNeeded) {
+          return NextResponse.json(
+            { error: `Necesitas ${creditsNeeded} crédito(s), pero solo tienes ${available}.` },
+            { status: 402 },
+          );
+        }
+      } else if (up.creditsTotal !== null) {
+        const available = up.creditsTotal - up.creditsUsed;
+        if (available < creditsNeeded) {
+          return NextResponse.json(
+            { error: `Necesitas ${creditsNeeded} crédito(s), pero solo tienes ${available}.` },
+            { status: 402 },
+          );
+        }
+      }
+      for (let i = 0; i < creditsNeeded; i++) {
+        await deductCredit(up.id, classTypeId);
+      }
+      packageUsedId = up.id;
+    } else if (session?.user) {
       if (await userHasOpenDebt(session.user.id, tenant.id)) {
         return NextResponse.json(
           {
@@ -380,7 +465,7 @@ export async function POST(request: NextRequest) {
       data: {
         tenantId: tenant.id,
         classId,
-        userId: session?.user?.id ?? null,
+        userId: effectiveUserId,
         guestName: isGuest ? guestName : null,
         guestEmail: isGuest ? guestEmail : null,
         spotNumber: spotNumber ?? null,
