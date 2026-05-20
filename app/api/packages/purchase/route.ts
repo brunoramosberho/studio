@@ -289,7 +289,14 @@ export async function POST(request: NextRequest) {
             : null,
         });
       } catch (e) {
-        console.error("Stripe payment failed, falling back to simulated:", e);
+        console.error("Stripe payment failed:", e);
+        return NextResponse.json(
+          {
+            error:
+              "No pudimos procesar el pago. Intenta de nuevo o contacta al estudio.",
+          },
+          { status: 502 },
+        );
       }
     }
 
