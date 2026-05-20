@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { addMinutes } from "date-fns";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { cancelClassWithRefunds } from "@/lib/class-cancel";
+import { formatDateInZone, zonedWallTimeToUtc } from "@/lib/utils";
+
+const FALLBACK_TZ = "Europe/Madrid";
 
 /**
  * GET /api/classes/series/[recurringId]
@@ -51,7 +55,11 @@ export async function GET(
  * Query params:
  *   scope=all         - update all future scheduled classes in series
  *   scope=from&fromId=<classId> - update this class and all future ones in series
- * Body: partial class fields (coachId, roomId, classTypeId, tag, songRequestsEnabled, songRequestCriteria)
+ * Body: partial class fields (coachId, roomId, classTypeId, tag,
+ *   songRequestsEnabled, songRequestCriteria, time, duration).
+ * When time/duration are sent, the change is only applied if no live
+ * reservations exist on any affected class (bookings, waitlist, platform
+ * bookings) — otherwise we'd silently shift booked clients to a new slot.
  */
 export async function PUT(
   request: NextRequest,
@@ -64,9 +72,16 @@ export async function PUT(
     const fromId = request.nextUrl.searchParams.get("fromId");
 
     const body = await request.json();
-    const { coachId, roomId, classTypeId, tag, songRequestsEnabled, songRequestCriteria } = body;
+    const { coachId, roomId, classTypeId, tag, songRequestsEnabled, songRequestCriteria, time, duration } = body;
 
-    // Build the update data — only include fields that were sent
+    const isReschedule = typeof time === "string" || typeof duration === "number";
+    if (typeof time === "string" && !/^\d{2}:\d{2}$/.test(time)) {
+      return NextResponse.json({ error: "Invalid time format" }, { status: 400 });
+    }
+    if (typeof duration === "number" && (!Number.isFinite(duration) || duration < 15 || duration > 240)) {
+      return NextResponse.json({ error: "Invalid duration" }, { status: 400 });
+    }
+
     const data: Record<string, unknown> = {};
     if (coachId !== undefined) data.coachId = coachId;
     if (roomId !== undefined) data.roomId = roomId;
@@ -75,31 +90,190 @@ export async function PUT(
     if (songRequestsEnabled !== undefined) data.songRequestsEnabled = songRequestsEnabled;
     if (songRequestCriteria !== undefined) data.songRequestCriteria = Array.isArray(songRequestCriteria) ? songRequestCriteria : [];
 
-    if (Object.keys(data).length === 0) {
+    if (Object.keys(data).length === 0 && !isReschedule) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
-    const where: Record<string, unknown> = {
-      recurringId,
-      tenantId: ctx.tenant.id,
-      status: "SCHEDULED",
-      startsAt: { gt: new Date() },
-    };
-
-    // If scope=from, find the class date and update only from that point
+    const startsAtFilter: { gt: Date; gte?: Date } = { gt: new Date() };
     if (scope === "from" && fromId) {
       const fromClass = await prisma.class.findFirst({
         where: { id: fromId, recurringId, tenantId: ctx.tenant.id },
         select: { startsAt: true },
       });
-      if (fromClass) {
-        where.startsAt = { gte: fromClass.startsAt };
+      if (fromClass) startsAtFilter.gte = fromClass.startsAt;
+    }
+
+    if (!isReschedule) {
+      const result = await prisma.class.updateMany({
+        where: {
+          recurringId,
+          tenantId: ctx.tenant.id,
+          status: "SCHEDULED",
+          startsAt: startsAtFilter,
+        },
+        data,
+      });
+      return NextResponse.json({ count: result.count });
+    }
+
+    // Reschedule path: per-class update with booking + conflict guards.
+    const affected = await prisma.class.findMany({
+      where: {
+        recurringId,
+        tenantId: ctx.tenant.id,
+        status: "SCHEDULED",
+        startsAt: startsAtFilter,
+      },
+      include: { room: { include: { studio: { include: { city: true } } } } },
+      orderBy: { startsAt: "asc" },
+    });
+
+    if (affected.length === 0) {
+      return NextResponse.json({ count: 0 });
+    }
+
+    const classIds = affected.map((c) => c.id);
+
+    const [bookingCount, waitlistCount, platformCount] = await Promise.all([
+      prisma.booking.count({
+        where: {
+          tenantId: ctx.tenant.id,
+          classId: { in: classIds },
+          status: { in: ["CONFIRMED", "ATTENDED"] },
+        },
+      }),
+      prisma.waitlist.count({ where: { classId: { in: classIds } } }),
+      prisma.platformBooking.count({
+        where: {
+          tenantId: ctx.tenant.id,
+          classId: { in: classIds },
+          status: { notIn: ["cancelled", "absent", "rejected"] },
+        },
+      }),
+    ]);
+
+    if (bookingCount + waitlistCount + platformCount > 0) {
+      return NextResponse.json(
+        {
+          error: "Series has live reservations",
+          bookings: bookingCount,
+          waitlist: waitlistCount,
+          platformBookings: platformCount,
+        },
+        { status: 409 },
+      );
+    }
+
+    // Compute new start/end per class (keep each class's date, swap the
+    // wall-clock time + duration in the studio's tz so DST is handled).
+    const newDuration = typeof duration === "number"
+      ? duration
+      : null;
+    const [newHh, newMm] = typeof time === "string"
+      ? time.split(":").map(Number)
+      : [null, null];
+
+    type PerClassUpdate = {
+      id: string;
+      startsAt: Date;
+      endsAt: Date;
+      roomId: string;
+      coachId: string;
+    };
+    const updates: PerClassUpdate[] = [];
+    for (const c of affected) {
+      const tz = c.room?.studio?.city?.timezone ?? FALLBACK_TZ;
+      const dateStr = formatDateInZone(c.startsAt, tz);
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const currentDurationMin = Math.round((c.endsAt.getTime() - c.startsAt.getTime()) / 60000);
+      const startsAt = newHh != null && newMm != null
+        ? zonedWallTimeToUtc(y, m - 1, d, newHh, newMm, tz)
+        : c.startsAt;
+      const endsAt = addMinutes(startsAt, newDuration ?? currentDurationMin);
+      updates.push({
+        id: c.id,
+        startsAt,
+        endsAt,
+        roomId: (data.roomId as string) ?? c.roomId,
+        coachId: (data.coachId as string) ?? c.coachId,
+      });
+    }
+
+    // Conflict detection: find other (non-cancelled, not-in-series) classes
+    // that share a room or coach we'll occupy and overlap any new slot.
+    const roomIds = Array.from(new Set(updates.map((u) => u.roomId)));
+    const coachIds = Array.from(new Set(updates.map((u) => u.coachId)));
+    const windowStart = updates.reduce((min, u) => u.startsAt < min ? u.startsAt : min, updates[0].startsAt);
+    const windowEnd = updates.reduce((max, u) => u.endsAt > max ? u.endsAt : max, updates[0].endsAt);
+
+    const others = await prisma.class.findMany({
+      where: {
+        tenantId: ctx.tenant.id,
+        id: { notIn: classIds },
+        status: { not: "CANCELLED" },
+        startsAt: { lt: windowEnd },
+        endsAt: { gt: windowStart },
+        OR: [
+          { roomId: { in: roomIds } },
+          { coachId: { in: coachIds } },
+        ],
+      },
+      select: {
+        id: true, startsAt: true, endsAt: true, roomId: true, coachId: true,
+        classType: { select: { name: true } },
+        room: { select: { name: true } },
+      },
+    });
+
+    const conflicts: Array<{
+      classId: string;
+      startsAt: string;
+      type: "room" | "coach";
+      otherClassName: string;
+    }> = [];
+    for (const u of updates) {
+      for (const o of others) {
+        const overlaps = o.startsAt < u.endsAt && o.endsAt > u.startsAt;
+        if (!overlaps) continue;
+        if (o.roomId === u.roomId) {
+          conflicts.push({
+            classId: u.id,
+            startsAt: u.startsAt.toISOString(),
+            type: "room",
+            otherClassName: `${o.classType.name} · ${o.room.name}`,
+          });
+        }
+        if (o.coachId === u.coachId) {
+          conflicts.push({
+            classId: u.id,
+            startsAt: u.startsAt.toISOString(),
+            type: "coach",
+            otherClassName: o.classType.name,
+          });
+        }
       }
     }
 
-    const result = await prisma.class.updateMany({ where, data });
+    if (conflicts.length > 0) {
+      return NextResponse.json(
+        { error: "Schedule conflicts", conflicts },
+        { status: 409 },
+      );
+    }
 
-    return NextResponse.json({ count: result.count });
+    // Apply: per-class update because each row gets a different startsAt/endsAt.
+    let count = 0;
+    await prisma.$transaction(async (tx) => {
+      for (const u of updates) {
+        await tx.class.update({
+          where: { id: u.id },
+          data: { ...data, startsAt: u.startsAt, endsAt: u.endsAt },
+        });
+        count++;
+      }
+    });
+
+    return NextResponse.json({ count });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: 403 });

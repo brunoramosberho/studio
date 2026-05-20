@@ -138,6 +138,9 @@ export function ClassFormDialog({
 
   const isEditingSeries = !!(editingClass?.recurringId);
 
+  const [originalTime, setOriginalTime] = useState<string>("");
+  const [originalDuration, setOriginalDuration] = useState<number>(0);
+
   const DAY_KEYS = ["dayMon", "dayTue", "dayWed", "dayThu", "dayFri", "daySat", "daySun"] as const;
   const DAY_FULL_KEYS = ["dayMonFull", "dayTueFull", "dayWedFull", "dayThuFull", "dayFriFull", "daySatFull", "daySunFull"] as const;
 
@@ -185,6 +188,9 @@ export function ClassFormDialog({
       const end = new Date(editingClass.endsAt);
       const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
       const tz = editingClass.room?.studio?.city?.timezone ?? FALLBACK_TZ;
+      const initialTime = formatTime24InZone(start, tz);
+      setOriginalTime(initialTime);
+      setOriginalDuration(durationMin);
       setFormData({
         classTypeId: editingClass.classType.id,
         coachProfileId: editingClass.coach.id,
@@ -193,7 +199,7 @@ export function ClassFormDialog({
         dateFrom: "",
         dateTo: "",
         days: [],
-        time: formatTime24InZone(start, tz),
+        time: initialTime,
         duration: durationMin,
         tag: editingClass.tag ?? "",
         songRequestsEnabled: editingClass.songRequestsEnabled ?? false,
@@ -311,6 +317,47 @@ export function ClassFormDialog({
     enabled: Boolean(pickerStartsAt && formData.duration > 0),
   });
 
+  // Bulk-edit safety check: when editing a series with scope != "this", we
+  // need to know whether time/duration can be modified (no live reservations
+  // on any affected class). The server re-validates on save.
+  const isBulkScope = editScope === "thisAndFuture" || editScope === "all";
+  const { data: editCheck, isFetching: isCheckingBulk } = useQuery<{
+    affectedClasses: number;
+    bookings: number;
+    waitlist: number;
+    platformBookings: number;
+    canEditTime: boolean;
+  }>({
+    queryKey: [
+      "series-edit-check",
+      editingClass?.recurringId ?? null,
+      editScope,
+      editingClass?.id ?? null,
+    ],
+    queryFn: async () => {
+      const recId = editingClass!.recurringId!;
+      const scopeParam = editScope === "all"
+        ? "scope=all"
+        : `scope=from&fromId=${editingClass!.id}`;
+      const res = await fetch(`/api/classes/series/${recId}/edit-check?${scopeParam}`);
+      if (!res.ok) throw new Error("Failed to check");
+      return res.json();
+    },
+    enabled: Boolean(editingClass?.recurringId && isBulkScope),
+  });
+
+  const timeChangedInBulk = isBulkScope && (
+    formData.time !== originalTime || formData.duration !== originalDuration
+  );
+
+  // When scope flips to bulk (or to "this"), drop any uncommitted time edits
+  // that came from a different scope so what the admin sees matches what
+  // we'll send. The original time/duration come from the editingClass.
+  useEffect(() => {
+    if (!editingClass || !isEditingSeries) return;
+    setFormData((f) => ({ ...f, time: originalTime, duration: originalDuration }));
+  }, [editScope, editingClass, isEditingSeries, originalTime, originalDuration]);
+
   // Preview class count for recurring mode
   const previewCount = useMemo(() => {
     if (mode !== "recurring" || !formData.dateFrom || !formData.dateTo || formData.days.length === 0) return 0;
@@ -417,7 +464,7 @@ export function ClassFormDialog({
   const saveSeriesMutation = useMutation({
     mutationFn: async (scope: EditScope) => {
       if (!editingClass?.recurringId) throw new Error("No series");
-      const payload = {
+      const payload: Record<string, unknown> = {
         coachId: formData.coachProfileId,
         roomId: formData.roomId,
         classTypeId: formData.classTypeId,
@@ -425,6 +472,12 @@ export function ClassFormDialog({
         songRequestsEnabled: formData.songRequestsEnabled,
         songRequestCriteria: formData.songRequestsEnabled ? formData.songRequestCriteria : [],
       };
+      // Only send time/duration when the admin actually changed them — avoids
+      // a no-op booking check that would block updates to other fields.
+      if (timeChangedInBulk) {
+        payload.time = formData.time;
+        payload.duration = formData.duration;
+      }
       const scopeParam = scope === "all" ? "scope=all" : `scope=from&fromId=${editingClass.id}`;
       const res = await fetch(`/api/classes/series/${editingClass.recurringId}?${scopeParam}`, {
         method: "PUT",
@@ -433,6 +486,12 @@ export function ClassFormDialog({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        if (res.status === 409 && Array.isArray(err.conflicts)) {
+          throw new Error(t("bulkConflictError", { count: err.conflicts.length }));
+        }
+        if (res.status === 409 && err.error === "Series has live reservations") {
+          throw new Error(t("bulkLiveReservationsError"));
+        }
         throw new Error(err.error || "Failed");
       }
       return res.json();
@@ -622,7 +681,62 @@ export function ClassFormDialog({
             </Select>
           </div>
 
-          {/* Schedule section — hidden for series edits (scope != this) since time changes need individual edits */}
+          {/* Bulk edit (thisAndFuture/all): only time + duration are editable,
+              and only when no live reservations exist on affected classes. */}
+          {editingClass && isEditingSeries && isBulkScope && (
+            isCheckingBulk || !editCheck ? (
+              <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-surface/30 px-3 py-2 text-xs text-muted">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                {t("bulkChecking")}
+              </div>
+            ) : editCheck.canEditTime ? (
+              <>
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+                  {t("bulkSafe", { count: editCheck.affectedClasses })}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">{t("time")}</label>
+                    <Input
+                      type="time"
+                      value={formData.time}
+                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                      className="text-sm pr-2 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">{t("durationMin")}</label>
+                    <Input
+                      type="number"
+                      min={15}
+                      max={120}
+                      step={5}
+                      value={formData.duration}
+                      onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 50 })}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-1.5">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                  {t("bulkBlockedTitle")}
+                </p>
+                <p className="text-xs text-amber-700/90 dark:text-amber-300/90">
+                  {t("bulkBlockedBody", { affected: editCheck.affectedClasses })}
+                </p>
+                <p className="text-[11px] text-amber-700/70 dark:text-amber-300/70">
+                  {[
+                    editCheck.bookings > 0 && t("bulkBlockedBookings", { count: editCheck.bookings }),
+                    editCheck.waitlist > 0 && t("bulkBlockedWaitlist", { count: editCheck.waitlist }),
+                    editCheck.platformBookings > 0 && t("bulkBlockedPlatform", { count: editCheck.platformBookings }),
+                  ].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+            )
+          )}
+
+          {/* Single-class schedule section (create, or scope=this on series) */}
           {(!editingClass || !isEditingSeries || editScope === "this") && (
             mode === "single" ? (
               <div className="grid grid-cols-3 gap-3">
