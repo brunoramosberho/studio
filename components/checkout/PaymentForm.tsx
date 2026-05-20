@@ -121,9 +121,11 @@ function CheckoutForm({
         return_url:
           returnUrl ?? `${window.location.origin}/payment/success`,
       },
-      redirect: "if_required",
     });
 
+    // Reached only if the redirect failed (e.g. validation error before
+    // navigation). On success Stripe navigates to return_url and this code
+    // never runs.
     if (submitError) {
       setError(submitError.message ?? "Error al procesar el pago");
       setIsLoading(false);
