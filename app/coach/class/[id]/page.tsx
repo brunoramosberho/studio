@@ -43,13 +43,6 @@ import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spoti
 import { RequestSubstituteButton } from "@/components/coach/request-substitute-button";
 import type { ClassWithDetails, BookingStatus } from "@/types";
 
-interface FavoriteSong {
-  id: string;
-  title: string;
-  artist: string;
-  albumArt?: string | null;
-}
-
 interface SongRequestEntry {
   id: string;
   title: string;
@@ -79,7 +72,6 @@ interface BookingEntry {
     name: string | null;
     image: string | null;
     email: string;
-    favoriteSongs?: FavoriteSong[];
   };
 }
 
@@ -242,7 +234,6 @@ export default function ClassRosterPage() {
   const queryClient = useQueryClient();
 
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
-  const [expandedSongs, setExpandedSongs] = useState<Record<string, boolean>>({});
   const [commentText, setCommentText] = useState("");
   const [caption, setCaption] = useState("");
   const [captionSaved, setCaptionSaved] = useState(false);
@@ -541,13 +532,6 @@ export default function ClassRosterPage() {
   const attendedCount = classData.bookings.filter(
     (b) => getAttendance(b) === "ATTENDED",
   ).length;
-
-  const allSongs = classData.bookings.flatMap((b) =>
-    (b.user.favoriteSongs ?? []).map((s) => ({
-      ...s,
-      userName: b.user.name ?? b.user.email,
-    })),
-  );
 
   const photos = feedEvent?.photos ?? [];
   const allMedia = [
@@ -1014,8 +998,6 @@ export default function ClassRosterPage() {
                 {classData.bookings.map((booking) => {
                   const status = getAttendance(booking);
                   const name = booking.user.name ?? booking.user.email;
-                  const hasSongs = (booking.user.favoriteSongs?.length ?? 0) > 0;
-                  const songsExpanded = expandedSongs[booking.id] ?? false;
 
                   return (
                     <motion.div key={booking.id} variants={fadeUp}>
@@ -1041,38 +1023,15 @@ export default function ClassRosterPage() {
                             />
 
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <p className="truncate text-sm font-semibold">
-                                  {name}
-                                </p>
-                                {hasSongs && (
-                                  <Music className="h-3 w-3 shrink-0 text-accent" />
-                                )}
-                              </div>
+                              <p className="truncate text-sm font-semibold">
+                                {name}
+                              </p>
                               {booking.stats && (
                                 <AttendeeTags stats={booking.stats} />
                               )}
                             </div>
 
                             <div className="flex shrink-0 items-center gap-1.5">
-                              {hasSongs && (
-                                <button
-                                  onClick={() =>
-                                    setExpandedSongs((prev) => ({
-                                      ...prev,
-                                      [booking.id]: !prev[booking.id],
-                                    }))
-                                  }
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface"
-                                >
-                                  <ChevronDown
-                                    className={cn(
-                                      "h-4 w-4 transition-transform",
-                                      songsExpanded && "rotate-180",
-                                    )}
-                                  />
-                                </button>
-                              )}
                               <button
                                 onClick={() =>
                                   toggleAttendance(booking.id, status)
@@ -1103,39 +1062,6 @@ export default function ClassRosterPage() {
                               </button>
                             </div>
                           </div>
-
-                          {hasSongs && songsExpanded && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              className="mt-3 overflow-hidden border-t border-border/50 pt-3"
-                            >
-                              <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted">
-                                <Music className="h-3 w-3" />
-                                Canciones favoritas
-                              </p>
-                              <div className="space-y-1">
-                                {booking.user.favoriteSongs!.map((song) => (
-                                  <div
-                                    key={song.id}
-                                    className="flex items-center gap-2 rounded-lg bg-accent/5 px-3 py-1.5"
-                                  >
-                                    {song.albumArt ? (
-                                      <img src={song.albumArt} alt={song.title} className="h-7 w-7 shrink-0 rounded object-cover" />
-                                    ) : (
-                                      <Music className="h-3 w-3 shrink-0 text-accent/60" />
-                                    )}
-                                    <span className="text-sm font-medium text-foreground">
-                                      {song.title}
-                                    </span>
-                                    <span className="text-xs text-muted">
-                                      — {song.artist}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
                         </CardContent>
                       </Card>
                     </motion.div>
@@ -1192,51 +1118,6 @@ export default function ClassRosterPage() {
                           {sr.user.name?.split(" ")[0]}
                         </span>
                       </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Songs */}
-          {allSongs.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className="border-accent/15">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Music className="h-4 w-4 text-accent" />
-                    Canciones favoritas de la clase
-                  </CardTitle>
-                  <p className="text-xs text-muted">
-                    Basado en las preferencias de los{" "}
-                    {
-                      classData.bookings.filter(
-                        (b) => (b.user.favoriteSongs?.length ?? 0) > 0,
-                      ).length
-                    }{" "}
-                    alumnos que tienen canciones registradas
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-1.5 pt-0">
-                  {allSongs.map((song) => (
-                    <div
-                      key={`${song.id}-${song.userName}`}
-                      className="flex items-center gap-2 rounded-lg bg-accent/5 px-3 py-2"
-                    >
-                      {(song as any).albumArt ? (
-                        <img src={(song as any).albumArt} alt={song.title} className="h-8 w-8 shrink-0 rounded object-cover" />
-                      ) : (
-                        <Music className="h-3 w-3 shrink-0 text-accent/60" />
-                      )}
-                      <span className="text-sm font-medium">{song.title}</span>
-                      <span className="text-xs text-muted">— {song.artist}</span>
-                      <span className="ml-auto text-[11px] text-muted/70">
-                        {song.userName}
-                      </span>
                     </div>
                   ))}
                 </CardContent>

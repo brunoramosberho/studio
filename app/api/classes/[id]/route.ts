@@ -45,11 +45,6 @@ export async function GET(
                 email: true,
                 birthday: true,
                 createdAt: true,
-                favoriteSongs: {
-                  orderBy: { createdAt: "desc" },
-                  take: 5,
-                  select: { id: true, title: true, artist: true, albumArt: true, spotifyTrackId: true },
-                },
               },
             },
           },
@@ -206,10 +201,6 @@ export async function GET(
 
         return {
           ...b,
-          user: b.user ? {
-            ...b.user,
-            favoriteSongs: b.user.favoriteSongs,
-          } : null,
           stats: {
             totalClasses,
             classesWithCoach,
@@ -223,13 +214,7 @@ export async function GET(
         };
       });
     } else {
-      bookings = classData.bookings.map((b) => ({
-        ...b,
-        user: b.user ? {
-          ...b.user,
-          favoriteSongs: isCoachOrAdmin ? b.user.favoriteSongs : [],
-        } : null,
-      }));
+      bookings = classData.bookings;
     }
 
     let myWaitlistEntry: { id: string; position: number } | null = null;

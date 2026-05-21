@@ -62,7 +62,6 @@ interface BookingEntry {
     name: string | null;
     image: string | null;
     email: string;
-    favoriteSongs?: { id: string; title: string; artist: string; albumArt?: string | null }[];
   } | null;
 }
 
@@ -165,7 +164,6 @@ export default function AdminClassDetailPage() {
   const [blockingNotes, setBlockingNotes] = useState("");
   const [notesSaved, setNotesSaved] = useState(false);
   const notesTimerRef = useRef<NodeJS.Timeout>(undefined);
-  const [expandedSongs, setExpandedSongs] = useState<Record<string, boolean>>({});
 
   const { data: classData, isLoading } = useQuery<ClassDetail>({
     queryKey: ["class-detail", id],
@@ -654,8 +652,6 @@ export default function AdminClassDetailPage() {
             {classData.bookings.map((booking) => {
               const status = getAttendance(booking);
               const name = booking.user?.name ?? booking.guestName ?? booking.user?.email ?? booking.guestEmail ?? "—";
-              const hasSongs = (booking.user?.favoriteSongs?.length ?? 0) > 0;
-              const songsExpanded = expandedSongs[booking.id] ?? false;
 
               return (
                 <motion.div key={booking.id} variants={fadeUp}>
@@ -686,20 +682,11 @@ export default function AdminClassDetailPage() {
                             {booking.spotNumber != null && (
                               <span className="text-[11px] font-mono text-muted">#{booking.spotNumber}</span>
                             )}
-                            {hasSongs && <Music className="h-3 w-3 shrink-0 text-accent" />}
                           </div>
                           {booking.stats && <AttendeeTags stats={booking.stats} />}
                         </div>
 
                         <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-                          {hasSongs && (
-                            <button
-                              onClick={() => setExpandedSongs((prev) => ({ ...prev, [booking.id]: !prev[booking.id] }))}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface"
-                            >
-                              <ChevronDown className={cn("h-4 w-4 transition-transform", songsExpanded && "rotate-180")} />
-                            </button>
-                          )}
                           <button
                             onClick={() => toggleAttendance(booking.id, status)}
                             className={cn(
@@ -725,32 +712,6 @@ export default function AdminClassDetailPage() {
                           </button>
                         </div>
                       </div>
-
-                      {hasSongs && songsExpanded && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          className="mt-3 overflow-hidden border-t border-border/50 pt-3"
-                        >
-                          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted">
-                            <Music className="h-3 w-3" />
-                            {t("favoriteSongs")}
-                          </p>
-                          <div className="space-y-1">
-                            {booking.user!.favoriteSongs!.map((song) => (
-                              <div key={song.id} className="flex items-center gap-2 rounded-lg bg-accent/5 px-3 py-1.5">
-                                {song.albumArt ? (
-                                  <img src={song.albumArt} alt={song.title} className="h-7 w-7 shrink-0 rounded object-cover" />
-                                ) : (
-                                  <Music className="h-3 w-3 shrink-0 text-accent/60" />
-                                )}
-                                <span className="text-sm font-medium text-foreground">{song.title}</span>
-                                <span className="text-xs text-muted">— {song.artist}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
