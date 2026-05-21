@@ -145,6 +145,41 @@ export default function TenantDetailPage({
     }
   }
 
+  const [registeringAP, setRegisteringAP] = useState(false);
+  const [apResult, setApResult] = useState<string | null>(null);
+  async function registerApplePayDomain() {
+    if (!tenant || registeringAP) return;
+    setRegisteringAP(true);
+    setApResult(null);
+    try {
+      const res = await fetch(
+        `/api/super-admin/tenants/${id}/register-apple-pay-domain`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setApResult(`Error: ${data.error ?? "no se pudo registrar"}`);
+        return;
+      }
+      if (data.alreadyExists) {
+        setApResult(`✓ ${data.domain} ya estaba registrado en la cuenta conectada`);
+      } else {
+        const ap = data.statuses?.applePay ?? "?";
+        const gp = data.statuses?.googlePay ?? "?";
+        const ln = data.statuses?.link ?? "?";
+        setApResult(
+          `✓ Registrado ${data.domain} — Apple Pay: ${ap}, Google Pay: ${gp}, Link: ${ln}`,
+        );
+      }
+    } catch (err) {
+      setApResult(
+        `Error: ${err instanceof Error ? err.message : "fallo de red"}`,
+      );
+    } finally {
+      setRegisteringAP(false);
+    }
+  }
+
   async function toggleActive() {
     if (!tenant) return;
     const res = await fetch(`/api/super-admin/tenants/${id}`, {
@@ -303,7 +338,7 @@ export default function TenantDetailPage({
         <CardHeader>
           <CardTitle className="text-base">Stripe</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           <label className="flex cursor-pointer items-start gap-3">
             <input
               type="checkbox"
@@ -323,6 +358,38 @@ export default function TenantDetailPage({
               </span>
             </span>
           </label>
+
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900">
+                  Apple Pay / Google Pay
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Registra <code className="rounded bg-gray-100 px-1">{tenant.slug}.mgic.app</code> en la cuenta conectada. Necesario para mostrar el botón de Apple Pay en el checkout (direct charges).
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={registerApplePayDomain}
+                disabled={registeringAP || !tenant.stripeAccountId}
+              >
+                {registeringAP ? "Registrando…" : "Registrar dominio"}
+              </Button>
+            </div>
+            {apResult && (
+              <p
+                className={`mt-2 text-xs ${
+                  apResult.startsWith("Error")
+                    ? "text-red-600"
+                    : "text-emerald-600"
+                }`}
+              >
+                {apResult}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
