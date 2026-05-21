@@ -26,9 +26,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ClassType, CoachProfile, User } from "@prisma/client";
+import type { ClassType, CoachProfile, Package, User } from "@prisma/client";
 import type { ClassWithDetails } from "@/types";
 import { zonedWallTimeToUtc, formatDateInZone, formatTime24InZone } from "@/lib/utils";
+import { normalizeRules, type SongRequestRule } from "@/lib/song-rules";
 
 interface StudioWithRooms {
   id: string;
@@ -87,7 +88,7 @@ interface ClassFormData {
   duration: number;
   tag: string;
   songRequestsEnabled: boolean;
-  songRequestCriteria: string[];
+  songRequestRules: SongRequestRule[];
 }
 
 const emptyForm: ClassFormData = {
@@ -102,7 +103,7 @@ const emptyForm: ClassFormData = {
   duration: 50,
   tag: "",
   songRequestsEnabled: false,
-  songRequestCriteria: ["ALL"],
+  songRequestRules: [{ type: "ALL" }],
 };
 
 interface ClassFormDialogProps {
@@ -144,12 +145,16 @@ export function ClassFormDialog({
   const DAY_KEYS = ["dayMon", "dayTue", "dayWed", "dayThu", "dayFri", "daySat", "daySun"] as const;
   const DAY_FULL_KEYS = ["dayMonFull", "dayTueFull", "dayWedFull", "dayThuFull", "dayFriFull", "daySatFull", "daySunFull"] as const;
 
-  const SONG_CRITERIA_OPTIONS = [
-    { value: "ALL", labelKey: "songAll" as const },
-    { value: "BIRTHDAY_WEEK", labelKey: "songBirthday" as const },
-    { value: "ANNIVERSARY", labelKey: "songAnniversary" as const },
-    { value: "FIRST_CLASS", labelKey: "songFirstClass" as const },
-    { value: "CLASS_MILESTONE", labelKey: "songMilestone" as const },
+  // Rule types the admin can toggle in the UI. Payload-carrying rules
+  // (LEVEL_AT_LEAST, SUBSCRIPTION) get extra controls below the checkbox.
+  const SONG_RULE_OPTIONS = [
+    { type: "ALL" as const, labelKey: "songAll" as const },
+    { type: "BIRTHDAY_WEEK" as const, labelKey: "songBirthday" as const },
+    { type: "ANNIVERSARY" as const, labelKey: "songAnniversary" as const },
+    { type: "FIRST_CLASS" as const, labelKey: "songFirstClass" as const },
+    { type: "CLASS_MILESTONE" as const, labelKey: "songMilestone" as const },
+    { type: "LEVEL_AT_LEAST" as const, labelKey: "songLevel" as const },
+    { type: "SUBSCRIPTION" as const, labelKey: "songSubscription" as const },
   ];
 
   const { data: classTypes } = useQuery<ClassType[]>({
@@ -179,6 +184,32 @@ export function ClassFormDialog({
     },
   });
 
+  type LoyaltyLevelOption = { id: string; name: string; sortOrder: number; minClasses: number };
+  const { data: loyaltyLevels = [] } = useQuery<LoyaltyLevelOption[]>({
+    queryKey: ["loyalty-levels"],
+    queryFn: async () => {
+      const res = await fetch("/api/loyalty-levels");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  // Full catalogue (active + soft-deleted preserved by ?all=true) is needed
+  // here so an admin can keep an existing rule that points at a now-hidden
+  // subscription without losing it on save.
+  const { data: allPackages = [] } = useQuery<Package[]>({
+    queryKey: ["packages-all"],
+    queryFn: async () => {
+      const res = await fetch("/api/packages?all=true");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+  const subscriptionPackages = useMemo(
+    () => allPackages.filter((p) => p.type === "SUBSCRIPTION" && p.isActive),
+    [allPackages],
+  );
+
   useEffect(() => {
     if (!open) return;
     setEditScope(null);
@@ -203,9 +234,7 @@ export function ClassFormDialog({
         duration: durationMin,
         tag: editingClass.tag ?? "",
         songRequestsEnabled: editingClass.songRequestsEnabled ?? false,
-        songRequestCriteria: editingClass.songRequestCriteria?.length
-          ? editingClass.songRequestCriteria
-          : ["ALL"],
+        songRequestRules: normalizeRules(editingClass.songRequestRules),
       });
     } else {
       setMode("single");
@@ -406,7 +435,7 @@ export function ClassFormDialog({
         roomId: formData.roomId,
         tag: formData.tag || null,
         songRequestsEnabled: formData.songRequestsEnabled,
-        songRequestCriteria: formData.songRequestsEnabled ? formData.songRequestCriteria : [],
+        songRequestRules: formData.songRequestsEnabled ? formData.songRequestRules : [],
       };
       const url = editingClass ? `/api/classes/${editingClass.id}` : "/api/classes";
       const method = editingClass ? "PUT" : "POST";
@@ -441,7 +470,7 @@ export function ClassFormDialog({
         dateTo: formData.dateTo,
         tag: formData.tag || null,
         songRequestsEnabled: formData.songRequestsEnabled,
-        songRequestCriteria: formData.songRequestsEnabled ? formData.songRequestCriteria : [],
+        songRequestRules: formData.songRequestsEnabled ? formData.songRequestRules : [],
       };
       const res = await fetch("/api/classes/bulk", {
         method: "POST",
@@ -470,7 +499,7 @@ export function ClassFormDialog({
         classTypeId: formData.classTypeId,
         tag: formData.tag || null,
         songRequestsEnabled: formData.songRequestsEnabled,
-        songRequestCriteria: formData.songRequestsEnabled ? formData.songRequestCriteria : [],
+        songRequestRules: formData.songRequestsEnabled ? formData.songRequestRules : [],
       };
       // Only send time/duration when the admin actually changed them — avoids
       // a no-op booking check that would block updates to other fields.
@@ -893,28 +922,120 @@ export function ClassFormDialog({
             {formData.songRequestsEnabled && (
               <div className="space-y-2 pl-6">
                 <p className="text-xs text-muted">{t("whoCanSuggest")}</p>
-                {SONG_CRITERIA_OPTIONS.map((opt) => (
-                  <div key={opt.value} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`songCriteria-${opt.value}`}
-                      checked={formData.songRequestCriteria.includes(opt.value)}
-                      onCheckedChange={(checked) => {
-                        const current = new Set(formData.songRequestCriteria);
-                        if (opt.value === "ALL") {
-                          setFormData({ ...formData, songRequestCriteria: checked === true ? ["ALL"] : [] });
-                        } else {
-                          current.delete("ALL");
-                          if (checked === true) current.add(opt.value);
-                          else current.delete(opt.value);
-                          setFormData({ ...formData, songRequestCriteria: Array.from(current) });
-                        }
-                      }}
-                    />
-                    <Label htmlFor={`songCriteria-${opt.value}`} className="text-[13px] font-normal text-foreground">
-                      {t(opt.labelKey)}
-                    </Label>
-                  </div>
-                ))}
+                {SONG_RULE_OPTIONS.map((opt) => {
+                  const existing = formData.songRequestRules.find((r) => r.type === opt.type);
+                  const checked = !!existing;
+                  const toggle = (next: boolean) => {
+                    if (opt.type === "ALL") {
+                      setFormData({
+                        ...formData,
+                        songRequestRules: next ? [{ type: "ALL" }] : [],
+                      });
+                      return;
+                    }
+                    const others = formData.songRequestRules.filter(
+                      (r) => r.type !== opt.type && r.type !== "ALL",
+                    );
+                    if (!next) {
+                      setFormData({ ...formData, songRequestRules: others });
+                      return;
+                    }
+                    let added: SongRequestRule;
+                    if (opt.type === "LEVEL_AT_LEAST") {
+                      const firstLevel = loyaltyLevels[0];
+                      if (!firstLevel) {
+                        // Defer adding the rule until a level is selectable; the
+                        // checkbox stays unchecked because no payload is valid.
+                        return;
+                      }
+                      added = { type: "LEVEL_AT_LEAST", levelId: firstLevel.id };
+                    } else if (opt.type === "SUBSCRIPTION") {
+                      added = { type: "SUBSCRIPTION", packageIds: [] };
+                    } else {
+                      added = { type: opt.type };
+                    }
+                    setFormData({ ...formData, songRequestRules: [...others, added] });
+                  };
+
+                  return (
+                    <div key={opt.type} className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={`songRule-${opt.type}`}
+                          checked={checked}
+                          disabled={opt.type === "LEVEL_AT_LEAST" && loyaltyLevels.length === 0}
+                          onCheckedChange={(c) => toggle(c === true)}
+                        />
+                        <Label htmlFor={`songRule-${opt.type}`} className="text-[13px] font-normal text-foreground">
+                          {t(opt.labelKey)}
+                        </Label>
+                      </div>
+
+                      {checked && opt.type === "LEVEL_AT_LEAST" && existing?.type === "LEVEL_AT_LEAST" && (
+                        <div className="ml-6">
+                          <Select
+                            value={existing.levelId}
+                            onValueChange={(value) => {
+                              setFormData({
+                                ...formData,
+                                songRequestRules: formData.songRequestRules.map((r) =>
+                                  r.type === "LEVEL_AT_LEAST" ? { type: "LEVEL_AT_LEAST", levelId: value } : r,
+                                ),
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-[13px]">
+                              <SelectValue placeholder={t("songLevelPlaceholder")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {loyaltyLevels.map((lvl) => (
+                                <SelectItem key={lvl.id} value={lvl.id}>
+                                  {lvl.name} · {t("songLevelMinClasses", { count: lvl.minClasses })}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {checked && opt.type === "SUBSCRIPTION" && existing?.type === "SUBSCRIPTION" && (
+                        <div className="ml-6 space-y-1">
+                          {subscriptionPackages.length === 0 ? (
+                            <p className="text-[11px] text-muted">{t("songSubscriptionEmpty")}</p>
+                          ) : (
+                            subscriptionPackages.map((pkg) => {
+                              const isOn = existing.packageIds.includes(pkg.id);
+                              return (
+                                <div key={pkg.id} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`songPkg-${pkg.id}`}
+                                    checked={isOn}
+                                    onCheckedChange={(c) => {
+                                      const nextIds = c === true
+                                        ? Array.from(new Set([...existing.packageIds, pkg.id]))
+                                        : existing.packageIds.filter((x) => x !== pkg.id);
+                                      setFormData({
+                                        ...formData,
+                                        songRequestRules: formData.songRequestRules.map((r) =>
+                                          r.type === "SUBSCRIPTION"
+                                            ? { type: "SUBSCRIPTION", packageIds: nextIds }
+                                            : r,
+                                        ),
+                                      });
+                                    }}
+                                  />
+                                  <Label htmlFor={`songPkg-${pkg.id}`} className="text-[13px] font-normal text-foreground">
+                                    {pkg.name}
+                                  </Label>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

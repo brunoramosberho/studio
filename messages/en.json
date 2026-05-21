@@ -467,6 +467,11 @@
       "songAnniversary": "First class anniversary",
       "songFirstClass": "First class",
       "songMilestone": "Class milestone (10, 25, 50, 100…)",
+      "songLevel": "Loyalty level or above",
+      "songLevelPlaceholder": "Pick a level",
+      "songLevelMinClasses": "from {count} classes",
+      "songSubscription": "Specific subscription",
+      "songSubscriptionEmpty": "No active subscription packages yet.",
       "cancel": "Cancel",
       "saveChanges": "Save changes",
       "createClass": "Create class",
@@ -2497,7 +2502,12 @@
     "skip": "Skip",
     "searchPlaceholder": "Search for a song or artist...",
     "songSuggested": "Song suggested!",
-    "addedToFavorites": "Added to your favorites"
+    "addedToFavorites": "Added to your favorites",
+    "lockedTitle": "Song requests are locked",
+    "lockedLevelProgress": "{count, plural, one {# class away} other {# classes away}} from {level}, unlock song requests then.",
+    "lockedLevelReached": "Available once you're at {level}.",
+    "lockedLevelCounter": "{attended}/{needed} classes attended",
+    "lockedSubscription": "Reserved for members with: {packages}."
   },
   "discounts": {
     "title": "Discount Codes",

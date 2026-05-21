@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, requireRole, getAuthContext, roleAtLeast } from "@/lib/tenant";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
+import { normalizeRules } from "@/lib/song-rules";
 
 export async function GET(request: NextRequest) {
   try {
@@ -175,14 +176,12 @@ export async function POST(request: NextRequest) {
     const ctx = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { classTypeId, coachId, startsAt, endsAt, roomId, isRecurring, recurringId, notes, tag, songRequestsEnabled, songRequestCriteria } = body;
+    const { classTypeId, coachId, startsAt, endsAt, roomId, isRecurring, recurringId, notes, tag, songRequestsEnabled, songRequestRules } = body;
 
     const resolvedSongEnabled = songRequestsEnabled ?? true;
-    const resolvedSongCriteria = !resolvedSongEnabled
-      ? (Array.isArray(songRequestCriteria) ? songRequestCriteria : [])
-      : Array.isArray(songRequestCriteria) && songRequestCriteria.length > 0
-        ? songRequestCriteria
-        : ["ALL"];
+    const resolvedSongRules = resolvedSongEnabled
+      ? normalizeRules(songRequestRules)
+      : [];
 
     if (!classTypeId || !coachId || !startsAt || !endsAt || !roomId) {
       return NextResponse.json(
@@ -234,7 +233,7 @@ export async function POST(request: NextRequest) {
         notes,
         tag: tag || null,
         songRequestsEnabled: resolvedSongEnabled,
-        songRequestCriteria: resolvedSongCriteria,
+        songRequestRules: resolvedSongRules,
       },
       include: {
         classType: true,

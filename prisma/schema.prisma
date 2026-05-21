@@ -687,7 +687,10 @@ model Class {
   blockedSpots         BlockedSpot[]
   songRequests         ClassSongRequest[]
   songRequestsEnabled  Boolean                 @default(true)
-  songRequestCriteria  String[]                @default(["ALL"])
+  // OR-list of rules describing who may suggest a song. Stored as JSON so
+  // rules can carry payloads (level id, package ids) instead of being a flat
+  // enum string. Shape: see `SongRequestRule` in `lib/song-rules.ts`.
+  songRequestRules     Json                    @default("[{\"type\":\"ALL\"}]")
   playlistTracks       ClassPlaylistTrack[]
   blockingNotes        String?
   checkIns             CheckIn[]

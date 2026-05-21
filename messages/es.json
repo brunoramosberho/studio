@@ -467,6 +467,11 @@
       "songAnniversary": "Aniversario de su primera clase",
       "songFirstClass": "Primera clase",
       "songMilestone": "Hito de clases (10, 25, 50, 100…)",
+      "songLevel": "Nivel de fidelidad o superior",
+      "songLevelPlaceholder": "Elige un nivel",
+      "songLevelMinClasses": "desde {count} clases",
+      "songSubscription": "Suscripción específica",
+      "songSubscriptionEmpty": "Aún no hay paquetes de suscripción activos.",
       "cancel": "Cancelar",
       "saveChanges": "Guardar cambios",
       "createClass": "Crear clase",
@@ -2497,7 +2502,12 @@
     "skip": "Omitir",
     "searchPlaceholder": "Busca una canción o artista...",
     "songSuggested": "¡Canción sugerida!",
-    "addedToFavorites": "Se agregó a tus favoritos"
+    "addedToFavorites": "Se agregó a tus favoritos",
+    "lockedTitle": "Las sugerencias están bloqueadas",
+    "lockedLevelProgress": "{count, plural, one {Te falta # clase} other {Te faltan # clases}} para llegar a {level} y desbloquear las sugerencias.",
+    "lockedLevelReached": "Disponible cuando llegues al nivel {level}.",
+    "lockedLevelCounter": "{attended}/{needed} clases asistidas",
+    "lockedSubscription": "Reservado para miembros con: {packages}."
   },
   "discounts": {
     "title": "Codigos de Descuento",

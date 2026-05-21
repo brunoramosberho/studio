@@ -4,6 +4,7 @@ import { requireTenant, requireRole, getAuthContext, roleAtLeast } from "@/lib/t
 import { cancelClassWithRefunds } from "@/lib/class-cancel";
 import { BookingStatus } from "@prisma/client";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
+import { normalizeRules } from "@/lib/song-rules";
 
 export async function GET(
   _request: NextRequest,
@@ -284,7 +285,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag, songRequestsEnabled, songRequestCriteria, blockingNotes } = body;
+    const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag, songRequestsEnabled, songRequestRules, blockingNotes } = body;
 
     // If cancelling via PUT, use the full cancel flow (refund + email)
     if (status === "CANCELLED" && existing.status !== "CANCELLED") {
@@ -310,7 +311,7 @@ export async function PUT(
         ...(notes !== undefined && { notes }),
         ...(tag !== undefined && { tag: tag || null }),
         ...(songRequestsEnabled !== undefined && { songRequestsEnabled }),
-        ...(songRequestCriteria !== undefined && { songRequestCriteria: Array.isArray(songRequestCriteria) ? songRequestCriteria : [] }),
+        ...(songRequestRules !== undefined && { songRequestRules: normalizeRules(songRequestRules) }),
         ...(blockingNotes !== undefined && { blockingNotes: blockingNotes || null }),
       },
       include: {

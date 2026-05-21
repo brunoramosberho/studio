@@ -33,21 +33,27 @@ export async function GET(
       }),
       prisma.class.findFirst({
         where: { id, tenantId: tenant.id },
-        select: { songRequestsEnabled: true, songRequestCriteria: true, startsAt: true },
+        select: { songRequestsEnabled: true, songRequestRules: true, startsAt: true },
       }),
     ]);
 
-    let eligible = false;
-    if (cls?.songRequestsEnabled) {
-      eligible = await checkSongEligibility(
-        session.user.id,
-        cls.startsAt,
-        cls.songRequestCriteria,
-        tenant.id,
-      );
+    if (!cls?.songRequestsEnabled) {
+      return NextResponse.json({
+        songRequest,
+        eligible: false,
+        enabled: false,
+        lock: null,
+      });
     }
 
-    return NextResponse.json({ songRequest, eligible, enabled: cls?.songRequestsEnabled ?? false });
+    const { eligible, lock } = await checkSongEligibility(
+      session.user.id,
+      cls.startsAt,
+      cls.songRequestRules,
+      tenant.id,
+    );
+
+    return NextResponse.json({ songRequest, eligible, enabled: true, lock });
   } catch (error) {
     console.error("GET song-request error:", error);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
@@ -69,7 +75,7 @@ export async function POST(
 
     const cls = await prisma.class.findFirst({
       where: { id, tenantId: tenant.id },
-      select: { songRequestsEnabled: true, songRequestCriteria: true, startsAt: true },
+      select: { songRequestsEnabled: true, songRequestRules: true, startsAt: true },
     });
 
     if (!cls) {
@@ -80,10 +86,10 @@ export async function POST(
       return NextResponse.json({ error: "Song requests not enabled" }, { status: 400 });
     }
 
-    const eligible = await checkSongEligibility(
+    const { eligible } = await checkSongEligibility(
       session.user.id,
       cls.startsAt,
-      cls.songRequestCriteria,
+      cls.songRequestRules,
       tenant.id,
     );
 

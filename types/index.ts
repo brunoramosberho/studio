@@ -15,6 +15,7 @@ import type {
   Studio,
   Country,
   City,
+  Prisma,
 } from "@prisma/client";
 
 export type {
@@ -51,7 +52,7 @@ export interface ClassWithDetails extends Class {
   isBooked?: boolean;
   myBookingId?: string | null;
   songRequestsEnabled: boolean;
-  songRequestCriteria: string[];
+  songRequestRules: Prisma.JsonValue;
 }
 
 export interface BookingProductOrderItemSummary {

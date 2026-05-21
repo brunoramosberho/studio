@@ -43,7 +43,8 @@ import { usePackages } from "@/hooks/usePackages";
 import { BookingSheet } from "@/components/booking/booking-sheet";
 import { ProductPickStep } from "@/components/booking/product-pick-step";
 import { GuestListInput, type GuestEntry } from "@/components/booking/guest-list-input";
-import { SongRequest } from "@/components/booking/song-request";
+import { SongRequest, SongRequestLocked } from "@/components/booking/song-request";
+import type { SongRequestLock } from "@/lib/song-eligibility";
 import { MediaGallery } from "@/components/feed/media-gallery";
 import { LikeButton } from "@/components/feed/like-button";
 import { CommentsSheet } from "@/components/feed/comments-sheet";
@@ -96,7 +97,7 @@ interface ClassData {
   spotsLeft: number;
   spotMap: Record<number, SpotInfo>;
   songRequestsEnabled?: boolean;
-  songRequestCriteria?: string[];
+  songRequestRules?: unknown;
   myWaitlistEntry?: { id: string; position: number } | null;
   myNotifyMe?: { id: string } | null;
 }
@@ -157,6 +158,7 @@ export default function ClassDetailPage() {
   const [sendingMagic, setSendingMagic] = useState(false);
   const [showSongRequest, setShowSongRequest] = useState(false);
   const [songRequestChecked, setSongRequestChecked] = useState(false);
+  const [songLock, setSongLock] = useState<SongRequestLock | null>(null);
   const [waiverPending, setWaiverPending] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [waitlistJoined, setWaitlistJoined] = useState(false);
@@ -363,7 +365,16 @@ export default function ClassDetailPage() {
     fetch(`/api/classes/${id}/song-request`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.eligible && !data.songRequest) setShowSongRequest(true);
+        if (!data.enabled) return;
+        if (data.eligible && !data.songRequest) {
+          setShowSongRequest(true);
+          return;
+        }
+        // Member can't suggest but the gate is actionable — render a locked
+        // card with the progress / CTA so they know it's available later.
+        if (!data.eligible && !data.songRequest && data.lock) {
+          setSongLock(data.lock as SongRequestLock);
+        }
       })
       .catch(() => {});
   }, [bookingSuccess, id, isAuthenticated, songRequestChecked]);
@@ -1132,6 +1143,16 @@ export default function ClassDetailPage() {
                           onComplete={() => setShowSongRequest(false)}
                           onSkip={() => setShowSongRequest(false)}
                         />
+                      </motion.div>
+                    )}
+                    {!showSongRequest && songLock && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 overflow-hidden rounded-xl border border-border/50 bg-card"
+                      >
+                        <SongRequestLocked lock={songLock} />
                       </motion.div>
                     )}
                   </AnimatePresence>
