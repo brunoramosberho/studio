@@ -106,6 +106,51 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // Resolve concept names from referenceId. StripePayment.concept is rarely
+    // populated; the real source of truth is the linked UserPackage / Product.
+    const allRefIds = [
+      ...stripePayments.filter((p) => p.referenceId).map((p) => p.referenceId!),
+      ...posTransactions.filter((p) => p.referenceId).map((p) => p.referenceId!),
+    ];
+    const uniqueRefIds = [...new Set(allRefIds)];
+    const [userPackages, products] = await Promise.all([
+      uniqueRefIds.length
+        ? prisma.userPackage.findMany({
+            where: { id: { in: uniqueRefIds } },
+            include: { package: { select: { name: true, type: true } } },
+          })
+        : Promise.resolve([]),
+      uniqueRefIds.length
+        ? prisma.product.findMany({
+            where: { id: { in: uniqueRefIds } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([]),
+    ]);
+    const refMap = new Map<
+      string,
+      { name: string; packageType?: string; itemType: "package" | "product" }
+    >();
+    for (const up of userPackages) {
+      refMap.set(up.id, {
+        name: up.package.name,
+        packageType: up.package.type,
+        itemType: "package",
+      });
+    }
+    for (const p of products) {
+      refMap.set(p.id, { name: p.name, itemType: "product" });
+    }
+
+    function resolveTypeLabel(rawType: string, refId: string | null): string {
+      const ref = refId ? refMap.get(refId) : null;
+      if (ref?.itemType === "package") {
+        return ref.packageType === "SUBSCRIPTION" ? "Suscripción" : "Bono / Paquete";
+      }
+      if (ref?.itemType === "product") return "Producto";
+      return getConceptType(rawType);
+    }
+
     const hasTpvConfig = tenant.tpvFeePercent != null && tenant.tpvSettlementDays != null;
 
     interface CsvRow {
@@ -133,12 +178,13 @@ export async function GET(request: NextRequest) {
       const base = Math.round((gross / (1 + taxRate)) * 100) / 100;
       const iva = Math.round((gross - base) * 100) / 100;
 
+      const ref = sp.referenceId ? refMap.get(sp.referenceId) : null;
       rows.push({
         date: format(sp.createdAt, "dd/MM/yyyy HH:mm", { locale: es }),
         client: sp.member?.name ?? "Sin nombre",
         email: sp.member?.email ?? "",
-        concept: sp.concept ?? "",
-        type: getConceptType(sp.type),
+        concept: sp.concept ?? ref?.name ?? "",
+        type: resolveTypeLabel(sp.type, sp.referenceId),
         method: "Stripe",
         gross,
         fee: sp.stripeFee ?? null,
@@ -184,12 +230,13 @@ export async function GET(request: NextRequest) {
         isEstimated = true;
       }
 
+      const ref = pt.referenceId ? refMap.get(pt.referenceId) : null;
       rows.push({
         date: format(pt.createdAt, "dd/MM/yyyy HH:mm", { locale: es }),
         client: pt.member?.name ?? "Sin nombre",
         email: pt.member?.email ?? "",
-        concept: pt.concept ?? "",
-        type: getConceptType(pt.type),
+        concept: pt.concept ?? ref?.name ?? "",
+        type: resolveTypeLabel(pt.type, pt.referenceId),
         method: getMethodLabel(source),
         gross,
         fee,
@@ -221,7 +268,7 @@ export async function GET(request: NextRequest) {
       `Monto bruto (${sym})`,
       `Fee (${sym})`,
       `Neto (${sym})`,
-      "Es estimado",
+      "Fees estimados",
       "Llega al banco",
       `Base imponible (${sym})`,
       `IVA (${sym})`,
@@ -242,7 +289,7 @@ export async function GET(request: NextRequest) {
           r.gross.toFixed(2),
           r.fee != null ? r.fee.toFixed(2) : "",
           r.net != null ? r.net.toFixed(2) : "",
-          r.isEstimated ? "TRUE" : "FALSE",
+          r.isEstimated ? "Sí" : "No",
           escCsv(r.availableOn),
           r.base.toFixed(2),
           r.iva.toFixed(2),
