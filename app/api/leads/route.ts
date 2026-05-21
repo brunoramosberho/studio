@@ -29,15 +29,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
-      const hasMembership = await prisma.membership.findUnique({
+      const existingMembership = await prisma.membership.findUnique({
         where: {
           userId_tenantId: { userId: existingUser.id, tenantId: tenant.id },
         },
-        select: { id: true },
+        select: { id: true, role: true },
       });
-      if (hasMembership) {
-        // Already a member — bail without creating a lead.
-        return NextResponse.json({ ok: true, skipped: "already_member" });
+      // Skip only if they're already a CLIENT — coaches/admins might still
+      // legitimately convert to customers later, and we want to track that.
+      if (existingMembership && existingMembership.role === "CLIENT") {
+        return NextResponse.json({ ok: true, skipped: "already_client" });
       }
     }
 
