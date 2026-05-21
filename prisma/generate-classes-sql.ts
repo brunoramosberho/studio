@@ -396,7 +396,7 @@ for (const line of lines) {
   const endsAt = `'${date} ${endTime}:00+02'::timestamptz`;
 
   values.push(
-    `(gen_random_uuid()::text, '${classTypeId}', '${coachId}', '${roomId}', '${TENANT_ID}', ${startsAt}, ${endsAt}, 'SCHEDULED', false, ${escapeSQL(tag)}, true, ARRAY['ALL'])`
+    `(gen_random_uuid()::text, '${classTypeId}', '${coachId}', '${roomId}', '${TENANT_ID}', ${startsAt}, ${endsAt}, 'SCHEDULED', false, ${escapeSQL(tag)}, true, '[{"type":"ALL"}]'::jsonb)`
   );
 }
 
@@ -408,6 +408,6 @@ for (let i = 0; i < values.length; i += BATCH_SIZE) {
   const batch = values.slice(i, i + BATCH_SIZE);
   const batchNum = Math.floor(i / BATCH_SIZE) + 1;
   console.log(`-- BATCH ${batchNum} (${batch.length} classes)`);
-  console.log(`INSERT INTO "Class" (id, "classTypeId", "coachId", "roomId", "tenantId", "startsAt", "endsAt", status, "isRecurring", tag, "songRequestsEnabled", "songRequestCriteria") VALUES`);
+  console.log(`INSERT INTO "Class" (id, "classTypeId", "coachId", "roomId", "tenantId", "startsAt", "endsAt", status, "isRecurring", tag, "songRequestsEnabled", "songRequestRules") VALUES`);
   console.log(batch.join(',\n') + ';\n');
 }

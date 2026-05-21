@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { cancelClassWithRefunds } from "@/lib/class-cancel";
 import { formatDateInZone, zonedWallTimeToUtc } from "@/lib/utils";
+import { normalizeRules } from "@/lib/song-rules";
 
 const FALLBACK_TZ = "Europe/Madrid";
 
@@ -56,7 +57,7 @@ export async function GET(
  *   scope=all         - update all future scheduled classes in series
  *   scope=from&fromId=<classId> - update this class and all future ones in series
  * Body: partial class fields (coachId, roomId, classTypeId, tag,
- *   songRequestsEnabled, songRequestCriteria, time, duration).
+ *   songRequestsEnabled, songRequestRules, time, duration).
  * When time/duration are sent, the change is only applied if no live
  * reservations exist on any affected class (bookings, waitlist, platform
  * bookings) — otherwise we'd silently shift booked clients to a new slot.
@@ -72,7 +73,7 @@ export async function PUT(
     const fromId = request.nextUrl.searchParams.get("fromId");
 
     const body = await request.json();
-    const { coachId, roomId, classTypeId, tag, songRequestsEnabled, songRequestCriteria, time, duration } = body;
+    const { coachId, roomId, classTypeId, tag, songRequestsEnabled, songRequestRules, time, duration } = body;
 
     const isReschedule = typeof time === "string" || typeof duration === "number";
     if (typeof time === "string" && !/^\d{2}:\d{2}$/.test(time)) {
@@ -88,7 +89,7 @@ export async function PUT(
     if (classTypeId !== undefined) data.classTypeId = classTypeId;
     if (tag !== undefined) data.tag = tag || null;
     if (songRequestsEnabled !== undefined) data.songRequestsEnabled = songRequestsEnabled;
-    if (songRequestCriteria !== undefined) data.songRequestCriteria = Array.isArray(songRequestCriteria) ? songRequestCriteria : [];
+    if (songRequestRules !== undefined) data.songRequestRules = normalizeRules(songRequestRules);
 
     if (Object.keys(data).length === 0 && !isReschedule) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });

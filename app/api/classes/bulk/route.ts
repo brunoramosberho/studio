@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { format } from "date-fns";
 import { zonedWallTimeToUtc } from "@/lib/utils";
+import { normalizeRules } from "@/lib/song-rules";
 
 const FALLBACK_TZ = "Europe/Madrid";
 
@@ -21,7 +22,7 @@ const FALLBACK_TZ = "Europe/Madrid";
  *   dateTo: string          // "YYYY-MM-DD"
  *   tag?: string
  *   songRequestsEnabled?: boolean
- *   songRequestCriteria?: string[]
+ *   songRequestRules?: SongRequestRule[]
  */
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       classTypeId, coachId, roomId, time, duration, days,
-      dateFrom, dateTo, tag, songRequestsEnabled, songRequestCriteria,
+      dateFrom, dateTo, tag, songRequestsEnabled, songRequestRules,
     } = body;
 
     if (!classTypeId || !coachId || !roomId || !time || !duration || !days?.length || !dateFrom || !dateTo) {
@@ -73,11 +74,7 @@ export async function POST(request: NextRequest) {
     const recurringId = `rec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     const resolvedSongEnabled = songRequestsEnabled ?? true;
-    const resolvedSongCriteria = !resolvedSongEnabled
-      ? (Array.isArray(songRequestCriteria) ? songRequestCriteria : [])
-      : Array.isArray(songRequestCriteria) && songRequestCriteria.length > 0
-        ? songRequestCriteria
-        : ["ALL"];
+    const resolvedSongRules = resolvedSongEnabled ? normalizeRules(songRequestRules) : [];
 
     // Resolve the studio's timezone so we interpret "time" as a wall-clock
     // time in the studio's zone, not in the server's TZ (which is UTC on
@@ -200,7 +197,7 @@ export async function POST(request: NextRequest) {
         recurringId,
         tag: tag || null,
         songRequestsEnabled: resolvedSongEnabled,
-        songRequestCriteria: resolvedSongCriteria,
+        songRequestRules: resolvedSongRules,
       })),
     });
 

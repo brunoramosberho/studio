@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Music, Check } from "lucide-react";
+import { Music, Check, Lock } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
 import { useTranslations } from "next-intl";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
+import type { SongRequestLock } from "@/lib/song-eligibility";
 
 interface SongRequestProps {
   classId: string;
@@ -100,6 +101,86 @@ export function SongRequest({ classId, onComplete, onSkip }: SongRequestProps) {
         searchPlaceholder={t("searchPlaceholder")}
         onSkip={onSkip}
       />
+    </motion.div>
+  );
+}
+
+interface SongRequestLockedProps {
+  lock: SongRequestLock;
+}
+
+export function SongRequestLocked({ lock }: SongRequestLockedProps) {
+  const { colorAccent: accent } = useBranding();
+  const t = useTranslations("songRequest");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col px-4 py-6"
+    >
+      <div className="mb-3 flex items-center gap-3">
+        <div
+          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: `${accent}15` }}
+        >
+          <Music className="h-5 w-5" style={{ color: accent }} />
+          <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-card ring-1 ring-border/50">
+            <Lock className="h-3 w-3 text-muted" />
+          </span>
+        </div>
+        <div className="flex-1">
+          <h3 className="font-display text-base font-bold text-foreground">
+            {t("lockedTitle")}
+          </h3>
+          {lock.type === "LEVEL_AT_LEAST" ? (
+            <p className="text-[13px] text-muted">
+              {lock.classesRemaining > 0
+                ? t("lockedLevelProgress", {
+                    count: lock.classesRemaining,
+                    level: lock.requiredLevel.name,
+                  })
+                : t("lockedLevelReached", { level: lock.requiredLevel.name })}
+            </p>
+          ) : (
+            <p className="text-[13px] text-muted">
+              {t("lockedSubscription", {
+                packages: lock.allowedPackages.map((p) => p.name).join(", "),
+              })}
+            </p>
+          )}
+          <p className="mt-2 text-[11px] leading-snug text-muted/85">
+            {t("disclaimer")}
+          </p>
+        </div>
+      </div>
+
+      {lock.type === "LEVEL_AT_LEAST" && (
+        <div className="mt-1">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                backgroundColor: accent,
+                width: `${Math.min(
+                  100,
+                  Math.round(
+                    (lock.classesAttended /
+                      Math.max(lock.requiredLevel.minClasses, 1)) *
+                      100,
+                  ),
+                )}%`,
+              }}
+            />
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted">
+            {t("lockedLevelCounter", {
+              attended: lock.classesAttended,
+              needed: lock.requiredLevel.minClasses,
+            })}
+          </p>
+        </div>
+      )}
     </motion.div>
   );
 }
