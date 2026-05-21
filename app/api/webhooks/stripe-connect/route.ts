@@ -126,13 +126,56 @@ export async function POST(request: NextRequest) {
       case "payment_intent.succeeded": {
         const pi = event.data.object;
 
+        // Pull the underlying charge + balance transaction so we can store
+        // the Stripe fee, the net the studio receives, and the date funds
+        // become available in the connected account's bank. Without this the
+        // /admin/finance view has nothing to show in the "Fee / Net /
+        // Arrives at bank" columns.
+        let stripeFee: number | null = null;
+        let netAmount: number | null = null;
+        let availableOn: Date | null = null;
+        try {
+          if (connectedAccountId) {
+            const fullPi = await getStripe().paymentIntents.retrieve(
+              pi.id,
+              { expand: ["latest_charge.balance_transaction"] },
+              { stripeAccount: connectedAccountId },
+            );
+            const charge =
+              typeof fullPi.latest_charge === "object" && fullPi.latest_charge
+                ? fullPi.latest_charge
+                : null;
+            const bt =
+              charge && typeof charge.balance_transaction === "object"
+                ? charge.balance_transaction
+                : null;
+            if (bt) {
+              stripeFee = bt.fee / 100;
+              netAmount = bt.net / 100;
+              if (bt.available_on) {
+                availableOn = new Date(bt.available_on * 1000);
+              }
+            }
+          }
+        } catch (err) {
+          console.error(
+            "[stripe-webhook] failed to expand balance_transaction",
+            err,
+          );
+        }
+
         // Marcar pago + activar UserPackage en una sola transacción para evitar
         // estados intermedios donde el pago aparece como succeeded pero el
         // paquete sigue PENDING_PAYMENT (impide al usuario reservar).
         const payment = await prisma.$transaction(async (tx) => {
           await tx.stripePayment.updateMany({
             where: { stripePaymentIntentId: pi.id },
-            data: { status: "succeeded" },
+            data: {
+              status: "succeeded",
+              ...(stripeFee != null && { stripeFee }),
+              ...(netAmount != null && { netAmount }),
+              ...(availableOn && { availableOn }),
+            },
           });
 
           const p = await tx.stripePayment.findUnique({
@@ -181,6 +224,30 @@ export async function POST(request: NextRequest) {
             .catch((err) =>
               console.error("[stripe-webhook] commission accrual failed", payment.id, err),
             );
+        }
+        break;
+      }
+
+      case "payment_intent.canceled": {
+        // Fires when a PaymentIntent times out (Stripe auto-cancels after
+        // ~24h of inactivity) or is explicitly canceled. Without this our
+        // StripePayment row would stay "pending" forever.
+        const pi = event.data.object;
+        await prisma.stripePayment.updateMany({
+          where: { stripePaymentIntentId: pi.id, status: "pending" },
+          data: { status: "canceled" },
+        });
+        const { userPackage } = await findUserPackageForPaymentIntent(pi.id);
+        if (userPackage && userPackage.status === "PENDING_PAYMENT") {
+          await prisma.userPackage.update({
+            where: { id: userPackage.id },
+            data: {
+              status: "REVOKED",
+              revokedAt: new Date(),
+              revokedReason: "payment_failed",
+            },
+          });
+          await cancelFutureBookingsForPackage(userPackage.id);
         }
         break;
       }
