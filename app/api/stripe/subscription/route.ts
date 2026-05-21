@@ -30,7 +30,18 @@ export async function POST(request: NextRequest) {
 
     const { stripe } = await getTenantStripeContext(tenant.id);
 
-    let customerId = tenant.stripeCustomerId;
+    // Re-read so we have the SaaS override fields the public `tenant` from
+    // requireRole() doesn't carry (it returns the lib/tenant Tenant view).
+    const fullTenant = await prisma.tenant.findUnique({
+      where: { id: tenant.id },
+      select: {
+        stripeCustomerId: true,
+        saasCouponId: true,
+        saasTrialDays: true,
+      },
+    });
+
+    let customerId = fullTenant?.stripeCustomerId ?? tenant.stripeCustomerId;
 
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -43,11 +54,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const trialDays = fullTenant?.saasTrialDays ?? 14;
+    const coupon = fullTenant?.saasCouponId?.trim();
+
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: resolved.stripePriceId }],
-      trial_period_days: 14,
-      metadata: { tenantId: tenant.id, saasPlanKey: key },
+      trial_period_days: trialDays > 0 ? trialDays : undefined,
+      ...(coupon && { discounts: [{ coupon }] }),
+      metadata: {
+        tenantId: tenant.id,
+        saasPlanKey: key,
+        ...(coupon && { saasCouponId: coupon }),
+        saasTrialDays: String(trialDays),
+      },
       payment_behavior: "default_incomplete",
       expand: ["latest_invoice.payment_intent"],
     });

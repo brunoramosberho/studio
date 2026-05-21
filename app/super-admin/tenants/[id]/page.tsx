@@ -28,6 +28,9 @@ interface TenantDetail {
   isActive: boolean;
   stripeSandboxMode: boolean;
   applicationFeePercent: number;
+  saasStripePriceIdOverride: string | null;
+  saasCouponId: string | null;
+  saasTrialDays: number | null;
   tagline: string;
   slogan: string;
   logoUrl: string | null;
@@ -182,6 +185,68 @@ export default function TenantDetailPage({
       setTimeout(() => setFeeResult(null), 2500);
     } finally {
       setSavingFee(false);
+    }
+  }
+
+  // SaaS subscription overrides (price, coupon, custom trial days)
+  const [saasForm, setSaasForm] = useState({
+    saasStripePriceIdOverride: "",
+    saasCouponId: "",
+    saasTrialDays: "",
+  });
+  const [savingSaas, setSavingSaas] = useState(false);
+  const [saasResult, setSaasResult] = useState<string | null>(null);
+  useEffect(() => {
+    if (!tenant) return;
+    setSaasForm({
+      saasStripePriceIdOverride: tenant.saasStripePriceIdOverride ?? "",
+      saasCouponId: tenant.saasCouponId ?? "",
+      saasTrialDays:
+        tenant.saasTrialDays != null ? String(tenant.saasTrialDays) : "",
+    });
+  }, [
+    tenant?.saasStripePriceIdOverride,
+    tenant?.saasCouponId,
+    tenant?.saasTrialDays,
+  ]);
+
+  async function saveSaasOverrides() {
+    if (!tenant) return;
+    setSavingSaas(true);
+    setSaasResult(null);
+    try {
+      const body = {
+        saasStripePriceIdOverride: saasForm.saasStripePriceIdOverride.trim() || null,
+        saasCouponId: saasForm.saasCouponId.trim() || null,
+        saasTrialDays:
+          saasForm.saasTrialDays.trim() === ""
+            ? null
+            : Number(saasForm.saasTrialDays),
+      };
+      const res = await fetch(`/api/super-admin/tenants/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaasResult(`Error: ${data.error ?? "no se pudo guardar"}`);
+        return;
+      }
+      setTenant((prev) =>
+        prev
+          ? {
+              ...prev,
+              saasStripePriceIdOverride: data.saasStripePriceIdOverride,
+              saasCouponId: data.saasCouponId,
+              saasTrialDays: data.saasTrialDays,
+            }
+          : prev,
+      );
+      setSaasResult("✓ Guardado");
+      setTimeout(() => setSaasResult(null), 2500);
+    } finally {
+      setSavingSaas(false);
     }
   }
 
@@ -437,6 +502,90 @@ export default function TenantDetailPage({
                 {feeResult}
               </p>
             )}
+          </div>
+
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-sm font-medium text-gray-900">
+              Membresía SaaS del estudio
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Cuándo y cuánto le cobramos a este studio por usar Magic. Se aplica al crear la subscripción desde <code className="rounded bg-gray-100 px-1">/admin/settings/billing</code>.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  Días de trial
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={730}
+                  step="1"
+                  placeholder="14"
+                  value={saasForm.saasTrialDays}
+                  onChange={(e) =>
+                    setSaasForm((s) => ({ ...s, saasTrialDays: e.target.value }))
+                  }
+                />
+                <p className="mt-0.5 text-[10px] text-gray-400">
+                  Default 14. Pon 90 para 3 meses gratis.
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  Cupón Stripe
+                </label>
+                <Input
+                  placeholder="co_xxx"
+                  value={saasForm.saasCouponId}
+                  onChange={(e) =>
+                    setSaasForm((s) => ({ ...s, saasCouponId: e.target.value }))
+                  }
+                />
+                <p className="mt-0.5 text-[10px] text-gray-400">
+                  ID del cupón (no el code). Crea en Stripe Dashboard.
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  Precio override
+                </label>
+                <Input
+                  placeholder="price_xxx"
+                  value={saasForm.saasStripePriceIdOverride}
+                  onChange={(e) =>
+                    setSaasForm((s) => ({
+                      ...s,
+                      saasStripePriceIdOverride: e.target.value,
+                    }))
+                  }
+                />
+                <p className="mt-0.5 text-[10px] text-gray-400">
+                  Reemplaza el plan del catálogo SaasPlan.
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={saveSaasOverrides}
+                disabled={savingSaas}
+              >
+                {savingSaas ? "Guardando…" : "Guardar overrides"}
+              </Button>
+              {saasResult && (
+                <span
+                  className={`text-xs ${
+                    saasResult.startsWith("Error")
+                      ? "text-red-600"
+                      : "text-emerald-600"
+                  }`}
+                >
+                  {saasResult}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="border-t border-gray-100 pt-4">

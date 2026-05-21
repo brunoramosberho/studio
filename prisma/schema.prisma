@@ -72,6 +72,12 @@ model Tenant {
   applicationFeePercent     Float     @default(0) // % fee Magic charges per transaction
   /// Negotiated SaaS price: when set, overrides `SaasPlan` catalog for new subscriptions.
   saasStripePriceIdOverride String?
+  /// Stripe coupon ID (or promotion code id) applied at subscription creation.
+  /// Use for percent / fixed discounts ("3 months 50% off", "first month free"…).
+  saasCouponId              String?
+  /// Override the default 14-day free trial when starting the SaaS subscription.
+  /// E.g. set to 90 for "first 3 months free". null = use default 14 days.
+  saasTrialDays             Int?
   /// When true, API calls use Stripe test keys (`STRIPE_SECRET_KEY_*_TEST` / `STRIPE_SECRET_KEY_TEST`).
   stripeSandboxMode         Boolean   @default(false)
 

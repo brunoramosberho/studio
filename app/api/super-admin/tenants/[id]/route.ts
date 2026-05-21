@@ -84,6 +84,8 @@ export async function PUT(req: Request, { params }: Params) {
       colorAdmin,
       applicationFeePercent,
       saasStripePriceIdOverride,
+      saasCouponId,
+      saasTrialDays,
       stripeSandboxMode,
     } = body;
 
@@ -148,6 +150,28 @@ export async function PUT(req: Request, { params }: Params) {
         saasStripePriceIdOverride === ""
           ? null
           : String(saasStripePriceIdOverride).trim() || null;
+    }
+
+    if (saasCouponId !== undefined) {
+      data.saasCouponId =
+        saasCouponId === null || saasCouponId === ""
+          ? null
+          : String(saasCouponId).trim() || null;
+    }
+
+    if (saasTrialDays !== undefined) {
+      if (saasTrialDays === null || saasTrialDays === "") {
+        data.saasTrialDays = null;
+      } else {
+        const days = Number(saasTrialDays);
+        if (!Number.isInteger(days) || days < 0 || days > 730) {
+          return NextResponse.json(
+            { error: "saasTrialDays debe ser un entero entre 0 y 730" },
+            { status: 400 },
+          );
+        }
+        data.saasTrialDays = days;
+      }
     }
 
     if (stripeSandboxMode !== undefined) {
