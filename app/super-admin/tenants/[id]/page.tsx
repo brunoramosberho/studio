@@ -373,7 +373,7 @@ export default function TenantDetailPage({
                 size="sm"
                 variant="outline"
                 onClick={registerApplePayDomain}
-                disabled={registeringAP || !tenant.stripeAccountId}
+                disabled={registeringAP}
               >
                 {registeringAP ? "Registrando…" : "Registrar dominio"}
               </Button>
