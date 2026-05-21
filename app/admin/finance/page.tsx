@@ -765,9 +765,9 @@ function FeeNetCell({ transaction: txn, t }: { transaction: Transaction; t: (key
   const prefix = txn.isFeesEstimated ? "~" : "";
   return (
     <div className="text-[10px] text-stone-400" title={txn.isFeesEstimated ? t("estimated") : undefined}>
-      <span>{prefix}{formatCurrency(txn.fee)} {t("fee")}</span>
+      <span>{prefix}{formatCurrency(txn.fee, null, { fractionDigits: 2 })} {t("fee")}</span>
       <span className="mx-0.5">·</span>
-      <span>{prefix}{formatCurrency(txn.netAmount ?? 0)} {t("net")}</span>
+      <span>{prefix}{formatCurrency(txn.netAmount ?? 0, null, { fractionDigits: 2 })} {t("net")}</span>
     </div>
   );
 }

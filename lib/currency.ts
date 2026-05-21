@@ -61,18 +61,23 @@ export function formatMoney(
   amount: number,
   config: CurrencyConfig,
   overrideCode?: string | null,
+  options?: { fractionDigits?: number },
 ): string {
   const code = (overrideCode ?? config.code).toUpperCase();
   const locale = code === config.code ? config.intlLocale : defaultLocaleForCurrency(code);
+  const fractionDigits = options?.fractionDigits ?? 0;
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: code,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
     }).format(amount);
   } catch {
     // Invalid ISO code or locale — fall back to symbol + raw number.
+    if (fractionDigits > 0) {
+      return `${currencySymbolFor(code)}${amount.toFixed(fractionDigits)}`;
+    }
     return `${currencySymbolFor(code)}${Math.round(amount).toLocaleString()}`;
   }
 }

@@ -54,11 +54,15 @@ export function useCurrency(): CurrencyConfig {
  * specific currency (e.g. a Package row) — the formatter will keep the right
  * Intl locale for that code.
  */
-export function useFormatMoney(): (amount: number, overrideCode?: string | null) => string {
+export function useFormatMoney(): (
+  amount: number,
+  overrideCode?: string | null,
+  options?: { fractionDigits?: number },
+) => string {
   const currency = useCurrency();
   return useCallback(
-    (amount: number, overrideCode?: string | null) =>
-      formatMoney(amount, currency, overrideCode ?? undefined),
+    (amount: number, overrideCode?: string | null, options?: { fractionDigits?: number }) =>
+      formatMoney(amount, currency, overrideCode ?? undefined, options),
     [currency],
   );
 }
