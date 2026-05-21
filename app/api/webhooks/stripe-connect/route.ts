@@ -6,7 +6,37 @@ import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { createCreditUsagesForPackage, restoreCredit } from "@/lib/credits";
 import { computeDebtAmount } from "@/lib/billing/debt";
 import { getSubscriptionPeriod } from "@/lib/stripe/helpers";
+import { getStripe } from "@/lib/stripe/client";
 import type Stripe from "stripe";
+
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "mgic.app";
+
+/**
+ * Register the tenant's subdomain as a Payment Method Domain on the
+ * connected account. Required for Apple Pay / Google Pay on direct charges.
+ * Idempotent: ignores `payment_method_domain_already_exists`.
+ */
+async function ensureWalletDomainRegistered(
+  connectedAccountId: string,
+  tenantSlug: string,
+): Promise<void> {
+  const domain = `${tenantSlug}.${ROOT_DOMAIN}`;
+  const stripe = getStripe();
+  try {
+    await stripe.paymentMethodDomains.create(
+      { domain_name: domain },
+      { stripeAccount: connectedAccountId },
+    );
+    console.log(`[wallet-domain] registered ${domain} on ${connectedAccountId}`);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === "payment_method_domain_already_exists") return;
+    console.error(
+      `[wallet-domain] failed to register ${domain} on ${connectedAccountId}`,
+      err,
+    );
+  }
+}
 
 /**
  * Cancel all CONFIRMED future bookings tied to a package and return any
@@ -586,6 +616,23 @@ export async function POST(request: NextRequest) {
           where: { stripeAccountId: connectedAccountId },
           data: { stripeAccountStatus: status },
         });
+
+        // Once the merchant can take charges, make sure their subdomain is
+        // registered for Apple Pay / Google Pay on this connected account.
+        // Domain registration on the platform account isn't enough for
+        // direct charges. Idempotent, so safe to run on every update.
+        if (account.charges_enabled) {
+          const tenant = await prisma.tenant.findFirst({
+            where: { stripeAccountId: connectedAccountId },
+            select: { slug: true },
+          });
+          if (tenant?.slug) {
+            ensureWalletDomainRegistered(connectedAccountId, tenant.slug).catch(
+              (err) =>
+                console.error("[wallet-domain] background error", err),
+            );
+          }
+        }
         break;
       }
     }
