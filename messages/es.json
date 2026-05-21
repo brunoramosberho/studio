@@ -2240,11 +2240,13 @@
     "forbidden": "Acceso denegado"
   },
   "paymentMethods": {
-    "title": "Metodos de pago",
+    "title": "Métodos de pago",
     "noCards": "Sin tarjetas guardadas",
-    "noCardsDesc": "Anade una tarjeta para agilizar tus proximos pagos",
-    "addNewCard": "Anadir nueva tarjeta",
-    "removeError": "No se pudo eliminar"
+    "noCardsDesc": "Añade una tarjeta para agilizar tus próximos pagos",
+    "addNewCard": "Añadir nueva tarjeta",
+    "removeError": "No se pudo eliminar",
+    "default": "Predeterminada",
+    "expires": "Vence {date}"
   },
   "wearables": {
     "connectedApps": "Apps conectadas",

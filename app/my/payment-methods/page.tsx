@@ -22,20 +22,60 @@ interface SavedCard {
   last4: string;
   expMonth: number;
   expYear: number;
+  isDefault?: boolean;
 }
 
-const brandLabels: Record<string, string> = {
-  visa: "Visa",
-  mastercard: "Mastercard",
-  amex: "Amex",
-  discover: "Discover",
-};
-
 function BrandIcon({ brand }: { brand: string }) {
-  const label = brandLabels[brand] ?? brand;
+  const b = brand.toLowerCase();
+
+  if (b === "mastercard") {
+    return (
+      <div className="flex h-9 w-12 items-center justify-center rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-border/40">
+        <svg viewBox="0 0 38 24" className="h-5" aria-label="Mastercard">
+          <circle cx="15" cy="12" r="8" fill="#EB001B" />
+          <circle cx="23" cy="12" r="8" fill="#F79E1B" />
+          <path
+            d="M19 5.7a8 8 0 010 12.6 8 8 0 010-12.6z"
+            fill="#FF5F00"
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  if (b === "visa") {
+    return (
+      <div className="flex h-9 w-12 items-center justify-center rounded-lg bg-[#1A1F71] shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+        <span className="font-display text-[11px] font-black italic tracking-tight text-white">
+          VISA
+        </span>
+      </div>
+    );
+  }
+
+  if (b === "amex" || b === "american_express") {
+    return (
+      <div className="flex h-9 w-12 items-center justify-center rounded-lg bg-[#2E77BB] shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+        <span className="text-[9px] font-extrabold tracking-tight text-white">
+          AMEX
+        </span>
+      </div>
+    );
+  }
+
+  if (b === "discover") {
+    return (
+      <div className="flex h-9 w-12 items-center justify-center rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-border/40">
+        <span className="text-[8px] font-extrabold uppercase tracking-tight text-[#FF6F00]">
+          Discover
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-10 w-14 items-center justify-center rounded-lg border border-border/40 bg-card text-[11px] font-bold uppercase tracking-wider text-muted">
-      {label}
+    <div className="flex h-9 w-12 items-center justify-center rounded-lg bg-surface ring-1 ring-border/40">
+      <CreditCard className="h-4 w-4 text-muted" />
     </div>
   );
 }
@@ -108,37 +148,59 @@ export default function PaymentMethodsPage() {
         ) : (
           <div className="space-y-2">
             <AnimatePresence>
-              {cards.map((card) => (
-                <motion.div
-                  key={card.id}
-                  layout
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -40 }}
-                  className="flex items-center gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3.5"
-                >
-                  <BrandIcon brand={card.brand} />
-                  <div className="flex-1">
-                    <p className="text-[15px] font-medium text-foreground">
-                      ····  {card.last4}
-                    </p>
-                    <p className="text-xs text-muted">
-                      {String(card.expMonth).padStart(2, "0")}/{String(card.expYear).slice(-2)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => removeMutation.mutate(card.id)}
-                    disabled={removingId === card.id}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors hover:bg-red-50 hover:text-red-500"
+              {cards.map((card) => {
+                const brandName =
+                  card.brand === "mastercard"
+                    ? "Mastercard"
+                    : card.brand === "visa"
+                      ? "Visa"
+                      : card.brand === "amex" || card.brand === "american_express"
+                        ? "Amex"
+                        : card.brand === "discover"
+                          ? "Discover"
+                          : "Tarjeta";
+                return (
+                  <motion.div
+                    key={card.id}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -40 }}
+                    className="flex items-center gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3.5"
                   >
-                    {removingId === card.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </button>
-                </motion.div>
-              ))}
+                    <BrandIcon brand={card.brand} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[15px] font-semibold text-foreground">
+                          {brandName} ·· {card.last4}
+                        </p>
+                        {card.isDefault && (
+                          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+                            <Check className="mr-0.5 inline h-2.5 w-2.5" />
+                            {t("default")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted">
+                        {t("expires", {
+                          date: `${String(card.expMonth).padStart(2, "0")}/${String(card.expYear).slice(-2)}`,
+                        })}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => removeMutation.mutate(card.id)}
+                      disabled={removingId === card.id}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors hover:bg-red-50 hover:text-red-500"
+                    >
+                      {removingId === card.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
         )}

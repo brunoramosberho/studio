@@ -2244,7 +2244,9 @@
     "noCards": "No saved cards",
     "noCardsDesc": "Add a card to speed up your future payments",
     "addNewCard": "Add new card",
-    "removeError": "Failed to remove"
+    "removeError": "Failed to remove",
+    "default": "Default",
+    "expires": "Expires {date}"
   },
   "wearables": {
     "connectedApps": "Connected apps",
