@@ -60,7 +60,7 @@ async function main() {
   // Lazy-load so the env-loader above has a chance to populate DATABASE_URL
   // and STRIPE_SECRET_KEY before the Prisma / Stripe clients initialize.
   const { prisma } = await import("@/lib/db");
-  const { getStripe } = await import("@/lib/stripe/client");
+  const { getStripeClientForTenantId } = await import("@/lib/stripe/tenant-stripe");
 
   const tenant = await prisma.tenant.findUnique({ where: { slug } });
   if (!tenant) {
@@ -72,7 +72,23 @@ async function main() {
     process.exit(1);
   }
 
-  const stripe = getStripe();
+  // Pick the Stripe SDK that matches the tenant's mode (live or sandbox).
+  // If the env var is mismatched (e.g. local .env has a test key but the
+  // tenant is live), bail with a clear instruction instead of letting
+  // Stripe respond with the cryptic "key does not have access" error.
+  const stripe = await getStripeClientForTenantId(tenant.id);
+  const usingTestKey = (stripe as unknown as { _api?: { auth?: string } })._api?.auth?.includes(
+    "sk_test_",
+  );
+  const tenantIsLive = !tenant.stripeSandboxMode;
+  if (tenantIsLive && usingTestKey) {
+    console.error(
+      `\n✗ Tenant "${slug}" is in LIVE mode but STRIPE_SECRET_KEY in your env is a TEST key.\n` +
+        `  Re-run with the live key explicitly:\n` +
+        `    STRIPE_SECRET_KEY=sk_live_xxx npx tsx scripts/register-apple-pay-domain.ts ${slug} ${domain}\n`,
+    );
+    process.exit(1);
+  }
 
   console.log(
     `Registering ${domain} on connected account ${tenant.stripeAccountId} (${tenant.name})…`,
