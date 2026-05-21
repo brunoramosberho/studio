@@ -257,6 +257,36 @@ model Tenant {
   staffPayRates           StaffPayRate[]
   staffCommissionRules    StaffCommissionRule[]
   staffCommissionEarnings StaffCommissionEarning[]
+  leads                   Lead[]
+}
+
+/// People who showed interest (filled their info in a guest checkout, requested
+/// a magic link, etc.) but haven't become a "real" client yet (no Membership
+/// with role=CLIENT). Eventually converted to a User when they pay or sign in;
+/// `convertedUserId` stamps the link so analytics can attribute the conversion.
+model Lead {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  email           String
+  name            String?
+  phone           String?
+  /// Where the lead was captured from. Examples:
+  /// "booking_flow" — typed info in the /class/[id] guest form
+  /// "package_purchase" — typed info in the /packages purchase sheet
+  /// "magic_link" — requested a magic link
+  /// "admin_manual" — added manually by the studio admin
+  source          String?
+  /// When the lead becomes a real customer, the User row's id. Null until
+  /// conversion.
+  convertedUserId String?
+  convertedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([tenantId, convertedAt])
 }
 
 model InstagramIntegration {

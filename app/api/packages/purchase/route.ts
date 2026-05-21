@@ -192,6 +192,19 @@ export async function POST(request: NextRequest) {
       update: {},
     });
 
+    // If this buyer was tracked as a Lead, mark it as converted now.
+    // Fire-and-forget — never block the cobro on lead bookkeeping.
+    prisma.lead
+      .updateMany({
+        where: {
+          tenantId: tenant.id,
+          email: (email ?? "").toLowerCase() || undefined,
+          convertedUserId: null,
+        },
+        data: { convertedUserId: finalUserId, convertedAt: new Date() },
+      })
+      .catch(() => {});
+
     if (await userHasOpenDebt(finalUserId, tenant.id)) {
       return NextResponse.json(
         {

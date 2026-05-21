@@ -151,6 +151,21 @@ export function PurchaseSheet({
     setError(null);
     setStep("processing");
 
+    if (!isLoggedIn && guestEmail.trim()) {
+      // Fire-and-forget Lead capture — idempotent server-side, skips known
+      // members. /api/packages/purchase will mark the lead as converted if
+      // the cobro succeeds.
+      fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: guestEmail.trim(),
+          name: guestName.trim() || undefined,
+          source: "package_purchase",
+        }),
+      }).catch(() => {});
+    }
+
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30_000);

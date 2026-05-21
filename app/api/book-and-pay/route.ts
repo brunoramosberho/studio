@@ -132,6 +132,18 @@ export async function POST(request: NextRequest) {
         create: { userId: finalUserId, tenantId: tenant.id, role: "CLIENT" },
         update: {},
       });
+
+      // Convert any Lead row that matches this email.
+      prisma.lead
+        .updateMany({
+          where: {
+            tenantId: tenant.id,
+            email: (finalEmail ?? "").toLowerCase() || undefined,
+            convertedUserId: null,
+          },
+          data: { convertedUserId: finalUserId, convertedAt: new Date() },
+        })
+        .catch(() => {});
     }
 
     const existingBooking = await prisma.booking.findFirst({

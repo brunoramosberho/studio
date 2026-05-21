@@ -243,6 +243,19 @@ export function BookingSheet({
     e.preventDefault();
     if (!guestName.trim() || !guestEmail.trim()) return;
     if (showPhoneField && guestPhone && !isValidPhoneNumber(guestPhone)) return;
+    // Capture as a Lead — they're engaged enough to share their info. The
+    // endpoint is idempotent and skips known members, so it's safe to call
+    // every time. Fire-and-forget so the UI never blocks on it.
+    fetch("/api/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: guestEmail.trim(),
+        name: guestName.trim(),
+        phone: guestPhone || undefined,
+        source: "booking_flow",
+      }),
+    }).catch(() => {});
     setStep("package");
   }
 

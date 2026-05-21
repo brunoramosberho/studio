@@ -144,6 +144,22 @@ async function ensureMembership(
     .then(({ tryLinkMagicUserToWellhub }) => tryLinkMagicUserToWellhub({ tenantId, userId }))
     .catch((err) => console.error("[wellhub] auto-link on new membership failed", err));
 
+  // Convert any Lead row for this email to a real client. Fire-and-forget.
+  prisma.user
+    .findUnique({ where: { id: userId }, select: { email: true } })
+    .then((u) => {
+      if (!u?.email) return null;
+      return prisma.lead.updateMany({
+        where: {
+          tenantId,
+          email: u.email.toLowerCase(),
+          convertedUserId: null,
+        },
+        data: { convertedUserId: userId, convertedAt: new Date() },
+      });
+    })
+    .catch((err) => console.error("[lead] convert on membership failed", err));
+
   return created;
 }
 
