@@ -123,6 +123,46 @@ export async function POST(request: NextRequest) {
         }
         break;
       }
+
+      case "invoice.payment_action_required": {
+        // SaaS renewal where the studio's card needs SCA. Same status as
+        // payment_failed so the admin sees a "Resolve in billing" CTA; the
+        // dedicated email/banner is a TODO when there's actual traffic.
+        const invoiceRaw = event.data.object as unknown as Record<string, unknown>;
+        const subId =
+          typeof invoiceRaw.subscription === "string"
+            ? invoiceRaw.subscription
+            : null;
+        if (subId) {
+          await prisma.tenant.updateMany({
+            where: { stripeSubscriptionId: subId },
+            data: { subscriptionStatus: "past_due" },
+          });
+        }
+        console.log(
+          `[stripe-platform-webhook] invoice.payment_action_required for sub ${subId} — studio admin needs to re-authenticate`,
+        );
+        break;
+      }
+
+      case "invoice.upcoming": {
+        // Default: 7 días antes de la renovación. Aprovéchalo para enviar
+        // un correo de heads-up al admin del studio ("tu suscripción Magic
+        // se renueva el X por Y €"). Solo log por ahora.
+        const invoiceRaw = event.data.object as unknown as Record<string, unknown>;
+        const subId =
+          typeof invoiceRaw.subscription === "string"
+            ? invoiceRaw.subscription
+            : null;
+        const nextAttempt =
+          typeof invoiceRaw.next_payment_attempt === "number"
+            ? new Date(invoiceRaw.next_payment_attempt * 1000)
+            : null;
+        console.log(
+          `[stripe-platform-webhook] invoice.upcoming for sub ${subId} — next attempt ${nextAttempt?.toISOString() ?? "unknown"}`,
+        );
+        break;
+      }
     }
 
     return NextResponse.json({ received: true });

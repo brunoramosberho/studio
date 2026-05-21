@@ -570,6 +570,50 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case "invoice.payment_action_required": {
+        // Renovación automática que el banco bloqueó pidiendo SCA. Stripe
+        // ya intentó cobrar y necesita que el cliente vuelva a confirmar.
+        // Marcamos la suscripción como past_due para que la UI/cron pueda
+        // alertar al cliente y mostrar el siguiente CTA.
+        const inv = event.data.object as unknown as Record<string, unknown>;
+        const subId =
+          typeof inv.subscription === "string"
+            ? inv.subscription
+            : (inv.subscription as Record<string, string> | null)?.id;
+        if (!subId) break;
+        await prisma.memberSubscription.updateMany({
+          where: { stripeSubscriptionId: subId },
+          data: { status: "past_due" },
+        });
+        // TODO: enviar email/push al member para que vuelva a /my/subscription
+        // y complete el 3DS. Por ahora dejamos solo el cambio de status.
+        console.log(
+          `[stripe-webhook] invoice.payment_action_required for sub ${subId} — member needs to re-authenticate`,
+        );
+        break;
+      }
+
+      case "invoice.upcoming": {
+        // Stripe avisa N días antes de la renovación (default: 7). Útil para
+        // armar un correo "tu suscripción se renueva el X por Y €". El flag
+        // queda registrado en logs; el email real lo armamos cuando empiece
+        // a haber tráfico de renovaciones reales.
+        const inv = event.data.object as unknown as Record<string, unknown>;
+        const subId =
+          typeof inv.subscription === "string"
+            ? inv.subscription
+            : (inv.subscription as Record<string, string> | null)?.id;
+        const nextAttempt =
+          typeof inv.next_payment_attempt === "number"
+            ? new Date(inv.next_payment_attempt * 1000)
+            : null;
+        console.log(
+          `[stripe-webhook] invoice.upcoming for sub ${subId} — next attempt ${nextAttempt?.toISOString() ?? "unknown"}`,
+        );
+        // TODO: enviar email al member ("tu suscripción se renueva en N días")
+        break;
+      }
+
       case "invoice.payment_failed": {
         const inv = event.data.object as unknown as Record<string, unknown>;
         const subId =
