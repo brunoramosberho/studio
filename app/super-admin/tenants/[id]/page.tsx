@@ -27,6 +27,7 @@ interface TenantDetail {
   name: string;
   isActive: boolean;
   stripeSandboxMode: boolean;
+  applicationFeePercent: number;
   tagline: string;
   slogan: string;
   logoUrl: string | null;
@@ -142,6 +143,45 @@ export default function TenantDetailPage({
       setTenant((prev) =>
         prev ? { ...prev, stripeSandboxMode: updated.stripeSandboxMode } : prev,
       );
+    }
+  }
+
+  const [feeInput, setFeeInput] = useState<string>("");
+  const [savingFee, setSavingFee] = useState(false);
+  const [feeResult, setFeeResult] = useState<string | null>(null);
+  useEffect(() => {
+    if (tenant && feeInput === "")
+      setFeeInput(String(tenant.applicationFeePercent ?? 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant?.applicationFeePercent]);
+
+  async function saveApplicationFeePercent() {
+    if (!tenant) return;
+    const parsed = Number(feeInput);
+    if (Number.isNaN(parsed) || parsed < 0 || parsed > 100) {
+      setFeeResult("Error: debe ser un número entre 0 y 100");
+      return;
+    }
+    setSavingFee(true);
+    setFeeResult(null);
+    try {
+      const res = await fetch(`/api/super-admin/tenants/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationFeePercent: parsed }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeeResult(`Error: ${data.error ?? "no se pudo guardar"}`);
+        return;
+      }
+      setTenant((prev) =>
+        prev ? { ...prev, applicationFeePercent: data.applicationFeePercent } : prev,
+      );
+      setFeeResult(`✓ Guardado: ${parsed}% por transacción`);
+      setTimeout(() => setFeeResult(null), 2500);
+    } finally {
+      setSavingFee(false);
     }
   }
 
@@ -358,6 +398,46 @@ export default function TenantDetailPage({
               </span>
             </span>
           </label>
+
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-sm font-medium text-gray-900">
+              Comisión Magic por transacción
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Porcentaje que se aplica como <code className="rounded bg-gray-100 px-1">application_fee</code> en cada cobro al estudiante. 0 = sin comisión, no se rompe el cobro.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step="0.05"
+                value={feeInput}
+                onChange={(e) => setFeeInput(e.target.value)}
+                className="w-28"
+              />
+              <span className="text-sm text-gray-500">%</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={saveApplicationFeePercent}
+                disabled={savingFee}
+              >
+                {savingFee ? "Guardando…" : "Guardar"}
+              </Button>
+            </div>
+            {feeResult && (
+              <p
+                className={`mt-2 text-xs ${
+                  feeResult.startsWith("Error")
+                    ? "text-red-600"
+                    : "text-emerald-600"
+                }`}
+              >
+                {feeResult}
+              </p>
+            )}
+          </div>
 
           <div className="border-t border-gray-100 pt-4">
             <div className="flex items-center justify-between gap-3">
