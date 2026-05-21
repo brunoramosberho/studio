@@ -25,6 +25,7 @@ function isAdminPortalPath(pathname: string): boolean {
     pathname.startsWith("/api/check-in") ||
     pathname.startsWith("/api/platforms") ||
     pathname.startsWith("/api/coaches/availability") ||
+    pathname.startsWith("/api/loyalty-levels") ||
     pathname.startsWith("/api/stripe/connect") ||
     pathname.startsWith("/api/stripe/subscription") ||
     pathname.startsWith("/api/stripe/billing-portal")
