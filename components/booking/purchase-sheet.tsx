@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession, signIn } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -317,6 +317,28 @@ export function PurchaseSheet({
                 <p className="mt-1 text-sm text-muted">
                   Revisa los detalles de tu paquete
                 </p>
+
+                {isLoggedIn && session?.user?.email && (
+                  <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface/60 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-muted">
+                        Comprando como
+                      </p>
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {session.user.email}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        signOut({ callbackUrl: window.location.href })
+                      }
+                      className="flex-shrink-0 text-xs font-semibold text-accent hover:underline"
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                )}
 
                 {error && (
                   <div className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">

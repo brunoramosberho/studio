@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useSession, signIn } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
@@ -597,11 +597,33 @@ export function BookingSheet({
                 <h2 className="mb-1 font-display text-xl font-bold text-foreground">
                   {t("chooseYourPackage")}
                 </h2>
-                <p className="mb-5 text-sm text-muted">
+                <p className="mb-3 text-sm text-muted">
                   {!isLoggedIn && guestEmail
                     ? t("forEmail", { email: guestEmail })
                     : t("selectPackageToBook")}
                 </p>
+
+                {isLoggedIn && session?.user?.email && (
+                  <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface/60 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-muted">
+                        Reservando como
+                      </p>
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {session.user.email}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        signOut({ callbackUrl: window.location.href })
+                      }
+                      className="flex-shrink-0 text-xs font-semibold text-accent hover:underline"
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                )}
 
                 {error && (
                   <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
