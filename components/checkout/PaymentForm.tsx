@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   Elements,
+  ExpressCheckoutElement,
   PaymentElement,
   useStripe,
   useElements,
@@ -146,12 +147,66 @@ function CheckoutForm({
     currency,
   }).format(amount);
 
+  // Express Checkout (Apple Pay / Google Pay / Link buttons above the form)
+  // confirms the payment directly when the user taps the wallet button.
+  // Stripe redirects to return_url after the wallet completes, same as the
+  // regular card submit below.
+  const handleExpressConfirm = async () => {
+    if (!stripe || !elements) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { error: confirmError } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url:
+            returnUrl ?? `${window.location.origin}/payment/success`,
+        },
+      });
+      if (confirmError) {
+        setError(confirmError.message ?? "Error al procesar el pago");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Error al procesar el pago",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const [hasExpressOption, setHasExpressOption] = useState(false);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Wallet buttons (Apple Pay, Google Pay, Link) shown prominently above
+          the card form when the device supports them. */}
+      <div className={hasExpressOption ? "space-y-3" : "hidden"}>
+        <ExpressCheckoutElement
+          onConfirm={handleExpressConfirm}
+          onReady={(event) => {
+            setHasExpressOption(
+              !!event.availablePaymentMethods &&
+                Object.values(event.availablePaymentMethods).some(Boolean),
+            );
+          }}
+          options={{
+            buttonType: { applePay: "buy", googlePay: "buy" },
+            buttonHeight: 48,
+            layout: { maxColumns: 1, overflow: "auto" },
+          }}
+        />
+        <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted">
+          <div className="h-px flex-1 bg-border/60" />
+          <span>o paga con tarjeta</span>
+          <div className="h-px flex-1 bg-border/60" />
+        </div>
+      </div>
+
       <PaymentElement
         options={{
           layout: "accordion",
-          wallets: { applePay: "auto", googlePay: "auto" },
+          wallets: { applePay: "never", googlePay: "never" },
           defaultValues: {
             billingDetails: {
               name: session?.user?.name ?? undefined,
