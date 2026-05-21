@@ -133,17 +133,21 @@ export async function POST(request: NextRequest) {
         update: {},
       });
 
-      // Convert any Lead row that matches this email.
-      prisma.lead
-        .updateMany({
-          where: {
-            tenantId: tenant.id,
-            email: (finalEmail ?? "").toLowerCase() || undefined,
-            convertedUserId: null,
-          },
-          data: { convertedUserId: finalUserId, convertedAt: new Date() },
-        })
-        .catch(() => {});
+      // Convert any Lead row that matches this email. Resolve the email
+      // first so we never issue an unfiltered updateMany.
+      const buyerEmailForLead = (finalEmail ?? "").toLowerCase().trim() || null;
+      if (buyerEmailForLead) {
+        prisma.lead
+          .updateMany({
+            where: {
+              tenantId: tenant.id,
+              email: buyerEmailForLead,
+              convertedUserId: null,
+            },
+            data: { convertedUserId: finalUserId, convertedAt: new Date() },
+          })
+          .catch(() => {});
+      }
     }
 
     const existingBooking = await prisma.booking.findFirst({
