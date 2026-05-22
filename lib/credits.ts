@@ -12,6 +12,8 @@ export interface UserPackageForBooking {
   package: {
     classTypes: { id: string }[];
     creditAllocations: { classTypeId: string }[];
+    maxBookingsPerDay: number | null;
+    maxConcurrentUpcomingBookings: number | null;
   };
   creditUsages: {
     id: string;

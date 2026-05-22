@@ -157,6 +157,37 @@ export async function PUT(
       }
     }
 
+    function readOptionalPositiveInt(
+      value: unknown,
+      label: string,
+    ): { ok: true; v: number | null } | { ok: false; res: NextResponse } {
+      if (value === null || value === "") return { ok: true, v: null };
+      const n = typeof value === "number" ? value : parseInt(String(value), 10);
+      if (Number.isNaN(n) || n < 1) {
+        return {
+          ok: false,
+          res: NextResponse.json(
+            { error: `${label} must be a positive integer` },
+            { status: 400 },
+          ),
+        };
+      }
+      return { ok: true, v: n };
+    }
+    if (body.maxBookingsPerDay !== undefined) {
+      const parsed = readOptionalPositiveInt(body.maxBookingsPerDay, "maxBookingsPerDay");
+      if (!parsed.ok) return parsed.res;
+      data.maxBookingsPerDay = parsed.v;
+    }
+    if (body.maxConcurrentUpcomingBookings !== undefined) {
+      const parsed = readOptionalPositiveInt(
+        body.maxConcurrentUpcomingBookings,
+        "maxConcurrentUpcomingBookings",
+      );
+      if (!parsed.ok) return parsed.res;
+      data.maxConcurrentUpcomingBookings = parsed.v;
+    }
+
     if (classTypeIds !== undefined) {
       if (!Array.isArray(classTypeIds)) {
         return NextResponse.json({ error: "classTypeIds must be an array" }, { status: 400 });

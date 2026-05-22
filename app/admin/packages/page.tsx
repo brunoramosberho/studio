@@ -63,6 +63,8 @@ interface PackageData {
   maxGuestsPerBooking: number | null;
   monthlyGuestPasses: number | null;
   includesOnDemand: boolean;
+  maxBookingsPerDay: number | null;
+  maxConcurrentUpcomingBookings: number | null;
 }
 
 type PackageKind = PackageData["type"];
@@ -140,6 +142,8 @@ interface FormState {
   maxGuestsPerBooking: string;
   monthlyGuestPasses: string;
   includesOnDemand: boolean;
+  maxBookingsPerDay: string;
+  maxConcurrentUpcomingBookings: string;
 }
 
 function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
@@ -162,6 +166,8 @@ function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
     maxGuestsPerBooking: "",
     monthlyGuestPasses: "",
     includesOnDemand: false,
+    maxBookingsPerDay: "",
+    maxConcurrentUpcomingBookings: "",
   };
 }
 
@@ -194,6 +200,9 @@ function formFromPackage(pkg: PackageData, defaultCurrency = "EUR"): FormState {
     maxGuestsPerBooking: pkg.maxGuestsPerBooking == null ? "" : String(pkg.maxGuestsPerBooking),
     monthlyGuestPasses: pkg.monthlyGuestPasses == null ? "" : String(pkg.monthlyGuestPasses),
     includesOnDemand: pkg.includesOnDemand ?? false,
+    maxBookingsPerDay: pkg.maxBookingsPerDay == null ? "" : String(pkg.maxBookingsPerDay),
+    maxConcurrentUpcomingBookings:
+      pkg.maxConcurrentUpcomingBookings == null ? "" : String(pkg.maxConcurrentUpcomingBookings),
   };
 }
 
@@ -252,6 +261,14 @@ function buildPayload(form: FormState) {
     maxGuestsPerBooking: maxGuestsPerBooking != null && !Number.isNaN(maxGuestsPerBooking) ? maxGuestsPerBooking : null,
     monthlyGuestPasses: monthlyGuestPasses != null && !Number.isNaN(monthlyGuestPasses) ? monthlyGuestPasses : null,
     includesOnDemand: form.type === "SUBSCRIPTION" ? form.includesOnDemand : false,
+    maxBookingsPerDay:
+      form.type === "SUBSCRIPTION" && form.maxBookingsPerDay.trim() !== ""
+        ? parseInt(form.maxBookingsPerDay, 10)
+        : null,
+    maxConcurrentUpcomingBookings:
+      form.type === "SUBSCRIPTION" && form.maxConcurrentUpcomingBookings.trim() !== ""
+        ? parseInt(form.maxConcurrentUpcomingBookings, 10)
+        : null,
   };
 }
 
@@ -897,6 +914,59 @@ export default function AdminPackagesPage() {
                     <span className="ml-1 text-xs text-muted">{t("includesOnDemandHint")}</span>
                   </span>
                 </label>
+              </div>
+            ) : null}
+
+            {form.type === "SUBSCRIPTION" ? (
+              <div className="space-y-3 rounded-xl border border-input-border/60 bg-surface/50 p-3">
+                <p className="text-sm font-medium">Límites de uso</p>
+                <p className="text-xs text-muted">
+                  Opcionales. Útiles en planes ilimitados para evitar uso excesivo sin perder el gancho de &quot;ilimitado&quot;.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium" htmlFor="pkg-max-day">
+                      Máx. reservas por día
+                    </label>
+                    <Input
+                      id="pkg-max-day"
+                      type="number"
+                      min={1}
+                      value={form.maxBookingsPerDay}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, maxBookingsPerDay: e.target.value }))
+                      }
+                      placeholder="Sin límite"
+                    />
+                    <p className="mt-1 text-xs text-muted">
+                      Reservas activas en el mismo día (horario del estudio).
+                    </p>
+                  </div>
+                  <div>
+                    <label
+                      className="mb-1 block text-xs font-medium"
+                      htmlFor="pkg-max-concurrent"
+                    >
+                      Máx. reservas futuras simultáneas
+                    </label>
+                    <Input
+                      id="pkg-max-concurrent"
+                      type="number"
+                      min={1}
+                      value={form.maxConcurrentUpcomingBookings}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          maxConcurrentUpcomingBookings: e.target.value,
+                        }))
+                      }
+                      placeholder="Sin límite"
+                    />
+                    <p className="mt-1 text-xs text-muted">
+                      Reservas pendientes a futuro al mismo tiempo. Evita acaparar slots peak.
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : null}
 
