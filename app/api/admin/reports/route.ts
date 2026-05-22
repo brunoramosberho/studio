@@ -185,18 +185,22 @@ export async function GET() {
         },
       }),
 
-      // Revenue today
+      // Revenue today. Status filter excludes PENDING_PAYMENT / PAYMENT_FAILED
+      // / REVOKED / DISPUTED so abandoned checkouts and refunded purchases
+      // don't inflate the dashboard total. (Not the canonical ASC 606 number —
+      // that's RevenueEvent — but a meaningful gross-sales figure.)
       prisma.userPackage.findMany({
         where: {
           purchasedAt: { gte: todayStart, lte: todayEnd },
           tenantId,
+          status: "ACTIVE",
         },
         include: { package: { select: { price: true } } },
       }),
 
       // Revenue this month
       prisma.userPackage.findMany({
-        where: { purchasedAt: { gte: monthStart }, tenantId },
+        where: { purchasedAt: { gte: monthStart }, tenantId, status: "ACTIVE" },
         include: { package: { select: { price: true, type: true } } },
       }),
 
@@ -205,6 +209,7 @@ export async function GET() {
         where: {
           purchasedAt: { gte: prevMonthStart, lt: monthStart },
           tenantId,
+          status: "ACTIVE",
         },
         include: { package: { select: { price: true } } },
       }),
