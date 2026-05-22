@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
+  CalendarClock,
   Clock,
   CreditCard,
   Gift,
@@ -16,6 +17,7 @@ import {
   Share2,
   Check,
   Video,
+  Sunrise,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -54,6 +56,8 @@ interface PackageData {
   recurringInterval: string | null;
   sortOrder: number;
   includesOnDemand?: boolean;
+  maxBookingsPerDay?: number | null;
+  maxConcurrentUpcomingBookings?: number | null;
 }
 
 const SUBSCRIPTION_TYPES_DETAIL: PackageData["type"][] = [
@@ -253,6 +257,27 @@ export default function PackageDetailPage() {
               <div className="flex items-center gap-2.5 text-sm text-muted">
                 <Ticket className="h-4 w-4 flex-shrink-0" />
                 <span>Clases ilimitadas</span>
+              </div>
+            )}
+            {pkg.maxBookingsPerDay != null && (
+              <div className="flex items-center gap-2.5 text-sm text-muted">
+                <Sunrise className="h-4 w-4 flex-shrink-0" />
+                <span>
+                  Máximo {pkg.maxBookingsPerDay}{" "}
+                  {pkg.maxBookingsPerDay === 1 ? "reserva" : "reservas"} por día
+                </span>
+              </div>
+            )}
+            {pkg.maxConcurrentUpcomingBookings != null && (
+              <div className="flex items-center gap-2.5 text-sm text-muted">
+                <CalendarClock className="h-4 w-4 flex-shrink-0" />
+                <span>
+                  Hasta {pkg.maxConcurrentUpcomingBookings}{" "}
+                  {pkg.maxConcurrentUpcomingBookings === 1
+                    ? "reserva futura pendiente"
+                    : "reservas futuras pendientes"}{" "}
+                  a la vez
+                </span>
               </div>
             )}
           </motion.div>

@@ -155,6 +155,24 @@ export async function POST(request: NextRequest) {
 
     const hasAllocations = Array.isArray(creditAllocations) && creditAllocations.length > 0;
 
+    function parseOptionalPositiveInt(value: unknown): { ok: true; v: number | null } | { ok: false; error: string } {
+      if (value === undefined || value === null || value === "") return { ok: true, v: null };
+      const n = typeof value === "number" ? value : parseInt(String(value), 10);
+      if (Number.isNaN(n) || n < 1) return { ok: false, error: "must be a positive integer" };
+      return { ok: true, v: n };
+    }
+    const dayLimit = parseOptionalPositiveInt(body.maxBookingsPerDay);
+    if (!dayLimit.ok) {
+      return NextResponse.json({ error: `maxBookingsPerDay ${dayLimit.error}` }, { status: 400 });
+    }
+    const concurrentLimit = parseOptionalPositiveInt(body.maxConcurrentUpcomingBookings);
+    if (!concurrentLimit.ok) {
+      return NextResponse.json({ error: `maxConcurrentUpcomingBookings ${concurrentLimit.error}` }, { status: 400 });
+    }
+    // Limits only make sense for SUBSCRIPTION packages — strip them on other types
+    // so the form doesn't accidentally persist leftover values.
+    const isSubscription = pkgType === PackageType.SUBSCRIPTION;
+
     const created = await prisma.package.create({
       data: {
         tenantId: ctx.tenant.id,
@@ -183,6 +201,8 @@ export async function POST(request: NextRequest) {
         monthlyGuestPasses: body.monthlyGuestPasses != null && !Number.isNaN(Number(body.monthlyGuestPasses)) ? Number(body.monthlyGuestPasses) : null,
         includesOnDemand:
           pkgType === PackageType.SUBSCRIPTION ? Boolean(body.includesOnDemand) : false,
+        maxBookingsPerDay: isSubscription ? dayLimit.v : null,
+        maxConcurrentUpcomingBookings: isSubscription ? concurrentLimit.v : null,
         ...(Array.isArray(classTypeIds) && classTypeIds.length > 0
           ? {
               classTypes: {

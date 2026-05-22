@@ -943,6 +943,15 @@ model Package {
   maxGuestsPerBooking Int?
   monthlyGuestPasses  Int?
 
+  // Booking-rate limits for subscriptions. Both are null = unlimited.
+  // maxBookingsPerDay caps how many class slots a member can hold for the same
+  // calendar day (studio TZ) via this Package — prevents 2-a-day power use.
+  // maxConcurrentUpcomingBookings caps how many future CONFIRMED bookings a
+  // member can have open at once on this Package — prevents calendar hoarding
+  // of peak slots that the member never ends up attending.
+  maxBookingsPerDay             Int?
+  maxConcurrentUpcomingBookings Int?
+
   // When true, members holding this package (or subscription) also get access
   // to the studio's on-demand video catalogue without needing a separate
   // ON_DEMAND_SUBSCRIPTION. Used to bundle on-demand into existing unlimited

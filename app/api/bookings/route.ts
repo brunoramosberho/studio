@@ -6,6 +6,7 @@ import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
 import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeForBooking } from "@/lib/credits";
+import { checkSubscriptionBookingLimits, type BookingLimitFailure } from "@/lib/booking/limits";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
@@ -312,6 +313,19 @@ export async function POST(request: NextRequest) {
     let creditsDeducted = 0;
     let creditsDeductedClassTypeId: string | null = null;
 
+    const studioTimezone =
+      classData.room.studio.city?.timezone ?? "Europe/Madrid";
+
+    function limitErrorResponse(failure: BookingLimitFailure) {
+      const msg =
+        failure.reason === "DAY"
+          ? failure.max === 1
+            ? "Tu plan permite máximo 1 reserva por día con este paquete. Cancela otra clase del mismo día para reservar."
+            : `Tu plan permite máximo ${failure.max} reservas por día con este paquete. Cancela otra clase del mismo día para reservar.`
+          : `Tienes ${failure.current} reserva(s) futura(s) pendiente(s) con este paquete (máximo ${failure.max}). Toma o cancela una para reservar otra.`;
+      return NextResponse.json({ error: msg }, { status: 409 });
+    }
+
     if (paymentAuthedPackage && !session?.user) {
       // Payment-authenticated path: use the just-purchased package directly.
       // We trust the StripePayment row we verified above; no debt or
@@ -329,6 +343,16 @@ export async function POST(request: NextRequest) {
           { status: 402 },
         );
       }
+      const limitCheck = await checkSubscriptionBookingLimits({
+        userPackageId: up.id,
+        userId: up.userId,
+        tenantId: tenant.id,
+        classStartsAt: classData.startsAt,
+        studioTimezone,
+        maxBookingsPerDay: up.package.maxBookingsPerDay,
+        maxConcurrentUpcomingBookings: up.package.maxConcurrentUpcomingBookings,
+      });
+      if (!limitCheck.ok) return limitErrorResponse(limitCheck);
       const creditsNeeded = totalPeople;
       const hasAllocations = up.creditUsages.length > 0;
       if (hasAllocations) {
@@ -394,6 +418,17 @@ export async function POST(request: NextRequest) {
           { status: 402 },
         );
       }
+
+      const limitCheck = await checkSubscriptionBookingLimits({
+        userPackageId: userPackage.id,
+        userId: session.user.id,
+        tenantId: tenant.id,
+        classStartsAt: classData.startsAt,
+        studioTimezone,
+        maxBookingsPerDay: userPackage.package.maxBookingsPerDay,
+        maxConcurrentUpcomingBookings: userPackage.package.maxConcurrentUpcomingBookings,
+      });
+      if (!limitCheck.ok) return limitErrorResponse(limitCheck);
 
       // Validate guests are allowed for this package
       if (guests.length > 0) {

@@ -1019,6 +1019,14 @@ interface NoCreditInfo {
   classInfo: { id: string; classTypeId: string; classTypeName: string; startsAt: string };
 }
 
+interface LimitBlock {
+  memberId: string;
+  spotNumber: number | null;
+  reason: "DAY" | "CONCURRENT";
+  current: number;
+  max: number;
+}
+
 function WalkInModal({
   classId,
   onClose,
@@ -1036,6 +1044,7 @@ function WalkInModal({
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [noCreditInfo, setNoCreditInfo] = useState<NoCreditInfo | null>(null);
   const [waiverBlock, setWaiverBlock] = useState<string | null>(null);
+  const [limitBlock, setLimitBlock] = useState<LimitBlock | null>(null);
   const [pendingMember, setPendingMember] = useState<{ id: string } | null>(null);
   const [showSpotPicker, setShowSpotPicker] = useState(false);
   const { openPOS } = usePosStore();
@@ -1084,11 +1093,28 @@ function WalkInModal({
   }
 
   const walkInMutation = useMutation({
-    mutationFn: async ({ memberId, skipWaiverCheck, spotNumber }: { memberId: string; skipWaiverCheck?: boolean; spotNumber?: number | null }) => {
+    mutationFn: async ({
+      memberId,
+      skipWaiverCheck,
+      spotNumber,
+      overrideLimit,
+    }: {
+      memberId: string;
+      skipWaiverCheck?: boolean;
+      spotNumber?: number | null;
+      overrideLimit?: boolean;
+    }) => {
       const res = await fetch("/api/check-in/walkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ classId, memberId, force: true, skipWaiverCheck, spotNumber }),
+        body: JSON.stringify({
+          classId,
+          memberId,
+          force: true,
+          skipWaiverCheck,
+          spotNumber,
+          overrideLimit,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1097,6 +1123,16 @@ function WalkInModal({
         }
         if (data.noCredits && data.member) {
           return { noCredits: true, member: data.member, classInfo: data.classInfo };
+        }
+        if (data.limitExceeded) {
+          return {
+            limitExceeded: true,
+            memberId,
+            spotNumber: spotNumber ?? null,
+            reason: data.reason as "DAY" | "CONCURRENT",
+            current: data.current as number,
+            max: data.max as number,
+          };
         }
         throw new Error(data.error ?? t("walkInError"));
       }
@@ -1109,6 +1145,16 @@ function WalkInModal({
       }
       if (data.noCredits) {
         setNoCreditInfo({ member: data.member, classInfo: data.classInfo });
+        return;
+      }
+      if (data.limitExceeded) {
+        setLimitBlock({
+          memberId: data.memberId,
+          spotNumber: data.spotNumber,
+          reason: data.reason,
+          current: data.current,
+          max: data.max,
+        });
         return;
       }
       toast.success(t("walkInAdded"));
@@ -1153,6 +1199,58 @@ function WalkInModal({
         }}
         onCancel={() => setWaiverBlock(null)}
       />
+    );
+  }
+
+  if (limitBlock) {
+    const message =
+      limitBlock.reason === "DAY"
+        ? `Este miembro ya tiene ${limitBlock.current} reserva(s) hoy con su plan (máximo ${limitBlock.max} por día).`
+        : `Este miembro ya tiene ${limitBlock.current} reservas futuras pendientes con su plan (máximo ${limitBlock.max}).`;
+    return (
+      <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
+        <div className="bg-card rounded-xl shadow-xl mx-4 max-w-sm w-full overflow-hidden">
+          <div className="flex items-center justify-between border-b border-stone-100 px-4 py-3">
+            <p className="text-sm font-medium text-stone-900">Límite del plan excedido</p>
+            <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="space-y-3 p-4">
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <p className="text-xs text-amber-800">{message}</p>
+            </div>
+            <p className="text-xs text-stone-600">
+              Puedes registrarlo de todos modos como excepción.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setLimitBlock(null)}
+                className="flex-1 rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const block = limitBlock;
+                  setLimitBlock(null);
+                  walkInMutation.mutate({
+                    memberId: block.memberId,
+                    spotNumber: block.spotNumber,
+                    overrideLimit: true,
+                  });
+                }}
+                className="flex-1 rounded-lg bg-admin px-3 py-2 text-sm font-medium text-white hover:bg-admin/90"
+              >
+                Registrar de todos modos
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
