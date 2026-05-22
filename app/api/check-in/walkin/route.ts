@@ -6,12 +6,13 @@ import {
   deductCredit,
   userPackageIncludeForBooking,
 } from "@/lib/credits";
+import { checkSubscriptionBookingLimits } from "@/lib/booking/limits";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 
 export async function POST(request: NextRequest) {
   try {
     const ctx = await requireRole("ADMIN", "FRONT_DESK");
-    const { classId, memberId, force, skipCreditCheck, skipWaiverCheck, spotNumber } = await request.json();
+    const { classId, memberId, force, skipCreditCheck, skipWaiverCheck, spotNumber, overrideLimit } = await request.json();
 
     if (!classId || !memberId) {
       return NextResponse.json({ error: "classId and memberId are required" }, { status: 400 });
@@ -21,7 +22,12 @@ export async function POST(request: NextRequest) {
       where: { id: classId, tenantId: ctx.tenant.id },
       include: {
         classType: { select: { id: true, name: true } },
-        room: { select: { maxCapacity: true } },
+        room: {
+          select: {
+            maxCapacity: true,
+            studio: { select: { city: { select: { timezone: true } } } },
+          },
+        },
         _count: {
           select: { bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } } },
         },
@@ -83,6 +89,36 @@ export async function POST(request: NextRequest) {
             startsAt: cls.startsAt.toISOString(),
           },
         }, { status: 402 });
+      }
+
+      // Plan booking-rate caps. Front-desk can override via overrideLimit=true,
+      // mirroring the existing `force` override for full classes.
+      if (!overrideLimit) {
+        const studioTimezone =
+          cls.room.studio?.city?.timezone ?? "Europe/Madrid";
+        const limitCheck = await checkSubscriptionBookingLimits({
+          userPackageId: matchingPackage.id,
+          userId: memberId,
+          tenantId: ctx.tenant.id,
+          classStartsAt: cls.startsAt,
+          studioTimezone,
+          maxBookingsPerDay: matchingPackage.package.maxBookingsPerDay,
+          maxConcurrentUpcomingBookings:
+            matchingPackage.package.maxConcurrentUpcomingBookings,
+        });
+        if (!limitCheck.ok) {
+          return NextResponse.json(
+            {
+              error: "Booking limit exceeded",
+              limitExceeded: true,
+              requiresConfirmation: true,
+              reason: limitCheck.reason,
+              current: limitCheck.current,
+              max: limitCheck.max,
+            },
+            { status: 409 },
+          );
+        }
       }
 
       // Has credits — now check waiver before allowing check-in
