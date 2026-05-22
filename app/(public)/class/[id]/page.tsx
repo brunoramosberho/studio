@@ -1117,16 +1117,31 @@ export default function ClassDetailPage() {
                     />
                   )}
 
-                  {/* Mobile install hint */}
+                  {/* Mobile install prompt → /install */}
                   {!isAuthenticated && guestEmail && typeof window !== "undefined" && /iPad|iPhone|iPod|android/i.test(navigator.userAgent) && !window.matchMedia("(display-mode: standalone)").matches && (
-                    <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface/80 p-3 sm:hidden">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10">
-                        <Share className="h-3.5 w-3.5 text-accent" />
+                    <Link
+                      href="/install"
+                      className="mt-4 flex items-center gap-3 rounded-2xl border border-border/50 bg-card p-3 transition-colors hover:bg-surface active:bg-surface sm:hidden"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/api/icon?size=192"
+                        alt=""
+                        width={48}
+                        height={48}
+                        className="shrink-0"
+                        style={{ borderRadius: 12 }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground">
+                          {t("pwaInstallTitle")}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted">
+                          {t("pwaInstallDesc")}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted">
-                        <strong className="text-foreground">Tip:</strong> {t("pwaTip")}
-                      </p>
-                    </div>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted" />
+                    </Link>
                   )}
 
                   {/* Song request prompt */}
