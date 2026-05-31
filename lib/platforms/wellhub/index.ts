@@ -8,8 +8,6 @@
 //       createWellhubClass, updateWellhubClass, hideWellhubClass,
 //       createWellhubSlot, updateWellhubSlot, patchWellhubSlot,
 //       deleteWellhubSlot, listWellhubSlots
-//   - Setup API (called from super-admin tooling):
-//       listIntegratedGyms, subscribeGymWebhooks, registerSystemNotificationWebhook
 //   - Pure helpers (no I/O — safe to import from anywhere):
 //       computeSignature, verifySignature, classToWellhubSlotPayload, …
 
@@ -18,13 +16,11 @@ export { WellhubApiError, WellhubConfigError } from "./errors";
 export {
   bookingApi,
   accessApi,
-  setupApi,
   bookingHealth,
   getWellhubEnv,
-  getWellhubAuthToken,
+  getWellhubTokenForTenant,
   getBookingBaseUrl,
   getAccessBaseUrl,
-  getSetupBaseUrl,
 } from "./client";
 
 export { computeSignature, verifySignature, SIGNATURE_HEADER } from "./webhooks";
@@ -67,6 +63,7 @@ export {
   processBookingRequested,
   processBookingCanceled,
   processCheckinBookingOccurred,
+  cascadeFreedSeat,
 } from "./bookings";
 
 export {
@@ -79,23 +76,11 @@ export {
 } from "./access-control";
 
 export {
-  listIntegratedGyms,
-  subscribeGymWebhooks,
-  updateGymWebhook,
-  listGymWebhooks,
-  getGymWebhook,
-  registerSystemNotificationWebhook,
-} from "./setup";
-
-export {
   resolveTenantByWellhubGymId,
   requireTenantByWellhubGymId,
 } from "./resolve";
 
-export {
-  verifyAndParseGymWebhook,
-  verifyAndParseSystemNotificationWebhook,
-} from "./webhook-handler";
+export { verifyAndParseGymWebhook } from "./webhook-handler";
 export type {
   WellhubWebhookFailure,
   WellhubWebhookSuccess,
@@ -115,6 +100,17 @@ export {
 } from "./matching";
 export type { LinkReason } from "./matching";
 
+export {
+  simulateBookingRequested,
+  simulateBookingCancel,
+  simulateCheckin,
+} from "./simulations";
+export type {
+  SimulateBookingArgs,
+  SimulateCancelArgs,
+  SimulateCheckinArgs,
+} from "./simulations";
+
 export type {
   WellhubBookingPatchPayload,
   WellhubBookingRejectionReason,
@@ -133,8 +129,6 @@ export type {
   WellhubSlotCreatePayload,
   WellhubSlotPatchPayload,
   WellhubSlotUpdatePayload,
-  WellhubSetupWebhookSubscription,
-  WellhubSystemIntegrationRequestedEvent,
   WellhubWebhookEvent,
   WellhubWebhookEventType,
 } from "./types";

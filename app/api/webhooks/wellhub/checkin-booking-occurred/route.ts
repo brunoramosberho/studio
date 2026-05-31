@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
     const outcome = await processCheckinBookingOccurred(result.event);
     return NextResponse.json({ received: true, ...outcome });
   } catch (error) {
-    console.error("[wellhub] checkin-booking-occurred handler crashed", error);
-    return NextResponse.json({ received: true, error: "deferred" });
+    // Return 5xx so Wellhub redelivers. Idempotent: re-marking checked_in is safe.
+    console.error("[wellhub] checkin-booking-occurred handler failed", error);
+    return NextResponse.json({ error: "processing_failed" }, { status: 500 });
   }
 }

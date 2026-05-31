@@ -10,6 +10,8 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import {
   WellhubApiError,
+  WellhubConfigError,
+  getWellhubTokenForTenant,
   validateWellhubCheckin,
   createWellhubCustomCode,
 } from "@/lib/platforms/wellhub";
@@ -52,11 +54,15 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const result = await validateWellhubCheckin({
-        gymId: config.wellhubGymId,
-        wellhubId: wellhubId!,
-        customCode,
-      });
+      const token = await getWellhubTokenForTenant(tenant.id);
+      const result = await validateWellhubCheckin(
+        {
+          gymId: config.wellhubGymId,
+          wellhubId: wellhubId!,
+          customCode,
+        },
+        token,
+      );
 
       // On first visit, persist the customCode mapping so future visits can
       // resolve offline.
@@ -78,11 +84,14 @@ export async function POST(request: NextRequest) {
         });
         // Best effort: tell Wellhub about the custom code for next time.
         try {
-          await createWellhubCustomCode({
-            gymId: config.wellhubGymId,
-            wellhubId: gympassId,
-            customCode,
-          });
+          await createWellhubCustomCode(
+            {
+              gymId: config.wellhubGymId,
+              wellhubId: gympassId,
+              customCode,
+            },
+            token,
+          );
         } catch (codeError) {
           if (!(codeError instanceof WellhubApiError) || !codeError.isConflict) {
             console.warn("[wellhub] custom code persist failed", codeError);
@@ -92,6 +101,9 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ ok: true, result });
     } catch (error) {
+      if (error instanceof WellhubConfigError) {
+        return NextResponse.json({ ok: false, reason: "missing_token" }, { status: 400 });
+      }
       if (error instanceof WellhubApiError) {
         return NextResponse.json({
           ok: false,

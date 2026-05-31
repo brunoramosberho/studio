@@ -13,10 +13,11 @@ import type {
 export async function listWellhubCategories(
   gymId: number,
   locale: WellhubLocale,
+  token: string,
 ): Promise<WellhubCategory[]> {
   const res = await bookingApi<WellhubCategoriesResponse>(
     `/booking/v1/gyms/${gymId}/categories`,
-    { query: { locale } },
+    { query: { locale }, token },
   );
   return res.results ?? [];
 }

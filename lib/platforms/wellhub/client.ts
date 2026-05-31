@@ -1,3 +1,5 @@
+import { prisma } from "@/lib/db";
+import { decrypt } from "@/lib/encryption";
 import { WellhubApiError, WellhubConfigError } from "./errors";
 
 // ─── Base URLs ────────────────────────────────────────────────────────────
@@ -7,27 +9,16 @@ const BOOKING_BASE_URL = {
   sandbox: "https://apitesting.partners.gympass.com",
 } as const;
 
-// Access Control shares Booking's host per the spec.
+// Access Control and Partner Products share Booking's host per the Postman
+// reference (`/setup/v1/...` and `/access/v1/...` both live on the Booking
+// host). There is no separate `partners-integrations` host in the
+// direct-partner integration model.
 const ACCESS_BASE_URL = BOOKING_BASE_URL;
-
-// The Integration Setup API uses a distinct host with no sandbox variant
-// documented (only production is published).
-const SETUP_BASE_URL = "https://api.partners-integrations.gympass.com";
 
 export type WellhubEnv = "production" | "sandbox";
 
 export function getWellhubEnv(): WellhubEnv {
   return process.env.WELLHUB_ENV === "production" ? "production" : "sandbox";
-}
-
-export function getWellhubAuthToken(): string {
-  const token = process.env.WELLHUB_AUTH_TOKEN;
-  if (!token) {
-    throw new WellhubConfigError(
-      "WELLHUB_AUTH_TOKEN is not set. Request a partner token from managedservices@gympass.com.",
-    );
-  }
-  return token;
 }
 
 export function getBookingBaseUrl(): string {
@@ -38,8 +29,29 @@ export function getAccessBaseUrl(): string {
   return ACCESS_BASE_URL[getWellhubEnv()];
 }
 
-export function getSetupBaseUrl(): string {
-  return SETUP_BASE_URL;
+// ─── Per-tenant auth token ────────────────────────────────────────────────
+//
+// Each tenant configures their own bearer token (issued directly by Wellhub
+// to the studio). The token is stored encrypted on
+// `StudioPlatformConfig.wellhubAuthToken` and decrypted here on demand.
+
+export async function getWellhubTokenForTenant(tenantId: string): Promise<string> {
+  const config = await prisma.studioPlatformConfig.findUnique({
+    where: { tenantId_platform: { tenantId, platform: "wellhub" } },
+    select: { wellhubAuthToken: true },
+  });
+  if (!config?.wellhubAuthToken) {
+    throw new WellhubConfigError(
+      "No Wellhub auth token configured for this tenant. The studio admin must paste their bearer token in /admin/platforms/setup/wellhub.",
+    );
+  }
+  try {
+    return decrypt(config.wellhubAuthToken);
+  } catch {
+    throw new WellhubConfigError(
+      "Failed to decrypt Wellhub auth token. The stored ciphertext may have been written with a different NEXTAUTH_SECRET.",
+    );
+  }
 }
 
 // ─── Fetch wrapper ────────────────────────────────────────────────────────
@@ -51,8 +63,11 @@ export interface WellhubFetchOptions {
   gymId?: number;
   query?: Record<string, string | number | boolean | undefined>;
   signal?: AbortSignal;
-  /** Override the bearer token (for SaaS-multitenant overrides in the future). */
-  token?: string;
+  /**
+   * Bearer token to authenticate the call. REQUIRED — each tenant has its
+   * own token. Get it via `getWellhubTokenForTenant(tenantId)`.
+   */
+  token: string;
   /** Override Accept header. Defaults to application/json. */
   accept?: string;
 }
@@ -60,7 +75,7 @@ export interface WellhubFetchOptions {
 async function wellhubFetch<T>(
   baseUrl: string,
   path: string,
-  opts: WellhubFetchOptions = {},
+  opts: WellhubFetchOptions,
 ): Promise<T> {
   const url = new URL(path.replace(/^\//, ""), baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
   if (opts.query) {
@@ -69,9 +84,12 @@ async function wellhubFetch<T>(
     }
   }
 
-  const token = opts.token ?? getWellhubAuthToken();
+  if (!opts.token) {
+    throw new WellhubConfigError("Wellhub API call requires a per-tenant bearer token.");
+  }
+
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${opts.token}`,
     Accept: opts.accept ?? "application/json",
   };
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
@@ -109,20 +127,20 @@ async function wellhubFetch<T>(
   return parsed as T;
 }
 
-export function bookingApi<T>(path: string, opts: WellhubFetchOptions = {}) {
+export function bookingApi<T>(path: string, opts: WellhubFetchOptions) {
   return wellhubFetch<T>(getBookingBaseUrl(), path, opts);
 }
 
-export function accessApi<T>(path: string, opts: WellhubFetchOptions = {}) {
+export function accessApi<T>(path: string, opts: WellhubFetchOptions) {
   return wellhubFetch<T>(getAccessBaseUrl(), path, opts);
 }
 
-export function setupApi<T>(path: string, opts: WellhubFetchOptions = {}) {
-  return wellhubFetch<T>(getSetupBaseUrl(), path, opts);
-}
-
 // ─── Health probe ─────────────────────────────────────────────────────────
+//
+// /booking/v1/health is the standard liveness check. Pass any tenant's token
+// — the endpoint only validates that the Authorization header is present and
+// well-formed.
 
-export async function bookingHealth(): Promise<"ok"> {
-  return bookingApi<"ok">("/booking/v1/health", { accept: "text/plain" });
+export async function bookingHealth(token: string): Promise<"ok"> {
+  return bookingApi<"ok">("/booking/v1/health", { token, accept: "text/plain" });
 }

@@ -16,10 +16,11 @@ export async function createWellhubSlot(
   gymId: number,
   wellhubClassId: number,
   payload: WellhubSlotCreatePayload,
+  token: string,
 ): Promise<WellhubSlot> {
   const res = await bookingApi<WellhubSlotEnvelope<WellhubSlot>>(
     `/booking/v1/gyms/${gymId}/classes/${wellhubClassId}/slots`,
-    { method: "POST", body: payload },
+    { method: "POST", body: payload, token },
   );
   const slot = res.results?.[0];
   if (!slot) {
@@ -34,10 +35,11 @@ export async function updateWellhubSlot(
   wellhubClassId: number,
   slotId: number,
   payload: WellhubSlotUpdatePayload,
+  token: string,
 ): Promise<WellhubSlot> {
   const res = await bookingApi<WellhubSlotEnvelope<WellhubSlot>>(
     `/booking/v1/gyms/${gymId}/classes/${wellhubClassId}/slots/${slotId}`,
-    { method: "PUT", body: payload },
+    { method: "PUT", body: payload, token },
   );
   const slot = res.results?.[0];
   if (!slot) {
@@ -58,10 +60,11 @@ export function patchWellhubSlot(
   wellhubClassId: number,
   slotId: number,
   payload: WellhubSlotPatchPayload,
+  token: string,
 ): Promise<void> {
   return bookingApi<void>(
     `/booking/v1/gyms/${gymId}/classes/${wellhubClassId}/slots/${slotId}`,
-    { method: "PATCH", body: payload },
+    { method: "PATCH", body: payload, token },
   );
 }
 
@@ -74,10 +77,11 @@ export function deleteWellhubSlot(
   gymId: number,
   wellhubClassId: number,
   slotId: number,
+  token: string,
 ): Promise<void> {
   return bookingApi<void>(
     `/booking/v1/gyms/${gymId}/classes/${wellhubClassId}/slots/${slotId}`,
-    { method: "DELETE" },
+    { method: "DELETE", token },
   );
 }
 
@@ -86,9 +90,11 @@ export function getWellhubSlot(
   gymId: number,
   wellhubClassId: number,
   slotId: number,
+  token: string,
 ): Promise<WellhubSlot> {
   return bookingApi<WellhubSlot>(
     `/booking/v1/gyms/${gymId}/classes/${wellhubClassId}/slots/${slotId}`,
+    { token },
   );
 }
 
@@ -102,7 +108,8 @@ export function getWellhubSlot(
 export async function listWellhubSlots(
   gymId: number,
   wellhubClassId: number,
-  range?: { from?: Date | string; to?: Date | string },
+  range: { from?: Date | string; to?: Date | string } | undefined,
+  token: string,
 ): Promise<WellhubSlot[]> {
   const res = await bookingApi<WellhubSlotListResponse>(
     `/booking/v1/gyms/${gymId}/classes/${wellhubClassId}/slots`,
@@ -111,6 +118,7 @@ export async function listWellhubSlots(
         from: range?.from instanceof Date ? range.from.toISOString() : range?.from,
         to: range?.to instanceof Date ? range.to.toISOString() : range?.to,
       },
+      token,
     },
   );
   return res.results ?? [];

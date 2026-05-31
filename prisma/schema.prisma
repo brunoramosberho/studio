@@ -1780,11 +1780,6 @@ enum WellhubSyncStatus {
   excluded
 }
 
-enum WellhubImplementationMethod {
-  attendance_trigger
-  gate_trigger
-}
-
 model StudioPlatformConfig {
   id       String       @id @default(cuid())
   tenantId String
@@ -1800,12 +1795,15 @@ model StudioPlatformConfig {
   activatedAt    DateTime?
   lastExportedAt DateTime?
 
-  // Wellhub API integration (only meaningful when platform = wellhub)
-  wellhubGymId              Int?                        @unique
-  wellhubMode               WellhubMode                 @default(disabled)
-  wellhubImplMethod         WellhubImplementationMethod @default(attendance_trigger)
+  // Wellhub API integration (only meaningful when platform = wellhub).
+  // In the direct-partner model each tenant has its own bearer token issued
+  // by Wellhub (stored encrypted via lib/encryption.ts, never exposed in
+  // API responses).
+  wellhubGymId              Int?        @unique
+  wellhubMode               WellhubMode @default(disabled)
   wellhubLocale             String?
-  wellhubWebhooksRegistered Boolean                     @default(false)
+  wellhubAuthToken          String?
+  wellhubWebhooksRegistered Boolean     @default(false)
   wellhubWebhookSecret      String?
   wellhubLastSyncAt         DateTime?
   wellhubLastError          String?

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
-import { promoteFromWaitlist, notifySpotWatchers } from "@/lib/waitlist";
 import { restoreCredit } from "@/lib/credits";
 import {
   createPendingPenalty,
@@ -240,9 +239,12 @@ export async function PUT(
     });
 
     if (status === "CANCELLED") {
-      promoteFromWaitlist(booking.classId, tenant.id)
-        .then(() => notifySpotWatchers(booking.classId, tenant.id))
-        .catch((err) => console.error("Waitlist promotion / spot notify failed:", err));
+      // Free the seat across all channels: promote Magic waitlist, notify
+      // spot-watchers, and re-push availability to Wellhub so a freed seat
+      // resurfaces there too.
+      import("@/lib/platforms/wellhub")
+        .then(({ cascadeFreedSeat }) => cascadeFreedSeat(booking.classId, tenant.id))
+        .catch((err) => console.error("Cancel cascade failed:", err));
     }
 
     if (status === "ATTENDED" && booking.userId) {
@@ -380,17 +382,13 @@ export async function DELETE(
         .catch(() => {});
     }
 
-    promoteFromWaitlist(booking.classId, tenant.id)
-      .then(() => notifySpotWatchers(booking.classId, tenant.id))
-      .catch((err) => console.error("Waitlist promotion / spot notify failed:", err));
-
-    // Refresh Wellhub's view of availability — Magic cancellation may free up
-    // space that should resurface in Wellhub.
+    // Free the seat across all channels: promote Magic waitlist, notify
+    // spot-watchers, and re-push availability to Wellhub.
     try {
-      const { patchWellhubCapacityForClass } = await import("@/lib/platforms/wellhub");
-      await patchWellhubCapacityForClass(booking.classId);
+      const { cascadeFreedSeat } = await import("@/lib/platforms/wellhub");
+      await cascadeFreedSeat(booking.classId, tenant.id);
     } catch (err) {
-      console.error("[wellhub] capacity patch after booking cancel failed", err);
+      console.error("Cancel cascade failed:", err);
     }
 
     return NextResponse.json(cancelled);

@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
   WellhubApiError,
+  WellhubConfigError,
+  getWellhubTokenForTenant,
   patchWellhubBooking,
   resolveTenantByWellhubGymId,
 } from "@/lib/platforms/wellhub";
@@ -63,11 +65,32 @@ export async function GET(request: NextRequest) {
       !quota.isClosedManually &&
       quota.bookedSpots <= quota.quotaSpots; // already incremented by inbound
 
+    let token: string;
     try {
-      await patchWellhubBooking(config.wellhubGymId, booking.wellhubBookingNumber, {
-        status: shouldReserve ? "RESERVED" : "REJECTED",
-        reason_category: shouldReserve ? undefined : "CLASS_IS_FULL",
-      });
+      token = await getWellhubTokenForTenant(booking.tenantId);
+    } catch (error) {
+      errors++;
+      if (error instanceof WellhubConfigError) {
+        console.error("[wellhub-sla-sweep] missing token", {
+          id: booking.id,
+          tenantId: booking.tenantId,
+        });
+      } else {
+        console.error("[wellhub-sla-sweep] token load failed", { id: booking.id, error });
+      }
+      continue;
+    }
+
+    try {
+      await patchWellhubBooking(
+        config.wellhubGymId,
+        booking.wellhubBookingNumber,
+        {
+          status: shouldReserve ? "RESERVED" : "REJECTED",
+          reason_category: shouldReserve ? undefined : "CLASS_IS_FULL",
+        },
+        token,
+      );
       await prisma.platformBooking.update({
         where: { id: booking.id },
         data: {

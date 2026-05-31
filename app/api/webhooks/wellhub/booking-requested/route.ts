@@ -20,9 +20,10 @@ export async function POST(request: NextRequest) {
     const decision = await processBookingRequested(result.event);
     return NextResponse.json({ received: true, decision });
   } catch (error) {
-    console.error("[wellhub] booking-requested handler crashed", error);
-    // Still 200 so Wellhub doesn't retry the same body. The booking row stays
-    // in `pending_confirmation` and the SLA sweep cron will reissue the PATCH.
-    return NextResponse.json({ received: true, error: "deferred" });
+    // Return 5xx so Wellhub redelivers. Processing is idempotent (re-PATCHes
+    // the existing decision without double-counting), and the SLA sweep cron
+    // is a second backstop before the 15-min auto-reject.
+    console.error("[wellhub] booking-requested handler failed", error);
+    return NextResponse.json({ error: "processing_failed" }, { status: 500 });
   }
 }

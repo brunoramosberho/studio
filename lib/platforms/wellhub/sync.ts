@@ -8,6 +8,7 @@
 import type { PlatformBookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { createPlatformAlert } from "@/lib/platforms/alerts";
+import { getWellhubTokenForTenant } from "./client";
 import { WellhubApiError } from "./errors";
 import {
   createWellhubClass,
@@ -69,10 +70,11 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
   }
 
   const gymId = ctx.tenantConfig.wellhubGymId;
+  const token = await getWellhubTokenForTenant(ctx.tenantConfig.tenantId);
 
   try {
     // 1) Ensure the Wellhub `class` template exists for this ClassType.
-    const wellhubClassId = await ensureWellhubClassForClassType(gymId, ctx.classType);
+    const wellhubClassId = await ensureWellhubClassForClassType(gymId, ctx.classType, token);
 
     // 2) Build the slot payload from live Magic state.
     const slotPayload = classToWellhubSlotPayload(toMagicClassForSync(ctx), {
@@ -83,10 +85,10 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
     // 3) POST if new, PUT if we already have a wellhubSlotId on file.
     let wellhubSlotId = ctx.cls.wellhubSlotId;
     if (!wellhubSlotId) {
-      const slot = await createWellhubSlot(gymId, wellhubClassId, slotPayload);
+      const slot = await createWellhubSlot(gymId, wellhubClassId, slotPayload, token);
       wellhubSlotId = slot.id;
     } else {
-      await updateWellhubSlot(gymId, wellhubClassId, wellhubSlotId, slotPayload);
+      await updateWellhubSlot(gymId, wellhubClassId, wellhubSlotId, slotPayload, token);
     }
 
     await prisma.class.update({
@@ -119,11 +121,14 @@ export async function unsyncClassFromWellhub(classId: string): Promise<WellhubSy
     return { status: "skipped", reason: "missing_wellhub_ids" };
   }
 
+  const token = await getWellhubTokenForTenant(ctx.tenantConfig.tenantId);
+
   try {
     await deleteWellhubSlot(
       ctx.tenantConfig.wellhubGymId,
       ctx.classType.wellhubClassId,
       ctx.cls.wellhubSlotId,
+      token,
     );
     await prisma.class.update({
       where: { id: classId },
@@ -175,11 +180,14 @@ export async function hideClassTypeInWellhub(classTypeId: string): Promise<Wellh
   });
   if (!config?.wellhubGymId) return { status: "skipped", reason: "tenant_missing_gym_id" };
 
+  const token = await getWellhubTokenForTenant(classType.tenantId);
+
   try {
     await hideWellhubClass(
       config.wellhubGymId,
       classType.wellhubClassId,
       classTypeToWellhubUpdatePayload(toMagicClassType(classType), { visible: false }),
+      token,
     );
     return { status: "excluded" };
   } catch (error) {
@@ -220,6 +228,8 @@ export async function patchWellhubCapacityForClass(
   ]);
   const totalBooked = magicBookingsCount + platformBookingsCount;
 
+  const token = await getWellhubTokenForTenant(ctx.tenantConfig.tenantId);
+
   try {
     await patchWellhubSlot(
       ctx.tenantConfig.wellhubGymId,
@@ -229,6 +239,7 @@ export async function patchWellhubCapacityForClass(
         totalCapacity: ctx.quotaSpots ?? 0,
         totalBooked,
       }),
+      token,
     );
     await prisma.class.update({
       where: { id: classId },
@@ -333,6 +344,7 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
 async function ensureWellhubClassForClassType(
   gymId: number,
   classType: ClassContext["classType"],
+  token: string,
 ): Promise<number> {
   if (classType.wellhubClassId) {
     // PUT is idempotent — keep Wellhub in sync with renames / category edits.
@@ -340,12 +352,14 @@ async function ensureWellhubClassForClassType(
       gymId,
       classType.wellhubClassId,
       classTypeToWellhubUpdatePayload(toMagicClassType(classType)),
+      token,
     );
     return classType.wellhubClassId;
   }
   const created = await createWellhubClass(
     gymId,
     classTypeToWellhubCreatePayload(toMagicClassType(classType)),
+    token,
   );
   await prisma.classType.update({
     where: { id: classType.id },

@@ -19,7 +19,6 @@ import type {
   WellhubBookingRequestedEvent,
   WellhubCheckinBookingOccurredEvent,
   WellhubCheckinEvent,
-  WellhubSystemIntegrationRequestedEvent,
 } from "./types";
 
 const HEADER = "x-gympass-signature";
@@ -106,41 +105,4 @@ export async function verifyAndParseGymWebhook<E extends EventWithGymId>(
   }
 
   return { ok: true, event: parsed as E, tenantId: tenant.tenantId, gymId };
-}
-
-/**
- * Validates the CMS-level `SYSTEM_INTEGRATION_REQUESTED` webhook. Uses the
- * single secret in `WELLHUB_SYSTEM_NOTIFICATION_SECRET` instead of a per-gym
- * config (the secret is set when we register the notification webhook).
- */
-export async function verifyAndParseSystemNotificationWebhook(
-  request: NextRequest,
-): Promise<
-  | { ok: true; event: WellhubSystemIntegrationRequestedEvent }
-  | WellhubWebhookFailure
-> {
-  const rawBody = await request.text();
-  const signatureHeader = request.headers.get(HEADER);
-
-  if (!signatureHeader) {
-    return { ok: false, status: 401, reason: "missing_signature" };
-  }
-
-  const secret = process.env.WELLHUB_SYSTEM_NOTIFICATION_SECRET;
-  if (!secret) {
-    return { ok: false, status: 409, reason: "tenant_missing_secret" };
-  }
-
-  if (!verifySignature(rawBody, signatureHeader, secret)) {
-    return { ok: false, status: 401, reason: "invalid_signature" };
-  }
-
-  let parsed: WellhubSystemIntegrationRequestedEvent;
-  try {
-    parsed = JSON.parse(rawBody) as WellhubSystemIntegrationRequestedEvent;
-  } catch {
-    return { ok: false, status: 400, reason: "invalid_json" };
-  }
-
-  return { ok: true, event: parsed };
 }

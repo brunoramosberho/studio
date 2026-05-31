@@ -19,7 +19,9 @@ export async function POST(request: NextRequest) {
     const outcome = await processCheckinWebhook(result.event);
     return NextResponse.json({ received: true, ...outcome });
   } catch (error) {
-    console.error("[wellhub] checkin handler crashed", error);
-    return NextResponse.json({ received: true, error: "deferred" });
+    // Return 5xx so Wellhub redelivers — a lost checkin means the validate
+    // call never fires and the studio is never paid for the visit.
+    console.error("[wellhub] checkin handler failed", error);
+    return NextResponse.json({ error: "processing_failed" }, { status: 500 });
   }
 }

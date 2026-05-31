@@ -33,11 +33,15 @@ export async function POST(
 
       if (config?.wellhubMode === "api" && config.wellhubGymId && booking.wellhubUserUniqueToken) {
         try {
-          const { validateWellhubCheckin, WellhubApiError } = await import("@/lib/platforms/wellhub");
-          await validateWellhubCheckin({
-            gymId: config.wellhubGymId,
-            wellhubId: booking.wellhubUserUniqueToken,
-          });
+          const { validateWellhubCheckin, getWellhubTokenForTenant } = await import("@/lib/platforms/wellhub");
+          const token = await getWellhubTokenForTenant(tenant.id);
+          await validateWellhubCheckin(
+            {
+              gymId: config.wellhubGymId,
+              wellhubId: booking.wellhubUserUniqueToken,
+            },
+            token,
+          );
         } catch (error) {
           const isApi = error && typeof error === "object" && "status" in error;
           const apiErr = isApi ? (error as { status: number; body: unknown }) : null;

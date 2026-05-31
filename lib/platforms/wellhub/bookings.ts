@@ -2,13 +2,28 @@
 //
 // The critical contract is the **15-minute SLA** on `booking-requested`: if we
 // don't PATCH /booking/v2/.../bookings/:booking_number within that window,
-// Wellhub auto-rejects. The webhook route should respond 200 quickly and call
-// `processBookingRequested` synchronously inside the request (the work below
-// is small and fast: one DB transaction + one outbound PATCH).
+// Wellhub auto-rejects. The webhook route responds quickly and calls
+// `processBookingRequested` synchronously (the work is small: a short DB
+// transaction + one outbound PATCH).
+//
+// Capacity model (see lib/booking/availability.ts): Wellhub seats share the
+// ONE physical room capacity with Magic members and other platforms. A Wellhub
+// booking is accepted only if BOTH hold:
+//   1. The platform quota has room   (bookedSpots < quotaSpots) — the cap.
+//   2. The physical room has a seat  (availability.spotsLeft > 0) — no oversell.
+// When a Wellhub booking is cancelled we free the quota AND promote the Magic
+// waitlist / notify watchers / re-sync Wellhub's view, so a freed seat is
+// reusable by ANY channel.
 
-import type { PlatformBookingStatus } from "@prisma/client";
+import type { PlatformBookingStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { bookingApi } from "./client";
+import {
+  MAGIC_CONSUMING_STATUSES,
+  PLATFORM_CONSUMING_STATUSES,
+} from "@/lib/booking/availability";
+import { promoteFromWaitlist, notifySpotWatchers } from "@/lib/waitlist";
+import { bookingApi, getWellhubTokenForTenant } from "./client";
+import { evaluateReservationDecision } from "./decision";
 import { resolveTenantByWellhubGymId } from "./resolve";
 import type {
   WellhubBookingCanceledEvent,
@@ -28,10 +43,11 @@ export function patchWellhubBooking(
   gymId: number,
   bookingNumber: string,
   payload: WellhubBookingPatchPayload,
+  token: string,
 ): Promise<void> {
   return bookingApi<void>(
     `/booking/v2/gyms/${gymId}/bookings/${encodeURIComponent(bookingNumber)}`,
-    { method: "PATCH", body: payload },
+    { method: "PATCH", body: payload, token },
   );
 }
 
@@ -39,14 +55,15 @@ export function patchWellhubBooking(
 
 /**
  * Processes a `booking-requested` webhook end-to-end:
- *   1. Resolve tenant + class by `gym_id` + `slot.id`.
- *   2. Reserve in our DB (idempotent on `wellhubBookingNumber`).
- *   3. Decide RESERVED vs REJECTED based on quota.
+ *   1. Resolve tenant + class by gym_id + slot.id.
+ *   2. IDEMPOTENCY: if we already have a terminal decision for this
+ *      booking_number, re-PATCH that same decision (Wellhub re-delivery /
+ *      out-of-order) without touching counters again.
+ *   3. Reserve atomically (quota cap + physical capacity) in a transaction.
  *   4. PATCH Wellhub with the decision.
  *
- * On any pre-PATCH error, the row stays `pending_confirmation` and the SLA
- * sweep cron retries. On a PATCH-time error we keep the booking pending too;
- * the cron will re-issue the PATCH.
+ * On a PATCH-time error the row stays `pending_confirmation`; the SLA sweep
+ * cron retries. The route returns 5xx on a thrown error so Wellhub redelivers.
  */
 export async function processBookingRequested(
   event: WellhubBookingRequestedEvent,
@@ -54,77 +71,93 @@ export async function processBookingRequested(
   const { event_data: data } = event;
   const tenant = await resolveTenantByWellhubGymId(data.slot.gym_id);
   if (!tenant) {
-    // Without a tenant we cannot record the booking. Best effort: tell Wellhub
-    // the class wasn't found so they reject cleanly.
-    try {
-      await patchWellhubBooking(data.slot.gym_id, data.slot.booking_number, {
-        status: "REJECTED",
-        reason_category: "CLASS_NOT_FOUND",
-        reason: "Gym not linked to this CMS",
-      });
-    } catch {
-      // Swallow: there's nothing we can do. Wellhub will auto-reject in 15 min.
-    }
+    // No tenant for this gym → we have no token to PATCH with. Wellhub
+    // auto-rejects in 15 min. Returning here keeps us out of the DB.
     return { status: "REJECTED", reason: "CLASS_NOT_FOUND" };
+  }
+
+  const token = await getWellhubTokenForTenant(tenant.tenantId);
+
+  // IDEMPOTENCY: a booking we have already decided on. Re-PATCH the same
+  // decision so a duplicate/redelivered webhook never double-counts.
+  const existing = await prisma.platformBooking.findUnique({
+    where: { wellhubBookingNumber: data.slot.booking_number },
+    select: { status: true, classId: true },
+  });
+  if (existing) {
+    if (existing.status === "cancelled") {
+      // Cancellation already arrived (out-of-order). Do NOT resurrect it.
+      return { status: "REJECTED", reason: "CLASS_HAS_BEEN_CANCELED" };
+    }
+    const status: WellhubBookingStatus =
+      existing.status === "rejected" ? "REJECTED" : "RESERVED";
+    const reason = existing.status === "rejected" ? "CLASS_IS_FULL" : undefined;
+    await safePatch(data.slot.gym_id, data.slot.booking_number, status, reason, token);
+    return { status, reason };
   }
 
   const cls = await prisma.class.findUnique({
     where: { wellhubSlotId: data.slot.id },
-    select: { id: true, tenantId: true, status: true, startsAt: true },
+    select: { id: true, tenantId: true, status: true },
   });
 
-  // Decide outcome before touching our DB so we never store an orphan row.
-  let decision: { status: WellhubBookingStatus; reason?: WellhubBookingRejectionReason };
-
+  // No matching class → reject (can't create a PlatformBooking, classId is FK).
   if (!cls || cls.tenantId !== tenant.tenantId) {
-    decision = { status: "REJECTED", reason: "CLASS_NOT_FOUND" };
-  } else if (cls.status === "CANCELLED") {
-    decision = { status: "REJECTED", reason: "CLASS_HAS_BEEN_CANCELED" };
-  } else {
-    decision = await reserveSpotOrReject(cls.id);
+    await safePatch(
+      data.slot.gym_id,
+      data.slot.booking_number,
+      "REJECTED",
+      "CLASS_NOT_FOUND",
+      token,
+    );
+    return { status: "REJECTED", reason: "CLASS_NOT_FOUND" };
+  }
+  if (cls.status === "CANCELLED") {
+    await safePatch(
+      data.slot.gym_id,
+      data.slot.booking_number,
+      "REJECTED",
+      "CLASS_HAS_BEEN_CANCELED",
+      token,
+    );
+    return { status: "REJECTED", reason: "CLASS_HAS_BEEN_CANCELED" };
   }
 
-  // No matching class → we cannot create a PlatformBooking (classId is FK).
-  // Just PATCH Wellhub to reject and return.
-  if (!cls || decision.reason === "CLASS_NOT_FOUND") {
-    try {
-      await patchWellhubBooking(data.slot.gym_id, data.slot.booking_number, {
-        status: "REJECTED",
-        reason_category: decision.reason ?? "CLASS_NOT_FOUND",
-      });
-    } catch (error) {
-      console.error("[wellhub] PATCH (class-not-found) failed", { error });
-    }
-    return decision;
-  }
+  // Atomic reserve + row creation. Returns the decision.
+  const confirmationDeadline = new Date(data.timestamp + CONFIRMATION_SLA_MS);
+  const decision = await reserveAndRecord({
+    tenantId: tenant.tenantId,
+    classId: cls.id,
+    bookingNumber: data.slot.booking_number,
+    slotId: data.slot.id,
+    uniqueToken: data.user.unique_token,
+    memberName: data.user.name ?? null,
+    confirmationDeadline,
+  });
 
-  const confirmationDeadline = new Date(event.event_data.timestamp + CONFIRMATION_SLA_MS);
-
-  // Capture any profile data the booking webhook carries — Wellhub may or may
-  // not send name/email at this stage; the canonical source is the `checkin`
-  // webhook later, but we save whatever we get so the admin sees a name now.
+  // Capture profile data + bridge to a Magic user (best-effort, non-blocking).
   if (data.user.name || data.user.email) {
-    await prisma.wellhubUserLink.upsert({
-      where: {
-        tenantId_wellhubUniqueToken: {
+    await prisma.wellhubUserLink
+      .upsert({
+        where: {
+          tenantId_wellhubUniqueToken: {
+            tenantId: tenant.tenantId,
+            wellhubUniqueToken: data.user.unique_token,
+          },
+        },
+        create: {
           tenantId: tenant.tenantId,
           wellhubUniqueToken: data.user.unique_token,
+          fullName: data.user.name ?? null,
+          email: data.user.email ?? null,
         },
-      },
-      create: {
-        tenantId: tenant.tenantId,
-        wellhubUniqueToken: data.user.unique_token,
-        fullName: data.user.name ?? null,
-        email: data.user.email ?? null,
-      },
-      update: {
-        ...(data.user.name ? { fullName: data.user.name } : {}),
-        ...(data.user.email ? { email: data.user.email } : {}),
-      },
-    });
+        update: {
+          ...(data.user.name ? { fullName: data.user.name } : {}),
+          ...(data.user.email ? { email: data.user.email } : {}),
+        },
+      })
+      .catch((err) => console.error("[wellhub] userLink upsert failed", err));
 
-    // Bridge to existing Magic User if email matches — feeds the conversion
-    // funnel without blocking the booking decision.
     const { tryLinkWellhubUserToMagic } = await import("./matching");
     tryLinkWellhubUserToMagic({
       tenantId: tenant.tenantId,
@@ -132,47 +165,19 @@ export async function processBookingRequested(
     }).catch((err) => console.error("[wellhub] auto-link from booking-requested failed", err));
   }
 
-  // Record the booking attempt. Idempotent on wellhubBookingNumber.
-  await prisma.platformBooking.upsert({
-    where: { wellhubBookingNumber: data.slot.booking_number },
-    create: {
-      tenantId: tenant.tenantId,
-      classId: cls.id,
-      platform: "wellhub",
-      platformBookingId: data.slot.booking_number,
-      memberName: data.user.name ?? null,
-      status: decision.status === "RESERVED" ? "pending_confirmation" : "rejected",
-      source: "wellhub_api",
-      wellhubBookingNumber: data.slot.booking_number,
-      wellhubSlotId: data.slot.id,
-      wellhubUserUniqueToken: data.user.unique_token,
-      confirmationDeadline,
-      rejectionReason: decision.reason ?? null,
-    },
-    update: {
-      // Re-delivery from Wellhub: keep the existing row, only refresh deadline.
-      confirmationDeadline,
-    },
-  });
-
-  // PATCH Wellhub. Failures keep the row pending so the cron can retry.
-  try {
-    await patchWellhubBooking(data.slot.gym_id, data.slot.booking_number, {
-      status: decision.status,
-      reason_category: decision.reason,
-    });
-    if (decision.status === "RESERVED") {
-      await prisma.platformBooking.update({
-        where: { wellhubBookingNumber: data.slot.booking_number },
-        data: { status: "confirmed", parsedAt: new Date() },
-      });
-    }
-  } catch (error) {
-    // Leave the row pending; sweep cron will retry. Surface for observability.
-    console.error("[wellhub] PATCH booking failed", {
-      bookingNumber: data.slot.booking_number,
-      decision,
-      error,
+  // PATCH Wellhub with the decision. A failure here keeps the row in
+  // pending_confirmation and rethrows so the route returns 5xx → Wellhub
+  // retries, and the SLA sweep cron is a second backstop.
+  await patchWellhubBooking(
+    data.slot.gym_id,
+    data.slot.booking_number,
+    { status: decision.status, reason_category: decision.reason },
+    token,
+  );
+  if (decision.status === "RESERVED") {
+    await prisma.platformBooking.update({
+      where: { wellhubBookingNumber: data.slot.booking_number },
+      data: { status: "confirmed", parsedAt: new Date() },
     });
   }
 
@@ -180,27 +185,98 @@ export async function processBookingRequested(
 }
 
 /**
- * Single-statement quota reservation. Uses Postgres' check on the update WHERE
- * clause so two concurrent reservations cannot oversell — the loser fails the
- * update and we reject as CLASS_IS_FULL.
+ * Reserve a seat and record the PlatformBooking in ONE transaction so the
+ * quota counter and the row can't diverge. Enforces BOTH the platform quota
+ * cap and the shared physical capacity.
  */
-async function reserveSpotOrReject(
+async function reserveAndRecord(args: {
+  tenantId: string;
+  classId: string;
+  bookingNumber: string;
+  slotId: number;
+  uniqueToken: string;
+  memberName: string | null;
+  confirmationDeadline: Date;
+}): Promise<{ status: WellhubBookingStatus; reason?: WellhubBookingRejectionReason }> {
+  return prisma.$transaction(async (tx) => {
+    const decision = await decideReservation(tx, args.classId);
+
+    await tx.platformBooking.create({
+      data: {
+        tenantId: args.tenantId,
+        classId: args.classId,
+        platform: "wellhub",
+        platformBookingId: args.bookingNumber,
+        memberName: args.memberName,
+        status: decision.status === "RESERVED" ? "pending_confirmation" : "rejected",
+        source: "wellhub_api",
+        wellhubBookingNumber: args.bookingNumber,
+        wellhubSlotId: args.slotId,
+        wellhubUserUniqueToken: args.uniqueToken,
+        confirmationDeadline: args.confirmationDeadline,
+        rejectionReason: decision.reason ?? null,
+      },
+    });
+
+    return decision;
+  });
+}
+
+/**
+ * Decide RESERVED vs REJECTED inside a transaction. Two gates:
+ *   1. Platform quota cap   (bookedSpots < quotaSpots, not closed).
+ *   2. Physical room capacity (maxCapacity − magic − blocked − platform > 0).
+ * On RESERVED we increment the quota counter atomically within the same txn.
+ */
+async function decideReservation(
+  tx: Prisma.TransactionClient,
   classId: string,
 ): Promise<{ status: WellhubBookingStatus; reason?: WellhubBookingRejectionReason }> {
-  const quota = await prisma.schedulePlatformQuota.findUnique({
+  const quota = await tx.schedulePlatformQuota.findUnique({
     where: { classId_platform: { classId, platform: "wellhub" } },
     select: { id: true, quotaSpots: true, bookedSpots: true, isClosedManually: true },
   });
 
-  if (!quota || quota.quotaSpots === 0) {
-    return { status: "REJECTED", reason: "CLASS_IS_FULL" };
+  // Class must exist for the physical-capacity gate.
+  const cls = await tx.class.findUnique({
+    where: { id: classId },
+    select: {
+      room: { select: { maxCapacity: true } },
+      _count: {
+        select: {
+          bookings: { where: { status: { in: [...MAGIC_CONSUMING_STATUSES] } } },
+          blockedSpots: true,
+        },
+      },
+    },
+  });
+  if (!cls?.room) {
+    return { status: "REJECTED", reason: "CLASS_NOT_FOUND" };
   }
-  if (quota.isClosedManually) {
-    return { status: "REJECTED", reason: "SPOT_NOT_AVAILABLE" };
+  const platformBooked = await tx.platformBooking.count({
+    where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+  });
+  const physicalSpotsLeft =
+    cls.room.maxCapacity - cls._count.bookings - cls._count.blockedSpots - platformBooked;
+
+  // Pure decision: quota cap + physical capacity + closed flag.
+  const decision = evaluateReservationDecision({
+    quota: quota
+      ? {
+          quotaSpots: quota.quotaSpots,
+          bookedSpots: quota.bookedSpots,
+          isClosedManually: quota.isClosedManually,
+        }
+      : null,
+    physicalSpotsLeft,
+  });
+  if (decision.status !== "RESERVED" || !quota) {
+    return decision;
   }
 
-  // Conditional increment: only succeeds if there's room. Race-safe in Postgres.
-  const result = await prisma.schedulePlatformQuota.updateMany({
+  // Quota cap: conditional increment, race-safe in Postgres. If a concurrent
+  // request won the last slot, this fails and we reject.
+  const result = await tx.schedulePlatformQuota.updateMany({
     where: {
       id: quota.id,
       bookedSpots: { lt: quota.quotaSpots },
@@ -208,49 +284,140 @@ async function reserveSpotOrReject(
     },
     data: { bookedSpots: { increment: 1 } },
   });
-
   if (result.count === 0) {
     return { status: "REJECTED", reason: "CLASS_IS_FULL" };
   }
+
   return { status: "RESERVED" };
+}
+
+/** PATCH that swallows errors (used on reject paths where we don't retry). */
+async function safePatch(
+  gymId: number,
+  bookingNumber: string,
+  status: WellhubBookingStatus,
+  reason: WellhubBookingRejectionReason | undefined,
+  token: string,
+): Promise<void> {
+  try {
+    await patchWellhubBooking(gymId, bookingNumber, { status, reason_category: reason }, token);
+  } catch (error) {
+    console.error("[wellhub] safePatch failed", { bookingNumber, status, reason, error });
+  }
 }
 
 // ─── Event handler: booking-canceled / booking-late-canceled ──────────────
 
+/**
+ * Process a cancellation. CRITICAL for revenue: freeing the seat must cascade
+ * so the spot is immediately reusable by ANY channel.
+ *
+ * Steps (idempotent — a duplicate webhook is a safe no-op):
+ *   1. Mark the PlatformBooking cancelled (only if it was consuming).
+ *   2. Decrement the platform quota counter.
+ *   3. Promote the Magic waitlist + notify spot-watchers.
+ *   4. Re-sync Wellhub's total_booked so their app reflects the opening.
+ *
+ * Out-of-order safety: if the booking doesn't exist yet (cancel before
+ * request), we write a `cancelled` tombstone so the later request can't
+ * resurrect it.
+ */
 export async function processBookingCanceled(
   event: WellhubBookingCanceledEvent | WellhubBookingLateCanceledEvent,
   opts: { late: boolean },
-): Promise<{ updated: boolean }> {
+): Promise<{ updated: boolean; freedSeat: boolean }> {
   const { event_data: data } = event;
 
   const booking = await prisma.platformBooking.findUnique({
     where: { wellhubBookingNumber: data.slot.booking_number },
     select: { id: true, classId: true, status: true, tenantId: true },
   });
-  if (!booking) return { updated: false };
 
-  // Free the quota only if the booking still occupies it.
-  const consumes: PlatformBookingStatus[] = ["confirmed", "checked_in", "pending_confirmation"];
-  if (consumes.includes(booking.status)) {
-    await prisma.schedulePlatformQuota.updateMany({
-      where: {
-        classId: booking.classId,
-        platform: "wellhub",
-        bookedSpots: { gt: 0 },
-      },
-      data: { bookedSpots: { decrement: 1 } },
+  // Out-of-order: cancel arrived before request. Write a tombstone so the
+  // forthcoming booking-requested is rejected as already-cancelled.
+  if (!booking) {
+    const tenant = await resolveTenantByWellhubGymId(data.slot.gym_id);
+    const cls = await prisma.class.findUnique({
+      where: { wellhubSlotId: data.slot.id },
+      select: { id: true, tenantId: true },
     });
+    if (tenant && cls && cls.tenantId === tenant.tenantId) {
+      await prisma.platformBooking
+        .create({
+          data: {
+            tenantId: tenant.tenantId,
+            classId: cls.id,
+            platform: "wellhub",
+            platformBookingId: data.slot.booking_number,
+            status: "cancelled",
+            source: "wellhub_api",
+            wellhubBookingNumber: data.slot.booking_number,
+            wellhubSlotId: data.slot.id,
+            wellhubUserUniqueToken: data.user.unique_token,
+            notes: opts.late ? "wellhub_late_cancel_tombstone" : "wellhub_cancel_tombstone",
+          },
+        })
+        .catch((err) => console.error("[wellhub] cancel tombstone create failed", err));
+    }
+    return { updated: false, freedSeat: false };
   }
 
-  await prisma.platformBooking.update({
-    where: { id: booking.id },
-    data: {
-      status: "cancelled",
-      notes: opts.late ? "wellhub_late_cancel" : "wellhub_cancel",
-    },
+  // Idempotency: already cancelled → no-op (no double-decrement, no re-promote).
+  if (booking.status === "cancelled") {
+    return { updated: false, freedSeat: false };
+  }
+
+  const wasConsuming = (
+    ["confirmed", "checked_in", "pending_confirmation"] as PlatformBookingStatus[]
+  ).includes(booking.status);
+
+  // Mark cancelled + decrement quota in one transaction.
+  await prisma.$transaction(async (tx) => {
+    await tx.platformBooking.update({
+      where: { id: booking.id },
+      data: {
+        status: "cancelled",
+        notes: opts.late ? "wellhub_late_cancel" : "wellhub_cancel",
+      },
+    });
+    if (wasConsuming) {
+      await tx.schedulePlatformQuota.updateMany({
+        where: { classId: booking.classId, platform: "wellhub", bookedSpots: { gt: 0 } },
+        data: { bookedSpots: { decrement: 1 } },
+      });
+    }
   });
 
-  return { updated: true };
+  // Only cascade when a seat actually opened.
+  if (wasConsuming) {
+    await cascadeFreedSeat(booking.classId, booking.tenantId);
+  }
+
+  return { updated: true, freedSeat: wasConsuming };
+}
+
+/**
+ * A seat just opened on this class. Promote the Magic waitlist, notify
+ * spot-watchers, and push fresh availability to Wellhub. Best-effort: each
+ * step is independent and logged on failure; never throws.
+ */
+export async function cascadeFreedSeat(classId: string, tenantId: string): Promise<void> {
+  try {
+    await promoteFromWaitlist(classId, tenantId);
+  } catch (err) {
+    console.error("[wellhub] waitlist promotion after cancel failed", { classId, err });
+  }
+  try {
+    await notifySpotWatchers(classId, tenantId);
+  } catch (err) {
+    console.error("[wellhub] spot-watcher notify after cancel failed", { classId, err });
+  }
+  try {
+    const { patchWellhubCapacityForClass } = await import("./sync");
+    await patchWellhubCapacityForClass(classId);
+  } catch (err) {
+    console.error("[wellhub] capacity re-sync after cancel failed", { classId, err });
+  }
 }
 
 // ─── Event handler: checkin-booking-occurred ──────────────────────────────
@@ -269,9 +436,12 @@ export async function processCheckinBookingOccurred(
 
   const booking = await prisma.platformBooking.findUnique({
     where: { wellhubBookingNumber: data.booking.booking_number },
-    select: { id: true },
+    select: { id: true, status: true },
   });
   if (!booking) return { updated: false };
+
+  // Don't move a cancelled booking back to checked_in (out-of-order safety).
+  if (booking.status === "cancelled") return { updated: false };
 
   await prisma.platformBooking.update({
     where: { id: booking.id },

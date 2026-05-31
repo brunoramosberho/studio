@@ -15,7 +15,9 @@ export async function POST(request: NextRequest) {
     const outcome = await processBookingCanceled(result.event, { late: true });
     return NextResponse.json({ received: true, ...outcome });
   } catch (error) {
-    console.error("[wellhub] booking-late-canceled handler crashed", error);
-    return NextResponse.json({ received: true, error: "deferred" });
+    // Return 5xx so Wellhub redelivers — a lost cancellation locks a seat.
+    // Processing is idempotent, so a retry is safe.
+    console.error("[wellhub] booking-late-canceled handler failed", error);
+    return NextResponse.json({ error: "processing_failed" }, { status: 500 });
   }
 }

@@ -19,10 +19,11 @@ import type {
 export async function createWellhubClass(
   gymId: number,
   payload: WellhubClassCreatePayload,
+  token: string,
 ): Promise<{ id: number; name: string; reference?: string | null }> {
   const res = await bookingApi<WellhubClassCreateResponse>(
     `/booking/v1/gyms/${gymId}/classes`,
-    { method: "POST", body: { classes: [payload] } },
+    { method: "POST", body: { classes: [payload] }, token },
   );
   const created = res.classes?.[0];
   if (!created) {
@@ -36,17 +37,23 @@ export function updateWellhubClass(
   gymId: number,
   classId: number,
   payload: WellhubClassUpdatePayload,
+  token: string,
 ): Promise<void> {
   return bookingApi<void>(`/booking/v1/gyms/${gymId}/classes/${classId}`, {
     method: "PUT",
     body: payload,
+    token,
   });
 }
 
 /** GET /booking/v1/gyms/:gym_id/classes */
-export async function listWellhubClasses(gymId: number): Promise<WellhubClass[]> {
+export async function listWellhubClasses(
+  gymId: number,
+  token: string,
+): Promise<WellhubClass[]> {
   const res = await bookingApi<WellhubClassListResponse>(
     `/booking/v1/gyms/${gymId}/classes`,
+    { token },
   );
   return res.classes ?? [];
 }
@@ -56,9 +63,11 @@ export function getWellhubClass(
   gymId: number,
   classId: number,
   opts: { showDeleted?: boolean } = {},
+  token: string,
 ): Promise<WellhubClass> {
   return bookingApi<WellhubClass>(`/booking/v1/gyms/${gymId}/classes/${classId}`, {
     query: { "show-deleted": opts.showDeleted ? "true" : "false" },
+    token,
   });
 }
 
@@ -71,6 +80,7 @@ export function hideWellhubClass(
   gymId: number,
   classId: number,
   base: WellhubClassUpdatePayload,
+  token: string,
 ): Promise<void> {
-  return updateWellhubClass(gymId, classId, { ...base, visible: false });
+  return updateWellhubClass(gymId, classId, { ...base, visible: false }, token);
 }

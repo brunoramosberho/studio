@@ -6,6 +6,8 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import {
   WellhubApiError,
+  WellhubConfigError,
+  getWellhubTokenForTenant,
   refreshWellhubProducts,
 } from "@/lib/platforms/wellhub";
 
@@ -37,12 +39,19 @@ export async function POST() {
     }
 
     try {
-      const result = await refreshWellhubProducts({
-        tenantId: tenant.id,
-        gymId: config.wellhubGymId,
-      });
+      const token = await getWellhubTokenForTenant(tenant.id);
+      const result = await refreshWellhubProducts(
+        {
+          tenantId: tenant.id,
+          gymId: config.wellhubGymId,
+        },
+        token,
+      );
       return NextResponse.json({ ok: true, ...result });
     } catch (error) {
+      if (error instanceof WellhubConfigError) {
+        return NextResponse.json({ ok: false, reason: "missing_token" }, { status: 400 });
+      }
       if (error instanceof WellhubApiError) {
         return NextResponse.json({
           ok: false,

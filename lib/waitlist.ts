@@ -3,6 +3,7 @@ import { sendPushToUser, sendPushToMany } from "@/lib/push";
 import { sendWaitlistPromotion, sendSpotAvailable, getTenantBaseUrl } from "@/lib/email";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { shouldHideCoach } from "@/lib/coach";
+import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
 
 /**
  * Refund the credit held by a waitlist entry back to the user's package.
@@ -52,13 +53,28 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
     where: { id: classId },
     include: {
       room: { select: { maxCapacity: true } },
-      _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
+      _count: {
+        select: {
+          bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
+          blockedSpots: true,
+        },
+      },
     },
   });
 
   if (!classData) return null;
 
-  const spotsLeft = classData.room.maxCapacity - classData._count.bookings;
+  // Count platform (Wellhub/ClassPass) seats too — they occupy the same room.
+  // Without this we would promote a member into a physically full class.
+  const platformBooked = await prisma.platformBooking.count({
+    where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+  });
+
+  const spotsLeft =
+    classData.room.maxCapacity -
+    classData._count.bookings -
+    classData._count.blockedSpots -
+    platformBooked;
   if (spotsLeft <= 0) return null;
 
   const first = await prisma.waitlist.findFirst({
@@ -150,6 +166,28 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
 }
 
 /**
+ * Promote as many waitlisted members as there are free physical seats.
+ * Used when several seats free at once (e.g. the Wellhub reconciliation cron
+ * detects multiple dropped cancellations). Returns the number promoted.
+ *
+ * promoteFromWaitlist already re-checks capacity on each call and returns null
+ * when the room is full or the waitlist is empty, so this loop terminates.
+ */
+export async function promoteWaitlistToCapacity(
+  classId: string,
+  tenantId: string,
+  maxPromotions = 50,
+): Promise<number> {
+  let promoted = 0;
+  for (let i = 0; i < maxPromotions; i++) {
+    const booking = await promoteFromWaitlist(classId, tenantId);
+    if (!booking) break;
+    promoted++;
+  }
+  return promoted;
+}
+
+/**
  * Refund credits and delete all remaining waitlist entries for a class.
  * Used when a class starts or is cancelled with people still waiting.
  */
@@ -205,10 +243,15 @@ export async function notifySpotWatchers(classId: string, tenantId: string) {
 
   if (!classData) return;
 
+  const platformBooked = await prisma.platformBooking.count({
+    where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+  });
+
   const spotsLeft =
     classData.room.maxCapacity -
     classData._count.bookings -
-    classData._count.blockedSpots;
+    classData._count.blockedSpots -
+    platformBooked;
 
   if (spotsLeft <= 0) return;
 

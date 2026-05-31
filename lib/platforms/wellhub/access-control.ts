@@ -7,7 +7,7 @@
 // as unverified.
 
 import { prisma } from "@/lib/db";
-import { accessApi } from "./client";
+import { accessApi, getWellhubTokenForTenant } from "./client";
 import { WellhubApiError } from "./errors";
 import { tryLinkWellhubUserToMagic } from "./matching";
 import { resolveTenantByWellhubGymId } from "./resolve";
@@ -18,11 +18,14 @@ import type {
 
 // ─── /access/v1/validate ──────────────────────────────────────────────────
 
-export async function validateWellhubCheckin(opts: {
-  gymId: number;
-  wellhubId: string;       // gympass_id / unique_token (13 chars)
-  customCode?: string;
-}): Promise<WellhubValidateResponse> {
+export async function validateWellhubCheckin(
+  opts: {
+    gymId: number;
+    wellhubId: string;       // gympass_id / unique_token (13 chars)
+    customCode?: string;
+  },
+  token: string,
+): Promise<WellhubValidateResponse> {
   return accessApi<WellhubValidateResponse>("/access/v1/validate", {
     method: "POST",
     gymId: opts.gymId,
@@ -30,42 +33,55 @@ export async function validateWellhubCheckin(opts: {
       gympass_id: opts.wellhubId,
       ...(opts.customCode ? { custom_code: opts.customCode } : {}),
     },
+    token,
   });
 }
 
 // ─── Custom code lifecycle (POST/PUT/DELETE /access/v1/code/:wellhub_id) ──
 
-export function createWellhubCustomCode(opts: {
-  gymId: number;
-  wellhubId: string;
-  customCode: string;
-}): Promise<void> {
+export function createWellhubCustomCode(
+  opts: {
+    gymId: number;
+    wellhubId: string;
+    customCode: string;
+  },
+  token: string,
+): Promise<void> {
   return accessApi<void>(`/access/v1/code/${encodeURIComponent(opts.wellhubId)}`, {
     method: "POST",
     gymId: opts.gymId,
     body: { custom_code: opts.customCode },
+    token,
   });
 }
 
-export function updateWellhubCustomCode(opts: {
-  gymId: number;
-  wellhubId: string;
-  customCode: string;
-}): Promise<void> {
+export function updateWellhubCustomCode(
+  opts: {
+    gymId: number;
+    wellhubId: string;
+    customCode: string;
+  },
+  token: string,
+): Promise<void> {
   return accessApi<void>(`/access/v1/code/${encodeURIComponent(opts.wellhubId)}`, {
     method: "PUT",
     gymId: opts.gymId,
     body: { custom_code: opts.customCode },
+    token,
   });
 }
 
-export function deleteWellhubCustomCode(opts: {
-  gymId: number;
-  wellhubId: string;
-}): Promise<void> {
+export function deleteWellhubCustomCode(
+  opts: {
+    gymId: number;
+    wellhubId: string;
+  },
+  token: string,
+): Promise<void> {
   return accessApi<void>(`/access/v1/code/${encodeURIComponent(opts.wellhubId)}`, {
     method: "DELETE",
     gymId: opts.gymId,
+    token,
   });
 }
 
@@ -120,12 +136,17 @@ export async function validateWellhubVisitForCheckin(opts: {
     select: { id: true },
   });
 
+  const token = await getWellhubTokenForTenant(opts.tenantId);
+
   try {
-    await validateWellhubCheckin({
-      gymId: config.wellhubGymId,
-      wellhubId: uniqueToken,
-      customCode: opts.customCode,
-    });
+    await validateWellhubCheckin(
+      {
+        gymId: config.wellhubGymId,
+        wellhubId: uniqueToken,
+        customCode: opts.customCode,
+      },
+      token,
+    );
   } catch (error) {
     if (error instanceof WellhubApiError && error.isNotFound) {
       // No active Wellhub check-in to validate — member may not have
@@ -214,11 +235,15 @@ export async function processCheckinWebhook(
   }).catch((err) => console.error("[wellhub] auto-link from checkin failed", err));
 
   // 2) Automated Trigger: validate to actually generate the payment.
+  const token = await getWellhubTokenForTenant(tenant.tenantId);
   try {
-    await validateWellhubCheckin({
-      gymId: data.gym.id,
-      wellhubId: data.user.unique_token,
-    });
+    await validateWellhubCheckin(
+      {
+        gymId: data.gym.id,
+        wellhubId: data.user.unique_token,
+      },
+      token,
+    );
   } catch (error) {
     if (error instanceof WellhubApiError && error.isNotFound) {
       // Check-in not yet propagated on Wellhub's side; safe to skip and let

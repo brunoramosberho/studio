@@ -1,7 +1,11 @@
 "use client";
 
-// Wellhub API onboarding UI. Replaces the legacy email-parsing flow with a
-// step-by-step setup that drives the Booking + Access Control + Setup APIs.
+// Wellhub API onboarding UI. Per-partner integration model:
+//   - Each tenant pastes their own bearer token (issued by Wellhub directly
+//     to the studio). Token is encrypted at rest.
+//   - Webhook URLs + signing secret are surfaced for the admin to forward to
+//     their Wellhub account manager. We do NOT subscribe webhooks
+//     programmatically — Wellhub registers them on their side.
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,18 +13,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, RefreshCw, Copy, Play } from "lucide-react";
 import { toast } from "sonner";
 
 type WellhubMode = "disabled" | "legacy_email" | "api";
-type ImplMethod = "attendance_trigger" | "gate_trigger";
 
 interface WellhubConfig {
   id: string;
   wellhubGymId: number | null;
   wellhubMode: WellhubMode;
-  wellhubImplMethod: ImplMethod;
   wellhubLocale: string | null;
+  wellhubAuthTokenSet: boolean;
   wellhubWebhookSecretSet: boolean;
   wellhubWebhooksRegistered: boolean;
   wellhubLastSyncAt: string | null;
@@ -45,6 +48,20 @@ interface ClassTypeMapping {
 }
 
 const LOCALES = ["es", "es_MX", "es_AR", "es_CL", "en", "pt", "en_GB", "de", "fr", "it", "nl"];
+const WEBHOOK_EVENTS = [
+  "booking-requested",
+  "booking-canceled",
+  "booking-late-canceled",
+  "checkin-booking-occurred",
+  "checkin",
+];
+
+function copyToClipboard(text: string, label: string) {
+  navigator.clipboard.writeText(text).then(
+    () => toast.success(`${label} copiado`),
+    () => toast.error("No se pudo copiar"),
+  );
+}
 
 export function WellhubApiSetup() {
   const qc = useQueryClient();
@@ -66,10 +83,17 @@ export function WellhubApiSetup() {
 
   const [gymIdDraft, setGymIdDraft] = useState<string>("");
   const [localeDraft, setLocaleDraft] = useState<string>("es");
+  const [tokenDraft, setTokenDraft] = useState<string>("");
   const [rateDraft, setRateDraft] = useState<string>("");
+  const [freshSecret, setFreshSecret] = useState<string | null>(null);
+  const [simSlotId, setSimSlotId] = useState<string>("");
+  const [simClassId, setSimClassId] = useState<string>("");
+  const [simUserId, setSimUserId] = useState<string>("1000000000002");
+  const [simBookingNumber, setSimBookingNumber] = useState<string>("");
+  const [simResult, setSimResult] = useState<unknown>(null);
 
   const saveConfig = useMutation({
-    mutationFn: async (patch: Partial<WellhubConfig>) => {
+    mutationFn: async (patch: Record<string, unknown>) => {
       const res = await fetch("/api/platforms/wellhub/config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -92,18 +116,19 @@ export function WellhubApiSetup() {
     onError: (e: Error) => toast.error(`Falló la conexión: ${e.message}`),
   });
 
-  const registerWebhooks = useMutation({
+  const rotateSecret = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/platforms/wellhub/register-webhooks", { method: "POST" });
+      const res = await fetch("/api/platforms/wellhub/rotate-secret", { method: "POST" });
       const body = await res.json();
       if (!res.ok || !body.ok) throw new Error(body.reason ?? "failed");
-      return body;
+      return body as { ok: true; secret: string };
     },
-    onSuccess: () => {
-      toast.success("Webhooks suscritos en Wellhub");
+    onSuccess: (body) => {
+      setFreshSecret(body.secret);
+      toast.success("Secret generado — cópialo ahora, no se mostrará de nuevo");
       qc.invalidateQueries({ queryKey: ["wellhub-config"] });
     },
-    onError: (e: Error) => toast.error(`Falló la suscripción: ${e.message}`),
+    onError: (e: Error) => toast.error(`Error: ${e.message}`),
   });
 
   const refreshProducts = useMutation({
@@ -133,6 +158,26 @@ export function WellhubApiSetup() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["wellhub-classtypes"] }),
   });
 
+  const simulate = useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const res = await fetch("/api/platforms/wellhub/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message ?? data.reason ?? "Simulación falló");
+      }
+      return data.result;
+    },
+    onSuccess: (result) => {
+      setSimResult(result);
+      toast.success("Webhook simulado disparado");
+    },
+    onError: (e: Error) => toast.error(`Error: ${e.message}`),
+  });
+
   const backfill = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/platforms/wellhub/backfill?days=28", { method: "POST" });
@@ -148,57 +193,112 @@ export function WellhubApiSetup() {
   });
 
   const gymIdSet = !!config?.wellhubGymId;
+  const tokenSet = !!config?.wellhubAuthTokenSet;
+  const secretSet = !!config?.wellhubWebhookSecretSet;
   const isApi = config?.wellhubMode === "api";
+
+  // Webhook URLs are SHARED across all tenants — the handler resolves the
+  // owning tenant by gym_id from the payload (not by subdomain). This means
+  // Wellhub only needs the 5 URLs registered once at the CMS level; new
+  // tenants just plug in their gym_id + secret without touching Wellhub's
+  // URL list.
+  const webhookHost =
+    typeof window !== "undefined"
+      ? `${window.location.protocol}//${window.location.host.split(".").slice(-2).join(".")}`
+      : "https://mgic.app";
+  const webhookUrls = WEBHOOK_EVENTS.map((event) => ({
+    event,
+    url: `${webhookHost}/api/webhooks/wellhub/${event}`,
+  }));
 
   return (
     <div className="space-y-4">
-      {/* Step 1 — Identity */}
+      {/* Step 1 — Identity + Token */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-base">
-            <span>1. Identidad del gym</span>
-            {gymIdSet && <Badge variant="outline" className="bg-green-50">gym_id #{config?.wellhubGymId}</Badge>}
+            <span>1. Identidad y credenciales</span>
+            {gymIdSet && tokenSet && (
+              <Badge variant="outline" className="bg-green-50">
+                gym_id #{config?.wellhubGymId} · token configurado
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            El `gym_id` te lo entrega Wellhub al onboardear tu estudio. Si lo
-            tienes, pégalo abajo. Si no, contacta a tu account manager.
-          </p>
-          <div className="flex gap-2">
-            <Input
-              type="number"
-              placeholder="123456"
-              value={gymIdDraft || (config?.wellhubGymId ?? "")}
-              onChange={(e) => setGymIdDraft(e.target.value)}
-            />
-            <select
-              className="rounded-md border border-input bg-background px-3 text-sm"
-              value={localeDraft || config?.wellhubLocale || "es"}
-              onChange={(e) => setLocaleDraft(e.target.value)}
-            >
-              {LOCALES.map((l) => (
-                <option key={l} value={l}>{l}</option>
-              ))}
-            </select>
-            <Button
-              onClick={() =>
-                saveConfig.mutate({
-                  wellhubGymId: gymIdDraft ? Number(gymIdDraft) : (config?.wellhubGymId ?? null),
-                  wellhubLocale: localeDraft || (config?.wellhubLocale ?? "es"),
-                })
-              }
-              disabled={saveConfig.isPending}
-            >
-              Guardar
-            </Button>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">Gym ID</label>
+            <p className="text-xs text-muted-foreground">
+              Te lo entrega Wellhub al onboardear tu estudio (lo encuentras en
+              tu Partner Portal o se lo pides a tu account manager).
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                placeholder="123456"
+                value={gymIdDraft || (config?.wellhubGymId ?? "")}
+                onChange={(e) => setGymIdDraft(e.target.value)}
+              />
+              <select
+                className="rounded-md border border-input bg-background px-3 text-sm"
+                value={localeDraft || config?.wellhubLocale || "es"}
+                onChange={(e) => setLocaleDraft(e.target.value)}
+              >
+                {LOCALES.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+              <Button
+                onClick={() =>
+                  saveConfig.mutate({
+                    wellhubGymId: gymIdDraft ? Number(gymIdDraft) : (config?.wellhubGymId ?? null),
+                    wellhubLocale: localeDraft || (config?.wellhubLocale ?? "es"),
+                  })
+                }
+                disabled={saveConfig.isPending}
+              >
+                Guardar
+              </Button>
+            </div>
           </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">Auth Token (Bearer)</label>
+            <p className="text-xs text-muted-foreground">
+              Token del API issued por Wellhub a tu estudio. Se guarda
+              encriptado. Sólo pégalo si vas a actualizarlo —
+              {tokenSet ? " ya hay uno guardado." : " aún no hay ninguno."}
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                placeholder={tokenSet ? "•••••••••••••• (dejar vacío para conservar)" : "Pega el token aquí"}
+                value={tokenDraft}
+                onChange={(e) => setTokenDraft(e.target.value)}
+                autoComplete="off"
+              />
+              <Button
+                onClick={() => {
+                  if (!tokenDraft) {
+                    toast.error("Pega un token antes de guardar");
+                    return;
+                  }
+                  saveConfig.mutate({ wellhubAuthToken: tokenDraft });
+                  setTokenDraft("");
+                }}
+                disabled={saveConfig.isPending}
+              >
+                Guardar token
+              </Button>
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => testConnection.mutate()}
-              disabled={!gymIdSet || testConnection.isPending}
+              disabled={!gymIdSet || !tokenSet || testConnection.isPending}
             >
               {testConnection.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -211,37 +311,93 @@ export function WellhubApiSetup() {
         </CardContent>
       </Card>
 
-      {/* Step 2 — Webhooks */}
+      {/* Step 2 — Webhooks (manual setup with Wellhub) */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-base">
             <span>2. Webhooks</span>
-            {config?.wellhubWebhooksRegistered ? (
-              <Badge variant="outline" className="bg-green-50">Suscritos</Badge>
+            {secretSet ? (
+              <Badge variant="outline" className="bg-green-50">Secret generado</Badge>
             ) : (
-              <Badge variant="outline">Pendiente</Badge>
+              <Badge variant="outline">Sin secret</Badge>
             )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Suscribiremos los 5 eventos (booking-requested, booking-canceled,
-            booking-late-canceled, checkin-booking-occurred, checkin) en Wellhub
-            apuntando a tu app. Al volver a hacer click rotamos el secret.
+            Wellhub no expone API para suscribir webhooks: tu account manager
+            los registra del lado de ellos. Las 5 URLs de abajo son las
+            mismas para todos los estudios (Magic enruta cada webhook al
+            tenant correcto usando el <code className="rounded bg-muted px-1">gym_id</code> del payload).
+            Si Wellhub ya las tiene registradas a nivel de CMS, sólo necesitas
+            mandar el secret para tu gym. El secret se valida por gym; cuando
+            lo rotes, las llamadas en vuelo firmadas con el anterior fallarán
+            hasta que Wellhub actualice.
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => registerWebhooks.mutate()}
-            disabled={!gymIdSet || registerWebhooks.isPending}
-          >
-            {registerWebhooks.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
+
+          <div className="space-y-1.5 rounded-md border bg-muted/30 p-3">
+            <div className="text-xs font-medium">URLs (compartidas — sólo necesitan registrarse 1 vez)</div>
+            {webhookUrls.map(({ event, url }) => (
+              <div key={event} className="flex items-center gap-2 font-mono text-xs">
+                <span className="w-44 shrink-0 text-muted-foreground">{event}</span>
+                <code className="flex-1 truncate rounded bg-background px-2 py-1">{url}</code>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => copyToClipboard(url, event)}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => rotateSecret.mutate()}
+              disabled={!gymIdSet || rotateSecret.isPending}
+            >
+              {rotateSecret.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              {secretSet ? "Rotar secret" : "Generar secret"}
+            </Button>
+            {secretSet && (
+              <span className="text-xs text-muted-foreground">
+                Hay un secret guardado. Rotar genera uno nuevo y descarta el anterior.
+              </span>
             )}
-            {config?.wellhubWebhooksRegistered ? "Re-suscribir / rotar secret" : "Suscribir webhooks"}
-          </Button>
+          </div>
+
+          {freshSecret && (
+            <div className="space-y-1.5 rounded-md border border-amber-200 bg-amber-50 p-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-amber-900">
+                <AlertCircle className="h-3.5 w-3.5" /> Cópialo ahora — no se mostrará de nuevo
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 truncate rounded bg-background px-2 py-1 font-mono text-xs">
+                  {freshSecret}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(freshSecret, "Secret")}
+                >
+                  <Copy className="mr-1.5 h-3.5 w-3.5" /> Copiar
+                </Button>
+              </div>
+              <p className="text-xs text-amber-800">
+                Mándale este secret a tu account manager de Wellhub junto con las
+                URLs de arriba. Firma esperada: HMAC-SHA1, header{" "}
+                <code className="rounded bg-amber-100 px-1">x-gympass-signature</code>.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -254,7 +410,7 @@ export function WellhubApiSetup() {
               variant="ghost"
               size="sm"
               onClick={() => refreshProducts.mutate()}
-              disabled={!gymIdSet || refreshProducts.isPending}
+              disabled={!gymIdSet || !tokenSet || refreshProducts.isPending}
             >
               {refreshProducts.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -323,23 +479,6 @@ export function WellhubApiSetup() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm">Método de check-in:</span>
-            <select
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm"
-              value={config?.wellhubImplMethod ?? "attendance_trigger"}
-              onChange={(e) =>
-                saveConfig.mutate({ wellhubImplMethod: e.target.value as ImplMethod })
-              }
-            >
-              <option value="attendance_trigger">Attendance Trigger (recomendado)</option>
-              <option value="gate_trigger">Gate Trigger (torniquete)</option>
-            </select>
-            <span className="text-xs text-muted-foreground">
-              + Automated Trigger (siempre activo)
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
             <span className="text-sm">Pago por visita (EUR):</span>
             <Input
               type="number"
@@ -379,6 +518,144 @@ export function WellhubApiSetup() {
                 <p className="text-xs font-medium text-red-800">Último error</p>
                 <p className="text-xs text-red-700">{config.wellhubLastError}</p>
               </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Step 5 — Webhook simulations (sandbox only) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between text-base">
+            <span>5. Probar webhooks (sandbox)</span>
+            <Badge variant="outline">Sandbox only</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Dispara webhooks reales contra tus endpoints sin necesitar un usuario
+            de Wellhub. Usa los IDs de slot/class del catálogo de sandbox.
+          </p>
+
+          <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+            <div className="text-xs font-medium">booking-requested</div>
+            <div className="flex flex-wrap gap-2">
+              <Input
+                placeholder="slot_id"
+                className="w-32"
+                value={simSlotId}
+                onChange={(e) => setSimSlotId(e.target.value)}
+              />
+              <Input
+                placeholder="class_id"
+                className="w-32"
+                value={simClassId}
+                onChange={(e) => setSimClassId(e.target.value)}
+              />
+              <Input
+                placeholder="gympass_user_id"
+                className="w-48"
+                value={simUserId}
+                onChange={(e) => setSimUserId(e.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  simulate.mutate({
+                    action: "booking-requested",
+                    slotId: Number(simSlotId),
+                    classId: Number(simClassId),
+                    gympassUserId: simUserId,
+                  })
+                }
+                disabled={!simSlotId || !simClassId || !simUserId || simulate.isPending}
+              >
+                {simulate.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Play className="mr-1.5 h-3.5 w-3.5" />}
+                Disparar
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+            <div className="text-xs font-medium">booking-canceled / late-canceled</div>
+            <div className="flex flex-wrap gap-2">
+              <Input
+                placeholder="booking_number (ej. BK_XXXXX)"
+                className="w-56"
+                value={simBookingNumber}
+                onChange={(e) => setSimBookingNumber(e.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  simulate.mutate({
+                    action: "booking-cancel",
+                    bookingNumber: simBookingNumber,
+                  })
+                }
+                disabled={!simBookingNumber || simulate.isPending}
+              >
+                Cancel normal
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  simulate.mutate({
+                    action: "booking-cancel",
+                    bookingNumber: simBookingNumber,
+                    late: true,
+                  })
+                }
+                disabled={!simBookingNumber || simulate.isPending}
+              >
+                Late cancel
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+            <div className="text-xs font-medium">checkin</div>
+            <div className="flex flex-wrap gap-2">
+              <Input
+                placeholder="gympass_user_id"
+                className="w-48"
+                value={simUserId}
+                onChange={(e) => setSimUserId(e.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  simulate.mutate({
+                    action: "checkin",
+                    gympassUserId: simUserId,
+                  })
+                }
+                disabled={!simUserId || simulate.isPending}
+              >
+                <Play className="mr-1.5 h-3.5 w-3.5" /> Disparar check-in
+              </Button>
+            </div>
+          </div>
+
+          {simResult !== null && (
+            <div className="space-y-1.5 rounded-md border bg-muted/30 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium">Última respuesta</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSimResult(null)}
+                >
+                  Limpiar
+                </Button>
+              </div>
+              <pre className="max-h-64 overflow-auto rounded bg-background p-2 font-mono text-xs">
+                {JSON.stringify(simResult, null, 2)}
+              </pre>
             </div>
           )}
         </CardContent>

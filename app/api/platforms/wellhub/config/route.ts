@@ -1,11 +1,23 @@
-// Per-tenant Wellhub configuration: gym_id, mode toggle, implementation
-// method, locale. Stored on the existing StudioPlatformConfig row keyed by
-// (tenantId, platform=wellhub). Webhook secret is set separately by the
-// "register webhooks" endpoint and never exposed in responses.
+// Per-tenant Wellhub configuration: gym_id, mode toggle, locale, auth token.
+// Stored on the existing StudioPlatformConfig row keyed by
+// (tenantId, platform=wellhub). The auth token and webhook secret are stored
+// encrypted (via lib/encryption.ts) and never exposed in responses — the API
+// only signals "set" / "not set" via boolean flags.
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { encrypt } from "@/lib/encryption";
 import { requireRole } from "@/lib/tenant";
+
+function strip(config: Awaited<ReturnType<typeof prisma.studioPlatformConfig.findUnique>>) {
+  if (!config) return null;
+  const { wellhubWebhookSecret, wellhubAuthToken, ...safe } = config;
+  return {
+    ...safe,
+    wellhubWebhookSecretSet: !!wellhubWebhookSecret,
+    wellhubAuthTokenSet: !!wellhubAuthToken,
+  };
+}
 
 export async function GET() {
   try {
@@ -13,14 +25,7 @@ export async function GET() {
     const config = await prisma.studioPlatformConfig.findUnique({
       where: { tenantId_platform: { tenantId: tenant.id, platform: "wellhub" } },
     });
-    if (!config) return NextResponse.json(null);
-
-    // Strip the encrypted secret from the response — we only signal "set / not set".
-    const { wellhubWebhookSecret, ...safe } = config;
-    return NextResponse.json({
-      ...safe,
-      wellhubWebhookSecretSet: !!wellhubWebhookSecret,
-    });
+    return NextResponse.json(strip(config));
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
@@ -37,16 +42,17 @@ export async function PATCH(request: NextRequest) {
     const {
       wellhubGymId,
       wellhubMode,
-      wellhubImplMethod,
       wellhubLocale,
+      wellhubAuthToken,
       ratePerVisit,
       portalUrl,
       isActive,
     } = body as {
       wellhubGymId?: number | null;
       wellhubMode?: "disabled" | "legacy_email" | "api";
-      wellhubImplMethod?: "attendance_trigger" | "gate_trigger";
       wellhubLocale?: string | null;
+      /** Plaintext bearer token from Wellhub — encrypted before storage. */
+      wellhubAuthToken?: string | null;
       ratePerVisit?: number | null;
       portalUrl?: string | null;
       isActive?: boolean;
@@ -55,20 +61,22 @@ export async function PATCH(request: NextRequest) {
     if (wellhubMode && !["disabled", "legacy_email", "api"].includes(wellhubMode)) {
       return NextResponse.json({ error: "Invalid wellhubMode" }, { status: 400 });
     }
-    if (wellhubImplMethod && !["attendance_trigger", "gate_trigger"].includes(wellhubImplMethod)) {
-      return NextResponse.json({ error: "Invalid wellhubImplMethod" }, { status: 400 });
-    }
 
     const data: Record<string, unknown> = {};
     if (wellhubGymId !== undefined) data.wellhubGymId = wellhubGymId;
     if (wellhubMode !== undefined) data.wellhubMode = wellhubMode;
-    if (wellhubImplMethod !== undefined) data.wellhubImplMethod = wellhubImplMethod;
     if (wellhubLocale !== undefined) data.wellhubLocale = wellhubLocale;
     if (ratePerVisit !== undefined) data.ratePerVisit = ratePerVisit;
     if (portalUrl !== undefined) data.portalUrl = portalUrl;
     if (isActive !== undefined) {
       data.isActive = isActive;
       if (isActive) data.activatedAt = new Date();
+    }
+    if (wellhubAuthToken !== undefined) {
+      // null/empty string explicitly clears the token; otherwise encrypt.
+      data.wellhubAuthToken = wellhubAuthToken
+        ? encrypt(wellhubAuthToken.trim())
+        : null;
     }
 
     const inboundEmail = `wellhub.${tenant.slug}@in.mgic.app`;
@@ -83,11 +91,7 @@ export async function PATCH(request: NextRequest) {
       update: data,
     });
 
-    const { wellhubWebhookSecret, ...safe } = config;
-    return NextResponse.json({
-      ...safe,
-      wellhubWebhookSecretSet: !!wellhubWebhookSecret,
-    });
+    return NextResponse.json(strip(config));
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });

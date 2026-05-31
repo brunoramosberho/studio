@@ -8,19 +8,25 @@ import { bookingApi } from "./client";
 import type { WellhubProductsResponse } from "./types";
 
 /** GET /setup/v1/gyms/:gym_id/products */
-export async function fetchWellhubProducts(gymId: number): Promise<WellhubProductsResponse> {
-  return bookingApi<WellhubProductsResponse>(`/setup/v1/gyms/${gymId}/products`);
+export async function fetchWellhubProducts(
+  gymId: number,
+  token: string,
+): Promise<WellhubProductsResponse> {
+  return bookingApi<WellhubProductsResponse>(`/setup/v1/gyms/${gymId}/products`, { token });
 }
 
 /**
  * Pulls the product catalog for a gym and upserts it into `WellhubProduct`.
  * Idempotent — safe to run on a schedule. Returns the count of products synced.
  */
-export async function refreshWellhubProducts(opts: {
-  tenantId: string;
-  gymId: number;
-}): Promise<{ count: number }> {
-  const res = await fetchWellhubProducts(opts.gymId);
+export async function refreshWellhubProducts(
+  opts: {
+    tenantId: string;
+    gymId: number;
+  },
+  token: string,
+): Promise<{ count: number }> {
+  const res = await fetchWellhubProducts(opts.gymId, token);
 
   await prisma.$transaction(
     res.products.map((p) =>

@@ -242,25 +242,12 @@ export interface WellhubCheckinEvent {
   };
 }
 
-export interface WellhubSystemIntegrationRequestedEvent {
-  event_type: "system-integration-requested";
-  event_data: {
-    gym_id: number;
-    gym_name: string;
-    partner_id: string;
-    custom_fields?: Array<{ key: string; value: string }>;
-    event_id: string;
-    timestamp: number;
-  };
-}
-
 export type WellhubWebhookEvent =
   | WellhubBookingRequestedEvent
   | WellhubBookingCanceledEvent
   | WellhubBookingLateCanceledEvent
   | WellhubCheckinBookingOccurredEvent
-  | WellhubCheckinEvent
-  | WellhubSystemIntegrationRequestedEvent;
+  | WellhubCheckinEvent;
 
 export type WellhubWebhookEventType = WellhubWebhookEvent["event_type"];
 
@@ -282,28 +269,4 @@ export interface WellhubValidateResponse {
 
 export interface WellhubCustomCodeRequest {
   custom_code: string;
-}
-
-// ─── Integration Setup API ────────────────────────────────────────────────
-
-export interface WellhubSetupGymsListResponse {
-  partners: Array<{ id: number; enabled: boolean }>;
-}
-
-export interface WellhubSetupWebhookSubscription {
-  event: Exclude<WellhubWebhookEventType, "system-integration-requested">;
-  url: string;
-  secret: string;
-  additional_data?: boolean;
-  internal_product?: boolean | null;
-}
-
-export interface WellhubSetupWebhookListResponse {
-  webhooks: WellhubSetupWebhookSubscription[];
-}
-
-export interface WellhubSetupSystemNotificationSubscribeRequest {
-  type: "SYSTEM_INTEGRATION_REQUESTED";
-  url: string;
-  secret: string;
 }
