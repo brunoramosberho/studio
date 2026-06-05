@@ -82,19 +82,22 @@ export function ClassPicker({
   const [checkingCredits, setCheckingCredits] = useState(false);
 
   const now = useMemo(() => new Date(), []);
-  const fromDate = dateFilter || now.toISOString();
 
   const { data: classes = [], isLoading } = useQuery<ClassResult[]>({
     queryKey: ["pos-classes", tab, dateFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (tab === "upcoming") {
-        params.set("from", dateFilter || now.toISOString());
+        // The /api/classes endpoint expects `from`/`to` as YYYY-MM-DD
+        // wall-clock dates, not ISO timestamps. Passing a full ISO string
+        // makes the API build an invalid Date and return nothing. `dateFilter`
+        // already comes from an <input type="date"> in YYYY-MM-DD form.
+        params.set("from", dateFilter || format(now, "yyyy-MM-dd"));
       } else {
         const thirtyDaysAgo = new Date(now);
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        params.set("from", thirtyDaysAgo.toISOString());
-        params.set("to", now.toISOString());
+        params.set("from", format(thirtyDaysAgo, "yyyy-MM-dd"));
+        params.set("to", format(now, "yyyy-MM-dd"));
       }
       const res = await fetch(`/api/classes?${params.toString()}`);
       if (!res.ok) return [];
