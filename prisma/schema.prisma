@@ -627,6 +627,12 @@ model ClassType {
 
   showInFeed Boolean @default(true)
 
+  // Soft-delete marker. We hard-delete a discipline when no Class references
+  // it; otherwise we flip isActive=false so it disappears from every
+  // public-facing surface (schedule filters, booking) while preserving
+  // historical Class / Booking / revenue rows that point at it.
+  isActive Boolean @default(true)
+
   // Revenue recognition: weight for proportional allocation from unlimited
   // subscriptions, and drop-in reference price used as the per-booking cap.
   // Formula: weight = dropInPriceCents / baseDropInPriceCents.
@@ -653,6 +659,7 @@ model ClassType {
 
   @@unique([tenantId, wellhubClassId])
   @@index([tenantId])
+  @@index([tenantId, isActive])
 }
 
 enum Level {
@@ -1104,6 +1111,11 @@ model Studio {
   rooms           Room[]
   productsEnabled Boolean @default(false)
 
+  // Soft-delete marker. We hard-delete a studio when it has no Room; otherwise
+  // we flip isActive=false so it (and its classes) disappear from every
+  // public-facing surface while preserving historical rows.
+  isActive Boolean @default(true)
+
   productAvailability  ProductStudioAvailability[]
   bookingProductOrders BookingProductOrder[]
 
@@ -1122,6 +1134,7 @@ model Studio {
 
   @@index([cityId])
   @@index([tenantId])
+  @@index([tenantId, isActive])
 }
 
 model Room {

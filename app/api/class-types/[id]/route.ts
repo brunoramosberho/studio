@@ -19,7 +19,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, description, duration, level, color, icon, mediaUrl, tags, showInFeed } = body;
+    const { name, description, duration, level, color, icon, mediaUrl, tags, showInFeed, isActive } = body;
 
     const updated = await prisma.classType.update({
       where: { id },
@@ -33,6 +33,7 @@ export async function PUT(
         ...(mediaUrl !== undefined && { mediaUrl: mediaUrl || null }),
         ...(tags !== undefined && { tags: Array.isArray(tags) ? tags : [] }),
         ...(showInFeed !== undefined && { showInFeed }),
+        ...(isActive !== undefined && { isActive: isActive === true }),
       },
       include: { _count: { select: { classes: true, rooms: true } } },
     });
@@ -63,16 +64,17 @@ export async function DELETE(
       return NextResponse.json({ error: "Class type not found" }, { status: 404 });
     }
 
+    // If any class (past or future) references this discipline we can't hard
+    // delete without orphaning history, so we deactivate instead: it stays in
+    // the DB for accounting but disappears from every public-facing surface.
     const classCount = await prisma.class.count({ where: { classTypeId: id, tenantId: ctx.tenant.id } });
     if (classCount > 0) {
-      return NextResponse.json(
-        { error: `No se puede eliminar: hay ${classCount} clase(s) usando esta disciplina` },
-        { status: 409 },
-      );
+      await prisma.classType.update({ where: { id }, data: { isActive: false } });
+      return NextResponse.json({ ok: true, deactivated: true, classCount });
     }
 
     await prisma.classType.delete({ where: { id } });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, deactivated: false });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });

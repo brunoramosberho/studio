@@ -14,6 +14,7 @@ import {
   Users,
   ChevronDown,
   ChevronRight,
+  RotateCcw,
   X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,6 +73,7 @@ interface StudioData {
   rooms: RoomData[];
   productsEnabled: boolean;
   geofenceRadiusMeters: number;
+  isActive: boolean;
 }
 
 interface ClassType {
@@ -127,7 +129,7 @@ export default function AdminStudiosPage() {
   const { data: studios, isLoading } = useQuery<StudioData[]>({
     queryKey: ["admin-studios"],
     queryFn: async () => {
-      const res = await fetch("/api/studios");
+      const res = await fetch("/api/studios?all=true");
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
@@ -232,12 +234,32 @@ export default function AdminStudiosPage() {
         const err = await res.json();
         throw new Error(err.error || "Failed");
       }
+      return res.json() as Promise<{ deactivated?: boolean }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
+      toast.success(data?.deactivated ? t("studioDeactivated") : t("studioDeleted"));
+    },
+    onError: (err: Error) => toast.error(err.message || t("studioDeleteError")),
+  });
+
+  const reactivateStudioMut = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/studios/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
-      toast.success(t("studioDeleted"));
+      toast.success(t("studioReactivated"));
     },
-    onError: (err: Error) => toast.error(err.message || t("studioDeleteError")),
+    onError: (err: Error) => toast.error(err.message || t("studioUpdateError")),
   });
 
   // Room mutations
@@ -455,7 +477,7 @@ export default function AdminStudiosPage() {
 
                 return (
                   <motion.div key={studio.id} variants={fadeUp} initial="hidden" animate="show">
-                    <Card className="overflow-hidden">
+                    <Card className={cn("overflow-hidden", !studio.isActive && "opacity-60")}>
                       <CardContent className="p-0">
                         {/* Studio header */}
                         <div
@@ -473,6 +495,11 @@ export default function AdminStudiosPage() {
                               <Badge variant="secondary" className="text-[10px]">
                                 {studio.rooms.length} {studio.rooms.length === 1 ? t("roomSingular") : t("roomPlural")}
                               </Badge>
+                              {!studio.isActive && (
+                                <Badge variant="outline" className="border-amber-400/50 text-[10px] text-amber-600 dark:text-amber-400">
+                                  {t("studioInactive")}
+                                </Badge>
+                              )}
                             </div>
                             <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
                               <MapPin className="h-3 w-3" />
@@ -483,6 +510,15 @@ export default function AdminStudiosPage() {
                           </div>
 
                           <div className="flex items-center gap-1">
+                            {!studio.isActive && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); reactivateStudioMut.mutate(studio.id); }}
+                                className="rounded-lg p-2 text-muted transition-colors hover:bg-emerald-50 hover:text-emerald-600"
+                                title={t("reactivateStudio")}
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             <button
                               onClick={(e) => { e.stopPropagation(); openEditStudio(studio); }}
                               className="rounded-lg p-2 text-muted transition-colors hover:bg-surface hover:text-foreground"

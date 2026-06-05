@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Rss,
   Check,
+  RotateCcw,
 } from "lucide-react";
 import { IconPicker, getIconComponent } from "@/components/admin/icon-picker";
 import { Card, CardContent } from "@/components/ui/card";
@@ -78,6 +79,7 @@ interface ClassTypeData {
   mediaUrl: string | null;
   tags: string[];
   showInFeed: boolean;
+  isActive: boolean;
   _count: { classes: number; rooms: number };
 }
 
@@ -264,7 +266,7 @@ export default function AdminClassTypesPage() {
   const { data: classTypes, isLoading } = useQuery<ClassTypeData[]>({
     queryKey: ["admin", "class-types"],
     queryFn: async () => {
-      const res = await fetch("/api/class-types");
+      const res = await fetch("/api/class-types?all=true");
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
@@ -347,6 +349,22 @@ export default function AdminClassTypesPage() {
     },
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/class-types/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: true }),
+      });
+      if (!res.ok) throw new Error("Error al reactivar");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "class-types"] });
+      queryClient.invalidateQueries({ queryKey: ["class-types"] });
+    },
+  });
+
   const isFormValid = formData.name.trim() && formData.duration > 0 && formData.color;
 
   return (
@@ -399,7 +417,7 @@ export default function AdminClassTypesPage() {
         >
           {classTypes.map((ct) => (
             <motion.div key={ct.id} variants={fadeUp}>
-              <Card className="group transition-shadow hover:shadow-warm">
+              <Card className={cn("group transition-shadow hover:shadow-warm", !ct.isActive && "opacity-60")}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -413,7 +431,14 @@ export default function AdminClassTypesPage() {
                         })()}
                       </div>
                       <div>
-                        <p className="font-display text-base font-bold">{ct.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-display text-base font-bold">{ct.name}</p>
+                          {!ct.isActive && (
+                            <Badge variant="outline" className="border-amber-400/50 text-amber-600 dark:text-amber-400">
+                              {t("inactive")}
+                            </Badge>
+                          )}
+                        </div>
                         {ct.description && (
                           <p className="mt-0.5 text-xs text-muted line-clamp-1">
                             {ct.description}
@@ -466,19 +491,32 @@ export default function AdminClassTypesPage() {
                     </div>
                   )}
                   <Separator className="my-3" />
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Rss className="h-3 w-3 text-muted" />
-                      <span className="text-xs text-muted">{t("showInFeed")}</span>
+                  {ct.isActive ? (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Rss className="h-3 w-3 text-muted" />
+                        <span className="text-xs text-muted">{t("showInFeed")}</span>
+                      </div>
+                      <Switch
+                        checked={ct.showInFeed}
+                        onCheckedChange={(checked) =>
+                          toggleFeedMutation.mutate({ id: ct.id, showInFeed: checked })
+                        }
+                        disabled={toggleFeedMutation.isPending}
+                      />
                     </div>
-                    <Switch
-                      checked={ct.showInFeed}
-                      onCheckedChange={(checked) =>
-                        toggleFeedMutation.mutate({ id: ct.id, showInFeed: checked })
-                      }
-                      disabled={toggleFeedMutation.isPending}
-                    />
-                  </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2"
+                      onClick={() => reactivateMutation.mutate(ct.id)}
+                      disabled={reactivateMutation.isPending}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      {t("reactivate")}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -724,6 +762,11 @@ export default function AdminClassTypesPage() {
               {t("deleteDisciplineConfirm", { name: deleteTarget?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
+          {(deleteTarget?._count.classes ?? 0) > 0 && (
+            <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              {t("deleteDisciplineHasClassesNote")}
+            </p>
+          )}
           {deleteMutation.isError && (
             <p className="text-sm text-destructive">
               {deleteMutation.error?.message || t("deleteError")}

@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, requireRole } from "@/lib/tenant";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const tenant = await requireTenant();
+    // Deactivated disciplines are hidden everywhere except the admin
+    // management screen, which opts in with `?all=true` (admin-only).
+    const all = request.nextUrl.searchParams.get("all") === "true";
+    if (all) await requireRole("ADMIN");
 
     const classTypes = await prisma.classType.findMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: tenant.id, ...(all ? {} : { isActive: true }) },
       orderBy: { name: "asc" },
       include: {
         _count: { select: { classes: true, rooms: true } },
@@ -15,6 +19,9 @@ export async function GET() {
     });
     return NextResponse.json(classTypes);
   } catch (error) {
+    if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
+    }
     console.error("GET /api/class-types error:", error);
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
   }

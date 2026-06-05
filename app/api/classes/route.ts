@@ -58,6 +58,16 @@ export async function GET(request: NextRequest) {
     const isStaff = !!authCtx && roleAtLeast(authCtx.membership.role, "COACH");
     const hideCoachForClient = !isStaff && tenant.hideCoachUntilClassEnds;
 
+    // Members and the public never see classes of a deactivated discipline or
+    // studio. Staff (admin / coach) still see them so they stay manageable.
+    if (!isStaff) {
+      where.classType = { ...(where.classType as Record<string, unknown> | undefined), isActive: true };
+      where.room = {
+        ...(where.room as Record<string, unknown> | undefined),
+        studio: { isActive: true },
+      };
+    }
+
     // If clients shouldn't see the coach, ignore the coachId filter — otherwise
     // a brute-forced id would silently filter the schedule and leak which
     // classes belong to which coach.

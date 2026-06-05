@@ -6,11 +6,16 @@ export async function GET(request: NextRequest) {
   try {
     const tenant = await requireTenant();
     const cityId = request.nextUrl.searchParams.get("cityId");
+    // Deactivated studios are hidden everywhere except the admin management
+    // screen, which opts in with `?all=true` (admin-only).
+    const all = request.nextUrl.searchParams.get("all") === "true";
+    if (all) await requireRole("ADMIN");
 
     const studios = await prisma.studio.findMany({
       where: {
         tenantId: tenant.id,
         ...(cityId && { cityId }),
+        ...(all ? {} : { isActive: true }),
       },
       include: {
         city: { include: { country: true } },
@@ -27,6 +32,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(studios);
   } catch (error) {
+    if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
+    }
     console.error("GET /api/studios error:", error);
     return NextResponse.json({ error: "Failed to fetch studios" }, { status: 500 });
   }
