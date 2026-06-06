@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatTime } from "@/lib/utils";
+import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 import type { ClassWithDetails } from "@/types";
 
@@ -60,15 +61,25 @@ export default function CoachDashboard() {
   const coachName = session?.user?.name?.split(" ")[0] ?? "Coach";
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-  const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7, 23, 59, 59).toISOString();
+  // /api/classes expects `from`/`to` as YYYY-MM-DD wall-clock dates — passing a
+  // full ISO timestamp makes the endpoint build an invalid Date and return
+  // nothing. The endpoint also widens the range by ±1 day server-side, so the
+  // results are re-filtered to the exact local day/window below.
+  const todayStr = format(now, "yyyy-MM-dd");
+  const tomorrowStr = format(
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
+    "yyyy-MM-dd",
+  );
+  const weekEndStr = format(
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7),
+    "yyyy-MM-dd",
+  );
 
   const { data: todayClasses, isLoading } = useQuery<ClassWithDetails[]>({
-    queryKey: ["coach-classes-today", todayStart],
+    queryKey: ["coach-classes-today", todayStr],
     queryFn: async () => {
       const res = await fetch(
-        `/api/classes?from=${todayStart}&to=${todayEnd}&coachId=${session?.user?.id}`,
+        `/api/classes?from=${todayStr}&to=${todayStr}&coachId=${session?.user?.id}`,
       );
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
@@ -77,11 +88,10 @@ export default function CoachDashboard() {
   });
 
   const { data: weekClasses } = useQuery<ClassWithDetails[]>({
-    queryKey: ["coach-classes-week", todayStart],
+    queryKey: ["coach-classes-week", todayStr],
     queryFn: async () => {
-      const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
       const res = await fetch(
-        `/api/classes?from=${tomorrowStart}&to=${weekEnd}&coachId=${session?.user?.id}`,
+        `/api/classes?from=${tomorrowStr}&to=${weekEndStr}&coachId=${session?.user?.id}`,
       );
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
@@ -101,11 +111,24 @@ export default function CoachDashboard() {
     },
   });
 
-  const classes = todayClasses;
+  // The endpoint widens the range by ±1 day, so keep only today's classes for
+  // the "today" stats and list.
+  const isToday = (startsAt: string) => {
+    const d = new Date(startsAt);
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    );
+  };
+  const classes = todayClasses?.filter((c) => isToday(c.startsAt));
   const upcoming = classes
     ?.filter((c) => new Date(c.startsAt) > now)
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
-  const nextClass = upcoming?.[0] ?? (weekClasses?.[0] ?? null);
+  const upcomingWeek = weekClasses
+    ?.filter((c) => new Date(c.startsAt) > now)
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+  const nextClass = upcoming?.[0] ?? upcomingWeek?.[0] ?? null;
   const countdown = useCountdown(nextClass ? new Date(nextClass.startsAt) : null);
 
   const classesToday = classes?.length ?? 0;
