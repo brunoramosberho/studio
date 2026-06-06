@@ -1103,6 +1103,12 @@ model Studio {
   tenant          Tenant  @relation(fields: [tenantId], references: [id])
   rooms           Room[]
   productsEnabled Boolean @default(false)
+  // Soft-deactivate: hides the studio (and its classes) from the public
+  // schedule + selectors without deleting it. Studios accumulate classes that
+  // block hard deletion, so deactivation is the supported way to retire a
+  // location. Admin management surfaces still list inactive studios so they
+  // can be reactivated.
+  isActive        Boolean @default(true)
 
   productAvailability  ProductStudioAvailability[]
   bookingProductOrders BookingProductOrder[]

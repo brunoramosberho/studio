@@ -56,6 +56,13 @@ export async function GET(request: NextRequest) {
     const authCtx = await getAuthContext();
     const currentUserId = authCtx?.session?.user?.id;
     const isStaff = !!authCtx && roleAtLeast(authCtx.membership.role, "COACH");
+
+    // Classes in a deactivated studio must not surface on the public schedule.
+    // Staff still see them (so a location can be wound down / reviewed), but
+    // clients and anonymous visitors only ever get active studios.
+    if (!isStaff) {
+      where.room = { ...(where.room as object), studio: { isActive: true } };
+    }
     const hideCoachForClient = !isStaff && tenant.hideCoachUntilClassEnds;
 
     // If clients shouldn't see the coach, ignore the coachId filter — otherwise

@@ -14,6 +14,7 @@ import {
   Users,
   ChevronDown,
   ChevronRight,
+  Power,
   X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,6 +73,7 @@ interface StudioData {
   rooms: RoomData[];
   productsEnabled: boolean;
   geofenceRadiusMeters: number;
+  isActive: boolean;
 }
 
 interface ClassType {
@@ -127,7 +129,8 @@ export default function AdminStudiosPage() {
   const { data: studios, isLoading } = useQuery<StudioData[]>({
     queryKey: ["admin-studios"],
     queryFn: async () => {
-      const res = await fetch("/api/studios");
+      // includeInactive so admins can see + reactivate deactivated studios.
+      const res = await fetch("/api/studios?includeInactive=true");
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
@@ -238,6 +241,26 @@ export default function AdminStudiosPage() {
       toast.success(t("studioDeleted"));
     },
     onError: (err: Error) => toast.error(err.message || t("studioDeleteError")),
+  });
+
+  const toggleStudioActiveMut = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const res = await fetch(`/api/studios/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
+      toast.success(vars.isActive ? t("studioActivated") : t("studioDeactivated"));
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   // Room mutations
@@ -462,10 +485,16 @@ export default function AdminStudiosPage() {
                           className="flex cursor-pointer items-center gap-4 p-5 transition-colors hover:bg-surface/50"
                           onClick={() => setExpandedStudio(isExpanded ? null : studio.id)}
                         >
-                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-admin/10">
-                            <Building2 className="h-5 w-5 text-admin" />
+                          <div className={cn(
+                            "flex h-11 w-11 items-center justify-center rounded-xl",
+                            studio.isActive ? "bg-admin/10" : "bg-muted/15",
+                          )}>
+                            <Building2 className={cn(
+                              "h-5 w-5",
+                              studio.isActive ? "text-admin" : "text-muted",
+                            )} />
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className={cn("flex-1 min-w-0", !studio.isActive && "opacity-60")}>
                             <div className="flex items-center gap-2">
                               <h3 className="font-display text-base font-bold text-foreground">
                                 {studio.name}
@@ -473,6 +502,11 @@ export default function AdminStudiosPage() {
                               <Badge variant="secondary" className="text-[10px]">
                                 {studio.rooms.length} {studio.rooms.length === 1 ? t("roomSingular") : t("roomPlural")}
                               </Badge>
+                              {!studio.isActive && (
+                                <Badge className="border-transparent bg-amber-100 text-[10px] text-amber-700">
+                                  {t("studioInactiveBadge")}
+                                </Badge>
+                              )}
                             </div>
                             <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
                               <MapPin className="h-3 w-3" />
@@ -488,6 +522,24 @@ export default function AdminStudiosPage() {
                               className="rounded-lg p-2 text-muted transition-colors hover:bg-surface hover:text-foreground"
                             >
                               <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const next = !studio.isActive;
+                                if (next || confirm(t("deactivateStudioConfirm"))) {
+                                  toggleStudioActiveMut.mutate({ id: studio.id, isActive: next });
+                                }
+                              }}
+                              title={studio.isActive ? t("deactivateStudio") : t("activateStudio")}
+                              className={cn(
+                                "rounded-lg p-2 transition-colors",
+                                studio.isActive
+                                  ? "text-muted hover:bg-amber-50 hover:text-amber-600"
+                                  : "text-emerald-600 hover:bg-emerald-50",
+                              )}
+                            >
+                              <Power className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={(e) => {

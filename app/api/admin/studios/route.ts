@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const studios = await prisma.studio.findMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: tenant.id, isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     });

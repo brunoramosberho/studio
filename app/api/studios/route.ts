@@ -6,11 +6,17 @@ export async function GET(request: NextRequest) {
   try {
     const tenant = await requireTenant();
     const cityId = request.nextUrl.searchParams.get("cityId");
+    // Public surfaces (schedule selector, booking) only ever see active
+    // studios. Admin management passes ?includeInactive=true to also list
+    // deactivated locations so they can be reactivated.
+    const includeInactive =
+      request.nextUrl.searchParams.get("includeInactive") === "true";
 
     const studios = await prisma.studio.findMany({
       where: {
         tenantId: tenant.id,
         ...(cityId && { cityId }),
+        ...(includeInactive ? {} : { isActive: true }),
       },
       include: {
         city: { include: { country: true } },

@@ -47,7 +47,8 @@ export async function GET(request: NextRequest) {
       where.coachId = profile ? profile.id : coachId;
     }
     if (level) where.classType = { level };
-    if (studioId) where.room = { studioId };
+    // Embeds are fully public — never surface classes from a deactivated studio.
+    where.room = { ...(studioId ? { studioId } : {}), studio: { isActive: true } };
 
     const classes = await prisma.class.findMany({
       where,
