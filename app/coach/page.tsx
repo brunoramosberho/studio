@@ -113,7 +113,7 @@ export default function CoachDashboard() {
 
   // The endpoint widens the range by ±1 day, so keep only today's classes for
   // the "today" stats and list.
-  const isToday = (startsAt: string) => {
+  const isToday = (startsAt: string | Date) => {
     const d = new Date(startsAt);
     return (
       d.getFullYear() === now.getFullYear() &&
