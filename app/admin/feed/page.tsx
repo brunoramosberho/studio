@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { captureVideoPoster, uploadVideoPosterToStorage } from "@/lib/media-utils";
+import { format } from "date-fns";
 import {
   Megaphone,
   Trophy,
@@ -270,7 +271,9 @@ export default function AdminFeedPage() {
     queryKey: ["upcoming-classes-picker", classPickerOpen],
     enabled: classPickerOpen,
     queryFn: async () => {
-      const from = new Date().toISOString();
+      // /api/classes expects `from` as a YYYY-MM-DD wall-clock date; a full
+      // ISO timestamp makes the API build an invalid Date and return nothing.
+      const from = format(new Date(), "yyyy-MM-dd");
       const res = await fetch(`/api/classes?from=${encodeURIComponent(from)}`);
       if (!res.ok) return [];
       return res.json();
