@@ -225,7 +225,9 @@ export default function AdminSchedulePage() {
   let tIdx = 0;
   filtered.forEach((c) => {
     if (!coachColors[c.coach.id]) {
-      coachColors[c.coach.id] = palette[cIdx % palette.length];
+      // Use the coach's own profile colour so the schedule matches the colour
+      // shown everywhere else (coach detail, analytics, ratings, availability).
+      coachColors[c.coach.id] = c.coach.color || palette[cIdx % palette.length];
       cIdx++;
     }
     if (!typeColors[c.classType.id]) {
