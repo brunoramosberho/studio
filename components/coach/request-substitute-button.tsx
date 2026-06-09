@@ -60,6 +60,8 @@ interface EligibleCoach {
   weekLoad: number;
 }
 
+type SwapAvailabilityWarning = "absent" | "unmarked" | null;
+
 interface SwapCandidate {
   classId: string;
   classTypeName: string;
@@ -67,6 +69,17 @@ interface SwapCandidate {
   endsAt: string;
   coach: { profileId: string; userId: string; name: string; image: string | null };
   studio: { id: string; name: string };
+  theyCanTeachYours: boolean;
+  youCanTeachTheirs: boolean;
+  theirAvailabilityWarning: SwapAvailabilityWarning;
+  yourAvailabilityWarning: SwapAvailabilityWarning;
+  fullyCompatible: boolean;
+}
+
+interface SwapCandidatesResponse {
+  candidates: SwapCandidate[];
+  totalFutureClasses: number;
+  requesterHasSpecialties: boolean;
 }
 
 interface Props {
@@ -249,6 +262,74 @@ function CoachStatusPill({ status }: { status: EligibleCoach["slotStatus"] }) {
     <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", m.tone)}>
       {m.label}
     </span>
+  );
+}
+
+// ── Swap compatibility badges ─────────────────────────────────────────
+
+function SwapPill({ tone, label }: { tone: string; label: string }) {
+  return (
+    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", tone)}>
+      {label}
+    </span>
+  );
+}
+
+function SwapWarnings({ candidate: c }: { candidate: SwapCandidate }) {
+  const pills: { tone: string; label: string }[] = [];
+
+  if (c.fullyCompatible) {
+    pills.push({
+      tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
+      label: "Compatible",
+    });
+  } else {
+    if (!c.theyCanTeachYours) {
+      pills.push({
+        tone: "bg-stone-100 text-stone-600 dark:bg-stone-500/15 dark:text-stone-300",
+        label: "No tiene tu disciplina",
+      });
+    }
+    if (!c.youCanTeachTheirs) {
+      pills.push({
+        tone: "bg-stone-100 text-stone-600 dark:bg-stone-500/15 dark:text-stone-300",
+        label: "No es tu disciplina",
+      });
+    }
+  }
+
+  const availTone = (w: SwapAvailabilityWarning) =>
+    w === "absent"
+      ? "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"
+      : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300";
+
+  if (c.theirAvailabilityWarning) {
+    pills.push({
+      tone: availTone(c.theirAvailabilityWarning),
+      label:
+        c.theirAvailabilityWarning === "absent"
+          ? "Ausente a tu hora"
+          : "No marcó tu hora",
+    });
+  }
+  if (c.yourAvailabilityWarning) {
+    pills.push({
+      tone: availTone(c.yourAvailabilityWarning),
+      label:
+        c.yourAvailabilityWarning === "absent"
+          ? "Ausente a su hora"
+          : "No marcaste su hora",
+    });
+  }
+
+  if (pills.length === 0) return null;
+
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {pills.map((p, i) => (
+        <SwapPill key={i} tone={p.tone} label={p.label} />
+      ))}
+    </div>
   );
 }
 
@@ -617,7 +698,7 @@ function SwapTab({ classId, onDone }: { classId: string; onDone: () => void }) {
   const [reasonNote, setReasonNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery<{ candidates: SwapCandidate[] }>({
+  const { data, isLoading } = useQuery<SwapCandidatesResponse>({
     queryKey: ["swap-candidates", classId],
     queryFn: async () => {
       const res = await fetch(
@@ -629,6 +710,10 @@ function SwapTab({ classId, onDone }: { classId: string; onDone: () => void }) {
   });
 
   const candidates = data?.candidates ?? [];
+  const emptyMessage =
+    data && data.totalFutureClasses === 0
+      ? "Ningún otro instructor tiene clases programadas en las próximas semanas, así que no hay con qué intercambiar todavía. Considera “Pedir suplente” en su lugar."
+      : "No encontramos clases con las que intercambiar ahora mismo (los demás instructores ya tienen clase a esta hora). Considera “Pedir suplente” en su lugar.";
 
   const mutation = useMutation({
     mutationFn: async (cand: SwapCandidate) => {
@@ -685,9 +770,7 @@ function SwapTab({ classId, onDone }: { classId: string; onDone: () => void }) {
             <Skeleton className="h-16" />
           </div>
         ) : candidates.length === 0 ? (
-          <p className="text-muted text-sm">
-            No hay clases compatibles para intercambiar en las próximas semanas. Considera &ldquo;Pedir suplente&rdquo; en su lugar.
-          </p>
+          <p className="text-muted text-sm">{emptyMessage}</p>
         ) : (
           <ul className="max-h-[320px] space-y-1.5 overflow-y-auto rounded-md border p-1">
             {candidates.map((c) => (
@@ -709,6 +792,7 @@ function SwapTab({ classId, onDone }: { classId: string; onDone: () => void }) {
                         {" · "}
                         {c.studio.name}
                       </div>
+                      <SwapWarnings candidate={c} />
                     </div>
                   </div>
                   <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" />

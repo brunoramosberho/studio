@@ -32,8 +32,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 
-type Mode = "OPEN" | "DIRECT";
-type Status = "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELLED" | "EXPIRED";
+type Mode = "OPEN" | "DIRECT" | "REQUEST" | "MANUAL_ASSIGN" | "SWAP";
+type Status =
+  | "PENDING"
+  | "PENDING_ADMIN"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "CANCELLED"
+  | "EXPIRED";
 
 interface ClassRef {
   id: string;
@@ -56,6 +62,7 @@ interface IncomingRequest {
   note: string | null;
   createdAt: string;
   class: ClassRef;
+  swapWithClass: ClassRef | null;
   requestingCoach: CoachRef;
 }
 
@@ -67,6 +74,7 @@ interface OutgoingRequest {
   rejectionNote: string | null;
   createdAt: string;
   class: ClassRef;
+  swapWithClass: ClassRef | null;
   targetCoach: CoachRef | null;
   acceptedByCoach: CoachRef | null;
 }
@@ -355,6 +363,14 @@ function IncomingCard({
                 </strong>
               </p>
             </div>
+            {req.mode === "SWAP" && req.swapWithClass && (
+              <SwapExchange
+                give={req.swapWithClass}
+                receive={req.class}
+                giveLabel="Entregas"
+                receiveLabel="Recibes"
+              />
+            )}
             {req.note && (
               <p className="mt-2 rounded-lg bg-surface px-3 py-2 text-xs italic text-muted">
                 &ldquo;{req.note}&rdquo;
@@ -369,6 +385,12 @@ function IncomingCard({
           </p>
         )}
 
+        {req.mode === "SWAP" && (
+          <p className="text-[11px] text-muted">
+            Al aceptar, el intercambio pasa al admin para su aprobación final.
+          </p>
+        )}
+
         <div className="flex gap-2">
           <Button
             onClick={onAccept}
@@ -380,7 +402,7 @@ function IncomingCard({
             ) : (
               <Check className="h-4 w-4" />
             )}
-            Aceptar
+            {req.mode === "SWAP" ? "Aceptar intercambio" : "Aceptar"}
           </Button>
           <Button
             variant="outline"
@@ -431,6 +453,14 @@ function OutgoingCard({
                 {formatTime(req.class.endsAt)}
               </span>
             </div>
+            {req.mode === "SWAP" && req.swapWithClass && (
+              <SwapExchange
+                give={req.class}
+                receive={req.swapWithClass}
+                giveLabel="Das tu clase"
+                receiveLabel="Recibes"
+              />
+            )}
             {req.targetCoach && (
               <div className="mt-3 flex items-center gap-2">
                 <UserAvatar
@@ -505,18 +535,69 @@ function OutgoingCard({
   );
 }
 
+function SwapExchange({
+  give,
+  receive,
+  giveLabel,
+  receiveLabel,
+}: {
+  give: ClassRef;
+  receive: ClassRef;
+  giveLabel: string;
+  receiveLabel: string;
+}) {
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      {[
+        { label: giveLabel, cls: give },
+        { label: receiveLabel, cls: receive },
+      ].map(({ label, cls }) => (
+        <div key={label} className="rounded-lg bg-surface px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+            {label}
+          </p>
+          <p className="mt-0.5 truncate text-xs font-medium text-foreground">
+            {cls.classType.name}
+          </p>
+          <p className="text-[11px] text-muted">
+            {formatDate(cls.startsAt)} · {formatTime(cls.startsAt)}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ModeBadge({ mode }: { mode: Mode }) {
+  const map: Record<Mode, { label: string; cls: string }> = {
+    SWAP: {
+      label: "Intercambio",
+      cls: "border-violet-300 bg-violet-50 text-violet-700",
+    },
+    DIRECT: {
+      label: "Directa",
+      cls: "border-amber-300 bg-amber-50 text-amber-700",
+    },
+    MANUAL_ASSIGN: {
+      label: "Directa",
+      cls: "border-amber-300 bg-amber-50 text-amber-700",
+    },
+    OPEN: {
+      label: "Abierta",
+      cls: "border-blue-300 bg-blue-50 text-blue-700",
+    },
+    REQUEST: {
+      label: "Abierta",
+      cls: "border-blue-300 bg-blue-50 text-blue-700",
+    },
+  };
+  const { label, cls } = map[mode];
   return (
     <Badge
       variant="outline"
-      className={cn(
-        "text-[10px] uppercase tracking-wider",
-        mode === "DIRECT"
-          ? "border-amber-300 bg-amber-50 text-amber-700"
-          : "border-blue-300 bg-blue-50 text-blue-700",
-      )}
+      className={cn("text-[10px] uppercase tracking-wider", cls)}
     >
-      {mode === "DIRECT" ? "Directa" : "Abierta"}
+      {label}
     </Badge>
   );
 }
@@ -525,6 +606,10 @@ function StatusBadge({ status }: { status: Status }) {
   const map: Record<Status, { label: string; cls: string }> = {
     PENDING: {
       label: "Pendiente",
+      cls: "border-amber-300 bg-amber-50 text-amber-700",
+    },
+    PENDING_ADMIN: {
+      label: "Por aprobar",
       cls: "border-amber-300 bg-amber-50 text-amber-700",
     },
     ACCEPTED: {

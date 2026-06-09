@@ -6,6 +6,9 @@ import {
   sendSubstitutionAccepted,
   sendSubstitutionRejected,
   sendSubstitutionRequest,
+  sendSwapApproved,
+  sendSwapAcceptedPendingAdmin,
+  sendSwapProposal,
 } from "@/lib/email";
 import { getBrandingForTenantId } from "@/lib/branding.server";
 import {
@@ -416,6 +419,9 @@ export function isUrgentSubRequest(
   return hoursUntil <= thresholdHours;
 }
 
+/** A soft availability concern surfaced as a badge rather than a hard filter. */
+export type SwapAvailabilityWarning = "absent" | "unmarked" | null;
+
 export interface SwapCandidate {
   classId: string;
   classTypeName: string;
@@ -423,24 +429,55 @@ export interface SwapCandidate {
   endsAt: Date;
   coach: { profileId: string; userId: string; name: string; image: string | null };
   studio: { id: string; name: string };
+  /** The other coach has YOUR class's discipline in their specialties. */
+  theyCanTeachYours: boolean;
+  /** YOU have the other class's discipline in your specialties. */
+  youCanTeachTheirs: boolean;
+  /** The other coach's availability concern for YOUR class slot. */
+  theirAvailabilityWarning: SwapAvailabilityWarning;
+  /** YOUR availability concern for THEIR class slot. */
+  yourAvailabilityWarning: SwapAvailabilityWarning;
+  /** True when both disciplines match and neither side has a warning. */
+  fullyCompatible: boolean;
+}
+
+export interface SwapCandidatesResult {
+  candidates: SwapCandidate[];
+  /** How many future classes by other coaches existed in the horizon, before
+   *  ranking — lets the UI explain an empty list ("nobody scheduled" vs
+   *  "everyone has a clashing class"). */
+  totalFutureClasses: number;
+  /** Whether the requesting coach has any specialties defined — used to nudge
+   *  them toward filling their profile if matches look thin. */
+  requesterHasSpecialties: boolean;
 }
 
 /**
- * For coach A's class X, find FUTURE classes by OTHER coaches that A
- * could swap into. A swap is valid iff:
- *   - Both classes are SCHEDULED and in the future
- *   - A can teach the other coach's class (discipline + availability + no time_off)
- *   - The other coach can teach A's class (same)
+ * For coach A's class X, find FUTURE classes by OTHER coaches that A could
+ * swap into. We only HARD-exclude swaps that are physically impossible:
+ *   - The other coach already teaches a class at X's time, or
+ *   - A already teaches a class at the candidate class's time.
  *
- * Returns a flat list of candidate classes ordered by start date. The
- * admin still has to approve the swap; this is just the picker payload.
+ * Discipline mismatches and availability concerns (time_off / "didn't mark
+ * available") are NOT filtered out — they're surfaced as flags so the picker
+ * still shows options and the coach (and the approving admin) can judge. This
+ * mirrors the "Pedir suplente" tab, which lists every coach and just annotates
+ * them, instead of returning an empty list when specialties aren't filled in.
+ *
+ * Results are ranked best-first: fully compatible swaps, then partial ones,
+ * then by start date.
  */
 export async function getSwapCandidates(
   classId: string,
   tenantId: string,
   options?: { horizonDays?: number },
-): Promise<SwapCandidate[]> {
-  const horizonDays = options?.horizonDays ?? 28;
+): Promise<SwapCandidatesResult> {
+  const horizonDays = options?.horizonDays ?? 42;
+  const empty: SwapCandidatesResult = {
+    candidates: [],
+    totalFutureClasses: 0,
+    requesterHasSpecialties: false,
+  };
 
   const cls = await prisma.class.findFirst({
     where: { id: classId, tenantId },
@@ -455,7 +492,7 @@ export async function getSwapCandidates(
       },
     },
   });
-  if (!cls || !cls.coach.userId || !cls.room) return [];
+  if (!cls || !cls.coach.userId || !cls.room) return empty;
 
   const now = new Date();
   const horizonEnd = new Date(now.getTime() + horizonDays * 86_400_000);
@@ -493,6 +530,8 @@ export async function getSwapCandidates(
     },
     orderBy: { startsAt: "asc" },
   });
+
+  const requesterHasSpecialties = cls.coach.specialties.length > 0;
 
   // Pull both source coach blocks (to check A taking B's class) and the
   // candidate coaches' blocks (to check B taking A's class) in one go.
@@ -546,8 +585,8 @@ export async function getSwapCandidates(
 
   const sourceHasAnyAvailability = sourceBlocks.some((b) => b.kind === "availability");
 
-  // Pre-fetch each candidate coach's other classes so we can rule out
-  // ones that would conflict if they took A's class.
+  // Candidate coaches who already teach something at A's class time — a hard
+  // physical conflict, so they can't take A's class.
   const candidateProfileIds = Array.from(new Set(future.map((c) => c.coach.id)));
   const candidateOtherClasses = await prisma.class.findMany({
     where: {
@@ -565,25 +604,53 @@ export async function getSwapCandidates(
     candidateOtherClasses.map((c) => c.coachId),
   );
 
-  const out: SwapCandidate[] = [];
+  // A's own future classes — used to rule out candidate classes A couldn't
+  // physically take because they already teach at that time.
+  const sourceOwnClasses = await prisma.class.findMany({
+    where: {
+      tenantId,
+      status: "SCHEDULED",
+      coachId: cls.coach.id,
+      startsAt: { gt: now, lt: horizonEnd },
+      NOT: { id: cls.id },
+    },
+    select: { startsAt: true, endsAt: true },
+  });
+
+  // Returns a soft availability warning, treating "no calendar set up" as fine
+  // (we don't want coaches who never configured availability to look blocked).
+  const warningFor = (
+    status: CoachSlotStatus,
+    hasAvailabilityBlocks: boolean,
+  ): SwapAvailabilityWarning => {
+    if (status === "time_off") return "absent";
+    if (hasAvailabilityBlocks && status === "unavailable") return "unmarked";
+    return null;
+  };
+
+  const ranked: { cand: SwapCandidate; score: number }[] = [];
 
   for (const b of future) {
     if (!b.coach.userId || !b.room?.studio) continue;
 
-    // Discipline checks both ways
-    const bCanTeachSource = b.coach.specialties.some(
-      (s) => s.toLowerCase() === sourceDiscipline,
-    );
-    const sourceCanTeachB = cls.coach.specialties.some(
-      (s) => s.toLowerCase() === b.classType.name.toLowerCase(),
-    );
-    if (!bCanTeachSource || !sourceCanTeachB) continue;
-
-    // B has a conflicting class at A's time? Then they can't take it.
-    // (Their own teaching schedule prevents the swap regardless of avail.)
+    // Hard filter 1: the other coach is already teaching at A's time.
     if (candidateConflictAtSource.has(b.coach.id)) continue;
 
-    // Availability checks
+    // Hard filter 2: A is already teaching at the candidate class's time.
+    const sourceConflictAtCandidate = sourceOwnClasses.some(
+      (c) => c.startsAt < b.endsAt && c.endsAt > b.startsAt,
+    );
+    if (sourceConflictAtCandidate) continue;
+
+    // Discipline checks both ways — surfaced as flags, not filters.
+    const theyCanTeachYours = b.coach.specialties.some(
+      (s) => s.toLowerCase() === sourceDiscipline,
+    );
+    const youCanTeachTheirs = cls.coach.specialties.some(
+      (s) => s.toLowerCase() === b.classType.name.toLowerCase(),
+    );
+
+    // The other coach's availability at A's slot.
     const bBlocks = (blocksByUser.get(b.coach.userId) ?? []) as unknown as AvailabilityBlockLite[];
     const bHasAvail = bBlocks.some((bb) => bb.kind === "availability");
     const bStatusForSource = getCoachStatusForSlot({
@@ -593,19 +660,15 @@ export async function getSwapCandidates(
       endMin: sourceEndMin,
       studioId: sourceStudioId,
     });
-    if (bStatusForSource === "time_off") continue;
-    const bAvailableForSource = bHasAvail
-      ? bStatusForSource === "preferred" || bStatusForSource === "ok_if_needed"
-      : true;
-    if (!bAvailableForSource) continue;
+    const theirAvailabilityWarning = warningFor(bStatusForSource, bHasAvail);
 
+    // A's availability at the candidate slot.
     const bTz = b.room.studio.city?.timezone ?? "Europe/Madrid";
     const bStartWall = getWallClockInZone(b.startsAt, bTz);
     const bEndWall = getWallClockInZone(b.endsAt, bTz);
     const bStartMin = bStartWall.hour * 60 + bStartWall.minute;
     const bEndMin = bEndWall.hour * 60 + bEndWall.minute;
     const bDate = new Date(bStartWall.year, bStartWall.month - 1, bStartWall.day);
-
     const sourceStatusForB = getCoachStatusForSlot({
       blocks: sourceBlocks as unknown as AvailabilityBlockLite[],
       date: bDate,
@@ -613,28 +676,59 @@ export async function getSwapCandidates(
       endMin: bEndMin,
       studioId: b.room.studio.id,
     });
-    if (sourceStatusForB === "time_off") continue;
-    const sourceAvailableForB = sourceHasAnyAvailability
-      ? sourceStatusForB === "preferred" || sourceStatusForB === "ok_if_needed"
-      : true;
-    if (!sourceAvailableForB) continue;
+    const yourAvailabilityWarning = warningFor(
+      sourceStatusForB,
+      sourceHasAnyAvailability,
+    );
 
-    out.push({
-      classId: b.id,
-      classTypeName: b.classType.name,
-      startsAt: b.startsAt,
-      endsAt: b.endsAt,
-      coach: {
-        profileId: b.coach.id,
-        userId: b.coach.userId,
-        name: b.coach.name,
-        image: b.coach.photoUrl ?? null,
+    const fullyCompatible =
+      theyCanTeachYours &&
+      youCanTeachTheirs &&
+      theirAvailabilityWarning === null &&
+      yourAvailabilityWarning === null;
+
+    // Rank: discipline matches weigh most, then availability cleanliness.
+    let score = 0;
+    if (theyCanTeachYours) score += 4;
+    if (youCanTeachTheirs) score += 4;
+    if (theirAvailabilityWarning === null) score += 2;
+    else if (theirAvailabilityWarning === "unmarked") score += 1;
+    if (yourAvailabilityWarning === null) score += 2;
+    else if (yourAvailabilityWarning === "unmarked") score += 1;
+
+    ranked.push({
+      score,
+      cand: {
+        classId: b.id,
+        classTypeName: b.classType.name,
+        startsAt: b.startsAt,
+        endsAt: b.endsAt,
+        coach: {
+          profileId: b.coach.id,
+          userId: b.coach.userId,
+          name: b.coach.name,
+          image: b.coach.photoUrl ?? null,
+        },
+        studio: { id: b.room.studio.id, name: b.room.studio.name },
+        theyCanTeachYours,
+        youCanTeachTheirs,
+        theirAvailabilityWarning,
+        yourAvailabilityWarning,
+        fullyCompatible,
       },
-      studio: { id: b.room.studio.id, name: b.room.studio.name },
     });
   }
 
-  return out;
+  ranked.sort((a, b) => {
+    if (a.score !== b.score) return b.score - a.score;
+    return a.cand.startsAt.getTime() - b.cand.startsAt.getTime();
+  });
+
+  return {
+    candidates: ranked.map((r) => r.cand),
+    totalFutureClasses: future.length,
+    requesterHasSpecialties,
+  };
 }
 
 // ── Notification helpers for the v2 flows ─────────────────────────────
@@ -706,11 +800,16 @@ interface NotifySwapTargetArgs {
   tenantId: string;
   tenantSlug: string;
   targetCoachUserId: string;
+  targetCoachEmail: string | null;
+  targetCoachName: string;
   fromCoachName: string;
+  /** The target's own class (what they'd hand to the requester). */
   yourClassName: string;
   yourClassStartsAt: Date;
+  /** The requester's class (what the target would take). */
   theirClassName: string;
   theirClassStartsAt: Date;
+  note?: string | null;
 }
 
 export async function notifySwapTarget(args: NotifySwapTargetArgs): Promise<void> {
@@ -728,6 +827,173 @@ export async function notifySwapTarget(args: NotifySwapTargetArgs): Promise<void
       title: `Propuesta de intercambio`,
       body: `${args.fromCoachName} te propone cambiar tu clase de ${args.yourClassName} por la suya de ${args.theirClassName}`,
       url: "/coach/substitutions",
+      tag: `swap-${args.tenantId}`,
+    },
+    args.tenantId,
+  );
+
+  if (args.targetCoachEmail) {
+    const branding = await getBrandingForTenantId(args.tenantId);
+    await sendSwapProposal({
+      to: args.targetCoachEmail,
+      toName: args.targetCoachName,
+      fromCoachName: args.fromCoachName,
+      yourClassName: args.yourClassName,
+      yourClassDate: args.yourClassStartsAt,
+      theirClassName: args.theirClassName,
+      theirClassDate: args.theirClassStartsAt,
+      note: args.note,
+      inboxUrl: `${getTenantBaseUrl(args.tenantSlug)}/coach/substitutions`,
+      branding,
+    });
+  }
+}
+
+interface NotifySwapAcceptedArgs {
+  tenantId: string;
+  tenantSlug: string;
+  requestingCoachUserId: string | null;
+  requestingCoachEmail: string | null;
+  requestingCoachName: string;
+  acceptedByName: string;
+  /** The requester's own class that's being swapped away. */
+  yourClassName: string;
+  yourClassStartsAt: Date;
+}
+
+/**
+ * Tell the requesting coach that the other coach accepted their swap — it's
+ * now waiting on admin approval. Without this the requester was left in the
+ * dark between "sent" and "approved".
+ */
+export async function notifySwapAcceptedPendingAdmin(
+  args: NotifySwapAcceptedArgs,
+): Promise<void> {
+  if (!args.requestingCoachUserId) return;
+
+  await prisma.notification.create({
+    data: {
+      userId: args.requestingCoachUserId,
+      tenantId: args.tenantId,
+      type: "substitution_swap_accepted_pending_admin",
+    },
+  });
+
+  await sendPushToUser(
+    args.requestingCoachUserId,
+    {
+      title: "Intercambio aceptado",
+      body: `${args.acceptedByName} aceptó tu intercambio. Falta la aprobación del admin.`,
+      url: "/coach/substitutions",
+      tag: `swap-${args.tenantId}`,
+    },
+    args.tenantId,
+  );
+
+  if (args.requestingCoachEmail) {
+    const branding = await getBrandingForTenantId(args.tenantId);
+    await sendSwapAcceptedPendingAdmin({
+      to: args.requestingCoachEmail,
+      toName: args.requestingCoachName,
+      acceptedByName: args.acceptedByName,
+      yourClassName: args.yourClassName,
+      yourClassDate: args.yourClassStartsAt,
+      inboxUrl: `${getTenantBaseUrl(args.tenantSlug)}/coach/substitutions`,
+      branding,
+    });
+  }
+}
+
+interface SwapApprovedSide {
+  userId: string | null;
+  email: string | null;
+  name: string;
+  /** The class this coach now teaches after the swap. */
+  classId: string;
+  className: string;
+  classStartsAt: Date;
+}
+
+/**
+ * Tell BOTH coaches that an admin approved their swap, each with the class
+ * they're now responsible for. Previously only the requester heard back and
+ * the accepting coach was never told they'd picked up a new class.
+ */
+export async function notifySwapApproved(args: {
+  tenantId: string;
+  tenantSlug: string;
+  requester: SwapApprovedSide;
+  acceptedBy: SwapApprovedSide;
+}): Promise<void> {
+  const branding = await getBrandingForTenantId(args.tenantId);
+  const base = getTenantBaseUrl(args.tenantSlug);
+
+  for (const side of [args.requester, args.acceptedBy]) {
+    if (!side.userId) continue;
+    await prisma.notification.create({
+      data: {
+        userId: side.userId,
+        tenantId: args.tenantId,
+        type: "substitution_swap_approved",
+      },
+    });
+    await sendPushToUser(
+      side.userId,
+      {
+        title: "Intercambio aprobado",
+        body: `Ahora das ${side.className}`,
+        url: `/coach/class/${side.classId}`,
+        tag: `swap-${args.tenantId}`,
+      },
+      args.tenantId,
+    );
+    if (side.email) {
+      await sendSwapApproved({
+        to: side.email,
+        toName: side.name,
+        className: side.className,
+        date: side.classStartsAt,
+        startTime: side.classStartsAt,
+        classUrl: `${base}/coach/class/${side.classId}`,
+        branding,
+      });
+    }
+  }
+}
+
+interface NotifyCoverageResolvedArgs {
+  tenantId: string;
+  classId: string;
+  className: string;
+  fromCoachName: string;
+  acceptedByName: string;
+}
+
+/**
+ * Informational push to admins when a coverage request is resolved (a coach
+ * accepted a REQUEST). Keeps the studio in the loop without an extra email.
+ */
+export async function notifyAdminsCoverageResolved(
+  args: NotifyCoverageResolvedArgs,
+): Promise<void> {
+  const adminIds = await getAdminUserIds(args.tenantId);
+  if (adminIds.length === 0) return;
+
+  await prisma.notification.createMany({
+    data: adminIds.map((userId) => ({
+      userId,
+      tenantId: args.tenantId,
+      type: "substitution_informational",
+    })),
+  });
+
+  await sendPushToMany(
+    adminIds,
+    {
+      title: `Cobertura resuelta: ${args.className}`,
+      body: `${args.acceptedByName} cubrirá la clase de ${args.fromCoachName}`,
+      url: "/admin/substitutions",
+      tag: `sub-admin-resolved-${args.classId}`,
     },
     args.tenantId,
   );
