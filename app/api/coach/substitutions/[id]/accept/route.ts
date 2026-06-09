@@ -3,8 +3,10 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import {
   checkCoachCanTakeClass,
+  notifyAdminsCoverageResolved,
   notifyAdminsOfSubFlow,
   notifyRequestAccepted,
+  notifySwapAcceptedPendingAdmin,
 } from "@/lib/substitutions";
 
 export async function POST(
@@ -89,17 +91,31 @@ export async function POST(
           { status: 409 },
         );
       }
-      await notifyAdminsOfSubFlow({
-        tenantId: tenant.id,
-        tenantSlug: tenant.slug,
-        requestId: reqRow.id,
-        classId: reqRow.classId,
-        className: reqRow.class.classType.name,
-        startsAt: reqRow.class.startsAt,
-        fromCoachName: coach.name,
-        mode: "SWAP",
-        needsApproval: true,
-      });
+      await Promise.allSettled([
+        notifyAdminsOfSubFlow({
+          tenantId: tenant.id,
+          tenantSlug: tenant.slug,
+          requestId: reqRow.id,
+          classId: reqRow.classId,
+          className: reqRow.class.classType.name,
+          startsAt: reqRow.class.startsAt,
+          fromCoachName: coach.name,
+          mode: "SWAP",
+          needsApproval: true,
+        }),
+        // Keep the requesting coach in the loop — their swap was accepted and
+        // is now just waiting on admin sign-off.
+        notifySwapAcceptedPendingAdmin({
+          tenantId: tenant.id,
+          tenantSlug: tenant.slug,
+          requestingCoachUserId: reqRow.requestingCoach.user?.id ?? null,
+          requestingCoachEmail: reqRow.requestingCoach.user?.email ?? null,
+          requestingCoachName: reqRow.requestingCoach.name,
+          acceptedByName: coach.name,
+          yourClassName: reqRow.class.classType.name,
+          yourClassStartsAt: reqRow.class.startsAt,
+        }),
+      ]);
       return NextResponse.json({ ok: true, awaitingAdmin: true });
     }
 
@@ -162,17 +178,27 @@ export async function POST(
       );
     }
 
-    await notifyRequestAccepted({
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
-      classId: reqRow.classId,
-      className: reqRow.class.classType.name,
-      startsAt: reqRow.class.startsAt,
-      acceptedByName: coach.name,
-      requestingCoachUserId: reqRow.requestingCoach.user?.id ?? null,
-      requestingCoachEmail: reqRow.requestingCoach.user?.email ?? null,
-      requestingCoachName: reqRow.requestingCoach.name,
-    });
+    await Promise.allSettled([
+      notifyRequestAccepted({
+        tenantId: tenant.id,
+        tenantSlug: tenant.slug,
+        classId: reqRow.classId,
+        className: reqRow.class.classType.name,
+        startsAt: reqRow.class.startsAt,
+        acceptedByName: coach.name,
+        requestingCoachUserId: reqRow.requestingCoach.user?.id ?? null,
+        requestingCoachEmail: reqRow.requestingCoach.user?.email ?? null,
+        requestingCoachName: reqRow.requestingCoach.name,
+      }),
+      // Let admins know the class is covered now.
+      notifyAdminsCoverageResolved({
+        tenantId: tenant.id,
+        classId: reqRow.classId,
+        className: reqRow.class.classType.name,
+        fromCoachName: reqRow.requestingCoach.name,
+        acceptedByName: coach.name,
+      }),
+    ]);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

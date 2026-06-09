@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const candidates = await getSwapCandidates(classId, tenant.id);
-    return NextResponse.json({ candidates });
+    const result = await getSwapCandidates(classId, tenant.id);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("GET /api/coach/substitutions/swap-candidates error:", error);
     return NextResponse.json(

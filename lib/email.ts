@@ -1216,6 +1216,202 @@ export async function sendSubstitutionRejected({
   }
 }
 
+/**
+ * Sent to the coach being asked to swap. They give the requester their class
+ * and take the requester's in return — pending their acceptance + admin sign-off.
+ */
+export async function sendSwapProposal({
+  to,
+  toName,
+  fromCoachName,
+  yourClassName,
+  yourClassDate,
+  theirClassName,
+  theirClassDate,
+  note,
+  inboxUrl,
+  branding,
+}: {
+  to: string;
+  toName: string;
+  fromCoachName: string;
+  yourClassName: string;
+  yourClassDate: Date;
+  theirClassName: string;
+  theirClassDate: Date;
+  note?: string | null;
+  inboxUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = toName?.split(" ")[0] || "";
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:${b.colorAccent}15;line-height:56px;font-size:28px;">&#128257;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          Propuesta de intercambio
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          ${firstName ? `Hola ${firstName}. ` : ""}<strong>${fromCoachName}</strong> te propone un intercambio de clases.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <p style="margin:0 0 6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:${b.colorMuted};">Tú darías</p>
+          <h2 style="margin:0 0 4px;font-size:17px;font-weight:700;color:${b.colorAccent};">${theirClassName}</h2>
+          <p style="margin:0 0 16px;font-size:13px;color:${b.colorFg};">${formatDate(theirClassDate)} · ${formatTime(theirClassDate)}</p>
+          <p style="margin:0 0 6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:${b.colorMuted};">A cambio darás</p>
+          <h2 style="margin:0 0 4px;font-size:17px;font-weight:700;color:${b.colorAccent};">${yourClassName}</h2>
+          <p style="margin:0;font-size:13px;color:${b.colorFg};">${formatDate(yourClassDate)} · ${formatTime(yourClassDate)}</p>
+          ${note ? `<p style="margin:14px 0 0;font-size:13px;color:${b.colorMuted};font-style:italic;">"${note}"</p>` : ""}
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${inboxUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Revisar intercambio
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Si aceptas, el intercambio pasa al admin para su aprobación final.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Propuesta de intercambio — ${theirClassName}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send swap proposal email:", error);
+  }
+}
+
+/**
+ * Sent to the requesting coach once the other coach accepts their swap — it
+ * still needs admin approval before it's final.
+ */
+export async function sendSwapAcceptedPendingAdmin({
+  to,
+  toName,
+  acceptedByName,
+  yourClassName,
+  yourClassDate,
+  inboxUrl,
+  branding,
+}: {
+  to: string;
+  toName: string;
+  acceptedByName: string;
+  yourClassName: string;
+  yourClassDate: Date;
+  inboxUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = toName?.split(" ")[0] || "";
+
+    const content = `
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${b.colorFg};">
+        Tu intercambio fue aceptado
+      </h1>
+      <p style="margin:0 0 20px;font-size:14px;color:${b.colorMuted};line-height:1.6;">
+        ${firstName ? `Hola ${firstName}. ` : ""}<strong>${acceptedByName}</strong> aceptó intercambiar tu clase de <strong>${yourClassName}</strong> del ${formatDate(yourClassDate)}. Solo falta la aprobación del admin para hacerlo oficial — te avisaremos en cuanto la confirmen.
+      </p>
+      <div style="text-align:center;">
+        <a href="${inboxUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Ver estado
+        </a>
+      </div>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Intercambio aceptado, falta aprobación — ${yourClassName}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send swap accepted email:", error);
+  }
+}
+
+/**
+ * Sent to a coach when an admin approves a swap and they're now teaching a
+ * (possibly new) class. Used for both sides of the swap with their own class.
+ */
+export async function sendSwapApproved({
+  to,
+  toName,
+  className,
+  date,
+  startTime,
+  classUrl,
+  branding,
+}: {
+  to: string;
+  toName: string;
+  className: string;
+  date: Date;
+  startTime: Date;
+  classUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = toName?.split(" ")[0] || "";
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#dcfce7;line-height:56px;font-size:28px;">&#10003;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          Intercambio aprobado
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          ${firstName ? `Hola ${firstName}. ` : ""}El admin aprobó el intercambio. Esta es la clase que te toca dar:
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>Fecha</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Hora</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime)}</td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;">
+        <a href="${classUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Ver clase
+        </a>
+      </div>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Intercambio aprobado — ${className}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send swap approved email:", error);
+  }
+}
+
 const AVAILABILITY_REASON_LABELS: Record<string, string> = {
   vacation: "Vacaciones",
   personal: "Personal",

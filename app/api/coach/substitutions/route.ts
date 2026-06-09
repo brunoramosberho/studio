@@ -26,6 +26,13 @@ export async function GET() {
       return NextResponse.json({ error: "Not a coach" }, { status: 403 });
     }
 
+    const swapWithInclude = {
+      include: {
+        classType: { select: { name: true, color: true } },
+        room: { select: { name: true } },
+      },
+    } as const;
+
     const [outgoing, incoming] = await Promise.all([
       prisma.substitutionRequest.findMany({
         where: { tenantId: tenant.id, requestingCoachId: coach.id },
@@ -37,6 +44,7 @@ export async function GET() {
               room: { select: { name: true } },
             },
           },
+          swapWithClass: swapWithInclude,
           targetCoach: { select: { id: true, name: true, photoUrl: true } },
           acceptedByCoach: { select: { id: true, name: true, photoUrl: true } },
         },
@@ -45,9 +53,11 @@ export async function GET() {
         where: {
           tenantId: tenant.id,
           status: "PENDING",
+          // A coach sees an incoming request when they're the named target
+          // (DIRECT/SWAP) or they're in the broadcast list (OPEN/REQUEST).
           OR: [
-            { mode: "DIRECT", targetCoachId: coach.id },
-            { mode: "OPEN", notifiedCoachIds: { has: coach.id } },
+            { mode: { in: ["DIRECT", "SWAP"] }, targetCoachId: coach.id },
+            { mode: { in: ["OPEN", "REQUEST"] }, notifiedCoachIds: { has: coach.id } },
           ],
           NOT: { requestingCoachId: coach.id },
         },
@@ -59,6 +69,7 @@ export async function GET() {
               room: { select: { name: true } },
             },
           },
+          swapWithClass: swapWithInclude,
           requestingCoach: { select: { id: true, name: true, photoUrl: true } },
         },
       }),
@@ -294,11 +305,14 @@ export async function POST(req: NextRequest) {
         tenantId: tenant.id,
         tenantSlug: tenant.slug,
         targetCoachUserId: target.userId,
+        targetCoachEmail: target.user?.email ?? null,
+        targetCoachName: target.name,
         fromCoachName: coach.name,
         yourClassName: swapWith.classType.name,
         yourClassStartsAt: swapWith.startsAt,
         theirClassName: cls.classType.name,
         theirClassStartsAt: cls.startsAt,
+        note: reasonNote ?? note,
       });
 
       return NextResponse.json({ request });

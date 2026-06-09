@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import {
   notifyCandidates,
-  notifyRequestAccepted,
+  notifySwapApproved,
 } from "@/lib/substitutions";
 
 /**
@@ -91,20 +91,29 @@ export async function POST(
         });
       });
 
-      // Notify both coaches
-      await Promise.allSettled([
-        notifyRequestAccepted({
-          tenantId: tenant.id,
-          tenantSlug: tenant.slug,
+      // Notify BOTH coaches, each with the class they now teach after the
+      // swap: the requester picks up the other coach's class, and the
+      // accepting coach picks up the requester's class.
+      await notifySwapApproved({
+        tenantId: tenant.id,
+        tenantSlug: tenant.slug,
+        requester: {
+          userId: reqRow.requestingCoach.user?.id ?? null,
+          email: reqRow.requestingCoach.user?.email ?? null,
+          name: reqRow.requestingCoach.name,
+          classId: swapWith.id,
+          className: swapWith.classType.name,
+          classStartsAt: swapWith.startsAt,
+        },
+        acceptedBy: {
+          userId: reqRow.acceptedByCoach?.user?.id ?? null,
+          email: reqRow.acceptedByCoach?.user?.email ?? null,
+          name: reqRow.acceptedByCoach?.name ?? "Coach",
           classId: reqRow.classId,
           className: reqRow.class.classType.name,
-          startsAt: reqRow.class.startsAt,
-          acceptedByName: reqRow.acceptedByCoach?.name ?? "Coach",
-          requestingCoachUserId: reqRow.requestingCoach.user?.id ?? null,
-          requestingCoachEmail: reqRow.requestingCoach.user?.email ?? null,
-          requestingCoachName: reqRow.requestingCoach.name,
-        }),
-      ]);
+          classStartsAt: reqRow.class.startsAt,
+        },
+      });
 
       return NextResponse.json({ ok: true });
     }
