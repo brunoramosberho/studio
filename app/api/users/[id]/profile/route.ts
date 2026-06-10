@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { enrichPayloadsWithCurrentClassType } from "@/lib/feed-class-payload-sync";
-import { requireAuth } from "@/lib/tenant";
+import { requireAuth, roleAtLeast } from "@/lib/tenant";
+import { computeVisibleUntil, resolveScheduleTimezone } from "@/lib/schedule/visibility";
 import { getUsersAvatarMeta } from "@/lib/user-avatar-meta";
 
 export async function GET(
@@ -139,15 +140,24 @@ export async function GET(
     stravaUser: showSocials ? user.stravaUser : null,
   };
 
-  // Coach: always show upcoming classes they teach
+  // Coach: show the upcoming classes they teach, but never beyond the tenant's
+  // public schedule visibility window — otherwise the coach profile would leak
+  // bookable classes further out than /schedule allows (loophole). Staff are
+  // exempt, mirroring /api/classes.
   let coachClasses: unknown[] = [];
   if (isCoach && coachProfile) {
     const now = new Date();
+    const isStaff = roleAtLeast(ctx.membership.role, "COACH");
+    const startsAtFilter: { gt: Date; lte?: Date } = { gt: now };
+    if (!isStaff) {
+      const tz = await resolveScheduleTimezone(ctx.tenant);
+      startsAtFilter.lte = computeVisibleUntil(now, ctx.tenant, tz);
+    }
     const raw = await prisma.class.findMany({
       where: {
         tenantId,
         coachId: coachProfile.id,
-        startsAt: { gt: now },
+        startsAt: startsAtFilter,
         status: "SCHEDULED",
       },
       include: {
