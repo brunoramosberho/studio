@@ -167,6 +167,9 @@ export function BookingSheet({
   const isReturningUser = isLoggedIn && myPackages.length > 0;
   const guestIsReturning = emailCheck?.exists && !emailCheck.hasCredits;
   const packages = allPackages.filter((p) => {
+    // On-demand subscriptions only grant video streaming — they can't be used
+    // to book a studio class, so never offer them in the booking flow.
+    if (p.type === "ON_DEMAND_SUBSCRIPTION") return false;
     if (p.isPromo && (isReturningUser || guestIsReturning)) return false;
     if (classTypeId && (p as any).classTypes?.length > 0) {
       return (p as any).classTypes.some((ct: { id: string }) => ct.id === classTypeId);
