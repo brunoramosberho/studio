@@ -171,8 +171,19 @@ export function BookingSheet({
     // to book a studio class, so never offer them in the booking flow.
     if (p.type === "ON_DEMAND_SUBSCRIPTION") return false;
     if (p.isPromo && (isReturningUser || guestIsReturning)) return false;
-    if (classTypeId && (p as any).classTypes?.length > 0) {
-      return (p as any).classTypes.some((ct: { id: string }) => ct.id === classTypeId);
+    // Discipline match: only offer packages whose credits could actually be
+    // spent on this class's type. Mirrors packageCanBook() in lib/credits.ts.
+    if (classTypeId) {
+      const allocations = (p as any).creditAllocations as { classTypeId: string }[] | undefined;
+      if (allocations?.length) {
+        // Allocation-based: usable only if it allocates credits to this type.
+        return allocations.some((a) => a.classTypeId === classTypeId);
+      }
+      const restrictedTypes = (p as any).classTypes as { id: string }[] | undefined;
+      if (restrictedTypes?.length) {
+        // Single-pool with a class-type restriction: must include this type.
+        return restrictedTypes.some((ct) => ct.id === classTypeId);
+      }
     }
     return true;
   });
