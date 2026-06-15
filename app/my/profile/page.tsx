@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
+import { DateOfBirthPicker } from "@/components/shared/date-of-birth-picker";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LevelHexCard } from "@/components/profile/level-hex-card";
 import { ActivityCalendar } from "@/components/profile/activity-calendar";
@@ -62,6 +63,7 @@ interface LocationCountry {
 interface ProfileData {
   name: string;
   phone: string | null;
+  birthday: string | null;
   countryId: string | null;
   cityId: string | null;
   instagramUser: string | null;
@@ -109,6 +111,7 @@ export default function ProfilePage() {
   const brand = useBranding();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [birthday, setBirthday] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -156,6 +159,7 @@ export default function ProfilePage() {
     if (profile) {
       setName(profile.name || session?.user?.name || "");
       setPhone(profile.phone ?? "");
+      setBirthday(profile.birthday ?? null);
       setInstagramUser(profile.instagramUser ?? "");
       setStravaUser(profile.stravaUser ?? "");
       setGender(profile.gender ?? "");
@@ -347,7 +351,7 @@ export default function ProfilePage() {
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), instagramUser: instagramUser.trim(), stravaUser: stravaUser.trim(), gender: gender || null }),
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), birthday, instagramUser: instagramUser.trim(), stravaUser: stravaUser.trim(), gender: gender || null }),
       });
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -709,6 +713,17 @@ export default function ProfilePage() {
                                   {t("invalidPhone")}
                                 </p>
                               )}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium uppercase tracking-wider text-muted">
+                              {t("dateOfBirth")}
+                            </label>
+                            <div className="mt-1.5">
+                              <DateOfBirthPicker
+                                value={birthday}
+                                onChange={setBirthday}
+                              />
                             </div>
                           </div>
                           <div>

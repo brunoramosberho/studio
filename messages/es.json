@@ -1743,6 +1743,7 @@
     "fullNamePlaceholder": "Tu nombre completo",
     "phone": "Teléfono",
     "invalidPhone": "Número de teléfono inválido",
+    "dateOfBirth": "Fecha de nacimiento",
     "email": "Correo electrónico",
     "gender": "Sexo",
     "genderFemale": "Femenino",
