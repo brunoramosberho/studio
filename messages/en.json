@@ -97,15 +97,6 @@
     "termsOfService": "terms of service",
     "privacyPolicy": "privacy policy"
   },
-  "completeProfile": {
-    "title": "Complete your profile",
-    "subtitle": "Just a couple of details to finish setting up your account.",
-    "firstName": "First name",
-    "lastName": "Last name",
-    "dateOfBirth": "Date of birth",
-    "save": "Save and continue",
-    "error": "We couldn't save your details. Please try again."
-  },
   "nav": {
     "feed": "Feed",
     "classes": "Classes",

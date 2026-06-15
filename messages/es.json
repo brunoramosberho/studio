@@ -97,15 +97,6 @@
     "termsOfService": "terminos de servicio",
     "privacyPolicy": "politica de privacidad"
   },
-  "completeProfile": {
-    "title": "Completa tu perfil",
-    "subtitle": "Solo un par de datos para terminar de configurar tu cuenta.",
-    "firstName": "Nombre",
-    "lastName": "Apellido",
-    "dateOfBirth": "Fecha de nacimiento",
-    "save": "Guardar y continuar",
-    "error": "No pudimos guardar tus datos. Intenta de nuevo."
-  },
   "nav": {
     "feed": "Feed",
     "classes": "Clases",

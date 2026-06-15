@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { useBranding } from "@/components/branding-provider";
 import { useTenant } from "@/components/tenant-provider";
 import { SignatureCanvas } from "@/components/waiver/signature-canvas";
+import { DateOfBirthPicker } from "@/components/shared/date-of-birth-picker";
+import { capitalizeName, composeName, splitName } from "@/lib/utils";
 import { Check, ChevronRight, Loader2, X } from "lucide-react";
 import { FileCheckIcon, type FileCheckIconHandle } from "lucide-animated";
 import Image from "next/image";
@@ -53,10 +55,12 @@ function WaiverSignContent() {
   const [hasScrolled, setHasScrolled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Sign step
-  const [name, setName] = useState(session?.user?.name ?? "");
+  // Sign step — at the waiver we always collect a complete profile.
+  const initialName = splitName(session?.user?.name ?? null);
+  const [firstName, setFirstName] = useState(initialName.firstName ?? "");
+  const [lastName, setLastName] = useState(initialName.lastName ?? "");
   const [phone, setPhone] = useState("");
-  const [birthDate, setBirthDate] = useState("");
+  const [birthDate, setBirthDate] = useState<string | null>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [showCanvas, setShowCanvas] = useState(false);
@@ -70,11 +74,25 @@ function WaiverSignContent() {
     }
   }, [step]);
 
+  // Pre-fill from the member's existing profile so they only fill the gaps.
   useEffect(() => {
-    if (session?.user?.name && !name) {
-      setName(session.user.name);
-    }
-  }, [session?.user?.name, name]);
+    if (!session?.user?.id) return;
+    let cancelled = false;
+    fetch("/api/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const fallback = splitName(data.name);
+        setFirstName((v) => v || data.firstName || fallback.firstName || "");
+        setLastName((v) => v || data.lastName || fallback.lastName || "");
+        setPhone((v) => v || data.phone || "");
+        setBirthDate((v) => v || data.birthday || null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (token) {
@@ -86,7 +104,11 @@ function WaiverSignContent() {
         .then((data) => {
           if (!data) return;
           setTokenBranding({ studioName: data.studioName, logoUrl: data.logoUrl });
-          if (data.userName && !name) setName(data.userName);
+          if (data.userName) {
+            const split = splitName(data.userName);
+            setFirstName((v) => v || split.firstName || "");
+            setLastName((v) => v || split.lastName || "");
+          }
           if (data.waiver) setWaiver(data.waiver);
         })
         .catch(() => setError("No se pudo cargar el waiver"))
@@ -118,12 +140,15 @@ function WaiverSignContent() {
     setShowCanvas(false);
   };
 
+  // First name, last name, phone and date of birth are all mandatory at the
+  // waiver — this is the moment we complete the member's profile.
   const canSubmit =
-    name.trim().length > 0 &&
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    phone.trim().length > 0 &&
+    !!birthDate &&
     signatureDataUrl &&
-    accepted &&
-    (!waiver?.requirePhone || phone.trim().length > 0) &&
-    (!waiver?.requireBirthDate || birthDate.length > 0);
+    accepted;
 
   const handleSubmit = async () => {
     if (!canSubmit || !waiver || submitting) return;
@@ -138,9 +163,10 @@ function WaiverSignContent() {
           waiverId: waiver.id,
           signatureData: signatureDataUrl,
           method: "drawn",
-          participantName: name.trim(),
-          participantPhone: phone.trim() || undefined,
-          participantBirthDate: birthDate || undefined,
+          participantFirstName: firstName.trim(),
+          participantLastName: lastName.trim(),
+          participantPhone: phone.trim(),
+          participantBirthDate: birthDate,
           ...(token ? { token } : {}),
         }),
       });
@@ -196,9 +222,10 @@ function WaiverSignContent() {
     );
   }
 
+  const fullName = composeName(firstName, lastName) ?? "";
   const waiverHtml = waiver.content.replace(
     /\{\{nombre_cliente\}\}/g,
-    name,
+    fullName,
   );
 
   // ─── STEP: Intro ────────────────────────────────────────
@@ -312,47 +339,58 @@ function WaiverSignContent() {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6">
           {/* Name */}
-          <label className="mb-1 block text-sm font-medium text-stone-700">
-            Nombre completo <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mb-5 w-full rounded-xl border border-border p-3 text-base text-stone-800 outline-none focus:border-stone-400"
-            placeholder="Tu nombre"
-          />
+          <div className="mb-5 grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700">
+                Nombre <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(capitalizeName(e.target.value))}
+                autoComplete="given-name"
+                autoCapitalize="words"
+                className="w-full rounded-xl border border-border p-3 text-base text-stone-800 outline-none focus:border-stone-400"
+                placeholder="Tu nombre"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700">
+                Apellido <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(capitalizeName(e.target.value))}
+                autoComplete="family-name"
+                autoCapitalize="words"
+                className="w-full rounded-xl border border-border p-3 text-base text-stone-800 outline-none focus:border-stone-400"
+                placeholder="Tu apellido"
+              />
+            </div>
+          </div>
 
           {/* Phone */}
-          {waiver.requirePhone && (
-            <>
-              <label className="mb-1 block text-sm font-medium text-stone-700">
-                Teléfono <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="mb-5 w-full rounded-xl border border-border p-3 text-base text-stone-800 outline-none focus:border-stone-400"
-                placeholder="+52 555 123 4567"
-              />
-            </>
-          )}
+          <label className="mb-1 block text-sm font-medium text-stone-700">
+            Teléfono <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="tel"
+            inputMode="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            autoComplete="tel"
+            className="mb-5 w-full rounded-xl border border-border p-3 text-base text-stone-800 outline-none focus:border-stone-400"
+            placeholder="+52 555 123 4567"
+          />
 
           {/* Birth date */}
-          {waiver.requireBirthDate && (
-            <>
-              <label className="mb-1 block text-sm font-medium text-stone-700">
-                Fecha de nacimiento <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="date"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                className="mb-5 w-full rounded-xl border border-border p-3 text-base text-stone-800 outline-none focus:border-stone-400"
-              />
-            </>
-          )}
+          <label className="mb-1 block text-sm font-medium text-stone-700">
+            Fecha de nacimiento <span className="text-red-400">*</span>
+          </label>
+          <div className="mb-5">
+            <DateOfBirthPicker value={birthDate} onChange={setBirthDate} />
+          </div>
 
           {/* Signature area */}
           <div className="mb-5 rounded-xl border border-border bg-card p-4">

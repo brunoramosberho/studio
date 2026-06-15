@@ -34,9 +34,12 @@ export async function GET() {
 
   if (!user) return NextResponse.json(null);
 
-  // A profile is "complete" once we have a first name, last name and birthday —
-  // the fields the complete-profile gate collects for Google/OAuth signups.
-  const profileComplete = Boolean(user.firstName && user.lastName && user.birthday);
+  // A profile is "complete" once we have a first name, last name, birthday and
+  // phone — the fields the complete-profile gate collects for Google/OAuth
+  // signups and existing members who never went through email registration.
+  const profileComplete = Boolean(
+    user.firstName && user.lastName && user.birthday && user.phone,
+  );
 
   return NextResponse.json({
     ...user,

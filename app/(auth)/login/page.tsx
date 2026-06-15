@@ -18,9 +18,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageTransition } from "@/components/shared/page-transition";
-import { DateOfBirthPicker } from "@/components/shared/date-of-birth-picker";
 import { useBranding } from "@/components/branding-provider";
-import { capitalizeName } from "@/lib/utils";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -245,9 +243,7 @@ type LoginStep = "email" | "register" | "otp";
 function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [birthday, setBirthday] = useState<string | null>(null);
+  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
@@ -298,11 +294,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
       const data = await res.json();
 
       if (data.exists) {
-        if (data.name) {
-          const [first, ...rest] = String(data.name).trim().split(/\s+/);
-          setFirstName(first || "");
-          setLastName(rest.join(" "));
-        }
+        if (data.name) setName(data.name);
         await sendOtp();
       } else {
         setStep("register");
@@ -323,9 +315,7 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim(),
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          birthday,
+          name: name.trim(),
           phone: phone.trim(),
         }),
       });
@@ -507,27 +497,15 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
               <div className="rounded-lg border border-border bg-surface/50 px-3 py-2.5 text-sm text-muted">
                 {email}
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="text"
-                  placeholder={t("firstName")}
-                  value={firstName}
-                  onChange={(e) => setFirstName(capitalizeName(e.target.value))}
-                  required
-                  autoComplete="given-name"
-                  autoCapitalize="words"
-                  autoFocus
-                />
-                <Input
-                  type="text"
-                  placeholder={t("lastName")}
-                  value={lastName}
-                  onChange={(e) => setLastName(capitalizeName(e.target.value))}
-                  required
-                  autoComplete="family-name"
-                  autoCapitalize="words"
-                />
-              </div>
+              <Input
+                type="text"
+                placeholder={t("yourName")}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoComplete="name"
+                autoFocus
+              />
               <Input
                 type="tel"
                 inputMode="tel"
@@ -537,24 +515,12 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
                 required
                 autoComplete="tel"
               />
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-muted">
-                  {t("dateOfBirth")}
-                </label>
-                <DateOfBirthPicker value={birthday} onChange={setBirthday} />
-              </div>
               <Button
                 type="submit"
                 variant="secondary"
                 size="lg"
                 className="w-full justify-center"
-                disabled={
-                  loading ||
-                  !firstName.trim() ||
-                  !lastName.trim() ||
-                  !phone.trim() ||
-                  !birthday
-                }
+                disabled={loading || !name.trim() || !phone.trim()}
               >
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

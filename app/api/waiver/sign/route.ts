@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
+import { capitalizeName, composeName, splitName } from "@/lib/utils";
 import { generateSignatureHash } from "@/lib/waiver/hash";
 import { generateSignedPdf } from "@/lib/waiver/pdf";
 import { uploadMedia } from "@/lib/supabase-storage";
@@ -35,19 +36,50 @@ export async function POST(req: NextRequest) {
     waiverId,
     signatureData,
     method,
-    participantName,
+    participantName: rawName,
+    participantFirstName,
+    participantLastName,
     participantPhone,
     participantBirthDate,
   } = body as {
     waiverId: string;
     signatureData: string;
     method: "drawn" | "typed";
-    participantName: string;
+    participantName?: string;
+    participantFirstName?: string;
+    participantLastName?: string;
     participantPhone?: string;
     participantBirthDate?: string;
   };
 
-  if (!waiverId || !signatureData || !participantName) {
+  // Prefer structured first/last; fall back to splitting a single name (e.g. an
+  // older client or a token email link that only carried a full name).
+  const fallback = splitName(rawName);
+  const firstName =
+    capitalizeName((participantFirstName ?? fallback.firstName ?? "").trim()) ||
+    null;
+  const lastName =
+    capitalizeName((participantLastName ?? fallback.lastName ?? "").trim()) ||
+    null;
+  const participantName = composeName(firstName, lastName);
+  const phone = participantPhone?.trim() || null;
+  const birthDate =
+    typeof participantBirthDate === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(participantBirthDate)
+      ? participantBirthDate
+      : null;
+
+  // Signing the waiver is the moment we require a complete profile: first name,
+  // last name, phone and date of birth are all mandatory here.
+  if (
+    !waiverId ||
+    !signatureData ||
+    !firstName ||
+    !lastName ||
+    !participantName ||
+    !phone ||
+    !birthDate
+  ) {
     return NextResponse.json(
       { error: "Missing required fields" },
       { status: 400 },
@@ -78,6 +110,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // The waiver is where we capture the authoritative profile data, so write the
+  // collected fields back onto the user (the participant is always the signer).
+  await prisma.user
+    .update({
+      where: { id: userId },
+      data: {
+        firstName,
+        lastName,
+        name: participantName,
+        phone,
+        birthday: new Date(`${birthDate}T00:00:00.000Z`),
+      },
+    })
+    .catch((err) => {
+      console.error("[waiver] profile update failed:", err);
+    });
+
   const signatureHash = generateSignatureHash(signatureData);
   const ipAddress =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -91,10 +140,8 @@ export async function POST(req: NextRequest) {
         data: {
           waiverVersion: waiver.version,
           participantName,
-          participantPhone: participantPhone || null,
-          participantBirthDate: participantBirthDate
-            ? new Date(participantBirthDate)
-            : null,
+          participantPhone: phone,
+          participantBirthDate: new Date(birthDate),
           method,
           signatureData,
           signatureHash,
@@ -112,10 +159,8 @@ export async function POST(req: NextRequest) {
           memberId: userId,
           waiverVersion: waiver.version,
           participantName,
-          participantPhone: participantPhone || null,
-          participantBirthDate: participantBirthDate
-            ? new Date(participantBirthDate)
-            : null,
+          participantPhone: phone,
+          participantBirthDate: new Date(birthDate),
           method,
           signatureData,
           signatureHash,
@@ -132,8 +177,8 @@ export async function POST(req: NextRequest) {
   // PDF generation runs async — don't block the response
   generatePdfInBackground(signatureRecord.id, waiver, tenant?.name ?? "", {
     memberName: participantName,
-    phone: participantPhone,
-    birthDate: participantBirthDate,
+    phone,
+    birthDate,
     signatureBase64: signatureData,
     signatureHash,
     ipAddress,
