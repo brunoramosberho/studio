@@ -54,7 +54,12 @@
     "themeLight": "Claro",
     "themeDark": "Oscuro",
     "themeSystem": "Sistema",
-    "appearance": "Apariencia"
+    "appearance": "Apariencia",
+    "dob": {
+      "day": "Dia",
+      "month": "Mes",
+      "year": "Ano"
+    }
   },
   "auth": {
     "adminPanel": "Panel de Administracion",
@@ -73,6 +78,9 @@
     "createYourAccount": "Crea tu cuenta",
     "completeYourDetails": "Completa tus datos para continuar",
     "yourName": "Tu nombre",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "dateOfBirth": "Fecha de nacimiento",
     "phonePlaceholder": "Telefono (ej. 55 1234 5678)",
     "useOtherEmail": "Usar otro correo",
     "checkYourEmail": "Revisa tu correo",
@@ -88,6 +96,15 @@
     "termsNotice": "Al continuar, aceptas nuestros {terms} y {privacy}.",
     "termsOfService": "terminos de servicio",
     "privacyPolicy": "politica de privacidad"
+  },
+  "completeProfile": {
+    "title": "Completa tu perfil",
+    "subtitle": "Solo un par de datos para terminar de configurar tu cuenta.",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "dateOfBirth": "Fecha de nacimiento",
+    "save": "Guardar y continuar",
+    "error": "No pudimos guardar tus datos. Intenta de nuevo."
   },
   "nav": {
     "feed": "Feed",

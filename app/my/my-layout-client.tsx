@@ -7,6 +7,7 @@ import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
 import { PushManager } from "@/components/shared/push-manager";
 import { PwaTracker } from "@/components/shared/pwa-tracker";
 import { CityDetectPrompt } from "@/components/shared/city-detect-prompt";
+import { CompleteProfileGate } from "@/components/shared/complete-profile-gate";
 export function MyLayoutClient({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -59,6 +60,7 @@ export function MyLayoutClient({ children }: { children: React.ReactNode }) {
       </main>
       <PushManager />
       <PwaTracker />
+      <CompleteProfileGate />
     </div>
   );
 }

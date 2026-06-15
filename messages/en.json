@@ -54,7 +54,12 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeSystem": "System",
-    "appearance": "Appearance"
+    "appearance": "Appearance",
+    "dob": {
+      "day": "Day",
+      "month": "Month",
+      "year": "Year"
+    }
   },
   "auth": {
     "adminPanel": "Admin Panel",
@@ -73,6 +78,9 @@
     "createYourAccount": "Create your account",
     "completeYourDetails": "Complete your details to continue",
     "yourName": "Your name",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "dateOfBirth": "Date of birth",
     "phonePlaceholder": "Phone (e.g. 55 1234 5678)",
     "useOtherEmail": "Use another email",
     "checkYourEmail": "Check your email",
@@ -88,6 +96,15 @@
     "termsNotice": "By continuing, you accept our {terms} and {privacy}.",
     "termsOfService": "terms of service",
     "privacyPolicy": "privacy policy"
+  },
+  "completeProfile": {
+    "title": "Complete your profile",
+    "subtitle": "Just a couple of details to finish setting up your account.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "dateOfBirth": "Date of birth",
+    "save": "Save and continue",
+    "error": "We couldn't save your details. Please try again."
   },
   "nav": {
     "feed": "Feed",

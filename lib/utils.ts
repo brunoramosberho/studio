@@ -8,6 +8,45 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Title-case a person's name as they type: capitalises the first letter of
+ * every word while preserving the spacing the user is typing (including a
+ * trailing space). Lowercases the rest of each word so "jUAN" -> "Juan".
+ * Hyphen/apostrophe-separated parts are each capitalised ("ana-maria" ->
+ * "Ana-Maria", "o'brien" -> "O'Brien").
+ */
+export function capitalizeName(value: string): string {
+  // Each run of letters (split by space, hyphen or apostrophe) gets its first
+  // letter upper-cased and the rest lower-cased. Spacing is preserved as typed.
+  return value.replace(
+    /\p{L}+/gu,
+    (part) => part.charAt(0).toLocaleUpperCase() + part.slice(1).toLocaleLowerCase(),
+  );
+}
+
+/** Compose the canonical display name kept in `User.name`. */
+export function composeName(
+  firstName?: string | null,
+  lastName?: string | null,
+): string | null {
+  const composed = [firstName, lastName]
+    .map((p) => p?.trim())
+    .filter(Boolean)
+    .join(" ");
+  return composed || null;
+}
+
+/** Best-effort split of a single display name into first / last parts. */
+export function splitName(name?: string | null): {
+  firstName: string | null;
+  lastName: string | null;
+} {
+  const trimmed = name?.trim();
+  if (!trimmed) return { firstName: null, lastName: null };
+  const [first, ...rest] = trimmed.split(/\s+/);
+  return { firstName: first || null, lastName: rest.join(" ") || null };
+}
+
 /** Resolve date-fns locale object from locale string */
 export function getDateLocale(locale?: string) {
   return locale === "en" ? enUS : es;

@@ -4,14 +4,28 @@ import { requireTenant } from "@/lib/tenant";
 import { findMembershipByReferralCode } from "@/lib/referrals/code";
 import { sendPushToUser } from "@/lib/push";
 import { guessGenderFromName } from "@/lib/ai/guess-gender";
+import { capitalizeName, composeName, splitName } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   try {
     const tenant = await requireTenant();
-    const { email, name, phone, referralCode } = await request.json();
+    const body = await request.json();
+    const { email, phone, referralCode } = body;
 
     if (!email) {
       return NextResponse.json({ error: "email required" }, { status: 400 });
+    }
+
+    // Accept structured first/last name; fall back to splitting a legacy `name`.
+    const fromName = splitName(body.name);
+    const firstName = capitalizeName((body.firstName ?? fromName.firstName ?? "").trim()) || null;
+    const lastName = capitalizeName((body.lastName ?? fromName.lastName ?? "").trim()) || null;
+    const name = composeName(firstName, lastName);
+
+    let birthday: Date | null = null;
+    if (typeof body.birthday === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.birthday)) {
+      const parsed = new Date(`${body.birthday}T00:00:00.000Z`);
+      if (!Number.isNaN(parsed.getTime())) birthday = parsed;
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -21,9 +35,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (user) {
-      const updates: Record<string, string> = {};
+      // Only fill blanks — never overwrite data the user already has.
+      const updates: Record<string, unknown> = {};
+      if (firstName && !user.firstName) updates.firstName = firstName;
+      if (lastName && !user.lastName) updates.lastName = lastName;
       if (name && !user.name) updates.name = name;
       if (phone && !user.phone) updates.phone = phone;
+      if (birthday && !user.birthday) updates.birthday = birthday;
 
       if (Object.keys(updates).length > 0) {
         user = await prisma.user.update({
@@ -35,15 +53,18 @@ export async function POST(request: NextRequest) {
       user = await prisma.user.create({
         data: {
           email: normalizedEmail,
-          name: name || null,
+          firstName,
+          lastName,
+          name,
           phone: phone || null,
+          birthday,
         },
       });
 
       // AI gender detection — fire-and-forget so it never blocks registration
-      if (name) {
+      if (firstName) {
         const userId = user.id;
-        guessGenderFromName(name).then((gender) => {
+        guessGenderFromName(firstName).then((gender) => {
           if (gender) {
             prisma.user.update({ where: { id: userId }, data: { gender } }).catch(() => {});
           }
