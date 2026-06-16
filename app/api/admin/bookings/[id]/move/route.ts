@@ -78,6 +78,7 @@ export async function POST(
             id: true,
             name: true,
             maxCapacity: true,
+            layout: true,
             studio: {
               select: { name: true, city: { select: { timezone: true } } },
             },
@@ -160,9 +161,17 @@ export async function POST(
     for (const r of blockedRows)
       if (r.spotNumber != null) taken.add(r.spotNumber);
 
-    // Whether the target uses positioned spots (member or guests had one, or a
-    // specific spot was requested). Capacity-only rooms keep spotNumber null.
+    // Whether the target uses positioned spots. Primarily driven by the TARGET
+    // room having a spot layout (so the moved member always lands on the map),
+    // and also true if a spot was requested or the source booking had one.
+    // Capacity-only rooms (no layout) keep spotNumber null.
+    const targetLayout = target.room.layout as { spots?: unknown[] } | null;
+    const targetRoomHasLayout =
+      !!targetLayout &&
+      Array.isArray(targetLayout.spots) &&
+      targetLayout.spots.length > 0;
     const usesSpots =
+      targetRoomHasLayout ||
       requestedSpot != null ||
       booking.spotNumber != null ||
       guests.some((g) => g.spotNumber != null);
