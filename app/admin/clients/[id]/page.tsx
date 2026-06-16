@@ -396,6 +396,106 @@ function GiftPackageButton({ clientId, clientName, t, tc }: { clientId: string; 
   );
 }
 
+function EditExpiryButton({
+  clientId,
+  userPackageId,
+  currentExpiresAt,
+  t,
+  tc,
+}: {
+  clientId: string;
+  userPackageId: string;
+  currentExpiresAt: string;
+  t: ReturnType<typeof useTranslations<"admin.clientProfile">>;
+  tc: ReturnType<typeof useTranslations<"common">>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState("");
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (open) {
+      setDate(format(new Date(currentExpiresAt), "yyyy-MM-dd"));
+    }
+  }, [open, currentExpiresAt]);
+
+  const expiryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/package-expiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userPackageId,
+          // End of the selected day, in local time
+          expiresAt: new Date(`${date}T23:59:59`).toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Error");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.success(t("expiryUpdated"));
+      queryClient.invalidateQueries({ queryKey: ["admin-client", clientId] });
+      setOpen(false);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="text-muted transition-colors hover:text-admin"
+        title={t("editExpiry")}
+      >
+        <CalendarSync className="h-3.5 w-3.5" />
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarSync className="h-5 w-5 text-primary" />
+              {t("editExpiry")}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("expiryDate")}</label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                {tc("cancel")}
+              </Button>
+              <Button
+                onClick={() => expiryMutation.mutate()}
+                disabled={!date || expiryMutation.isPending}
+              >
+                {expiryMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {tc("save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
@@ -878,9 +978,20 @@ export default function ClientDetailPage() {
                               </Badge>
                             )}
                           </div>
-                          <p className="mt-0.5 text-xs text-muted">
-                            {pkg.isActive ? t("expires") : t("expired")} {formatDate(pkg.expiresAt, locale)}
-                          </p>
+                          <div className="mt-0.5 flex items-center gap-1.5">
+                            <p className="text-xs text-muted">
+                              {pkg.isActive ? t("expires") : t("expired")} {formatDate(pkg.expiresAt, locale)}
+                            </p>
+                            {pkg.status !== "REVOKED" && (
+                              <EditExpiryButton
+                                clientId={id}
+                                userPackageId={pkg.id}
+                                currentExpiresAt={pkg.expiresAt}
+                                t={t}
+                                tc={tc}
+                              />
+                            )}
+                          </div>
                         </div>
                         <div className="text-right">
                           <p className="font-mono text-lg font-bold">
