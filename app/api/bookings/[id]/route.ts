@@ -145,21 +145,44 @@ export async function PUT(
     let creditLost = false;
     if (status === "CANCELLED") {
       const windowMs = await getCancellationWindowMs(tenant.id);
-      const restored = await restoreCreditIfEligible(booking, windowMs);
+
+      // Staff (admin/coach) can override the cancellation policy: force a
+      // credit refund (bypassing the cancellation window) or force forfeiture,
+      // regardless of timing. Members get the standard window-based behaviour.
+      const isStaff = isAdmin || isCoach;
+      const refundOverride =
+        isStaff && typeof body.refundCredit === "boolean"
+          ? (body.refundCredit as boolean)
+          : null;
+
+      const applyRefund = async (b: {
+        packageUsed: string | null;
+        class: { startsAt: Date; classTypeId: string };
+      }): Promise<boolean> => {
+        if (refundOverride === true) {
+          if (b.packageUsed) await restoreCredit(b.packageUsed, b.class.classTypeId);
+          return true;
+        }
+        if (refundOverride === false) {
+          // Nothing to forfeit when there was no package-backed credit.
+          return !b.packageUsed;
+        }
+        return restoreCreditIfEligible(b, windowMs);
+      };
+
+      const restored = await applyRefund(booking);
       creditLost = !restored;
 
-      // Cancel guest bookings and restore their credits
+      // Cancel guest bookings and mirror the parent's refund decision.
       const guestBookings = await prisma.booking.findMany({
         where: { parentBookingId: id, status: "CONFIRMED" },
         include: { class: true },
       });
       for (const gb of guestBookings) {
-        if (restored) {
-          await restoreCreditIfEligible(gb, windowMs);
-        }
+        const gRestored = await applyRefund(gb);
         await prisma.booking.update({
           where: { id: gb.id },
-          data: { status: "CANCELLED", spotNumber: null, creditLost: !restored },
+          data: { status: "CANCELLED", spotNumber: null, creditLost: !gRestored },
         });
       }
     }

@@ -26,12 +26,22 @@ import {
   MapPin,
   StickyNote,
   Ban,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
 import { cn, formatDate, formatTime } from "@/lib/utils";
@@ -347,6 +357,29 @@ export default function AdminClassDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["class-detail", id] });
       toast.success(t("attendanceSaved"));
     },
+  });
+
+  // Cancel a member's booking from the roster, with an explicit refund choice
+  // that bypasses the cancellation-window policy.
+  const [cancelTarget, setCancelTarget] = useState<BookingEntry | null>(null);
+  const [refundCredit, setRefundCredit] = useState(true);
+
+  const cancelMutation = useMutation({
+    mutationFn: async ({ bookingId, refund }: { bookingId: string; refund: boolean }) => {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED", refundCredit: refund }),
+      });
+      if (!res.ok) throw new Error("cancel failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["class-detail", id] });
+      toast.success(t("bookingCancelled"));
+      setCancelTarget(null);
+    },
+    onError: () => toast.error(t("bookingCancelError")),
   });
 
   const handleNotesChange = useCallback(
@@ -710,6 +743,17 @@ export default function AdminClassDetailPage() {
                             )}
                             {status === "CONFIRMED" && t("confirmedStatus")}
                           </button>
+                          <button
+                            onClick={() => {
+                              setRefundCredit(true);
+                              setCancelTarget(booking);
+                            }}
+                            aria-label={t("cancelBooking")}
+                            title={t("cancelBooking")}
+                            className="flex items-center justify-center rounded-lg px-2 py-1.5 text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                          </button>
                         </div>
                       </div>
                     </CardContent>
@@ -738,6 +782,71 @@ export default function AdminClassDetailPage() {
           </Button>
         </div>
       )}
+
+      {/* Cancel booking confirmation */}
+      <Dialog
+        open={!!cancelTarget}
+        onOpenChange={(open) => {
+          if (!open) setCancelTarget(null);
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("cancelBooking")}</DialogTitle>
+            <DialogDescription>
+              {t("cancelBookingDesc", {
+                name:
+                  cancelTarget?.user?.name ??
+                  cancelTarget?.guestName ??
+                  cancelTarget?.user?.email ??
+                  cancelTarget?.guestEmail ??
+                  "—",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-start justify-between gap-4 rounded-xl border border-border/60 bg-surface/40 p-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                {t("refundCredit")}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">
+                {t("refundCreditHint")}
+              </p>
+            </div>
+            <Switch checked={refundCredit} onCheckedChange={setRefundCredit} />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setCancelTarget(null)}
+              disabled={cancelMutation.isPending}
+            >
+              {t("keepBooking")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                cancelTarget &&
+                cancelMutation.mutate({
+                  bookingId: cancelTarget.id,
+                  refund: refundCredit,
+                })
+              }
+              disabled={cancelMutation.isPending}
+              className="gap-2"
+            >
+              {cancelMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              {t("cancelBookingConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="pb-8" />
     </div>

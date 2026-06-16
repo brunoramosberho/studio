@@ -638,7 +638,19 @@ export function ClassFormDialog({
               <label className="mb-1.5 block text-xs font-medium text-muted">{t("classType")}</label>
               <Select
                 value={formData.classTypeId}
-                onValueChange={(v) => setFormData({ ...formData, classTypeId: v, roomId: "" })}
+                onValueChange={(v) => {
+                  // Auto-fill the duration from the selected class type's
+                  // configured default (the admin can still override it below).
+                  const picked =
+                    classTypePickerData?.classTypes?.find((ct) => ct.id === v) ??
+                    classTypes?.find((ct) => ct.id === v);
+                  setFormData((f) => ({
+                    ...f,
+                    classTypeId: v,
+                    roomId: "",
+                    duration: picked?.duration ?? f.duration,
+                  }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={t("select")} />
