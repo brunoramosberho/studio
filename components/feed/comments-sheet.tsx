@@ -6,6 +6,7 @@ import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 
 interface CommentData {
   id: string;
@@ -29,6 +30,7 @@ const QUICK_EMOJIS = ["❤️", "🙌", "🔥", "👏", "😢", "😍", "😮", 
 
 export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
   const t = useTranslations("feed");
+  const router = useRouter();
 
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -50,6 +52,14 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
   const { data: session } = useSession();
+
+  const goToProfile = useCallback(
+    (userId: string) => {
+      setOpen(false);
+      setTimeout(() => router.push(`/my/user/${userId}`), 150);
+    },
+    [router]
+  );
 
   const fetchComments = useCallback(async () => {
     if (fetched) return;
@@ -213,17 +223,27 @@ export function CommentsSheet({ eventId, commentCount }: CommentsSheetProps) {
                   <div className="space-y-4">
                     {comments.map((c) => (
                       <div key={c.id} className="flex gap-3">
-                        <UserAvatar
-                          user={c.user as UserAvatarUser}
-                          size={32}
-                          showBadge={false}
+                        <button
+                          type="button"
+                          onClick={() => goToProfile(c.user.id)}
                           className="flex-shrink-0 mt-0.5"
-                        />
+                          aria-label={c.user.name ?? undefined}
+                        >
+                          <UserAvatar
+                            user={c.user as UserAvatarUser}
+                            size={32}
+                            showBadge={false}
+                          />
+                        </button>
                         <div className="min-w-0 flex-1">
                           <p className="text-[14px] leading-snug">
-                            <span className="font-semibold text-foreground">
-                              {c.user.name?.split(" ")[0]}{" "}
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => goToProfile(c.user.id)}
+                              className="font-semibold text-foreground hover:underline"
+                            >
+                              {c.user.name?.split(" ")[0]}
+                            </button>{" "}
                             <span className="text-foreground/80">{c.body}</span>
                           </p>
                           <div className="mt-1 flex items-center gap-3">
