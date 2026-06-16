@@ -833,6 +833,7 @@
     "moveFull": "Full",
     "bookingMoved": "Booking moved",
     "bookingMoveError": "Couldn't move the booking",
+    "notifications": "Notifications",
     "notifyEmailOnBooking": "Email on every booking",
     "notifyEmailOnBookingHint": "Get an email whenever a client books a class. Applies only to your account.",
     "spotHasBooking": "That spot has an active booking",

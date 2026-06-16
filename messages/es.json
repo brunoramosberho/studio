@@ -833,6 +833,7 @@
     "moveFull": "Llena",
     "bookingMoved": "Reserva movida",
     "bookingMoveError": "No se pudo mover la reserva",
+    "notifications": "Notificaciones",
     "notifyEmailOnBooking": "Email en cada reserva",
     "notifyEmailOnBookingHint": "Recibe un correo cada vez que un cliente reserva una clase. Solo aplica a tu cuenta.",
     "spotHasBooking": "Ese lugar tiene una reserva activa",
