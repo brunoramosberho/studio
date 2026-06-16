@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Select,
@@ -18,7 +18,37 @@ import { cn } from "@/lib/utils";
  *
  * `value` and `onChange` use an ISO `YYYY-MM-DD` string (no time component) so
  * it round-trips cleanly with `User.birthday` (a date-only column).
+ *
+ * The three sub-selections live in local state so a partial pick (e.g. only the
+ * day) persists while the user completes the rest — `onChange` only fires a full
+ * ISO date once all three are chosen, or `null` otherwise. Local state stays in
+ * sync with `value` when it changes externally (e.g. an async profile pre-fill).
  */
+interface Parts {
+  day: number | null;
+  month: number | null;
+  year: number | null;
+}
+
+function parseValue(value: string | null): Parts {
+  if (!value) return { day: null, month: null, year: null };
+  const [y, m, d] = value.split("-").map((n) => parseInt(n, 10));
+  return {
+    year: Number.isFinite(y) ? y : null,
+    month: Number.isFinite(m) ? m : null,
+    day: Number.isFinite(d) ? d : null,
+  };
+}
+
+function compose(parts: Parts): string | null {
+  const { day, month, year } = parts;
+  if (!day || !month || !year) return null;
+  // Clamp the day if the chosen month/year has fewer days (Feb 30 → Feb 28/29).
+  const max = new Date(year, month, 0).getDate();
+  const d = Math.min(day, max);
+  return `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 export function DateOfBirthPicker({
   value,
   onChange,
@@ -37,15 +67,20 @@ export function DateOfBirthPicker({
   const locale = useLocale();
   const t = useTranslations("common");
 
-  const [year, month, day] = useMemo(() => {
-    if (!value) return [null, null, null] as const;
-    const [y, m, d] = value.split("-").map((n) => parseInt(n, 10));
-    return [
-      Number.isFinite(y) ? y : null,
-      Number.isFinite(m) ? m : null,
-      Number.isFinite(d) ? d : null,
-    ] as const;
+  const [parts, setParts] = useState<Parts>(() => parseValue(value));
+
+  // Adopt the controlled value when it changes externally (pre-fill / reset),
+  // but don't clobber an in-progress partial selection — while the user is
+  // mid-pick `value` stays null and `compose(parts)` is also null, so they
+  // match and we leave local state alone.
+  useEffect(() => {
+    if (value !== compose(parts)) {
+      setParts(parseValue(value));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync only on `value`
   }, [value]);
+
+  const { day, month, year } = parts;
 
   const now = new Date();
   const maxYear = now.getFullYear() - minAge;
@@ -79,17 +114,15 @@ export function DateOfBirthPicker({
     [daysInMonth],
   );
 
-  function emit(nextDay: number | null, nextMonth: number | null, nextYear: number | null) {
-    if (nextDay && nextMonth && nextYear) {
-      // Clamp day if the new month/year has fewer days than the selected day.
-      const max = new Date(nextYear, nextMonth, 0).getDate();
-      const d = Math.min(nextDay, max);
-      onChange(
-        `${nextYear}-${String(nextMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
-      );
-    } else {
-      onChange(null);
+  function update(patch: Partial<Parts>) {
+    const next: Parts = { ...parts, ...patch };
+    // Clamp the day if the new month/year can't hold it.
+    if (next.day && next.month) {
+      const max = new Date(next.year ?? 2000, next.month, 0).getDate();
+      if (next.day > max) next.day = max;
     }
+    setParts(next);
+    onChange(compose(next));
   }
 
   return (
@@ -97,7 +130,7 @@ export function DateOfBirthPicker({
       {/* Day */}
       <Select
         value={day ? String(day) : undefined}
-        onValueChange={(v) => emit(parseInt(v, 10), month, year)}
+        onValueChange={(v) => update({ day: parseInt(v, 10) })}
         disabled={disabled}
       >
         <SelectTrigger aria-label={t("dob.day")}>
@@ -115,7 +148,7 @@ export function DateOfBirthPicker({
       {/* Month */}
       <Select
         value={month ? String(month) : undefined}
-        onValueChange={(v) => emit(day, parseInt(v, 10), year)}
+        onValueChange={(v) => update({ month: parseInt(v, 10) })}
         disabled={disabled}
       >
         <SelectTrigger aria-label={t("dob.month")}>
@@ -133,7 +166,7 @@ export function DateOfBirthPicker({
       {/* Year */}
       <Select
         value={year ? String(year) : undefined}
-        onValueChange={(v) => emit(day, month, parseInt(v, 10))}
+        onValueChange={(v) => update({ year: parseInt(v, 10) })}
         disabled={disabled}
       >
         <SelectTrigger aria-label={t("dob.year")}>
