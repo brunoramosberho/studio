@@ -199,6 +199,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [walkInQuery, setWalkInQuery] = useState("");
+  // When the walk-in flow is opened by tapping an empty spot on the room map,
+  // we remember that spot so the chosen member is booked straight into it.
+  const [walkInSpot, setWalkInSpot] = useState<number | null>(null);
   const [paymentConfirm, setPaymentConfirm] = useState<string | null>(null);
   const [waiverConfirm, setWaiverConfirm] = useState<string | null>(null);
   const [undoConfirm, setUndoConfirm] = useState<string | null>(null);
@@ -478,7 +481,16 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                 selectedSpot={selectedSpot}
                 onSelectSpot={(spot) => {
                   const mid = spotToMemberId.get(spot) ?? null;
-                  setSelectedMemberId((cur) => (cur && cur === mid ? null : mid));
+                  if (mid) {
+                    setSelectedMemberId((cur) => (cur && cur === mid ? null : mid));
+                    return;
+                  }
+                  // Empty spot tapped → open the walk-in flow targeting it.
+                  if (!classInfo.isFinished) {
+                    setSelectedMemberId(null);
+                    setWalkInSpot(spot);
+                    setWalkInOpen(true);
+                  }
                 }}
                 layout={roomLayout}
                 coachName={classInfo.coachName}
@@ -612,14 +624,17 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       {walkInOpen && (
         <WalkInModal
           classId={classId}
+          presetSpot={walkInSpot}
           onClose={() => {
             setWalkInOpen(false);
             setWalkInQuery("");
+            setWalkInSpot(null);
           }}
           onAdded={() => {
             queryClient.invalidateQueries({ queryKey: rosterKey });
             setWalkInOpen(false);
             setWalkInQuery("");
+            setWalkInSpot(null);
           }}
           query={walkInQuery}
           setQuery={setWalkInQuery}
@@ -1150,12 +1165,14 @@ interface LimitBlock {
 
 function WalkInModal({
   classId,
+  presetSpot = null,
   onClose,
   onAdded,
   query,
   setQuery,
 }: {
   classId: string;
+  presetSpot?: number | null;
   onClose: () => void;
   onAdded: () => void;
   query: string;
@@ -1197,7 +1214,10 @@ function WalkInModal({
   const roomHasLayout = spotData?.hasLayout === true;
 
   function handleMemberClick(memberId: string) {
-    if (roomHasLayout) {
+    // Spot already chosen from the room map → book straight into it.
+    if (presetSpot != null) {
+      walkInMutation.mutate({ memberId, spotNumber: presetSpot });
+    } else if (roomHasLayout) {
       setPendingMember({ id: memberId });
       setShowSpotPicker(true);
     } else {
@@ -1315,7 +1335,11 @@ function WalkInModal({
       <WaiverConfirmDialog
         memberId={waiverBlock}
         onForceCheckIn={() => {
-          walkInMutation.mutate({ memberId: waiverBlock, skipWaiverCheck: true });
+          walkInMutation.mutate({
+            memberId: waiverBlock,
+            skipWaiverCheck: true,
+            ...(presetSpot != null ? { spotNumber: presetSpot } : {}),
+          });
           setWaiverBlock(null);
         }}
         onCancel={() => setWaiverBlock(null)}
@@ -1420,7 +1444,12 @@ function WalkInModal({
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
       <div className="bg-card rounded-xl shadow-xl mx-4 max-w-sm w-full overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
-          <p className="text-sm font-medium text-stone-900">{t("addWalkIn")}</p>
+          <p className="text-sm font-medium text-stone-900">
+            {t("addWalkIn")}
+            {presetSpot != null && (
+              <span className="ml-1.5 font-mono text-xs text-stone-400">#{presetSpot}</span>
+            )}
+          </p>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
             <X size={16} />
           </button>

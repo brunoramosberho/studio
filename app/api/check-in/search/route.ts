@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
 
     const members = await prisma.user.findMany({
       where: {
-        memberships: { some: { tenantId: ctx.tenant.id, role: "CLIENT" } },
+        // Include coaches: a coach can also book/attend as a client, so they
+        // must be searchable here (Membership.role is a single enum, so a
+        // coach's role overwrites CLIENT and would otherwise be excluded).
+        memberships: { some: { tenantId: ctx.tenant.id, role: { in: ["CLIENT", "COACH"] } } },
         OR: [
           { name: { contains: q, mode: "insensitive" } },
           { email: { contains: q, mode: "insensitive" } },
