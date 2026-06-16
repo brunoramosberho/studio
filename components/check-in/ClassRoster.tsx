@@ -30,7 +30,11 @@ import { es } from "date-fns/locale";
 import { usePosStore } from "@/store/pos-store";
 import { SpotPicker } from "@/components/admin/pos/spot-picker";
 import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
-import { ChevronDown, Map as MapIcon } from "lucide-react";
+import {
+  CancelBookingDialog,
+  MoveBookingDialog,
+} from "@/components/admin/booking-actions";
+import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2 } from "lucide-react";
 
 // ── Types ──
 
@@ -50,6 +54,8 @@ interface RosterMember {
   memberName: string | null;
   memberImage: string | null;
   spotNumber: number | null;
+  bookingId: string;
+  bookingStatus: "CONFIRMED" | "ATTENDED" | "NO_SHOW";
   initials: string;
   membershipType: string;
   membershipPackageType: string | null;
@@ -234,6 +240,10 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const hasRoomMap = !!roomLayout && roomLayout.spots?.length > 0;
   const [mapOpen, setMapOpen] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+
+  // Cancel / move a member's booking from the check-in roster.
+  const [cancelTarget, setCancelTarget] = useState<RosterMember | null>(null);
+  const [moveTarget, setMoveTarget] = useState<RosterMember | null>(null);
 
   const [optimisticRoster, addOptimistic] = useOptimistic(
     roster,
@@ -530,6 +540,8 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                     }
                   : undefined
               }
+              onMove={() => setMoveTarget(member)}
+              onCancel={() => setCancelTarget(member)}
             />
           ))
         )}
@@ -653,6 +665,31 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           </div>
         </div>
       )}
+
+      {cancelTarget && (
+        <CancelBookingDialog
+          open
+          onOpenChange={(o) => !o && setCancelTarget(null)}
+          bookingId={cancelTarget.bookingId}
+          memberName={cancelTarget.memberName ?? "—"}
+          onSuccess={() =>
+            queryClient.invalidateQueries({ queryKey: rosterKey })
+          }
+        />
+      )}
+
+      {moveTarget && (
+        <MoveBookingDialog
+          open
+          onOpenChange={(o) => !o && setMoveTarget(null)}
+          bookingId={moveTarget.bookingId}
+          memberName={moveTarget.memberName ?? "—"}
+          currentClassId={classId}
+          onSuccess={() =>
+            queryClient.invalidateQueries({ queryKey: rosterKey })
+          }
+        />
+      )}
     </div>
   );
 }
@@ -716,6 +753,8 @@ function RosterRow({
   onPhotoClick,
   isSelected,
   onSelectSpot,
+  onMove,
+  onCancel,
 }: {
   member: RosterMember;
   isFinished: boolean;
@@ -724,6 +763,8 @@ function RosterRow({
   onPhotoClick?: () => void;
   isSelected?: boolean;
   onSelectSpot?: () => void;
+  onMove?: () => void;
+  onCancel?: () => void;
 }) {
   const isCheckedIn = !!member.checkIn;
   const isLate = member.checkIn?.status === "late";
@@ -861,24 +902,52 @@ function RosterRow({
             )}
           </div>
         ) : (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onCheckIn();
-            }}
-            disabled={isFinished}
-            className={cn(
-              "px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition-colors",
-              member.hasPaymentPending
-                ? "bg-red-50 text-red-600 hover:bg-red-100"
-                : member.waiverPending
-                  ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
-                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-              isFinished && "opacity-50 cursor-not-allowed",
+          <div className="flex items-center gap-0.5">
+            {!isFinished && onMove && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMove();
+                }}
+                aria-label={tc("moveBooking")}
+                title={tc("moveBooking")}
+                className="p-1.5 rounded-full text-stone-300 transition-colors hover:bg-admin/10 hover:text-admin md:opacity-0 md:group-hover:opacity-100"
+              >
+                <ArrowRightLeft size={12} />
+              </button>
             )}
-          >
-            Check-in
-          </button>
+            {!isFinished && onCancel && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCancel();
+                }}
+                aria-label={tc("cancelBooking")}
+                title={tc("cancelBooking")}
+                className="p-1.5 rounded-full text-stone-300 transition-colors hover:bg-red-50 hover:text-red-500 md:opacity-0 md:group-hover:opacity-100"
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCheckIn();
+              }}
+              disabled={isFinished}
+              className={cn(
+                "px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                member.hasPaymentPending
+                  ? "bg-red-50 text-red-600 hover:bg-red-100"
+                  : member.waiverPending
+                    ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                isFinished && "opacity-50 cursor-not-allowed",
+              )}
+            >
+              Check-in
+            </button>
+          </div>
         )}
       </div>
     </div>

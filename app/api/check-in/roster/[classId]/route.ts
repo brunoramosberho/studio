@@ -195,6 +195,8 @@ export async function GET(
           memberName: user.name,
           memberImage: user.image,
           spotNumber: b.spotNumber,
+          bookingId: b.id,
+          bookingStatus: b.status,
           initials,
           membershipType: activePackage?.package.name ?? "Sin paquete",
           membershipPackageType: activePackage?.package.type ?? null,

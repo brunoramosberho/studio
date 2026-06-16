@@ -1935,6 +1935,8 @@
     "roomMap": "Mapa de la sala",
     "roomMapHint": "Pasa el cursor o toca un lugar para ver quién está ahí.",
     "spotOfMember": "{name} está en el lugar #{spot}",
+    "moveBooking": "Mover de clase",
+    "cancelBooking": "Cancelar reserva",
     "present": "Presentes",
     "pending": "Pendientes",
     "waitlist": "Espera",

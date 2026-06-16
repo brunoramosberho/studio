@@ -28,24 +28,18 @@ import {
   Ban,
   Trash2,
   ArrowRightLeft,
-  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
+import {
+  CancelBookingDialog,
+  MoveBookingDialog,
+} from "@/components/admin/booking-actions";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -103,15 +97,6 @@ interface ClassDetail {
 }
 
 type AttendanceStatus = "CONFIRMED" | "ATTENDED" | "NO_SHOW";
-
-interface MoveClassOption {
-  id: string;
-  startsAt: string;
-  classType: { id: string; name: string; color: string | null };
-  coach: { name: string | null } | null;
-  room: { maxCapacity: number; studio: { name: string | null } | null } | null;
-  _count: { bookings: number };
-}
 
 const stagger = {
   hidden: {},
@@ -370,72 +355,12 @@ export default function AdminClassDetailPage() {
     },
   });
 
-  // Cancel a member's booking from the roster, with an explicit refund choice
-  // that bypasses the cancellation-window policy.
+  // Cancel / move a member's booking from the roster (shared dialogs).
   const [cancelTarget, setCancelTarget] = useState<BookingEntry | null>(null);
-  const [refundCredit, setRefundCredit] = useState(true);
-
-  const cancelMutation = useMutation({
-    mutationFn: async ({ bookingId, refund }: { bookingId: string; refund: boolean }) => {
-      const res = await fetch(`/api/bookings/${bookingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "CANCELLED", refundCredit: refund }),
-      });
-      if (!res.ok) throw new Error("cancel failed");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["class-detail", id] });
-      toast.success(t("bookingCancelled"));
-      setCancelTarget(null);
-    },
-    onError: () => toast.error(t("bookingCancelError")),
-  });
-
-  // Move a member's booking to another (future) class.
   const [moveTarget, setMoveTarget] = useState<BookingEntry | null>(null);
-  const [moveSearch, setMoveSearch] = useState("");
 
-  const { data: moveClasses, isLoading: moveClassesLoading } = useQuery<{
-    classes: MoveClassOption[];
-  }>({
-    queryKey: ["move-classes", id],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/classes?status=upcoming&take=100");
-      if (!res.ok) return { classes: [] };
-      return res.json();
-    },
-    enabled: !!moveTarget,
-  });
-
-  const moveMutation = useMutation({
-    mutationFn: async ({
-      bookingId,
-      targetClassId,
-    }: {
-      bookingId: string;
-      targetClassId: string;
-    }) => {
-      const res = await fetch(`/api/admin/bookings/${bookingId}/move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetClassId }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "move failed");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["class-detail", id] });
-      toast.success(t("bookingMoved"));
-      setMoveTarget(null);
-      setMoveSearch("");
-    },
-    onError: (err: Error) => toast.error(err.message || t("bookingMoveError")),
-  });
+  const bookingEntryName = (b: BookingEntry | null) =>
+    b?.user?.name ?? b?.guestName ?? b?.user?.email ?? b?.guestEmail ?? "—";
 
   const handleNotesChange = useCallback(
     (value: string) => {
@@ -799,10 +724,7 @@ export default function AdminClassDetailPage() {
                             {status === "CONFIRMED" && t("confirmedStatus")}
                           </button>
                           <button
-                            onClick={() => {
-                              setMoveSearch("");
-                              setMoveTarget(booking);
-                            }}
+                            onClick={() => setMoveTarget(booking)}
                             aria-label={t("moveBooking")}
                             title={t("moveBooking")}
                             className="flex items-center justify-center rounded-lg px-2 py-1.5 text-muted transition-colors hover:bg-admin/10 hover:text-admin"
@@ -810,10 +732,7 @@ export default function AdminClassDetailPage() {
                             <ArrowRightLeft className="h-3.5 w-3.5 shrink-0" />
                           </button>
                           <button
-                            onClick={() => {
-                              setRefundCredit(true);
-                              setCancelTarget(booking);
-                            }}
+                            onClick={() => setCancelTarget(booking)}
                             aria-label={t("cancelBooking")}
                             title={t("cancelBooking")}
                             className="flex items-center justify-center rounded-lg px-2 py-1.5 text-muted transition-colors hover:bg-red-50 hover:text-red-600"
@@ -849,209 +768,31 @@ export default function AdminClassDetailPage() {
         </div>
       )}
 
-      {/* Cancel booking confirmation */}
-      <Dialog
-        open={!!cancelTarget}
-        onOpenChange={(open) => {
-          if (!open) setCancelTarget(null);
-        }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("cancelBooking")}</DialogTitle>
-            <DialogDescription>
-              {t("cancelBookingDesc", {
-                name:
-                  cancelTarget?.user?.name ??
-                  cancelTarget?.guestName ??
-                  cancelTarget?.user?.email ??
-                  cancelTarget?.guestEmail ??
-                  "—",
-              })}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex items-start justify-between gap-4 rounded-xl border border-border/60 bg-surface/40 p-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground">
-                {t("refundCredit")}
-              </p>
-              <p className="mt-0.5 text-xs text-muted">
-                {t("refundCreditHint")}
-              </p>
-            </div>
-            <Switch checked={refundCredit} onCheckedChange={setRefundCredit} />
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setCancelTarget(null)}
-              disabled={cancelMutation.isPending}
-            >
-              {t("keepBooking")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() =>
-                cancelTarget &&
-                cancelMutation.mutate({
-                  bookingId: cancelTarget.id,
-                  refund: refundCredit,
-                })
-              }
-              disabled={cancelMutation.isPending}
-              className="gap-2"
-            >
-              {cancelMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-              {t("cancelBookingConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Move booking to another class */}
-      <Dialog
-        open={!!moveTarget}
-        onOpenChange={(open) => {
-          if (!open) {
-            setMoveTarget(null);
-            setMoveSearch("");
+      {cancelTarget && (
+        <CancelBookingDialog
+          open
+          onOpenChange={(o) => !o && setCancelTarget(null)}
+          bookingId={cancelTarget.id}
+          memberName={bookingEntryName(cancelTarget)}
+          onSuccess={() =>
+            queryClient.invalidateQueries({ queryKey: ["class-detail", id] })
           }
-        }}
-      >
-        <DialogContent className="flex max-h-[85dvh] max-w-md flex-col">
-          <DialogHeader>
-            <DialogTitle>{t("moveBooking")}</DialogTitle>
-            <DialogDescription>
-              {t("moveBookingDesc", {
-                name:
-                  moveTarget?.user?.name ??
-                  moveTarget?.guestName ??
-                  moveTarget?.user?.email ??
-                  moveTarget?.guestEmail ??
-                  "—",
-              })}
-            </DialogDescription>
-          </DialogHeader>
+        />
+      )}
 
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-            <input
-              type="text"
-              value={moveSearch}
-              onChange={(e) => setMoveSearch(e.target.value)}
-              placeholder={t("moveSearchPlaceholder")}
-              className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-admin"
-            />
-          </div>
-
-          <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
-            {moveClassesLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-5 w-5 animate-spin text-muted" />
-              </div>
-            ) : (
-              (() => {
-                const sourceTypeId = classData?.classType?.id;
-                const q = moveSearch.trim().toLowerCase();
-                const options = (moveClasses?.classes ?? [])
-                  .filter((c) => c.id !== id)
-                  .filter((c) => {
-                    if (!q) return true;
-                    const hay = `${c.classType.name} ${c.coach?.name ?? ""} ${
-                      c.room?.studio?.name ?? ""
-                    }`.toLowerCase();
-                    return hay.includes(q);
-                  });
-
-                if (options.length === 0) {
-                  return (
-                    <p className="py-10 text-center text-sm text-muted">
-                      {t("moveNoClasses")}
-                    </p>
-                  );
-                }
-
-                return (
-                  <div className="space-y-1.5 py-1">
-                    {options.map((c) => {
-                      const cap = c.room?.maxCapacity ?? 0;
-                      const spotsLeft = cap - c._count.bookings;
-                      const full = spotsLeft <= 0;
-                      const sameType = c.classType.id === sourceTypeId;
-                      const isMoving =
-                        moveMutation.isPending &&
-                        moveMutation.variables?.targetClassId === c.id;
-                      return (
-                        <button
-                          key={c.id}
-                          disabled={full || moveMutation.isPending}
-                          onClick={() =>
-                            moveTarget &&
-                            moveMutation.mutate({
-                              bookingId: moveTarget.id,
-                              targetClassId: c.id,
-                            })
-                          }
-                          className={cn(
-                            "flex w-full items-center gap-3 rounded-xl border border-border/60 p-3 text-left transition-colors",
-                            full
-                              ? "cursor-not-allowed opacity-50"
-                              : "hover:border-admin/40 hover:bg-admin/5 active:bg-admin/10",
-                          )}
-                        >
-                          <span
-                            className="mt-0.5 h-9 w-1.5 shrink-0 rounded-full"
-                            style={{ background: c.classType.color ?? "var(--color-admin)" }}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="truncate text-sm font-semibold text-foreground">
-                                {c.classType.name}
-                              </p>
-                              {sameType && (
-                                <Badge variant="outline" className="shrink-0 text-[10px]">
-                                  {t("moveSameType")}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="truncate text-xs text-muted">
-                              {formatDate(c.startsAt)} · {formatTime(c.startsAt)}
-                              {c.coach?.name ? ` · ${c.coach.name}` : ""}
-                              {c.room?.studio?.name ? ` · ${c.room.studio.name}` : ""}
-                            </p>
-                          </div>
-                          <div className="shrink-0 text-right">
-                            {isMoving ? (
-                              <Loader2 className="h-4 w-4 animate-spin text-admin" />
-                            ) : (
-                              <span
-                                className={cn(
-                                  "text-xs font-medium",
-                                  full ? "text-red-500" : "text-muted",
-                                )}
-                              >
-                                {full
-                                  ? t("moveFull")
-                                  : t("moveSpotsLeft", { count: spotsLeft })}
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })()
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {moveTarget && (
+        <MoveBookingDialog
+          open
+          onOpenChange={(o) => !o && setMoveTarget(null)}
+          bookingId={moveTarget.id}
+          memberName={bookingEntryName(moveTarget)}
+          currentClassId={id}
+          currentClassTypeId={classData?.classType?.id}
+          onSuccess={() =>
+            queryClient.invalidateQueries({ queryKey: ["class-detail", id] })
+          }
+        />
+      )}
 
       <div className="pb-8" />
     </div>

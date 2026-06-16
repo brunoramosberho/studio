@@ -1935,6 +1935,8 @@
     "roomMap": "Room map",
     "roomMapHint": "Hover or tap a spot to see who's there.",
     "spotOfMember": "{name} is in spot #{spot}",
+    "moveBooking": "Move to another class",
+    "cancelBooking": "Cancel booking",
     "present": "Present",
     "pending": "Pending",
     "waitlist": "Waitlist",
