@@ -151,7 +151,7 @@ export async function GET() {
           ) AS "activity"
         FROM "User" u
         INNER JOIN "Membership" m ON m."userId" = u."id"
-        WHERE m."tenantId" = ${tenantId} AND m."role" = 'CLIENT'
+        WHERE m."tenantId" = ${tenantId} AND m."role" IN ('CLIENT', 'COACH')
         ORDER BY "activity" DESC
         LIMIT 5
       `,

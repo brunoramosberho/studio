@@ -19,7 +19,9 @@ export async function GET(request: NextRequest) {
   const memberships = await prisma.membership.findMany({
     where: {
       tenantId,
-      role: "CLIENT",
+      // Include coaches: they can also book/buy as clients (a coach's
+      // Membership.role overwrites CLIENT), so the POS picker must find them.
+      role: { in: ["CLIENT", "COACH"] },
       user: {
         NOT: [
           { email: { contains: "filler" } },
