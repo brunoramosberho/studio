@@ -60,7 +60,13 @@ export function PhoneInput({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Sync from the controlled `value` prop. Also handles async pre-fill (e.g. a
+  // profile fetch that populates the number after mount). We bail when the
+  // incoming value already matches what this component emitted, so typing does
+  // not fight with its own onChange.
   useEffect(() => {
+    const composed = nationalNumber ? `+${getCountryCallingCode(country)}${nationalNumber}` : "";
+    if (value === composed) return;
     if (value) {
       try {
         const parsed = parsePhoneNumber(value);
@@ -74,8 +80,18 @@ export function PhoneInput({
       if (value.startsWith(code)) {
         setNationalNumber(value.slice(code.length).trim());
       }
+    } else {
+      setNationalNumber("");
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  // Adopt the default country when it resolves asynchronously, but only while
+  // the field is still empty so we never override a user's explicit choice.
+  useEffect(() => {
+    if (!value && !nationalNumber) setCountry(defaultCountry);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultCountry]);
 
   const callingCode = getCountryCallingCode(country);
 

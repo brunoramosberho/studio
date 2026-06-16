@@ -7,6 +7,8 @@ import { useBranding } from "@/components/branding-provider";
 import { useTenant } from "@/components/tenant-provider";
 import { SignatureCanvas } from "@/components/waiver/signature-canvas";
 import { DateOfBirthPicker } from "@/components/shared/date-of-birth-picker";
+import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
+import type { CountryCode } from "libphonenumber-js";
 import { capitalizeName, composeName, splitName } from "@/lib/utils";
 import { Check, ChevronRight, Loader2, X } from "lucide-react";
 import { FileCheckIcon, type FileCheckIconHandle } from "lucide-animated";
@@ -60,6 +62,7 @@ function WaiverSignContent() {
   const [firstName, setFirstName] = useState(initialName.firstName ?? "");
   const [lastName, setLastName] = useState(initialName.lastName ?? "");
   const [phone, setPhone] = useState("");
+  const [defaultCountry, setDefaultCountry] = useState<CountryCode>("MX");
   const [birthDate, setBirthDate] = useState<string | null>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
@@ -104,6 +107,7 @@ function WaiverSignContent() {
         .then((data) => {
           if (!data) return;
           setTokenBranding({ studioName: data.studioName, logoUrl: data.logoUrl });
+          if (data.defaultCountry) setDefaultCountry(data.defaultCountry as CountryCode);
           if (data.userName) {
             const split = splitName(data.userName);
             setFirstName((v) => v || split.firstName || "");
@@ -123,6 +127,7 @@ function WaiverSignContent() {
         if (data.waiver) {
           setWaiver(data.waiver);
         }
+        if (data.defaultCountry) setDefaultCountry(data.defaultCountry as CountryCode);
       })
       .catch(() => setError("No se pudo cargar el waiver"))
       .finally(() => setLoading(false));
@@ -146,6 +151,7 @@ function WaiverSignContent() {
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
     phone.trim().length > 0 &&
+    isValidPhoneNumber(phone) &&
     !!birthDate &&
     signatureDataUrl &&
     accepted;
@@ -374,15 +380,19 @@ function WaiverSignContent() {
           <label className="mb-1 block text-sm font-medium text-stone-700">
             Teléfono <span className="text-red-400">*</span>
           </label>
-          <input
-            type="tel"
-            inputMode="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            autoComplete="tel"
-            className="mb-5 w-full rounded-xl border border-border p-3 text-base text-stone-800 outline-none focus:border-stone-400"
-            placeholder="+52 555 123 4567"
-          />
+          <div className="mb-5">
+            <PhoneInput
+              value={phone}
+              onChange={setPhone}
+              defaultCountry={defaultCountry}
+              placeholder="55 1234 5678"
+            />
+            {phone.trim().length > 0 && !isValidPhoneNumber(phone) && (
+              <p className="mt-1 text-xs text-red-400">
+                Ingresa un número de teléfono válido
+              </p>
+            )}
+          </div>
 
           {/* Birth date */}
           <label className="mb-1 block text-sm font-medium text-stone-700">
