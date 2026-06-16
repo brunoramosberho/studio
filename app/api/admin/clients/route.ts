@@ -46,7 +46,10 @@ export async function GET(request: NextRequest) {
 
   const baseWhere: Prisma.MembershipWhereInput = {
     tenantId,
-    role: "CLIENT",
+    // Include coaches: a coach can also book/buy as a client, so they must
+    // surface in the clients list. Membership.role is a single enum, so a
+    // coach's role overwrites CLIENT — filter by both to avoid dropping them.
+    role: { in: ["CLIENT", "COACH"] },
     user: userWhere,
   };
 
