@@ -28,7 +28,7 @@ export async function GET(
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
-    select: { name: true },
+    select: { name: true, defaultCountry: { select: { code: true } } },
   });
 
   const content = waiver.content.replace(
@@ -38,5 +38,6 @@ export async function GET(
 
   return NextResponse.json({
     waiver: { ...waiver, content },
+    defaultCountry: tenant?.defaultCountry?.code ?? null,
   });
 }

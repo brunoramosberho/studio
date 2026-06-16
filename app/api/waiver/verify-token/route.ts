@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: payload.tenantId },
-    select: { name: true, logoUrl: true },
+    select: { name: true, logoUrl: true, defaultCountry: { select: { code: true } } },
   });
 
   const content = waiver?.content.replace(
@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
     userName: user?.name ?? "",
     studioName: tenant?.name ?? "",
     logoUrl: tenant?.logoUrl ?? null,
+    defaultCountry: tenant?.defaultCountry?.code ?? null,
     waiver: waiver ? { ...waiver, content } : null,
   });
 }
