@@ -215,6 +215,16 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
   const rosterKey = ["check-in-roster", classId];
 
+  // Any mutation that changes who is booked/checked-in must refresh both the
+  // roster (this panel) AND the sidebar class list, whose "X/15" badge counts
+  // bookings independently. Without this the badge goes stale after a
+  // check-in / walk-in / cancel / move (the "no se limpió" symptom).
+  const invalidateClassData = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: rosterKey });
+    queryClient.invalidateQueries({ queryKey: ["check-in-classes"] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryClient, classId]);
+
   const { data, isLoading } = useQuery<{
     roster: RosterMember[];
     waitlist: WaitlistMember[];
@@ -277,10 +287,10 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       }
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: rosterKey }),
+    onSuccess: () => invalidateClassData(),
     onError: (err: Error) => {
       toast.error(err.message);
-      queryClient.invalidateQueries({ queryKey: rosterKey });
+      invalidateClassData();
     },
   });
 
@@ -297,10 +307,10 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       }
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: rosterKey }),
+    onSuccess: () => invalidateClassData(),
     onError: (err: Error) => {
       toast.error(err.message);
-      queryClient.invalidateQueries({ queryKey: rosterKey });
+      invalidateClassData();
     },
   });
 
@@ -643,7 +653,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
             setWalkInSpot(null);
           }}
           onAdded={() => {
-            queryClient.invalidateQueries({ queryKey: rosterKey });
+            invalidateClassData();
             setWalkInOpen(false);
             setWalkInQuery("");
             setWalkInSpot(null);
@@ -687,9 +697,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           onOpenChange={(o) => !o && setCancelTarget(null)}
           bookingId={cancelTarget.bookingId}
           memberName={cancelTarget.memberName ?? "—"}
-          onSuccess={() =>
-            queryClient.invalidateQueries({ queryKey: rosterKey })
-          }
+          onSuccess={() => invalidateClassData()}
         />
       )}
 
@@ -700,9 +708,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           bookingId={moveTarget.bookingId}
           memberName={moveTarget.memberName ?? "—"}
           currentClassId={classId}
-          onSuccess={() =>
-            queryClient.invalidateQueries({ queryKey: rosterKey })
-          }
+          onSuccess={() => invalidateClassData()}
         />
       )}
     </div>
@@ -999,6 +1005,7 @@ function WellhubBookingsSection({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["check-in-roster", classId] });
+      queryClient.invalidateQueries({ queryKey: ["check-in-classes"] });
       toast.success("Check-in registrado en Wellhub");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -1083,6 +1090,7 @@ function WaitlistSection({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["check-in-roster", classId] });
+      queryClient.invalidateQueries({ queryKey: ["check-in-classes"] });
       toast.success(t("memberPromoted"));
     },
     onError: (err: Error) => toast.error(err.message),
