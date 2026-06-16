@@ -21,7 +21,7 @@ import {
 import type { Locale } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
+import { cn, parseDateOnly } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SLOT_MINUTES } from "@/lib/availability";
 import { getDateFnsLocale } from "@/lib/date-locale";
@@ -224,8 +224,9 @@ function MonthGrid({
       date: d,
       inMonth: isSameMonth(d, cursor),
       blocks: blocks.filter((b) => {
-        const s = startOfDay(new Date(b.startDate));
-        const e = startOfDay(new Date(b.endDate));
+        const s = parseDateOnly(b.startDate);
+        const e = parseDateOnly(b.endDate);
+        if (!s || !e) return false;
         return d >= s && d <= e;
       }),
     }));
@@ -384,8 +385,9 @@ function WeekGrid({
       const key = format(day, "yyyy-MM-dd");
       const slotMap = new Map<number, CalendarBlock>();
       for (const b of blocks) {
-        const s = startOfDay(new Date(b.startDate));
-        const e = startOfDay(new Date(b.endDate));
+        const s = parseDateOnly(b.startDate);
+        const e = parseDateOnly(b.endDate);
+        if (!s || !e) continue;
         if (dayStart < s || dayStart > e) continue;
         let bStart = b.isAllDay ? 0 : parseTimeToMinutes(b.startTime) ?? 0;
         let bEnd = b.isAllDay ? 24 * 60 : parseTimeToMinutes(b.endTime) ?? 24 * 60;

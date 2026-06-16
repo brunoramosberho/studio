@@ -24,7 +24,7 @@ import {
   isTomorrow,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, parseDateOnly } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -398,7 +398,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
 
   const dateRange =
     block.startDate && block.endDate
-      ? `${format(new Date(block.startDate), "d", { locale: es })} – ${format(new Date(block.endDate), "d MMM", { locale: es })}`
+      ? `${format(parseDateOnly(block.startDate)!, "d", { locale: es })} – ${format(parseDateOnly(block.endDate)!, "d MMM", { locale: es })}`
       : "";
 
   return (

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { format, isBefore, startOfDay } from "date-fns";
 import { useLocale } from "next-intl";
-import { cn } from "@/lib/utils";
+import { cn, parseDateOnly } from "@/lib/utils";
 import { getDateFnsLocale } from "@/lib/date-locale";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -215,11 +215,11 @@ export default function CoachAvailabilityPage() {
       .filter((b) => {
         if (b.type === "recurring") return true;
         if (!b.endDate) return false;
-        return !isBefore(new Date(b.endDate), startOfDay(new Date()));
+        return !isBefore(parseDateOnly(b.endDate)!, startOfDay(new Date()));
       })
       .sort((a, b) => {
-        const ad = a.startDate ? new Date(a.startDate).getTime() : Infinity;
-        const bd = b.startDate ? new Date(b.startDate).getTime() : Infinity;
+        const ad = parseDateOnly(a.startDate)?.getTime() ?? Infinity;
+        const bd = parseDateOnly(b.startDate)?.getTime() ?? Infinity;
         return ad - bd;
       });
   }, [blocks]);
@@ -674,10 +674,10 @@ function TimeOffTab({
                     <span className="text-sm font-medium">
                       {b.type === "one_time" ? (
                         <>
-                          {b.startDate && format(new Date(b.startDate), "EEE d MMM", { locale: dfLocale })}
+                          {b.startDate && format(parseDateOnly(b.startDate)!, "EEE d MMM", { locale: dfLocale })}
                           {b.endDate &&
                             b.startDate !== b.endDate &&
-                            ` – ${format(new Date(b.endDate), "EEE d MMM", { locale: dfLocale })}`}
+                            ` – ${format(parseDateOnly(b.endDate)!, "EEE d MMM", { locale: dfLocale })}`}
                         </>
                       ) : (
                         <>Recurrente: {b.dayOfWeek.map((d) => DAY_SHORT[d]).join(", ")}</>
@@ -938,9 +938,9 @@ function ViewTimeOffModal({
             <Label className="text-muted-foreground text-xs uppercase tracking-wide">{t("modalViewDates")}</Label>
             <p className="font-medium">
               {block.startDate &&
-                format(new Date(block.startDate), "PPPP", { locale: dfLocale })}
+                format(parseDateOnly(block.startDate)!, "PPPP", { locale: dfLocale })}
               {!sameDay && block.endDate && (
-                <> – {format(new Date(block.endDate), "PPPP", { locale: dfLocale })}</>
+                <> – {format(parseDateOnly(block.endDate)!, "PPPP", { locale: dfLocale })}</>
               )}
             </p>
           </div>

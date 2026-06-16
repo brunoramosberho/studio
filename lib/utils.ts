@@ -276,3 +276,28 @@ export function generateCalendarUrl(
 
   return `https://www.google.com/calendar/render?${params.toString()}`;
 }
+
+/**
+ * Parse a date-only value (a `@db.Date` column, serialised as `"2026-06-16"` or
+ * `"2026-06-16T00:00:00.000Z"`) into a Date at LOCAL midnight.
+ *
+ * `new Date("2026-06-16")` parses as UTC midnight, so formatting it in a
+ * negative-offset timezone (e.g. Mexico, UTC-6) renders the previous day. This
+ * rebuilds the calendar date in local time so day-only values display correctly
+ * everywhere. Returns null for empty input.
+ */
+export function parseDateOnly(
+  value: string | Date | null | undefined,
+): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return new Date(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate(),
+    );
+  }
+  const [y, m, d] = String(value).slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}

@@ -6,13 +6,14 @@ import { useSession } from "next-auth/react";
 import { useTranslations, useLocale } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarDays, Users, ChevronRight } from "lucide-react";
+import { CalendarDays, Users, ChevronRight, MapPin, Dumbbell } from "lucide-react";
 import { format, isPast } from "date-fns";
 import { es, enUS } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatTime } from "@/lib/utils";
+import { getIconComponent } from "@/components/admin/icon-picker";
 import type { ClassWithDetails } from "@/types";
 
 const stagger = {
@@ -154,7 +155,7 @@ export default function CoachSchedulePage() {
                             past && "opacity-60",
                           )}
                         >
-                          <CardContent className="flex items-center gap-4 p-4">
+                          <CardContent className="flex items-center gap-3 p-4">
                             <div className="flex shrink-0 flex-col items-center">
                               <span className="font-mono text-sm font-semibold">
                                 {formatTime(cls.startsAt)}
@@ -163,13 +164,38 @@ export default function CoachSchedulePage() {
                                 {formatTime(cls.endsAt)}
                               </span>
                             </div>
+                            {(() => {
+                              const Icon = cls.classType.icon
+                                ? getIconComponent(cls.classType.icon)
+                                : null;
+                              const DiscIcon = Icon ?? Dumbbell;
+                              return (
+                                <div
+                                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                                  style={{ backgroundColor: `${cls.classType.color}18` }}
+                                >
+                                  <DiscIcon
+                                    className="h-5 w-5"
+                                    style={{ color: cls.classType.color }}
+                                  />
+                                </div>
+                              );
+                            })()}
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-display text-base font-bold">
                                 {cls.classType.name}
                               </p>
-                              <div className="mt-1 flex items-center gap-2">
-                                <Users className="h-3.5 w-3.5 text-muted" />
-                                <span className="text-sm text-muted">
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
+                                {cls.room?.studio?.name && (
+                                  <span className="flex min-w-0 items-center gap-1">
+                                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="truncate">
+                                      {cls.room.studio.name}
+                                    </span>
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-3.5 w-3.5 shrink-0" />
                                   {enrolled}/{capacity}
                                 </span>
                               </div>
