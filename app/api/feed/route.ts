@@ -257,6 +257,41 @@ export async function GET(request: NextRequest) {
       return !classId || !endedClassIds.has(classId);
     });
 
+    // Drop CLASS_RESERVED events whose author no longer has a CONFIRMED booking
+    // for that class. The feed event is normally deleted on cancellation, but
+    // this guards against stale events (e.g. legacy cancellations) so a class
+    // someone already left stops appearing in everyone's feed.
+    {
+      const reservedEvents = items.filter((e) => e.eventType === "CLASS_RESERVED");
+      if (reservedEvents.length > 0) {
+        const authorIds = [...new Set(reservedEvents.map((e) => e.userId))];
+        const classIds = [
+          ...new Set(
+            reservedEvents
+              .map((e) => (e.payload as Record<string, unknown>)?.classId as string)
+              .filter(Boolean),
+          ),
+        ];
+        const activeBookings = await prisma.booking.findMany({
+          where: {
+            userId: { in: authorIds },
+            classId: { in: classIds },
+            status: "CONFIRMED",
+          },
+          select: { userId: true, classId: true },
+        });
+        const activeKeys = new Set(
+          activeBookings.map((b) => `${b.userId}:${b.classId}`),
+        );
+        items = items.filter((e) => {
+          if (e.eventType !== "CLASS_RESERVED") return true;
+          const classId = (e.payload as Record<string, unknown>)?.classId as string;
+          if (!classId) return true;
+          return activeKeys.has(`${e.userId}:${classId}`);
+        });
+      }
+    }
+
     // Check which CLASS_COMPLETED classes have playlists
     const completedClassIds = items
       .filter((e) => e.eventType === "CLASS_COMPLETED")

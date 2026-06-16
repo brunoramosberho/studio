@@ -262,6 +262,22 @@ export async function PUT(
     });
 
     if (status === "CANCELLED") {
+      // Remove the "reserved" feed event so a cancelled booking stops showing
+      // up in everyone's feed (mirrors the DELETE handler). Without this the
+      // CLASS_RESERVED event lingers and the feed flips to "Join them".
+      if (booking.userId) {
+        prisma.feedEvent
+          .deleteMany({
+            where: {
+              tenantId: tenant.id,
+              userId: booking.userId,
+              eventType: "CLASS_RESERVED",
+              payload: { path: ["classId"], equals: booking.classId },
+            },
+          })
+          .catch(() => {});
+      }
+
       // Free the seat across all channels: promote Magic waitlist, notify
       // spot-watchers, and re-push availability to Wellhub so a freed seat
       // resurfaces there too.
