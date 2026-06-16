@@ -131,6 +131,102 @@ export async function sendBookingConfirmation({
   }
 }
 
+export async function sendBookingMoved({
+  to,
+  name,
+  className,
+  coachName,
+  date,
+  startTime,
+  location,
+  timezone,
+  classUrl,
+  fromLabel,
+  locale,
+}: {
+  to: string;
+  name: string;
+  className: string;
+  coachName: string | null;
+  date: Date;
+  startTime: Date;
+  location?: string;
+  timezone?: string;
+  classUrl?: string;
+  /** Human label of the class the member was moved from, e.g. "Sculpt+ · lun 16 jun". */
+  fromLabel?: string;
+  locale?: string;
+}) {
+  try {
+    const b = await getServerBranding();
+    const studioFull = `${b.studioName} Studio`;
+    const loc = locale || "es";
+    const t = await getTranslations({ locale: loc, namespace: "email" });
+    const tb = await getTranslations({ locale: loc, namespace: "booking" });
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#fef3c7;line-height:56px;font-size:28px;">&#128260;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ${t("bookingMovedTitle")}
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};">
+          ${t("hello", { name })}, ${t("bookingMovedBody")}
+        </p>
+      </div>
+
+      ${fromLabel ? `
+      <p style="margin:0 0 12px;font-size:13px;color:${b.colorMuted};text-align:center;">
+        ${t("bookingMovedFrom")} <span style="text-decoration:line-through;">${fromLabel}</span>
+      </p>` : ""}
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>${t("date")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date, loc)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>${t("time")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
+            </tr>
+            ${coachName ? `<tr>
+              <td style="padding:3px 0;"><strong>${t("coach")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${coachName}</td>
+            </tr>` : ""}
+            ${location ? `<tr>
+              <td style="padding:3px 0;"><strong>${t("location")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${location}</td>
+            </tr>` : ""}
+          </table>
+        </td></tr>
+      </table>
+
+      ${classUrl ? `
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${classUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          ${t("viewBooking")}
+        </a>
+      </div>
+      ` : ""}
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        ${t("cancellationPolicy")}
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: tb("movedSubject", { className, date: formatDate(date, loc) }),
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send booking moved email:", error);
+  }
+}
+
 export async function sendClassCancelled({
   to,
   name,

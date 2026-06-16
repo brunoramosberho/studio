@@ -40,7 +40,15 @@ export async function GET(
 
     const cls = await prisma.class.findFirst({
       where: { id: classId, tenantId: ctx.tenant.id },
-      select: { id: true, startsAt: true, endsAt: true, coachId: true },
+      select: {
+        id: true,
+        startsAt: true,
+        endsAt: true,
+        coachId: true,
+        room: {
+          select: { id: true, name: true, maxCapacity: true, layout: true },
+        },
+      },
     });
     if (!cls) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
@@ -186,6 +194,7 @@ export async function GET(
           memberId: user.id,
           memberName: user.name,
           memberImage: user.image,
+          spotNumber: b.spotNumber,
           initials,
           membershipType: activePackage?.package.name ?? "Sin paquete",
           membershipPackageType: activePackage?.package.type ?? null,
@@ -315,6 +324,14 @@ export async function GET(
       waitlist: waitlistData,
       wellhubBookings: wellhubRoster,
       blockCheckinWithoutWaiver: activeWaiver?.blockCheckinWithoutSignature ?? false,
+      room: cls.room
+        ? {
+            id: cls.room.id,
+            name: cls.room.name,
+            maxCapacity: cls.room.maxCapacity,
+            layout: cls.room.layout,
+          }
+        : null,
     });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {

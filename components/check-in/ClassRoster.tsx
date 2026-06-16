@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useOptimistic, useCallback, useEffect, useRef, startTransition } from "react";
+import { useState, useOptimistic, useCallback, useEffect, useMemo, useRef, startTransition } from "react";
 import { useTranslations } from "next-intl";
 import {
   Search,
@@ -29,6 +29,8 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { usePosStore } from "@/store/pos-store";
 import { SpotPicker } from "@/components/admin/pos/spot-picker";
+import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
+import { ChevronDown, Map as MapIcon } from "lucide-react";
 
 // ── Types ──
 
@@ -47,6 +49,7 @@ interface RosterMember {
   memberId: string;
   memberName: string | null;
   memberImage: string | null;
+  spotNumber: number | null;
   initials: string;
   membershipType: string;
   membershipPackageType: string | null;
@@ -208,16 +211,29 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
     waitlist: WaitlistMember[];
     wellhubBookings: WellhubBooking[];
     blockCheckinWithoutWaiver: boolean;
+    room: {
+      id: string;
+      name: string;
+      maxCapacity: number;
+      layout: RoomLayoutData | null;
+    } | null;
   }>({
     queryKey: rosterKey,
     queryFn: () => fetch(`/api/check-in/roster/${classId}`).then((r) => r.json()),
     refetchInterval: 30_000,
   });
 
-  const roster = data?.roster ?? [];
+  const roster = useMemo(() => data?.roster ?? [], [data?.roster]);
   const blockWaiver = data?.blockCheckinWithoutWaiver ?? false;
   const waitlist = data?.waitlist ?? [];
   const wellhubBookings = data?.wellhubBookings ?? [];
+  const room = data?.room ?? null;
+
+  // Room map (only when the room has a configured spot layout).
+  const roomLayout = (room?.layout as RoomLayoutData | null) ?? null;
+  const hasRoomMap = !!roomLayout && roomLayout.spots?.length > 0;
+  const [mapOpen, setMapOpen] = useState(true);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   const [optimisticRoster, addOptimistic] = useOptimistic(
     roster,
@@ -336,6 +352,32 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
   const startFormatted = format(new Date(classInfo.startTime), "HH:mm");
 
+  // Occupancy map for the room view: spotNumber → member identity.
+  const spotMap = useMemo<Record<number, SpotInfo>>(() => {
+    const map: Record<number, SpotInfo> = {};
+    for (const m of roster) {
+      if (m.spotNumber == null) continue;
+      map[m.spotNumber] = {
+        status: "occupied",
+        userName: m.memberName,
+        userImage: m.memberImage,
+      };
+    }
+    return map;
+  }, [roster]);
+
+  const spotToMemberId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const m of roster) {
+      if (m.spotNumber != null) map.set(m.spotNumber, m.memberId);
+    }
+    return map;
+  }, [roster]);
+
+  const selectedMember =
+    roster.find((m) => m.memberId === selectedMemberId) ?? null;
+  const selectedSpot = selectedMember?.spotNumber ?? null;
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -411,6 +453,50 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
         ))}
       </div>
 
+      {/* Room map (when the room has a spot layout) */}
+      {hasRoomMap && (
+        <div className="border-b border-stone-100 dark:border-border/60 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMapOpen((o) => !o)}
+            className="flex w-full items-center justify-between px-3 sm:px-4 py-2 text-stone-500 dark:text-muted"
+          >
+            <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide">
+              <MapIcon size={13} />
+              {t("roomMap")}
+            </span>
+            <ChevronDown
+              size={16}
+              className={cn("transition-transform", mapOpen && "rotate-180")}
+            />
+          </button>
+          {mapOpen && (
+            <div className="px-3 sm:px-4 pb-3">
+              <StudioMap
+                maxCapacity={room?.maxCapacity ?? 0}
+                spotMap={spotMap}
+                selectedSpot={selectedSpot}
+                onSelectSpot={(spot) => {
+                  const mid = spotToMemberId.get(spot) ?? null;
+                  setSelectedMemberId((cur) => (cur && cur === mid ? null : mid));
+                }}
+                layout={roomLayout}
+                coachName={classInfo.coachName}
+                revealOccupants
+              />
+              <p className="mt-2 text-center text-[11px] text-stone-500 dark:text-muted">
+                {selectedMember
+                  ? t("spotOfMember", {
+                      name: selectedMember.memberName ?? "",
+                      spot: selectedMember.spotNumber ?? "—",
+                    })
+                  : t("roomMapHint")}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Roster list */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
@@ -432,6 +518,17 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
               onPhotoClick={member.memberImage
                 ? () => setPhotoPreview({ url: member.memberImage!, name: member.memberName ?? "" })
                 : undefined
+              }
+              isSelected={hasRoomMap && selectedMemberId === member.memberId}
+              onSelectSpot={
+                hasRoomMap && member.spotNumber != null
+                  ? () => {
+                      setMapOpen(true);
+                      setSelectedMemberId((cur) =>
+                        cur === member.memberId ? null : member.memberId,
+                      );
+                    }
+                  : undefined
               }
             />
           ))
@@ -617,12 +714,16 @@ function RosterRow({
   onCheckIn,
   onUndoRequest,
   onPhotoClick,
+  isSelected,
+  onSelectSpot,
 }: {
   member: RosterMember;
   isFinished: boolean;
   onCheckIn: () => void;
   onUndoRequest: () => void;
   onPhotoClick?: () => void;
+  isSelected?: boolean;
+  onSelectSpot?: () => void;
 }) {
   const isCheckedIn = !!member.checkIn;
   const isLate = member.checkIn?.status === "late";
@@ -654,6 +755,7 @@ function RosterRow({
         isCheckedIn ? "bg-emerald-50/70 dark:bg-emerald-500/10" : "hover:bg-stone-50 dark:hover:bg-surface/60",
         hasBirthday && !isCheckedIn && "bg-pink-50/50 dark:bg-pink-500/10",
         hasBirthday && isCheckedIn && "bg-gradient-to-r from-emerald-50/70 to-pink-50/50 dark:from-emerald-500/10 dark:to-pink-500/10",
+        isSelected && "ring-2 ring-inset ring-accent/60 bg-accent/5 dark:bg-accent/10",
       )}
     >
       {/* Avatar with photo */}
@@ -687,9 +789,28 @@ function RosterRow({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-stone-900 dark:text-foreground truncate">
-          {member.memberName}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-[13px] font-medium text-stone-900 dark:text-foreground truncate">
+            {member.memberName}
+          </p>
+          {member.spotNumber != null && onSelectSpot && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectSpot();
+              }}
+              className={cn(
+                "shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums transition-colors",
+                isSelected
+                  ? "bg-accent text-white"
+                  : "bg-stone-100 text-stone-500 hover:bg-accent/15 hover:text-accent dark:bg-surface dark:text-muted",
+              )}
+            >
+              #{member.spotNumber}
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-1.5">
           <p className={cn(
             "text-[11px] truncate",

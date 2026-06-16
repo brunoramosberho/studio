@@ -35,6 +35,12 @@ interface StudioMapProps {
   coachName?: string | null;
   adminMode?: boolean;
   onToggleBlock?: (spot: number) => void;
+  /**
+   * Reveal every occupant's name/avatar (not just friends/guests) and make
+   * occupied spots hoverable + selectable. Used by the admin check-in map so
+   * staff can see who is where and highlight a member's spot.
+   */
+  revealOccupants?: boolean;
 }
 
 /* ─── Auto-fit container ─── */
@@ -118,6 +124,7 @@ export function StudioMap({
   coachName,
   adminMode,
   onToggleBlock,
+  revealOccupants,
 }: StudioMapProps) {
   const [tapped, setTapped] = useState<number | null>(null);
   const [coachTapped, setCoachTapped] = useState(false);
@@ -157,7 +164,12 @@ export function StudioMap({
     const isFriend = info?.status === "friend";
     const isSelected = selectedSpot === num;
     const isAvailable = !isOccupied && !isBlocked;
-    const showTooltip = tapped === num && (isFriend || isGuest);
+    // In reveal mode (admin check-in) a plain occupied spot becomes an
+    // interactive, named avatar that can be hovered and highlighted.
+    const revealOccupied =
+      !!revealOccupants && isOccupied && !isBlocked && !isSelf && !isGuest && !isFriend;
+    const showsIdentity = isFriend || isGuest || revealOccupied;
+    const showTooltip = tapped === num && showsIdentity && !!info?.userName;
 
     const initials = info?.userName
       ? info.userName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
@@ -171,12 +183,17 @@ export function StudioMap({
               onToggleBlock(num);
               return;
             }
+            if (revealOccupied) {
+              onSelectSpot(num);
+              setTapped(tapped === num ? null : num);
+              return;
+            }
             if (isAvailable && !disabled) onSelectSpot(num);
             if (isFriend || isGuest) setTapped(tapped === num ? null : num);
           }}
-          onMouseEnter={() => (isFriend || isGuest) && setTapped(num)}
-          onMouseLeave={() => (isFriend || isGuest) && setTapped(null)}
-          disabled={!adminMode && ((!isFriend && !isGuest && (isOccupied || isBlocked)) || (disabled && isAvailable))}
+          onMouseEnter={() => showsIdentity && setTapped(num)}
+          onMouseLeave={() => showsIdentity && setTapped(null)}
+          disabled={!adminMode && !revealOccupied && ((!isFriend && !isGuest && (isOccupied || isBlocked)) || (disabled && isAvailable))}
           className={cn(
             "relative flex h-[38px] w-[38px] items-center justify-center rounded-full transition-all overflow-hidden",
             isAvailable && !isSelected &&
@@ -197,17 +214,27 @@ export function StudioMap({
               "cursor-pointer hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-500/10",
             !isSelf && !isFriend && !isGuest && isOccupied &&
               "bg-neutral-100 text-neutral-300 dark:bg-card dark:text-muted/40 dark:border dark:border-border/60",
-            !adminMode && disabled && isAvailable && "opacity-40 pointer-events-none",
+            revealOccupied && "cursor-pointer active:scale-95",
+            revealOccupied && isSelected &&
+              "ring-2 ring-accent ring-offset-2 ring-offset-background scale-105 shadow-md",
+            !adminMode && !revealOccupied && disabled && isAvailable && "opacity-40 pointer-events-none",
           )}
         >
           {isBlocked ? (
             <Lock className="h-4 w-4" />
           ) : isGuest ? (
             <span className="text-[11px] font-semibold">{initials}</span>
-          ) : isFriend ? (
+          ) : isFriend || revealOccupied ? (
             <Avatar className="h-full w-full">
-              {info.userImage && <AvatarImage src={info.userImage} className="object-cover" />}
-              <AvatarFallback className="text-[11px] font-semibold bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300">
+              {info?.userImage && <AvatarImage src={info.userImage} className="object-cover" />}
+              <AvatarFallback
+                className={cn(
+                  "text-[11px] font-semibold",
+                  isFriend
+                    ? "bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300"
+                    : "bg-neutral-200 text-neutral-700 dark:bg-surface dark:text-foreground",
+                )}
+              >
                 {initials}
               </AvatarFallback>
             </Avatar>
