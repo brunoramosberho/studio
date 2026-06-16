@@ -205,12 +205,25 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [walkInQuery, setWalkInQuery] = useState("");
+  // When the walk-in flow is opened by tapping an empty spot on the room map,
+  // we remember that spot so the chosen member is booked straight into it.
+  const [walkInSpot, setWalkInSpot] = useState<number | null>(null);
   const [paymentConfirm, setPaymentConfirm] = useState<string | null>(null);
   const [waiverConfirm, setWaiverConfirm] = useState<string | null>(null);
   const [undoConfirm, setUndoConfirm] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<{ url: string; name: string } | null>(null);
 
   const rosterKey = ["check-in-roster", classId];
+
+  // Any mutation that changes who is booked/checked-in must refresh both the
+  // roster (this panel) AND the sidebar class list, whose "X/15" badge counts
+  // bookings independently. Without this the badge goes stale after a
+  // check-in / walk-in / cancel / move (the "no se limpió" symptom).
+  const invalidateClassData = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: rosterKey });
+    queryClient.invalidateQueries({ queryKey: ["check-in-classes"] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryClient, classId]);
 
   const { data, isLoading } = useQuery<{
     roster: RosterMember[];
@@ -274,10 +287,10 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       }
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: rosterKey }),
+    onSuccess: () => invalidateClassData(),
     onError: (err: Error) => {
       toast.error(err.message);
-      queryClient.invalidateQueries({ queryKey: rosterKey });
+      invalidateClassData();
     },
   });
 
@@ -294,10 +307,10 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       }
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: rosterKey }),
+    onSuccess: () => invalidateClassData(),
     onError: (err: Error) => {
       toast.error(err.message);
-      queryClient.invalidateQueries({ queryKey: rosterKey });
+      invalidateClassData();
     },
   });
 
@@ -488,7 +501,16 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                 selectedSpot={selectedSpot}
                 onSelectSpot={(spot) => {
                   const mid = spotToMemberId.get(spot) ?? null;
-                  setSelectedMemberId((cur) => (cur && cur === mid ? null : mid));
+                  if (mid) {
+                    setSelectedMemberId((cur) => (cur && cur === mid ? null : mid));
+                    return;
+                  }
+                  // Empty spot tapped → open the walk-in flow targeting it.
+                  if (!classInfo.isFinished) {
+                    setSelectedMemberId(null);
+                    setWalkInSpot(spot);
+                    setWalkInOpen(true);
+                  }
                 }}
                 layout={roomLayout}
                 coachName={classInfo.coachName}
@@ -624,14 +646,17 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       {walkInOpen && (
         <WalkInModal
           classId={classId}
+          presetSpot={walkInSpot}
           onClose={() => {
             setWalkInOpen(false);
             setWalkInQuery("");
+            setWalkInSpot(null);
           }}
           onAdded={() => {
-            queryClient.invalidateQueries({ queryKey: rosterKey });
+            invalidateClassData();
             setWalkInOpen(false);
             setWalkInQuery("");
+            setWalkInSpot(null);
           }}
           query={walkInQuery}
           setQuery={setWalkInQuery}
@@ -672,9 +697,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           onOpenChange={(o) => !o && setCancelTarget(null)}
           bookingId={cancelTarget.bookingId}
           memberName={cancelTarget.memberName ?? "—"}
-          onSuccess={() =>
-            queryClient.invalidateQueries({ queryKey: rosterKey })
-          }
+          onSuccess={() => invalidateClassData()}
         />
       )}
 
@@ -685,9 +708,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           bookingId={moveTarget.bookingId}
           memberName={moveTarget.memberName ?? "—"}
           currentClassId={classId}
-          onSuccess={() =>
-            queryClient.invalidateQueries({ queryKey: rosterKey })
-          }
+          onSuccess={() => invalidateClassData()}
         />
       )}
     </div>
@@ -984,6 +1005,7 @@ function WellhubBookingsSection({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["check-in-roster", classId] });
+      queryClient.invalidateQueries({ queryKey: ["check-in-classes"] });
       toast.success("Check-in registrado en Wellhub");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -1068,6 +1090,7 @@ function WaitlistSection({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["check-in-roster", classId] });
+      queryClient.invalidateQueries({ queryKey: ["check-in-classes"] });
       toast.success(t("memberPromoted"));
     },
     onError: (err: Error) => toast.error(err.message),
@@ -1219,12 +1242,14 @@ interface LimitBlock {
 
 function WalkInModal({
   classId,
+  presetSpot = null,
   onClose,
   onAdded,
   query,
   setQuery,
 }: {
   classId: string;
+  presetSpot?: number | null;
   onClose: () => void;
   onAdded: () => void;
   query: string;
@@ -1266,7 +1291,10 @@ function WalkInModal({
   const roomHasLayout = spotData?.hasLayout === true;
 
   function handleMemberClick(memberId: string) {
-    if (roomHasLayout) {
+    // Spot already chosen from the room map → book straight into it.
+    if (presetSpot != null) {
+      walkInMutation.mutate({ memberId, spotNumber: presetSpot });
+    } else if (roomHasLayout) {
       setPendingMember({ id: memberId });
       setShowSpotPicker(true);
     } else {
@@ -1384,7 +1412,11 @@ function WalkInModal({
       <WaiverConfirmDialog
         memberId={waiverBlock}
         onForceCheckIn={() => {
-          walkInMutation.mutate({ memberId: waiverBlock, skipWaiverCheck: true });
+          walkInMutation.mutate({
+            memberId: waiverBlock,
+            skipWaiverCheck: true,
+            ...(presetSpot != null ? { spotNumber: presetSpot } : {}),
+          });
           setWaiverBlock(null);
         }}
         onCancel={() => setWaiverBlock(null)}
@@ -1489,7 +1521,12 @@ function WalkInModal({
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
       <div className="bg-card rounded-xl shadow-xl mx-4 max-w-sm w-full overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
-          <p className="text-sm font-medium text-stone-900">{t("addWalkIn")}</p>
+          <p className="text-sm font-medium text-stone-900">
+            {t("addWalkIn")}
+            {presetSpot != null && (
+              <span className="ml-1.5 font-mono text-xs text-stone-400">#{presetSpot}</span>
+            )}
+          </p>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
             <X size={16} />
           </button>
