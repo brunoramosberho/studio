@@ -8,6 +8,7 @@ import {
   useState,
   type MouseEvent,
 } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import {
@@ -179,6 +180,19 @@ export function EmbedScheduleClient({ tenantOrigin }: EmbedScheduleClientProps) 
     };
   }, [isLoading, selectedDay, classes.length, filterTypes, filterCoaches]);
 
+  const router = useRouter();
+
+  // Internal navigation stays inside the iframe (class detail lives on
+  // /embed/class/[id]). The parent loader re-resizes when height changes.
+  const openInEmbed = useCallback(
+    (path: string) => {
+      router.push(path);
+    },
+    [router],
+  );
+
+  // Break out of the iframe to the tenant site — used for login and the
+  // real booking flow where the top-level cookies/domain are required.
   const openInParent = useCallback(
     (path: string) => {
       if (typeof window === "undefined") return;
@@ -360,7 +374,7 @@ export function EmbedScheduleClient({ tenantOrigin }: EmbedScheduleClientProps) 
         ) : (
           <CollapsiblePastClasses
             classes={selectedClasses}
-            onOpen={(cls) => openInParent(`/class/${cls.id}`)}
+            onOpen={(cls) => openInEmbed(`/embed/class/${cls.id}`)}
           />
         )}
       </div>
@@ -405,7 +419,7 @@ export function EmbedScheduleClient({ tenantOrigin }: EmbedScheduleClientProps) 
               <DesktopDayColumn
                 key={day.toISOString()}
                 classes={getClassesForDay(day)}
-                onOpen={(cls) => openInParent(`/class/${cls.id}`)}
+                onOpen={(cls) => openInEmbed(`/embed/class/${cls.id}`)}
               />
             ))}
           </div>
