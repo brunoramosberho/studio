@@ -329,6 +329,10 @@ model Membership {
   lastSeenAt     DateTime?
   createdAt      DateTime  @default(now())
 
+  // Per-admin opt-in: email this staff member on every new client booking.
+  // Off by default so enabling it for one admin never spams the rest.
+  notifyEmailOnBooking Boolean @default(false)
+
   lifecycleStage     MemberLifecycleStage @default(lead)
   lifecycleUpdatedAt DateTime?
   firstPurchaseAt    DateTime?

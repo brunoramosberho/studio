@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { requireAuth, requireTenant } from "@/lib/tenant";
 import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
+import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
 import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeForBooking } from "@/lib/credits";
@@ -640,6 +641,16 @@ export async function POST(request: NextRequest) {
         classUrl: `${baseUrl}/class/${classId}`,
       });
     }
+
+    // Notify staff who opted in (per-admin) to a new-booking email.
+    notifyAdminsOfNewBooking({
+      tenantId: tenant.id,
+      classId,
+      memberName: recipientName ?? guestName ?? "—",
+      baseUrl,
+    }).catch((err) =>
+      console.error("Admin booking notification failed:", err),
+    );
 
     if (session?.user?.id) {
       updateLifecycle(session.user.id, tenant.id, "booked").catch(

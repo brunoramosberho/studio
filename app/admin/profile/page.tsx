@@ -4,14 +4,16 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { Loader2, Check, Camera, UserPen } from "lucide-react";
+import { Loader2, Check, Camera, UserPen, Bell } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface ProfileData {
   id: string;
@@ -53,6 +55,41 @@ export default function AdminProfilePage() {
       setPhone(profile.phone ?? "");
     }
   }, [profile]);
+
+  // Per-admin notification preferences (stored on the membership).
+  const { data: notif } = useQuery<{ emailOnBooking: boolean }>({
+    queryKey: ["admin-notif-prefs"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/profile/notifications");
+      if (!res.ok) return { emailOnBooking: false };
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
+
+  const notifMutation = useMutation({
+    mutationFn: async (emailOnBooking: boolean) => {
+      const res = await fetch("/api/admin/profile/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailOnBooking }),
+      });
+      if (!res.ok) throw new Error("failed");
+      return res.json() as Promise<{ emailOnBooking: boolean }>;
+    },
+    onMutate: async (emailOnBooking) => {
+      await queryClient.cancelQueries({ queryKey: ["admin-notif-prefs"] });
+      const prev = queryClient.getQueryData(["admin-notif-prefs"]);
+      queryClient.setQueryData(["admin-notif-prefs"], { emailOnBooking });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["admin-notif-prefs"], ctx.prev);
+      toast.error(t("saveError"));
+    },
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["admin-notif-prefs"] }),
+  });
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -228,6 +265,31 @@ export default function AdminProfilePage() {
                   {saved ? tc("saved") : t("saveChanges")}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+
+          {/* Notifications */}
+          <Card>
+            <CardContent className="p-5">
+              <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Bell className="h-4 w-4 text-admin" />
+                {t("notifications")}
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    {t("notifyEmailOnBooking")}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {t("notifyEmailOnBookingHint")}
+                  </p>
+                </div>
+                <Switch
+                  checked={notif?.emailOnBooking ?? false}
+                  onCheckedChange={(v) => notifMutation.mutate(v)}
+                  disabled={notifMutation.isPending}
+                />
+              </div>
             </CardContent>
           </Card>
         </motion.div>

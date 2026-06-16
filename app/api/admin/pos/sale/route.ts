@@ -10,6 +10,7 @@ import {
 } from "@/lib/credits";
 import { sendPosReceiptEmail, getTenantBaseUrl } from "@/lib/email";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
+import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
 
 interface CartItem {
   type: "package" | "product";
@@ -136,6 +137,15 @@ export async function POST(request: NextRequest) {
             scheduledAt: classData.startsAt,
             scope: "pos.existing-credits",
           });
+
+          notifyAdminsOfNewBooking({
+            tenantId,
+            classId: classData.id,
+            memberId: customerId,
+            baseUrl: request.nextUrl.origin,
+          }).catch((err) =>
+            console.error("Admin booking notification failed:", err),
+          );
 
           results.push({
             type: "class",
@@ -286,6 +296,15 @@ export async function POST(request: NextRequest) {
             scheduledAt: clsData.startsAt,
             scope: "pos.post-purchase",
           });
+
+          notifyAdminsOfNewBooking({
+            tenantId,
+            classId: clsData.id,
+            memberId: customerId,
+            baseUrl: request.nextUrl.origin,
+          }).catch((err) =>
+            console.error("Admin booking notification failed:", err),
+          );
 
           results.push({
             type: "class",

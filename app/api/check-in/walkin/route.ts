@@ -8,6 +8,7 @@ import {
 } from "@/lib/credits";
 import { checkSubscriptionBookingLimits } from "@/lib/booking/limits";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
+import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
 
 export async function POST(request: NextRequest) {
   try {
@@ -181,6 +182,13 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      notifyAdminsOfNewBooking({
+        tenantId: ctx.tenant.id,
+        classId,
+        memberId,
+        baseUrl: request.nextUrl.origin,
+      }).catch((err) => console.error("Admin booking notification failed:", err));
+
       return NextResponse.json({ booking, checkIn, creditDeducted: true }, { status: 201 });
     }
 
@@ -231,6 +239,13 @@ export async function POST(request: NextRequest) {
         status: now > cls.startsAt ? "late" : "present",
       },
     });
+
+    notifyAdminsOfNewBooking({
+      tenantId: ctx.tenant.id,
+      classId,
+      memberId,
+      baseUrl: request.nextUrl.origin,
+    }).catch((err) => console.error("Admin booking notification failed:", err));
 
     return NextResponse.json({ booking, checkIn }, { status: 201 });
   } catch (error) {

@@ -227,6 +227,96 @@ export async function sendBookingMoved({
   }
 }
 
+export async function sendAdminBookingNotification({
+  to,
+  memberName,
+  className,
+  coachName,
+  date,
+  startTime,
+  location,
+  timezone,
+  classUrl,
+  tenantId,
+  locale,
+}: {
+  to: string;
+  memberName: string;
+  className: string;
+  coachName: string | null;
+  date: Date;
+  startTime: Date;
+  location?: string;
+  timezone?: string;
+  classUrl?: string;
+  tenantId: string;
+  locale?: string;
+}) {
+  try {
+    const b = await getBrandingForTenantId(tenantId);
+    const studioFull = `${b.studioName} Studio`;
+    const loc = locale || "es";
+    const t = await getTranslations({ locale: loc, namespace: "email" });
+    const tb = await getTranslations({ locale: loc, namespace: "booking" });
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#e0e7ff;line-height:56px;font-size:28px;">&#128276;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ${t("adminBookingTitle")}
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};">
+          ${t("adminBookingBody", { member: memberName })}
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>${t("adminBookingMember")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${memberName}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>${t("date")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date, loc)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>${t("time")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timezone)}</td>
+            </tr>
+            ${coachName ? `<tr>
+              <td style="padding:3px 0;"><strong>${t("coach")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${coachName}</td>
+            </tr>` : ""}
+            ${location ? `<tr>
+              <td style="padding:3px 0;"><strong>${t("location")}</strong></td>
+              <td style="padding:3px 0 3px 16px;">${location}</td>
+            </tr>` : ""}
+          </table>
+        </td></tr>
+      </table>
+
+      ${classUrl ? `
+      <div style="text-align:center;margin-bottom:8px;">
+        <a href="${classUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          ${t("viewBooking")}
+        </a>
+      </div>
+      ` : ""}`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: tb("adminBookingSubject", { className, date: formatDate(date, loc) }),
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send admin booking notification:", error);
+  }
+}
+
 export async function sendClassCancelled({
   to,
   name,
