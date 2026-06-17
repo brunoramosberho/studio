@@ -12,6 +12,7 @@ import { SocialFeed } from "@/components/feed/social-feed";
 import { UpcomingClasses } from "@/components/feed/upcoming-classes";
 import { FriendsClasses } from "@/components/feed/friends-classes";
 import { FeedHighlights } from "@/components/feed/feed-highlights";
+import { BirthdayGreeting } from "@/components/shared/birthday-greeting";
 import { useQuery } from "@tanstack/react-query";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { useBranding } from "@/components/branding-provider";
@@ -25,8 +26,18 @@ interface FeedHeaderData {
 export default function DashboardPage() {
   const t = useTranslations("member");
   const { data: session } = useSession();
-  const { communityHeadline } = useBranding();
+  const { communityHeadline, studioName } = useBranding();
   const firstName = session?.user?.name?.split(" ")[0] ?? "";
+
+  const { data: profile } = useQuery<{ birthday: string | null }>({
+    queryKey: ["profile"],
+    queryFn: async () => {
+      const res = await fetch("/api/profile");
+      if (!res.ok) return { birthday: null };
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
 
   const { data: notifData } = useQuery<{ unreadCount: number }>({
     queryKey: ["notifications"],
@@ -123,6 +134,13 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* Birthday greeting — only during the member's birthday week */}
+        <BirthdayGreeting
+          birthday={profile?.birthday}
+          name={firstName}
+          studioName={studioName}
+        />
 
         {/* Quick actions */}
         <div className="flex gap-3">

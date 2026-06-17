@@ -1664,6 +1664,10 @@
   },
   "member": {
     "greeting": "Hi, {name}",
+    "birthdayUpcomingTitle": "Your birthday is coming up, {name} 🎂",
+    "birthdayTodayTitle": "Happy birthday, {name}! 🎉",
+    "birthdayTodaySignature": "From everyone at {studio} 🎉",
+    "birthdayPassedTitle": "We hope you had an amazing birthday, {name}! 🎂",
     "feed": "Feed",
     "book": "Book",
     "myBookings": "My Bookings",

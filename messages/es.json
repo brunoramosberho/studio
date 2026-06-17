@@ -1664,6 +1664,10 @@
   },
   "member": {
     "greeting": "Hola, {name}",
+    "birthdayUpcomingTitle": "Se acerca tu cumpleaños, {name} 🎂",
+    "birthdayTodayTitle": "¡Feliz cumpleaños, {name}! 🎉",
+    "birthdayTodaySignature": "De parte de todo el equipo de {studio} 🎉",
+    "birthdayPassedTitle": "¡Esperamos que tuvieras un cumpleaños increíble, {name}! 🎂",
     "feed": "Feed",
     "book": "Reserva",
     "myBookings": "Mis Reservas",
