@@ -2655,184 +2655,139 @@
       "title": "Mgic Studio — The all-in-one platform for boutique fitness studios",
       "description": "Replace 10 tools with one. Mgic is the modern studio management platform that handles scheduling, payments, member engagement, AI insights, and community — so you can focus on what you love.",
       "ogDescription": "Replace 10 tools with one. Scheduling, payments, community, AI — all in Mgic.",
-      "keywords": ["studio management", "fitness booking", "pilates software", "boutique studio", "gym management", "booking platform", "member app"]
+      "keywords": [
+        "studio management",
+        "fitness booking",
+        "pilates software",
+        "boutique studio",
+        "gym management",
+        "booking platform",
+        "member app"
+      ]
     },
     "nav": {
-      "features": "Features",
-      "memberApp": "Member App",
-      "community": "Community",
+      "members": "Members",
+      "studio": "Studio",
+      "coaches": "Coaches",
       "pricing": "Pricing",
-      "bookDemo": "Book a Demo",
+      "bookDemo": "Book a demo",
       "toggleMenu": "Toggle menu"
     },
     "hero": {
       "badge": "Built for boutique fitness studios",
-      "titleStart": "Replace 10 tools with ",
+      "titleStart": "Replace ten tools with ",
       "titleEmphasis": "one",
-      "titleEnd": " — no add-ons, no surprises",
-      "subtitle": "Scheduling, payments, member engagement, AI insights, and community — all in one platform designed for studios that refuse to settle.",
-      "ctaPrimary": "Book a Demo →",
-      "ctaSecondary": "See How It Works",
-      "bulletFreeTrial": "Free trial",
-      "bulletBuyout": "Contract buyout",
-      "bulletMigration": "One-night migration",
-      "trustLine": "No credit card · Cancel anytime",
+      "titleEnd": ".",
+      "subtitle": "The app your members love, the panel you need to run the place, and a dashboard of their own for your coaches. Built for boutique studios that don't settle.",
+      "ctaPrimary": "Book a demo",
+      "ctaSecondary": "See the platform",
       "kpiTodayBookings": "Today's Bookings",
       "kpiWeeklyRevenue": "Weekly Revenue",
       "kpiActiveMembers": "Active Members",
       "kpiAvgOccupancy": "Avg Occupancy"
     },
     "metricsTicker": [
-      { "value": "10+", "label": "Tools it replaces" },
-      { "value": "<30 min", "label": "Setup time" },
-      { "value": "24/7", "label": "AI assistant" },
-      { "value": "Month-to-month", "label": "No contracts" },
-      { "value": "Stripe", "label": "Secure payments" },
-      { "value": "PWA", "label": "No App Store" },
-      { "value": "Multi-studio", "label": "One platform" },
-      { "value": "ES · EN", "label": "Multi-language" }
+      {
+        "value": "10+",
+        "label": "Tools it replaces"
+      },
+      {
+        "value": "<30 min",
+        "label": "Setup time"
+      },
+      {
+        "value": "Spark",
+        "label": "Your AI 24/7"
+      },
+      {
+        "value": "Month-to-month",
+        "label": "No contracts"
+      },
+      {
+        "value": "Stripe",
+        "label": "Secure payments"
+      },
+      {
+        "value": "PWA",
+        "label": "No App Store"
+      },
+      {
+        "value": "Multi-studio",
+        "label": "One platform"
+      },
+      {
+        "value": "ES · EN",
+        "label": "Multi-language"
+      }
     ],
-    "whyMgic": {
-      "label": "Why Mgic",
-      "titleStart": "Everything you need, ",
-      "titleEmphasis": "nothing",
-      "titleEnd": " you don't",
-      "subtitle": "One platform that actually replaces the ten you're juggling today.",
-      "tabs": [
-        {
-          "id": "scheduling",
-          "title": "Smart Scheduling",
-          "headline": "A schedule that fills itself",
-          "description": "Drag-and-drop weekly view, recurring classes, waitlists that auto-promote, and coach availability management — all connected. Members see real-time spots, book instantly, and get reminded automatically.",
-          "features": [
-            "Weekly calendar with drag-and-drop",
-            "Automatic waitlist promotion",
-            "Coach availability & conflict detection",
-            "Multi-studio room management",
-            "Blocked spots & capacity controls"
-          ]
-        },
-        {
-          "id": "payments",
-          "title": "Payments & Packages",
-          "headline": "Get paid without chasing anyone",
-          "description": "Stripe-powered payments, class packs, recurring memberships, auto-retry on failed charges, and a complete financial dashboard. See MRR, forecast renewals, and export everything in one click.",
-          "features": [
-            "Stripe Connect integration",
-            "Class packs & recurring memberships",
-            "Auto-retry failed payments",
-            "Revenue dashboard with MRR tracking",
-            "One-click financial exports"
-          ]
-        },
-        {
-          "id": "members",
-          "title": "Member Management",
-          "headline": "Know every member by name — and by data",
-          "description": "Full CRM with risk detection, engagement insights, and lifecycle tracking. See who's at risk of churning, who your top members are, and who just needs a nudge to come back.",
-          "features": [
-            "Smart filters: active, at-risk, new, expiring",
-            "Member insights & engagement scoring",
-            "Visit history & credit tracking",
-            "Digital waivers with e-signatures",
-            "Automated lifecycle nudges"
-          ]
-        },
-        {
-          "id": "coaches",
-          "title": "Coach Tools",
-          "headline": "Your coaches deserve better than a spreadsheet",
-          "description": "Each coach gets their own dashboard with class stats, earnings breakdowns, fan rankings, and availability management. Configure flexible pay rates — per class, per student, or tiered by occupancy.",
-          "features": [
-            "Personal coach dashboard & stats",
-            "Flexible pay: fixed, per-class, per-student, tiered",
-            "Fan rankings & top student insights",
-            "Availability blocks with approval flow",
-            "Bio, specialties & certifications"
-          ]
-        },
-        {
-          "id": "marketing",
-          "title": "Marketing & Growth",
-          "headline": "Turn every class into a growth engine",
-          "description": "UTM-tracked links, QR codes, Instagram integration, referral programs, and promotional highlights — all built in. Track which campaigns drive actual bookings, not just clicks.",
-          "features": [
-            "UTM tracking with conversion attribution",
-            "QR code generation for campaigns",
-            "Referral program with reward queue",
-            "Instagram media integration",
-            "Promotional highlights & banners"
-          ]
-        }
-      ]
-    },
-    "memberApp": {
-      "badge": "Member App",
-      "titleStart": "Your studio app. ",
-      "titleBetterThan": "Better than ",
-      "subtitle": "A branded PWA your members will actually love — booking, social, achievements, and community, no App Store needed.",
-      "tabs": {
-        "social": "Social Feed",
-        "achievements": "Achievements",
-        "booking": "Book & Pick Spot",
-        "referrals": "Refer & Earn"
+    "pillars": {
+      "members": {
+        "label": "For your members",
+        "titleStart": "The app they ",
+        "titleEmphasis": "won't want to put down",
+        "titleEnd": "",
+        "description": "A branded PWA — no App Store required. Booking takes seconds, wrapped in a social-network-style community with milestones, levels and gamification that turn every class into a reason to come back.",
+        "features": [
+          "Simple booking with spot selection and waitlist",
+          "Social network: feed, kudos, comments and friends",
+          "Milestones, levels and unlockable achievements",
+          "Gamification with automatic rewards",
+          "Referrals and wearables (Apple Watch, Strava)"
+        ]
       },
-      "tryCta": "Try the Mgic Member App now",
-      "pwaNote": "Progressive Web App — works on any device, no download required"
-    },
-    "mgicAi": {
-      "label": "MgicAI",
-      "titleStart": "AI that runs your front desk ",
-      "titleEmphasis": "while you teach",
-      "subtitle": "Powered by Claude, MgicAI is your always-on studio assistant. It doesn't just answer questions — it surfaces the insights you didn't know you needed.",
-      "capabilities": [
-        { "title": "Smart Briefings", "desc": "Start every day with AI-generated insights on your bookings, revenue, and member activity." },
-        { "title": "Churn Prediction", "desc": "MgicAI flags at-risk members before they leave, so you can reach out at the right moment." },
-        { "title": "Revenue Forecasting", "desc": "See where your revenue is heading based on renewals, failed payments, and booking trends." },
-        { "title": "Class Optimization", "desc": "Get recommendations on scheduling, capacity, and pricing based on real occupancy data." }
-      ],
-      "onlineLabel": "Online",
-      "chatPlaceholder": "Ask MgicAI anything about your studio..."
-    },
-    "dashboard": {
-      "titleStart": "Your entire ",
-      "titleEmphasis": "business-in-a-box",
-      "subtitle": "One platform to run scheduling, memberships, payments, staff, and analytics. No add-ons, no integrations, no surprises.",
-      "tabs": {
-        "scheduling": "Scheduling",
-        "memberships": "Memberships",
-        "payments": "Payments",
-        "staff": "Staff",
-        "analytics": "Analytics"
+      "studio": {
+        "label": "For the owner",
+        "titleStart": "Your whole business, ",
+        "titleEmphasis": "in one place",
+        "titleEnd": "",
+        "description": "Schedule classes, get paid without chasing anyone, and understand your business at a glance. Meet Spark, your AI working as COO, CMO, CRO and CFO at once: daily briefings, churn prediction and revenue forecasting.",
+        "features": [
+          "Drag-and-drop scheduling and capacity control",
+          "Packages, memberships and Stripe payments",
+          "Live metrics: revenue, occupancy and churn",
+          "Spark: AI acting as COO, CMO, CRO and CFO in one",
+          "Staff payroll and expenses, client check-in",
+          "Wellhub integration and multi-location",
+          "A platform that's 100% your brand"
+        ]
       },
-      "featuresTitle": "Everything you need for seamless studio operations",
-      "features": [
-        "Memberships & Packs",
-        "Payment & POS",
-        "E-sign Waivers",
-        "Check-in System",
-        "Coach Pay Config",
-        "Gamification Engine",
-        "Referral Program",
-        "Community Feed",
-        "Marketing & UTM",
-        "Multi-Studio",
-        "E-commerce Store",
-        "ClassPass & Gympass"
-      ]
+      "coaches": {
+        "label": "For your coaches",
+        "titleStart": "Made for ",
+        "titleEmphasis": "your coaches",
+        "titleEnd": "",
+        "description": "Every coach gets their own dashboard: see who's attending each class, their regular clients, manage their availability, request substitutions and review their earnings.",
+        "features": [
+          "Their schedule and who's attending each class",
+          "Regular clients and top-fans ranking",
+          "Availability and blocks with approval",
+          "Substitution requests between coaches",
+          "Per-class earnings breakdown"
+        ]
+      }
     },
-    "social": {
-      "label": "Social & Community",
-      "titleStart": "Strava meets your studio — ",
-      "titleEmphasis": "built in",
-      "subtitle": "The social layer that turns solo workouts into shared experiences. Friends, kudos, achievements, and a feed that keeps members coming back.",
+    "support": {
+      "label": "Premium support",
+      "titleStart": "You're not alone in the ",
+      "titleEmphasis": "switch",
+      "titleEnd": "",
+      "subtitle": "We migrate your data, train your team and stay with you with real humans — before, during and after.",
       "cards": [
-        { "icon": "👥", "title": "Friend Discovery", "desc": "Suggest friends based on shared classes. Members who train together, stay together." },
-        { "icon": "🔥", "title": "Kudos & Reactions", "desc": "Celebrate wins with fire reactions, comments, and shout-outs — just like Strava." },
-        { "icon": "🏆", "title": "Gamification Engine", "desc": "Tiers, badges, and auto-rewards that drive real retention. Configure levels, triggers, and prizes." },
-        { "icon": "⌚", "title": "Wearable Connect", "desc": "Apple Watch & Strava integration — share real workout data directly in the feed." },
-        { "icon": "🎁", "title": "Referral Program", "desc": "Personal codes, tracking dashboard, reward queue — turn your best members into ambassadors." },
-        { "icon": "📢", "title": "Notify Me", "desc": "Members get instant alerts when a spot opens in a full class — no more manual checking." }
+        {
+          "title": "Built by studio people",
+          "desc": "We build Mgic Studio alongside studios like yours and ship improvements every week.",
+          "image": "/marketing/owners.jpg"
+        },
+        {
+          "title": "Stress-free migration",
+          "desc": "We move your business to Mgic Studio overnight — zero downtime, zero disruption.",
+          "image": "/marketing/buyout.jpg"
+        },
+        {
+          "title": "Support that's real",
+          "desc": "Video calls with product experts whenever you and your team need them.",
+          "image": "/marketing/support.jpg"
+        }
       ]
     },
     "pricing": {
@@ -2846,7 +2801,7 @@
       "saveBadge": "Save ~16%",
       "mostPopular": "Most Popular",
       "perMonth": "/mo",
-      "bookDemo": "Book a Demo",
+      "bookDemo": "Book a demo",
       "footerNote": "All plans include updates, hosting, and support. No hidden fees.",
       "plans": [
         {
@@ -2871,10 +2826,10 @@
           "platformFee": "1% platform fee per transaction",
           "onboarding": "Onboarding: €1,499 EUR (one-time)",
           "description": "For studios ready to scale and retain.",
-          "highlight": "The AI assistant from Momence costs $399/mo as an add-on. Here it's included.",
+          "highlight": "Spark, your studio AI, is included. Momence charges $399/mo for the equivalent add-on.",
           "features": [
             "Everything in Starter, plus:",
-            "AI Assistant with insights",
+            "Spark — AI assistant with insights",
             "Coach portal",
             "Integrated shop",
             "PWA white-label",
@@ -2903,105 +2858,53 @@
         }
       ]
     },
-    "switching": {
-      "badge": "Premium Support",
-      "titleStart": "Zero switching cost ",
-      "titleEmphasis": "promise",
-      "subtitleStart": "Unlike other platforms, we're honest — ",
-      "subtitleEmphasis": "switching is hard",
-      "subtitleEnd": ". That's why we built our process to eliminate disruption, member confusion, and extra work for your team.",
-      "oneNightLabel": "One Night",
-      "cards": {
-        "main": {
-          "title": "Your data, our promise",
-          "desc": "Your switching concerns are valid. That's why our team spends 4 weeks preparing for one perfect night. We move your business to Mgic overnight with zero downtime, zero disruption, zero stress."
-        },
-        "owners": {
-          "title": "For studio owners, by studio owners",
-          "desc": "We listen and act like your partner. We ship updates every week based on what studios like yours actually need."
-        },
-        "support": {
-          "title": "Customer for life philosophy",
-          "desc": "Video call support from product experts whenever you and your team need it. Enterprise-grade security standards."
-        },
-        "aiDesk": {
-          "title": "AI frontdesk — MgicAI",
-          "desc": "Stop training staff who leave in six months. Let AI handle inquiries, member insights, and business intelligence automatically."
-        },
-        "buyout": {
-          "title": "Contract buyout",
-          "desc": "Don't stay stuck with outdated or overpriced software. We offer full contract buyouts for all fitness studios. Switch risk-free."
-        }
-      },
-      "bullets": {
-        "freeTrial": "Free trial",
-        "buyout": "Contract buyout",
-        "migration": "One-night migration"
+    "contact": {
+      "label": "Contact",
+      "titleStart": "Tell us about your ",
+      "titleEmphasis": "studio",
+      "titleEnd": "",
+      "subtitle": "Leave your details and we'll reach out with a demo. Takes less than a minute.",
+      "form": {
+        "name": "Your name",
+        "namePlaceholder": "First and last name",
+        "email": "Email",
+        "emailPlaceholder": "you@studio.com",
+        "studioType": "Studio type",
+        "studioTypePlaceholder": "Select an option",
+        "studioTypeOptions": [
+          "Pilates / Reformer",
+          "Yoga",
+          "Cycling / Indoor",
+          "Functional / CrossFit",
+          "Boxing / Martial arts",
+          "Dance / Barre",
+          "Gym",
+          "Other"
+        ],
+        "size": "Size",
+        "sizePlaceholder": "Select an option",
+        "sizeOptions": [
+          "Just opening",
+          "Under 100 members",
+          "100–300 members",
+          "300–700 members",
+          "700+ members",
+          "Multiple locations"
+        ],
+        "link": "Website or Instagram",
+        "linkPlaceholder": "yourstudio.com or @yourstudio",
+        "submit": "Send",
+        "submitting": "Sending…",
+        "successTitle": "Thank you!",
+        "successBody": "We got your details and will be in touch very soon.",
+        "errorGeneric": "Something went wrong. Please try again."
       }
-    },
-    "faq": {
-      "label": "FAQ",
-      "title": "Questions? Answers.",
-      "items": [
-        { "q": "How long does it take to set up Mgic?", "a": "Most studios are up and running in under 30 minutes. We handle data migration from your current platform, and our team walks you through every step. No technical skills required." },
-        { "q": "Do my members need to download an app?", "a": "Nope. Mgic's member app is a Progressive Web App (PWA) — members just visit your branded link and add it to their home screen. Looks and feels native, no App Store needed." },
-        { "q": "What payment processor do you use?", "a": "We use Stripe Connect for secure, global payment processing. Your members can pay with credit cards, and you get payouts directly to your bank account. We never hold your money." },
-        { "q": "Can I manage multiple studio locations?", "a": "Absolutely. Our Scale plan includes full multi-studio management — separate rooms, coaches, and schedules per location, all controlled from one dashboard." },
-        { "q": "How does MgicAI work?", "a": "MgicAI is powered by Claude and analyzes your studio data in real time. It generates daily briefings, flags at-risk members, forecasts revenue, and answers questions about your business in natural language. Available on Growth and Scale plans." },
-        { "q": "What makes the social features different from just having a WhatsApp group?", "a": "Mgic's social layer is built into the booking experience. Members see what friends are booking, give kudos after classes, celebrate achievements, and discover new friends through shared sessions. It's contextual, not just chat." },
-        { "q": "Do you integrate with ClassPass or Gympass?", "a": "Yes. Our Scale plan includes full integration with ClassPass and Gympass — manage quotas, handle check-ins, export reconciliation data, and track which external bookings convert to members." },
-        { "q": "Is there a contract or commitment?", "a": "No contracts, ever. All plans are month-to-month. You can upgrade, downgrade, or cancel anytime. We believe the product should earn your business every month." }
-      ]
-    },
-    "darkCta": {
-      "titleStart": "Ready to run your studio ",
-      "titleEmphasis": "like magic?",
-      "subtitle": "Start your free trial today — no credit card, no commitment. We'll help you set up your studio on Mgic in minutes.",
-      "ctaPrimary": "Start Free Trial",
-      "ctaSecondary": "Book a Demo",
-      "footNote": "14-day free trial · No credit card required · Cancel anytime"
     },
     "footer": {
       "tagline": "The all-in-one platform for boutique fitness studios.",
-      "columns": {
-        "product": {
-          "title": "Product",
-          "links": [
-            { "label": "Scheduling", "href": "#why-mgic" },
-            { "label": "Payments", "href": "#why-mgic" },
-            { "label": "Member App", "href": "#member-app" },
-            { "label": "MgicAI", "href": "#mgic-ai" },
-            { "label": "Community", "href": "#community" },
-            { "label": "Dashboard", "href": "#dashboard" }
-          ]
-        },
-        "company": {
-          "title": "Company",
-          "links": [
-            { "label": "About", "href": "#" },
-            { "label": "Blog", "href": "#" },
-            { "label": "Careers", "href": "#" },
-            { "label": "Press", "href": "#" }
-          ]
-        },
-        "resources": {
-          "title": "Resources",
-          "links": [
-            { "label": "Help Center", "href": "#" },
-            { "label": "API Docs", "href": "#" },
-            { "label": "Status", "href": "#" },
-            { "label": "Changelog", "href": "#" }
-          ]
-        },
-        "legal": {
-          "title": "Legal",
-          "links": [
-            { "label": "Privacy Policy", "href": "#" },
-            { "label": "Terms of Service", "href": "#" },
-            { "label": "Cookie Policy", "href": "#" }
-          ]
-        }
-      },
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "contactLabel": "Contact",
       "copyright": "© {year} Mgic Studio. All rights reserved."
     }
   },
