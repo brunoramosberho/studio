@@ -821,12 +821,11 @@ export default function ProfilePage() {
               <ChevronRight className="h-4 w-4 text-muted" />
             </Link>
 
-            {/* Connected apps / Wearables — gated until Strava grants production access */}
-            {session?.user?.email === "brunoramosberho@gmail.com" && (
-              <div>
-                <WearableConnections grouped />
-              </div>
-            )}
+            {/* Connected apps / Wearables (Strava). New connections are capped
+                by the Strava app member limit — handled inside the component. */}
+            <div>
+              <WearableConnections grouped />
+            </div>
           </div>
         </motion.div>
 

@@ -2339,6 +2339,9 @@
     "stravaConnected": "Strava connected successfully",
     "stravaDenied": "Strava connection cancelled",
     "stravaError": "Error connecting with Strava",
+    "stravaLimit": "Strava isn't available for more members yet. Check back soon!",
+    "stravaFullShort": "Not available right now",
+    "stravaFullBadge": "Full",
     "syncDescription": "Your heart rate and calorie data will sync automatically after each class"
   },
   "footer": {

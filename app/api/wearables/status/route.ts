@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import {
+  countActiveStravaConnections,
+  STRAVA_MEMBER_LIMIT,
+} from "@/lib/strava";
 
 export async function GET() {
   try {
@@ -22,7 +26,15 @@ export async function GET() {
       },
     });
 
-    const providers: Record<string, { connected: boolean; providerUserId?: string; connectedAt?: string }> = {
+    const providers: Record<
+      string,
+      {
+        connected: boolean;
+        providerUserId?: string;
+        connectedAt?: string;
+        full?: boolean;
+      }
+    > = {
       STRAVA: { connected: false },
     };
 
@@ -32,6 +44,12 @@ export async function GET() {
         providerUserId: conn.providerUserId,
         connectedAt: conn.createdAt.toISOString(),
       };
+    }
+
+    // Flag whether new Strava connections are blocked by the app member cap.
+    if (!providers.STRAVA.connected) {
+      const activeCount = await countActiveStravaConnections();
+      providers.STRAVA.full = activeCount >= STRAVA_MEMBER_LIMIT;
     }
 
     return NextResponse.json(providers);

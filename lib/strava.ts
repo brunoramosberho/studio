@@ -4,6 +4,21 @@ import { encrypt, decrypt } from "./encryption";
 const STRAVA_API = "https://www.strava.com/api/v3";
 const STRAVA_OAUTH = "https://www.strava.com/oauth";
 
+/**
+ * Max number of athletes our Strava app may have connected at once (Strava caps
+ * this per app while in development). Bump STRAVA_MEMBER_LIMIT as Strava raises
+ * the cap. We gate new connections against the count of active connections so a
+ * member sees a clear "full" message instead of an opaque OAuth failure.
+ */
+export const STRAVA_MEMBER_LIMIT = Number(process.env.STRAVA_MEMBER_LIMIT) || 10;
+
+/** Count of athletes currently connected to our Strava app (across all tenants). */
+export async function countActiveStravaConnections(): Promise<number> {
+  return prisma.userWearableConnection.count({
+    where: { provider: "STRAVA", disconnectedAt: null },
+  });
+}
+
 export function getStravaClientId() {
   return (process.env.STRAVA_CLIENT_ID || "").trim();
 }

@@ -14,6 +14,7 @@ interface WearableStatus {
   connected: boolean;
   providerUserId?: string;
   connectedAt?: string;
+  full?: boolean;
 }
 
 type WearablesMap = Record<string, WearableStatus>;
@@ -65,6 +66,8 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
       setExpanded(true);
     } else if (stravaParam === "denied") {
       toast.error(t("stravaDenied"));
+    } else if (stravaParam === "limit") {
+      toast.error(t("stravaLimit"));
     } else if (stravaParam === "error") {
       toast.error(t("stravaError"));
     }
@@ -72,6 +75,7 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
 
   const stravaStatus = wearables?.STRAVA;
   const isConnected = stravaStatus?.connected === true;
+  const isFull = !isConnected && stravaStatus?.full === true;
 
   return (
     <>
@@ -127,6 +131,10 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
                       <Check className="h-3 w-3" />
                       {t("connected")}
                     </p>
+                  ) : isFull ? (
+                    <p className="text-[11px] text-muted">
+                      {t("stravaFullShort")}
+                    </p>
                   ) : (
                     <p className="text-[11px] text-muted">
                       {t("syncActivity")}
@@ -154,6 +162,10 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
                       </>
                     )}
                   </Button>
+                ) : isFull ? (
+                  <span className="h-8 shrink-0 rounded-full bg-surface px-3 text-[12px] font-medium leading-8 text-muted">
+                    {t("stravaFullBadge")}
+                  </span>
                 ) : (
                   <Button
                     size="sm"
