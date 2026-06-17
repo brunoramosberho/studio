@@ -305,8 +305,13 @@ export async function GET(
           },
         }),
 
+        // Exclude "pending" Stripe payments: these are abandoned/incomplete
+        // checkouts (the buyer never completed payment). A real charge flips to
+        // "succeeded" via the Connect webhook within seconds, so showing
+        // pending here only surfaces dead checkout attempts in the client's
+        // payment history. Revenue summary already ignores them (succeeded-only).
         prisma.stripePayment.findMany({
-          where: { tenantId, memberId: userId },
+          where: { tenantId, memberId: userId, status: { not: "pending" } },
           orderBy: { createdAt: "desc" },
           take: 50,
         }),
