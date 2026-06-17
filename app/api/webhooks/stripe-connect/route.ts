@@ -7,6 +7,7 @@ import { createCreditUsagesForPackage, restoreCredit } from "@/lib/credits";
 import { computeDebtAmount } from "@/lib/billing/debt";
 import { getSubscriptionPeriod } from "@/lib/stripe/helpers";
 import { getStripe } from "@/lib/stripe/client";
+import { getStripeClientForTenantId } from "@/lib/stripe/tenant-stripe";
 import type Stripe from "stripe";
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "mgic.app";
@@ -136,7 +137,21 @@ export async function POST(request: NextRequest) {
         let availableOn: Date | null = null;
         try {
           if (connectedAccountId) {
-            const fullPi = await getStripe().paymentIntents.retrieve(
+            // Magic runs one platform Stripe entity per country, so the
+            // connected account is only reachable through *its tenant's*
+            // country-scoped client. Using the default getStripe() here throws
+            // "does not have access to account" for any tenant whose entity
+            // isn't the default one (e.g. ES), which silently left
+            // fee/net/availableOn null in /admin/finance. Resolve the tenant
+            // client from the PI metadata (set in createMemberPayment).
+            const tenantId =
+              typeof pi.metadata?.tenantId === "string" && pi.metadata.tenantId
+                ? pi.metadata.tenantId
+                : null;
+            const stripeForTenant = tenantId
+              ? await getStripeClientForTenantId(tenantId)
+              : getStripe();
+            const fullPi = await stripeForTenant.paymentIntents.retrieve(
               pi.id,
               { expand: ["latest_charge.balance_transaction"] },
               { stripeAccount: connectedAccountId },
