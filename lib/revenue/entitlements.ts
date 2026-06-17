@@ -41,6 +41,24 @@ export function entitlementTypeFromPackage(pkg: Package): EntitlementType {
 }
 
 /**
+ * A pack is a comp (gift / 100%-off / sandbox sim / not-yet-paid) when no real
+ * money changed hands. Its `stripePaymentId` is then a synthetic marker rather
+ * than a real Stripe PaymentIntent (`pi_*`) or POS reference. Under ASC 606 the
+ * transaction price for these is 0, so they must recognize 0 revenue — not the
+ * catalog list price. Keeping this central so the booking flow and the backfill
+ * script agree on what counts as cash.
+ */
+export function isCompPackage(stripePaymentId: string | null | undefined): boolean {
+  if (!stripePaymentId) return true;
+  return (
+    stripePaymentId.startsWith("gift_") ||
+    stripePaymentId.startsWith("discount_free_") ||
+    stripePaymentId.startsWith("sim_") ||
+    stripePaymentId === "pending_stripe"
+  );
+}
+
+/**
  * Idempotent: resolves or creates the Entitlement row that accounts for a
  * UserPackage. Linked 1-1 via Entitlement.userPackageId.
  */
@@ -68,7 +86,11 @@ export async function ensureEntitlementForUserPackage(
       userPackageId: up.id,
       type,
       status,
-      totalAmountCents: toStripeAmount(up.package.price),
+      // Comps (gifts / 100%-off / sims) recognize 0 — no consideration changed
+      // hands (ASC 606). Paid packs use the catalog price.
+      totalAmountCents: isCompPackage(up.stripePaymentId)
+        ? 0
+        : toStripeAmount(up.package.price),
       currency: up.package.currency.toLowerCase(),
       creditsTotal: up.creditsTotal ?? up.package.credits ?? null,
       creditsUsed: up.creditsUsed,
