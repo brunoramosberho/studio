@@ -18,7 +18,7 @@ export function MarketingFooter() {
                 <span className="text-sm font-extrabold text-white">M</span>
               </div>
               <span className="text-lg font-bold tracking-tight text-foreground">
-                mgic
+                Mgic Studio
               </span>
             </a>
             <p className="mt-3 text-sm text-muted leading-relaxed">

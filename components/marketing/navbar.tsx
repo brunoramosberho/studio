@@ -38,7 +38,7 @@ export function MarketingNavbar() {
               <span className="text-sm font-extrabold text-white">M</span>
             </div>
             <span className="text-lg font-bold tracking-tight text-foreground">
-              mgic
+              Mgic Studio
             </span>
           </a>
 
