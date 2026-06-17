@@ -1,8 +1,21 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
+
+function SparkAvatar({ size = 32 }: { size?: number }) {
+  return (
+    <Image
+      src="/spark-avatar.png"
+      alt="Spark"
+      width={size}
+      height={size}
+      className="rounded-full bg-accent/10 object-cover"
+    />
+  );
+}
 
 type Pillar = {
   label: string;
@@ -86,44 +99,30 @@ function MembersMock() {
 
 function StudioMock() {
   return (
-    <div className="rounded-2xl border border-border bg-white shadow-xl overflow-hidden">
+    <div className="relative">
+      <div className="absolute -top-6 -right-2 z-10 hidden sm:flex flex-col items-center">
+        <Image
+          src="/spark-avatar.png"
+          alt="Spark"
+          width={96}
+          height={96}
+        />
+        <span className="-mt-1 rounded-full bg-white border border-border px-3 py-0.5 text-[11px] font-semibold text-foreground shadow-sm">
+          Spark
+        </span>
+      </div>
+      <div className="rounded-2xl border border-border bg-white shadow-xl overflow-hidden">
       <div className="flex items-center gap-3 border-b border-border px-5 py-3 bg-surface/50">
-        <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
-          <svg
-            className="h-4 w-4 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-        </div>
+        <SparkAvatar size={32} />
         <div>
-          <p className="text-sm font-semibold text-foreground">MgicAI</p>
+          <p className="text-sm font-semibold text-foreground">Spark</p>
           <p className="text-[10px] text-green-600 font-medium">En línea</p>
         </div>
       </div>
       <div className="p-5 space-y-4 bg-surface/20">
         <div className="flex gap-3">
-          <div className="h-7 w-7 shrink-0 rounded-full bg-accent/10 flex items-center justify-center">
-            <svg
-              className="h-3.5 w-3.5 text-accent"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
+          <div className="shrink-0">
+            <SparkAvatar size={28} />
           </div>
           <div className="rounded-2xl rounded-tl-sm bg-white border border-border p-3 max-w-[85%]">
             <p className="text-xs text-foreground leading-relaxed">
@@ -172,6 +171,7 @@ function StudioMock() {
             />
           </svg>
         </div>
+      </div>
       </div>
     </div>
   );

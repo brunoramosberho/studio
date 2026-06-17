@@ -2677,7 +2677,6 @@
       "subtitle": "The app your members love, the panel you need to run the place, and a dashboard of their own for your coaches. Built for boutique studios that don't settle.",
       "ctaPrimary": "Book a demo",
       "ctaSecondary": "See the platform",
-      "trustLine": "For boutique studios · Available in English & Spanish",
       "kpiTodayBookings": "Today's Bookings",
       "kpiWeeklyRevenue": "Weekly Revenue",
       "kpiActiveMembers": "Active Members",
@@ -2693,8 +2692,8 @@
         "label": "Setup time"
       },
       {
-        "value": "24/7",
-        "label": "AI assistant"
+        "value": "Spark",
+        "label": "Your AI 24/7"
       },
       {
         "value": "Month-to-month",
@@ -2737,12 +2736,12 @@
         "titleStart": "Your whole business, ",
         "titleEmphasis": "in one place",
         "titleEnd": "",
-        "description": "Schedule classes, get paid without chasing anyone, and understand your business at a glance — with an AI that works like your COO, CMO, CRO and CFO at once: daily briefings, churn prediction and revenue forecasting.",
+        "description": "Schedule classes, get paid without chasing anyone, and understand your business at a glance. Meet Spark, your AI working as COO, CMO, CRO and CFO at once: daily briefings, churn prediction and revenue forecasting.",
         "features": [
           "Drag-and-drop scheduling and capacity control",
           "Packages, memberships and Stripe payments",
           "Live metrics: revenue, occupancy and churn",
-          "AI acting as COO, CMO, CRO and CFO in one",
+          "Spark: AI acting as COO, CMO, CRO and CFO in one",
           "Staff payroll and expenses, client check-in",
           "Wellhub integration and multi-location",
           "A platform that's 100% your brand"
@@ -2762,6 +2761,30 @@
           "Per-class earnings breakdown"
         ]
       }
+    },
+    "support": {
+      "label": "Premium support",
+      "titleStart": "You're not alone in the ",
+      "titleEmphasis": "switch",
+      "titleEnd": "",
+      "subtitle": "We migrate your data, train your team and stay with you with real humans — before, during and after.",
+      "cards": [
+        {
+          "title": "Built by studio people",
+          "desc": "We build Mgic Studio alongside studios like yours and ship improvements every week.",
+          "image": "/marketing/owners.jpg"
+        },
+        {
+          "title": "Stress-free migration",
+          "desc": "We move your business to Mgic Studio overnight — zero downtime, zero disruption.",
+          "image": "/marketing/buyout.jpg"
+        },
+        {
+          "title": "Support that's real",
+          "desc": "Video calls with product experts whenever you and your team need them.",
+          "image": "/marketing/support.jpg"
+        }
+      ]
     },
     "pricing": {
       "label": "Pricing",
@@ -2799,10 +2822,10 @@
           "platformFee": "1% platform fee per transaction",
           "onboarding": "Onboarding: €1,499 EUR (one-time)",
           "description": "For studios ready to scale and retain.",
-          "highlight": "The AI assistant from Momence costs $399/mo as an add-on. Here it's included.",
+          "highlight": "Spark, your studio AI, is included. Momence charges $399/mo for the equivalent add-on.",
           "features": [
             "Everything in Starter, plus:",
-            "AI Assistant with insights",
+            "Spark — AI assistant with insights",
             "Coach portal",
             "Integrated shop",
             "PWA white-label",
@@ -2839,15 +2862,15 @@
       "subtitle": "Send us what kind of studio you run and where you are. We'll reply with a demo and everything you need to know.",
       "emailLabel": "or email us directly at",
       "ctaPrimary": "Get in touch",
-      "mailSubject": "I'd like to learn about Mgic",
-      "mailBody": "Hi, I'd like to learn about Mgic.\n\nStudio type: \nLocation (city and country): \nApprox. number of members: \n\nThanks!"
+      "mailSubject": "I'd like to learn about Mgic Studio",
+      "mailBody": "Hi, I'd like to learn about Mgic Studio.\n\nStudio type: \nLocation (city and country): \nApprox. number of members: \n\nThanks!"
     },
     "footer": {
       "tagline": "The all-in-one platform for boutique fitness studios.",
       "terms": "Terms",
       "privacy": "Privacy",
       "contactLabel": "Contact",
-      "copyright": "© {year} Mgic. All rights reserved."
+      "copyright": "© {year} Mgic Studio. All rights reserved."
     }
   },
   "onDemand": {

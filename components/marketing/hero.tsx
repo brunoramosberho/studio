@@ -61,15 +61,6 @@ export function MarketingHero() {
               {t("hero.ctaSecondary")}
             </a>
           </motion.div>
-
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="mt-8 text-xs text-muted-foreground"
-          >
-            {t("hero.trustLine")}
-          </motion.p>
         </div>
 
         <motion.div
