@@ -53,6 +53,23 @@ export async function GET() {
 
     const confirmedOrAttended = { in: ["CONFIRMED", "ATTENDED"] as ("CONFIRMED" | "ATTENDED")[] };
 
+    // A UserPackage only counts toward dashboard revenue when money actually
+    // changed hands. Exclude gifts, 100%-off comps, sandbox sims, not-yet-paid
+    // placeholders, and packs with no payment reference — their synthetic
+    // `stripePaymentId` never maps to a real charge. This keeps the dashboard
+    // revenue aligned with /admin/finance (real Stripe `pi_*` + POS), instead
+    // of summing catalog list price for free/gifted packs.
+    const revenuePackageWhere = {
+      status: "ACTIVE" as const,
+      NOT: [
+        { stripePaymentId: { startsWith: "gift_" } },
+        { stripePaymentId: { startsWith: "discount_free_" } },
+        { stripePaymentId: { startsWith: "sim_" } },
+        { stripePaymentId: "pending_stripe" },
+        { stripePaymentId: null },
+      ],
+    };
+
     const [
       bookingsToday,
       bookingsPrevDay,
@@ -107,11 +124,15 @@ export async function GET() {
         },
       }),
       prisma.userPackage.findMany({
-        where: { purchasedAt: { gte: weekStart }, tenantId },
+        where: { purchasedAt: { gte: weekStart }, tenantId, ...revenuePackageWhere },
         include: { package: { select: { price: true } } },
       }),
       prisma.userPackage.findMany({
-        where: { purchasedAt: { gte: prevWeekStart, lt: weekStart }, tenantId },
+        where: {
+          purchasedAt: { gte: prevWeekStart, lt: weekStart },
+          tenantId,
+          ...revenuePackageWhere,
+        },
         include: { package: { select: { price: true } } },
       }),
       prisma.membership.count({
@@ -193,14 +214,14 @@ export async function GET() {
         where: {
           purchasedAt: { gte: todayStart, lte: todayEnd },
           tenantId,
-          status: "ACTIVE",
+          ...revenuePackageWhere,
         },
         include: { package: { select: { price: true } } },
       }),
 
       // Revenue this month
       prisma.userPackage.findMany({
-        where: { purchasedAt: { gte: monthStart }, tenantId, status: "ACTIVE" },
+        where: { purchasedAt: { gte: monthStart }, tenantId, ...revenuePackageWhere },
         include: { package: { select: { price: true, type: true } } },
       }),
 
@@ -209,7 +230,7 @@ export async function GET() {
         where: {
           purchasedAt: { gte: prevMonthStart, lt: monthStart },
           tenantId,
-          status: "ACTIVE",
+          ...revenuePackageWhere,
         },
         include: { package: { select: { price: true } } },
       }),
