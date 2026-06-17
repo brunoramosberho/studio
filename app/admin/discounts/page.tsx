@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useCurrency } from "@/components/tenant-provider";
 import { useTranslations } from "next-intl";
@@ -54,6 +55,20 @@ interface DiscountData {
   stripeCouponId: string | null;
   createdAt: string;
   _count: { redemptions: number };
+}
+
+interface RedemptionRow {
+  id: string;
+  createdAt: string;
+  discountAmount: number;
+  finalAmount: number;
+  packageName: string | null;
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+  } | null;
 }
 
 interface PackageOption {
@@ -129,6 +144,7 @@ export default function DiscountsPage() {
   const [editing, setEditing] = useState<DiscountData | null>(null);
   const [form, setForm] = useState<FormState>(() => emptyForm(tenantCurrency.code));
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [redemptionsFor, setRedemptionsFor] = useState<DiscountData | null>(null);
 
   const { data: discounts, isLoading } = useQuery<DiscountData[]>({
     queryKey: ["admin-discounts"],
@@ -375,11 +391,23 @@ export default function DiscountsPage() {
                             ? `${d.value}% ${t("off")}`
                             : `${formatCurrency(d.value, d.currency || tenantCurrency.code)} ${t("off")}`}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {d._count.redemptions}
-                          {d.maxUses ? `/${d.maxUses}` : ""} {t("uses")}
-                        </span>
+                        {d._count.redemptions > 0 ? (
+                          <button
+                            onClick={() => setRedemptionsFor(d)}
+                            className="flex items-center gap-1 underline-offset-2 transition-colors hover:text-foreground hover:underline"
+                            title={t("viewRedemptions")}
+                          >
+                            <Users className="h-3 w-3" />
+                            {d._count.redemptions}
+                            {d.maxUses ? `/${d.maxUses}` : ""} {t("uses")}
+                          </button>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {d._count.redemptions}
+                            {d.maxUses ? `/${d.maxUses}` : ""} {t("uses")}
+                          </span>
+                        )}
                         {d.validUntil && (
                           <span>
                             {t("until")}{" "}
@@ -703,6 +731,84 @@ export default function DiscountsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {redemptionsFor && (
+        <RedemptionsDialog
+          discount={redemptionsFor}
+          onClose={() => setRedemptionsFor(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function RedemptionsDialog({
+  discount,
+  onClose,
+}: {
+  discount: DiscountData;
+  onClose: () => void;
+}) {
+  const t = useTranslations("discounts");
+  const tenantCurrency = useCurrency();
+
+  const { data, isLoading } = useQuery<RedemptionRow[]>({
+    queryKey: ["discount-redemptions", discount.id],
+    queryFn: () =>
+      fetch(`/api/admin/discounts/${discount.id}/redemptions`).then((r) =>
+        r.json(),
+      ),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex max-h-[85dvh] max-w-md flex-col">
+        <DialogHeader>
+          <DialogTitle>{t("redemptionsTitle")}</DialogTitle>
+          <DialogDescription>
+            <span className="font-mono font-semibold">{discount.code}</span> ·{" "}
+            {t("redemptionsCount", { count: discount._count.redemptions })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : !data || data.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              {t("noRedemptions")}
+            </p>
+          ) : (
+            <div className="space-y-1.5 py-1">
+              {data.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex items-center gap-3 rounded-xl border border-border/50 p-2.5"
+                >
+                  <UserAvatar
+                    user={{ image: r.user?.image, name: r.user?.name }}
+                    size={36}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {r.user?.name ?? r.user?.email ?? t("guestRedeemer")}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {new Date(r.createdAt).toLocaleDateString()}
+                      {r.packageName ? ` · ${r.packageName}` : ""}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-green-600">
+                    −{formatCurrency(r.discountAmount, tenantCurrency.code)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
