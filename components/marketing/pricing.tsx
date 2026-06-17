@@ -128,7 +128,7 @@ export function MarketingPricing() {
                 </ul>
 
                 <a
-                  href="#cta"
+                  href="#contact"
                   className={`inline-flex h-11 items-center justify-center rounded-full text-sm font-semibold transition-all hover:-translate-y-0.5 gap-1 ${
                     highlighted
                       ? "btn-gradient shadow-lg shadow-accent/25"

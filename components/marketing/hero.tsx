@@ -49,34 +49,27 @@ export function MarketingHero() {
             className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <a
-              href="#cta"
+              href="#contact"
               className="btn-gradient inline-flex h-12 items-center rounded-full px-8 text-base font-semibold shadow-lg shadow-accent/25"
             >
               {t("hero.ctaPrimary")}
             </a>
             <a
-              href="#why-mgic"
+              href="#members"
               className="inline-flex h-12 items-center rounded-full border border-border bg-white px-8 text-base font-semibold text-foreground transition-all hover:bg-surface hover:-translate-y-0.5"
             >
               {t("hero.ctaSecondary")}
             </a>
           </motion.div>
 
-          <motion.div
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="mt-8 flex flex-col items-center gap-2"
+            className="mt-8 text-xs text-muted-foreground"
           >
-            <div className="flex items-center gap-3 sm:gap-5 text-sm font-semibold text-foreground">
-              <span>{t("hero.bulletFreeTrial")}</span>
-              <span className="h-1 w-1 rounded-full bg-accent" />
-              <span>{t("hero.bulletBuyout")}</span>
-              <span className="h-1 w-1 rounded-full bg-accent" />
-              <span>{t("hero.bulletMigration")}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">{t("hero.trustLine")}</p>
-          </motion.div>
+            {t("hero.trustLine")}
+          </motion.p>
         </div>
 
         <motion.div

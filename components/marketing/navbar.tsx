@@ -11,10 +11,9 @@ export function MarketingNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const links = [
-    { label: t("nav.features"), href: "#why-mgic" },
-    { label: t("nav.memberApp"), href: "#member-app" },
-    { label: "MgicAI", href: "#mgic-ai" },
-    { label: t("nav.community"), href: "#community" },
+    { label: t("nav.members"), href: "#members" },
+    { label: t("nav.studio"), href: "#studio" },
+    { label: t("nav.coaches"), href: "#coaches" },
     { label: t("nav.pricing"), href: "#pricing" },
   ];
 
@@ -58,7 +57,7 @@ export function MarketingNavbar() {
           <div className="hidden md:flex items-center gap-3">
             <MarketingLanguageToggle />
             <a
-              href="#cta"
+              href="#contact"
               className="btn-gradient inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold shadow-md shadow-accent/20"
             >
               {t("nav.bookDemo")}
@@ -109,7 +108,7 @@ export function MarketingNavbar() {
                 </a>
               ))}
               <a
-                href="#cta"
+                href="#contact"
                 onClick={() => setMobileOpen(false)}
                 className="btn-gradient inline-flex h-10 items-center justify-center rounded-full px-5 text-sm font-semibold mt-2"
               >
