@@ -1088,23 +1088,17 @@ export function ClassFormDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Confirmar asignación</DialogTitle>
+          <DialogTitle>{t("confirmAssignTitle")}</DialogTitle>
           <DialogDescription>
-            {pendingCoach && pendingCoach.status === "time_off" && (
-              <>
-                <strong>{pendingCoach.name}</strong> marcó este día como ausente. ¿Confirmar que la asignas de todas formas?
-              </>
-            )}
-            {pendingCoach && pendingCoach.status === "no_availability" && (
-              <>
-                <strong>{pendingCoach.name}</strong> no marcó este horario como disponible. ¿Confirmar que la asignas de todas formas?
-              </>
-            )}
+            {pendingCoach && pendingCoach.status === "time_off" &&
+              t("confirmAwayBody", { name: pendingCoach.name })}
+            {pendingCoach && pendingCoach.status === "no_availability" &&
+              t("confirmOutsideBody", { name: pendingCoach.name })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setPendingCoach(null)}>
-            Cancelar
+            {t("confirmCancel")}
           </Button>
           <Button
             onClick={() => {
@@ -1114,7 +1108,7 @@ export function ClassFormDialog({
               setPendingCoach(null);
             }}
           >
-            Sí, asignar
+            {t("confirmAssign")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1130,6 +1124,7 @@ export function ClassFormDialog({
 // back from the API sorted to the bottom and disable selection here.
 
 function CoachPickerItem({ coach: c }: { coach: PickerCoach }) {
+  const t = useTranslations("admin.classForm");
   // Only hard conflicts (already teaching another class at the same time)
   // are physically impossible. Everything else is a soft warning — the
   // admin may have context outside the system to override (e.g. the
@@ -1141,15 +1136,15 @@ function CoachPickerItem({ coach: c }: { coach: PickerCoach }) {
       case "preferred":
         return null;
       case "ok_if_needed":
-        return { label: "De respaldo", tone: "amber" as const };
+        return { label: t("coachBackup"), tone: "amber" as const };
       case "available_unconfigured":
-        return { label: "Sin configurar", tone: "neutral" as const };
+        return { label: t("coachUnconfigured"), tone: "neutral" as const };
       case "no_availability":
-        return { label: "No marcó disponible", tone: "muted" as const };
+        return { label: t("coachOutsideHours"), tone: "muted" as const };
       case "time_off":
-        return { label: "Ausente", tone: "rose" as const };
+        return { label: t("coachAway"), tone: "rose" as const };
       case "conflict":
-        return { label: "Tiene clase", tone: "rose" as const };
+        return { label: t("coachHasClass"), tone: "rose" as const };
       default:
         return null;
     }
@@ -1165,24 +1160,36 @@ function CoachPickerItem({ coach: c }: { coach: PickerCoach }) {
   const subParts: string[] = [];
   if (c.status === "conflict" && c.conflictClass) {
     subParts.push(
-      `Conflicto: ${c.conflictClass.name} ${new Date(c.conflictClass.startsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+      t("coachSubConflict", {
+        name: c.conflictClass.name,
+        time: new Date(c.conflictClass.startsAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      }),
     );
   }
   if (c.priorClass) {
     subParts.push(
-      `← ${c.priorClass.name} hace ${c.priorClass.gapMinutes} min`,
+      t("coachSubPrior", {
+        name: c.priorClass.name,
+        min: c.priorClass.gapMinutes,
+      }),
     );
   }
   if (c.followingClass) {
     subParts.push(
-      `${c.followingClass.name} en ${c.followingClass.gapMinutes} min →`,
+      t("coachSubFollowing", {
+        name: c.followingClass.name,
+        min: c.followingClass.gapMinutes,
+      }),
     );
   }
   if (c.classesThisDay > 0) {
-    subParts.push(`${c.classesThisDay} hoy`);
+    subParts.push(t("coachSubToday", { count: c.classesThisDay }));
   }
   if (c.classesThisWeek > 0) {
-    subParts.push(`${c.classesThisWeek} esta semana`);
+    subParts.push(t("coachSubWeek", { count: c.classesThisWeek }));
   }
 
   return (
