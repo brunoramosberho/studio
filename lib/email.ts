@@ -1873,3 +1873,80 @@ export async function sendAvailabilityRejectedToCoach({
     console.error("Failed to send availability rejected email:", error);
   }
 }
+
+/** Where marketing/landing leads are delivered. */
+const LEADS_TO = process.env.MARKETING_LEADS_EMAIL || "bruno@mgic.me";
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Lead from the public marketing landing (apex, no tenant). Delivered to the
+ * Mgic Studio sales inbox with the prospect set as reply-to so we can reply
+ * directly. Throws on failure so the API route can surface an error.
+ */
+export async function sendMarketingLeadEmail(lead: {
+  name: string;
+  email: string;
+  studioType: string;
+  size: string;
+  link?: string;
+  locale?: string;
+}) {
+  const accent = "#FF5A2C";
+  const fg = "#171717";
+  const muted = "#6b7280";
+  const bg = "#f5f5f4";
+
+  const row = (label: string, value: string) => `
+    <tr>
+      <td style="padding:6px 0;font-size:13px;color:${muted};vertical-align:top;width:140px;"><strong>${label}</strong></td>
+      <td style="padding:6px 0;font-size:14px;color:${fg};">${value}</td>
+    </tr>`;
+
+  const link = lead.link?.trim();
+  const content = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:${bg};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+        <tr><td align="center" style="padding-bottom:24px;">
+          <span style="font-size:24px;font-weight:800;color:${fg};letter-spacing:-0.5px;">Mgic Studio</span>
+        </td></tr>
+        <tr><td>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:18px;overflow:hidden;">
+            <tr><td style="padding:32px;">
+              <p style="margin:0 0 4px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:${accent};">Nuevo lead del sitio</p>
+              <h1 style="margin:0 0 20px;font-size:20px;font-weight:700;color:${fg};">${escapeHtml(lead.name)}</h1>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${row("Correo", `<a href="mailto:${escapeHtml(lead.email)}" style="color:${accent};text-decoration:none;">${escapeHtml(lead.email)}</a>`)}
+                ${row("Tipo de studio", escapeHtml(lead.studioType))}
+                ${row("Tamaño", escapeHtml(lead.size))}
+                ${link ? row("Web / Instagram", escapeHtml(link)) : ""}
+              </table>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td align="center" style="padding-top:20px;">
+          <p style="margin:0;font-size:11px;color:${muted};opacity:0.8;">Responde directamente a este correo para contactar al studio.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  await getResend().emails.send({
+    from: `Mgic Studio <${FROM}>`,
+    to: LEADS_TO,
+    replyTo: lead.email,
+    subject: `Nuevo lead: ${lead.name} — ${lead.studioType}`,
+    html: content,
+  });
+}

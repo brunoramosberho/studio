@@ -2859,11 +2859,42 @@
       "titleStart": "Tell us about your ",
       "titleEmphasis": "studio",
       "titleEnd": "",
-      "subtitle": "Send us what kind of studio you run and where you are. We'll reply with a demo and everything you need to know.",
-      "emailLabel": "or email us directly at",
-      "ctaPrimary": "Get in touch",
-      "mailSubject": "I'd like to learn about Mgic Studio",
-      "mailBody": "Hi, I'd like to learn about Mgic Studio.\n\nStudio type: \nLocation (city and country): \nApprox. number of members: \n\nThanks!"
+      "subtitle": "Leave your details and we'll reach out with a demo. Takes less than a minute.",
+      "form": {
+        "name": "Your name",
+        "namePlaceholder": "First and last name",
+        "email": "Email",
+        "emailPlaceholder": "you@studio.com",
+        "studioType": "Studio type",
+        "studioTypePlaceholder": "Select an option",
+        "studioTypeOptions": [
+          "Pilates / Reformer",
+          "Yoga",
+          "Cycling / Indoor",
+          "Functional / CrossFit",
+          "Boxing / Martial arts",
+          "Dance / Barre",
+          "Gym",
+          "Other"
+        ],
+        "size": "Size",
+        "sizePlaceholder": "Select an option",
+        "sizeOptions": [
+          "Just opening",
+          "Under 100 members",
+          "100–300 members",
+          "300–700 members",
+          "700+ members",
+          "Multiple locations"
+        ],
+        "link": "Website or Instagram",
+        "linkPlaceholder": "yourstudio.com or @yourstudio",
+        "submit": "Send",
+        "submitting": "Sending…",
+        "successTitle": "Thank you!",
+        "successBody": "We got your details and will be in touch very soon.",
+        "errorGeneric": "Something went wrong. Please try again."
+      }
     },
     "footer": {
       "tagline": "The all-in-one platform for boutique fitness studios.",

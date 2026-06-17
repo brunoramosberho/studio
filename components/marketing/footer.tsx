@@ -2,8 +2,6 @@
 
 import { useTranslations } from "next-intl";
 
-const CONTACT_EMAIL = "bruno@mgic.me";
-
 export function MarketingFooter() {
   const t = useTranslations("marketing");
   const copyright = t("footer.copyright", { year: new Date().getFullYear() });
@@ -34,7 +32,7 @@ export function MarketingFooter() {
               {t("nav.pricing")}
             </a>
             <a
-              href={`mailto:${CONTACT_EMAIL}`}
+              href="#contact"
               className="text-muted hover:text-foreground transition-colors"
             >
               {t("footer.contactLabel")}

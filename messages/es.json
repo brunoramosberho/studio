@@ -2859,11 +2859,42 @@
       "titleStart": "Cuéntanos de tu ",
       "titleEmphasis": "studio",
       "titleEnd": "",
-      "subtitle": "Escríbenos qué tipo de studio tienes y dónde estás. Te respondemos con una demo y la información que necesitas.",
-      "emailLabel": "o escríbenos directo a",
-      "ctaPrimary": "Escríbenos",
-      "mailSubject": "Quiero conocer Mgic Studio",
-      "mailBody": "Hola, me gustaría conocer Mgic Studio.\n\nTipo de studio: \nUbicación (ciudad y país): \nNúmero de miembros aprox.: \n\n¡Gracias!"
+      "subtitle": "Déjanos tus datos y te contactamos con una demo. Toma menos de un minuto.",
+      "form": {
+        "name": "Tu nombre",
+        "namePlaceholder": "Nombre y apellido",
+        "email": "Email",
+        "emailPlaceholder": "tu@studio.com",
+        "studioType": "Tipo de studio",
+        "studioTypePlaceholder": "Selecciona una opción",
+        "studioTypeOptions": [
+          "Pilates / Reformer",
+          "Yoga",
+          "Cycling / Indoor",
+          "Funcional / CrossFit",
+          "Boxeo / Artes marciales",
+          "Danza / Barre",
+          "Gimnasio",
+          "Otro"
+        ],
+        "size": "Tamaño",
+        "sizePlaceholder": "Selecciona una opción",
+        "sizeOptions": [
+          "Apenas abriendo",
+          "Menos de 100 miembros",
+          "100–300 miembros",
+          "300–700 miembros",
+          "Más de 700 miembros",
+          "Varias sedes"
+        ],
+        "link": "Sitio web o Instagram",
+        "linkPlaceholder": "tustudio.com o @tustudio",
+        "submit": "Enviar",
+        "submitting": "Enviando…",
+        "successTitle": "¡Gracias!",
+        "successBody": "Recibimos tus datos. Te contactamos muy pronto.",
+        "errorGeneric": "Algo salió mal. Por favor inténtalo de nuevo."
+      }
     },
     "footer": {
       "tagline": "La plataforma todo-en-uno para studios boutique de fitness.",
