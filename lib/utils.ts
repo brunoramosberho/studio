@@ -301,3 +301,27 @@ export function parseDateOnly(
   if (!y || !m || !d) return null;
   return new Date(y, m - 1, d);
 }
+
+/**
+ * Return a higher-resolution variant of a profile image URL for enlarged views
+ * (e.g. tapping an avatar to view it full-size). Google avatar URLs encode the
+ * requested pixel size in their suffix and default to a tiny thumbnail
+ * (~96px) — bump it so the enlarged view stays crisp. Non-Google URLs are
+ * returned unchanged.
+ */
+export function highResImageUrl(
+  url: string | null | undefined,
+  size = 512,
+): string | null | undefined {
+  if (!url) return url;
+  if (/googleusercontent\.com/.test(url)) {
+    if (/=s\d+(-c)?/.test(url)) {
+      return url.replace(/=s\d+(-c)?/, (_m, c) => `=s${size}${c ?? ""}`);
+    }
+    if (/=w\d+-h\d+(-c)?/.test(url)) {
+      return url.replace(/=w\d+-h\d+(-c)?/, (_m, c) => `=s${size}${c ?? ""}`);
+    }
+    return url.includes("=") ? url : `${url}=s${size}`;
+  }
+  return url;
+}

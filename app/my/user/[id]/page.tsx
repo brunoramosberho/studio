@@ -22,7 +22,7 @@ import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/shared/page-transition";
-import { cn } from "@/lib/utils";
+import { cn, highResImageUrl } from "@/lib/utils";
 
 interface UpcomingClass {
   id: string;
@@ -642,7 +642,7 @@ export default function UserProfilePage({
             onClick={() => setPhotoOpen(false)}
           >
             <motion.img
-              src={profile.image}
+              src={highResImageUrl(profile.image, 640) ?? profile.image}
               alt={profile.name || ""}
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

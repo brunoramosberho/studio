@@ -15,8 +15,8 @@ interface AvatarCropProps {
   uploading?: boolean;
 }
 
-const OUTPUT_SIZE = 400;
-const QUALITY = 0.85;
+const OUTPUT_SIZE = 640;
+const QUALITY = 0.9;
 
 async function getCroppedBlob(
   src: string,
