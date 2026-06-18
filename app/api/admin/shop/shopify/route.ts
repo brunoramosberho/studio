@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { normalizeShopDomain, testShopifyConnection } from "@/lib/shopify/client";
 
@@ -13,7 +13,7 @@ function errorResponse(e: unknown) {
 // Status of the tenant's Shopify connection (never returns the token).
 export async function GET() {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("shop");
     const config = await prisma.shopifyConfig.findUnique({
       where: { tenantId: ctx.tenant.id },
       select: {
@@ -33,7 +33,7 @@ export async function GET() {
 // the Storefront API before persisting; the token is stored encrypted.
 export async function PUT(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("shop");
     const body = await request.json();
     const shopDomain = normalizeShopDomain(String(body.shopDomain ?? ""));
     const rawToken =
@@ -96,7 +96,7 @@ export async function PUT(request: NextRequest) {
 // native catalog.
 export async function DELETE() {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("shop");
     await prisma.shopifyConfig.deleteMany({ where: { tenantId: ctx.tenant.id } });
     return NextResponse.json({ connected: false });
   } catch (e) {

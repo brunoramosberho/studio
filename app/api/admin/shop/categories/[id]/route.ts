@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("shop");
     const { id } = await params;
     const { name } = await request.json();
 
@@ -33,7 +33,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("shop");
     const { id } = await params;
 
     const deleted = await prisma.productCategory.deleteMany({

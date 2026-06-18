@@ -29,9 +29,11 @@ export interface TeamMember {
 const REMOVABLE: { key: AdminPermission; label: string; hint: string }[] = [
   { key: "finance", label: "Finanzas", hint: "Ingresos, transacciones, reconocimiento" },
   { key: "billing", label: "Facturación y Stripe", hint: "Suscripción del estudio y Connect" },
+  { key: "shop", label: "Tienda / Shop", hint: "Productos, categorías y Shopify" },
   { key: "reports", label: "Reportes / Insights", hint: "Métricas de negocio" },
   { key: "analytics", label: "Analítica", hint: "GA4 / Meta Pixel" },
   { key: "marketing", label: "Marketing", hint: "Enlaces, highlights, adquisición" },
+  { key: "team", label: "Equipo y permisos", hint: "Invitar staff y editar accesos" },
 ];
 
 export function MemberPermissionsDialog({

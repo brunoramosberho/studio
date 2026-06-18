@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole, getTenantCurrency } from "@/lib/tenant";
+import { requirePermission, getTenantCurrency } from "@/lib/tenant";
 
 async function filterTenantStudioIds(tenantId: string, ids: unknown[]): Promise<string[]> {
   const candidates = ids.filter((x): x is string => typeof x === "string" && x.length > 0);
@@ -14,7 +14,7 @@ async function filterTenantStudioIds(tenantId: string, ids: unknown[]): Promise<
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("shop");
     const categoryId = request.nextUrl.searchParams.get("categoryId");
 
     const products = await prisma.product.findMany({
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("shop");
     const body = await request.json();
     const {
       name,

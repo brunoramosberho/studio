@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 import { sendRoleInvitation } from "@/lib/email";
 import {
   getEffectivePermissions,
@@ -10,7 +10,7 @@ import {
 
 export async function GET() {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("team");
 
     const memberships = await prisma.membership.findMany({
       where: { tenantId: ctx.tenant.id, role: { in: ["ADMIN", "FRONT_DESK"] } },
@@ -39,7 +39,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const ctx = await requireRole("ADMIN");
+  const ctx = await requirePermission("team");
 
   const { email, name, role: requestedRole } = await request.json();
   if (!email || typeof email !== "string") {
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const ctx = await requireRole("ADMIN");
+  const ctx = await requirePermission("team");
 
   const { userId } = await request.json();
   if (!userId) {
@@ -167,7 +167,7 @@ export async function PUT(request: NextRequest) {
 // Set a team member's granular permission override. `permissions: null` resets
 // to the role default (full admin / front-desk operational set).
 export async function PATCH(request: NextRequest) {
-  const ctx = await requireRole("ADMIN");
+  const ctx = await requirePermission("team");
 
   const { userId, permissions } = await request.json();
   if (!userId || typeof userId !== "string") {
@@ -211,7 +211,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const ctx = await requireRole("ADMIN");
+  const ctx = await requirePermission("team");
 
   const { userId } = await request.json();
   if (!userId) {
