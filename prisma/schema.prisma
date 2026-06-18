@@ -169,6 +169,7 @@ model Tenant {
   checkIns                           CheckIn[]
 
   instagramIntegration InstagramIntegration?
+  shopifyConfig        ShopifyConfig?
 
   platformConfigs  StudioPlatformConfig[]
   platformQuotas   SchedulePlatformQuota[]
@@ -307,6 +308,35 @@ model InstagramIntegration {
 
   @@index([tenantId])
   @@index([igUserId])
+}
+
+// Per-tenant Shopify Storefront connection. When `isActive`, the public shop
+// (and PWA) sources its catalog live from Shopify instead of the native
+// Product table, and product clicks redirect to the Shopify storefront. We
+// only ever read via the Storefront API (public, read-only) — there is no
+// checkout or write-back into Shopify. The token is encrypted at rest via
+// lib/encryption.ts.
+model ShopifyConfig {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // e.g. "mystore.myshopify.com" (no scheme, no trailing slash).
+  shopDomain String
+  // Storefront API access token, encrypted before persisting.
+  storefrontAccessToken String @db.Text
+  // When false the connection is kept but the public shop falls back to the
+  // native catalog (lets the studio pause Shopify without losing credentials).
+  isActive Boolean @default(true)
+
+  // Diagnostics from the most recent live fetch / connection test.
+  lastSyncedAt DateTime?
+  lastError    String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 enum MemberLifecycleStage {
