@@ -637,6 +637,11 @@ html.dark .loyalty-level-pin {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    /* Kill iOS rubber-band/overscroll on the document. When the page bounces
+       past its top/bottom, a position:fixed bottom nav gets dragged with it —
+       this is the intermittent "nav bar jumps up on scroll" glitch in the iOS
+       PWA. Containing the overscroll keeps the fixed bar anchored. */
+    overscroll-behavior-y: none;
   }
 
   body {
@@ -644,6 +649,7 @@ html.dark .loyalty-level-pin {
     background-color: var(--color-background);
     color: var(--color-foreground);
     line-height: 1.6;
+    overscroll-behavior-y: none;
   }
 
   h1, h2, h3, h4, h5, h6 {
