@@ -12,7 +12,10 @@ export async function GET(request: NextRequest) {
     const all = request.nextUrl.searchParams.get("all") === "true";
 
     if (all) {
-      await requireRole("ADMIN");
+      // Read-only full catalog. FRONT_DESK needs this to sell packages and
+      // memberships from POS (and the schedule class form). Package
+      // creation/edits stay ADMIN-only via the POST handler below.
+      await requireRole("FRONT_DESK");
       const packages = await prisma.package.findMany({
         where: { tenantId: tenant.id, deletedAt: null },
         orderBy: [{ sortOrder: "asc" }, { price: "asc" }],
