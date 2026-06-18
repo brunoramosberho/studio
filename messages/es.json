@@ -739,6 +739,8 @@
     "you": "Tu",
     "pendingStatus": "Pendiente",
     "removeAdmin": "Remover admin",
+    "customAccess": "Personalizado",
+    "editAccess": "Editar accesos",
     "waiverDigital": "Waiver digital",
     "waiverDescription": "Acuerdo de responsabilidad para tus clientes",
     "activeStatus": "Activo",

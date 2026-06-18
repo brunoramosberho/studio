@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { sendRoleInvitation } from "@/lib/email";
+import {
+  getEffectivePermissions,
+  parsePermissionOverride,
+} from "@/lib/permissions";
 
 export async function GET() {
   try {
@@ -15,7 +20,14 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
     });
 
-    const admins = memberships.map((m) => ({ ...m.user, role: m.role }));
+    const admins = memberships.map((m) => ({
+      ...m.user,
+      role: m.role,
+      // Raw override (null = role defaults) + the resolved effective set so the
+      // UI can render toggles and show whether this member is customized.
+      permissionsOverride: parsePermissionOverride(m.permissions),
+      permissions: getEffectivePermissions(m),
+    }));
 
     return NextResponse.json(admins);
   } catch (error) {
@@ -150,6 +162,52 @@ export async function PUT(request: NextRequest) {
   });
 
   return NextResponse.json(user);
+}
+
+// Set a team member's granular permission override. `permissions: null` resets
+// to the role default (full admin / front-desk operational set).
+export async function PATCH(request: NextRequest) {
+  const ctx = await requireRole("ADMIN");
+
+  const { userId, permissions } = await request.json();
+  if (!userId || typeof userId !== "string") {
+    return NextResponse.json({ error: "userId requerido" }, { status: 400 });
+  }
+  // Guard against self-lockout: an admin can't restrict their own access.
+  if (userId === ctx.session.user.id) {
+    return NextResponse.json(
+      { error: "No puedes modificar tus propios permisos" },
+      { status: 400 },
+    );
+  }
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_tenantId: { userId, tenantId: ctx.tenant.id } },
+    select: { role: true },
+  });
+  if (!membership || !["ADMIN", "FRONT_DESK"].includes(membership.role)) {
+    return NextResponse.json(
+      { error: "Miembro de equipo no encontrado" },
+      { status: 404 },
+    );
+  }
+
+  // null → reset to role default; array → explicit allow-list (validated).
+  const override =
+    permissions === null ? null : parsePermissionOverride(permissions);
+  if (permissions !== null && override === null) {
+    return NextResponse.json(
+      { error: "permissions debe ser un arreglo o null" },
+      { status: 400 },
+    );
+  }
+
+  await prisma.membership.update({
+    where: { userId_tenantId: { userId, tenantId: ctx.tenant.id } },
+    data: { permissions: override === null ? Prisma.DbNull : override },
+  });
+
+  return NextResponse.json({ success: true });
 }
 
 export async function DELETE(request: NextRequest) {

@@ -5,13 +5,18 @@ import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, Plus, Trash2, Mail, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Mail, Loader2, AlertTriangle, SlidersHorizontal } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn, timeAgo } from "@/lib/utils";
+import {
+  MemberPermissionsDialog,
+  type TeamMember,
+} from "@/components/admin/member-permissions-dialog";
+import type { AdminPermission } from "@/lib/permissions";
 
 interface AdminUser {
   id: string;
@@ -19,6 +24,9 @@ interface AdminUser {
   email: string;
   image: string | null;
   createdAt: string;
+  role: "ADMIN" | "FRONT_DESK";
+  permissions: AdminPermission[];
+  permissionsOverride: AdminPermission[] | null;
 }
 
 const stagger = {
@@ -42,6 +50,7 @@ export default function AdminTeamPage() {
   const tr = useTranslations("roles");
   const [confirmUser, setConfirmUser] = useState<{ id: string; name: string | null; email: string } | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
 
   const { data: admins, isLoading } = useQuery<AdminUser[]>({
     queryKey: ["admin-team"],
@@ -285,6 +294,14 @@ export default function AdminTeamPage() {
                             {t("pendingStatus")}
                           </Badge>
                         )}
+                        <Badge variant="secondary" className="text-[10px]">
+                          {admin.role === "ADMIN" ? tr("admin") : tr("frontDesk")}
+                        </Badge>
+                        {admin.permissionsOverride && (
+                          <Badge variant="outline" className="text-[10px] border-admin/40 text-admin">
+                            {t("customAccess")}
+                          </Badge>
+                        )}
                       </div>
                       <p className="truncate text-xs text-muted">{admin.email}</p>
                     </div>
@@ -292,6 +309,26 @@ export default function AdminTeamPage() {
                       <span className="hidden text-xs text-muted sm:block">
                         {timeAgo(admin.createdAt)}
                       </span>
+                      {!isMe && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setEditingMember({
+                              id: admin.id,
+                              name: admin.name,
+                              email: admin.email,
+                              role: admin.role,
+                              permissions: admin.permissions,
+                              permissionsOverride: admin.permissionsOverride,
+                            })
+                          }
+                          className="h-8 w-8 p-0 text-muted hover:text-admin"
+                          title={t("editAccess")}
+                        >
+                          <SlidersHorizontal className="h-4 w-4" />
+                        </Button>
+                      )}
                       {!isMe && (
                         <Button
                           variant="ghost"
@@ -312,6 +349,11 @@ export default function AdminTeamPage() {
           })}
         </motion.div>
       )}
+
+      <MemberPermissionsDialog
+        member={editingMember}
+        onClose={() => setEditingMember(null)}
+      />
     </div>
   );
 }
