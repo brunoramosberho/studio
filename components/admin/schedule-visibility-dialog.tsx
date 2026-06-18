@@ -67,7 +67,12 @@ export function ScheduleVisibilityDialog({ open, onOpenChange }: Props) {
       })
       .catch(() => toast.error(t("loadError")))
       .finally(() => setLoading(false));
-  }, [open, t]);
+    // Only re-seed when the dialog opens. `t` is intentionally excluded: if it
+    // changed identity (locale/provider re-render) while the dialog is open,
+    // re-running would re-fetch and clobber the user's in-progress edit (e.g.
+    // reset a freshly typed 30 back to the stored value).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   async function handleSave() {
     if (!value) return;
