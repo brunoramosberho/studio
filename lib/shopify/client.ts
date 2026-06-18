@@ -85,6 +85,15 @@ async function storefrontQuery<T>(
   return json.data;
 }
 
+interface VariantNode {
+  id: string;
+  title: string;
+  availableForSale: boolean;
+  image: { url: string } | null;
+  price: { amount: string; currencyCode: string };
+  selectedOptions: { name: string; value: string }[];
+}
+
 interface ProductNode {
   id: string;
   title: string;
@@ -94,6 +103,8 @@ interface ProductNode {
   onlineStoreUrl: string | null;
   featuredImage: { url: string } | null;
   priceRange: { minVariantPrice: { amount: string; currencyCode: string } };
+  options: { name: string; values: string[] }[];
+  variants: { nodes: VariantNode[] };
 }
 
 const PRODUCTS_QUERY = /* GraphQL */ `
@@ -109,24 +120,80 @@ const PRODUCTS_QUERY = /* GraphQL */ `
           onlineStoreUrl
           featuredImage { url }
           priceRange { minVariantPrice { amount currencyCode } }
+          options { name values }
+          variants(first: 100) {
+            nodes {
+              id
+              title
+              availableForSale
+              image { url }
+              price { amount currencyCode }
+              selectedOptions { name value }
+            }
+          }
         }
       }
     }
   }
 `;
 
-function mapProduct(shopDomain: string, n: ProductNode): ShopifyShopProduct {
-  return {
+// "Color" / "Colour" / "Color" (es) — the option we flatten into one card each.
+const COLOR_OPTION = /^colou?r$/i;
+
+function variantNumericId(gid: string): string {
+  const m = gid.match(/(\d+)$/);
+  return m ? m[1] : "";
+}
+
+function productUrl(shopDomain: string, n: ProductNode): string {
+  // onlineStoreUrl is null when the product isn't published to the Online
+  // Store channel; fall back to the canonical product path.
+  return n.onlineStoreUrl ?? `https://${shopDomain}/products/${n.handle}`;
+}
+
+/**
+ * Turn one Shopify product into one card per **color** (so the PWA grid shows
+ * each colorway separately, deep-linked to that variant on Shopify). Products
+ * without a color option — or with a single color — collapse to one card.
+ * Size/other options aren't exploded; the buyer picks those on Shopify.
+ */
+function expandProduct(shopDomain: string, n: ProductNode): ShopifyShopProduct[] {
+  const base = productUrl(shopDomain, n);
+  const single = (): ShopifyShopProduct => ({
     id: n.id,
     name: n.title,
     description: n.description?.trim() || null,
     price: Number(n.priceRange.minVariantPrice.amount) || 0,
     currency: n.priceRange.minVariantPrice.currencyCode,
     imageUrl: n.featuredImage?.url ?? null,
-    // onlineStoreUrl is null when the product isn't published to the Online
-    // Store channel; fall back to the canonical product path.
-    externalUrl: n.onlineStoreUrl ?? `https://${shopDomain}/products/${n.handle}`,
-  };
+    externalUrl: base,
+  });
+
+  const colorOpt = n.options?.find((o) => COLOR_OPTION.test(o.name.trim()));
+  if (!colorOpt || colorOpt.values.length <= 1) return [single()];
+
+  const cards: ShopifyShopProduct[] = [];
+  for (const color of colorOpt.values) {
+    const matching = n.variants.nodes.filter((v) =>
+      v.selectedOptions.some(
+        (so) => so.name === colorOpt.name && so.value === color,
+      ),
+    );
+    if (matching.length === 0) continue;
+    // Prefer an in-stock variant for the price/image shown on the card.
+    const rep = matching.find((v) => v.availableForSale) ?? matching[0];
+    const vid = variantNumericId(rep.id);
+    cards.push({
+      id: rep.id,
+      name: `${n.title} · ${color}`,
+      description: n.description?.trim() || null,
+      price: Number(rep.price.amount) || 0,
+      currency: rep.price.currencyCode,
+      imageUrl: rep.image?.url ?? n.featuredImage?.url ?? null,
+      externalUrl: vid ? `${base}?variant=${vid}` : base,
+    });
+  }
+  return cards.length ? cards : [single()];
 }
 
 /**
@@ -150,7 +217,7 @@ export async function fetchShopifyCatalog(
       cat = { id: `shopify:${key}`, name: type || "Tienda", products: [] };
       buckets.set(key, cat);
     }
-    cat.products.push(mapProduct(shopDomain, node));
+    cat.products.push(...expandProduct(shopDomain, node));
   }
 
   return Array.from(buckets.values()).filter((c) => c.products.length > 0);
