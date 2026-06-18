@@ -55,9 +55,15 @@ interface EmbedScheduleClientProps {
   /** Absolute origin of the tenant site — used to open
    *  booking/login flows in a new tab outside the iframe. */
   tenantOrigin: string;
+  /** Number of days to show, matching the tenant's /schedule visibility
+   *  window (rolling N days or weekly release). Defaults to 7. */
+  visibleDays?: number;
 }
 
-export function EmbedScheduleClient({ tenantOrigin }: EmbedScheduleClientProps) {
+export function EmbedScheduleClient({
+  tenantOrigin,
+  visibleDays = 7,
+}: EmbedScheduleClientProps) {
   const t = useTranslations("schedule");
   const tf = useTranslations("footer");
   const te = useTranslations("embed");
@@ -98,8 +104,11 @@ export function EmbedScheduleClient({ tenantOrigin }: EmbedScheduleClientProps) 
   });
 
   const days = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => addDays(today, i)),
-    [today],
+    () =>
+      Array.from({ length: Math.max(1, visibleDays) }, (_, i) =>
+        addDays(today, i),
+      ),
+    [today, visibleDays],
   );
 
   const classTypes = useMemo(
@@ -146,14 +155,14 @@ export function EmbedScheduleClient({ tenantOrigin }: EmbedScheduleClientProps) 
     );
     if (hasUpcoming) return;
 
-    for (let i = 1; i < 7; i++) {
+    for (let i = 1; i < Math.max(1, visibleDays); i++) {
       const next = addDays(today, i);
       if (classes.some((c) => isSameDay(new Date(c.startsAt), next))) {
         setSelectedDay(next);
         break;
       }
     }
-  }, [isLoading, classes, today]);
+  }, [isLoading, classes, today, visibleDays]);
 
   // Emit height updates so the host page's loader can resize the iframe.
   useEffect(() => {
