@@ -14,7 +14,7 @@ async function filterTenantStudioIds(tenantId: string, ids: unknown[]): Promise<
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await requireRole("FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
     const categoryId = request.nextUrl.searchParams.get("categoryId");
 
     const products = await prisma.product.findMany({
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await requireRole("FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
     const body = await request.json();
     const {
       name,

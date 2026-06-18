@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/tenant";
 
 export async function GET() {
   try {
-    const ctx = await requireRole("FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
     const categories = await prisma.productCategory.findMany({
       where: { tenantId: ctx.tenant.id },
       include: { _count: { select: { products: true } } },
@@ -21,7 +21,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await requireRole("FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
     const { name } = await request.json();
     if (!name?.trim()) {
       return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });

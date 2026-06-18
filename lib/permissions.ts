@@ -77,7 +77,6 @@ const FRONT_DESK_PERMISSIONS: Set<AdminPermission> = new Set([
   "pos",
   "waitlist",
   "orders",
-  "shop",
 ]);
 
 /**

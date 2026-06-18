@@ -7,7 +7,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await requireRole("FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
     const { id } = await params;
     const { name } = await request.json();
 
@@ -33,7 +33,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await requireRole("FRONT_DESK");
+    const ctx = await requireRole("ADMIN");
     const { id } = await params;
 
     const deleted = await prisma.productCategory.deleteMany({
