@@ -5,6 +5,7 @@ import { auth, adminAuth, SUPER_SESSION_COOKIE } from "./auth";
 import { FALLBACK_CURRENCY, type CurrencyConfig } from "./currency";
 import type { Session } from "next-auth";
 import type { Tenant, Membership, Role } from "@prisma/client";
+import { membershipHasPermission, type AdminPermission } from "./permissions";
 
 export const TENANT_HEADER = "x-tenant-slug";
 export const SUPER_ADMIN_SLUG = "__super_admin__";
@@ -209,6 +210,23 @@ export async function requireRole(...roles: Role[]): Promise<AuthContext> {
   const ctx = await requireAuth();
   const hasRole = roles.some((r) => roleAtLeast(ctx.membership.role, r));
   if (!hasRole) throw new Error("Forbidden");
+  return ctx;
+}
+
+/**
+ * Gate by granular admin permission (honors per-membership overrides), instead
+ * of by role rank. Use this on sections a studio may want to remove from an
+ * otherwise-admin user (finance, billing, reports, …). Passing several
+ * permissions means "any of these". ADMIN/FRONT_DESK without a custom override
+ * resolve to their role defaults, so this is backwards-compatible with the
+ * previous requireRole gating for those sections.
+ */
+export async function requirePermission(
+  ...permissions: AdminPermission[]
+): Promise<AuthContext> {
+  const ctx = await requireAuth();
+  const ok = permissions.some((p) => membershipHasPermission(ctx.membership, p));
+  if (!ok) throw new Error("Forbidden");
   return ctx;
 }
 

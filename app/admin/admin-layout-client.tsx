@@ -57,7 +57,7 @@ import { StaffClockInWidget } from "@/components/staff/clock-in-widget";
 import { MgicAIProvider, useMgicAI } from "@/components/admin/MgicAI";
 import { PosDialog } from "@/components/admin/pos/pos-dialog";
 import { usePosStore } from "@/store/pos-store";
-import { type AdminPermission, hasPermission } from "@/lib/permissions";
+import { type AdminPermission, ALL_PERMISSIONS } from "@/lib/permissions";
 import {
   CommandPalette,
   type PaletteItem,
@@ -244,15 +244,19 @@ interface SidebarStats {
   flags: TenantFlags;
 }
 
-function useAdminRole() {
+function useAdminMe() {
   const [role, setRole] = useState<Role>("ADMIN");
+  const [permissions, setPermissions] = useState<AdminPermission[]>(ALL_PERMISSIONS);
   useEffect(() => {
     fetch("/api/admin/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d?.role && setRole(d.role as Role))
+      .then((d) => {
+        if (d?.role) setRole(d.role as Role);
+        if (Array.isArray(d?.permissions)) setPermissions(d.permissions as AdminPermission[]);
+      })
       .catch(() => {});
   }, []);
-  return role;
+  return { role, permissions };
 }
 
 function useSidebarStats() {
@@ -345,9 +349,13 @@ function getContextLabel(item: NavItem, stats: SidebarStats | null, t: (key: str
   return null;
 }
 
-function filterNavItems(items: NavItem[], role: Role, flags: TenantFlags | null): NavItem[] {
+function filterNavItems(
+  items: NavItem[],
+  perms: Set<AdminPermission>,
+  flags: TenantFlags | null,
+): NavItem[] {
   return items.filter((i) => {
-    if (i.permission && !hasPermission(role, i.permission)) return false;
+    if (i.permission && !perms.has(i.permission)) return false;
     if (i.feature && flags && !flags[i.feature]) return false;
     return true;
   });
@@ -364,7 +372,7 @@ function SidebarFlyoutGroup({
   group,
   stats,
   pathname,
-  role,
+  perms,
   isOpen,
   onOpen,
   onClose,
@@ -372,7 +380,7 @@ function SidebarFlyoutGroup({
   group: NavGroup;
   stats: SidebarStats | null;
   pathname: string;
-  role: Role;
+  perms: Set<AdminPermission>;
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -381,7 +389,7 @@ function SidebarFlyoutGroup({
   const triggerRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
-  const visibleItems = filterNavItems(group.items, role, stats?.flags ?? null);
+  const visibleItems = filterNavItems(group.items, perms, stats?.flags ?? null);
 
   const hasActiveChild = visibleItems.some((item) => isItemActive(item, pathname));
 
@@ -514,19 +522,19 @@ function MobileAccordionGroup({
   group,
   stats,
   pathname,
-  role,
+  perms,
   onNavigate,
   py,
 }: {
   group: NavGroup;
   stats: SidebarStats | null;
   pathname: string;
-  role: Role;
+  perms: Set<AdminPermission>;
   onNavigate?: () => void;
   py: string;
 }) {
   const t = useTranslations("admin");
-  const visibleItems = filterNavItems(group.items, role, stats?.flags ?? null);
+  const visibleItems = filterNavItems(group.items, perms, stats?.flags ?? null);
 
   const hasActiveChild = visibleItems.some((item) => isItemActive(item, pathname));
   const [expanded, setExpanded] = useState(hasActiveChild);
@@ -708,13 +716,13 @@ function SidebarNav({
   pathname,
   onNavigate,
   mobile,
-  role,
+  perms,
 }: {
   stats: SidebarStats | null;
   pathname: string;
   onNavigate?: () => void;
   mobile?: boolean;
-  role: Role;
+  perms: Set<AdminPermission>;
 }) {
   const t = useTranslations("admin");
 
@@ -741,7 +749,7 @@ function SidebarNav({
     };
   }, []);
 
-  const visibleDirect = filterNavItems(directItems, role, stats?.flags ?? null);
+  const visibleDirect = filterNavItems(directItems, perms, stats?.flags ?? null);
 
   return (
     <>
@@ -797,7 +805,7 @@ function SidebarNav({
               group={group}
               stats={stats}
               pathname={pathname}
-              role={role}
+              perms={perms}
               onNavigate={onNavigate}
               py={py}
             />
@@ -807,7 +815,7 @@ function SidebarNav({
               group={group}
               stats={stats}
               pathname={pathname}
-              role={role}
+              perms={perms}
               isOpen={openGroup === group.labelKey}
               onOpen={() => openFlyout(group.labelKey)}
               onClose={closeFlyout}
@@ -877,7 +885,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const stats = useSidebarStats();
   const t = useTranslations("admin");
   const tc = useTranslations("common");
-  const role = useAdminRole();
+  const { role, permissions } = useAdminMe();
+  const permSet = useMemo(() => new Set(permissions), [permissions]);
   const { openPOS } = usePosStore();
 
   const [locations, setLocations] = useState<LocCountry[]>([]);
@@ -1125,7 +1134,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
             {/* Scrollable nav sections */}
             <nav className="flex-1 overflow-y-auto p-3 pt-3">
-              <SidebarNav stats={stats} pathname={pathname} role={role} />
+              <SidebarNav stats={stats} pathname={pathname} perms={permSet} />
             </nav>
 
             {/* Bottom: profile + location */}
@@ -1208,7 +1217,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     pathname={pathname}
                     onNavigate={() => setSidebarOpen(false)}
                     mobile
-                    role={role}
+                    perms={permSet}
                   />
                 </nav>
 
@@ -1275,7 +1284,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
         items={paletteItems}
-        role={role}
+        perms={permSet}
         flags={stats?.flags ?? null}
       />
     </div>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 import { getEntityUrl, slugify } from "@/lib/marketing/links";
 
 const DAY_NAMES: Record<number, string> = {
@@ -19,7 +19,7 @@ function fmtTime(d: Date) {
 
 export async function GET() {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("marketing");
     const tenantId = ctx.tenant.id;
     const tenantSlug = ctx.tenant.slug;
 

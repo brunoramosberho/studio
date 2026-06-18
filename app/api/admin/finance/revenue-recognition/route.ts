@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 import { getMonthlyRevenueReport } from "@/lib/revenue/reports";
 
 // GET /api/admin/finance/revenue-recognition?month=YYYY-MM
 // Returns gross recognized revenue attributed to class/coach/time-slot +
 // breakage, for the requesting tenant and month. Tenant is derived from the
-// x-tenant-slug header via requireRole (no path param, matching the rest of
+// x-tenant-slug header via requirePermission (no path param, matching the rest of
 // the admin API surface).
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("finance");
     const tenantId = ctx.tenant.id;
 
     const monthParam = request.nextUrl.searchParams.get("month");

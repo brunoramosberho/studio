@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 
 const DAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
@@ -25,7 +25,7 @@ function pctChange(current: number, previous: number): number {
 
 export async function GET() {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("dashboard", "reports");
     const tenantId = ctx.tenant.id;
 
     const now = new Date();

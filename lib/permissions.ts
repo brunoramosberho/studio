@@ -50,7 +50,7 @@ export type AdminPermission =
   // timesheet without this permission.
   | "staffManagement";
 
-const ALL_PERMISSIONS: AdminPermission[] = [
+export const ALL_PERMISSIONS: AdminPermission[] = [
   "dashboard", "schedule", "classes", "checkIn", "noShowReview", "clients",
   "feed", "achievements", "pos", "waitlist", "orders",
   "coaches", "availability", "disciplines",
@@ -96,4 +96,40 @@ export function getPermissionsForRole(role: Role): AdminPermission[] {
   if (role === "ADMIN") return ALL_PERMISSIONS;
   if (role === "FRONT_DESK") return [...FRONT_DESK_PERMISSIONS];
   return [];
+}
+
+const PERMISSION_SET = new Set<string>(ALL_PERMISSIONS);
+
+/** Narrow an unknown override (e.g. Membership.permissions JSON) to a clean
+ *  AdminPermission[] — drops anything that isn't a known permission. */
+export function parsePermissionOverride(
+  override: unknown,
+): AdminPermission[] | null {
+  if (!Array.isArray(override)) return null;
+  return override.filter(
+    (p): p is AdminPermission => typeof p === "string" && PERMISSION_SET.has(p),
+  );
+}
+
+/**
+ * The effective permissions for a membership. A non-null `permissions` override
+ * (array) wins over the role default — so an ADMIN can be granted "everything
+ * minus finance", or a FRONT_DESK can be given extra sections. `null`/invalid
+ * falls back to the role's default set (back-compat: existing memberships).
+ */
+export function getEffectivePermissions(membership: {
+  role: Role;
+  permissions?: unknown;
+}): AdminPermission[] {
+  const override = parsePermissionOverride(membership.permissions);
+  if (override) return override;
+  return getPermissionsForRole(membership.role);
+}
+
+/** Membership-aware permission check (honors per-user overrides). */
+export function membershipHasPermission(
+  membership: { role: Role; permissions?: unknown },
+  permission: AdminPermission,
+): boolean {
+  return getEffectivePermissions(membership).includes(permission);
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 import { getMonthlyRevenueReport } from "@/lib/revenue/reports";
 import { CSV_BOM, escCsv } from "@/lib/csv";
 
@@ -11,7 +11,7 @@ const DOW_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 // currency, formatted as decimals (cents / 100).
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("finance");
     const tenantId = ctx.tenant.id;
     const slug = ctx.tenant.slug;
 

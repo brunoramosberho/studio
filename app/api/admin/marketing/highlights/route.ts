@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 
 export async function GET() {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requirePermission("marketing");
 
     const highlights = await prisma.highlight.findMany({
       where: { tenantId: tenant.id },
@@ -26,7 +26,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requirePermission("marketing");
     const body = await req.json();
 
     const maxPos = await prisma.highlight.aggregate({

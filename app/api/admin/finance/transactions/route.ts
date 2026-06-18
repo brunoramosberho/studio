@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 import { addBusinessDays } from "@/lib/stripe/helpers";
 
 type Range = "today" | "month" | "last30" | "last90" | "year";
@@ -51,7 +51,7 @@ function getConceptType(type: string): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("finance");
     const tenantId = ctx.tenant.id;
     const tenant = ctx.tenant;
 

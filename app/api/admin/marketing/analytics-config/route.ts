@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 
 export async function GET() {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("marketing");
     const config = await prisma.tenantAnalyticsConfig.findUnique({
       where: { tenantId: ctx.tenant.id },
     });
@@ -36,7 +36,7 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("marketing");
     const body = await req.json();
 
     const allowedKeys = [

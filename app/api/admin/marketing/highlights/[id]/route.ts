@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requirePermission("marketing");
     const { id } = await params;
     const body = await req.json();
 
@@ -43,7 +43,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requirePermission("marketing");
     const { id } = await params;
 
     const existing = await prisma.highlight.findFirst({

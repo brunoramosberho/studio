@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 
 export async function PATCH(req: Request) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requirePermission("marketing");
     const { enabled } = await req.json();
 
     await prisma.tenant.update({

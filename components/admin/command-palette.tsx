@@ -13,8 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { hasPermission, type AdminPermission } from "@/lib/permissions";
-import type { Role } from "@prisma/client";
+import { type AdminPermission } from "@/lib/permissions";
 
 export interface PaletteItem {
   id: string;
@@ -43,7 +42,7 @@ interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   items: PaletteItem[];
-  role: Role;
+  perms: Set<AdminPermission>;
   flags: TenantFlags | null;
 }
 
@@ -69,7 +68,7 @@ function fuzzyScore(query: string, target: string): number {
   return qi === q.length ? 10 : 0;
 }
 
-export function CommandPalette({ open, onOpenChange, items, role, flags }: CommandPaletteProps) {
+export function CommandPalette({ open, onOpenChange, items, perms, flags }: CommandPaletteProps) {
   const router = useRouter();
   const t = useTranslations("admin");
   const [query, setQuery] = useState("");
@@ -80,10 +79,10 @@ export function CommandPalette({ open, onOpenChange, items, role, flags }: Comma
   const accessible = useMemo(
     () =>
       items.filter((item) => {
-        if (item.permission && !hasPermission(role, item.permission)) return false;
+        if (item.permission && !perms.has(item.permission)) return false;
         return true;
       }),
-    [items, role],
+    [items, perms],
   );
 
   const enrichedItems = useMemo(

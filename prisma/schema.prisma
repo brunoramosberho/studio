@@ -355,6 +355,12 @@ model Membership {
   tenantId       String
   tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   role           Role      @default(CLIENT)
+  // Per-user admin permission override (array of AdminPermission strings, see
+  // lib/permissions.ts). null = use the role's default permission set; a
+  // non-null array is the explicit allow-list for this membership (lets a
+  // studio grant an ADMIN-rank user "almost everything minus finance", etc.).
+  // Only meaningful for ADMIN/FRONT_DESK memberships.
+  permissions    Json?
   pwaInstalledAt DateTime?
   lastSeenAt     DateTime?
   createdAt      DateTime  @default(now())

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 import { uploadMedia } from "@/lib/supabase-storage";
 
 export async function POST(req: Request) {
   try {
-    await requireRole("ADMIN");
+    await requirePermission("marketing");
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

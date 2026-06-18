@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole, getTenantCurrency } from "@/lib/tenant";
+import { requirePermission, getTenantCurrency } from "@/lib/tenant";
 import { addBusinessDays } from "@/lib/stripe/helpers";
 import { escCsv } from "@/lib/csv";
 import { format } from "date-fns";
@@ -71,7 +71,7 @@ function getStatusLabel(status: string): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("finance");
     const tenantId = ctx.tenant.id;
     const tenant = ctx.tenant;
     const taxRate = tenant.taxRate ?? 0.21;

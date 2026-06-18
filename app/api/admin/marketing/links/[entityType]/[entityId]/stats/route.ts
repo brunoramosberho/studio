@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ entityType: string; entityId: string }> }
 ) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("marketing");
     const tenantId = ctx.tenant.id;
     const { entityType, entityId } = await params;
 

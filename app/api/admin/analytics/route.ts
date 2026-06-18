@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 import { getAnalytics } from "@/lib/analytics/server";
 import type { Period } from "@/lib/analytics/types";
 
@@ -7,7 +7,7 @@ const VALID_PERIODS = new Set<Period>(["week", "month", "quarter"]);
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    const ctx = await requirePermission("analytics");
     const sp = request.nextUrl.searchParams;
     const periodParam = sp.get("period");
     const period: Period = VALID_PERIODS.has(periodParam as Period)
