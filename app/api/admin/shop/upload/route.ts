@@ -6,7 +6,7 @@ const MAX_SIZE = 5 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
-    await requireRole("ADMIN");
+    await requireRole("FRONT_DESK");
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
