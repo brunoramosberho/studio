@@ -26,6 +26,7 @@ import {
   Mail,
   Phone,
   Camera,
+  MapPin,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,8 @@ interface PayRate {
   currency: string;
   classTypeId: string | null;
   classType: { id: string; name: string; color: string } | null;
+  studioId: string | null;
+  studio: { id: string; name: string } | null;
   occupancyTiers: { min: number; max: number; amount: number }[] | null;
   bonusMultiplier: number;
   bonusDays: number[] | null;
@@ -200,10 +203,12 @@ function formatCurrency(amount: number, currency: string = "MXN") {
 function AddPayRateForm({
   coachId,
   classTypes,
+  studios,
   onDone,
 }: {
   coachId: string;
   classTypes: { id: string; name: string; color: string }[];
+  studios: { id: string; name: string }[];
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -211,6 +216,7 @@ function AddPayRateForm({
   const [type, setType] = useState<string>("PER_CLASS");
   const [amount, setAmount] = useState("");
   const [classTypeId, setClassTypeId] = useState<string>("all");
+  const [studioId, setStudioId] = useState<string>("all");
   const [tiers, setTiers] = useState([
     { min: 0, max: 49, amount: 0 },
     { min: 50, max: 79, amount: 0 },
@@ -280,6 +286,7 @@ function AddPayRateForm({
       amount: parseFloat(amount) || 0,
       currency,
       classTypeId: classTypeId === "all" ? null : classTypeId,
+      studioId: studioId === "all" ? null : studioId,
       bonusMultiplier: mult > 1 ? mult : 1,
       bonusDays: mult > 1 && bonusDays.length > 0 ? bonusDays : null,
       bonusTags: mult > 1 ? bonusTags : [],
@@ -334,6 +341,24 @@ function AddPayRateForm({
             </SelectContent>
           </Select>
         </div>
+        {studios.length > 1 && (
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted">Aplica a estudio</label>
+            <Select value={studioId} onValueChange={setStudioId}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estudios</SelectItem>
+                {studios.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {type !== "OCCUPANCY_TIER" ? (
@@ -829,6 +854,19 @@ export default function CoachDetailPage() {
     },
   });
 
+  const { data: studios } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["studios-simple"],
+    queryFn: async () => {
+      const res = await fetch("/api/studios");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data as { id: string; name: string }[]).map((s) => ({
+        id: s.id,
+        name: s.name,
+      }));
+    },
+  });
+
   const deleteRateMutation = useMutation({
     mutationFn: async (rateId: string) => {
       const res = await fetch(`/api/admin/coaches/${id}/pay-rates`, {
@@ -1177,6 +1215,12 @@ export default function CoachDetailPage() {
                               {rate.classType.name}
                             </Badge>
                           )}
+                          {rate.studio && (
+                            <Badge variant="outline" className="gap-1 text-[10px]">
+                              <MapPin className="h-2.5 w-2.5" />
+                              {rate.studio.name}
+                            </Badge>
+                          )}
                         </div>
                         {rate.type === "OCCUPANCY_TIER" && rate.occupancyTiers ? (
                           <div className="mt-1 space-y-0.5">
@@ -1235,6 +1279,7 @@ export default function CoachDetailPage() {
                   <AddPayRateForm
                     coachId={coach.id}
                     classTypes={classTypes ?? coach.typeBreakdown.map((t) => ({ id: t.id, name: t.name, color: t.color }))}
+                    studios={studios ?? []}
                     onDone={() => setShowAddRate(false)}
                   />
                 )}

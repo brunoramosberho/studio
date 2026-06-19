@@ -640,6 +640,8 @@ model CoachPayRate {
   currency        String           @default("MXN")
   classTypeId     String?
   classType       ClassType?       @relation(fields: [classTypeId], references: [id])
+  studioId        String?          // null = applies to any studio
+  studio          Studio?          @relation(fields: [studioId], references: [id])
   occupancyTiers  Json?
   bonusMultiplier Float            @default(1)
   bonusDays       Json?
@@ -654,6 +656,7 @@ model CoachPayRate {
   @@index([coachProfileId])
   @@index([tenantId])
   @@index([classTypeId])
+  @@index([studioId])
 }
 
 model ClassType {
@@ -1167,6 +1170,7 @@ model Studio {
   staffCommissionEarnings StaffCommissionEarning[]
 
   coachAvailabilityStudioPreferences CoachAvailabilityStudioPreference[]
+  coachPayRates                      CoachPayRate[]
 
   @@index([cityId])
   @@index([tenantId])

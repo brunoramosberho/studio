@@ -288,7 +288,7 @@ async function calculateEarnings(
       classTypeId: true,
       startsAt: true,
       tag: true,
-      room: { select: { maxCapacity: true } },
+      room: { select: { maxCapacity: true, studioId: true } },
       _count: {
         select: {
           bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
@@ -307,20 +307,53 @@ async function calculateEarnings(
     return (dayMatch || tagMatch) ? bm : 1;
   }
 
+  // A rate applies to a class when its scope (studio / class type) is null
+  // (any) or matches the class. Among the per-class rates of the SAME type,
+  // the most specific match wins for that class (studio+type > studio > type >
+  // all) — they don't stack. MONTHLY_FIXED is a flat base and always applies.
+  const rateMatchesClass = (
+    rate: (typeof payRates)[0],
+    cls: (typeof classes)[0],
+  ) => {
+    if (rate.studioId && rate.studioId !== cls.room.studioId) return false;
+    if (rate.classTypeId && rate.classTypeId !== cls.classTypeId) return false;
+    return true;
+  };
+  const specificity = (rate: (typeof payRates)[0]) =>
+    (rate.studioId ? 2 : 0) + (rate.classTypeId ? 1 : 0);
+
+  const PER_CLASS_TYPES = ["PER_CLASS", "PER_STUDENT", "OCCUPANCY_TIER"] as const;
+
+  // Assign each class to its winning rate, per per-class rate type.
+  const wonByRate = new Map<string, typeof classes>();
+  for (const cls of classes) {
+    for (const rtype of PER_CLASS_TYPES) {
+      let winner: (typeof payRates)[0] | null = null;
+      for (const rate of payRates) {
+        if (rate.type !== rtype || !rateMatchesClass(rate, cls)) continue;
+        if (!winner || specificity(rate) > specificity(winner)) winner = rate;
+      }
+      if (!winner) continue;
+      const list = wonByRate.get(winner.id);
+      if (list) list.push(cls);
+      else wonByRate.set(winner.id, [cls]);
+    }
+  }
+
   let total = 0;
   const breakdown: { type: string; label: string; amount: number }[] = [];
 
   for (const rate of payRates) {
-    const matchingClasses = rate.classTypeId
-      ? classes.filter((c) => c.classTypeId === rate.classTypeId)
-      : classes;
+    if (rate.type === "MONTHLY_FIXED") {
+      total += rate.amount;
+      breakdown.push({ type: "MONTHLY_FIXED", label: "Sueldo fijo mensual", amount: rate.amount });
+      continue;
+    }
+
+    const matchingClasses = wonByRate.get(rate.id) ?? [];
+    if (matchingClasses.length === 0) continue;
 
     switch (rate.type) {
-      case "MONTHLY_FIXED": {
-        total += rate.amount;
-        breakdown.push({ type: "MONTHLY_FIXED", label: "Sueldo fijo mensual", amount: rate.amount });
-        break;
-      }
       case "PER_CLASS": {
         let amt = 0;
         for (const cls of matchingClasses) {
