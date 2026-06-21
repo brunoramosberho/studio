@@ -203,10 +203,12 @@ export function ScheduleClient({
 
   const [notifyMeMap, setNotifyMeMap] = useState<Map<string, string>>(new Map());
 
+  // Always mirror server truth (incl. the empty case) so a class the member
+  // already joined renders as "Notified" on load/refresh. The previous
+  // `length > 0` guard left the map empty whenever the first result was empty,
+  // so the card kept offering "Notify me" and re-POSTing hit the 409 dedup.
   useEffect(() => {
-    if (notifyMeEntries.length > 0) {
-      setNotifyMeMap(new Map(notifyMeEntries.map((e) => [e.classId, e.id])));
-    }
+    setNotifyMeMap(new Map(notifyMeEntries.map((e) => [e.classId, e.id])));
   }, [notifyMeEntries]);
 
   const handleToggleNotifyMe = useCallback(async (classId: string) => {
@@ -231,6 +233,10 @@ export function ScheduleClient({
         if (res.ok) {
           const data = await res.json();
           setNotifyMeMap((prev) => new Map(prev).set(classId, data.id));
+        } else if (res.status === 409) {
+          // Already on the list server-side — keep it marked as joined
+          // (the stale id will reconcile on the refetch below).
+          setNotifyMeMap((prev) => new Map(prev).set(classId, "pending"));
         } else {
           setNotifyMeMap((prev) => { const next = new Map(prev); next.delete(classId); return next; });
         }
@@ -238,7 +244,9 @@ export function ScheduleClient({
         setNotifyMeMap((prev) => { const next = new Map(prev); next.delete(classId); return next; });
       }
     }
-  }, [notifyMeMap]);
+    // Reconcile optimistic state with server truth (real entry ids).
+    queryClient.invalidateQueries({ queryKey: ["notify-spot", "mine"] });
+  }, [notifyMeMap, queryClient]);
 
   const { data: allStudios = [], isLoading: loadingStudios } = useQuery<StudioItem[]>({
     queryKey: ["studios"],
