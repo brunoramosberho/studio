@@ -71,7 +71,7 @@
     "adminAccess": "Admin Access",
     "adminLoginSubheading": "Log in with your admin account",
     "welcomeTo": "Welcome to {studioName}",
-    "loginOrRegister": "Log in or create your account",
+    "loginOrRegister": "Book classes and track your progress",
     "continueWithGoogle": "Continue with Google",
     "continueWithEmail": "Continue with email",
     "createAccount": "Create account",
@@ -93,7 +93,7 @@
     "resendCode": "Resend code",
     "sessionStarted": "Session started!",
     "redirecting": "Redirecting...",
-    "termsNotice": "By continuing, you accept our {terms} and {privacy}.",
+    "termsNotice": "By continuing, you accept our <terms>Terms</terms> and <privacy>Privacy Policy</privacy>.",
     "termsOfService": "terms of service",
     "privacyPolicy": "privacy policy"
   },

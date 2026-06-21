@@ -618,13 +618,13 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
 
           {/* Terms (hidden on otp step) */}
           {step !== "otp" && (
-            <p className="mt-8 text-center text-[11px] leading-relaxed text-muted/60">
+            <p className="mt-8 text-center text-xs leading-relaxed text-muted">
               {t.rich("termsNotice", {
                 terms: (chunks) => (
-                  <a href="/terms" className="underline underline-offset-2 hover:text-muted">{chunks}</a>
+                  <a href="/terms" className="font-medium text-foreground underline underline-offset-2 transition-colors hover:text-accent">{chunks}</a>
                 ),
                 privacy: (chunks) => (
-                  <a href="/privacy" className="underline underline-offset-2 hover:text-muted">{chunks}</a>
+                  <a href="/privacy" className="font-medium text-foreground underline underline-offset-2 transition-colors hover:text-accent">{chunks}</a>
                 ),
               })}
             </p>
