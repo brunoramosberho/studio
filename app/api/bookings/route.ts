@@ -411,7 +411,7 @@ export async function POST(request: NextRequest) {
       });
 
       const classTypeId = classData.classTypeId;
-      const userPackage = findPackageForClass(userPackages, classTypeId, packageId);
+      const userPackage = findPackageForClass(userPackages, classTypeId, packageId, classData.startsAt);
 
       if (!userPackage) {
         return NextResponse.json(

@@ -998,6 +998,12 @@ model Package {
   maxBookingsPerDay             Int?
   maxConcurrentUpcomingBookings Int?
 
+  // Optional eligible-class date window: credits from this package can only be
+  // used to book classes whose start time falls within [from, until]. Null =
+  // no restriction. Used for promos like a free class valid only one weekend.
+  eligibleClassesFrom  DateTime?
+  eligibleClassesUntil DateTime?
+
   // When true, members holding this package (or subscription) also get access
   // to the studio's on-demand video catalogue without needing a separate
   // ON_DEMAND_SUBSCRIPTION. Used to bundle on-demand into existing unlimited
@@ -1060,6 +1066,10 @@ model UserPackage {
   creditsTotal    Int?
   creditsUsed     Int                      @default(0)
   expiresAt       DateTime
+  // Optional eligible-class date window stamped at purchase (e.g. from a promo
+  // code). Credits can only book classes whose start falls within [from,until].
+  eligibleClassesFrom  DateTime?
+  eligibleClassesUntil DateTime?
   stripePaymentId String?
   status          UserPackageStatus        @default(ACTIVE)
   revokedAt       DateTime?
@@ -2476,6 +2486,11 @@ model DiscountCode {
   validUntil     DateTime? // null = no expiry
   isActive       Boolean      @default(true)
   packageIds     String[]     @default([]) // empty = applies to all packages
+  // Optional eligible-class date window applied to the credit obtained with this
+  // code: the resulting UserPackage is stamped with [from,until] so it can only
+  // book classes in that range (e.g. a free class valid only one weekend).
+  eligibleClassesFrom  DateTime?
+  eligibleClassesUntil DateTime?
   stripeCouponId String? // Stripe coupon id for syncing
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

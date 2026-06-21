@@ -69,6 +69,8 @@ export async function POST(request: NextRequest) {
       const matchingPackage = findPackageForClass(
         userPackages,
         cls.classTypeId,
+        undefined,
+        cls.startsAt,
       );
 
       if (!matchingPackage) {

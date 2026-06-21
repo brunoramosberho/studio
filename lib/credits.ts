@@ -9,11 +9,15 @@ export interface UserPackageForBooking {
   creditsTotal: number | null;
   creditsUsed: number;
   expiresAt: Date;
+  eligibleClassesFrom: Date | null;
+  eligibleClassesUntil: Date | null;
   package: {
     classTypes: { id: string }[];
     creditAllocations: { classTypeId: string }[];
     maxBookingsPerDay: number | null;
     maxConcurrentUpcomingBookings: number | null;
+    eligibleClassesFrom: Date | null;
+    eligibleClassesUntil: Date | null;
   };
   creditUsages: {
     id: string;
@@ -55,7 +59,34 @@ function allocationHasCredits(pkg: UserPackageForBooking, classTypeId: string): 
   return usage.creditsUsed < usage.creditsTotal;
 }
 
-function packageCanBook(pkg: UserPackageForBooking, classTypeId: string): boolean {
+/**
+ * Whether a package may be used for a class on `classStartsAt`, honouring the
+ * package's optional eligible-class date window (e.g. a free-class promo that
+ * only works for a specific weekend). No window = usable for any date.
+ */
+export function classWithinPackageWindow(
+  pkg: UserPackageForBooking,
+  classStartsAt: Date,
+): boolean {
+  // Window stamped on the credit itself (e.g. from a promo-code redemption).
+  if (pkg.eligibleClassesFrom && classStartsAt < pkg.eligibleClassesFrom) return false;
+  if (pkg.eligibleClassesUntil && classStartsAt > pkg.eligibleClassesUntil) return false;
+  // Window on the package (a dedicated promo package).
+  const from = pkg.package.eligibleClassesFrom;
+  const until = pkg.package.eligibleClassesUntil;
+  if (from && classStartsAt < from) return false;
+  if (until && classStartsAt > until) return false;
+  return true;
+}
+
+function packageCanBook(
+  pkg: UserPackageForBooking,
+  classTypeId: string,
+  classStartsAt?: Date,
+): boolean {
+  if (classStartsAt && !classWithinPackageWindow(pkg, classStartsAt)) {
+    return false;
+  }
   if (isAllocationBased(pkg)) {
     return allocationHasCredits(pkg, classTypeId);
   }
@@ -65,21 +96,25 @@ function packageCanBook(pkg: UserPackageForBooking, classTypeId: string): boolea
 /**
  * Find the best UserPackage that can cover a booking for the given class type.
  * Prefers `preferredId` if it qualifies, otherwise picks the first valid one
- * (sorted by expiresAt asc — caller should pre-sort).
+ * (sorted by expiresAt asc — caller should pre-sort). When `classStartsAt` is
+ * passed, packages whose eligible-class window excludes that date are skipped.
  */
 export function findPackageForClass(
   userPackages: UserPackageForBooking[],
   classTypeId: string,
   preferredId?: string | null,
+  classStartsAt?: Date,
 ): UserPackageForBooking | null {
   if (preferredId) {
     const preferred = userPackages.find(
-      (p) => p.id === preferredId && packageCanBook(p, classTypeId),
+      (p) => p.id === preferredId && packageCanBook(p, classTypeId, classStartsAt),
     );
     if (preferred) return preferred;
   }
 
-  return userPackages.find((p) => packageCanBook(p, classTypeId)) ?? null;
+  return (
+    userPackages.find((p) => packageCanBook(p, classTypeId, classStartsAt)) ?? null
+  );
 }
 
 /**

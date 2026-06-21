@@ -224,6 +224,7 @@ export async function POST(
         userPackages,
         target.classTypeId,
         booking.packageUsed,
+        target.startsAt,
       );
       if (!pkg) {
         // Nothing covers the target type — undo the restore and bail out.

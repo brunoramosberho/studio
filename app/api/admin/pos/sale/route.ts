@@ -113,6 +113,7 @@ export async function POST(request: NextRequest) {
           userPackages,
           classData.classTypeId,
           selectedClass.packageId,
+          classData.startsAt,
         );
 
         if (userPackage) {
@@ -272,6 +273,8 @@ export async function POST(request: NextRequest) {
         const matchPkg = findPackageForClass(
           refreshedPackages,
           clsData.classTypeId,
+          undefined,
+          clsData.startsAt,
         );
 
         if (matchPkg) {

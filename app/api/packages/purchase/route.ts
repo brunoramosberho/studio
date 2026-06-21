@@ -18,6 +18,8 @@ async function validateAndApplyDiscount(
   discountAmount?: number;
   finalAmount?: number;
   stripeCouponId?: string | null;
+  eligibleClassesFrom?: Date | null;
+  eligibleClassesUntil?: Date | null;
 }> {
   const normalized = discountCode.trim().toUpperCase();
 
@@ -76,6 +78,8 @@ async function validateAndApplyDiscount(
     discountAmount,
     finalAmount,
     stripeCouponId: discount.stripeCouponId,
+    eligibleClassesFrom: discount.eligibleClassesFrom,
+    eligibleClassesUntil: discount.eligibleClassesUntil,
   };
 }
 
@@ -236,6 +240,8 @@ export async function POST(request: NextRequest) {
             creditsTotal: hasAllocations ? null : pkg.credits,
             creditsUsed: 0,
             expiresAt,
+            eligibleClassesFrom: discountResult?.eligibleClassesFrom ?? null,
+            eligibleClassesUntil: discountResult?.eligibleClassesUntil ?? null,
             stripePaymentId: "pending_stripe",
             status: "PENDING_PAYMENT",
             purchasedAt,
@@ -339,6 +345,8 @@ export async function POST(request: NextRequest) {
         creditsTotal: hasAllocations ? null : pkg.credits,
         creditsUsed: 0,
         expiresAt,
+        eligibleClassesFrom: discountResult?.eligibleClassesFrom ?? null,
+        eligibleClassesUntil: discountResult?.eligibleClassesUntil ?? null,
         stripePaymentId: effectivePrice === 0 ? `discount_free_${Date.now()}` : `sim_${Date.now()}`,
         purchasedAt,
       },
