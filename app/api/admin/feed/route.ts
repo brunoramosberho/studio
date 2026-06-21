@@ -6,7 +6,7 @@ import { sendPushToUser, type PushPayload } from "@/lib/push";
 
 export async function GET(request: NextRequest) {
   try {
-    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
+    const { tenant, session } = await requireRole("ADMIN", "FRONT_DESK");
     const { searchParams } = request.nextUrl;
     const cursor = searchParams.get("cursor");
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "30"), 50);
@@ -38,6 +38,11 @@ export async function GET(request: NextRequest) {
           },
         },
         _count: { select: { likes: true, comments: true } },
+        likes: {
+          where: { userId: session.user.id },
+          select: { id: true },
+          take: 1,
+        },
       },
     });
 
@@ -72,6 +77,7 @@ export async function GET(request: NextRequest) {
       })),
       likeCount: e._count.likes,
       commentCount: e._count.comments,
+      likedByMe: e.likes.length > 0,
     }));
 
     return NextResponse.json({ feed, nextCursor });

@@ -528,6 +528,7 @@ model User {
   feedEvents               FeedEvent[]              @relation("FeedEventAuthor")
   likes                    Like[]                   @relation("UserLikes")
   comments                 Comment[]                @relation("UserComments")
+  commentLikes             CommentLike[]            @relation("UserCommentLikes")
   photos                   Photo[]                  @relation("UserPhotos")
   memberAchievements       MemberAchievement[]      @relation("MemberAchievements")
   memberProgressRows       MemberProgress[]         @relation("MemberProgressUser")
@@ -1312,12 +1313,29 @@ model Comment {
   user        User      @relation("UserComments", fields: [userId], references: [id])
   feedEventId String
   feedEvent   FeedEvent @relation(fields: [feedEventId], references: [id], onDelete: Cascade)
-  parentId    String?
+  parentId    String? // null = root comment; set = reply (one level deep)
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[] @relation("CommentReplies")
+  asStudio    Boolean   @default(false) // admin commented on behalf of the studio
   body        String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  likes       CommentLike[]
 
   @@index([feedEventId])
+  @@index([parentId])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserCommentLikes", fields: [userId], references: [id])
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, commentId])
+  @@index([commentId])
 }
 
 model Photo {

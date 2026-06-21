@@ -44,6 +44,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { MEMBER_HOME_TABS } from "@/components/admin/section-tab-configs";
+import { LikeButton } from "@/components/feed/like-button";
+import { CommentsSheet } from "@/components/feed/comments-sheet";
 
 interface LinkedClassOption {
   id: string;
@@ -98,6 +100,7 @@ interface FeedItem {
   polls?: AdminPoll[];
   likeCount: number;
   commentCount: number;
+  likedByMe: boolean;
 }
 
 interface FeedPage {
@@ -1464,15 +1467,17 @@ export default function AdminFeedPage() {
                             )}
                           </div>
                         )}
-                        <div className="mt-2 flex items-center gap-4">
-                          <span className="flex items-center gap-1 text-xs text-muted">
-                            <Heart className="h-3.5 w-3.5" />
-                            {event.likeCount}
-                          </span>
-                          <span className="flex items-center gap-1 text-xs text-muted">
-                            <MessageCircle className="h-3.5 w-3.5" />
-                            {event.commentCount}
-                          </span>
+                        <div className="mt-2 flex items-center gap-3 text-muted">
+                          <LikeButton
+                            eventId={event.id}
+                            initialLiked={event.likedByMe}
+                            initialCount={event.likeCount}
+                          />
+                          <CommentsSheet
+                            eventId={event.id}
+                            commentCount={event.commentCount}
+                            asStudio
+                          />
                           {event.photos.length > 0 && (
                             <span className="flex items-center gap-1 text-xs text-muted">
                               <ImageIcon className="h-3.5 w-3.5" />
