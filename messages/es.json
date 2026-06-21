@@ -1978,7 +1978,7 @@
     "scanQR": "Escanear QR",
     "comingSoon": "proximamente",
     "roomMap": "Mapa de la sala",
-    "roomMapHint": "Pasa el cursor o toca un lugar para ver quién está ahí.",
+    "roomMapHint": "Toca un lugar para resaltarlo.",
     "spotOfMember": "{name} está en el lugar #{spot}",
     "moveBooking": "Mover de clase",
     "cancelBooking": "Cancelar reserva",
