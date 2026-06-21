@@ -15,6 +15,7 @@ import {
   Banknote,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { ShareScheduleCard } from "@/components/coach/share-schedule-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatTime } from "@/lib/utils";
@@ -152,6 +153,9 @@ export default function CoachDashboard() {
         </h1>
         <p className="mt-1 text-muted">{t("dayAtAGlance")}</p>
       </motion.div>
+
+      {/* Share schedule link */}
+      <ShareScheduleCard />
 
       {/* Quick stats */}
       <motion.div
