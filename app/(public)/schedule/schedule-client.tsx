@@ -380,16 +380,28 @@ export function ScheduleClient({
 
   // Deep link to a single instructor: /schedule?coach=<coachId | name>.
   // Applied once the coach list (derived from fetched classes) is available.
+  // The shareable link from the coach portal uses the (unique) CoachProfile id,
+  // so it's always unambiguous. A name param is best-effort: it matches the
+  // full name OR the first name (accent/case-insensitive), and is only applied
+  // when it resolves to exactly ONE coach — if several share that name the
+  // link is ambiguous, so we leave the schedule unfiltered rather than guess.
   const [coachApplied, setCoachApplied] = useState(false);
   useEffect(() => {
     if (coachApplied || coaches.length === 0) return;
     const param = searchParams.get("coach");
     if (param) {
-      const q = param.trim().toLowerCase();
-      const match = coaches.find(
-        (c) => c.id === param || c.name.toLowerCase() === q,
-      );
-      if (match) setFilterCoaches(new Set([match.id]));
+      const byId = coaches.find((c) => c.id === param);
+      if (byId) {
+        setFilterCoaches(new Set([byId.id]));
+      } else {
+        const norm = (s: string) =>
+          s.trim().toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+        const q = norm(param);
+        const matches = coaches.filter(
+          (c) => norm(c.name) === q || norm(c.name).split(" ")[0] === q,
+        );
+        if (matches.length === 1) setFilterCoaches(new Set([matches[0].id]));
+      }
     }
     setCoachApplied(true);
   }, [searchParams, coaches, coachApplied]);

@@ -52,40 +52,45 @@ export function ShareScheduleCard() {
       <Card className="border-coach/10 bg-coach/5">
         <CardContent className="p-4 sm:p-5">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-coach/10 p-2 text-coach">
+            <div className="shrink-0 rounded-xl bg-coach/10 p-2 text-coach">
               <Share2 className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">
                 {t("shareScheduleTitle")}
               </p>
-              <p className="mt-0.5 text-xs text-muted">
+              <p className="mt-0.5 text-xs leading-snug text-muted">
                 {t("shareScheduleDesc")}
               </p>
-              <div className="mt-3 flex items-center gap-2">
-                <code className="min-w-0 flex-1 truncate rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted">
-                  {url.replace(/^https?:\/\//, "")}
-                </code>
-                <button
-                  onClick={copy}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-coach px-3 py-2 text-xs font-semibold text-white transition hover:bg-coach/90"
-                >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
-                  {copied ? t("copied") : t("copyLink")}
-                </button>
-                <button
-                  onClick={share}
-                  className="inline-flex shrink-0 items-center justify-center rounded-lg border border-coach/30 p-2 text-coach transition hover:bg-coach/10"
-                  title={t("share")}
-                  aria-label={t("share")}
-                >
-                  <Share2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
+            </div>
+          </div>
+
+          {/* Link + actions: stacked on mobile, comfortable tap targets. */}
+          <div className="mt-3 space-y-2">
+            <code className="block w-full truncate rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-muted">
+              {url.replace(/^https?:\/\//, "")}
+            </code>
+            <div className="flex gap-2">
+              <button
+                onClick={copy}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-coach px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-coach/90"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                {copied ? t("copied") : t("copyLink")}
+              </button>
+              <button
+                onClick={share}
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-coach/30 px-4 py-2.5 text-sm font-semibold text-coach transition hover:bg-coach/10"
+                title={t("share")}
+                aria-label={t("share")}
+              >
+                <Share2 className="h-4 w-4" />
+                <span className="sm:hidden">{t("share")}</span>
+              </button>
             </div>
           </div>
         </CardContent>
