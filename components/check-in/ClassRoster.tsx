@@ -253,6 +253,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const hasRoomMap = !!roomLayout && roomLayout.spots?.length > 0;
   const [mapOpen, setMapOpen] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   // Cancel / move a member's booking from the check-in roster.
   const [cancelTarget, setCancelTarget] = useState<RosterMember | null>(null);
@@ -401,6 +402,26 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
     roster.find((m) => m.memberId === selectedMemberId) ?? null;
   const selectedSpot = selectedMember?.spotNumber ?? null;
 
+  // When a member is picked from the room map, bring their roster row into view.
+  // Scrolls only the list container (never the page) and is a no-op when the row
+  // is already visible — so selecting a row directly doesn't cause a jump.
+  useEffect(() => {
+    if (!selectedMemberId) return;
+    const container = listRef.current;
+    if (!container) return;
+    const row = container.querySelector<HTMLElement>(
+      `[data-member-id="${CSS.escape(selectedMemberId)}"]`,
+    );
+    if (!row) return;
+    const cRect = container.getBoundingClientRect();
+    const rRect = row.getBoundingClientRect();
+    if (rRect.top < cRect.top) {
+      container.scrollBy({ top: rRect.top - cRect.top - 8, behavior: "smooth" });
+    } else if (rRect.bottom > cRect.bottom) {
+      container.scrollBy({ top: rRect.bottom - cRect.bottom + 8, behavior: "smooth" });
+    }
+  }, [selectedMemberId]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -530,7 +551,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       )}
 
       {/* Roster list */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={listRef} className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="animate-spin text-stone-300 dark:text-muted" size={20} />
@@ -812,6 +833,7 @@ function RosterRow({
 
   return (
     <div
+      data-member-id={member.memberId}
       className={cn(
         "group flex items-start gap-3 px-3 sm:px-4 py-2.5 border-b border-stone-100 transition-colors dark:border-border/60",
         isCheckedIn ? "bg-emerald-50/70 dark:bg-emerald-500/10" : "hover:bg-stone-50 dark:hover:bg-surface/60",
