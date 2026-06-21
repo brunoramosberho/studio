@@ -3,14 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { X, Share, Plus, Download, Ellipsis, ChevronDown } from "lucide-react";
+import { X, ArrowRight } from "lucide-react";
 import { getMobileInstallPlatform, isStandalonePWA } from "@/lib/pwa-install";
+import { useBranding } from "@/components/branding-provider";
 import { cn } from "@/lib/utils";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
 
 const DISMISSED_KEY = "pwa-install-dismissed";
 const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -33,15 +29,11 @@ function markDismissed() {
   }
 }
 
-type Platform = "ios" | "android" | null;
-
 export function InstallPrompt() {
   const pathname = usePathname();
   const t = useTranslations("install");
+  const brand = useBranding();
   const [visible, setVisible] = useState(false);
-  const [platform, setPlatform] = useState<Platform>(null);
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
 
   const dismiss = useCallback(() => {
     setVisible(false);
@@ -49,54 +41,41 @@ export function InstallPrompt() {
   }, []);
 
   useEffect(() => {
-    if (isStandalonePWA() || wasDismissedRecently() || pathname === "/install" || pathname.startsWith("/embed")) return;
+    if (
+      isStandalonePWA() ||
+      wasDismissedRecently() ||
+      pathname === "/install" ||
+      pathname.startsWith("/embed")
+    )
+      return;
 
     const plat = getMobileInstallPlatform();
     if (!plat) return;
-    setPlatform(plat);
 
-    if (plat === "android") {
-      const handler = (e: Event) => {
-        e.preventDefault();
-        setDeferredPrompt(e as BeforeInstallPromptEvent);
-        setVisible(true);
-      };
-      window.addEventListener("beforeinstallprompt", handler);
-
-      const timer = setTimeout(() => {
-        setVisible(true);
-      }, 3000);
-
-      return () => {
-        window.removeEventListener("beforeinstallprompt", handler);
-        clearTimeout(timer);
-      };
-    }
-
+    // On iOS only Safari can add to the home screen; the /install page guides
+    // users on other browsers, but we don't nag them here.
     if (plat === "ios") {
       const isSafari =
         /Safari/i.test(navigator.userAgent) &&
         !/CriOS|FxiOS|OPiOS|EdgiOS/i.test(navigator.userAgent);
       if (!isSafari) return;
-
-      const timer = setTimeout(() => setVisible(true), 3000);
-      return () => clearTimeout(timer);
     }
-  }, []);
 
-  async function handleInstall() {
-    if (deferredPrompt) {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === "accepted") {
-        setVisible(false);
-      }
-      setDeferredPrompt(null);
-    }
-    dismiss();
-  }
+    const timer = setTimeout(() => setVisible(true), 3000);
+    return () => clearTimeout(timer);
+  }, [pathname]);
 
   if (!visible) return null;
+
+  // Absolute URL to the tenant's own install page so it works even when the
+  // schedule is embedded in an iframe (opens the real tenant page in a new tab,
+  // where the device-specific instructions live and the PWA scope is correct).
+  const installUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/install`
+      : "/install";
+
+  const initials = brand.studioName.slice(0, 2).toUpperCase();
 
   return (
     <div
@@ -105,91 +84,66 @@ export function InstallPrompt() {
         "animate-in slide-in-from-bottom-4 fade-in duration-500",
       )}
     >
-      <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-background shadow-xl shadow-foreground/5">
+      <div className="relative overflow-hidden rounded-3xl border border-border/50 bg-background shadow-xl shadow-foreground/10">
+        {/* Soft accent wash behind the icon */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-24"
+          style={{
+            background: `linear-gradient(180deg, ${brand.colorAccent}14, transparent)`,
+          }}
+        />
+
         <button
           onClick={dismiss}
-          className="absolute right-3 top-3 rounded-full p-1 text-muted transition-colors hover:bg-surface hover:text-foreground"
+          className="absolute right-3 top-3 z-10 rounded-full p-1.5 text-muted transition-colors hover:bg-surface hover:text-foreground"
           aria-label={t("close")}
         >
           <X className="h-4 w-4" />
         </button>
 
-        <div className="p-5">
-          <div className="mb-3 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10">
-              <Download className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                {t("installApp")}
+        <div className="relative p-5">
+          <div className="flex items-center gap-4">
+            {/* iOS-style app icon (squircle) */}
+            {brand.appIconUrl ? (
+              <img
+                src={brand.appIconUrl}
+                alt={brand.studioName}
+                className="h-16 w-16 shrink-0 rounded-[18px] object-cover ring-1 ring-black/5"
+                style={{ boxShadow: "0 6px 18px rgba(0,0,0,0.14)" }}
+              />
+            ) : (
+              <div
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[18px]"
+                style={{
+                  background: brand.colorAccent,
+                  boxShadow: `0 6px 18px ${brand.colorAccent}55`,
+                }}
+              >
+                <span className="text-2xl font-bold text-white">{initials}</span>
+              </div>
+            )}
+
+            <div className="min-w-0 flex-1 pr-6">
+              <p className="truncate font-display text-[16px] font-bold text-foreground">
+                {t("installTitle", { name: brand.studioName })}
               </p>
-              <p className="text-xs text-muted">
-                {t("quickAccess")}
+              <p className="mt-0.5 text-[13px] leading-snug text-muted">
+                {t("installSubtitle")}
               </p>
             </div>
           </div>
 
-          {platform === "ios" ? (
-            <div className="space-y-3">
-              <p className="text-[13px] leading-relaxed text-muted">
-                {t("iosSteps")}
-              </p>
-              <div className="space-y-0 rounded-xl bg-surface/80 p-3">
-                <div className="flex items-center gap-3 pb-2.5">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                    <Ellipsis className="h-4 w-4" />
-                  </div>
-                  <p className="text-[13px] text-foreground">
-                    {t.rich("tapMenu", {
-                      strong: (chunks) => <strong>{chunks}</strong>,
-                    })}{" "}
-                    <span className="text-muted">{t("bottomRight")}</span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 border-t border-border/40 py-2.5">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                    <Share className="h-3.5 w-3.5" />
-                  </div>
-                  <p className="text-[13px] text-foreground">
-                    {t.rich("tapShare", {
-                      strong: (chunks) => <strong>{chunks}</strong>,
-                    })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 border-t border-border/40 pt-2.5">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                    <Plus className="h-3.5 w-3.5" />
-                  </div>
-                  <p className="text-[13px] text-foreground">
-                    {t.rich("tapAddToHome", {
-                      strong: (chunks) => <strong>{chunks}</strong>,
-                    })}{" "}
-                    <span className="text-muted">
-                      <ChevronDown className="mb-0.5 inline h-3 w-3" /> {t("scrollDown")}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={dismiss}
-                className="w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90"
-              >
-                {t("gotIt")}
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-[13px] leading-relaxed text-muted">
-                {t("androidDesc")}
-              </p>
-              <button
-                onClick={handleInstall}
-                className="w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90"
-              >
-                {t("installAppButton")}
-              </button>
-            </div>
-          )}
+          <a
+            href={installUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={dismiss}
+            className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-2xl py-3 text-[15px] font-semibold text-white shadow-sm transition-transform active:scale-[0.98]"
+            style={{ background: brand.colorAccent }}
+          >
+            {t("installButton")}
+            <ArrowRight className="h-4 w-4" />
+          </a>
         </div>
       </div>
     </div>
