@@ -42,7 +42,7 @@ interface CoachMe {
 }
 
 function CoachLayoutInner({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   const { studioName } = useBranding();
@@ -50,52 +50,37 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
   const t = useTranslations("coach");
   const tc = useTranslations("common");
 
-  // Verify-before-redirect: when nested SessionProviders share next-auth's
-  // module-level singleton (the client portal in app/providers.tsx + this admin
-  // one), `useSession()` can transiently report `unauthenticated` after a
-  // portal switch even though the admin cookie is valid. That left the coach
-  // portal rendering with a default identity and no data until a manual back-
-  // and-forth. Confirm with a direct fetch before bouncing, and treat the
-  // unconfirmed state as loading so we never render with a stale identity.
-  useEffect(() => {
-    if (status !== "unauthenticated") return;
-    let cancelled = false;
-    const verify = async () => {
-      try {
-        const res = await fetch("/api/auth-admin/session", {
-          credentials: "include",
-          cache: "no-store",
-        });
-        if (cancelled) return;
-        const data = res.ok ? await res.json() : null;
-        if (data && (data as { user?: unknown }).user) return; // false alarm
-        router.replace(
-          `/login?portal=admin&callbackUrl=${encodeURIComponent(pathname || "/coach")}`,
-        );
-      } catch {
-        // Network blip — keep the user where they are
-      }
-    };
-    const timer = setTimeout(verify, 800);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [status, router, pathname]);
-
-  // Prefer the studio-curated CoachProfile (name + photoUrl) over the
-  // session's user.image so the header reflects the public coach identity.
-  const { data: meData } = useQuery<{ coach: CoachMe }>({
+  // Resolve the coach identity straight from the server (it reads the auth
+  // cookie), independent of useSession(). next-auth's shared module singleton
+  // can leave useSession() stuck on "loading"/"unauthenticated" for a long time
+  // after a client↔coach portal switch — gating the whole portal on it made it
+  // hang on "loading session". /api/coach/me is a plain authed fetch: fast and
+  // reliable, and confirms the user is a coach in one round-trip.
+  const { data: meData, isError, error: meError } = useQuery<{ coach: CoachMe }>({
     queryKey: ["coach-me"],
     queryFn: async () => {
       const res = await fetch("/api/coach/me");
-      if (!res.ok) throw new Error("Failed to load coach");
+      if (!res.ok) throw { status: res.status };
       return res.json();
     },
-    enabled: status === "authenticated" && !!session?.user?.id,
+    retry: 1,
     staleTime: 30 * 1000,
     refetchOnMount: true,
   });
+
+  // Only bounce on a genuine auth failure: 401 = no session → login; 403 =
+  // authenticated but not a coach → member portal. Other errors fall through.
+  const errStatus = (meError as { status?: number } | null)?.status;
+  useEffect(() => {
+    if (!isError) return;
+    if (errStatus === 403) {
+      router.replace("/my");
+    } else if (errStatus === 401) {
+      router.replace(
+        `/login?portal=admin&callbackUrl=${encodeURIComponent(pathname || "/coach")}`,
+      );
+    }
+  }, [isError, errStatus, router, pathname]);
 
   const userName =
     meData?.coach.name ?? session?.user?.name ?? "Coach";
@@ -107,10 +92,11 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
     .join("")
     .slice(0, 2);
 
-  // Treat the unconfirmed session as loading until the verify effect either
-  // confirms the user (status flips to "authenticated") or redirects them out —
-  // so the portal never flashes a default identity with missing coach data.
-  if (status === "loading" || status === "unauthenticated") {
+  // Brief loader while the coach identity resolves, or while we redirect out on
+  // an auth failure. On a non-auth error (e.g. 500) we fall through and render
+  // with the session fallback rather than hang.
+  const redirecting = isError && (errStatus === 401 || errStatus === 403);
+  if (!meData && (!isError || redirecting)) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
