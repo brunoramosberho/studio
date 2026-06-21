@@ -79,6 +79,18 @@ export function classWithinPackageWindow(
   return true;
 }
 
+/**
+ * Whether a package has credits and covers the class type, ignoring any
+ * eligible-class date window. Used to tell apart "no credits" from "credit
+ * exists but is date-restricted" for clearer booking errors.
+ */
+export function packageCoversClassType(
+  pkg: UserPackageForBooking,
+  classTypeId: string,
+): boolean {
+  return packageCanBook(pkg, classTypeId);
+}
+
 function packageCanBook(
   pkg: UserPackageForBooking,
   classTypeId: string,

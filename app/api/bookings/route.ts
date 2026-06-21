@@ -6,7 +6,7 @@ import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
 import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
-import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeForBooking } from "@/lib/credits";
+import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeForBooking, classWithinPackageWindow, packageCoversClassType } from "@/lib/credits";
 import { checkSubscriptionBookingLimits, type BookingLimitFailure } from "@/lib/booking/limits";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
@@ -414,6 +414,36 @@ export async function POST(request: NextRequest) {
       const userPackage = findPackageForClass(userPackages, classTypeId, packageId, classData.startsAt);
 
       if (!userPackage) {
+        // A credit may exist but be limited to a specific class-date window
+        // (e.g. a free-class promo). Surface that clearly instead of a generic
+        // "no credits" message.
+        const restricted = userPackages.find(
+          (p) =>
+            packageCoversClassType(p, classTypeId) &&
+            !classWithinPackageWindow(p, classData.startsAt),
+        );
+        if (restricted) {
+          const from = restricted.eligibleClassesFrom ?? restricted.package.eligibleClassesFrom;
+          const until = restricted.eligibleClassesUntil ?? restricted.package.eligibleClassesUntil;
+          const fmt = (d: Date) =>
+            new Intl.DateTimeFormat("es-ES", {
+              day: "numeric",
+              month: "long",
+              timeZone: studioTimezone,
+            }).format(d);
+          const range =
+            from && until
+              ? `del ${fmt(from)} al ${fmt(until)}`
+              : from
+                ? `a partir del ${fmt(from)}`
+                : `hasta el ${fmt(until!)}`;
+          return NextResponse.json(
+            {
+              error: `Este crédito solo se puede usar para clases ${range}.`,
+            },
+            { status: 402 },
+          );
+        }
         return NextResponse.json(
           { error: "No valid package with available credits" },
           { status: 402 },
