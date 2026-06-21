@@ -90,6 +90,17 @@ export default function FriendsPage() {
     } catch {}
   }, [shareUrl, brand.studioName]);
 
+  const handleBack = useCallback(() => {
+    // When the page is opened directly from a deep link (e.g. a friend-request
+    // push notification points here) there is no in-app history to return to,
+    // so fall back to the feed instead of leaving the user stranded.
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/my");
+    }
+  }, [router]);
+
   async function handleAccept(friendshipId: string) {
     const res = await fetch(`/api/friends/${friendshipId}`, {
       method: "PATCH",
@@ -158,7 +169,7 @@ export default function FriendsPage() {
         {/* Header */}
         <div className="mb-5 flex items-center gap-3">
           <button
-            onClick={() => router.back()}
+            onClick={handleBack}
             className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface"
           >
             <ChevronLeft className="h-5 w-5 text-foreground" />
