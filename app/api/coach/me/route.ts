@@ -13,6 +13,7 @@ export async function GET() {
       where: { userId: session.user.id, tenantId: tenant.id },
       select: {
         id: true,
+        userId: true,
         name: true,
         photoUrl: true,
         color: true,

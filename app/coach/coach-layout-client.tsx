@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCoachMe } from "@/hooks/useCoachMe";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -35,12 +35,6 @@ const navItems = [
   { href: "/coach/profile", labelKey: "myProfile" as const, icon: User },
 ];
 
-interface CoachMe {
-  id: string;
-  name: string;
-  photoUrl: string | null;
-}
-
 function CoachLayoutInner({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
@@ -56,17 +50,7 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
   // after a client↔coach portal switch — gating the whole portal on it made it
   // hang on "loading session". /api/coach/me is a plain authed fetch: fast and
   // reliable, and confirms the user is a coach in one round-trip.
-  const { data: meData, isError, error: meError } = useQuery<{ coach: CoachMe }>({
-    queryKey: ["coach-me"],
-    queryFn: async () => {
-      const res = await fetch("/api/coach/me");
-      if (!res.ok) throw { status: res.status };
-      return res.json();
-    },
-    retry: 1,
-    staleTime: 30 * 1000,
-    refetchOnMount: true,
-  });
+  const { data: meData, isError, error: meError } = useCoachMe();
 
   // Only bounce on a genuine auth failure: 401 = no session → login; 403 =
   // authenticated but not a coach → member portal. Other errors fall through.

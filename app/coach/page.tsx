@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
+import { useCoachMe } from "@/hooks/useCoachMe";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -58,7 +59,14 @@ function useCountdown(targetDate: Date | null) {
 export default function CoachDashboard() {
   const t = useTranslations("coach");
   const { data: session } = useSession();
-  const coachName = session?.user?.name?.split(" ")[0] ?? "Coach";
+  // Reliable coach identity (cookie-based) — useSession can be stale after a
+  // client↔coach portal switch, which would leave these queries disabled.
+  const { data: meData } = useCoachMe();
+  const coachUserId = meData?.coach?.userId ?? null;
+  const coachName =
+    meData?.coach?.name?.split(" ")[0] ??
+    session?.user?.name?.split(" ")[0] ??
+    "Coach";
 
   const now = new Date();
   // /api/classes expects `from`/`to` as YYYY-MM-DD wall-clock dates — passing a
@@ -76,27 +84,27 @@ export default function CoachDashboard() {
   );
 
   const { data: todayClasses, isLoading } = useQuery<ClassWithDetails[]>({
-    queryKey: ["coach-classes-today", todayStr],
+    queryKey: ["coach-classes-today", todayStr, coachUserId ?? "none"],
     queryFn: async () => {
       const res = await fetch(
-        `/api/classes?from=${todayStr}&to=${todayStr}&coachId=${session?.user?.id}`,
+        `/api/classes?from=${todayStr}&to=${todayStr}&coachId=${coachUserId}`,
       );
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    enabled: !!session?.user?.id,
+    enabled: !!coachUserId,
   });
 
   const { data: weekClasses } = useQuery<ClassWithDetails[]>({
-    queryKey: ["coach-classes-week", todayStr],
+    queryKey: ["coach-classes-week", todayStr, coachUserId ?? "none"],
     queryFn: async () => {
       const res = await fetch(
-        `/api/classes?from=${tomorrowStr}&to=${weekEndStr}&coachId=${session?.user?.id}`,
+        `/api/classes?from=${tomorrowStr}&to=${weekEndStr}&coachId=${coachUserId}`,
       );
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    enabled: !!session?.user?.id,
+    enabled: !!coachUserId,
   });
 
   const { data: statsData } = useQuery<{

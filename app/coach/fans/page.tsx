@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -42,8 +41,9 @@ const fadeUp = {
 
 export default function CoachFansPage() {
   const t = useTranslations("coach");
-  const { data: session } = useSession();
 
+  // /api/coach/top-clients resolves the coach from the auth cookie, so the
+  // query doesn't need useSession() (which can be stale after a portal switch).
   const { data: topClients, isLoading } = useQuery<TopClient[]>({
     queryKey: ["coach-top-clients"],
     queryFn: async () => {
@@ -51,7 +51,6 @@ export default function CoachFansPage() {
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    enabled: !!session?.user?.id,
   });
 
   return (

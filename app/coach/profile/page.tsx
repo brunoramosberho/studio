@@ -15,11 +15,15 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
 import { useTranslations } from "next-intl";
+import { useCoachMe } from "@/hooks/useCoachMe";
 import type { CoachProfileWithUser } from "@/types";
 
 export default function CoachProfilePage() {
   const t = useTranslations("coach");
   const { data: session } = useSession();
+  // Cookie-based coach identity — useSession can be stale after a portal switch.
+  const { data: meData } = useCoachMe();
+  const coachUserId = meData?.coach?.userId ?? null;
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [bio, setBio] = useState("");
@@ -30,13 +34,13 @@ export default function CoachProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const { data: profile, isLoading } = useQuery<CoachProfileWithUser>({
-    queryKey: ["coach-profile", session?.user?.id],
+    queryKey: ["coach-profile", coachUserId],
     queryFn: async () => {
-      const res = await fetch(`/api/coaches/${session?.user?.id}`);
+      const res = await fetch(`/api/coaches/${coachUserId}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    enabled: !!session?.user?.id,
+    enabled: !!coachUserId,
   });
 
   useEffect(() => {
@@ -49,7 +53,7 @@ export default function CoachProfilePage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/coaches/${session?.user?.id}`, {
+      const res = await fetch(`/api/coaches/${coachUserId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bio, specialties }),
@@ -58,7 +62,7 @@ export default function CoachProfilePage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coach-profile", session?.user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["coach-profile", coachUserId] });
       toast.success(t("profileSaved"));
     },
     onError: () => toast.error(t("profileSaveError")),
@@ -81,7 +85,7 @@ export default function CoachProfilePage() {
       const formData = new FormData();
       formData.append("file", new File([blob], "avatar.jpg", { type: "image/jpeg" }));
 
-      const res = await fetch(`/api/coaches/${session?.user?.id}/avatar`, {
+      const res = await fetch(`/api/coaches/${coachUserId}/avatar`, {
         method: "POST",
         body: formData,
       });
@@ -89,7 +93,7 @@ export default function CoachProfilePage() {
       if (res.ok) {
         const data = await res.json();
         setPhotoUrl(data.photoUrl);
-        queryClient.invalidateQueries({ queryKey: ["coach-profile", session?.user?.id] });
+        queryClient.invalidateQueries({ queryKey: ["coach-profile", coachUserId] });
         toast.success(t("photoUpdated"));
       } else {
         toast.error(t("photoUploadError"));
@@ -114,7 +118,7 @@ export default function CoachProfilePage() {
     setSpecialties(specialties.filter((sp) => sp !== s));
   };
 
-  const userName = session?.user?.name ?? "Coach";
+  const userName = meData?.coach?.name ?? session?.user?.name ?? "Coach";
   const initials = userName
     .split(" ")
     .map((n) => n[0])

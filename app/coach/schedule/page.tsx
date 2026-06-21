@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { useTranslations, useLocale } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
+import { useCoachMe } from "@/hooks/useCoachMe";
 import { motion } from "framer-motion";
 import { CalendarDays, Users, ChevronRight, MapPin, Dumbbell } from "lucide-react";
 import { format, isPast } from "date-fns";
@@ -32,8 +32,12 @@ export default function CoachSchedulePage() {
   const t = useTranslations("coach");
   const locale = useLocale();
   const dateFnsLocale = locale === "en" ? enUS : es;
-  const { data: session } = useSession();
-  const coachUserId = session?.user?.id;
+  // Resolve the coach identity from /api/coach/me (cookie-based, reliable)
+  // rather than useSession(), whose shared next-auth singleton can be stale
+  // after a client↔coach portal switch and would leave the classes query
+  // disabled — showing an empty schedule for a coach who has classes.
+  const { data: meData } = useCoachMe();
+  const coachUserId = meData?.coach?.userId ?? null;
   const [tab, setTab] = useState<Tab>("upcoming");
 
   const { data: classes = [], isLoading } = useQuery<ClassWithDetails[]>({
