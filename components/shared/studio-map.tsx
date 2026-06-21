@@ -38,14 +38,15 @@ interface StudioMapProps {
   /**
    * Reveal every occupant's name/avatar (not just friends/guests) and make
    * occupied spots hoverable + selectable. Used by the admin check-in map so
-   * staff can see who is where and highlight a member's spot.
+   * staff can see who is where and highlight a member's spot. In this mode the
+   * spots render larger and each occupant's first name is shown beneath their
+   * avatar (no hover/tap required).
    */
   revealOccupants?: boolean;
 }
 
 /* ─── Auto-fit container ─── */
 
-const CELL = 42;
 const GAP = 8;
 
 /**
@@ -132,6 +133,16 @@ export function StudioMap({
 
   const hasLayout = layout && layout.spots.length > 0;
 
+  // Admin check-in (revealOccupants) uses larger spots with the occupant's
+  // first name beneath each one. Booking surfaces keep the compact numbered
+  // layout. `cellW`/`cellH` size the grid tracks (cellH reserves room for the
+  // name label) so the auto-fit container measures the content correctly.
+  const reveal = !!revealOccupants;
+  const avatarSize = reveal ? 52 : 38;
+  const cellW = reveal ? 76 : 42;
+  const labelH = reveal ? 16 : 0;
+  const cellH = reveal ? avatarSize + 2 + labelH : 42;
+
   const { rows, cols, grid } = useMemo(() => {
     if (hasLayout) {
       return {
@@ -169,7 +180,9 @@ export function StudioMap({
     const revealOccupied =
       !!revealOccupants && isOccupied && !isBlocked && !isSelf && !isGuest && !isFriend;
     const showsIdentity = isFriend || isGuest || revealOccupied;
-    const showTooltip = tapped === num && showsIdentity && !!info?.userName;
+    // In reveal mode the name is always rendered as a label below the avatar,
+    // so the hover/tap tooltip is only needed for friend/guest booking spots.
+    const showTooltip = tapped === num && (isFriend || isGuest) && !!info?.userName;
 
     const initials = info?.userName
       ? info.userName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
@@ -194,8 +207,9 @@ export function StudioMap({
           onMouseEnter={() => showsIdentity && setTapped(num)}
           onMouseLeave={() => showsIdentity && setTapped(null)}
           disabled={!adminMode && !revealOccupied && ((!isFriend && !isGuest && (isOccupied || isBlocked)) || (disabled && isAvailable))}
+          style={{ height: avatarSize, width: avatarSize }}
           className={cn(
-            "relative flex h-[38px] w-[38px] items-center justify-center rounded-full transition-all overflow-hidden",
+            "relative flex items-center justify-center rounded-full transition-all overflow-hidden",
             isAvailable && !isSelected &&
               "border border-neutral-300 text-neutral-500 hover:border-neutral-400 active:scale-95 dark:border-border dark:text-muted dark:hover:border-muted/60",
             isAvailable && isSelected &&
@@ -229,7 +243,8 @@ export function StudioMap({
               {info?.userImage && <AvatarImage src={info.userImage} className="object-cover" />}
               <AvatarFallback
                 className={cn(
-                  "text-[11px] font-semibold",
+                  "font-semibold",
+                  reveal ? "text-[13px]" : "text-[11px]",
                   isFriend
                     ? "bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300"
                     : "bg-neutral-200 text-neutral-700 dark:bg-surface dark:text-foreground",
@@ -239,7 +254,7 @@ export function StudioMap({
               </AvatarFallback>
             </Avatar>
           ) : (
-            <span className="text-[13px] font-medium tabular-nums">{num}</span>
+            <span className={cn("font-medium tabular-nums", reveal ? "text-[15px]" : "text-[13px]")}>{num}</span>
           )}
         </button>
 
@@ -247,6 +262,13 @@ export function StudioMap({
           <div className="absolute -top-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-0.5 text-[10px] font-medium text-background shadow-lg">
             {info.userName.split(" ")[0]}
           </div>
+        )}
+
+        {/* Always-visible occupant name (admin check-in only) */}
+        {reveal && (
+          <span className="mt-0.5 block w-full truncate px-0.5 text-center text-[11px] leading-[16px] font-medium text-neutral-700 dark:text-foreground">
+            {info?.userName ? info.userName.split(" ")[0] : ""}
+          </span>
         )}
       </div>
     );
@@ -262,8 +284,8 @@ export function StudioMap({
           onClick={() => setCoachTapped((v) => !v)}
           onMouseEnter={() => setCoachTapped(true)}
           onMouseLeave={() => setCoachTapped(false)}
-          className="flex h-[38px] w-[38px] items-center justify-center rounded-full transition-transform active:scale-95"
-          style={{ backgroundColor: "var(--color-accent-soft)", color: "var(--color-accent)" }}
+          className="flex items-center justify-center rounded-full transition-transform active:scale-95"
+          style={{ height: avatarSize, width: avatarSize, backgroundColor: "var(--color-accent-soft)", color: "var(--color-accent)" }}
         >
           {coachIconSvg ? (
             <div
@@ -275,17 +297,24 @@ export function StudioMap({
           )}
         </button>
 
-        {coachTapped && firstName && (
+        {coachTapped && !reveal && firstName && (
           <div className="absolute -top-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-0.5 text-[10px] font-medium text-background shadow-lg">
             {firstName}
           </div>
+        )}
+
+        {/* Always-visible coach name (admin check-in only) */}
+        {reveal && (
+          <span className="mt-0.5 block w-full truncate px-0.5 text-center text-[11px] leading-[16px] font-semibold text-accent">
+            {firstName ?? ""}
+          </span>
         )}
       </div>
     );
   }
 
-  const gridW = cols * CELL + (cols - 1) * GAP;
-  const gridH = rows * CELL + (rows - 1) * GAP;
+  const gridW = cols * cellW + (cols - 1) * GAP;
+  const gridH = rows * cellH + (rows - 1) * GAP;
 
   if (hasLayout) {
     return (
@@ -293,7 +322,7 @@ export function StudioMap({
         <div
           className="grid"
           style={{
-            gridTemplateColumns: `repeat(${cols}, ${CELL}px)`,
+            gridTemplateColumns: `repeat(${cols}, ${cellW}px)`,
             gap: `${GAP}px`,
           }}
         >
@@ -311,7 +340,7 @@ export function StudioMap({
               return renderSpotButton(spotNum, key);
             }
 
-            return <div key={key} className="h-[38px] w-[38px]" />;
+            return <div key={key} style={{ height: avatarSize, width: avatarSize }} />;
           })}
         </div>
       </AutoFitContainer>
@@ -321,8 +350,8 @@ export function StudioMap({
   const spots = Array.from({ length: maxCapacity }, (_, i) => i + 1);
   const fallbackCols = maxCapacity <= 6 ? 3 : maxCapacity <= 9 ? 3 : 4;
   const fallbackRows = Math.ceil(maxCapacity / fallbackCols);
-  const fbW = fallbackCols * CELL + (fallbackCols - 1) * GAP;
-  const fbH = fallbackRows * CELL + (fallbackRows - 1) * GAP;
+  const fbW = fallbackCols * cellW + (fallbackCols - 1) * GAP;
+  const fbH = fallbackRows * cellH + (fallbackRows - 1) * GAP;
 
   if (maxCapacity > 12) {
     return (
@@ -330,7 +359,7 @@ export function StudioMap({
         <div
           className="grid"
           style={{
-            gridTemplateColumns: `repeat(${fallbackCols}, ${CELL}px)`,
+            gridTemplateColumns: `repeat(${fallbackCols}, ${cellW}px)`,
             gap: `${GAP}px`,
           }}
         >
@@ -344,7 +373,7 @@ export function StudioMap({
     <div
       className="mx-auto grid justify-center"
       style={{
-        gridTemplateColumns: `repeat(${fallbackCols}, ${CELL}px)`,
+        gridTemplateColumns: `repeat(${fallbackCols}, ${cellW}px)`,
         gap: `${GAP}px`,
       }}
     >
