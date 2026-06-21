@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useRef, useCallback, useEffect } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { useBranding } from "@/components/branding-provider";
@@ -53,9 +53,12 @@ function WaiverSignContent() {
   const studioName = tokenBranding?.studioName || brandingCtx.studioName;
   const logoUrl = tokenBranding?.logoUrl || brandingCtx.logoUrl;
 
-  // Read step
+  // Read step — gate the Continue button on reaching the end of the agreement.
+  // The page scrolls naturally now (an inner overflow container can collapse to
+  // zero height on iOS Safari, leaving the whole step blank), so we detect
+  // "read to the end" with a bottom sentinel + IntersectionObserver.
   const [hasScrolled, setHasScrolled] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomSentinelRef = useRef<HTMLDivElement>(null);
 
   // Sign step — at the waiver we always collect a complete profile.
   const initialName = splitName(session?.user?.name ?? null);
@@ -133,12 +136,19 @@ function WaiverSignContent() {
       .finally(() => setLoading(false));
   }, [tenantId, token]);
 
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
+  useEffect(() => {
+    if (step !== "read" || !waiver?.requireScrollRead) return;
+    const el = bottomSentinelRef.current;
     if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 20;
-    if (atBottom) setHasScrolled(true);
-  }, []);
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setHasScrolled(true);
+      },
+      { rootMargin: "0px 0px -8% 0px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [step, waiver?.requireScrollRead]);
 
   const handleSignatureAccept = (dataUrl: string) => {
     setSignatureDataUrl(dataUrl);
@@ -277,9 +287,9 @@ function WaiverSignContent() {
   if (step === "read") {
     const skipScroll = !waiver.requireScrollRead;
     return (
-      <div className="flex h-dvh flex-col overflow-hidden bg-stone-50">
-        {/* Fixed header */}
-        <div className="shrink-0 border-b border-border/60 bg-card/90 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
+      <div className="flex min-h-dvh flex-col bg-stone-50">
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 border-b border-border/60 bg-card/90 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-stone-800">
               {studioName}
@@ -288,12 +298,8 @@ function WaiverSignContent() {
           </div>
         </div>
 
-        {/* Scrollable content */}
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="min-h-0 flex-1 overflow-y-auto px-5 py-6"
-        >
+        {/* Content — scrolls with the page (no inner overflow box) */}
+        <div className="flex-1 px-5 py-6">
           <h2 className="mb-4 text-lg font-semibold text-stone-800">
             {waiver.title}
           </h2>
@@ -301,10 +307,11 @@ function WaiverSignContent() {
             className="prose prose-sm prose-stone max-w-none text-justify text-sm leading-relaxed text-stone-700"
             dangerouslySetInnerHTML={{ __html: waiverHtml }}
           />
+          <div ref={bottomSentinelRef} aria-hidden className="h-px w-full" />
         </div>
 
-        {/* Fixed footer */}
-        <div className="shrink-0 border-t border-border/60 bg-card px-5 py-4 safe-bottom">
+        {/* Sticky footer */}
+        <div className="sticky bottom-0 z-10 border-t border-border/60 bg-card px-5 py-4 safe-bottom">
           {!skipScroll && !hasScrolled && (
             <p className="mb-2 text-center text-xs text-muted/80">
               Desliza para leer todo el documento
@@ -326,9 +333,9 @@ function WaiverSignContent() {
   // ─── STEP: Sign ─────────────────────────────────────────
   if (step === "sign") {
     return (
-      <div className="flex h-dvh flex-col overflow-hidden bg-stone-50">
-        {/* Fixed header */}
-        <div className="shrink-0 border-b border-border/60 bg-card/90 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
+      <div className="flex min-h-dvh flex-col bg-stone-50">
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 border-b border-border/60 bg-card/90 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setStep("read")}
@@ -343,7 +350,7 @@ function WaiverSignContent() {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6">
+        <div className="flex-1 px-5 py-6">
           {/* Name */}
           <div className="mb-5 grid grid-cols-2 gap-3">
             <div>
@@ -456,8 +463,8 @@ function WaiverSignContent() {
           )}
         </div>
 
-        {/* Fixed footer */}
-        <div className="shrink-0 border-t border-border/60 bg-card px-5 py-4 safe-bottom">
+        {/* Sticky footer */}
+        <div className="sticky bottom-0 z-10 border-t border-border/60 bg-card px-5 py-4 safe-bottom">
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || submitting}
