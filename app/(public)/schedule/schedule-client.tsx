@@ -378,6 +378,22 @@ export function ScheduleClient({
     setDisciplineApplied(true);
   }, [searchParams, classTypes, disciplineApplied]);
 
+  // Deep link to a single instructor: /schedule?coach=<coachId | name>.
+  // Applied once the coach list (derived from fetched classes) is available.
+  const [coachApplied, setCoachApplied] = useState(false);
+  useEffect(() => {
+    if (coachApplied || coaches.length === 0) return;
+    const param = searchParams.get("coach");
+    if (param) {
+      const q = param.trim().toLowerCase();
+      const match = coaches.find(
+        (c) => c.id === param || c.name.toLowerCase() === q,
+      );
+      if (match) setFilterCoaches(new Set([match.id]));
+    }
+    setCoachApplied(true);
+  }, [searchParams, coaches, coachApplied]);
+
   const cityStudioIds = filterCity === "all" || allStudios.length === 0
     ? null
     : new Set(allStudios.filter((s) => s.cityId === filterCity).map((s) => s.id));
