@@ -352,24 +352,6 @@ export function ScheduleClient({
     [today, visibleDays],
   );
 
-  const autoAdvancedRef = useRef(false);
-  useEffect(() => {
-    if (autoAdvancedRef.current || loadingClasses || classes.length === 0) return;
-    autoAdvancedRef.current = true;
-
-    const todayClasses = classes.filter((c) => isSameDay(new Date(c.startsAt), today));
-    const hasUpcoming = todayClasses.some((c) => !isPast(new Date(c.startsAt)));
-    if (hasUpcoming) return;
-
-    for (let i = 1; i < visibleDays; i++) {
-      const next = addDays(today, i);
-      if (classes.some((c) => isSameDay(new Date(c.startsAt), next))) {
-        setSelectedDay(next);
-        break;
-      }
-    }
-  }, [loadingClasses, classes, today, visibleDays]);
-
   const classTypes = Array.from(
     new Map(classes.map((c) => [c.classType.id, c.classType])).values(),
   );
@@ -418,9 +400,21 @@ export function ScheduleClient({
   const mobileDays = useMemo(() => {
     const idx = days.findIndex((d) => isSameDay(d, selectedDay));
     const remaining = idx >= 0 ? days.slice(idx) : days;
-    return remaining
-      .map((day) => ({ day, classes: getClassesForDay(day) }))
-      .filter((d) => d.classes.length > 0);
+    const withClasses = remaining.map((day) => ({
+      day,
+      classes: getClassesForDay(day),
+    }));
+    // Keep leading/interior empty days (rendered as "rest day" dividers) but
+    // trim trailing empty days so the list ends on the last day with classes.
+    let lastWithClasses = -1;
+    for (let i = withClasses.length - 1; i >= 0; i--) {
+      if (withClasses[i].classes.length > 0) {
+        lastWithClasses = i;
+        break;
+      }
+    }
+    if (lastWithClasses === -1) return [];
+    return withClasses.slice(0, lastWithClasses + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDay, classes, filterTypes, filterCoaches, filterStudio, filterCity, days]);
 
@@ -660,31 +654,54 @@ export function ScheduleClient({
               {t("noClasses")}
             </p>
           ) : (
-            mobileDays.map(({ day, classes: dayClasses }, groupIdx) => (
-              <div key={day.toISOString()}>
-                {/* Day separator (skip for first group if it's the selected day) */}
-                {groupIdx > 0 && (
-                  <div className="flex items-center gap-3 pb-2 pt-4">
-                    <div className="h-px flex-1 bg-border/60" />
-                    <span className="text-[12px] font-medium text-muted">
-                      {isToday(day)
-                        ? t("today")
-                        : format(day, "EEEE d", { locale: dateFnsLocale })}
+            mobileDays.map(({ day, classes: dayClasses }, groupIdx) => {
+              const dayLabel = isToday(day)
+                ? t("today")
+                : format(day, "EEEE d", { locale: dateFnsLocale });
+
+              // Empty day → "rest day" divider so it's clear there are simply
+              // no classes that day (vs. the list being broken/incomplete).
+              if (dayClasses.length === 0) {
+                return (
+                  <div
+                    key={day.toISOString()}
+                    className="flex items-center gap-3 py-2.5"
+                  >
+                    <div className="h-px flex-1 bg-border/40" />
+                    <span className="text-[12px] font-medium text-muted/70">
+                      <span className="capitalize">{dayLabel}</span>
+                      {" · "}
+                      {t("noClassesDay")}
                     </span>
-                    <div className="h-px flex-1 bg-border/60" />
+                    <div className="h-px flex-1 bg-border/40" />
                   </div>
-                )}
-                <CollapsiblePastClasses
-                  classes={dayClasses}
-                  classLinkPrefix={classLinkPrefix}
-                  onCancel={handleCancelBooking}
-                  cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null}
-                  onTapDiscipline={openDiscipline}
-                  notifyMeSet={notifyMeMap}
-                  onToggleNotifyMe={session?.user ? handleToggleNotifyMe : undefined}
-                />
-              </div>
-            ))
+                );
+              }
+
+              return (
+                <div key={day.toISOString()}>
+                  {/* Day separator (skip for first group if it's the selected day) */}
+                  {groupIdx > 0 && (
+                    <div className="flex items-center gap-3 pb-2 pt-4">
+                      <div className="h-px flex-1 bg-border/60" />
+                      <span className="text-[12px] font-medium text-muted capitalize">
+                        {dayLabel}
+                      </span>
+                      <div className="h-px flex-1 bg-border/60" />
+                    </div>
+                  )}
+                  <CollapsiblePastClasses
+                    classes={dayClasses}
+                    classLinkPrefix={classLinkPrefix}
+                    onCancel={handleCancelBooking}
+                    cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null}
+                    onTapDiscipline={openDiscipline}
+                    notifyMeSet={notifyMeMap}
+                    onToggleNotifyMe={session?.user ? handleToggleNotifyMe : undefined}
+                  />
+                </div>
+              );
+            })
           )}
         </div>
       </div>
