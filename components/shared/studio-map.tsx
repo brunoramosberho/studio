@@ -53,15 +53,21 @@ const GAP = 8;
  * Scales the room layout down to fit the available width without any gesture
  * handling — no wheel zoom, no pan, no pinch. Trackpad scroll passes through
  * to the page. If the layout already fits, scale stays at 1 (we never zoom in).
+ *
+ * `minScale` (used by the named admin check-in map) keeps the content from
+ * shrinking past a legible size — below that floor the map keeps its size and
+ * scrolls horizontally instead, so occupant names stay readable on phones.
  */
 function AutoFitContainer({
   children,
   contentWidth,
   contentHeight,
+  minScale,
 }: {
   children: React.ReactNode;
   contentWidth: number;
   contentHeight: number;
+  minScale?: number;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -74,7 +80,8 @@ function AutoFitContainer({
       const pad = 16;
       const availW = el.clientWidth - pad * 2;
       if (availW <= 0) return;
-      const s = Math.min(availW / contentWidth, 1);
+      let s = Math.min(availW / contentWidth, 1);
+      if (minScale != null) s = Math.max(s, minScale);
       setScale(s);
     };
 
@@ -82,13 +89,20 @@ function AutoFitContainer({
     const ro = new ResizeObserver(recompute);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [contentWidth, contentHeight]);
+  }, [contentWidth, contentHeight, minScale]);
+
+  // When a minimum scale is enforced the content can be wider than the
+  // container; allow horizontal panning instead of clipping it.
+  const scrollX = minScale != null;
 
   return (
     <div
       ref={wrapRef}
-      className="relative w-full overflow-hidden rounded-xl bg-neutral-50/60 dark:bg-surface"
-      style={{ touchAction: "pan-y" }}
+      className={cn(
+        "relative w-full rounded-xl bg-neutral-50/60 dark:bg-surface",
+        scrollX ? "overflow-x-auto overflow-y-hidden" : "overflow-hidden",
+      )}
+      style={{ touchAction: scrollX ? "pan-x pan-y" : "pan-y" }}
     >
       <div
         className="mx-auto"
@@ -318,7 +332,7 @@ export function StudioMap({
 
   if (hasLayout) {
     return (
-      <AutoFitContainer contentWidth={gridW} contentHeight={gridH}>
+      <AutoFitContainer contentWidth={gridW} contentHeight={gridH} minScale={reveal ? 0.75 : undefined}>
         <div
           className="grid"
           style={{
@@ -355,7 +369,7 @@ export function StudioMap({
 
   if (maxCapacity > 12) {
     return (
-      <AutoFitContainer contentWidth={fbW} contentHeight={fbH}>
+      <AutoFitContainer contentWidth={fbW} contentHeight={fbH} minScale={reveal ? 0.75 : undefined}>
         <div
           className="grid"
           style={{
