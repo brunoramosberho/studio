@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { SessionProvider, useSession, signOut } from "next-auth/react";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   LogOut,
+  Loader2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -41,12 +42,46 @@ interface CoachMe {
 }
 
 function CoachLayoutInner({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const { studioName } = useBranding();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const t = useTranslations("coach");
   const tc = useTranslations("common");
+
+  // Verify-before-redirect: when nested SessionProviders share next-auth's
+  // module-level singleton (the client portal in app/providers.tsx + this admin
+  // one), `useSession()` can transiently report `unauthenticated` after a
+  // portal switch even though the admin cookie is valid. That left the coach
+  // portal rendering with a default identity and no data until a manual back-
+  // and-forth. Confirm with a direct fetch before bouncing, and treat the
+  // unconfirmed state as loading so we never render with a stale identity.
+  useEffect(() => {
+    if (status !== "unauthenticated") return;
+    let cancelled = false;
+    const verify = async () => {
+      try {
+        const res = await fetch("/api/auth-admin/session", {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (cancelled) return;
+        const data = res.ok ? await res.json() : null;
+        if (data && (data as { user?: unknown }).user) return; // false alarm
+        router.replace(
+          `/login?portal=admin&callbackUrl=${encodeURIComponent(pathname || "/coach")}`,
+        );
+      } catch {
+        // Network blip — keep the user where they are
+      }
+    };
+    const timer = setTimeout(verify, 800);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [status, router, pathname]);
 
   // Prefer the studio-curated CoachProfile (name + photoUrl) over the
   // session's user.image so the header reflects the public coach identity.
@@ -57,8 +92,9 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
       if (!res.ok) throw new Error("Failed to load coach");
       return res.json();
     },
-    enabled: !!session?.user?.id,
-    staleTime: 5 * 60 * 1000,
+    enabled: status === "authenticated" && !!session?.user?.id,
+    staleTime: 30 * 1000,
+    refetchOnMount: true,
   });
 
   const userName =
@@ -70,6 +106,20 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
     .map((n) => n[0])
     .join("")
     .slice(0, 2);
+
+  // Treat the unconfirmed session as loading until the verify effect either
+  // confirms the user (status flips to "authenticated") or redirects them out —
+  // so the portal never flashes a default identity with missing coach data.
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-coach" />
+          <p className="text-sm text-muted">{tc("loadingSession")}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh bg-background">
