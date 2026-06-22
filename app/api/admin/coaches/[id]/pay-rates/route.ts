@@ -42,7 +42,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { type, amount, currency, classTypeId, studioId, occupancyTiers, bonusMultiplier, bonusDays, bonusTags, effectiveFrom, effectiveTo, notes } = body;
+    const { type, amount, currency, classTypeId, studioId, occupancyTiers, tierBasis, bonusMultiplier, bonusDays, bonusTags, bonusOnHolidays, effectiveFrom, effectiveTo, notes } = body;
 
     if (!type || amount == null) {
       return NextResponse.json({ error: "Tipo y monto son requeridos" }, { status: 400 });
@@ -69,9 +69,11 @@ export async function POST(
         classTypeId: classTypeId || null,
         studioId: studioId || null,
         occupancyTiers: occupancyTiers || null,
+        tierBasis: tierBasis === "headcount" ? "headcount" : "occupancy",
         bonusMultiplier: parseFloat(bonusMultiplier) || 1,
         bonusDays: bonusDays || null,
         bonusTags: bonusTags || [],
+        bonusOnHolidays: bonusOnHolidays === true,
         effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
         effectiveTo: effectiveTo ? new Date(effectiveTo) : null,
         notes: notes || null,
@@ -118,9 +120,11 @@ export async function PUT(
     if (updates.classTypeId !== undefined) data.classTypeId = updates.classTypeId || null;
     if (updates.studioId !== undefined) data.studioId = updates.studioId || null;
     if (updates.occupancyTiers !== undefined) data.occupancyTiers = updates.occupancyTiers;
+    if (updates.tierBasis !== undefined) data.tierBasis = updates.tierBasis === "headcount" ? "headcount" : "occupancy";
     if (updates.bonusMultiplier != null) data.bonusMultiplier = parseFloat(updates.bonusMultiplier);
     if (updates.bonusDays !== undefined) data.bonusDays = updates.bonusDays;
     if (updates.bonusTags !== undefined) data.bonusTags = updates.bonusTags;
+    if (updates.bonusOnHolidays !== undefined) data.bonusOnHolidays = updates.bonusOnHolidays === true;
     if (updates.isActive !== undefined) data.isActive = updates.isActive;
     if (updates.effectiveFrom) data.effectiveFrom = new Date(updates.effectiveFrom);
     if (updates.effectiveTo !== undefined) data.effectiveTo = updates.effectiveTo ? new Date(updates.effectiveTo) : null;
