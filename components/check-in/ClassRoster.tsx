@@ -197,9 +197,25 @@ function AttendeeTags({ stats }: { stats: AttendeeStats }) {
   );
 }
 
+// Desktop = roomy map with occupant avatars + name labels. On phones that map
+// overflows (forced 0.75 min-scale → horizontal scroll), so we fall back to the
+// compact, auto-fitting booking-style map; the roster list below carries names.
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isDesktop;
+}
+
 // ── Main component ──
 
 export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
+  const isDesktop = useIsDesktop();
   const queryClient = useQueryClient();
   const t = useTranslations("checkin");
   const [searchQuery, setSearchQuery] = useState("");
@@ -535,7 +551,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                 }}
                 layout={roomLayout}
                 coachName={classInfo.coachName}
-                revealOccupants
+                revealOccupants={isDesktop}
               />
               <p className="mt-2 text-center text-[11px] text-stone-500 dark:text-muted">
                 {selectedMember
