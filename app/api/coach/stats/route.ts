@@ -164,7 +164,7 @@ async function calculateCoachEarnings(
 
   if (payRates.length === 0) {
     const tenantCurrency = await getTenantCurrency();
-    return { total: 0, breakdown: [], currency: tenantCurrency.code, hasRates: false };
+    return { total: 0, earnedSoFar: 0, projected: 0, breakdown: [], currency: tenantCurrency.code, hasRates: false };
   }
 
   const classes = await prisma.class.findMany({
@@ -201,8 +201,21 @@ async function calculateCoachEarnings(
     return (dayMatch || tagMatch || holidayMatch) ? bm : 1;
   }
 
+  const now = new Date();
   let total = 0;
+  // Earnings from classes already taught (startsAt < now) are locked; classes
+  // still to come are an estimate (their booking count — and thus the pay —
+  // can still change from cancellations/new bookings before the class runs).
+  let earnedSoFar = 0;
+  let projected = 0;
   const breakdown: { type: string; label: string; amount: number }[] = [];
+
+  // Bucket a per-class amount into earned (past) vs projected (future).
+  const addClass = (startsAt: Date, amt: number) => {
+    total += amt;
+    if (startsAt < now) earnedSoFar += amt;
+    else projected += amt;
+  };
 
   for (const rate of payRates) {
     const matchingClasses = rate.classTypeId
@@ -211,26 +224,31 @@ async function calculateCoachEarnings(
 
     switch (rate.type) {
       case "MONTHLY_FIXED": {
+        // Flat salary isn't per-class and isn't affected by cancellations →
+        // treat it as locked/earned.
         total += rate.amount;
+        earnedSoFar += rate.amount;
         breakdown.push({ type: "MONTHLY_FIXED", label: "Sueldo fijo", amount: rate.amount });
         break;
       }
       case "PER_CLASS": {
         let amt = 0;
         for (const cls of matchingClasses) {
-          amt += rate.amount * getMultiplier(rate, new Date(cls.startsAt), cls.tag);
+          const a = rate.amount * getMultiplier(rate, new Date(cls.startsAt), cls.tag);
+          amt += a;
+          addClass(new Date(cls.startsAt), a);
         }
-        total += amt;
         breakdown.push({ type: "PER_CLASS", label: `${matchingClasses.length} clases`, amount: Math.round(amt * 100) / 100 });
         break;
       }
       case "PER_STUDENT": {
         let amt = 0;
         for (const cls of matchingClasses) {
-          amt += cls._count.bookings * rate.amount * getMultiplier(rate, new Date(cls.startsAt), cls.tag);
+          const a = cls._count.bookings * rate.amount * getMultiplier(rate, new Date(cls.startsAt), cls.tag);
+          amt += a;
+          addClass(new Date(cls.startsAt), a);
         }
         const totalStudents = matchingClasses.reduce((s, c) => s + c._count.bookings, 0);
-        total += amt;
         breakdown.push({ type: "PER_STUDENT", label: `${totalStudents} alumnos`, amount: Math.round(amt * 100) / 100 });
         break;
       }
@@ -245,10 +263,11 @@ async function calculateCoachEarnings(
               : 0;
           const tier = tiers.find((t) => metric >= t.min && metric <= t.max);
           if (tier) {
-            tierTotal += tier.amount * getMultiplier(rate, new Date(cls.startsAt), cls.tag);
+            const a = tier.amount * getMultiplier(rate, new Date(cls.startsAt), cls.tag);
+            tierTotal += a;
+            addClass(new Date(cls.startsAt), a);
           }
         }
-        total += tierTotal;
         breakdown.push({ type: "OCCUPANCY_TIER", label: "Bono ocupación", amount: Math.round(tierTotal * 100) / 100 });
         break;
       }
@@ -256,7 +275,14 @@ async function calculateCoachEarnings(
   }
 
   const fallbackCurrency = payRates[0]?.currency ?? (await getTenantCurrency()).code;
-  return { total: Math.round(total * 100) / 100, breakdown, currency: fallbackCurrency, hasRates: true };
+  return {
+    total: Math.round(total * 100) / 100,
+    earnedSoFar: Math.round(earnedSoFar * 100) / 100,
+    projected: Math.round(projected * 100) / 100,
+    breakdown,
+    currency: fallbackCurrency,
+    hasRates: true,
+  };
 }
 
 async function calculatePerClassEarnings(

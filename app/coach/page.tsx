@@ -109,7 +109,7 @@ export default function CoachDashboard() {
   });
 
   const { data: statsData } = useQuery<{
-    earnings?: { total: number; currency: string; hasRates: boolean };
+    earnings?: { total: number; earnedSoFar: number; projected: number; currency: string; hasRates: boolean };
     weekEarnings?: { total: number; currency: string; hasRates: boolean };
   }>({
     queryKey: ["coach-stats"],
@@ -214,33 +214,41 @@ export default function CoachDashboard() {
         <motion.div variants={fadeUp} initial="hidden" animate="show">
           <Link href="/coach/stats">
             <Card className="border-green-100 bg-gradient-to-br from-green-50/30 to-transparent transition-shadow hover:shadow-warm-md">
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100/60">
-                  <Banknote className="h-5 w-5 text-green-700" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-green-600">{t("earningsThisMonth")}</p>
-                  <p className="font-display text-xl font-bold text-green-700">
-                    {new Intl.NumberFormat("es-MX", {
-                      style: "currency",
-                      currency: statsData.earnings.currency,
-                      minimumFractionDigits: 0,
-                    }).format(statsData.earnings.total)}
-                  </p>
-                </div>
-                {statsData.weekEarnings && statsData.weekEarnings.total > 0 && (
-                  <div className="shrink-0 rounded-lg bg-green-50 px-3 py-1.5 text-center">
-                    <p className="text-[10px] font-medium text-green-600">{t("week")}</p>
-                    <p className="font-mono text-sm font-bold text-green-700">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100/60">
+                    <Banknote className="h-5 w-5 text-green-700" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-green-600">{t("earnedThisMonth")}</p>
+                    <p className="font-display text-xl font-bold text-green-700">
                       {new Intl.NumberFormat("es-MX", {
                         style: "currency",
-                        currency: statsData.weekEarnings.currency,
+                        currency: statsData.earnings.currency,
                         minimumFractionDigits: 0,
-                      }).format(statsData.weekEarnings.total)}
+                      }).format(statsData.earnings.earnedSoFar)}
+                    </p>
+                    <p className="text-[11px] text-muted">{t("fromClassesTaught")}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-green-600/50" />
+                </div>
+                {statsData.earnings.projected > 0 && (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-green-50/70 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-medium text-green-700">
+                        {t("projectedRemaining")}
+                      </p>
+                      <p className="text-[10px] leading-snug text-muted">{t("projectedNote")}</p>
+                    </div>
+                    <p className="shrink-0 font-mono text-sm font-bold text-green-700">
+                      +{new Intl.NumberFormat("es-MX", {
+                        style: "currency",
+                        currency: statsData.earnings.currency,
+                        minimumFractionDigits: 0,
+                      }).format(statsData.earnings.projected)}
                     </p>
                   </div>
                 )}
-                <ChevronRight className="h-4 w-4 text-green-600/50" />
               </CardContent>
             </Card>
           </Link>

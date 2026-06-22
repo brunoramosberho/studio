@@ -41,6 +41,8 @@ interface HistoryEntry {
 
 interface EarningsData {
   total: number;
+  earnedSoFar: number;
+  projected: number;
   breakdown: { type: string; label: string; amount: number }[];
   currency: string;
   hasRates: boolean;
@@ -269,6 +271,16 @@ export default function CoachStatsPage() {
                 <p className="mt-0.5 text-xs text-green-600/70">
                   {earningsView === "week" ? t("thisWeek") : t("thisMonth")}
                 </p>
+                {earnings.projected > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px]">
+                    <span className="text-green-700">
+                      {t("earnedLabel")}: <strong>{fmt(earnings.earnedSoFar, earnings.currency)}</strong>
+                    </span>
+                    <span className="text-muted">
+                      {t("projectedLabel")}: {fmt(earnings.projected, earnings.currency)} · {t("estimateShort")}
+                    </span>
+                  </div>
+                )}
                 {earnings.breakdown.length > 0 && (
                   <div className="mt-4 space-y-2">
                     {earnings.breakdown.map((b, i) => (
