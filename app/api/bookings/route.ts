@@ -6,7 +6,7 @@ import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
 import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
-import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeForBooking, classWithinPackageWindow, packageCoversClassType } from "@/lib/credits";
+import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeForBooking, classWithinPackageWindow, packageCoversClassType, ensureSubscriptionUserPackages } from "@/lib/credits";
 import { checkSubscriptionBookingLimits, type BookingLimitFailure } from "@/lib/booking/limits";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
@@ -390,6 +390,10 @@ export async function POST(request: NextRequest) {
           { status: 403 },
         );
       }
+
+      // Heal subscription→UserPackage gaps so an active, paid membership is
+      // always bookable even if the invoice.paid webhook was delayed/dropped.
+      await ensureSubscriptionUserPackages(session.user.id, tenant.id);
 
       const userPackages = await prisma.userPackage.findMany({
         where: {

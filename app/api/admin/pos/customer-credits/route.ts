@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/tenant";
 import {
   findPackageForClass,
   userPackageIncludeForBooking,
+  ensureSubscriptionUserPackages,
 } from "@/lib/credits";
 
 export async function GET(request: NextRequest) {
@@ -20,6 +21,11 @@ export async function GET(request: NextRequest) {
         { status: 400 },
       );
     }
+
+    // An active membership only becomes bookable once its UserPackage exists
+    // (normally created by the invoice.paid webhook). Heal any gap so a paid
+    // subscriber isn't shown "no credits".
+    await ensureSubscriptionUserPackages(customerId, tenantId);
 
     const userPackages = await prisma.userPackage.findMany({
       where: {

@@ -196,6 +196,78 @@ export async function restoreCredit(
 }
 
 /**
+ * Heal subscription-backed booking access.
+ *
+ * An active membership (MemberSubscription) is only bookable once the
+ * `invoice.paid` Stripe webhook has materialised a UserPackage for the current
+ * period (see stripe-connect webhook). If that webhook is delayed, dropped, or
+ * the subscription was created out-of-band, the member's membership shows as
+ * "no credits" and booking is blocked even though they've paid.
+ *
+ * This ensures every ACTIVE/trialing MemberSubscription for (userId, tenantId)
+ * whose current period is still valid has a usable UserPackage, mirroring what
+ * the webhook would have created. Idempotent: it only creates a UserPackage
+ * when none currently covers the period, so it's safe to call on every
+ * credit-check path. On-demand subscriptions are skipped (they intentionally
+ * have no class-credit UserPackage).
+ */
+export async function ensureSubscriptionUserPackages(
+  userId: string,
+  tenantId: string,
+): Promise<void> {
+  const now = new Date();
+  const subs = await prisma.memberSubscription.findMany({
+    where: {
+      userId,
+      tenantId,
+      status: { in: ["active", "trialing"] },
+      currentPeriodEnd: { gt: now },
+    },
+    include: {
+      package: {
+        select: {
+          type: true,
+          credits: true,
+          creditAllocations: { select: { id: true } },
+        },
+      },
+    },
+  });
+
+  for (const sub of subs) {
+    if (sub.package.type === "ON_DEMAND_SUBSCRIPTION") continue;
+
+    const existing = await prisma.userPackage.findFirst({
+      where: {
+        userId,
+        tenantId,
+        packageId: sub.packageId,
+        status: "ACTIVE",
+        expiresAt: { gt: now },
+      },
+      select: { id: true },
+    });
+    if (existing) continue;
+
+    const hasAllocations = sub.package.creditAllocations.length > 0;
+    const created = await prisma.userPackage.create({
+      data: {
+        tenantId,
+        userId,
+        packageId: sub.packageId,
+        creditsTotal: hasAllocations ? null : sub.package.credits,
+        creditsUsed: 0,
+        expiresAt: sub.currentPeriodEnd,
+        status: "ACTIVE",
+      },
+    });
+    if (hasAllocations) {
+      await createCreditUsagesForPackage(created.id, sub.packageId);
+    }
+  }
+}
+
+/**
  * Create UserPackageCreditUsage rows when a package with allocations is purchased.
  * Called from purchase route and stripe webhook.
  */

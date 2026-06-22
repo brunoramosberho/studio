@@ -7,6 +7,7 @@ import {
   deductCredit,
   createCreditUsagesForPackage,
   userPackageIncludeForBooking,
+  ensureSubscriptionUserPackages,
 } from "@/lib/credits";
 import { sendPosReceiptEmail, getTenantBaseUrl } from "@/lib/email";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (classData) {
+        await ensureSubscriptionUserPackages(customerId, tenantId);
         const userPackages = await prisma.userPackage.findMany({
           where: {
             userId: customerId,

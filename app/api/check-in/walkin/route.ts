@@ -5,6 +5,7 @@ import {
   findPackageForClass,
   deductCredit,
   userPackageIncludeForBooking,
+  ensureSubscriptionUserPackages,
 } from "@/lib/credits";
 import { checkSubscriptionBookingLimits } from "@/lib/booking/limits";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
 
     // Check credits first so lack of credits opens POS (waiver shouldn't block a sale)
     if (!skipCreditCheck) {
+      await ensureSubscriptionUserPackages(memberId, ctx.tenant.id);
       const userPackages = await prisma.userPackage.findMany({
         where: {
           userId: memberId,

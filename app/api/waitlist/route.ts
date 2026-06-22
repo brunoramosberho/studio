@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
-import { findPackageForClass, deductCredit, userPackageIncludeForBooking } from "@/lib/credits";
+import { findPackageForClass, deductCredit, userPackageIncludeForBooking, ensureSubscriptionUserPackages } from "@/lib/credits";
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     }
+
+    await ensureSubscriptionUserPackages(session.user.id, tenant.id);
 
     const userPackages = await prisma.userPackage.findMany({
       where: {
