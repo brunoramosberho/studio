@@ -9,7 +9,12 @@ function startOf(date: Date, unit: "day" | "week" | "month"): Date {
   if (unit === "day") {
     d.setHours(0, 0, 0, 0);
   } else if (unit === "week") {
-    d.setDate(d.getDate() - d.getDay());
+    // Monday-first week (ES/EU convention) so the dashboard week card runs
+    // Mon→Sun and includes Sunday's classes — the heatmap is drawn Mon→Sun, and
+    // a Sunday-first range ended on Saturday, dropping the upcoming Sunday.
+    const dow = d.getDay(); // 0=Sun..6=Sat
+    const diff = dow === 0 ? 6 : dow - 1; // days since Monday
+    d.setDate(d.getDate() - diff);
     d.setHours(0, 0, 0, 0);
   } else {
     d.setDate(1);
