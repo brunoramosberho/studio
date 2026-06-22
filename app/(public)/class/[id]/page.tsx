@@ -609,14 +609,21 @@ export default function ClassDetailPage() {
         <div className="mb-6 flex items-center justify-between">
           <button
             onClick={() => {
-              // When opened from the embedded schedule the class page lives in a
-              // fresh tab with no history, so router.back() is a no-op. Fall back
-              // to the schedule in that case.
-              if (typeof window !== "undefined" && window.history.length > 1) {
+              if (typeof window === "undefined") return;
+              // Navigated here within the app/tab — normal back.
+              if (window.history.length > 1) {
                 router.back();
-              } else {
-                router.push("/schedule");
+                return;
               }
+              // Opened in a fresh tab from the embedded schedule: window.open
+              // keeps an opener, so closing this tab drops the visitor back on
+              // the host site (e.g. be-toro.com) right where they left off.
+              if (window.opener && !window.opener.closed) {
+                window.close();
+                return;
+              }
+              // Direct/shared link (no history, no opener) — go to the schedule.
+              router.push("/schedule");
             }}
             className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface"
           >

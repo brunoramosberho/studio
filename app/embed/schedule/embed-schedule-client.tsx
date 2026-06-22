@@ -229,7 +229,11 @@ export function EmbedScheduleClient({
     (path: string) => {
       if (typeof window === "undefined") return;
       const url = `${tenantOrigin}${path}`;
-      window.open(url, "_blank", "noopener,noreferrer");
+      // Keep the opener (don't pass noopener/noreferrer): the destination is our
+      // own tenant page, and the opener lets its back button close the tab to
+      // return the visitor to the host site (be-toro.com) instead of dumping
+      // them on /schedule. Reverse-tabnabbing isn't a concern for our own page.
+      window.open(url, "_blank");
     },
     [tenantOrigin],
   );
