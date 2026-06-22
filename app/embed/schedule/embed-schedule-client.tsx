@@ -229,11 +229,25 @@ export function EmbedScheduleClient({
     (path: string) => {
       if (typeof window === "undefined") return;
       const url = `${tenantOrigin}${path}`;
-      // Keep the opener (don't pass noopener/noreferrer): the destination is our
-      // own tenant page, and the opener lets its back button close the tab to
-      // return the visitor to the host site (be-toro.com) instead of dumping
-      // them on /schedule. Reverse-tabnabbing isn't a concern for our own page.
-      window.open(url, "_blank");
+
+      // Not embedded (viewing the embed page directly) — just navigate.
+      if (window.parent === window) {
+        window.location.href = url;
+        return;
+      }
+
+      // Embedded: ask the host loader to navigate its OWN (first-party) page to
+      // the class. One tab, booking works (first-party cookies), and the
+      // browser's native Back returns to the host on every platform — which the
+      // new-tab + window.close() trick can't do (iOS Safari blocks closing tabs).
+      window.parent.postMessage({ type: "magicstudio:embed:navigate", url }, "*");
+
+      // Hosts on a hand-rolled static iframe (no loader to act on that message)
+      // won't navigate, so if we're still alive a beat later, fall back to a new
+      // tab. On success the host unloads and clears this timer first.
+      window.setTimeout(() => {
+        window.open(url, "_blank");
+      }, 400);
     },
     [tenantOrigin],
   );

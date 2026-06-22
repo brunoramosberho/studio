@@ -120,6 +120,15 @@ function buildLoader(defaultOrigin: string): string {
       // the host page on its behalf.
       var dy = Number(data.deltaY);
       if (isFinite(dy)) window.scrollBy(0, dy);
+    } else if (data.type === 'magicstudio:embed:navigate') {
+      // The widget asks us to open a class on the host page itself, so it
+      // becomes first-party (booking works) and the browser's native Back
+      // returns here. Only ever navigate within the tenant origin we loaded
+      // the widget from — never an arbitrary URL.
+      var url = String(data.url || '');
+      if (url.indexOf(origin + '/') === 0) {
+        window.location.href = url;
+      }
     }
   }
   window.addEventListener('message', onMessage, false);
