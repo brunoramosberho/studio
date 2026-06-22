@@ -608,7 +608,16 @@ export default function ClassDetailPage() {
         {/* Back + credits + share */}
         <div className="mb-6 flex items-center justify-between">
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              // When opened from the embedded schedule the class page lives in a
+              // fresh tab with no history, so router.back() is a no-op. Fall back
+              // to the schedule in that case.
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push("/schedule");
+              }
+            }}
             className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-surface"
           >
             <ChevronLeft className="h-5 w-5 text-foreground" />
