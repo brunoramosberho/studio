@@ -218,9 +218,17 @@ async function calculateCoachEarnings(
   };
 
   for (const rate of payRates) {
-    const matchingClasses = rate.classTypeId
-      ? classes.filter((c) => c.classTypeId === rate.classTypeId)
-      : classes;
+    const matchingClasses = (
+      rate.classTypeId
+        ? classes.filter((c) => c.classTypeId === rate.classTypeId)
+        : classes
+    ).filter((c) => {
+      // Only apply a rate to classes within its validity window.
+      const s = new Date(c.startsAt);
+      if (s < new Date(rate.effectiveFrom)) return false;
+      if (rate.effectiveTo && s > new Date(rate.effectiveTo)) return false;
+      return true;
+    });
 
     switch (rate.type) {
       case "MONTHLY_FIXED": {
@@ -344,6 +352,9 @@ async function calculatePerClassEarnings(
 
     for (const rate of payRates) {
       if (rate.classTypeId && rate.classTypeId !== cls.classTypeId) continue;
+      // Only apply a rate to classes within its validity window.
+      if (d < new Date(rate.effectiveFrom)) continue;
+      if (rate.effectiveTo && d > new Date(rate.effectiveTo)) continue;
       const mult = getMultiplier(rate, d, cls.tag);
 
       switch (rate.type) {

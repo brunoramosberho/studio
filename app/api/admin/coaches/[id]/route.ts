@@ -321,6 +321,13 @@ async function calculateEarnings(
   ) => {
     if (rate.studioId && rate.studioId !== cls.room.studioId) return false;
     if (rate.classTypeId && rate.classTypeId !== cls.classTypeId) return false;
+    // A rate only applies to classes that fall within its validity window, so
+    // date-bounded rates (e.g. an opening-weekend flat rate) don't bleed into
+    // other days. effectiveFrom/effectiveTo previously only filtered the rate
+    // list for the period, not per class.
+    const start = new Date(cls.startsAt);
+    if (start < new Date(rate.effectiveFrom)) return false;
+    if (rate.effectiveTo && start > new Date(rate.effectiveTo)) return false;
     return true;
   };
   const specificity = (rate: (typeof payRates)[0]) =>
