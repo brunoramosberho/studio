@@ -51,7 +51,9 @@ interface DashboardData {
   revenueChart: { name: string; revenue: number }[];
   recentBookings: {
     id: string;
+    userId: string | null;
     userName: string;
+    userImage: string | null;
     className: string;
     createdAt: string;
   }[];
@@ -203,29 +205,43 @@ export function AdminDashboard() {
               {t("recentBookings")}
             </h2>
             <Link
-              href="/admin/clients"
+              href="/admin/bookings"
               className="text-xs font-medium text-muted hover:text-foreground"
             >
               {t("weeklyOutlook.viewAll")}
             </Link>
           </div>
-          <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-            {data.recentBookings.slice(0, 6).map((booking) => (
-              <div key={booking.id} className="flex items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-admin/10">
-                  <span className="text-xs font-semibold text-admin">
-                    {booking.userName?.[0] ?? "?"}
+          <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+            {data.recentBookings.slice(0, 6).map((booking) => {
+              const row = (
+                <div className="flex items-center gap-3 rounded-lg py-1.5 transition-colors hover:bg-surface/60">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-admin/10">
+                    {booking.userImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={booking.userImage} alt={booking.userName} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-semibold text-admin">
+                        {booking.userName?.[0] ?? "?"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{booking.userName}</p>
+                    <p className="truncate text-xs text-muted">{booking.className}</p>
+                  </div>
+                  <span className="shrink-0 text-xs text-muted">
+                    {timeAgo(booking.createdAt)}
                   </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{booking.userName}</p>
-                  <p className="truncate text-xs text-muted">{booking.className}</p>
-                </div>
-                <span className="shrink-0 text-xs text-muted">
-                  {timeAgo(booking.createdAt)}
-                </span>
-              </div>
-            ))}
+              );
+              return booking.userId ? (
+                <Link key={booking.id} href={`/admin/clients/${booking.userId}`} className="-mx-2 px-2">
+                  {row}
+                </Link>
+              ) : (
+                <div key={booking.id}>{row}</div>
+              );
+            })}
           </div>
         </motion.div>
       )}

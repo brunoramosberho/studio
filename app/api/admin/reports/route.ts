@@ -204,7 +204,7 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
         take: 8,
         include: {
-          user: { select: { name: true } },
+          user: { select: { id: true, name: true, image: true } },
           class: {
             include: { classType: { select: { name: true } } },
           },
@@ -451,7 +451,9 @@ export async function GET() {
     // Recent bookings
     const recentBookings = recentBookingsRaw.map((b) => ({
       id: b.id,
+      userId: b.user?.id ?? null,
       userName: b.user?.name ?? b.guestName ?? "Invitado",
+      userImage: b.user?.image ?? null,
       className: b.class.classType.name,
       createdAt: b.createdAt.toISOString(),
     }));
