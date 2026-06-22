@@ -22,7 +22,11 @@ export async function GET(request: NextRequest) {
     headers: {
       "Content-Type": "application/javascript; charset=utf-8",
       "Access-Control-Allow-Origin": "*",
-      "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+      // Keep this short: the loader carries the host-side embed behaviour
+      // (resize, wheel forwarding, class navigation), so a long cache makes
+      // changes take up to an hour to reach already-deployed host sites and
+      // leaves visitors on a mix of old/new behaviour during the changeover.
+      "Cache-Control": "public, max-age=60, stale-while-revalidate=120",
     },
   });
 }
