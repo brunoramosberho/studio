@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { constructPlatformStripeWebhookEvent } from "@/lib/stripe/webhook-verify";
+import { getInvoiceSubscriptionId } from "@/lib/stripe/invoice";
 
 export async function POST(request: NextRequest) {
   try {
@@ -96,10 +97,7 @@ export async function POST(request: NextRequest) {
 
       case "invoice.payment_succeeded": {
         const invoiceRaw = event.data.object as unknown as Record<string, unknown>;
-        const subId =
-          typeof invoiceRaw.subscription === "string"
-            ? invoiceRaw.subscription
-            : null;
+        const subId = getInvoiceSubscriptionId(invoiceRaw);
         if (subId) {
           await prisma.tenant.updateMany({
             where: { stripeSubscriptionId: subId },
@@ -111,10 +109,7 @@ export async function POST(request: NextRequest) {
 
       case "invoice.payment_failed": {
         const invoiceRaw = event.data.object as unknown as Record<string, unknown>;
-        const subId =
-          typeof invoiceRaw.subscription === "string"
-            ? invoiceRaw.subscription
-            : null;
+        const subId = getInvoiceSubscriptionId(invoiceRaw);
         if (subId) {
           await prisma.tenant.updateMany({
             where: { stripeSubscriptionId: subId },
@@ -129,10 +124,7 @@ export async function POST(request: NextRequest) {
         // payment_failed so the admin sees a "Resolve in billing" CTA; the
         // dedicated email/banner is a TODO when there's actual traffic.
         const invoiceRaw = event.data.object as unknown as Record<string, unknown>;
-        const subId =
-          typeof invoiceRaw.subscription === "string"
-            ? invoiceRaw.subscription
-            : null;
+        const subId = getInvoiceSubscriptionId(invoiceRaw);
         if (subId) {
           await prisma.tenant.updateMany({
             where: { stripeSubscriptionId: subId },
@@ -150,10 +142,7 @@ export async function POST(request: NextRequest) {
         // un correo de heads-up al admin del studio ("tu suscripción Magic
         // se renueva el X por Y €"). Solo log por ahora.
         const invoiceRaw = event.data.object as unknown as Record<string, unknown>;
-        const subId =
-          typeof invoiceRaw.subscription === "string"
-            ? invoiceRaw.subscription
-            : null;
+        const subId = getInvoiceSubscriptionId(invoiceRaw);
         const nextAttempt =
           typeof invoiceRaw.next_payment_attempt === "number"
             ? new Date(invoiceRaw.next_payment_attempt * 1000)

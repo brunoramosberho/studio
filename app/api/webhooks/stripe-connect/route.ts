@@ -6,6 +6,7 @@ import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { createCreditUsagesForPackage, restoreCredit } from "@/lib/credits";
 import { computeDebtAmount } from "@/lib/billing/debt";
 import { getSubscriptionPeriod } from "@/lib/stripe/helpers";
+import { getInvoiceSubscriptionId } from "@/lib/stripe/invoice";
 import { getStripe } from "@/lib/stripe/client";
 import { getStripeClientForTenantId } from "@/lib/stripe/tenant-stripe";
 import type Stripe from "stripe";
@@ -477,10 +478,7 @@ export async function POST(request: NextRequest) {
 
       case "invoice.paid": {
         const inv = event.data.object as unknown as Record<string, unknown>;
-        const subId =
-          typeof inv.subscription === "string"
-            ? inv.subscription
-            : (inv.subscription as Record<string, string> | null)?.id;
+        const subId = getInvoiceSubscriptionId(inv);
         if (!subId) break;
 
         const memberSub = await prisma.memberSubscription.findUnique({
@@ -591,10 +589,7 @@ export async function POST(request: NextRequest) {
         // Marcamos la suscripción como past_due para que la UI/cron pueda
         // alertar al cliente y mostrar el siguiente CTA.
         const inv = event.data.object as unknown as Record<string, unknown>;
-        const subId =
-          typeof inv.subscription === "string"
-            ? inv.subscription
-            : (inv.subscription as Record<string, string> | null)?.id;
+        const subId = getInvoiceSubscriptionId(inv);
         if (!subId) break;
         await prisma.memberSubscription.updateMany({
           where: { stripeSubscriptionId: subId },
@@ -614,10 +609,7 @@ export async function POST(request: NextRequest) {
         // queda registrado en logs; el email real lo armamos cuando empiece
         // a haber tráfico de renovaciones reales.
         const inv = event.data.object as unknown as Record<string, unknown>;
-        const subId =
-          typeof inv.subscription === "string"
-            ? inv.subscription
-            : (inv.subscription as Record<string, string> | null)?.id;
+        const subId = getInvoiceSubscriptionId(inv);
         const nextAttempt =
           typeof inv.next_payment_attempt === "number"
             ? new Date(inv.next_payment_attempt * 1000)
@@ -631,10 +623,7 @@ export async function POST(request: NextRequest) {
 
       case "invoice.payment_failed": {
         const inv = event.data.object as unknown as Record<string, unknown>;
-        const subId =
-          typeof inv.subscription === "string"
-            ? inv.subscription
-            : (inv.subscription as Record<string, string> | null)?.id;
+        const subId = getInvoiceSubscriptionId(inv);
         if (!subId) break;
 
         const failedSub = await prisma.memberSubscription.findUnique({
