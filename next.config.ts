@@ -4,6 +4,14 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  // Vercel Skew Protection (framework step): tag asset + RSC/Server-Action
+  // requests with the deployment id so a client that loaded an older deploy
+  // keeps talking to that same deploy (Vercel keeps it routable for the
+  // configured max-age). Without this, after a new deploy the client's RSC
+  // navigation requests hit the new server with the old router-state header →
+  // "The router state header was sent but could not be parsed" 500s → clicks
+  // silently stop navigating. Requires Skew Protection enabled in Vercel.
+  deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
   allowedDevOrigins: [
     "http://betoro.localhost:3000",
     "http://sandbox-revive.localhost:3000",
