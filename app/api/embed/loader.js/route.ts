@@ -109,10 +109,18 @@ function buildLoader(defaultOrigin: string): string {
   function onMessage(ev) {
     if (!ev || ev.origin !== origin) return;
     var data = ev.data;
-    if (!data || data.type !== 'magicstudio:embed:resize') return;
-    var h = Number(data.height);
-    if (!isFinite(h) || h <= 0) return;
-    iframe.style.height = Math.max(480, Math.ceil(h) + 16) + 'px';
+    if (!data) return;
+    if (data.type === 'magicstudio:embed:resize') {
+      var h = Number(data.height);
+      if (!isFinite(h) || h <= 0) return;
+      iframe.style.height = Math.max(480, Math.ceil(h) + 16) + 'px';
+    } else if (data.type === 'magicstudio:embed:wheel') {
+      // The auto-sized cross-origin iframe can't scroll itself and the browser
+      // won't chain its wheel events to us, so it forwards them here; scroll
+      // the host page on its behalf.
+      var dy = Number(data.deltaY);
+      if (isFinite(dy)) window.scrollBy(0, dy);
+    }
   }
   window.addEventListener('message', onMessage, false);
 })();

@@ -180,6 +180,27 @@ export function EmbedScheduleClient({
     };
   }, []);
 
+  // Desktop wheel fix: a cross-origin iframe that's been auto-resized to its
+  // content height (see the resize emitter below) has no scroll room of its
+  // own, and the browser won't chain wheel events from a cross-origin frame to
+  // the host page — so scrolling "sticks" whenever the cursor is over the
+  // widget. (Touch on mobile chains fine, which is why it only bites desktop.)
+  // Forward the wheel delta to the host loader, which scrolls the host page.
+  useEffect(() => {
+    if (typeof window === "undefined" || window.parent === window) return;
+    const onWheel = (e: WheelEvent) => {
+      let dy = e.deltaY;
+      if (e.deltaMode === 1) dy *= 16; // lines → px
+      else if (e.deltaMode === 2) dy *= window.innerHeight; // pages → px
+      window.parent.postMessage(
+        { type: "magicstudio:embed:wheel", deltaY: dy },
+        "*",
+      );
+    };
+    window.addEventListener("wheel", onWheel, { passive: true });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, []);
+
   // Emit height updates so the host page's loader can resize the iframe.
   useEffect(() => {
     if (typeof window === "undefined") return;
