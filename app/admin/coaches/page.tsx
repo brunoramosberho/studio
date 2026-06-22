@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserCog,
+  Wallet,
   CalendarDays,
   Plus,
   Mail,
@@ -190,7 +191,20 @@ export default function AdminCoachesPage() {
           <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("coaches")}</h1>
           <p className="mt-1 text-muted">{t("coachesSubtitle")}</p>
         </motion.div>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="flex items-center gap-2"
+        >
+          <Button
+            variant="outline"
+            onClick={() => router.push("/admin/coaches/payments")}
+            className="gap-2"
+          >
+            <Wallet className="h-4 w-4" />
+            Pagos
+          </Button>
           <Button
             onClick={() => setShowCreate(!showCreate)}
             className="gap-2 bg-admin text-white hover:bg-admin/90"
