@@ -28,6 +28,7 @@ interface Page {
 
 export default function AdminBookingsPage() {
   const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const locale = useLocale();
   const dfns = locale === "en" ? enUS : es;
 
@@ -133,7 +134,7 @@ export default function AdminBookingsPage() {
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2 text-sm font-medium text-foreground transition hover:bg-surface/60 disabled:opacity-50"
           >
             {isFetchingNextPage && <Loader2 className="h-4 w-4 animate-spin" />}
-            {t("loadMore")}
+            {tc("loadMore")}
           </button>
         </div>
       )}
