@@ -161,6 +161,25 @@ export function EmbedScheduleClient({
     return withClasses.slice(0, lastWithClasses + 1);
   }, [selectedDay, days, getClassesForDay]);
 
+  // The global app CSS sets `overscroll-behavior-y: none` on <html>/<body> to
+  // kill iOS rubber-band in the PWA. Inside the embed iframe that backfires:
+  // the host page auto-resizes the iframe to fit the content (see the resize
+  // emitter below), so the iframe has no scroll room of its own, and `none`
+  // then blocks the wheel from chaining to the host page — scrolling "sticks"
+  // whenever the cursor is over the widget. Restore default scroll chaining.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overscrollBehaviorY;
+    const prevBody = body.style.overscrollBehaviorY;
+    html.style.overscrollBehaviorY = "auto";
+    body.style.overscrollBehaviorY = "auto";
+    return () => {
+      html.style.overscrollBehaviorY = prevHtml;
+      body.style.overscrollBehaviorY = prevBody;
+    };
+  }, []);
+
   // Emit height updates so the host page's loader can resize the iframe.
   useEffect(() => {
     if (typeof window === "undefined") return;
