@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo, useCallback, type MouseEvent } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -1207,8 +1207,8 @@ function MobileClassCard({
   const coachHidden = !cls.coach.name;
 
   return (
-    <Link
-      href={past ? "#" : `${classLinkPrefix}/${cls.id}`}
+    <ClassLink
+      href={`${classLinkPrefix}/${cls.id}`}
       className={cn(past && "pointer-events-none")}
     >
       <div
@@ -1372,7 +1372,7 @@ function MobileClassCard({
           ) : null}
         </div>
       </div>
-    </Link>
+    </ClassLink>
   );
 }
 
@@ -1412,6 +1412,38 @@ function DesktopDayColumn({ classes, classLinkPrefix, onCancel, cancellingId, on
   );
 }
 
+// Signed-out public site only: Next's App Router client-side navigation into
+// /class silently aborts (the Link handler runs, the RSC nav request returns a
+// valid 200 flight, but the transition never commits — no URL change, no error
+// anywhere). The stuck transition then wedges every following <Link> click, so
+// the whole schedule feels dead. Full-page loads always work, so for signed-out
+// visitors we open the booking-critical class link with a plain <a> (a full
+// navigation). Signed-in users — where the soft nav works — keep the instant
+// client-side transition.
+function ClassLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const { data: session } = useSession();
+  if (!session?.user) {
+    return (
+      <a href={href} className={className}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellingId, onTapDiscipline, isNotifyMe, onToggleNotifyMe }: { cls: ClassWithDetails; classLinkPrefix?: string; onCancel: (id: string, cls?: ClassWithDetails) => void; cancellingId: string | null; onTapDiscipline: (cls: ClassWithDetails) => void; isNotifyMe?: boolean; onToggleNotifyMe?: (classId: string) => void }) {
   const t = useTranslations("schedule");
   const past = isPast(new Date(cls.startsAt));
@@ -1425,7 +1457,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
   const coachHidden = !cls.coach.name;
 
   return (
-    <Link href={`${classLinkPrefix}/${cls.id}`} className={cn(past && "pointer-events-none")}>
+    <ClassLink href={`${classLinkPrefix}/${cls.id}`} className={cn(past && "pointer-events-none")}>
       <div
         className={cn(
           "flex h-[155px] flex-col justify-between rounded-2xl border px-4 py-3.5 transition-shadow",
@@ -1546,7 +1578,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
           </span>
         ) : null}
       </div>
-    </Link>
+    </ClassLink>
   );
 }
 
