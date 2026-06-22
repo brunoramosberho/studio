@@ -154,7 +154,7 @@ export async function POST(req: Request) {
     const callClaude = async (retries = 3): Promise<Anthropic.Messages.Message> => {
       try {
         return await anthropic.messages.create({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 8192,
           messages: [{ role: "user", content }],
         });
@@ -192,7 +192,7 @@ export async function POST(req: Request) {
       // Retry once with stricter prompt
       try {
         const retryMessage = await anthropic.messages.create({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 8192,
           messages: [
             { role: "user", content },

@@ -46,7 +46,7 @@ export async function streamAssistantResponse(
     : prompt;
 
   const stream = getAnthropic().messages.stream({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 1024,
     system: systemContent,
     messages: messages.map((m) => ({
