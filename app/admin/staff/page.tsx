@@ -67,6 +67,12 @@ export default function StaffIndexPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href="/admin/staff/holidays"
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-accent"
+          >
+            Festivos
+          </Link>
+          <Link
             href="/admin/staff/timesheet"
             className="rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-accent"
           >

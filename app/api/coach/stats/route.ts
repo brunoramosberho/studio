@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, getTenantCurrency } from "@/lib/tenant";
+import { getTenantHolidaySet, holidayKey } from "@/lib/holidays/calendar";
 
 export async function GET() {
   try {
@@ -187,6 +188,8 @@ async function calculateCoachEarnings(
     },
   });
 
+  const holidaySet = await getTenantHolidaySet(tenantId, from, to);
+
   function getMultiplier(rate: typeof payRates[0], classStartsAt: Date, classTag?: string | null) {
     const bm = rate.bonusMultiplier ?? 1;
     if (bm <= 1) return 1;
@@ -194,7 +197,8 @@ async function calculateCoachEarnings(
     const tags = rate.bonusTags ?? [];
     const dayMatch = days.length > 0 && days.includes(classStartsAt.getDay());
     const tagMatch = tags.length > 0 && classTag && tags.includes(classTag);
-    return (dayMatch || tagMatch) ? bm : 1;
+    const holidayMatch = rate.bonusOnHolidays && holidaySet.has(holidayKey(classStartsAt));
+    return (dayMatch || tagMatch || holidayMatch) ? bm : 1;
   }
 
   let total = 0;
@@ -234,10 +238,12 @@ async function calculateCoachEarnings(
         const tiers = (rate.occupancyTiers as { min: number; max: number; amount: number }[]) ?? [];
         let tierTotal = 0;
         for (const cls of matchingClasses) {
-          const occ = cls.room.maxCapacity > 0
-            ? Math.round((cls._count.bookings / cls.room.maxCapacity) * 100)
-            : 0;
-          const tier = tiers.find((t) => occ >= t.min && occ <= t.max);
+          const metric = rate.tierBasis === "headcount"
+            ? cls._count.bookings
+            : cls.room.maxCapacity > 0
+              ? Math.round((cls._count.bookings / cls.room.maxCapacity) * 100)
+              : 0;
+          const tier = tiers.find((t) => metric >= t.min && metric <= t.max);
           if (tier) {
             tierTotal += tier.amount * getMultiplier(rate, new Date(cls.startsAt), cls.tag);
           }
@@ -294,12 +300,15 @@ async function calculatePerClassEarnings(
     orderBy: { startsAt: "desc" },
   });
 
+  const holidaySet = await getTenantHolidaySet(tenantId, from, to);
+
   function getMultiplier(rate: typeof payRates[0], d: Date, tag?: string | null) {
     const bm = rate.bonusMultiplier ?? 1;
     if (bm <= 1) return 1;
     const days = (rate.bonusDays as number[] | null) ?? [];
     const tags = rate.bonusTags ?? [];
-    return ((days.length > 0 && days.includes(d.getDay())) || (tags.length > 0 && tag && tags.includes(tag))) ? bm : 1;
+    const holidayMatch = rate.bonusOnHolidays && holidaySet.has(holidayKey(d));
+    return ((days.length > 0 && days.includes(d.getDay())) || (tags.length > 0 && tag && tags.includes(tag)) || holidayMatch) ? bm : 1;
   }
 
   return classes.map((cls) => {
@@ -320,10 +329,12 @@ async function calculatePerClassEarnings(
           break;
         case "OCCUPANCY_TIER": {
           const tiers = (rate.occupancyTiers as { min: number; max: number; amount: number }[]) ?? [];
-          const tier = tiers.find((t) => occ >= t.min && occ <= t.max);
+          const metric = rate.tierBasis === "headcount" ? cls._count.bookings : occ;
+          const tier = tiers.find((t) => metric >= t.min && metric <= t.max);
           if (tier) classTotal += tier.amount * mult;
           break;
         }
+
       }
     }
 

@@ -73,9 +73,11 @@ interface PayRate {
   studioId: string | null;
   studio: { id: string; name: string } | null;
   occupancyTiers: { min: number; max: number; amount: number }[] | null;
+  tierBasis: "occupancy" | "headcount";
   bonusMultiplier: number;
   bonusDays: number[] | null;
   bonusTags: string[];
+  bonusOnHolidays: boolean;
   isActive: boolean;
   effectiveFrom: string;
   effectiveTo: string | null;
@@ -217,6 +219,7 @@ function AddPayRateForm({
   const [amount, setAmount] = useState("");
   const [classTypeId, setClassTypeId] = useState<string>("all");
   const [studioId, setStudioId] = useState<string>("all");
+  const [tierBasis, setTierBasis] = useState<"occupancy" | "headcount">("occupancy");
   const [tiers, setTiers] = useState([
     { min: 0, max: 49, amount: 0 },
     { min: 50, max: 79, amount: 0 },
@@ -225,6 +228,7 @@ function AddPayRateForm({
   ]);
   const [currency, setCurrency] = useState(tenantCurrency.code);
   const [bonusMultiplier, setBonusMultiplier] = useState("1");
+  const [bonusOnHolidays, setBonusOnHolidays] = useState(false);
   const [bonusDays, setBonusDays] = useState<number[]>([]);
   const [bonusTag, setBonusTag] = useState("");
   const [bonusTags, setBonusTags] = useState<string[]>([]);
@@ -248,11 +252,32 @@ function AddPayRateForm({
     onError: () => toast.error("Error al agregar tarifa"),
   });
 
+  function changeTierBasis(basis: "occupancy" | "headcount") {
+    setTierBasis(basis);
+    setTiers(
+      basis === "headcount"
+        ? [
+            { min: 1, max: 5, amount: 0 },
+            { min: 6, max: 10, amount: 0 },
+            { min: 11, max: 11, amount: 0 },
+          ]
+        : [
+            { min: 0, max: 49, amount: 0 },
+            { min: 50, max: 79, amount: 0 },
+            { min: 80, max: 99, amount: 0 },
+            { min: 100, max: 100, amount: 0 },
+          ],
+    );
+  }
+
   function addTier() {
     const last = tiers[tiers.length - 1];
-    if (last && last.max < 100) {
-      setTiers([...tiers, { min: last.max + 1, max: 100, amount: 0 }]);
-    }
+    if (!last) return;
+    if (tierBasis === "occupancy" && last.max >= 100) return;
+    setTiers([
+      ...tiers,
+      { min: last.max + 1, max: tierBasis === "occupancy" ? 100 : last.max + 1, amount: 0 },
+    ]);
   }
 
   function removeTier(idx: number) {
@@ -290,10 +315,12 @@ function AddPayRateForm({
       bonusMultiplier: mult > 1 ? mult : 1,
       bonusDays: mult > 1 && bonusDays.length > 0 ? bonusDays : null,
       bonusTags: mult > 1 ? bonusTags : [],
+      bonusOnHolidays: mult > 1 && bonusOnHolidays,
       notes: notes || null,
     };
     if (type === "OCCUPANCY_TIER") {
       data.occupancyTiers = tiers.filter((t) => t.amount > 0);
+      data.tierBasis = tierBasis;
       data.amount = 0;
     }
     mutation.mutate(data);
@@ -408,13 +435,38 @@ function AddPayRateForm({
         </div>
       ) : (
         <div>
+          <div className="mb-2">
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Base del tramo
+            </label>
+            <div className="inline-flex items-center gap-0.5 rounded-lg bg-card p-0.5">
+              {[
+                { value: "headcount", label: "Nº de personas" },
+                { value: "occupancy", label: "% ocupación" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => changeTierBasis(opt.value as "occupancy" | "headcount")}
+                  className={cn(
+                    "rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                    tierBasis === opt.value
+                      ? "bg-admin/10 text-admin shadow-sm"
+                      : "text-muted hover:text-foreground",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="mb-2 flex items-center justify-between">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-              Tiers de ocupación
+              {tierBasis === "headcount" ? "Tramos por asistentes" : "Tramos de ocupación"}
             </label>
             <Button type="button" variant="ghost" size="sm" className="h-6 gap-1 text-[11px] text-admin" onClick={addTier}>
               <Plus className="h-3 w-3" />
-              Agregar tier
+              Agregar tramo
             </Button>
           </div>
           <div className="space-y-2">
@@ -424,7 +476,7 @@ function AddPayRateForm({
                   <Input
                     type="number"
                     min="0"
-                    max="100"
+                    max={tierBasis === "occupancy" ? "100" : undefined}
                     className="h-8 w-14 text-center text-xs"
                     value={tier.min}
                     onChange={(e) => updateTier(i, "min", parseInt(e.target.value) || 0)}
@@ -433,12 +485,12 @@ function AddPayRateForm({
                   <Input
                     type="number"
                     min="0"
-                    max="100"
+                    max={tierBasis === "occupancy" ? "100" : undefined}
                     className="h-8 w-14 text-center text-xs"
                     value={tier.max}
                     onChange={(e) => updateTier(i, "max", parseInt(e.target.value) || 0)}
                   />
-                  <span className="text-[11px] text-muted">%</span>
+                  <span className="text-[11px] text-muted">{tierBasis === "headcount" ? "pers." : "%"}</span>
                 </div>
                 <div className="relative flex-1">
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted">$</span>
@@ -462,7 +514,9 @@ function AddPayRateForm({
             ))}
           </div>
           <p className="mt-1.5 text-[11px] text-muted">
-            Define rangos personalizados. Usa 100–100% para un bono especial por clase llena.
+            {tierBasis === "headcount"
+              ? "Rangos por número de reservas/asistentes. Ej: 1–5 = 25 €, 6–10 = 27 €, 11–11 = 29 €."
+              : "Rangos por % de ocupación. Usa 100–100% para un bono especial por clase llena."}
           </p>
         </div>
       )}
@@ -474,12 +528,13 @@ function AddPayRateForm({
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted">
               Bono por día especial
             </label>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="inline-flex items-center gap-0.5 rounded-lg bg-card p-0.5">
                 {[
                   { value: "1", label: "Sin bono" },
                   { value: "1.25", label: "1.25x" },
                   { value: "1.5", label: "1.5x" },
+                  { value: "1.75", label: "1.75x" },
                   { value: "2", label: "2x" },
                 ].map((opt) => (
                   <button
@@ -497,14 +552,42 @@ function AddPayRateForm({
                   </button>
                 ))}
               </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-muted">o</span>
+                <Input
+                  type="number"
+                  step="0.05"
+                  min="1"
+                  className="h-8 w-16 text-center text-xs"
+                  value={bonusMultiplier}
+                  onChange={(e) => setBonusMultiplier(e.target.value)}
+                />
+                <span className="text-[11px] text-muted">x</span>
+              </div>
             </div>
           </div>
 
           {parseFloat(bonusMultiplier) > 1 && (
             <>
+              <label className="flex items-start gap-2 rounded-lg border border-border/50 bg-card p-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-[var(--admin)]"
+                  checked={bonusOnHolidays}
+                  onChange={(e) => setBonusOnHolidays(e.target.checked)}
+                />
+                <span className="text-xs">
+                  <span className="font-medium">Aplicar en festivos</span>
+                  <span className="block text-[11px] text-muted">
+                    Aplica el {bonusMultiplier}x automáticamente en festivos nacionales del país del estudio
+                    (más los festivos personalizados que agregues en Staff y nómina).
+                  </span>
+                </span>
+              </label>
+
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted">
-                  Aplica estos días
+                  O aplica estos días
                 </label>
                 <div className="flex gap-1">
                   {[
@@ -1226,7 +1309,10 @@ export default function CoachDetailPage() {
                           <div className="mt-1 space-y-0.5">
                             {(rate.occupancyTiers as { min: number; max: number; amount: number }[]).map((tier, i) => (
                               <p key={i} className="text-xs text-muted">
-                                {tier.min}%–{tier.max}%: <span className="font-semibold text-foreground">{formatCurrency(tier.amount, rate.currency)}</span>/clase
+                                {rate.tierBasis === "headcount"
+                                  ? `${tier.min}–${tier.max} pers.`
+                                  : `${tier.min}%–${tier.max}%`}
+                                : <span className="font-semibold text-foreground">{formatCurrency(tier.amount, rate.currency)}</span>/clase
                               </p>
                             ))}
                           </div>
@@ -1253,6 +1339,9 @@ export default function CoachDetailPage() {
                                 {rate.bonusDays && (rate.bonusDays as number[]).length > 0 ? " + " : ""}
                                 tags: {rate.bonusTags.join(", ")}
                               </span>
+                            )}
+                            {rate.bonusOnHolidays && (
+                              <span className="text-[11px] text-muted">festivos</span>
                             )}
                           </div>
                         )}

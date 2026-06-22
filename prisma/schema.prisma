@@ -163,6 +163,7 @@ model Tenant {
   bookingProductOrders               BookingProductOrder[]
   songRequests                       ClassSongRequest[]
   coachPayRates                      CoachPayRate[]
+  tenantHolidays                     TenantHoliday[]
   coachAvailabilityBlocks            CoachAvailabilityBlock[]
   coachAvailabilityStudioPreferences CoachAvailabilityStudioPreference[]
   substitutionRequests               SubstitutionRequest[]
@@ -644,9 +645,18 @@ model CoachPayRate {
   studioId        String?          // null = applies to any studio
   studio          Studio?          @relation(fields: [studioId], references: [id])
   occupancyTiers  Json?
+  // How OCCUPANCY_TIER tiers match a class: "occupancy" compares the room fill
+  // rate (booked / capacity, 0-100), "headcount" compares the absolute number
+  // of attendees. Headcount tiers a rate purely by how many people showed up,
+  // independent of room size.
+  tierBasis       String           @default("occupancy") // "occupancy" | "headcount"
   bonusMultiplier Float            @default(1)
   bonusDays       Json?
   bonusTags       String[]         @default([])
+  // When true, the bonus multiplier also applies to classes that fall on a
+  // public holiday (national festivos computed in lib/holidays + any custom
+  // TenantHoliday rows). Independent of bonusDays/bonusTags.
+  bonusOnHolidays Boolean          @default(false)
   isActive        Boolean          @default(true)
   effectiveFrom   DateTime         @default(now())
   effectiveTo     DateTime?
@@ -658,6 +668,22 @@ model CoachPayRate {
   @@index([tenantId])
   @@index([classTypeId])
   @@index([studioId])
+}
+
+// Custom / regional public holidays (festivos) for a tenant. National holidays
+// are computed in code (lib/holidays/calendar.ts) from the tenant's country, so
+// this table only stores the extra local festivos an admin adds by hand. Both
+// sets drive the CoachPayRate.bonusOnHolidays surcharge.
+model TenantHoliday {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  name      String
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
 }
 
 model ClassType {
