@@ -626,15 +626,21 @@ export default function AdminWaiverPage() {
               checked={true}
               disabled
             />
+            {/* The waiver-signing flow always captures a complete profile
+                (name + phone + birth date) and writes it to the member, so
+                these are shown as always-required rather than optional toggles
+                that wouldn't actually be honored at sign time. */}
             <SettingsToggle
               label="Teléfono"
-              checked={waiver.requirePhone}
-              onChange={(v) => handleSaveSettings({ requirePhone: v })}
+              description="Siempre requerido"
+              checked={true}
+              disabled
             />
             <SettingsToggle
               label="Fecha de nacimiento"
-              checked={waiver.requireBirthDate}
-              onChange={(v) => handleSaveSettings({ requireBirthDate: v })}
+              description="Siempre requerido"
+              checked={true}
+              disabled
             />
           </SettingsSection>
 
