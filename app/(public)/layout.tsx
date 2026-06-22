@@ -7,6 +7,7 @@ import { Navbar } from "@/components/shared/navbar";
 import { Footer } from "@/components/shared/footer";
 import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
 import { UtmTracker } from "@/components/shared/utm-tracker";
+import { FullNavFallback } from "@/components/shared/full-nav-fallback";
 
 const sidebarPaths = [
   "/schedule",
@@ -26,9 +27,14 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     !!session?.user && sidebarPaths.some((p) => pathname.startsWith(p));
 
   const tracker = (
-    <Suspense>
-      <UtmTracker />
-    </Suspense>
+    <>
+      <Suspense>
+        <UtmTracker />
+      </Suspense>
+      {/* Signed-out only: Next's client-side nav silently aborts on the public
+          site, so fall back to full-page navigation (see FullNavFallback). */}
+      {!session?.user && <FullNavFallback />}
+    </>
   );
 
   if (showSidebar) {
