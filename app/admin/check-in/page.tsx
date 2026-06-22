@@ -150,7 +150,7 @@ export default function CheckInPage() {
   };
 
   return (
-    <div className="space-y-3 md:space-y-4">
+    <div className="space-y-3 md:space-y-4 overflow-x-hidden">
       <SectionTabs tabs={CHECK_IN_TABS} ariaLabel="Check-in sections" />
       {/* Page header — hidden on mobile when viewing roster */}
       <div className={cn(showMobileRoster && "hidden md:block")}>
@@ -287,7 +287,7 @@ export default function CheckInPage() {
 
         {/* Right: roster — hidden on mobile when viewing class list */}
         <div className={cn(
-          "bg-card border border-stone-200 dark:border-border rounded-2xl overflow-hidden relative flex-col h-full",
+          "bg-card border border-stone-200 dark:border-border rounded-2xl overflow-hidden relative flex-col h-full min-w-0",
           showMobileRoster ? "flex" : "hidden md:flex",
         )}>
           {/* Mobile back button */}

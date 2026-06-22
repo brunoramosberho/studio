@@ -49,6 +49,21 @@ interface StudioMapProps {
 
 const GAP = 8;
 
+/** Tracks whether the viewport is desktop (>=768px). The reveal/occupant map
+ *  renders roomy with name labels on desktop, but on phones it shrinks to a
+ *  compact booking-style size so it fits without horizontal scroll. */
+function useIsDesktopViewport() {
+  const [isDesktop, setIsDesktop] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isDesktop;
+}
+
 /**
  * Scales the room layout down to fit the available width without any gesture
  * handling — no wheel zoom, no pan, no pinch. Trackpad scroll passes through
@@ -151,11 +166,19 @@ export function StudioMap({
   // first name beneath each one. Booking surfaces keep the compact numbered
   // layout. `cellW`/`cellH` size the grid tracks (cellH reserves room for the
   // name label) so the auto-fit container measures the content correctly.
+  const isDesktop = useIsDesktopViewport();
   const reveal = !!revealOccupants;
-  const avatarSize = reveal ? 52 : 38;
-  const cellW = reveal ? 76 : 42;
-  const labelH = reveal ? 16 : 0;
+  // On phones the reveal map shrinks to a compact, name-less size that auto-fits
+  // the width (no min-scale floor → no horizontal scroll). Occupant avatars
+  // still show, and tapping a spot highlights it + names it below the map.
+  const showLabels = reveal && isDesktop;
+  const avatarSize = reveal ? (isDesktop ? 52 : 40) : 38;
+  const cellW = reveal ? (isDesktop ? 76 : 44) : 42;
+  const labelH = showLabels ? 16 : 0;
   const cellH = reveal ? avatarSize + 2 + labelH : 42;
+  // Only the desktop reveal map keeps the legibility floor (it scrolls instead
+  // of shrinking below it). Everywhere else free-shrink to fit the container.
+  const mapMinScale = reveal && isDesktop ? 0.75 : undefined;
 
   const { rows, cols, grid } = useMemo(() => {
     if (hasLayout) {
@@ -279,7 +302,7 @@ export function StudioMap({
         )}
 
         {/* Always-visible occupant name (admin check-in only) */}
-        {reveal && (
+        {showLabels && (
           <span className="mt-0.5 block w-full truncate px-0.5 text-center text-[11px] leading-[16px] font-medium text-neutral-700 dark:text-foreground">
             {info?.userName ? info.userName.split(" ")[0] : ""}
           </span>
@@ -318,7 +341,7 @@ export function StudioMap({
         )}
 
         {/* Always-visible coach name (admin check-in only) */}
-        {reveal && (
+        {showLabels && (
           <span className="mt-0.5 block w-full truncate px-0.5 text-center text-[11px] leading-[16px] font-semibold text-accent">
             {firstName ?? ""}
           </span>
@@ -332,7 +355,7 @@ export function StudioMap({
 
   if (hasLayout) {
     return (
-      <AutoFitContainer contentWidth={gridW} contentHeight={gridH} minScale={reveal ? 0.75 : undefined}>
+      <AutoFitContainer contentWidth={gridW} contentHeight={gridH} minScale={mapMinScale}>
         <div
           className="grid"
           style={{
@@ -369,7 +392,7 @@ export function StudioMap({
 
   if (maxCapacity > 12) {
     return (
-      <AutoFitContainer contentWidth={fbW} contentHeight={fbH} minScale={reveal ? 0.75 : undefined}>
+      <AutoFitContainer contentWidth={fbW} contentHeight={fbH} minScale={mapMinScale}>
         <div
           className="grid"
           style={{
