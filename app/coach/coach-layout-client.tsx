@@ -220,8 +220,10 @@ function CoachLayoutInner({ children }: { children: React.ReactNode }) {
           )}
         </AnimatePresence>
 
-        {/* Main content */}
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        {/* Main content. min-w-0 lets this flex column shrink below its
+            content's intrinsic width (e.g. a long, non-wrapping share URL),
+            so nothing forces a horizontal scroll on mobile. */}
+        <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
