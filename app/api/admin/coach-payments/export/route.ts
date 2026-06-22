@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import ExcelJS from "exceljs";
 import { prisma } from "@/lib/db";
 import { requirePermission, getTenantCurrency } from "@/lib/tenant";
 import { computeCoachPay, type CoachPayClassLine } from "@/lib/coach/pay";
@@ -115,6 +114,9 @@ export async function GET(request: NextRequest) {
       rows.push({ coach: coach.name, lines, monthlyFixed: includeFixed ? pay.monthlyFixed : 0 });
     }
 
+    // Lazy-load exceljs (~22MB) so it's only pulled into this route's function
+    // at request time, never into the shared server bundle (see next.config).
+    const ExcelJS = (await import("exceljs")).default;
     const wb = new ExcelJS.Workbook();
     wb.creator = "Magic Studio";
 

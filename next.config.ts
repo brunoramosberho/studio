@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
   // "The router state header was sent but could not be parsed" 500s → clicks
   // silently stop navigating. Requires Skew Protection enabled in Vercel.
   deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
+  // Keep heavy, rarely-used server-only deps OUT of the shared server bundle so
+  // they don't inflate cold-start init for every function. exceljs (~22MB) is
+  // only used by the coach-payments Excel export; bundling it into the shared
+  // [root-of-the-server] chunk made cold starts time out (503s) on unrelated
+  // routes like /class RSC navigations. Marked external + dynamically imported.
+  serverExternalPackages: ["exceljs"],
   allowedDevOrigins: [
     "http://betoro.localhost:3000",
     "http://sandbox-revive.localhost:3000",
