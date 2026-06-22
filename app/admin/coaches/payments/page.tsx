@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations, useLocale } from "next-intl";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { es, enUS } from "date-fns/locale";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -57,12 +58,6 @@ interface PaymentsResponse {
   classTypes: { id: string; name: string }[];
 }
 
-const RATE_LABEL: Record<string, string> = {
-  PER_CLASS: "Por clase",
-  PER_STUDENT: "Por alumno",
-  OCCUPANCY_TIER: "Bono ocupación",
-};
-
 function currentMonth(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -75,6 +70,10 @@ function shiftMonth(month: string, delta: number): string {
 }
 
 export default function CoachPaymentsPage() {
+  const t = useTranslations("coachPayments");
+  const locale = useLocale();
+  const dateLocale = locale === "en" ? enUS : es;
+
   const [month, setMonth] = useState(currentMonth());
   const [studioId, setStudioId] = useState("");
   const [classTypeId, setClassTypeId] = useState("");
@@ -94,8 +93,11 @@ export default function CoachPaymentsPage() {
   const fmt = useMemo(() => {
     const code = data?.currency ?? "EUR";
     return (n: number) =>
-      new Intl.NumberFormat(undefined, { style: "currency", currency: code, maximumFractionDigits: 0 }).format(n);
-  }, [data?.currency]);
+      new Intl.NumberFormat(locale, { style: "currency", currency: code, maximumFractionDigits: 0 }).format(n);
+  }, [data?.currency, locale]);
+
+  const rateLabel = (rt: string) =>
+    rt === "PER_CLASS" ? t("ratePerClass") : rt === "PER_STUDENT" ? t("ratePerStudent") : t("rateOccupancy");
 
   const filterLine = (l: ClassLine) =>
     (!studioId || l.studioId === studioId) &&
@@ -124,10 +126,10 @@ export default function CoachPaymentsPage() {
 
   const monthLabel = (() => {
     const [y, m] = month.split("-").map(Number);
-    return format(new Date(y, m - 1, 1), "MMMM yyyy", { locale: es });
+    return format(new Date(y, m - 1, 1), "MMMM yyyy", { locale: dateLocale });
   })();
 
-  const exportUrl = `/api/admin/coach-payments/export?month=${month}${
+  const exportUrl = `/api/admin/coach-payments/export?month=${month}&lang=${locale}${
     studioId ? `&studioId=${studioId}` : ""
   }${classTypeId ? `&classTypeId=${classTypeId}` : ""}${status !== "all" ? `&status=${status}` : ""}`;
 
@@ -137,10 +139,10 @@ export default function CoachPaymentsPage() {
       <div className="mx-auto max-w-md py-20 text-center">
         <Wallet className="mx-auto h-10 w-10 text-muted/40" />
         <p className="mt-3 font-medium text-foreground">
-          {status403 ? "No tienes acceso a esta sección" : "No se pudieron cargar los pagos"}
+          {status403 ? t("noAccess") : t("loadError")}
         </p>
         <Link href="/admin/coaches" className="mt-3 inline-block text-sm text-accent underline">
-          Volver a coaches
+          {t("backToInstructors")}
         </Link>
       </div>
     );
@@ -154,17 +156,17 @@ export default function CoachPaymentsPage() {
           href="/admin/coaches"
           className="mb-2 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Coaches
+          <ArrowLeft className="h-4 w-4" /> {t("back")}
         </Link>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Pagos a coaches</h1>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("title")}</h1>
           <div className="flex items-center gap-2">
             {/* Month nav */}
             <div className="flex items-center gap-1 rounded-lg border border-border bg-card px-1 py-0.5">
               <button
                 onClick={() => setMonth((m) => shiftMonth(m, -1))}
                 className="rounded p-1.5 text-muted hover:bg-surface hover:text-foreground"
-                aria-label="Mes anterior"
+                aria-label={t("prevMonth")}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -174,14 +176,14 @@ export default function CoachPaymentsPage() {
               <button
                 onClick={() => setMonth((m) => shiftMonth(m, 1))}
                 className="rounded p-1.5 text-muted hover:bg-surface hover:text-foreground"
-                aria-label="Mes siguiente"
+                aria-label={t("nextMonth")}
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
             <a href={exportUrl} download>
               <Button variant="outline" className="gap-2">
-                <Download className="h-4 w-4" /> Excel
+                <Download className="h-4 w-4" /> {t("excel")}
               </Button>
             </a>
           </div>
@@ -196,7 +198,7 @@ export default function CoachPaymentsPage() {
             onChange={(e) => setStudioId(e.target.value)}
             className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm focus:outline-none"
           >
-            <option value="">Todos los estudios</option>
+            <option value="">{t("allStudios")}</option>
             {data.studios.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
@@ -208,7 +210,7 @@ export default function CoachPaymentsPage() {
             onChange={(e) => setClassTypeId(e.target.value)}
             className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm focus:outline-none"
           >
-            <option value="">Todas las disciplinas</option>
+            <option value="">{t("allDisciplines")}</option>
             {data.classTypes.map((ct) => (
               <option key={ct.id} value={ct.id}>{ct.name}</option>
             ))}
@@ -216,13 +218,13 @@ export default function CoachPaymentsPage() {
         )}
         <div className="flex rounded-lg border border-border bg-card p-0.5 text-sm">
           {([
-            ["all", "Todas"],
-            ["past", "Impartidas"],
-            ["upcoming", "Próximas"],
+            ["all", t("statusAll")],
+            ["past", t("statusPast")],
+            ["upcoming", t("statusUpcoming")],
           ] as const).map(([val, lbl]) => (
             <button
               key={val}
-              onClick={() => setStatus(val)}
+              onClick={() => setStatus(val as "all" | "past" | "upcoming")}
               className={cn(
                 "rounded-md px-3 py-1 font-medium transition-colors",
                 status === val ? "bg-accent/10 text-accent" : "text-muted hover:text-foreground",
@@ -237,9 +239,9 @@ export default function CoachPaymentsPage() {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: Wallet, label: "Total a pagar", value: fmt(grandTotal) },
-          { icon: Users, label: "Coaches", value: String(rows.length) },
-          { icon: CalendarDays, label: "Clases", value: String(totalClasses) },
+          { icon: Wallet, label: t("totalOwed"), value: fmt(grandTotal) },
+          { icon: Users, label: t("instructors"), value: String(rows.length) },
+          { icon: CalendarDays, label: t("classes"), value: String(totalClasses) },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-3 p-4">
@@ -255,7 +257,7 @@ export default function CoachPaymentsPage() {
         ))}
       </div>
 
-      {/* Coach list */}
+      {/* Instructor list */}
       {isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-5 w-5 animate-spin text-muted" />
@@ -263,10 +265,8 @@ export default function CoachPaymentsPage() {
       ) : rows.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-14 text-center text-sm text-muted">
-            No hay pagos para este periodo con los filtros actuales.
-            <p className="mt-1 text-xs text-muted/70">
-              Configura las tarifas de cada coach en su perfil para ver su desglose.
-            </p>
+            {t("emptyTitle")}
+            <p className="mt-1 text-xs text-muted/70">{t("emptyHint")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -297,16 +297,16 @@ export default function CoachPaymentsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display text-base font-bold">{c.name}</p>
                     <p className="text-xs text-muted">
-                      {c.lines.length} clase{c.lines.length === 1 ? "" : "s"}
-                      {c.fixed > 0 && ` · fijo ${fmt(c.fixed)}`}
-                      {!c.hasRates && " · sin tarifa configurada"}
+                      {t("classesCount", { count: c.lines.length })}
+                      {c.fixed > 0 && ` · ${t("fixed", { amount: fmt(c.fixed) })}`}
+                      {!c.hasRates && ` · ${t("noRate")}`}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="font-display text-base font-bold text-foreground">{fmt(c.total)}</p>
                     <p className="text-[11px] text-muted">
-                      {fmt(c.earned)} impartido
-                      {c.projected > 0 && ` · ${fmt(c.projected)} prox.`}
+                      {fmt(c.earned)} {t("earnedWord")}
+                      {c.projected > 0 && ` · ${fmt(c.projected)} ${t("upcomingShort")}`}
                     </p>
                   </div>
                   <ChevronDown
@@ -319,13 +319,13 @@ export default function CoachPaymentsPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border/40 text-left text-[11px] uppercase tracking-wide text-muted">
-                          <th className="px-4 py-2 font-medium">Fecha</th>
-                          <th className="px-3 py-2 font-medium">Disciplina</th>
-                          <th className="px-3 py-2 font-medium">Estudio</th>
-                          <th className="px-3 py-2 text-center font-medium">Asist.</th>
-                          <th className="px-3 py-2 text-center font-medium">Ocup.</th>
-                          <th className="px-3 py-2 font-medium">Tarifa</th>
-                          <th className="px-4 py-2 text-right font-medium">Monto</th>
+                          <th className="px-4 py-2 font-medium">{t("colDate")}</th>
+                          <th className="px-3 py-2 font-medium">{t("colDiscipline")}</th>
+                          <th className="px-3 py-2 font-medium">{t("colStudio")}</th>
+                          <th className="px-3 py-2 text-center font-medium">{t("colAttendees")}</th>
+                          <th className="px-3 py-2 text-center font-medium">{t("colOccupancy")}</th>
+                          <th className="px-3 py-2 font-medium">{t("colRate")}</th>
+                          <th className="px-4 py-2 text-right font-medium">{t("colAmount")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -335,10 +335,10 @@ export default function CoachPaymentsPage() {
                             className={cn("border-b border-border/20", !l.isPast && "opacity-70")}
                           >
                             <td className="whitespace-nowrap px-4 py-2">
-                              {format(new Date(l.startsAt), "d MMM, HH:mm", { locale: es })}
+                              {format(new Date(l.startsAt), "d MMM, HH:mm", { locale: dateLocale })}
                               {!l.isPast && (
                                 <span className="ml-1.5 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-                                  prox.
+                                  {t("upcomingShort")}
                                 </span>
                               )}
                             </td>
@@ -355,7 +355,7 @@ export default function CoachPaymentsPage() {
                             <td className="px-3 py-2 text-center">{l.attendees}/{l.capacity}</td>
                             <td className="px-3 py-2 text-center">{l.occupancyPct}%</td>
                             <td className="px-3 py-2 text-xs text-muted">
-                              {RATE_LABEL[l.rateType]}
+                              {rateLabel(l.rateType)}
                               {l.multiplier > 1 && (
                                 <span className="ml-1 font-semibold text-accent">×{l.multiplier}</span>
                               )}

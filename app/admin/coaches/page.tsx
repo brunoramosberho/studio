@@ -108,6 +108,7 @@ export default function AdminCoachesPage() {
   const router = useRouter();
   const t = useTranslations("admin");
   const tc = useTranslations("common");
+  const tcp = useTranslations("coachPayments");
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [coachName, setCoachName] = useState("");
@@ -203,7 +204,7 @@ export default function AdminCoachesPage() {
             className="gap-2"
           >
             <Wallet className="h-4 w-4" />
-            Pagos
+            {tcp("nav")}
           </Button>
           <Button
             onClick={() => setShowCreate(!showCreate)}

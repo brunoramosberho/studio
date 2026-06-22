@@ -22,12 +22,64 @@ function monthRange(month: string | null): { from: Date; to: Date; label: string
   };
 }
 
-const RATE_LABELS: Record<string, string> = {
-  PER_CLASS: "Por clase",
-  PER_STUDENT: "Por alumno",
-  OCCUPANCY_TIER: "Bono ocupación",
-  MONTHLY_FIXED: "Sueldo fijo",
-};
+const LABELS = {
+  es: {
+    file: "pagos-instructores",
+    summary: "Resumen",
+    detail: "Detalle por clase",
+    instructor: "Instructor",
+    classes: "Clases",
+    earned: "Impartido",
+    projected: "Proyectado",
+    fixed: "Sueldo fijo",
+    total: "Total",
+    date: "Fecha",
+    discipline: "Disciplina",
+    studio: "Estudio",
+    room: "Sala",
+    attendees: "Asistentes",
+    capacity: "Cupo",
+    occupancy: "Ocupación",
+    rateType: "Tipo tarifa",
+    rateDetail: "Detalle tarifa",
+    bonus: "Bono",
+    state: "Estado",
+    amount: "Monto",
+    taught: "Impartida",
+    upcoming: "Próxima",
+    PER_CLASS: "Por clase",
+    PER_STUDENT: "Por alumno",
+    OCCUPANCY_TIER: "Bono ocupación",
+  },
+  en: {
+    file: "instructor-payments",
+    summary: "Summary",
+    detail: "Class detail",
+    instructor: "Instructor",
+    classes: "Classes",
+    earned: "Earned",
+    projected: "Projected",
+    fixed: "Fixed salary",
+    total: "Total",
+    date: "Date",
+    discipline: "Discipline",
+    studio: "Studio",
+    room: "Room",
+    attendees: "Attendees",
+    capacity: "Capacity",
+    occupancy: "Occupancy",
+    rateType: "Rate type",
+    rateDetail: "Rate detail",
+    bonus: "Bonus",
+    state: "State",
+    amount: "Amount",
+    taught: "Taught",
+    upcoming: "Upcoming",
+    PER_CLASS: "Per class",
+    PER_STUDENT: "Per student",
+    OCCUPANCY_TIER: "Occupancy bonus",
+  },
+} as const;
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,6 +92,7 @@ export async function GET(request: NextRequest) {
     const studioFilter = sp.get("studioId");
     const typeFilter = sp.get("classTypeId");
     const statusFilter = sp.get("status"); // "past" | "upcoming" | null(all)
+    const L = sp.get("lang") === "en" ? LABELS.en : LABELS.es;
     const currency = (await getTenantCurrency()).code;
 
     const coaches = await prisma.coachProfile.findMany({
@@ -57,7 +110,6 @@ export async function GET(request: NextRequest) {
     for (const coach of coaches) {
       const pay = await computeCoachPay(coach.id, tenantId, from, to, currency);
       const lines = pay.classLines.filter(matchLine);
-      // Monthly fixed only makes sense unfiltered by studio/type/status.
       const includeFixed = !studioFilter && !typeFilter && statusFilter !== "upcoming";
       if (lines.length === 0 && (!includeFixed || pay.monthlyFixed === 0)) continue;
       rows.push({ coach: coach.name, lines, monthlyFixed: includeFixed ? pay.monthlyFixed : 0 });
@@ -67,14 +119,14 @@ export async function GET(request: NextRequest) {
     wb.creator = "Magic Studio";
 
     // ── Summary sheet ──
-    const summary = wb.addWorksheet("Resumen");
+    const summary = wb.addWorksheet(L.summary);
     summary.columns = [
-      { header: "Coach", key: "coach", width: 26 },
-      { header: "Clases", key: "classes", width: 10 },
-      { header: "Impartido", key: "earned", width: 14 },
-      { header: "Proyectado", key: "projected", width: 14 },
-      { header: "Sueldo fijo", key: "fixed", width: 14 },
-      { header: `Total (${currency})`, key: "total", width: 16 },
+      { header: L.instructor, key: "coach", width: 26 },
+      { header: L.classes, key: "classes", width: 10 },
+      { header: L.earned, key: "earned", width: 14 },
+      { header: L.projected, key: "projected", width: 14 },
+      { header: L.fixed, key: "fixed", width: 14 },
+      { header: `${L.total} (${currency})`, key: "total", width: 16 },
     ];
     for (const r of rows) {
       const earned = r.lines.filter((l) => l.isPast).reduce((s, l) => s + l.amount, 0);
@@ -94,21 +146,21 @@ export async function GET(request: NextRequest) {
     });
 
     // ── Detail sheet ──
-    const detail = wb.addWorksheet("Detalle por clase");
+    const detail = wb.addWorksheet(L.detail);
     detail.columns = [
-      { header: "Coach", key: "coach", width: 24 },
-      { header: "Fecha", key: "date", width: 18 },
-      { header: "Disciplina", key: "discipline", width: 18 },
-      { header: "Estudio", key: "studio", width: 18 },
-      { header: "Sala", key: "room", width: 14 },
-      { header: "Asistentes", key: "attendees", width: 11 },
-      { header: "Cupo", key: "capacity", width: 8 },
-      { header: "Ocupación", key: "occupancy", width: 11 },
-      { header: "Tipo tarifa", key: "rateType", width: 14 },
-      { header: "Detalle tarifa", key: "rateLabel", width: 22 },
-      { header: "Bono", key: "multiplier", width: 8 },
-      { header: "Estado", key: "state", width: 12 },
-      { header: `Monto (${currency})`, key: "amount", width: 14 },
+      { header: L.instructor, key: "coach", width: 24 },
+      { header: L.date, key: "date", width: 18 },
+      { header: L.discipline, key: "discipline", width: 18 },
+      { header: L.studio, key: "studio", width: 18 },
+      { header: L.room, key: "room", width: 14 },
+      { header: L.attendees, key: "attendees", width: 11 },
+      { header: L.capacity, key: "capacity", width: 8 },
+      { header: L.occupancy, key: "occupancy", width: 11 },
+      { header: L.rateType, key: "rateType", width: 14 },
+      { header: L.rateDetail, key: "rateLabel", width: 22 },
+      { header: L.bonus, key: "multiplier", width: 8 },
+      { header: L.state, key: "state", width: 12 },
+      { header: `${L.amount} (${currency})`, key: "amount", width: 14 },
     ];
     for (const r of rows) {
       for (const l of r.lines) {
@@ -121,10 +173,10 @@ export async function GET(request: NextRequest) {
           attendees: l.attendees,
           capacity: l.capacity,
           occupancy: l.occupancyPct / 100,
-          rateType: RATE_LABELS[l.rateType] ?? l.rateType,
+          rateType: L[l.rateType] ?? l.rateType,
           rateLabel: l.rateLabel,
           multiplier: l.multiplier > 1 ? `×${l.multiplier}` : "—",
-          state: l.isPast ? "Impartida" : "Próxima",
+          state: l.isPast ? L.taught : L.upcoming,
           amount: l.amount,
         });
       }
@@ -135,7 +187,7 @@ export async function GET(request: NextRequest) {
     detail.getColumn("amount").numFmt = "#,##0.00";
 
     const buffer = await wb.xlsx.writeBuffer();
-    const filename = `pagos-coaches-${label}.xlsx`;
+    const filename = `${L.file}-${label}.xlsx`;
     return new NextResponse(buffer as ArrayBuffer, {
       headers: {
         "Content-Type":
