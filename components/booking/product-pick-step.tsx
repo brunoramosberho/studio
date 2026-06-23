@@ -33,6 +33,7 @@ interface ProductOption {
 }
 
 interface AvailableResponse {
+  tenantName: string;
   studio: { id: string; name: string; productsEnabled: boolean };
   products: ProductOption[];
   classEndsAt?: string | null;
@@ -198,6 +199,9 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
   if (isLoading || !data) return null;
   if (!data.studio.productsEnabled || data.products.length === 0) return null;
 
+  // Brand + location, e.g. "BE TORO Chamberí".
+  const placeName = `${data.tenantName} ${data.studio.name}`.trim();
+
   return (
     <DialogPrimitive.Root
       open={open}
@@ -244,14 +248,14 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
               totalAmount={totalAmount}
               currency={currency}
               isFree={isFree}
-              studioName={data.studio.name}
+              studioName={placeName}
               pickupAt={pickupAt}
               onContinue={handleContinueAfterSuccess}
             />
           ) : (
             <>
               <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-2">
-                <Hero studioName={data.studio.name} />
+                <Hero studioName={placeName} />
                 <div className="mt-5 space-y-6">
                   {grouped.map((group) => (
                     <div key={group.id} className="space-y-2">
@@ -479,21 +483,11 @@ function Hero({ studioName }: { studioName: string }) {
         <ShoppingBag className="relative h-7 w-7 text-accent" strokeWidth={2.2} />
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.18 }}
-        className="relative inline-flex items-center gap-1.5 rounded-full bg-card/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
-      >
-        <Sparkles className="h-3 w-3" />
-        {t("newBadge")}
-      </motion.div>
-
       <motion.h2
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.22 }}
-        className="relative mt-2 font-display text-2xl font-bold leading-tight text-foreground"
+        className="relative mt-1 font-display text-2xl font-bold leading-tight text-foreground"
       >
         {t("heroHeadline")}
       </motion.h2>

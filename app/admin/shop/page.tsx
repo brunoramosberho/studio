@@ -480,7 +480,9 @@ export default function AdminShopPage() {
                           <p className="text-xs text-muted">{prod.category.name}</p>
                         </div>
                         <p className="shrink-0 text-sm font-bold text-accent">
-                          {formatCurrency(prod.price, prod.currency)}
+                          {prod.price === 0
+                            ? tc("free")
+                            : formatCurrency(prod.price, prod.currency)}
                         </p>
                       </div>
 

@@ -44,6 +44,7 @@ export async function GET(
     const studio = booking.class.room.studio;
     if (!studio.productsEnabled) {
       return NextResponse.json({
+        tenantName: tenant.name,
         studio: { id: studio.id, name: studio.name, productsEnabled: false },
         products: [],
         existingOrder: booking.productOrder,
@@ -66,6 +67,7 @@ export async function GET(
     });
 
     return NextResponse.json({
+      tenantName: tenant.name,
       studio: {
         id: studio.id,
         name: studio.name,
