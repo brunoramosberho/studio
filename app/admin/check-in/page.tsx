@@ -2,14 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MapPin } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MapPin, ShieldAlert } from "lucide-react";
 import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { ClassRoster } from "@/components/check-in/ClassRoster";
-import { SectionTabs } from "@/components/admin/section-tabs";
-import { CHECK_IN_TABS } from "@/components/admin/section-tab-configs";
 
 interface ClassItem {
   id: string;
@@ -151,13 +150,22 @@ export default function CheckInPage() {
 
   return (
     <div className="space-y-3 md:space-y-4 overflow-x-hidden">
-      <SectionTabs tabs={CHECK_IN_TABS} ariaLabel="Check-in sections" />
-      {/* Page header — hidden on mobile when viewing roster */}
-      <div className={cn(showMobileRoster && "hidden md:block")}>
-        <h1 className="text-xl font-semibold text-stone-900 dark:text-foreground">{t("checkIn")}</h1>
-        <p className="text-xs text-stone-400 dark:text-muted mt-0.5">
-          {t("checkInSubtitle")}
-        </p>
+      {/* Page header — hidden on mobile when viewing roster. No-shows moved to a
+          corner button (was a full-width tab bar that ate vertical space). */}
+      <div className={cn("flex items-start justify-between gap-2", showMobileRoster ? "hidden md:flex" : "flex")}>
+        <div>
+          <h1 className="text-xl font-semibold text-stone-900 dark:text-foreground">{t("checkIn")}</h1>
+          <p className="text-xs text-stone-400 dark:text-muted mt-0.5">
+            {t("checkInSubtitle")}
+          </p>
+        </div>
+        <Link
+          href="/admin/no-shows"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50 dark:border-border dark:text-muted dark:hover:bg-surface/60"
+        >
+          <ShieldAlert size={14} />
+          {t("tabs.noShows")}
+        </Link>
       </div>
 
       {/* Date nav + studio filter — hidden on mobile when viewing roster */}
@@ -211,7 +219,7 @@ export default function CheckInPage() {
       </div>
 
       {/* Main layout: stacked on mobile (drill-down), side-by-side on desktop */}
-      <div className="flex flex-col md:grid md:grid-cols-[260px_1fr] gap-3 h-[calc(100dvh-160px)] md:h-[calc(100vh-200px)]">
+      <div className="flex flex-col md:grid md:grid-cols-[260px_1fr] gap-3 h-[calc(100dvh-120px)] md:h-[calc(100vh-160px)]">
         {/* Left: class list — hidden on mobile when viewing roster */}
         <div className={cn(
           "bg-card border border-stone-200 dark:border-border rounded-2xl overflow-hidden flex-col h-full",

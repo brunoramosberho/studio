@@ -254,6 +254,8 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const [mapOpen, setMapOpen] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const lastScrollTopRef = useRef(0);
+  const suppressCollapseRef = useRef(false);
 
   // Cancel / move a member's booking from the check-in roster.
   const [cancelTarget, setCancelTarget] = useState<RosterMember | null>(null);
@@ -415,12 +417,35 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
     if (!row) return;
     const cRect = container.getBoundingClientRect();
     const rRect = row.getBoundingClientRect();
-    if (rRect.top < cRect.top) {
-      container.scrollBy({ top: rRect.top - cRect.top - 8, behavior: "smooth" });
-    } else if (rRect.bottom > cRect.bottom) {
-      container.scrollBy({ top: rRect.bottom - cRect.bottom + 8, behavior: "smooth" });
-    }
+    const above = rRect.top < cRect.top;
+    const below = rRect.bottom > cRect.bottom;
+    if (!above && !below) return;
+    // Don't let this programmatic scroll auto-collapse the map — we just opened
+    // it to highlight the picked spot.
+    suppressCollapseRef.current = true;
+    container.scrollBy({
+      top: above ? rRect.top - cRect.top - 8 : rRect.bottom - cRect.bottom + 8,
+      behavior: "smooth",
+    });
+    const timer = setTimeout(() => {
+      suppressCollapseRef.current = false;
+    }, 600);
+    return () => clearTimeout(timer);
   }, [selectedMemberId]);
+
+  // iOS-style: collapse the room map when scrolling DOWN the roster (more room
+  // for the list) and reveal it again when scrolling UP.
+  const handleRosterScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const st = e.currentTarget.scrollTop;
+      const delta = st - lastScrollTopRef.current;
+      lastScrollTopRef.current = st;
+      if (suppressCollapseRef.current || !hasRoomMap) return;
+      if (delta > 6 && st > 28) setMapOpen(false);
+      else if (delta < -6) setMapOpen(true);
+    },
+    [hasRoomMap],
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -514,44 +539,51 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
               className={cn("transition-transform", mapOpen && "rotate-180")}
             />
           </button>
-          {mapOpen && (
-            <div className="px-3 sm:px-4 pb-3">
-              <StudioMap
-                maxCapacity={room?.maxCapacity ?? 0}
-                spotMap={spotMap}
-                selectedSpot={selectedSpot}
-                onSelectSpot={(spot) => {
-                  const mid = spotToMemberId.get(spot) ?? null;
-                  if (mid) {
-                    setSelectedMemberId((cur) => (cur && cur === mid ? null : mid));
-                    return;
-                  }
-                  // Empty spot tapped → open the walk-in flow targeting it.
-                  if (!classInfo.isFinished) {
-                    setSelectedMemberId(null);
-                    setWalkInSpot(spot);
-                    setWalkInOpen(true);
-                  }
-                }}
-                layout={roomLayout}
-                coachName={classInfo.coachName}
-                revealOccupants
-              />
-              <p className="mt-2 text-center text-[11px] text-stone-500 dark:text-muted">
-                {selectedMember
-                  ? t("spotOfMember", {
-                      name: selectedMember.memberName ?? "",
-                      spot: selectedMember.spotNumber ?? "—",
-                    })
-                  : t("roomMapHint")}
-              </p>
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows] duration-300 ease-out",
+              mapOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="px-3 sm:px-4 pb-3">
+                <StudioMap
+                  maxCapacity={room?.maxCapacity ?? 0}
+                  spotMap={spotMap}
+                  selectedSpot={selectedSpot}
+                  onSelectSpot={(spot) => {
+                    const mid = spotToMemberId.get(spot) ?? null;
+                    if (mid) {
+                      setSelectedMemberId((cur) => (cur && cur === mid ? null : mid));
+                      return;
+                    }
+                    // Empty spot tapped → open the walk-in flow targeting it.
+                    if (!classInfo.isFinished) {
+                      setSelectedMemberId(null);
+                      setWalkInSpot(spot);
+                      setWalkInOpen(true);
+                    }
+                  }}
+                  layout={roomLayout}
+                  coachName={classInfo.coachName}
+                  revealOccupants
+                />
+                <p className="mt-2 text-center text-[11px] text-stone-500 dark:text-muted">
+                  {selectedMember
+                    ? t("spotOfMember", {
+                        name: selectedMember.memberName ?? "",
+                        spot: selectedMember.spotNumber ?? "—",
+                      })
+                    : t("roomMapHint")}
+                </p>
+              </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 
       {/* Roster list */}
-      <div ref={listRef} className="flex-1 overflow-y-auto">
+      <div ref={listRef} onScroll={handleRosterScroll} className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="animate-spin text-stone-300 dark:text-muted" size={20} />
