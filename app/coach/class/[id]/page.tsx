@@ -41,6 +41,7 @@ import { MediaGallery } from "@/components/feed/media-gallery";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
 import { RequestSubstituteButton } from "@/components/coach/request-substitute-button";
+import { ShareClassButton } from "@/components/coach/share-class-button";
 import type { ClassWithDetails, BookingStatus } from "@/types";
 
 interface SongRequestEntry {
@@ -591,12 +592,18 @@ export default function ClassRosterPage() {
                 {capacity - enrolled} lugares disponibles
               </span>
             </div>
-            {!isPastClass && !isCompleted && (
-              <div className="mt-4 flex justify-end">
-                <RequestSubstituteButton
+            {!isPastClass && (
+              <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                <ShareClassButton
                   classId={classData.id}
-                  classStartsAt={new Date(classData.startsAt).toISOString()}
+                  name={classData.classType.name}
                 />
+                {!isCompleted && (
+                  <RequestSubstituteButton
+                    classId={classData.id}
+                    classStartsAt={new Date(classData.startsAt).toISOString()}
+                  />
+                )}
               </div>
             )}
           </CardContent>

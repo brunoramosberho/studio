@@ -1527,6 +1527,7 @@
     "copyLink": "Copy",
     "copied": "Copied!",
     "share": "Share",
+    "shareClassPrompt": "Book your spot in {name}",
     "classesToday": "Classes today",
     "studentsToday": "Students today",
     "earningsThisMonth": "Earnings this month",
