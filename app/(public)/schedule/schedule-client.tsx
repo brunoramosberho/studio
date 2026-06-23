@@ -15,7 +15,7 @@ import {
   ArrowRight,
   Asterisk,
   Bell,
-  BellOff,
+  BellRing,
 } from "lucide-react";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { DisciplineSheet, type DisciplineData } from "@/components/feed/discipline-sheet";
@@ -1198,9 +1198,7 @@ function MobileClassCard({
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.room?.maxCapacity ?? 0;
   const spotsLeft = maxCap - booked;
-  const isFull = spotsLeft <= 0;
-  const hasWaitlist = (cls._count?.waitlist ?? 0) > 0;
-  const myBookingId = cls.myBookingId;
+  const isFull = spotsLeft <= 0;  const myBookingId = cls.myBookingId;
   const isCancelling = cancellingId === myBookingId;
   // Server redacts coach.name to "" when it should be hidden until the class
   // ends. Past classes always reveal the real coach.
@@ -1344,7 +1342,7 @@ function MobileClassCard({
           ) : !past && isFull ? (
             <>
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                {hasWaitlist ? t("waitlist") : t("full")}
+                {t("waitlist")}
               </span>
               {onToggleNotifyMe && (
                 <button
@@ -1357,7 +1355,7 @@ function MobileClassCard({
                   )}
                 >
                   {isNotifyMe ? (
-                    <BellOff className="h-2.5 w-2.5" />
+                    <BellRing className="h-2.5 w-2.5" />
                   ) : (
                     <Bell className="h-2.5 w-2.5" />
                   )}
@@ -1450,9 +1448,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
   const booked = cls._count?.bookings ?? 0;
   const maxCap = cls.room?.maxCapacity ?? 0;
   const spotsLeft = maxCap - booked;
-  const isFull = spotsLeft <= 0;
-  const hasWaitlist = (cls._count?.waitlist ?? 0) > 0;
-  const myBookingId = cls.myBookingId;
+  const isFull = spotsLeft <= 0;  const myBookingId = cls.myBookingId;
   const isCancelling = cancellingId === myBookingId;
   const coachHidden = !cls.coach.name;
 
@@ -1555,7 +1551,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
         ) : !past && isFull ? (
           <div className="flex flex-col items-start gap-1">
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold text-amber-700">
-              {hasWaitlist ? t("waitlist") : t("full")}
+              {t("waitlist")}
             </span>
             {onToggleNotifyMe && (
               <button
@@ -1567,7 +1563,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
                     : "bg-surface text-muted hover:text-foreground",
                 )}
               >
-                {isNotifyMe ? <BellOff className="h-2 w-2" /> : <Bell className="h-2 w-2" />}
+                {isNotifyMe ? <BellRing className="h-2 w-2" /> : <Bell className="h-2 w-2" />}
                 {isNotifyMe ? t("notified") : t("notifyMe")}
               </button>
             )}
