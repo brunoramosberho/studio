@@ -461,6 +461,18 @@ export default function ClassDetailPage() {
     }
   }
 
+  // Full class: always offer the waitlist. With credits, join directly; without
+  // them (or signed out) route to packages first — same as the reserve flow —
+  // instead of hiding the option. They can join the waitlist once they have a
+  // package.
+  function handleJoinWaitlistClick() {
+    if (isAuthenticated && hasCredits) {
+      handleJoinWaitlist();
+    } else {
+      setSheetOpen(true);
+    }
+  }
+
   async function handleToggleNotifyMe() {
     setTogglingNotifyMe(true);
     setError(null);
@@ -594,7 +606,6 @@ export default function ClassDetailPage() {
     }
   }
 
-  const needsPackage = !isAuthenticated || !hasCredits;
   const classFull = spotsLeft <= 0;
   const waitlistCount = cls._count?.waitlist ?? 0;
   const hasLayout = cls.room.layout && cls.room.layout.spots?.length > 0;
@@ -1296,17 +1307,15 @@ export default function ClassDetailPage() {
                   >
                     {togglingNotifyMe ? t("cancellingNotif") : t("cancelNotification")}
                   </button>
-                  {hasCredits && (
-                    <Button
-                      size="sm"
-                      className="rounded-full"
-                      onClick={handleJoinWaitlist}
-                      disabled={joiningWaitlist}
-                    >
-                      {joiningWaitlist && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                      {t("joinWaitlist")}
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    className="rounded-full"
+                    onClick={handleJoinWaitlistClick}
+                    disabled={joiningWaitlist}
+                  >
+                    {joiningWaitlist && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                    {t("joinWaitlist")}
+                  </Button>
                 </div>
               </div>
             )}
@@ -1316,110 +1325,57 @@ export default function ClassDetailPage() {
               <div className="space-y-4">
                 {classFull ? (
                   isAuthenticated ? (
-                    hasCredits ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
-                            <Users className="h-3 w-3" />
-                            {t("classFull")}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+                          <Users className="h-3 w-3" />
+                          {t("classFull")}
+                        </span>
+                        {waitlistCount > 0 && (
+                          <span className="text-xs text-muted">
+                            {waitlistCount === 1 ? t("personOnWaitlist", { count: waitlistCount }) : t("peopleOnWaitlist", { count: waitlistCount })}
                           </span>
-                          {waitlistCount > 0 && (
-                            <span className="text-xs text-muted">
-                              {waitlistCount === 1 ? t("personOnWaitlist", { count: waitlistCount }) : t("peopleOnWaitlist", { count: waitlistCount })}
-                            </span>
-                          )}
-                        </div>
-                        <div className="rounded-xl border border-[#C9A96E]/20 bg-[#C9A96E]/5 px-4 py-3">
-                          <p className="text-xs text-muted leading-relaxed">
-                            {t("waitlistCreditDesc")}
-                          </p>
-                        </div>
-                        <Button
-                          size="lg"
-                          className="w-full min-h-[48px] rounded-full"
-                          onClick={handleJoinWaitlist}
-                          disabled={joiningWaitlist}
+                        )}
+                      </div>
+                      <div className="rounded-xl border border-[#C9A96E]/20 bg-[#C9A96E]/5 px-4 py-3">
+                        <p className="text-xs text-muted leading-relaxed">
+                          {t("waitlistCreditDesc")}
+                        </p>
+                      </div>
+                      <Button
+                        size="lg"
+                        className="w-full min-h-[48px] rounded-full"
+                        onClick={handleJoinWaitlistClick}
+                        disabled={joiningWaitlist}
+                      >
+                        {joiningWaitlist && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {t("joinWaitlist")}
+                        {waitlistCount > 0 && (
+                          <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs">
+                            {waitlistCount}
+                          </span>
+                        )}
+                      </Button>
+                      {!notifyMeActive ? (
+                        <button
+                          onClick={handleToggleNotifyMe}
+                          disabled={togglingNotifyMe}
+                          className="flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm text-muted transition-colors hover:text-foreground disabled:opacity-50"
                         >
-                          {joiningWaitlist && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          {t("joinWaitlist")}
-                          {waitlistCount > 0 && (
-                            <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs">
-                              {waitlistCount}
-                            </span>
+                          {togglingNotifyMe ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Bell className="h-3.5 w-3.5" />
                           )}
-                        </Button>
-                        {!notifyMeActive ? (
-                          <button
-                            onClick={handleToggleNotifyMe}
-                            disabled={togglingNotifyMe}
-                            className="flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm text-muted transition-colors hover:text-foreground disabled:opacity-50"
-                          >
-                            {togglingNotifyMe ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Bell className="h-3.5 w-3.5" />
-                            )}
-                            {t("justNotifyMe")}
-                          </button>
-                        ) : (
-                          <div className="flex items-center justify-center gap-2 rounded-full bg-accent/10 py-2.5 text-sm font-medium text-accent">
-                            <BellRing className="h-3.5 w-3.5" />
-                            {t("notifyIfSpotOpens")}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-center gap-2 text-sm">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
-                            <Users className="h-3 w-3" />
-                            {t("classFull")}
-                          </span>
+                          {t("justNotifyMe")}
+                        </button>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2 rounded-full bg-accent/10 py-2.5 text-sm font-medium text-accent">
+                          <BellRing className="h-3.5 w-3.5" />
+                          {t("notifyIfSpotOpens")}
                         </div>
-                        {notifyMeActive ? (
-                          <div className="space-y-2 text-center">
-                            <div className="flex items-center justify-center gap-2 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
-                              <BellRing className="h-4 w-4" />
-                              {t("notifyIfSpotOpens")}
-                            </div>
-                            <button
-                              onClick={handleToggleNotifyMe}
-                              disabled={togglingNotifyMe}
-                              className="text-xs text-muted hover:text-foreground transition-colors"
-                            >
-                              {t("cancelNotification")}
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <Button
-                              size="lg"
-                              variant="outline"
-                              className="w-full min-h-[48px] rounded-full gap-2"
-                              onClick={handleToggleNotifyMe}
-                              disabled={togglingNotifyMe}
-                            >
-                              {togglingNotifyMe ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Bell className="h-4 w-4" />
-                              )}
-                              {t("notifyMeIfSpotOpens")}
-                            </Button>
-                            <p className="text-center text-xs text-muted">
-                              {t("noCommitment")}
-                            </p>
-                          </>
-                        )}
-                        <div className="pt-1">
-                          <Button asChild variant="ghost" size="sm" className="w-full rounded-full text-muted">
-                            <Link href="/packages">
-                              {t("buyPackageWaitlist")}
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    )
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-3 text-center">
                       <div className="flex items-center justify-center gap-2 text-sm">
