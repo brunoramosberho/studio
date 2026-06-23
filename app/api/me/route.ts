@@ -41,7 +41,7 @@ export async function GET() {
       });
     }
 
-    const [membership, coachProfile, shopProduct, currency] = await Promise.all([
+    const [membership, coachProfile, shopProduct, shopifyConfig, currency] = await Promise.all([
       getMembership(session.user.id, tenant.id),
       prisma.coachProfile.findUnique({
         where: { userId_tenantId: { userId: session.user.id, tenantId: tenant.id } },
@@ -51,13 +51,19 @@ export async function GET() {
         where: { tenantId: tenant.id, isActive: true, isVisible: true },
         select: { id: true },
       }),
+      // An active Shopify connection sources the shop live from Shopify, so the
+      // Shop tab must show even when the native Product catalog is empty.
+      prisma.shopifyConfig.findUnique({
+        where: { tenantId: tenant.id },
+        select: { isActive: true },
+      }),
       getTenantCurrency(),
     ]);
 
     return NextResponse.json({
       role: membership?.role ?? null,
       hasCoachProfile: !!coachProfile,
-      hasShopProducts: !!shopProduct,
+      hasShopProducts: !!shopProduct || !!shopifyConfig?.isActive,
       tenantId: tenant.id,
       tenantSlug: tenant.slug,
       isSuperAdmin: (session.user as Record<string, unknown>).isSuperAdmin ?? false,
