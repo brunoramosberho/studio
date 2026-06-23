@@ -187,9 +187,14 @@ export async function POST(
       };
     });
 
-    if (!currency || subtotalCents <= 0) {
+    if (!currency || subtotalCents < 0) {
       return NextResponse.json({ error: "Invalid order total" }, { status: 400 });
     }
+
+    // Free items (reserving a shower, borrowing class gear, a complimentary
+    // smoothie…) settle immediately with no Stripe charge — sending a $0
+    // payment intent would fail.
+    const isFree = subtotalCents === 0;
 
     const order = await prisma.bookingProductOrder.create({
       data: {
@@ -197,7 +202,8 @@ export async function POST(
         bookingId: booking.id,
         userId: session.user.id,
         studioId: studio.id,
-        status: "PENDING_PAYMENT",
+        status: isFree ? "PAID" : "PENDING_PAYMENT",
+        paidAt: isFree ? new Date() : null,
         pickupAt: booking.class.endsAt,
         notes,
         subtotalCents,
@@ -206,6 +212,18 @@ export async function POST(
       },
       include: { items: true },
     });
+
+    // Nothing to collect — skip Stripe entirely and confirm the reservation.
+    if (isFree) {
+      return NextResponse.json({
+        orderId: order.id,
+        subtotalCents,
+        currency,
+        paymentIntentId: null,
+        paymentIntentClientSecret: null,
+        paymentStatus: "free",
+      });
+    }
 
     let paymentIntentClientSecret: string | null = null;
     let paymentIntentId: string | null = null;

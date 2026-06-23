@@ -11,7 +11,6 @@ import {
   Minus,
   Plus,
   ShoppingBag,
-  Coffee,
   ArrowRight,
   Sparkles,
   Check,
@@ -137,6 +136,9 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
   const currency = cartItems[0]?.product.currency ?? "MXN";
   const totalQty = cartItems.reduce((acc, it) => acc + it.quantity, 0);
   const hasCart = cartItems.length > 0;
+  // A wholly-free cart (e.g. reserving a shower or borrowing gear) needs no
+  // payment method — charging $0 through Stripe would fail.
+  const isFree = hasCart && totalCents === 0;
 
   function inc(id: string) {
     setCart((c) => ({ ...c, [id]: Math.min(10, (c[id] ?? 0) + 1) }));
@@ -153,7 +155,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
 
   async function handleSubmit() {
     if (!hasCart) return;
-    if (!selectedCardId) {
+    if (!isFree && !selectedCardId) {
       setError(t("addPaymentMethodError"));
       return;
     }
@@ -165,7 +167,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: cartItems.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
-          paymentMethodId: selectedCardId,
+          ...(isFree ? {} : { paymentMethodId: selectedCardId }),
         }),
       });
       if (!res.ok) {
@@ -241,6 +243,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
               items={confirmedItems}
               totalAmount={totalAmount}
               currency={currency}
+              isFree={isFree}
               studioName={data.studio.name}
               pickupAt={pickupAt}
               onContinue={handleContinueAfterSuccess}
@@ -271,7 +274,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
                 </div>
 
                 <AnimatePresence>
-                  {hasCart && (
+                  {hasCart && !isFree && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
@@ -388,13 +391,13 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
                           transition={{ type: "spring", stiffness: 400, damping: 18 }}
                           className="font-display text-base font-bold text-foreground"
                         >
-                          {formatCurrency(totalAmount, currency)}
+                          {isFree ? t("free") : formatCurrency(totalAmount, currency)}
                         </motion.p>
                       </div>
                       <Button
                         size="lg"
                         className="w-full bg-gradient-to-r from-accent to-accent/80 text-white shadow-md hover:from-accent/90 hover:to-accent/70"
-                        disabled={submitting || !selectedCardId}
+                        disabled={submitting || (!isFree && !selectedCardId)}
                         onClick={handleSubmit}
                       >
                         {submitting ? (
@@ -405,7 +408,7 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
                         ) : (
                           <>
                             <Sparkles className="mr-2 h-4 w-4" />
-                            {t("preorderCta")}
+                            {isFree ? t("reserveCta") : t("preorderCta")}
                           </>
                         )}
                       </Button>
@@ -473,7 +476,7 @@ function Hero({ studioName }: { studioName: string }) {
           animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
           transition={{ duration: 2.4, repeat: Infinity, ease: "easeOut" }}
         />
-        <Coffee className="relative h-7 w-7 text-accent" strokeWidth={2.2} />
+        <ShoppingBag className="relative h-7 w-7 text-accent" strokeWidth={2.2} />
       </motion.div>
 
       <motion.div
@@ -593,7 +596,9 @@ function ProductRow({
               <p className="truncate text-xs text-muted">{product.description}</p>
             )}
             <p className="mt-0.5 text-sm font-bold text-accent">
-              {formatCurrency(product.price, product.currency)}
+              {product.price === 0
+                ? t("free")
+                : formatCurrency(product.price, product.currency)}
             </p>
           </div>
 
@@ -646,6 +651,7 @@ function SuccessScreen({
   items,
   totalAmount,
   currency,
+  isFree,
   studioName,
   pickupAt,
   onContinue,
@@ -653,6 +659,7 @@ function SuccessScreen({
   items: { product: ProductOption; quantity: number }[];
   totalAmount: number;
   currency: string;
+  isFree: boolean;
   studioName: string;
   pickupAt: Date | null;
   onContinue: () => void;
@@ -725,7 +732,7 @@ function SuccessScreen({
           className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700"
         >
           <Sparkles className="h-3 w-3" />
-          {t("successPaymentConfirmed")}
+          {isFree ? t("successReserved") : t("successPaymentConfirmed")}
         </motion.div>
 
         <motion.h2
@@ -790,17 +797,19 @@ function SuccessScreen({
                       {it.product.name}
                     </span>
                     <span className="shrink-0 text-xs text-muted">
-                      {formatCurrency(it.product.price * it.quantity, it.product.currency)}
+                      {it.product.price === 0
+                        ? t("free")
+                        : formatCurrency(it.product.price * it.quantity, it.product.currency)}
                     </span>
                   </li>
                 ))}
               </ul>
               <div className="mt-3 flex items-baseline justify-between border-t border-border/50 pt-2.5">
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  {t("totalCharged")}
+                  {isFree ? t("total") : t("totalCharged")}
                 </span>
                 <span className="font-display text-lg font-bold text-foreground">
-                  {formatCurrency(totalAmount, currency)}
+                  {isFree ? t("free") : formatCurrency(totalAmount, currency)}
                 </span>
               </div>
             </CardContent>

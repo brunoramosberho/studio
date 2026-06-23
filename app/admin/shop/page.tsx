@@ -662,6 +662,7 @@ export default function AdminShopPage() {
                   value={form.price}
                   onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                 />
+                <p className="mt-1 text-[10px] text-muted">{t("priceFreeHint")}</p>
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-muted">{t("currency")}</label>
