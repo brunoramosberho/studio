@@ -1609,6 +1609,9 @@ model Product {
   // Whether this product appears in the post-booking pre-order flow.
   // Independent of `isVisible` (which controls the public shop).
   availableForPreOrder Boolean         @default(false)
+  // Max units of this product a single member can add to one order.
+  // Null = fall back to the default cap (10).
+  maxPerOrder          Int?
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 

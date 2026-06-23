@@ -54,6 +54,7 @@ interface Product {
   categoryId: string;
   category: { id: string; name: string };
   availableForPreOrder: boolean;
+  maxPerOrder: number | null;
   studioIds: string[];
 }
 
@@ -73,6 +74,7 @@ function buildEmptyProduct(defaultCurrency: string) {
     externalUrl: "",
     categoryId: "",
     availableForPreOrder: false,
+    maxPerOrder: "",
     studioIds: [] as string[],
   };
 }
@@ -176,7 +178,11 @@ export default function AdminShopPage() {
       fetch("/api/admin/shop/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, price: Number(data.price) }),
+        body: JSON.stringify({
+          ...data,
+          price: Number(data.price),
+          maxPerOrder: data.maxPerOrder.trim() === "" ? null : Number(data.maxPerOrder),
+        }),
       }).then((r) => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-shop-products"] });
@@ -225,6 +231,7 @@ export default function AdminShopPage() {
       externalUrl: p.externalUrl || "",
       categoryId: p.categoryId,
       availableForPreOrder: p.availableForPreOrder ?? false,
+      maxPerOrder: p.maxPerOrder != null ? String(p.maxPerOrder) : "",
       studioIds: p.studioIds ?? [],
     });
     setProdDialog(true);
@@ -265,6 +272,7 @@ export default function AdminShopPage() {
         externalUrl: form.externalUrl || null,
         categoryId: form.categoryId,
         availableForPreOrder: form.availableForPreOrder,
+        maxPerOrder: form.maxPerOrder.trim() === "" ? null : Number(form.maxPerOrder),
         studioIds: form.studioIds,
       } as { id: string } & Partial<Product>);
     } else {
@@ -761,6 +769,24 @@ export default function AdminShopPage() {
                 <p className="text-[11px] text-muted">{t("preOrderForBookingsDesc")}</p>
               </div>
             </div>
+
+            {form.availableForPreOrder && (
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted">
+                  {t("maxPerOrder")}
+                </label>
+                <Input
+                  type="number"
+                  step="1"
+                  min="1"
+                  max="99"
+                  placeholder={t("maxPerOrderPlaceholder")}
+                  value={form.maxPerOrder}
+                  onChange={(e) => setForm((f) => ({ ...f, maxPerOrder: e.target.value }))}
+                />
+                <p className="mt-1 text-[10px] text-muted">{t("maxPerOrderHint")}</p>
+              </div>
+            )}
 
             {form.availableForPreOrder && studios.length > 0 && (
               <div>

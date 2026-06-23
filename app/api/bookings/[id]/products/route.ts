@@ -3,7 +3,10 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { createMemberPayment } from "@/lib/stripe/payments";
 
-const MAX_QUANTITY_PER_ITEM = 10;
+// Default per-product cap when a product doesn't set its own `maxPerOrder`.
+const DEFAULT_MAX_QUANTITY_PER_ITEM = 10;
+// Absolute ceiling regardless of per-product config (abuse guard).
+const MAX_QUANTITY_HARD_CAP = 99;
 const MAX_LINE_ITEMS = 20;
 
 interface IncomingItem {
@@ -80,6 +83,7 @@ export async function GET(
         price: p.price,
         currency: p.currency,
         imageUrl: p.imageUrl,
+        maxPerOrder: p.maxPerOrder,
         category: p.category,
       })),
       existingOrder: booking.productOrder,
@@ -139,7 +143,7 @@ export async function POST(
     for (const it of rawItems) {
       const productId = typeof it.productId === "string" ? it.productId : null;
       const quantity = Number.isFinite(Number(it.quantity)) ? Math.floor(Number(it.quantity)) : 0;
-      if (!productId || quantity < 1 || quantity > MAX_QUANTITY_PER_ITEM) {
+      if (!productId || quantity < 1 || quantity > MAX_QUANTITY_HARD_CAP) {
         return NextResponse.json({ error: "Invalid item entry" }, { status: 400 });
       }
       cleanItems.push({ productId, quantity });
@@ -160,11 +164,23 @@ export async function POST(
       return NextResponse.json({ error: "One or more products are unavailable" }, { status: 400 });
     }
 
+    const qtyByProduct = new Map<string, number>();
+    for (const it of cleanItems) {
+      qtyByProduct.set(it.productId, (qtyByProduct.get(it.productId) ?? 0) + it.quantity);
+    }
+
     for (const p of products) {
       const limited = p.studioAvailability.length > 0;
       if (limited && !p.studioAvailability.some((s) => s.studioId === studio.id)) {
         return NextResponse.json(
           { error: `${p.name} is not available at this studio` },
+          { status: 400 },
+        );
+      }
+      const cap = p.maxPerOrder ?? DEFAULT_MAX_QUANTITY_PER_ITEM;
+      if ((qtyByProduct.get(p.id) ?? 0) > cap) {
+        return NextResponse.json(
+          { error: `${p.name}: máximo ${cap} por reserva` },
           { status: 400 },
         );
       }

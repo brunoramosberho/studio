@@ -29,8 +29,11 @@ interface ProductOption {
   price: number;
   currency: string;
   imageUrl: string | null;
+  maxPerOrder: number | null;
   category: { id: string; name: string };
 }
+
+const DEFAULT_MAX_PER_ORDER = 10;
 
 interface AvailableResponse {
   tenantName: string;
@@ -142,7 +145,8 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
   const isFree = hasCart && totalCents === 0;
 
   function inc(id: string) {
-    setCart((c) => ({ ...c, [id]: Math.min(10, (c[id] ?? 0) + 1) }));
+    const max = data?.products.find((p) => p.id === id)?.maxPerOrder ?? DEFAULT_MAX_PER_ORDER;
+    setCart((c) => ({ ...c, [id]: Math.min(max, (c[id] ?? 0) + 1) }));
   }
   function dec(id: string) {
     setCart((c) => {
@@ -542,6 +546,8 @@ function ProductRow({
 }) {
   const t = useTranslations("booking.preOrder");
   const inCart = quantity > 0;
+  const max = product.maxPerOrder ?? DEFAULT_MAX_PER_ORDER;
+  const atMax = quantity >= max;
   return (
     <motion.div whileTap={{ scale: 0.99 }}>
       <Card
@@ -628,8 +634,14 @@ function ProductRow({
               <button
                 type="button"
                 onClick={onInc}
+                disabled={atMax}
                 aria-label={t("increment")}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent/90"
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-full text-white transition-colors",
+                  atMax
+                    ? "cursor-not-allowed bg-accent/30"
+                    : "bg-accent hover:bg-accent/90",
+                )}
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>

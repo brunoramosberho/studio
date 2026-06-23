@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/tenant";
 
+// Normalises a per-product order cap: null (no explicit limit) or 1..99.
+function sanitizeMaxPerOrder(raw: unknown): number | null {
+  if (raw == null || raw === "") return null;
+  const n = Math.floor(Number(raw));
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.min(99, n);
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -21,6 +29,7 @@ export async function PUT(
       externalUrl,
       categoryId,
       availableForPreOrder,
+      maxPerOrder,
       studioIds,
     } = body;
 
@@ -85,6 +94,9 @@ export async function PUT(
           ...(categoryId !== undefined ? { categoryId } : {}),
           ...(availableForPreOrder !== undefined
             ? { availableForPreOrder: availableForPreOrder === true }
+            : {}),
+          ...(maxPerOrder !== undefined
+            ? { maxPerOrder: sanitizeMaxPerOrder(maxPerOrder) }
             : {}),
         },
         include: {

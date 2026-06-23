@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission, getTenantCurrency } from "@/lib/tenant";
 
+// Normalises a per-product order cap: null (no explicit limit) or 1..99.
+function sanitizeMaxPerOrder(raw: unknown): number | null {
+  if (raw == null || raw === "") return null;
+  const n = Math.floor(Number(raw));
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.min(99, n);
+}
+
 async function filterTenantStudioIds(tenantId: string, ids: unknown[]): Promise<string[]> {
   const candidates = ids.filter((x): x is string => typeof x === "string" && x.length > 0);
   if (candidates.length === 0) return [];
@@ -56,6 +64,7 @@ export async function POST(request: NextRequest) {
       externalUrl,
       categoryId,
       availableForPreOrder,
+      maxPerOrder,
       studioIds,
     } = body;
 
@@ -96,6 +105,7 @@ export async function POST(request: NextRequest) {
         isVisible: isVisible ?? true,
         externalUrl: externalUrl?.trim() || null,
         availableForPreOrder: availableForPreOrder === true,
+        maxPerOrder: sanitizeMaxPerOrder(maxPerOrder),
         position: (maxPos._max.position ?? -1) + 1,
         categoryId,
         tenantId: ctx.tenant.id,
