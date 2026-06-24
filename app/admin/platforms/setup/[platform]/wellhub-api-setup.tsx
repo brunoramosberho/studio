@@ -525,6 +525,32 @@ export function WellhubApiSetup() {
             Sincronizar próximas 4 semanas
           </Button>
 
+          {/* Activation toggle — this is what flips the dashboard out of demo mode. */}
+          <div className="flex items-center justify-between rounded-md border bg-muted/30 p-3">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                Integración {config?.isActive ? "activa" : "inactiva"}
+                {config?.isActive ? (
+                  <Badge variant="outline" className="bg-green-50">En vivo</Badge>
+                ) : (
+                  <Badge variant="outline">Apagada</Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Mientras esté apagada, el panel muestra datos de ejemplo (modo demo).
+                Actívala cuando hayas mapeado clases, puesto cupos y hecho el backfill.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant={config?.isActive ? "outline" : "default"}
+              onClick={() => saveConfig.mutate({ isActive: !config?.isActive })}
+              disabled={!isApi || !gymIdSet || !tokenSet || saveConfig.isPending}
+            >
+              {config?.isActive ? "Desactivar" : "Activar integración"}
+            </Button>
+          </div>
+
           {config?.wellhubLastError && (
             <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
