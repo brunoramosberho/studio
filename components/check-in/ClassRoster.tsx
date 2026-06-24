@@ -5,7 +5,6 @@ import { useState, useOptimistic, useCallback, useEffect, useMemo, useRef, start
 import { useTranslations } from "next-intl";
 import {
   Search,
-  QrCode,
   UserPlus,
   Check,
   Clock,
@@ -449,9 +448,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-stone-100 dark:border-border/60 shrink-0">
-        <div className="flex items-start justify-between gap-2">
+      {/* Header: class info, live stats, and member search */}
+      <div className="px-3 sm:px-4 py-2.5 border-b border-stone-100 dark:border-border/60 shrink-0 space-y-2.5">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-medium text-stone-900 dark:text-foreground truncate">
               {classInfo.className} · {startFormatted}
@@ -460,14 +459,50 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
               {classInfo.coachName} · {classInfo.room}
             </p>
           </div>
-          <div className="flex gap-1.5 sm:gap-2 text-[10px] shrink-0">
-            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
-              {enrolledCount} <span className="hidden sm:inline">{t("enrolled")}</span><span className="sm:hidden">{t("enrolledShort")}</span>
-            </span>
-            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-              {presentCount} <span className="hidden sm:inline">{t("confirmed")}</span><span className="sm:hidden">{t("confirmedShort")}</span>
-            </span>
+          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+            {[
+              { value: presentCount, label: t("present"), highlight: false },
+              { value: enrolledCount, label: t("enrolled"), highlight: false },
+              { value: pendingCount, label: t("pending"), highlight: pendingCount > 0 },
+              { value: waitlist.length, label: t("waitlist"), highlight: false },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center leading-none">
+                <p
+                  className={cn(
+                    "text-base font-semibold tabular-nums",
+                    stat.highlight
+                      ? "text-amber-600 dark:text-amber-300"
+                      : "text-stone-900 dark:text-foreground",
+                  )}
+                >
+                  {stat.value}
+                </p>
+                <p
+                  className={cn(
+                    "mt-0.5 text-[9px]",
+                    stat.highlight
+                      ? "text-amber-600 dark:text-amber-300"
+                      : "text-stone-400 dark:text-muted",
+                  )}
+                >
+                  {stat.label}
+                </p>
+              </div>
+            ))}
           </div>
+        </div>
+        <div className="relative max-w-[260px]">
+          <Search
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-300 dark:text-muted"
+            size={13}
+          />
+          <input
+            type="text"
+            placeholder={t("searchMember")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg border border-stone-200 bg-stone-50 py-1 pl-8 pr-3 text-xs text-foreground placeholder:text-muted/60 focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin dark:border-border dark:bg-surface"
+          />
         </div>
       </div>
 
@@ -477,50 +512,6 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           {t("classFinished")}
         </div>
       )}
-
-      {/* Search + QR */}
-      <div className="flex gap-2 p-3 border-b border-stone-100 dark:border-border/60">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-300 dark:text-muted" size={14} />
-          <input
-            type="text"
-            placeholder={t("searchMember")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-stone-200 bg-stone-50 text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-admin focus:border-admin dark:bg-surface dark:border-border"
-          />
-        </div>
-        <button
-          disabled
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-stone-200 text-stone-400 opacity-50 cursor-not-allowed dark:border-border dark:text-muted"
-        >
-          <QrCode size={14} />
-          {t("scanQR")}
-          <span className="text-[9px] bg-stone-100 rounded px-1 dark:bg-surface">{t("comingSoon")}</span>
-        </button>
-      </div>
-
-      {/* Stats bar */}
-      <div className="grid grid-cols-4 border-b border-stone-100 dark:border-border/60">
-        {[
-          { value: presentCount, label: t("present"), highlight: false },
-          { value: enrolledCount, label: t("enrolled"), highlight: false },
-          { value: pendingCount, label: t("pending"), highlight: pendingCount > 0 },
-          { value: waitlist.length, label: t("waitlist"), highlight: false },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="py-1.5 sm:py-2 text-center border-r border-stone-100 last:border-r-0 dark:border-border/60"
-          >
-            <p className={cn("text-sm sm:text-base font-medium", stat.highlight ? "text-amber-600 dark:text-amber-300" : "text-stone-900 dark:text-foreground")}>
-              {stat.value}
-            </p>
-            <p className={cn("text-[9px] sm:text-[10px]", stat.highlight ? "text-amber-600 dark:text-amber-300" : "text-stone-400 dark:text-muted")}>
-              {stat.label}
-            </p>
-          </div>
-        ))}
-      </div>
 
       {/* Room map (when the room has a spot layout) */}
       {hasRoomMap && (
