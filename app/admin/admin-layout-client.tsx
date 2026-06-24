@@ -848,6 +848,7 @@ function PosSidebarButton({ py, onNavigate }: { py: string; onNavigate?: () => v
 }
 
 function PosHeaderButton() {
+  const t = useTranslations("admin");
   const { openPOS } = usePosStore();
   return (
     <button
@@ -855,7 +856,7 @@ function PosHeaderButton() {
       className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground sm:flex"
     >
       <ShoppingBag className="h-3.5 w-3.5" />
-      POS
+      {t("posShort")}
     </button>
   );
 }
