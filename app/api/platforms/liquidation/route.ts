@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import type { PlatformType } from "@prisma/client";
+import {
+  computeSettlement,
+  type SettlementInput,
+  type SettlementEventType,
+} from "@/lib/platforms/liquidation-math";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,74 +22,102 @@ export async function GET(request: NextRequest) {
     const monthStart = new Date(year, m - 1, 1);
     const monthEnd = new Date(year, m, 1);
 
+    // Pull every payable event this month: check-ins (checked_in), no-shows
+    // (absent), and late cancellations (cancelled + late marker).
     const bookings = await prisma.platformBooking.findMany({
       where: {
         tenantId: tenant.id,
         class: { startsAt: { gte: monthStart, lt: monthEnd } },
-        status: { in: ["checked_in", "absent"] },
+        OR: [
+          { status: { in: ["checked_in", "absent"] } },
+          { status: "cancelled", notes: "wellhub_late_cancel" },
+        ],
       },
-      include: {
-        class: {
-          include: {
-            classType: { select: { name: true } },
-          },
-        },
-      },
+      include: { class: { include: { classType: { select: { name: true } } } } },
       orderBy: { class: { startsAt: "asc" } },
     });
 
     const configs = await prisma.studioPlatformConfig.findMany({
       where: { tenantId: tenant.id },
-      select: { platform: true, ratePerVisit: true },
+      select: {
+        platform: true,
+        ratePerVisit: true,
+        maxPayoutPerVisitor: true,
+        noShowPercent: true,
+        lateCancelPercent: true,
+        freeVisitsPerMonth: true,
+      },
     });
+    const configByPlatform = Object.fromEntries(configs.map((c) => [c.platform, c]));
 
-    const rateByPlatform = Object.fromEntries(
-      configs.map((c) => [c.platform, c.ratePerVisit ?? 0]),
-    ) as Record<PlatformType, number>;
+    // Classify each booking into a settlement event type.
+    function eventType(b: (typeof bookings)[number]): SettlementEventType {
+      if (b.status === "checked_in") return "checkin";
+      if (b.status === "absent") return "no_show";
+      return "late_cancel";
+    }
 
-    const byPlatform: Record<string, {
-      platform: PlatformType;
-      checkedIn: Array<{ className: string; date: string; bookingId: string }>;
-      absent: Array<{ className: string; date: string; bookingId: string }>;
-      rate: number;
-      totalEstimated: number;
-    }> = {};
-
+    // Group raw bookings + settlement inputs per platform.
+    const rawByPlatform = new Map<
+      PlatformType,
+      { bookings: typeof bookings; events: SettlementInput[] }
+    >();
     for (const b of bookings) {
-      const key = b.platform;
-      if (!byPlatform[key]) {
-        byPlatform[key] = {
-          platform: b.platform,
-          checkedIn: [],
-          absent: [],
-          rate: rateByPlatform[b.platform] ?? 0,
-          totalEstimated: 0,
-        };
-      }
+      const bucket = rawByPlatform.get(b.platform) ?? { bookings: [], events: [] };
+      bucket.bookings.push(b);
+      bucket.events.push({
+        // Use the Wellhub visitor token for the per-visitor cap; fall back to a
+        // per-booking id for email-sourced rows that lack a stable visitor id.
+        visitorId: b.wellhubUserUniqueToken ?? `booking:${b.id}`,
+        type: eventType(b),
+      });
+      rawByPlatform.set(b.platform, bucket);
+    }
 
-      const entry = {
+    const platforms = [...rawByPlatform.entries()].map(([platform, bucket]) => {
+      const cfg = configByPlatform[platform];
+      const conditions = {
+        ratePerVisit: cfg?.ratePerVisit ?? 0,
+        noShowPercent: cfg?.noShowPercent ?? 0,
+        lateCancelPercent: cfg?.lateCancelPercent ?? 0,
+        maxPayoutPerVisitor: cfg?.maxPayoutPerVisitor ?? null,
+        freeVisitsPerMonth: cfg?.freeVisitsPerMonth ?? null,
+      };
+      const settlement = computeSettlement(bucket.events, conditions);
+
+      const toEntry = (b: (typeof bookings)[number]) => ({
         className: b.class.classType.name,
         date: b.class.startsAt.toISOString().split("T")[0],
         bookingId: b.id,
+      });
+
+      return {
+        platform,
+        rate: conditions.ratePerVisit,
+        conditions,
+        checkedIn: bucket.bookings.filter((b) => b.status === "checked_in").map(toEntry),
+        noShow: bucket.bookings.filter((b) => b.status === "absent").map(toEntry),
+        lateCancel: bucket.bookings
+          .filter((b) => b.status === "cancelled")
+          .map(toEntry),
+        breakdown: {
+          payableCheckins: settlement.payableCheckins,
+          payableNoShows: settlement.payableNoShows,
+          payableLateCancels: settlement.payableLateCancels,
+          freeVisitsApplied: settlement.freeVisitsApplied,
+          cappedVisitors: settlement.cappedVisitors,
+        },
+        totalEstimated: settlement.total,
       };
+    });
 
-      if (b.status === "checked_in") {
-        byPlatform[key].checkedIn.push(entry);
-        byPlatform[key].totalEstimated += byPlatform[key].rate;
-      } else {
-        byPlatform[key].absent.push(entry);
-      }
-    }
-
-    const grandTotal = Object.values(byPlatform).reduce(
-      (sum, p) => sum + p.totalEstimated,
-      0,
-    );
+    const grandTotal = platforms.reduce((sum, p) => sum + p.totalEstimated, 0);
 
     return NextResponse.json({
       month,
-      platforms: Object.values(byPlatform),
-      grandTotal,
+      platforms,
+      grandTotal: Math.round(grandTotal * 100) / 100,
+      note: "Estimación basada en tus condiciones comerciales. El pago real lo confirma el panel de Wellhub.",
     });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden"].includes(error.message)) {

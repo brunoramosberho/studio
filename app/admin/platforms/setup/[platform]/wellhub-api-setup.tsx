@@ -7,7 +7,7 @@
 //     their Wellhub account manager. We do NOT subscribe webhooks
 //     programmatically — Wellhub registers them on their side.
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,10 @@ interface WellhubConfig {
   wellhubLastSyncAt: string | null;
   wellhubLastError: string | null;
   ratePerVisit: number | null;
+  maxPayoutPerVisitor: number | null;
+  noShowPercent: number | null;
+  lateCancelPercent: number | null;
+  freeVisitsPerMonth: number | null;
   portalUrl: string | null;
   isActive: boolean;
 }
@@ -84,8 +88,31 @@ export function WellhubApiSetup() {
   const [gymIdDraft, setGymIdDraft] = useState<string>("");
   const [localeDraft, setLocaleDraft] = useState<string>("es");
   const [tokenDraft, setTokenDraft] = useState<string>("");
-  const [rateDraft, setRateDraft] = useState<string>("");
   const [freshSecret, setFreshSecret] = useState<string | null>(null);
+
+  // Commercial conditions draft (strings for inputs; percents shown 0..100).
+  const [ccDraft, setCcDraft] = useState({
+    ratePerVisit: "",
+    maxPayoutPerVisitor: "",
+    noShowPercent: "",
+    lateCancelPercent: "",
+    freeVisitsPerMonth: "",
+  });
+  // Seed the draft once the config loads (or changes).
+  useEffect(() => {
+    if (!config) return;
+    setCcDraft({
+      ratePerVisit: config.ratePerVisit != null ? String(config.ratePerVisit) : "",
+      maxPayoutPerVisitor:
+        config.maxPayoutPerVisitor != null ? String(config.maxPayoutPerVisitor) : "",
+      noShowPercent:
+        config.noShowPercent != null ? String(Math.round(config.noShowPercent * 100)) : "",
+      lateCancelPercent:
+        config.lateCancelPercent != null ? String(Math.round(config.lateCancelPercent * 100)) : "",
+      freeVisitsPerMonth:
+        config.freeVisitsPerMonth != null ? String(config.freeVisitsPerMonth) : "",
+    });
+  }, [config]);
   const [simSlotId, setSimSlotId] = useState<string>("");
   const [simClassId, setSimClassId] = useState<string>("");
   const [simUserId, setSimUserId] = useState<string>("1000000000002");
@@ -492,24 +519,72 @@ export function WellhubApiSetup() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm">Pago por visita (EUR):</span>
-            <Input
-              type="number"
-              step="0.01"
-              className="w-32"
-              value={rateDraft || (config?.ratePerVisit ?? "")}
-              onChange={(e) => setRateDraft(e.target.value)}
-            />
+          {/* Commercial conditions — mirror the Wellhub contract so the
+              liquidation estimate matches what Wellhub actually pays. */}
+          <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+            <div className="text-xs font-medium">Condiciones comerciales (de tu contrato Wellhub)</div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span>Pago por check-in (€)</span>
+                <Input
+                  type="number" step="0.01" className="w-28"
+                  value={ccDraft.ratePerVisit}
+                  onChange={(e) => setCcDraft((d) => ({ ...d, ratePerVisit: e.target.value }))}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span>Máx. por visitante/mes (€)</span>
+                <Input
+                  type="number" step="0.01" className="w-28"
+                  value={ccDraft.maxPayoutPerVisitor}
+                  onChange={(e) => setCcDraft((d) => ({ ...d, maxPayoutPerVisitor: e.target.value }))}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span>No-show (% del check-in)</span>
+                <Input
+                  type="number" step="1" min="0" max="100" className="w-28"
+                  value={ccDraft.noShowPercent}
+                  onChange={(e) => setCcDraft((d) => ({ ...d, noShowPercent: e.target.value }))}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span>Cancelación tardía (%)</span>
+                <Input
+                  type="number" step="1" min="0" max="100" className="w-28"
+                  value={ccDraft.lateCancelPercent}
+                  onChange={(e) => setCcDraft((d) => ({ ...d, lateCancelPercent: e.target.value }))}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span>Visitas gratis/mes</span>
+                <Input
+                  type="number" step="1" min="0" className="w-28"
+                  value={ccDraft.freeVisitsPerMonth}
+                  onChange={(e) => setCcDraft((d) => ({ ...d, freeVisitsPerMonth: e.target.value }))}
+                />
+              </label>
+            </div>
             <Button
               size="sm"
-              onClick={() =>
-                saveConfig.mutate({ ratePerVisit: rateDraft ? Number(rateDraft) : null })
-              }
+              onClick={() => {
+                const num = (s: string) => (s.trim() === "" ? null : Number(s));
+                const pct = (s: string) => (s.trim() === "" ? null : Number(s) / 100);
+                saveConfig.mutate({
+                  ratePerVisit: num(ccDraft.ratePerVisit),
+                  maxPayoutPerVisitor: num(ccDraft.maxPayoutPerVisitor),
+                  noShowPercent: pct(ccDraft.noShowPercent),
+                  lateCancelPercent: pct(ccDraft.lateCancelPercent),
+                  freeVisitsPerMonth: num(ccDraft.freeVisitsPerMonth),
+                });
+              }}
               disabled={saveConfig.isPending}
             >
-              Guardar
+              Guardar condiciones
             </Button>
+            <p className="text-xs text-muted-foreground">
+              Para Be Toro: €15 check-in · €150 máx/mes · 70% no-show · 70% cancelación tardía · 0 gratis.
+            </p>
           </div>
 
           <Button

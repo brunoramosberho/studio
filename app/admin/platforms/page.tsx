@@ -123,13 +123,22 @@ interface PlatformAlert {
   createdAt: string;
 }
 
+type LiquidationEntry = { className: string; date: string; bookingId: string };
 interface LiquidationData {
   month: string;
   platforms: Array<{
     platform: "classpass" | "wellhub";
-    checkedIn: Array<{ className: string; date: string; bookingId: string }>;
-    absent: Array<{ className: string; date: string; bookingId: string }>;
+    checkedIn: LiquidationEntry[];
+    noShow?: LiquidationEntry[];
+    lateCancel?: LiquidationEntry[];
     rate: number;
+    breakdown?: {
+      payableCheckins: number;
+      payableNoShows: number;
+      payableLateCancels: number;
+      freeVisitsApplied: number;
+      cappedVisitors: number;
+    };
     totalEstimated: number;
   }>;
   grandTotal: number;
@@ -1546,19 +1555,21 @@ function buildDemoLiquidation(month: string): LiquidationData {
       {
         platform: "classpass",
         checkedIn: cpCheckedIn,
-        absent: [
+        noShow: [
           { className: "Cycling", date: `${month}-10`, bookingId: "CP-20099" },
           { className: "HIIT", date: `${month}-18`, bookingId: "CP-20100" },
         ],
+        lateCancel: [],
         rate: 6.5,
         totalEstimated: cpCheckedIn.length * 6.5,
       },
       {
         platform: "wellhub",
         checkedIn: gpCheckedIn,
-        absent: [
+        noShow: [
           { className: "Barre", date: `${month}-14`, bookingId: "GP-30099" },
         ],
+        lateCancel: [],
         rate: 5.0,
         totalEstimated: gpCheckedIn.length * 5.0,
       },
@@ -1664,12 +1675,28 @@ function LiquidacionTab({ demo }: { demo: boolean }) {
                   </Table>
                 )}
 
-                {p.absent.length > 0 && (
-                  <div className="border-t px-4 py-3">
-                    <p className="flex items-center gap-1.5 text-xs text-muted">
-                      <Ban className="h-3 w-3" />
-                      {p.absent.length} ausencia{p.absent.length !== 1 ? "s" : ""} (no cobrables)
-                    </p>
+                {(p.breakdown || (p.noShow?.length ?? 0) > 0 || (p.lateCancel?.length ?? 0) > 0) && (
+                  <div className="space-y-1 border-t px-4 py-3 text-xs text-muted">
+                    {(p.noShow?.length ?? 0) > 0 && (
+                      <p className="flex items-center gap-1.5">
+                        <Ban className="h-3 w-3" />
+                        {p.noShow!.length} no-show{p.noShow!.length !== 1 ? "s" : ""}
+                        {p.breakdown ? ` · ${p.breakdown.payableNoShows} cobrable(s)` : ""}
+                      </p>
+                    )}
+                    {(p.lateCancel?.length ?? 0) > 0 && (
+                      <p className="flex items-center gap-1.5">
+                        <Ban className="h-3 w-3" />
+                        {p.lateCancel!.length} cancelación(es) tardía(s)
+                        {p.breakdown ? ` · ${p.breakdown.payableLateCancels} cobrable(s)` : ""}
+                      </p>
+                    )}
+                    {p.breakdown && p.breakdown.freeVisitsApplied > 0 && (
+                      <p>{p.breakdown.freeVisitsApplied} visita(s) gratis aplicada(s)</p>
+                    )}
+                    {p.breakdown && p.breakdown.cappedVisitors > 0 && (
+                      <p>{p.breakdown.cappedVisitors} visitante(s) alcanzaron el tope mensual</p>
+                    )}
                   </div>
                 )}
               </CardContent>
