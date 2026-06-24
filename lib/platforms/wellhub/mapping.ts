@@ -17,6 +17,10 @@ const MAX_SLOT_LENGTH_MIN = 200;
 const MAX_SLOT_CAPACITY = 32000;
 const MAX_INSTRUCTOR_NAME = 100;
 const MAX_CLASS_NAME = 255;
+// Wellhub's `reference` field accepts 1..20 chars. Our ClassType id is a cuid
+// (25 chars), so we take the last 20 — still unique enough for partner-side
+// traceability, and it round-trips against our own records by suffix match.
+const MAX_REFERENCE_LEN = 20;
 
 // ─── Shape inputs (decoupled from Prisma to keep this file pure & testable) ──
 
@@ -64,7 +68,7 @@ export function classTypeToWellhubCreatePayload(
     bookable: true,
     visible: true,
     product_id: classType.wellhubProductId,
-    reference: classType.id,
+    reference: toReference(classType.id),
     categories: classType.wellhubCategoryIds.length > 0
       ? [...classType.wellhubCategoryIds]
       : undefined,
@@ -86,7 +90,7 @@ export function classTypeToWellhubUpdatePayload(
     bookable: options.bookable ?? true,
     visible: options.visible ?? true,
     product_id: classType.wellhubProductId,
-    reference: classType.id,
+    reference: toReference(classType.id),
     categories: classType.wellhubCategoryIds.length > 0
       ? [...classType.wellhubCategoryIds]
       : undefined,
@@ -156,6 +160,12 @@ export function capacityPatchPayload(opts: {
 
 function truncate(value: string, max: number): string {
   return value.length > max ? value.slice(0, max) : value;
+}
+
+// Wellhub caps `reference` at 20 chars. Our ids are cuids (25 chars) whose
+// entropy lives in the tail, so we keep the LAST 20 to stay unique.
+function toReference(id: string): string {
+  return id.length > MAX_REFERENCE_LEN ? id.slice(-MAX_REFERENCE_LEN) : id;
 }
 
 function clampLength(minutes: number): number {

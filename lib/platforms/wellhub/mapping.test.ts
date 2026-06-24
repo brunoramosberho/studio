@@ -51,6 +51,15 @@ describe("classTypeToWellhubCreatePayload", () => {
     expect(payload.description).toBe("Cycling");
   });
 
+  it("truncates a long cuid reference to Wellhub's 20-char limit (keeps the tail)", () => {
+    const payload = classTypeToWellhubCreatePayload({
+      ...sampleClassType,
+      id: "cmqdk0ql90002k404k5aqashs", // 25-char cuid
+    });
+    expect(payload.reference).toBe("0ql90002k404k5aqashs");
+    expect(payload.reference!.length).toBe(20);
+  });
+
   it("omits categories when empty", () => {
     const payload = classTypeToWellhubCreatePayload({
       ...sampleClassType,
