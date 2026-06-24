@@ -137,10 +137,18 @@ export function accessApi<T>(path: string, opts: WellhubFetchOptions) {
 
 // ─── Health probe ─────────────────────────────────────────────────────────
 //
-// /booking/v1/health is the standard liveness check. Pass any tenant's token
-// — the endpoint only validates that the Authorization header is present and
-// well-formed.
+// /booking/v1/health is a PUBLIC liveness check — it returns 200 even without
+// a token, so it confirms connectivity but does NOT validate the bearer token.
+// It only responds with application/json (text/plain → 406). To actually
+// verify a tenant's token use `verifyGymAccess` below.
 
-export async function bookingHealth(token: string): Promise<"ok"> {
-  return bookingApi<"ok">("/booking/v1/health", { token, accept: "text/plain" });
+export async function bookingHealth(token: string): Promise<unknown> {
+  return bookingApi<unknown>("/booking/v1/health", { token, accept: "application/json" });
+}
+
+// Authenticated probe: lists the gym's classes. A 200 means the token is valid
+// AND authorized for this gym; a 401 means the token isn't enabled for the gym
+// yet (Wellhub-side setup pending). Use this for "Test connection".
+export async function verifyGymAccess(gymId: number, token: string): Promise<void> {
+  await bookingApi<unknown>(`/booking/v1/gyms/${gymId}/classes`, { token });
 }

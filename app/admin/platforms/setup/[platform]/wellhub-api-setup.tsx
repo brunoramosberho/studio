@@ -109,10 +109,24 @@ export function WellhubApiSetup() {
     mutationFn: async () => {
       const res = await fetch("/api/platforms/wellhub/test-connection", { method: "POST" });
       const body = await res.json();
-      if (!res.ok || !body.ok) throw new Error(body.reason ?? "failed");
-      return body;
+      if (!res.ok && res.status !== 200) throw new Error(body.reason ?? "failed");
+      return body as { ok: boolean; reason?: string; hint?: string; status?: number };
     },
-    onSuccess: () => toast.success("Conexión OK con Wellhub"),
+    onSuccess: (body) => {
+      if (body.ok) {
+        toast.success("Conexión OK — el token tiene acceso al gym");
+        return;
+      }
+      // Not-ok but well-understood reasons get friendly, actionable copy.
+      const messages: Record<string, string> = {
+        missing_token: "Falta el token. Pégalo en el Paso 1 y guárdalo.",
+        missing_gym_id: "Falta el gym_id. Guárdalo en el Paso 1.",
+        gym_not_authorized:
+          "El token es válido pero Wellhub aún no habilitó el gym para estas credenciales. Vuelve a probar más tarde.",
+        gym_not_found: "Wellhub no reconoce este gym_id. Verifícalo con tu contacto.",
+      };
+      toast.error(messages[body.reason ?? ""] ?? `Falló la conexión: ${body.reason ?? "desconocido"}`);
+    },
     onError: (e: Error) => toast.error(`Falló la conexión: ${e.message}`),
   });
 

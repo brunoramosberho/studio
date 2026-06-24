@@ -62,8 +62,8 @@ export async function listWellhubClasses(
 export function getWellhubClass(
   gymId: number,
   classId: number,
-  opts: { showDeleted?: boolean } = {},
   token: string,
+  opts: { showDeleted?: boolean } = {},
 ): Promise<WellhubClass> {
   return bookingApi<WellhubClass>(`/booking/v1/gyms/${gymId}/classes/${classId}`, {
     query: { "show-deleted": opts.showDeleted ? "true" : "false" },

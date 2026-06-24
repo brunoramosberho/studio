@@ -17,6 +17,7 @@ export {
   bookingApi,
   accessApi,
   bookingHealth,
+  verifyGymAccess,
   getWellhubEnv,
   getWellhubTokenForTenant,
   getBookingBaseUrl,
