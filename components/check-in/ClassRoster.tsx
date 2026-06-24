@@ -1157,8 +1157,8 @@ function WaitlistSection({
   });
 
   return (
-    <div className="bg-stone-50 border-t border-stone-100 px-4 py-3">
-      <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-2">
+    <div className="bg-stone-50 border-t border-stone-100 px-4 py-3 dark:bg-surface/40 dark:border-border/60">
+      <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-2 dark:text-muted">
         {t("waitlist")}
       </p>
       {waitlist.map((w) => (
@@ -1172,8 +1172,8 @@ function WaitlistSection({
             {(w.memberName ?? "?")[0].toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-stone-700 truncate">{w.memberName}</p>
-            <p className="text-[10px] text-stone-400">
+            <p className="text-xs font-medium text-stone-700 truncate dark:text-foreground">{w.memberName}</p>
+            <p className="text-[10px] text-stone-400 dark:text-muted">
               {t("waitingSince")} {format(new Date(w.since), "HH:mm", { locale: es })}
             </p>
           </div>
@@ -1181,7 +1181,7 @@ function WaitlistSection({
             <button
               onClick={() => promoteMutation.mutate({ memberId: w.memberId, force: false })}
               disabled={promoteMutation.isPending}
-              className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
+              className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50 dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/25"
             >
               {t("promote")}
             </button>
