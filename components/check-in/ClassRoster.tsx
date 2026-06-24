@@ -637,7 +637,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           <div className="px-3 sm:px-4 py-3">
             <button
               onClick={() => setWalkInOpen(true)}
-              className="w-full border border-dashed border-stone-200 rounded-xl py-2.5 text-xs text-stone-400 hover:bg-stone-50 active:bg-stone-100 transition-colors"
+              className="w-full border border-dashed border-stone-200 rounded-xl py-2.5 text-xs text-stone-400 hover:bg-stone-50 active:bg-stone-100 transition-colors dark:border-border dark:text-muted dark:hover:bg-surface/60 dark:active:bg-surface"
             >
               + {t("addWalkIn")}
             </button>
@@ -1059,8 +1059,8 @@ function WellhubBookingsSection({
   });
 
   return (
-    <div className="bg-orange-50/50 border-t border-orange-100 px-4 py-3">
-      <p className="text-[10px] font-medium text-orange-600 uppercase tracking-wider mb-2">
+    <div className="bg-orange-50/50 border-t border-orange-100 px-4 py-3 dark:bg-orange-500/10 dark:border-orange-500/20">
+      <p className="text-[10px] font-medium text-orange-600 uppercase tracking-wider mb-2 dark:text-orange-300">
         Reservas Wellhub · {bookings.length}
       </p>
       {bookings.map((b) => {
@@ -1072,12 +1072,12 @@ function WellhubBookingsSection({
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <p className="text-sm font-medium text-stone-900 truncate">{b.memberName}</p>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold uppercase tracking-wide">
+                <p className="text-sm font-medium text-stone-900 truncate dark:text-foreground">{b.memberName}</p>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold uppercase tracking-wide dark:bg-orange-500/20 dark:text-orange-300">
                   Wellhub
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-stone-500">
+              <div className="flex items-center gap-2 text-[10px] text-stone-500 dark:text-muted">
                 {b.email && <span className="truncate">{b.email}</span>}
                 {b.wellhubUniqueToken && (
                   <span className="font-mono">#{b.wellhubUniqueToken.slice(-6)}</span>
@@ -1085,7 +1085,7 @@ function WellhubBookingsSection({
               </div>
             </div>
             {isCheckedIn ? (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                 ✓ {b.checkedInAt ? format(new Date(b.checkedInAt), "HH:mm") : "Asistió"}
               </span>
             ) : !isFinished ? (
@@ -1097,7 +1097,7 @@ function WellhubBookingsSection({
                 Check-in
               </button>
             ) : (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-stone-100 text-stone-500">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-stone-100 text-stone-500 dark:bg-surface dark:text-muted">
                 No asistió
               </span>
             )}
