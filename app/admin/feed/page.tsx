@@ -166,6 +166,7 @@ export default function AdminFeedPage() {
   const [body, setBody] = useState("");
   const [targetCityIds, setTargetCityIds] = useState<string[]>([]);
   const [sendPush, setSendPush] = useState(false);
+  const [pushAudience, setPushAudience] = useState<"all" | "upcoming" | "linked_class">("all");
   const [postAsAdmin, setPostAsAdmin] = useState(false);
   const [pinPost, setPinPost] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
@@ -173,6 +174,16 @@ export default function AdminFeedPage() {
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const [linkedClass, setLinkedClass] = useState<LinkedClassOption | null>(null);
   const [classPickerOpen, setClassPickerOpen] = useState(false);
+
+  // Push audience segment. "linked_class" only makes sense with a linked
+  // class, so fall back to "all" when there isn't one.
+  const effectivePushAudience =
+    pushAudience === "linked_class" && !linkedClass ? "all" : pushAudience;
+  const pushAudienceOptions: { value: "all" | "upcoming" | "linked_class"; label: string }[] = [
+    { value: "all", label: "Todos los miembros" },
+    { value: "upcoming", label: "Con reserva próxima" },
+    ...(linkedClass ? [{ value: "linked_class" as const, label: "Reservados en la clase" }] : []),
+  ];
   const [classSearch, setClassSearch] = useState("");
   const [polls, setPolls] = useState<{ title: string; options: string[] }[]>([]);
 
@@ -354,6 +365,7 @@ export default function AdminFeedPage() {
           body,
           targetCityIds: targetCityIds.length > 0 ? targetCityIds : null,
           sendPush,
+          pushAudience: effectivePushAudience,
           postAsAdmin,
           isPinned: pinPost,
           linkedClassId: linkedClass?.id ?? null,
@@ -434,6 +446,7 @@ export default function AdminFeedPage() {
       setBody("");
       setTargetCityIds([]);
       setSendPush(false);
+      setPushAudience("all");
       setPostAsAdmin(false);
       setPinPost(false);
       setLinkedClass(null);
@@ -926,9 +939,13 @@ export default function AdminFeedPage() {
                     <div className="flex-1">
                       <p className="text-sm font-medium text-foreground">Enviar push notification</p>
                       <p className="text-[11px] text-muted">
-                        {targetCityIds.length === 0
-                          ? "Se enviará a todos los miembros"
-                          : `Se enviará a miembros en ${targetCityIds.length} ciudad${targetCityIds.length !== 1 ? "es" : ""}`}
+                        {effectivePushAudience === "upcoming"
+                          ? "Solo a miembros con reserva próxima"
+                          : effectivePushAudience === "linked_class"
+                            ? "Solo a quienes reservaron la clase"
+                            : targetCityIds.length === 0
+                              ? "Se enviará a todos los miembros"
+                              : `Se enviará a miembros en ${targetCityIds.length} ciudad${targetCityIds.length !== 1 ? "es" : ""}`}
                       </p>
                     </div>
                     <div className={cn(
@@ -947,6 +964,32 @@ export default function AdminFeedPage() {
                       className="sr-only"
                     />
                   </label>
+
+                  {/* Push audience segment — only matters when push is on */}
+                  {sendPush && (
+                    <div className="rounded-xl border border-border p-3">
+                      <p className="mb-2 text-[11px] font-medium text-muted">
+                        ¿Quién recibe el push?
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {pushAudienceOptions.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setPushAudience(opt.value)}
+                            className={cn(
+                              "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                              effectivePushAudience === opt.value
+                                ? "bg-admin text-white"
+                                : "bg-surface text-muted hover:bg-surface/70",
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Pin toggle */}
                   <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-surface/50">

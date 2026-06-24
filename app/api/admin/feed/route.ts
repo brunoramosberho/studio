@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
   try {
     const { tenant, session } = await requireRole("ADMIN", "FRONT_DESK");
     const body = await request.json();
-    const { title, body: postBody, category, targetCityIds, sendPush, postAsAdmin, isPinned, linkedClassId, polls } = body;
+    const { title, body: postBody, category, targetCityIds, sendPush, pushAudience, postAsAdmin, isPinned, linkedClassId, polls } = body;
 
     const hasPolls = Array.isArray(polls) && polls.length > 0;
     if (!postBody?.trim() && !linkedClassId && !hasPolls) {
@@ -216,6 +216,25 @@ export async function POST(request: NextRequest) {
       const userWhere: Record<string, unknown> = {};
       if (cityIds) {
         userWhere.cityId = { in: cityIds };
+      }
+      // Narrow the push to a member segment (the post itself stays visible to
+      // everyone — this only limits who gets pinged).
+      if (pushAudience === "upcoming") {
+        userWhere.bookings = {
+          some: {
+            tenantId: tenant.id,
+            status: "CONFIRMED",
+            class: { startsAt: { gte: new Date() } },
+          },
+        };
+      } else if (pushAudience === "linked_class" && linkedClassId) {
+        userWhere.bookings = {
+          some: {
+            tenantId: tenant.id,
+            classId: linkedClassId,
+            status: "CONFIRMED",
+          },
+        };
       }
 
       const subs = await prisma.pushSubscription.findMany({
