@@ -150,76 +150,77 @@ export default function CheckInPage() {
 
   return (
     <div className="space-y-3 md:space-y-4 overflow-x-hidden">
-      {/* Page header — hidden on mobile when viewing roster. No-shows moved to a
-          corner button (was a full-width tab bar that ate vertical space). */}
-      <div className={cn("flex items-start justify-between gap-2", showMobileRoster ? "hidden md:flex" : "flex")}>
-        <div>
-          <h1 className="text-xl font-semibold text-stone-900 dark:text-foreground">{t("checkIn")}</h1>
-          <p className="text-xs text-stone-400 dark:text-muted mt-0.5">
-            {t("checkInSubtitle")}
-          </p>
-        </div>
-        <Link
-          href="/admin/no-shows"
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50 dark:border-border dark:text-muted dark:hover:bg-surface/60"
-        >
-          <ShieldAlert size={14} />
-          {t("tabs.noShows")}
-        </Link>
-      </div>
-
-      {/* Date nav + studio filter — hidden on mobile when viewing roster */}
+      {/* Page header: title + day nav (left), studio filter + No-shows (right),
+          merged onto one row to save vertical space. Hidden on mobile when
+          viewing the roster. */}
       <div className={cn(
-        "flex items-center justify-between gap-2 flex-wrap",
-        showMobileRoster && "hidden md:flex",
+        "flex flex-wrap items-center justify-between gap-x-3 gap-y-2",
+        showMobileRoster ? "hidden md:flex" : "flex",
       )}>
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <button
-            onClick={() => setSelectedDate((d) => subDays(d, 1))}
-            className="p-1.5 rounded-lg border border-stone-200 dark:border-border hover:bg-stone-50 dark:hover:bg-surface/60 text-stone-500 dark:text-muted"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            onClick={() => setSelectedDate(new Date())}
-            className={cn(
-              "px-3 py-1 text-xs font-medium rounded-lg border transition-colors",
-              isToday(selectedDate)
-                ? "bg-admin text-white border-admin"
-                : "border-stone-200 dark:border-border text-stone-600 dark:text-muted hover:bg-stone-50 dark:hover:bg-surface/60 dark:border-border dark:text-muted dark:hover:bg-surface",
-            )}
-          >
-            {td("today")}
-          </button>
-          <span className="text-xs sm:text-sm font-medium text-stone-700 dark:text-foreground truncate max-w-[160px] sm:max-w-none">
-            {formatHeaderDate(selectedDate, td)}
-          </span>
-          <button
-            onClick={() => setSelectedDate((d) => addDays(d, 1))}
-            className="p-1.5 rounded-lg border border-stone-200 dark:border-border hover:bg-stone-50 dark:hover:bg-surface/60 text-stone-500 dark:text-muted dark:border-border dark:hover:bg-surface dark:text-muted"
-          >
-            <ChevronRight size={16} />
-          </button>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div>
+            <h1 className="text-xl font-semibold text-stone-900 dark:text-foreground">{t("checkIn")}</h1>
+            <p className="text-xs text-stone-400 dark:text-muted mt-0.5">
+              {t("checkInSubtitle")}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={() => setSelectedDate((d) => subDays(d, 1))}
+              className="p-1.5 rounded-lg border border-stone-200 dark:border-border hover:bg-stone-50 dark:hover:bg-surface/60 text-stone-500 dark:text-muted"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              onClick={() => setSelectedDate(new Date())}
+              className={cn(
+                "px-3 py-1 text-xs font-medium rounded-lg border transition-colors",
+                isToday(selectedDate)
+                  ? "bg-admin text-white border-admin"
+                  : "border-stone-200 dark:border-border text-stone-600 dark:text-muted hover:bg-stone-50 dark:hover:bg-surface/60 dark:border-border dark:text-muted dark:hover:bg-surface",
+              )}
+            >
+              {td("today")}
+            </button>
+            <span className="text-xs sm:text-sm font-medium text-stone-700 dark:text-foreground truncate max-w-[160px] sm:max-w-none">
+              {formatHeaderDate(selectedDate, td)}
+            </span>
+            <button
+              onClick={() => setSelectedDate((d) => addDays(d, 1))}
+              className="p-1.5 rounded-lg border border-stone-200 dark:border-border hover:bg-stone-50 dark:hover:bg-surface/60 text-stone-500 dark:text-muted dark:border-border dark:hover:bg-surface dark:text-muted"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
 
-        {hasMultipleStudios && filterStudioId && (
-          <div className="flex items-center gap-1.5">
-            <MapPin size={14} className="text-stone-400 dark:text-muted" />
-            <select
-              value={filterStudioId}
-              onChange={(e) => handleStudioChange(e.target.value)}
-              className="appearance-none bg-card border border-stone-200 dark:border-border rounded-lg px-2.5 py-1 text-xs text-stone-700 dark:text-foreground focus:outline-none focus:ring-1 focus:ring-admin focus:border-admin cursor-pointer"
-            >
-              {studios.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {hasMultipleStudios && filterStudioId && (
+            <div className="flex items-center gap-1.5">
+              <MapPin size={14} className="text-stone-400 dark:text-muted" />
+              <select
+                value={filterStudioId}
+                onChange={(e) => handleStudioChange(e.target.value)}
+                className="appearance-none bg-card border border-stone-200 dark:border-border rounded-lg px-2.5 py-1 text-xs text-stone-700 dark:text-foreground focus:outline-none focus:ring-1 focus:ring-admin focus:border-admin cursor-pointer"
+              >
+                {studios.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <Link
+            href="/admin/no-shows"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50 dark:border-border dark:text-muted dark:hover:bg-surface/60"
+          >
+            <ShieldAlert size={14} />
+            {t("tabs.noShows")}
+          </Link>
+        </div>
       </div>
 
       {/* Main layout: stacked on mobile (drill-down), side-by-side on desktop */}
-      <div className="flex flex-col md:grid md:grid-cols-[260px_1fr] gap-3 h-[calc(100dvh-120px)] md:h-[calc(100vh-160px)]">
+      <div className="flex flex-col md:grid md:grid-cols-[260px_1fr] gap-3 h-[calc(100dvh-120px)] md:h-[calc(100vh-120px)]">
         {/* Left: class list — hidden on mobile when viewing roster */}
         <div className={cn(
           "bg-card border border-stone-200 dark:border-border rounded-2xl overflow-hidden flex-col h-full",
