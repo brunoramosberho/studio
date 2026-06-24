@@ -414,7 +414,7 @@ export function CartStep() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">{product.name}</p>
                         {product.description && (
-                          <p className="truncate text-xs text-muted">
+                          <p className="truncate text-xs text-muted max-w-md">
                             {product.description}
                           </p>
                         )}
