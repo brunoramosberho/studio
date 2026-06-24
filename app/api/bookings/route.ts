@@ -11,6 +11,7 @@ import { checkSubscriptionBookingLimits, type BookingLimitFailure } from "@/lib/
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
+import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
 
 export async function GET(request: NextRequest) {
   try {
@@ -227,8 +228,11 @@ export async function POST(request: NextRequest) {
     }
 
     const blockedCount = await prisma.blockedSpot.count({ where: { classId } });
+    const platformBooked = await prisma.platformBooking.count({
+      where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+    });
     const totalPeople = 1 + guests.length;
-    const spotsLeft = classData.room.maxCapacity - classData._count.bookings - blockedCount;
+    const spotsLeft = classData.room.maxCapacity - classData._count.bookings - blockedCount - platformBooked;
     if (spotsLeft < totalPeople) {
       if (spotsLeft <= 0) {
         return NextResponse.json(

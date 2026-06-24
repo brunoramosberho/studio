@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
+import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
 
 export async function GET() {
   try {
@@ -75,6 +76,16 @@ export async function GET() {
       take: 10,
     });
 
+    const platformCounts = await prisma.platformBooking.groupBy({
+      by: ["classId"],
+      where: {
+        classId: { in: classes.map((c) => c.id) },
+        status: { in: PLATFORM_CONSUMING_STATUSES },
+      },
+      _count: true,
+    });
+    const platformByClass = new Map(platformCounts.map((p) => [p.classId, p._count]));
+
     const friendsByClass = new Map<string, { id: string; name: string | null; image: string | null }[]>();
     for (const fb of friendBookings) {
       if (!fb.user || myClassIds.has(fb.classId)) continue;
@@ -104,7 +115,7 @@ export async function GET() {
         },
         room: { studio: c.room?.studio },
         spotsLeft: c.room
-          ? c.room.maxCapacity - c._count.bookings
+          ? c.room.maxCapacity - c._count.bookings - (platformByClass.get(c.id) ?? 0)
           : null,
       },
     }));

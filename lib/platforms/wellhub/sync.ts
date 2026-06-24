@@ -100,6 +100,14 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
         wellhubLastError: null,
       },
     });
+
+    // Immediately reconcile effective capacity so a class that's already
+    // partly/fully booked by Magic members shows the correct availability in
+    // Wellhub from the moment it's synced (not only after the next booking).
+    await patchWellhubCapacityForClass(classId).catch((err) =>
+      console.error("[wellhub-sync] post-sync capacity patch failed", { classId, err }),
+    );
+
     return { status: "synced", wellhubSlotId };
   } catch (error) {
     await handleSyncError(classId, ctx.tenantConfig.tenantId, error);
@@ -197,14 +205,19 @@ export async function hideClassTypeInWellhub(classTypeId: string): Promise<Wellh
 }
 
 /**
- * Send a fresh `total_booked` value to Wellhub. Called whenever a Magic
- * booking or platform booking is created/cancelled so Wellhub's view of
+ * Send a fresh capacity/availability snapshot to Wellhub. Called whenever a
+ * Magic booking or platform booking is created/cancelled so Wellhub's view of
  * availability tracks our reality.
  *
- * Per the spec: "total_booked is the total amount of bookings on a given
- * class slot ... every time a class slot is booked through the Wellhub app
- * or NOT, update this." So we count direct Magic bookings + all platform
- * bookings in `consuming` statuses, and cap at total_capacity.
+ * Shared-capacity model: the seats Wellhub may sell at any moment are
+ * `min(quotaSpots, physicalSeatsLeft + wellhubBooked)`. We express this to
+ * Wellhub as a slot where:
+ *   - total_capacity = effectiveCapacity = min(quota, wellhubBooked + physicalLeft)
+ *   - total_booked   = wellhubBooked
+ * so Wellhub's "available = capacity − booked" equals the real number of seats
+ * a Wellhub member can still take. When the room fills with Magic members,
+ * effectiveCapacity drops to wellhubBooked → Wellhub shows 0 left (the class
+ * stops appearing as bookable) without us cancelling existing Wellhub holds.
  */
 export async function patchWellhubCapacityForClass(
   classId: string,
@@ -218,15 +231,28 @@ export async function patchWellhubCapacityForClass(
     return { status: "skipped", reason: "tenant_missing_gym_id" };
   }
 
-  const [magicBookingsCount, platformBookingsCount] = await Promise.all([
+  const [magicBookingsCount, wellhubBookingsCount, blockedCount] = await Promise.all([
     prisma.booking.count({
       where: { classId, status: { in: ["CONFIRMED", "ATTENDED"] } },
     }),
     prisma.platformBooking.count({
-      where: { classId, status: { in: CONSUMING_STATUSES } },
+      where: { classId, platform: "wellhub", status: { in: CONSUMING_STATUSES } },
     }),
+    prisma.blockedSpot.count({ where: { classId } }),
   ]);
-  const totalBooked = magicBookingsCount + platformBookingsCount;
+
+  // Also count OTHER platforms (e.g. ClassPass) occupying physical seats.
+  const otherPlatformCount = await prisma.platformBooking.count({
+    where: { classId, platform: { not: "wellhub" }, status: { in: CONSUMING_STATUSES } },
+  });
+
+  const quota = ctx.quotaSpots ?? 0;
+  const physicalLeft = Math.max(
+    0,
+    ctx.roomCapacity - magicBookingsCount - blockedCount - wellhubBookingsCount - otherPlatformCount,
+  );
+  // Seats Wellhub can still sell + the ones it already holds.
+  const effectiveCapacity = Math.min(quota, wellhubBookingsCount + physicalLeft);
 
   const token = await getWellhubTokenForTenant(ctx.tenantConfig.tenantId);
 
@@ -236,8 +262,8 @@ export async function patchWellhubCapacityForClass(
       ctx.classType.wellhubClassId,
       ctx.cls.wellhubSlotId,
       capacityPatchPayload({
-        totalCapacity: ctx.quotaSpots ?? 0,
-        totalBooked,
+        totalCapacity: effectiveCapacity,
+        totalBooked: wellhubBookingsCount,
       }),
       token,
     );
@@ -274,6 +300,7 @@ interface ClassContext {
     tenantId: string;
   };
   room: { name: string | null } | null;
+  roomCapacity: number;
   coachName: string;
   originalCoachName: string | null;
   quotaSpots: number;
@@ -309,7 +336,7 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
       },
       coach: { select: { name: true } },
       originalCoach: { select: { name: true } },
-      room: { select: { name: true } },
+      room: { select: { name: true, maxCapacity: true } },
       platformQuotas: {
         where: { platform: "wellhub" },
         select: { quotaSpots: true },
@@ -333,7 +360,8 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
       wellhubSlotId: cls.wellhubSlotId,
     },
     classType: cls.classType,
-    room: cls.room,
+    room: cls.room ? { name: cls.room.name } : null,
+    roomCapacity: cls.room?.maxCapacity ?? 0,
     coachName: cls.coach.name,
     originalCoachName: cls.originalCoach?.name ?? null,
     quotaSpots: cls.platformQuotas[0]?.quotaSpots ?? 0,

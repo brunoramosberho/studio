@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
 import { findPackageForClass, deductCredit, userPackageIncludeForBooking, ensureSubscriptionUserPackages } from "@/lib/credits";
+import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +24,12 @@ export async function POST(request: NextRequest) {
       include: {
         classType: true,
         room: true,
-        _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
+        _count: {
+          select: {
+            bookings: { where: { status: "CONFIRMED" } },
+            blockedSpots: true,
+          },
+        },
       },
     });
 
@@ -38,7 +44,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const spotsLeft = classData.room.maxCapacity - classData._count.bookings;
+    const platformBooked = await prisma.platformBooking.count({
+      where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+    });
+    const spotsLeft =
+      classData.room.maxCapacity -
+      classData._count.bookings -
+      classData._count.blockedSpots -
+      platformBooked;
     if (spotsLeft > 0) {
       return NextResponse.json(
         { error: "Class still has spots available. Book directly instead." },

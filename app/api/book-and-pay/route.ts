@@ -7,6 +7,7 @@ import { createMemberPayment } from "@/lib/stripe/payments";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { shouldHideCoach } from "@/lib/coach";
+import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,7 +72,10 @@ export async function POST(request: NextRequest) {
     }
 
     const blockedCount = await prisma.blockedSpot.count({ where: { classId } });
-    const spotsLeft = classData.room.maxCapacity - classData._count.bookings - blockedCount;
+    const platformBooked = await prisma.platformBooking.count({
+      where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+    });
+    const spotsLeft = classData.room.maxCapacity - classData._count.bookings - blockedCount - platformBooked;
     if (spotsLeft <= 0) {
       return NextResponse.json({ error: "Clase llena", full: true }, { status: 409 });
     }
@@ -253,6 +257,15 @@ export async function POST(request: NextRequest) {
       scheduledAt: classData.startsAt,
       scope: "book-and-pay",
     });
+
+    // Push refreshed total_booked to Wellhub so a Magic booking that fills the
+    // class is reflected there (and stops accepting Wellhub reservations).
+    try {
+      const { patchWellhubCapacityForClass } = await import("@/lib/platforms/wellhub");
+      await patchWellhubCapacityForClass(classId);
+    } catch (err) {
+      console.error("[wellhub] capacity patch after book-and-pay failed", err);
+    }
 
     // Create PaymentIntent if studio has Stripe Connect
     let paymentData: {

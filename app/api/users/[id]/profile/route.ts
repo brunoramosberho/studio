@@ -4,6 +4,7 @@ import { enrichPayloadsWithCurrentClassType } from "@/lib/feed-class-payload-syn
 import { requireAuth, roleAtLeast } from "@/lib/tenant";
 import { computeVisibleUntil, resolveScheduleTimezone } from "@/lib/schedule/visibility";
 import { getUsersAvatarMeta } from "@/lib/user-avatar-meta";
+import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
 
 export async function GET(
   _request: NextRequest,
@@ -185,6 +186,13 @@ export async function GET(
     });
     const myBookedSet = new Set(myBookingsForCoachClasses.map((b) => b.classId));
 
+    const platformCounts = await prisma.platformBooking.groupBy({
+      by: ["classId"],
+      where: { classId: { in: classIds }, status: { in: PLATFORM_CONSUMING_STATUSES } },
+      _count: true,
+    });
+    const platformByClass = new Map(platformCounts.map((p) => [p.classId, p._count]));
+
     coachClasses = raw.map((c) => ({
       id: c.id,
       className: c.classType.name,
@@ -194,7 +202,7 @@ export async function GET(
       startsAt: c.startsAt,
       endsAt: c.endsAt,
       studioName: c.room.studio.name,
-      spotsLeft: c.room.maxCapacity - c._count.bookings,
+      spotsLeft: c.room.maxCapacity - c._count.bookings - (platformByClass.get(c.id) ?? 0),
       currentUserBooked: myBookedSet.has(c.id),
     }));
 
@@ -270,6 +278,13 @@ export async function GET(
   });
   const myUpcomingSet = new Set(myUpcomingBookings.map((b) => b.classId));
 
+  const upcomingPlatformCounts = await prisma.platformBooking.groupBy({
+    by: ["classId"],
+    where: { classId: { in: upcomingClassIds }, status: { in: PLATFORM_CONSUMING_STATUSES } },
+    _count: true,
+  });
+  const upcomingPlatformByClass = new Map(upcomingPlatformCounts.map((p) => [p.classId, p._count]));
+
   // Find CLASS_RESERVED feed events for these upcoming classes
   const reservedFeedEvents = await prisma.feedEvent.findMany({
     where: {
@@ -309,7 +324,7 @@ export async function GET(
       startsAt: b.class.startsAt,
       endsAt: b.class.endsAt,
       studioName: b.class.room.studio.name,
-      spotsLeft: b.class.room.maxCapacity - b.class._count.bookings,
+      spotsLeft: b.class.room.maxCapacity - b.class._count.bookings - (upcomingPlatformByClass.get(b.classId) ?? 0),
       currentUserBooked: myUpcomingSet.has(b.classId),
       feedEventId: fe?.id ?? null,
       likeCount: fe?._count.likes ?? 0,

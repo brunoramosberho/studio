@@ -4,6 +4,7 @@ import { streamAssistantResponse, type AssistantMessage } from "@/lib/claude";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { requireTenant } from "@/lib/tenant";
+import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,9 +46,19 @@ export async function POST(request: NextRequest) {
       take: 30,
     });
 
+    const platformCounts = await prisma.platformBooking.groupBy({
+      by: ["classId"],
+      where: {
+        classId: { in: upcomingClasses.map((c) => c.id) },
+        status: { in: PLATFORM_CONSUMING_STATUSES },
+      },
+      _count: true,
+    });
+    const platformByClass = new Map(platformCounts.map((p) => [p.classId, p._count]));
+
     const scheduleContext = upcomingClasses
       .map((c) => {
-        const spotsLeft = c.room.maxCapacity - c._count.bookings;
+        const spotsLeft = c.room.maxCapacity - c._count.bookings - (platformByClass.get(c.id) ?? 0);
         const day = format(c.startsAt, "EEEE d 'de' MMMM", { locale: es });
         const time = format(c.startsAt, "h:mm a");
         return `- ${c.classType.name} | ${day} ${time} | Coach: ${c.coach.name} | Nivel: ${c.classType.level} | Lugares: ${spotsLeft}/${c.room.maxCapacity} | Estudio: ${c.room.studio.name}`;

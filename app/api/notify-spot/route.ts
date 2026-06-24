@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
+import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,10 +41,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const platformBooked = await prisma.platformBooking.count({
+      where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+    });
     const spotsLeft =
       classData.room.maxCapacity -
       classData._count.bookings -
-      classData._count.blockedSpots;
+      classData._count.blockedSpots -
+      platformBooked;
 
     if (spotsLeft > 0) {
       return NextResponse.json(
