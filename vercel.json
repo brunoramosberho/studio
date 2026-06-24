@@ -42,7 +42,7 @@
     },
     {
       "path": "/api/cron/stripe-fees-backfill",
-      "schedule": "45 * * * *"
+      "schedule": "*/15 * * * *"
     }
   ]
 }
