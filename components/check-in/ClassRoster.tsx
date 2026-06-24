@@ -63,7 +63,9 @@ interface RosterMember {
   hasPaymentPending: boolean;
   waiverPending: boolean;
   memberSince: string;
-  stats: AttendeeStats;
+  isGuest: boolean;
+  hostName: string | null;
+  stats: AttendeeStats | null;
   checkIn: {
     status: "present" | "late" | "absent";
     method: string;
@@ -277,11 +279,11 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   );
 
   const checkInMutation = useMutation({
-    mutationFn: async ({ memberId, method, force }: { memberId: string; method: string; force?: boolean }) => {
+    mutationFn: async ({ memberId, bookingId, method, force }: { memberId?: string; bookingId?: string; method: string; force?: boolean }) => {
       const res = await fetch(`/api/check-in/${classId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberId, method, force }),
+        body: JSON.stringify(bookingId ? { bookingId, method } : { memberId, method, force }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -297,11 +299,11 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   });
 
   const undoCheckInMutation = useMutation({
-    mutationFn: async (memberId: string) => {
+    mutationFn: async ({ memberId, bookingId }: { memberId?: string; bookingId?: string }) => {
       const res = await fetch(`/api/check-in/${classId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberId }),
+        body: JSON.stringify(bookingId ? { bookingId } : { memberId }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -317,22 +319,26 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   });
 
   const handleCheckIn = useCallback(
-    (memberId: string, hasPaymentPending: boolean, waiverPending: boolean) => {
+    (member: RosterMember) => {
       if (classInfo.isFinished) return;
-      if (waiverPending && blockWaiver) {
-        setWaiverConfirm(memberId);
+      if (member.waiverPending && blockWaiver) {
+        setWaiverConfirm(member.memberId);
         return;
       }
-      if (hasPaymentPending) {
-        setPaymentConfirm(memberId);
+      if (member.hasPaymentPending) {
+        setPaymentConfirm(member.memberId);
         return;
       }
       const now = new Date();
       const isLate = now > new Date(classInfo.startTime);
       startTransition(() => {
-        addOptimistic({ memberId, type: "checkin", status: isLate ? "late" : "present" });
+        addOptimistic({ memberId: member.memberId, type: "checkin", status: isLate ? "late" : "present" });
       });
-      checkInMutation.mutate({ memberId, method: "manual" });
+      checkInMutation.mutate(
+        member.isGuest
+          ? { bookingId: member.bookingId, method: "manual" }
+          : { memberId: member.memberId, method: "manual" },
+      );
     },
     [classInfo.isFinished, classInfo.startTime, addOptimistic, checkInMutation, blockWaiver],
   );
@@ -358,12 +364,15 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
   const confirmUndo = useCallback(() => {
     if (!undoConfirm) return;
+    const member = optimisticRoster.find((m) => m.memberId === undoConfirm);
     startTransition(() => {
       addOptimistic({ memberId: undoConfirm, type: "undo" });
     });
-    undoCheckInMutation.mutate(undoConfirm);
+    undoCheckInMutation.mutate(
+      member?.isGuest ? { bookingId: member.bookingId } : { memberId: undoConfirm },
+    );
     setUndoConfirm(null);
-  }, [undoConfirm, addOptimistic, undoCheckInMutation]);
+  }, [undoConfirm, addOptimistic, undoCheckInMutation, optimisticRoster]);
 
   const filtered = searchQuery
     ? optimisticRoster.filter((m) =>
@@ -604,7 +613,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
               key={member.memberId}
               member={member}
               isFinished={classInfo.isFinished}
-              onCheckIn={() => handleCheckIn(member.memberId, member.hasPaymentPending, member.waiverPending)}
+              onCheckIn={() => handleCheckIn(member)}
               onUndoRequest={() => handleUndoRequest(member.memberId)}
               onPhotoClick={member.memberImage
                 ? () => setPhotoPreview({ url: member.memberImage!, name: member.memberName ?? "" })
@@ -621,8 +630,8 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                     }
                   : undefined
               }
-              onMove={() => setMoveTarget(member)}
-              onCancel={() => setCancelTarget(member)}
+              onMove={member.isGuest ? undefined : () => setMoveTarget(member)}
+              onCancel={member.isGuest ? undefined : () => setCancelTarget(member)}
             />
           ))
         )}
@@ -863,13 +872,17 @@ function RosterRow({
   }, [isCheckedIn]);
 
   const tc = useTranslations("checkin");
-  const packageLabel = member.hasPaymentPending
-    ? tc("paymentPending")
-    : member.isUnlimited
-      ? `${member.membershipType} · ${tc("unlimited")}`
-      : member.remainingClasses != null
-        ? `${member.membershipType} · ${tc("remainingClasses", { num: member.remainingClasses })}`
-        : member.membershipType;
+  const packageLabel = member.isGuest
+    ? member.hostName
+      ? tc("guestOf", { name: member.hostName })
+      : tc("guest")
+    : member.hasPaymentPending
+      ? tc("paymentPending")
+      : member.isUnlimited
+        ? `${member.membershipType} · ${tc("unlimited")}`
+        : member.remainingClasses != null
+          ? `${member.membershipType} · ${tc("remainingClasses", { num: member.remainingClasses })}`
+          : member.membershipType;
 
   return (
     <div
@@ -917,6 +930,11 @@ function RosterRow({
           <p className="text-[13px] font-medium text-stone-900 dark:text-foreground truncate">
             {member.memberName}
           </p>
+          {member.isGuest && (
+            <span className="inline-flex shrink-0 items-center rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+              {tc("guest")}
+            </span>
+          )}
           {member.spotNumber != null && onSelectSpot && (
             <button
               type="button"

@@ -75,6 +75,8 @@ export async function GET(
             },
           },
         },
+        // Host (the member who brought this guest), for the guest row label.
+        parentBooking: { select: { user: { select: { name: true } } } },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -136,9 +138,42 @@ export async function GET(
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const roster = bookings
-      .filter((b) => b.user)
-      .map((b) => {
+    const roster = bookings.map((b) => {
+        // Guest booking: no User account → minimal row, attendance read from
+        // the booking status (ATTENDED = checked in), since there is no
+        // CheckIn row for guests.
+        if (!b.user) {
+          const guestName = b.guestName ?? "Invitado";
+          const gp = guestName.trim().split(/\s+/);
+          const guestInitials =
+            gp.length >= 2
+              ? `${gp[0][0]}${gp[1][0]}`.toUpperCase()
+              : (gp[0]?.[0] ?? "?").toUpperCase();
+          return {
+            memberId: b.id, // synthetic id (= bookingId) for keying/optimistic
+            memberName: guestName,
+            memberImage: null,
+            spotNumber: b.spotNumber,
+            bookingId: b.id,
+            bookingStatus: b.status,
+            initials: guestInitials,
+            membershipType: "Invitado",
+            membershipPackageType: null,
+            remainingClasses: null,
+            isUnlimited: false,
+            hasPaymentPending: false,
+            waiverPending: false,
+            memberSince: b.createdAt.toISOString(),
+            isGuest: true,
+            hostName: b.parentBooking?.user?.name ?? null,
+            checkIn:
+              b.status === "ATTENDED"
+                ? { status: "present", method: "manual", createdAt: b.createdAt.toISOString() }
+                : null,
+            stats: null,
+          };
+        }
+
         const user = b.user!;
         const ci = checkInMap.get(user.id) ?? null;
 
@@ -205,6 +240,8 @@ export async function GET(
           hasPaymentPending: hasExpiredMembership,
           waiverPending,
           memberSince,
+          isGuest: false,
+          hostName: null,
           checkIn: ci
             ? { status: ci.status, method: ci.method, createdAt: ci.createdAt.toISOString() }
             : null,

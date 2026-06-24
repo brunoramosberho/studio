@@ -2026,6 +2026,8 @@
     "yesUndo": "Yes, undo",
     "unlimited": "Unlimited",
     "remainingClasses": "{num} classes",
+    "guest": "Guest",
+    "guestOf": "Guest of {name}",
     "late": "Late",
     "presentLabel": "Present",
     "promoteError": "Error promoting",

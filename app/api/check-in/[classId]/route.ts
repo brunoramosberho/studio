@@ -11,10 +11,10 @@ export async function POST(
   try {
     const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const { classId } = await params;
-    const { memberId, method = "manual", force = false } = await request.json();
+    const { memberId, bookingId, method = "manual", force = false } = await request.json();
 
-    if (!memberId) {
-      return NextResponse.json({ error: "memberId is required" }, { status: 400 });
+    if (!memberId && !bookingId) {
+      return NextResponse.json({ error: "memberId or bookingId is required" }, { status: 400 });
     }
 
     const cls = await prisma.class.findFirst({
@@ -23,6 +23,25 @@ export async function POST(
     });
     if (!cls) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+
+    // Guest check-in: guests have no User account (and thus no CheckIn row),
+    // so their attendance is tracked directly on the booking status.
+    if (bookingId && !memberId) {
+      const updated = await prisma.booking.updateMany({
+        where: {
+          id: bookingId,
+          classId,
+          tenantId: ctx.tenant.id,
+          userId: null,
+          status: { in: ["CONFIRMED", "NO_SHOW"] },
+        },
+        data: { status: "ATTENDED" },
+      });
+      if (updated.count === 0) {
+        return NextResponse.json({ error: "Guest booking not found" }, { status: 404 });
+      }
+      return NextResponse.json({ guest: true, bookingId, status: "present" }, { status: 201 });
     }
 
     const existing = await prisma.checkIn.findUnique({
@@ -102,10 +121,10 @@ export async function DELETE(
   try {
     const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const { classId } = await params;
-    const { memberId } = await request.json();
+    const { memberId, bookingId } = await request.json();
 
-    if (!memberId) {
-      return NextResponse.json({ error: "memberId is required" }, { status: 400 });
+    if (!memberId && !bookingId) {
+      return NextResponse.json({ error: "memberId or bookingId is required" }, { status: 400 });
     }
 
     const cls = await prisma.class.findFirst({
@@ -114,6 +133,24 @@ export async function DELETE(
     });
     if (!cls) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+
+    // Guest undo: revert the booking status (no CheckIn row exists for guests).
+    if (bookingId && !memberId) {
+      const reverted = await prisma.booking.updateMany({
+        where: {
+          id: bookingId,
+          classId,
+          tenantId: ctx.tenant.id,
+          userId: null,
+          status: "ATTENDED",
+        },
+        data: { status: "CONFIRMED" },
+      });
+      if (reverted.count === 0) {
+        return NextResponse.json({ error: "Guest check-in not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true });
     }
 
     const deleted = await prisma.checkIn.deleteMany({

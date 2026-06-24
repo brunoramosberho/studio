@@ -2026,6 +2026,8 @@
     "yesUndo": "Si, deshacer",
     "unlimited": "Ilimitado",
     "remainingClasses": "{num} clases",
+    "guest": "Invitado",
+    "guestOf": "Invitado de {name}",
     "late": "Tarde",
     "presentLabel": "Presente",
     "promoteError": "Error al promover",
