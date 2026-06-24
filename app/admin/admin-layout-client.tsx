@@ -44,7 +44,6 @@ import {
   Coffee,
   Tag,
   Search,
-  Command,
   Home,
   GraduationCap,
   Sliders,
@@ -855,9 +854,9 @@ function PosHeaderButton() {
   return (
     <button
       onClick={() => openPOS()}
-      className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground sm:flex"
+      className="hidden items-center gap-1.5 rounded-sm border border-border/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface sm:flex"
     >
-      <ShoppingBag className="h-3.5 w-3.5" />
+      <ShoppingBag className="h-3.5 w-3.5 text-admin" />
       {t("posShort")}
     </button>
   );
@@ -871,7 +870,6 @@ function PaletteHeaderButton({ onClick }: { onClick: () => void }) {
       className="hidden items-center gap-1.5 rounded-sm border border-border/50 bg-surface/30 px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:border-admin/30 hover:bg-admin/5 hover:text-foreground sm:flex"
       title="Search (⌘K)"
     >
-      <Command className="h-3.5 w-3.5" />
       <kbd className="text-[10px] tabular-nums">{isMac ? "⌘K" : "Ctrl K"}</kbd>
     </button>
   );
