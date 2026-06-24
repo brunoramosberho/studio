@@ -627,6 +627,8 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
             waitlist={waitlist}
             classId={classId}
             isFinished={classInfo.isFinished}
+            capacity={classInfo.capacity}
+            enrolled={enrolledCount}
           />
         )}
 
@@ -1112,28 +1114,41 @@ function WaitlistSection({
   waitlist,
   classId,
   isFinished,
+  capacity,
+  enrolled,
 }: {
   waitlist: WaitlistMember[];
   classId: string;
   isFinished: boolean;
+  capacity: number;
+  enrolled: number;
 }) {
   const queryClient = useQueryClient();
+  // Promoting a full class overfills it — confirm with the admin first.
+  const [confirmFull, setConfirmFull] = useState<WaitlistMember | null>(null);
 
   const t = useTranslations("checkin");
   const promoteMutation = useMutation({
-    mutationFn: async (memberId: string) => {
+    mutationFn: async ({ memberId, force }: { memberId: string; force: boolean }) => {
       const res = await fetch("/api/check-in/walkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ classId, memberId, force: true }),
+        body: JSON.stringify({ classId, memberId, force }),
       });
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? t("promoteError"));
+        // Class full + not forced → ask before overfilling, don't error out.
+        if (body.requiresConfirmation) return { needsConfirm: true as const, memberId };
+        throw new Error(body.error ?? t("promoteError"));
       }
-      return res.json();
+      return { needsConfirm: false as const, memberId };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.needsConfirm) {
+        setConfirmFull(waitlist.find((w) => w.memberId === result.memberId) ?? null);
+        return;
+      }
+      setConfirmFull(null);
       queryClient.invalidateQueries({ queryKey: ["check-in-roster", classId] });
       queryClient.invalidateQueries({ queryKey: ["check-in-classes"] });
       toast.success(t("memberPromoted"));
@@ -1164,7 +1179,7 @@ function WaitlistSection({
           </div>
           {!isFinished && (
             <button
-              onClick={() => promoteMutation.mutate(w.memberId)}
+              onClick={() => promoteMutation.mutate({ memberId: w.memberId, force: false })}
               disabled={promoteMutation.isPending}
               className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
             >
@@ -1173,6 +1188,26 @@ function WaitlistSection({
           )}
         </div>
       ))}
+
+      {confirmFull && (
+        <ConfirmDialog
+          icon={<AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />}
+          title={t("promoteFullTitle")}
+          description={t("promoteFullDesc", {
+            name: confirmFull.memberName ?? "",
+            enrolled,
+            capacity,
+          })}
+          confirmLabel={t("promoteFullConfirm")}
+          confirmClassName="bg-amber-50 text-amber-700 hover:bg-amber-100"
+          onConfirm={() => {
+            const m = confirmFull;
+            setConfirmFull(null);
+            promoteMutation.mutate({ memberId: m.memberId, force: true });
+          }}
+          onCancel={() => setConfirmFull(null)}
+        />
+      )}
     </div>
   );
 }
