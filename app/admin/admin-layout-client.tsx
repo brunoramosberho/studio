@@ -27,6 +27,8 @@ import {
   ArrowLeft,
   Menu,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
   MapPin,
   Loader2,
   Check,
@@ -875,11 +877,46 @@ function PaletteHeaderButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// ── Desktop sidebar collapse (persisted in localStorage) ──
+const SIDEBAR_HIDDEN_KEY = "admin:sidebarHidden";
+const sidebarHiddenListeners = new Set<() => void>();
+function sidebarHiddenSubscribe(cb: () => void) {
+  sidebarHiddenListeners.add(cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    sidebarHiddenListeners.delete(cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+function sidebarHiddenSnapshot() {
+  return localStorage.getItem(SIDEBAR_HIDDEN_KEY) === "1";
+}
+function sidebarHiddenServerSnapshot() {
+  return false;
+}
+function setSidebarHiddenStored(next: boolean) {
+  try {
+    localStorage.setItem(SIDEBAR_HIDDEN_KEY, next ? "1" : "0");
+  } catch {}
+  sidebarHiddenListeners.forEach((cb) => cb());
+}
+
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Persisted desktop sidebar collapse — hide it for more screen space.
+  // useSyncExternalStore avoids both setState-in-effect and hydration drift.
+  const sidebarHidden = useSyncExternalStore(
+    sidebarHiddenSubscribe,
+    sidebarHiddenSnapshot,
+    sidebarHiddenServerSnapshot,
+  );
+  const toggleSidebar = useCallback(
+    () => setSidebarHiddenStored(!sidebarHiddenSnapshot()),
+    [],
+  );
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { studioName } = useBranding();
@@ -1066,6 +1103,18 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             >
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
+            <button
+              className="hidden h-10 w-10 items-center justify-center rounded-sm text-foreground/70 transition-colors hover:bg-admin/5 hover:text-foreground lg:flex"
+              onClick={toggleSidebar}
+              title={sidebarHidden ? t("showSidebar") : t("hideSidebar")}
+              aria-label={sidebarHidden ? t("showSidebar") : t("hideSidebar")}
+            >
+              {sidebarHidden ? (
+                <PanelLeftOpen className="h-5 w-5" />
+              ) : (
+                <PanelLeftClose className="h-5 w-5" />
+              )}
+            </button>
             <div className="flex items-center gap-2">
               <span className="font-display text-lg font-bold text-foreground">{studioName}</span>
               <span className="rounded-sm bg-admin/10 px-2 py-0.5 text-xs font-semibold text-admin">
@@ -1115,7 +1164,12 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-[calc(100dvh-3.5rem-4px)]">
         {/* Desktop sidebar */}
-        <aside className="hidden w-56 shrink-0 border-r border-border/40 bg-card lg:block">
+        <aside
+          className={cn(
+            "hidden shrink-0 border-r border-border/40 bg-card",
+            sidebarHidden ? "" : "w-56 lg:block",
+          )}
+        >
           <div className="sticky top-[calc(3.5rem+4px)] flex h-[calc(100dvh-3.5rem-4px)] flex-col">
             {/* Spark AI protagonist */}
             <div className="p-3 pb-0">

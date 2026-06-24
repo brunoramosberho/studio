@@ -124,6 +124,8 @@
     "achievements": "Logros",
     "pos": "Punto de venta / Reservar",
     "posShort": "POS / Reservar",
+    "hideSidebar": "Ocultar menú",
+    "showSidebar": "Mostrar menú",
     "orders": "Órdenes del bar",
     "ordersTitle": "Órdenes del bar",
     "ordersDescription": "Pre-órdenes que los clientes hicieron al reservar su clase.",

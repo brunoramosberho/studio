@@ -124,6 +124,8 @@
     "achievements": "Achievements",
     "pos": "Point of Sale / Book",
     "posShort": "POS / Book",
+    "hideSidebar": "Hide menu",
+    "showSidebar": "Show menu",
     "orders": "Bar orders",
     "ordersTitle": "Bar orders",
     "ordersDescription": "Pre-orders that clients placed when booking their class.",
