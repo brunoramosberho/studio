@@ -446,18 +446,44 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
     [hasRoomMap],
   );
 
+  // One search field rendered in two slots (desktop inline / mobile below);
+  // only the breakpoint-appropriate one is visible, both share the same state.
+  const searchInner = (
+    <>
+      <Search
+        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-300 dark:text-muted"
+        size={13}
+      />
+      <input
+        type="text"
+        placeholder={t("searchMember")}
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="w-full rounded-lg border border-stone-200 bg-stone-50 py-1 pl-8 pr-3 text-xs text-foreground placeholder:text-muted/60 focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin dark:border-border dark:bg-surface"
+      />
+    </>
+  );
+
   return (
     <div className="flex flex-col h-full">
-      {/* Header: class info, live stats, and member search */}
+      {/* Header: class info, live stats, and member search.
+          Desktop puts search inline (right of the class info) to save a row;
+          mobile keeps it on its own line below. */}
       <div className="px-3 sm:px-4 py-2.5 border-b border-stone-100 dark:border-border/60 shrink-0 space-y-2.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-stone-900 dark:text-foreground truncate">
-              {classInfo.className} · {startFormatted}
-            </p>
-            <p className="text-xs text-stone-400 dark:text-muted truncate">
-              {classInfo.coachName} · {classInfo.room}
-            </p>
+        <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-stone-900 dark:text-foreground truncate">
+                {classInfo.className} · {startFormatted}
+              </p>
+              <p className="text-xs text-stone-400 dark:text-muted truncate">
+                {classInfo.coachName} · {classInfo.room}
+              </p>
+            </div>
+            {/* Desktop search — inline, to the right of the class info */}
+            <div className="relative hidden flex-1 max-w-[240px] lg:block">
+              {searchInner}
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-3 sm:gap-4">
             {[
@@ -491,19 +517,8 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
             ))}
           </div>
         </div>
-        <div className="relative max-w-[260px]">
-          <Search
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-300 dark:text-muted"
-            size={13}
-          />
-          <input
-            type="text"
-            placeholder={t("searchMember")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-stone-200 bg-stone-50 py-1 pl-8 pr-3 text-xs text-foreground placeholder:text-muted/60 focus:border-admin focus:outline-none focus:ring-1 focus:ring-admin dark:border-border dark:bg-surface"
-          />
-        </div>
+        {/* Search — own line below on smaller screens */}
+        <div className="relative max-w-[260px] lg:hidden">{searchInner}</div>
       </div>
 
       {/* Finished banner */}
