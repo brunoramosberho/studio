@@ -3,64 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Camera, Loader2, X, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { captureVideoPoster, uploadVideoPosterToStorage } from "@/lib/media-utils";
-
-const MAX_DIMENSION = 1920;
-const JPEG_QUALITY = 0.80;
-const SIZE_THRESHOLD = 2 * 1024 * 1024;
+import { captureVideoPoster, uploadVideoPosterToStorage, compressImage } from "@/lib/media-utils";
 
 const MAX_VIDEO_SIZE = 30 * 1024 * 1024;
 const MAX_VIDEO_SIZE_LABEL = "30";
 const MAX_VIDEO_DURATION = 60;
 const ACCEPTED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
-
-function compressImage(file: File): Promise<File> {
-  if (!file.type.startsWith("image/")) return Promise.resolve(file);
-
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-
-      let { width, height } = img;
-      const needsResize = width > MAX_DIMENSION || height > MAX_DIMENSION;
-      if (!needsResize && file.size < SIZE_THRESHOLD) {
-        resolve(file);
-        return;
-      }
-
-      if (width > height && width > MAX_DIMENSION) {
-        height = Math.round((height / width) * MAX_DIMENSION);
-        width = MAX_DIMENSION;
-      } else if (height > MAX_DIMENSION) {
-        width = Math.round((width / height) * MAX_DIMENSION);
-        height = MAX_DIMENSION;
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            const ext = file.name.replace(/\.[^.]+$/, "");
-            resolve(new File([blob], `${ext}.jpg`, { type: "image/jpeg" }));
-          } else {
-            resolve(file);
-          }
-        },
-        "image/jpeg",
-        JPEG_QUALITY,
-      );
-    };
-    img.onerror = () => resolve(file);
-    img.src = url;
-  });
-}
 
 function getVideoDuration(file: File): Promise<number> {
   return new Promise((resolve, reject) => {

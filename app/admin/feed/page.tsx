@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { captureVideoPoster, uploadVideoPosterToStorage } from "@/lib/media-utils";
+import { captureVideoPoster, uploadVideoPosterToStorage, compressImage } from "@/lib/media-utils";
 import {
   Megaphone,
   Trophy,
@@ -406,8 +406,12 @@ export default function AdminFeedPage() {
               if (regRes.ok) uploadedCount++;
               else failedCount++;
             } else {
+              // Compress before the multipart upload — large phone photos
+              // otherwise blow past Vercel's ~4.5MB serverless body limit and
+              // the image silently fails to attach (text-only post).
+              const processed = await compressImage(file);
               const fd = new FormData();
-              fd.append("file", file);
+              fd.append("file", processed);
               const uploadRes = await fetch(`/api/feed/${event.id}/photos`, {
                 method: "POST",
                 body: fd,
