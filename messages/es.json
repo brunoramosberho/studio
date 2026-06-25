@@ -122,7 +122,6 @@
     "clients": "Clientes",
     "feed": "Feed",
     "achievements": "Logros",
-    "friends": "Amigos",
     "pos": "Punto de venta / Reservar",
     "posShort": "POS / Reservar",
     "hideSidebar": "Ocultar menú",
@@ -1343,6 +1342,7 @@
     "monthInterval": "mes",
     "clientProfile": {
       "backToClients": "Clientes",
+      "friends": "Amigos",
       "clientNotFound": "Cliente no encontrado",
       "backToClientsList": "Volver a clientes",
       "newSale": "Nueva venta",
