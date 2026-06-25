@@ -55,11 +55,11 @@ export async function GET(request: NextRequest) {
 
   switch (filter) {
     case "active":
-      userWhere.packages = { some: { tenantId, expiresAt: { gt: now } } };
+      userWhere.packages = { some: { tenantId, status: "ACTIVE", expiresAt: { gt: now } } };
       break;
     case "expiring":
       userWhere.packages = {
-        some: { tenantId, expiresAt: { gt: now, lte: sevenDaysFromNow } },
+        some: { tenantId, status: "ACTIVE", expiresAt: { gt: now, lte: sevenDaysFromNow } },
       };
       break;
     case "inactive":
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
             image: true,
             createdAt: true,
             packages: {
-              where: { tenantId, expiresAt: { gt: now } },
+              where: { tenantId, status: "ACTIVE", expiresAt: { gt: now } },
               orderBy: { expiresAt: "desc" },
               take: 1,
               include: { package: { select: { name: true } } },
