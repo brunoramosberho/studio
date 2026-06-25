@@ -180,7 +180,7 @@ export async function GET(
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [user, progress, achievements, allAchievements, packages, levels, memberSubscriptions, debts] =
+    const [user, progress, achievements, allAchievements, packages, levels, memberSubscriptions, debts, friendships] =
       await Promise.all([
         prisma.user.findUniqueOrThrow({
           where: { id: userId },
@@ -240,6 +240,18 @@ export async function GET(
             resolvedBy: { select: { name: true } },
           },
           orderBy: { createdAt: "desc" },
+        }),
+
+        prisma.friendship.findMany({
+          where: {
+            tenantId,
+            status: "ACCEPTED",
+            OR: [{ requesterId: userId }, { addresseeId: userId }],
+          },
+          include: {
+            requester: { select: { id: true, name: true, image: true } },
+            addressee: { select: { id: true, name: true, image: true } },
+          },
         }),
       ]);
 
@@ -358,7 +370,15 @@ export async function GET(
 
     const paymentRefMap = await resolveRefMap(stripePayments, posTransactions);
 
+    // Accepted friendships are bidirectional — the friend is whichever side
+    // of the row isn't this client.
+    const friends = friendships.map((f) => {
+      const friend = f.requesterId === userId ? f.addressee : f.requester;
+      return { id: friend.id, name: friend.name, image: friend.image };
+    });
+
     return NextResponse.json({
+      friends,
       id: user.id,
       name: user.name,
       email: user.email,

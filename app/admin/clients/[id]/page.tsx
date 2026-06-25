@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -51,7 +51,7 @@ import { cn, formatDate, timeAgo, getDateLocale } from "@/lib/utils";
 import { useFormatMoney } from "@/components/tenant-provider";
 import { format } from "date-fns";
 import { usePosStore } from "@/store/pos-store";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Users } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 
 interface ClientDetail {
@@ -67,6 +67,7 @@ interface ClientDetail {
   pwaInstalledAt: string | null;
   lastSeenAt: string | null;
   role: string;
+  friends: { id: string; name: string | null; image: string | null }[];
   stats: {
     totalClasses: number;
     classesThisMonth: number;
@@ -498,6 +499,16 @@ function EditExpiryButton({
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  // Smart back: return to wherever the user came from (check-in, another
+  // client's profile, etc.); fall back to the clients list on a direct load.
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/admin/clients");
+    }
+  };
   const queryClient = useQueryClient();
   const t = useTranslations("admin.clientProfile");
   const ta = useTranslations("admin");
@@ -687,13 +698,13 @@ export default function ClientDetailPage() {
         className="flex items-center justify-between"
       >
         <div className="flex items-center gap-2 text-sm">
-          <Link
-            href="/admin/clients"
+          <button
+            onClick={handleBack}
             className="flex items-center gap-1.5 text-muted transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             {t("backToClients")}
-          </Link>
+          </button>
           <ChevronRight className="h-3 w-3 text-muted/50" />
           <span className="font-medium text-foreground">{displayName}</span>
         </div>
@@ -894,6 +905,39 @@ export default function ClientDetailPage() {
                     )}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Friends — click to open their profile */}
+          {client.friends.length > 0 && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-admin" />
+                  <span className="text-sm font-semibold">{t("friends")}</span>
+                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
+                    {client.friends.length}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {client.friends.map((f) => (
+                    <Link
+                      key={f.id}
+                      href={`/admin/clients/${f.id}`}
+                      className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface"
+                    >
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage src={f.image ?? undefined} />
+                        <AvatarFallback className="bg-admin/10 text-[11px] text-admin">
+                          {(f.name ?? "?")[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate text-sm text-foreground">{f.name ?? "—"}</span>
+                      <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-muted/40" />
+                    </Link>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
