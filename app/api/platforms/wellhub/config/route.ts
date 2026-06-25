@@ -49,6 +49,7 @@ export async function PATCH(request: NextRequest) {
       noShowPercent,
       lateCancelPercent,
       freeVisitsPerMonth,
+      wellhubDefaultQuota,
       portalUrl,
       isActive,
     } = body as {
@@ -63,6 +64,7 @@ export async function PATCH(request: NextRequest) {
       noShowPercent?: number | null;
       lateCancelPercent?: number | null;
       freeVisitsPerMonth?: number | null;
+      wellhubDefaultQuota?: number | null;
       portalUrl?: string | null;
       isActive?: boolean;
     };
@@ -84,6 +86,10 @@ export async function PATCH(request: NextRequest) {
     if (noShowPercent !== undefined) data.noShowPercent = clampFraction(noShowPercent);
     if (lateCancelPercent !== undefined) data.lateCancelPercent = clampFraction(lateCancelPercent);
     if (freeVisitsPerMonth !== undefined) data.freeVisitsPerMonth = freeVisitsPerMonth;
+    if (wellhubDefaultQuota !== undefined) {
+      data.wellhubDefaultQuota =
+        wellhubDefaultQuota == null ? null : Math.max(0, Math.floor(wellhubDefaultQuota));
+    }
     if (portalUrl !== undefined) data.portalUrl = portalUrl;
     if (isActive !== undefined) {
       data.isActive = isActive;

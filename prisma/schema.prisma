@@ -1936,6 +1936,11 @@ model StudioPlatformConfig {
   wellhubWebhookSecret      String?
   wellhubLastSyncAt         DateTime?
   wellhubLastError          String?
+  // Default Wellhub spots auto-applied to a class when it enters the
+  // client-visible schedule window. Null = no auto-quota (manual only). The
+  // window-sync cron and syncClassToWellhub only expose classes that are
+  // already visible to members, so Wellhub never sees unreleased classes.
+  wellhubDefaultQuota       Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

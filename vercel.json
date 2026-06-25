@@ -37,6 +37,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/wellhub-window-sync",
+      "schedule": "20 * * * *"
+    },
+    {
       "path": "/api/cron/staff-auto-close-shifts",
       "schedule": "30 * * * *"
     },

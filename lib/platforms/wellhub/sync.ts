@@ -62,11 +62,36 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
   if (!ctx.classType.wellhubProductId) {
     return await markStatus(classId, "excluded", "classtype_missing_product");
   }
-  if (!ctx.quotaSpots || ctx.quotaSpots <= 0) {
-    return await markStatus(classId, "excluded", "no_quota_for_wellhub");
-  }
   if (ctx.cls.status === "CANCELLED") {
     return await unsyncClassFromWellhub(classId);
+  }
+
+  // Visibility gate: never expose a class to Wellhub before it's visible to
+  // our own members. A class beyond the client-visible window stays out of
+  // Wellhub (and gets synced later, once it enters the window).
+  if (!(await isClassClientVisible(ctx))) {
+    return await markStatus(classId, "excluded", "outside_visible_window");
+  }
+
+  // Auto-apply the tenant default quota when the class has none yet. Lets the
+  // window-sync cron expose newly-visible classes without manual per-class
+  // quota entry.
+  if ((!ctx.quotaSpots || ctx.quotaSpots <= 0) && ctx.tenantConfig.defaultQuota && ctx.tenantConfig.defaultQuota > 0) {
+    await prisma.schedulePlatformQuota.upsert({
+      where: { classId_platform: { classId, platform: "wellhub" } },
+      create: {
+        tenantId: ctx.tenantConfig.tenantId,
+        classId,
+        platform: "wellhub",
+        quotaSpots: ctx.tenantConfig.defaultQuota,
+      },
+      update: { quotaSpots: ctx.tenantConfig.defaultQuota },
+    });
+    ctx.quotaSpots = ctx.tenantConfig.defaultQuota;
+  }
+
+  if (!ctx.quotaSpots || ctx.quotaSpots <= 0) {
+    return await markStatus(classId, "excluded", "no_quota_for_wellhub");
   }
 
   const gymId = ctx.tenantConfig.wellhubGymId;
@@ -313,6 +338,7 @@ interface ClassContext {
     tenantId: string;
     wellhubGymId: number | null;
     wellhubMode: "disabled" | "legacy_email" | "api";
+    defaultQuota: number | null;
   } | null;
 }
 
@@ -352,7 +378,7 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
 
   const tenantConfig = await prisma.studioPlatformConfig.findFirst({
     where: { tenantId: cls.tenantId, platform: "wellhub" },
-    select: { tenantId: true, wellhubGymId: true, wellhubMode: true },
+    select: { tenantId: true, wellhubGymId: true, wellhubMode: true, wellhubDefaultQuota: true },
   });
 
   return {
@@ -370,8 +396,43 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
     coachName: cls.coach.name,
     originalCoachName: cls.originalCoach?.name ?? null,
     quotaSpots: cls.platformQuotas[0]?.quotaSpots ?? 0,
-    tenantConfig,
+    tenantConfig: tenantConfig
+      ? {
+          tenantId: tenantConfig.tenantId,
+          wellhubGymId: tenantConfig.wellhubGymId,
+          wellhubMode: tenantConfig.wellhubMode,
+          defaultQuota: tenantConfig.wellhubDefaultQuota,
+        }
+      : null,
   };
+}
+
+/**
+ * Is this class already visible to our own members? Wellhub must never see a
+ * class before clients do. Uses the same computeVisibleUntil the public
+ * schedule uses. Past classes are treated as not-syncable.
+ */
+async function isClassClientVisible(ctx: ClassContext): Promise<boolean> {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: ctx.classType.tenantId },
+    select: {
+      id: true,
+      scheduleVisibilityMode: true,
+      visibleScheduleDays: true,
+      scheduleReleaseDayOfWeek: true,
+      scheduleReleaseHour: true,
+      scheduleReleaseWeeksAhead: true,
+      scheduleReleaseTimezone: true,
+    },
+  });
+  if (!tenant) return false;
+
+  const { computeVisibleUntil, resolveScheduleTimezone } = await import("@/lib/schedule/visibility");
+  const timezone = await resolveScheduleTimezone(tenant);
+  const now = new Date();
+  const visibleUntil = computeVisibleUntil(now, tenant, timezone);
+  // In-window = starts in the future AND at/before the visible horizon.
+  return ctx.cls.startsAt >= now && ctx.cls.startsAt <= visibleUntil;
 }
 
 async function ensureWellhubClassForClassType(
