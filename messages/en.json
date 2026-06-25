@@ -2651,6 +2651,7 @@
     "personOnWaitlist": "{count} person on waitlist",
     "peopleOnWaitlist": "{count} people on waitlist",
     "waitlistCreditDesc": "A credit will be deducted when joining. If a spot opens, you'll be automatically enrolled. If you don't get in, your credit will be refunded.",
+    "waitlistNeedsCredits": "Joining the waitlist uses 1 credit and you have none. Tap to see the packages.",
     "justNotifyMe": "Just notify me if a spot opens up",
     "notifyMeIfSpotOpens": "Notify me if a spot opens up",
     "noCommitment": "No commitment — we'll only notify you if there's a spot.",

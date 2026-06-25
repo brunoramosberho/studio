@@ -469,7 +469,10 @@ export default function ClassDetailPage() {
     if (isAuthenticated && hasCredits) {
       handleJoinWaitlist();
     } else {
-      setSheetOpen(true);
+      // No credits: joining the waitlist costs a credit, so send them to
+      // packages. (The booking sheet can't open on a full class — there's no
+      // spot to pick — so setSheetOpen would silently do nothing.)
+      router.push("/packages");
     }
   }
 
@@ -1339,7 +1342,7 @@ export default function ClassDetailPage() {
                       </div>
                       <div className="rounded-xl border border-[#C9A96E]/20 bg-[#C9A96E]/5 px-4 py-3">
                         <p className="text-xs text-muted leading-relaxed">
-                          {t("waitlistCreditDesc")}
+                          {hasCredits ? t("waitlistCreditDesc") : t("waitlistNeedsCredits")}
                         </p>
                       </div>
                       <Button

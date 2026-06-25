@@ -2651,6 +2651,7 @@
     "personOnWaitlist": "{count} persona en lista de espera",
     "peopleOnWaitlist": "{count} personas en lista de espera",
     "waitlistCreditDesc": "Se te descontará un crédito al unirte. Si se libera un lugar, entrarás automáticamente. Si no logras entrar, se te devuelve el crédito.",
+    "waitlistNeedsCredits": "Entrar a la lista de espera usa 1 crédito y no tienes disponibles. Toca para ver los paquetes.",
     "justNotifyMe": "Solo notifícame si se abre un lugar",
     "notifyMeIfSpotOpens": "Notifícame si se libera un espacio",
     "noCommitment": "Sin compromiso — solo te notificamos si hay lugar.",
