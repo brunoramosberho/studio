@@ -94,6 +94,7 @@ interface WellhubBooking {
   phone: string | null;
   magicUserId: string | null;
   spotNumber: number | null;
+  companionBookingId: string | null;
   checkedInAt: string | null;
   createdAt: string;
 }
@@ -254,7 +255,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const roomLayout = (room?.layout as RoomLayoutData | null) ?? null;
   const hasRoomMap = !!roomLayout && roomLayout.spots?.length > 0;
   const [mapOpen, setMapOpen] = useState(true);
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  // Selected room-map spot. Drives highlight AND arms tap-to-move (tap an
+  // occupied spot, then a free one to move its occupant there).
+  const [selectedSpot, setSelectedSpot] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
   const suppressCollapseRef = useRef(false);
@@ -317,6 +320,26 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       toast.error(err.message);
       invalidateClassData();
     },
+  });
+
+  const moveSpotMutation = useMutation({
+    mutationFn: async ({ bookingId, spotNumber }: { bookingId: string; spotNumber: number }) => {
+      const res = await fetch(`/api/check-in/${classId}/spot`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, spotNumber }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? t("moveSpotError"));
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidateClassData();
+      toast.success(t("spotMoved"));
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const handleCheckIn = useCallback(
@@ -422,9 +445,23 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
     return map;
   }, [roster, wellhubBookings]);
 
+  // Resolve who occupies the selected spot — works for members, guests, and
+  // Wellhub seats alike.
   const selectedMember =
-    roster.find((m) => m.memberId === selectedMemberId) ?? null;
-  const selectedSpot = selectedMember?.spotNumber ?? null;
+    selectedSpot != null ? roster.find((m) => m.spotNumber === selectedSpot) ?? null : null;
+  const selectedWellhub =
+    selectedSpot != null
+      ? wellhubBookings.find((w) => w.spotNumber === selectedSpot) ?? null
+      : null;
+  const selectedMemberId = selectedMember?.memberId ?? null;
+  const selectedName = selectedMember?.memberName ?? selectedWellhub?.memberName ?? "";
+  // The booking that physically holds a spot (member/guest booking, or the
+  // companion booking behind a Wellhub seat) — the one we re-spot on a move.
+  const bookingIdForSpot = (spot: number): string | null => {
+    const m = roster.find((r) => r.spotNumber === spot);
+    if (m) return m.bookingId;
+    return wellhubBookings.find((w) => w.spotNumber === spot)?.companionBookingId ?? null;
+  };
 
   // When a member is picked from the room map, bring their roster row into view.
   // Scrolls only the list container (never the page) and is a no-op when the row
@@ -581,14 +618,22 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                   spotMap={spotMap}
                   selectedSpot={selectedSpot}
                   onSelectSpot={(spot) => {
-                    const mid = spotToMemberId.get(spot) ?? null;
-                    if (mid) {
-                      setSelectedMemberId((cur) => (cur && cur === mid ? null : mid));
+                    // Occupied spot → select it (and arm move). Tap again to clear.
+                    if (spotToMemberId.has(spot)) {
+                      setSelectedSpot((cur) => (cur === spot ? null : spot));
                       return;
                     }
-                    // Empty spot tapped → open the walk-in flow targeting it.
+                    // Free spot + a selection armed → move the occupant here.
+                    if (selectedSpot != null && !classInfo.isFinished) {
+                      const bookingId = bookingIdForSpot(selectedSpot);
+                      if (bookingId) {
+                        moveSpotMutation.mutate({ bookingId, spotNumber: spot });
+                      }
+                      setSelectedSpot(null);
+                      return;
+                    }
+                    // Free spot, nothing selected → open the walk-in flow.
                     if (!classInfo.isFinished) {
-                      setSelectedMemberId(null);
                       setWalkInSpot(spot);
                       setWalkInOpen(true);
                     }
@@ -597,14 +642,24 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                   coachName={classInfo.coachName}
                   revealOccupants
                 />
-                <p className="mt-2 text-center text-[11px] text-stone-500 dark:text-muted">
-                  {selectedMember
-                    ? t("spotOfMember", {
-                        name: selectedMember.memberName ?? "",
-                        spot: selectedMember.spotNumber ?? "—",
-                      })
-                    : t("roomMapHint")}
-                </p>
+                {selectedSpot != null && !classInfo.isFinished ? (
+                  <p className="mt-2 text-center text-[11px] text-accent">
+                    {t("moveHint", { name: selectedName })}{" "}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSpot(null)}
+                      className="underline"
+                    >
+                      {t("moveCancel")}
+                    </button>
+                  </p>
+                ) : (
+                  <p className="mt-2 text-center text-[11px] text-stone-500 dark:text-muted">
+                    {selectedSpot != null
+                      ? t("spotOfMember", { name: selectedName, spot: selectedSpot })
+                      : t("roomMapHint")}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -633,13 +688,13 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                 ? () => setPhotoPreview({ url: member.memberImage!, name: member.memberName ?? "" })
                 : undefined
               }
-              isSelected={hasRoomMap && selectedMemberId === member.memberId}
+              isSelected={hasRoomMap && selectedSpot != null && member.spotNumber === selectedSpot}
               onSelectSpot={
                 hasRoomMap && member.spotNumber != null
                   ? () => {
                       setMapOpen(true);
-                      setSelectedMemberId((cur) =>
-                        cur === member.memberId ? null : member.memberId,
+                      setSelectedSpot((cur) =>
+                        cur === member.spotNumber ? null : member.spotNumber,
                       );
                     }
                   : undefined

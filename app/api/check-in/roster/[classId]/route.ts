@@ -305,7 +305,7 @@ export async function GET(
         wellhubProductId: true,
         checkedInAt: true,
         createdAt: true,
-        companionBooking: { select: { spotNumber: true } },
+        companionBooking: { select: { id: true, spotNumber: true } },
       },
     });
 
@@ -360,8 +360,10 @@ export async function GET(
         email: link?.email ?? null,
         phone: link?.phone ?? null,
         magicUserId: link?.userId ?? null,
-        // Spot held by the companion Booking so the room map can render it.
+        // Spot held by the companion Booking so the room map can render it
+        // (and move it — companionBookingId is the booking to re-spot).
         spotNumber: b.companionBooking?.spotNumber ?? null,
+        companionBookingId: b.companionBooking?.id ?? null,
         checkedInAt: b.checkedInAt?.toISOString() ?? null,
         createdAt: b.createdAt.toISOString(),
       };
