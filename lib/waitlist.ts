@@ -52,7 +52,7 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
   const classData = await prisma.class.findUnique({
     where: { id: classId },
     include: {
-      room: { select: { maxCapacity: true } },
+      room: { select: { maxCapacity: true, layout: true } },
       _count: {
         select: {
           bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
@@ -105,15 +105,52 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
 
   if (!first) return null;
 
-  const booking = await prisma.booking.create({
-    data: {
-      tenantId,
-      classId,
-      userId: first.userId,
-      status: "CONFIRMED",
-      packageUsed: first.packageUsed,
-    },
-  });
+  // Assign the lowest free spot so the promoted member shows on the room map.
+  // Without this they hold a seat with no spot, so a full class looks like it
+  // has gaps. Only rooms with a configured spot layout use spot numbers.
+  let assignedSpot: number | null = null;
+  const layout = classData.room.layout as { spots?: unknown[] } | null;
+  if (layout?.spots?.length) {
+    const [takenRows, blockedRows] = await Promise.all([
+      prisma.booking.findMany({
+        where: {
+          classId,
+          tenantId,
+          spotNumber: { not: null },
+          status: { in: ["CONFIRMED", "ATTENDED"] },
+        },
+        select: { spotNumber: true },
+      }),
+      prisma.blockedSpot.findMany({ where: { classId }, select: { spotNumber: true } }),
+    ]);
+    const used = new Set<number>();
+    for (const r of takenRows) if (r.spotNumber != null) used.add(r.spotNumber);
+    for (const r of blockedRows) if (r.spotNumber != null) used.add(r.spotNumber);
+    for (let s = 1; s <= classData.room.maxCapacity; s++) {
+      if (!used.has(s)) {
+        assignedSpot = s;
+        break;
+      }
+    }
+  }
+
+  const baseBookingData = {
+    tenantId,
+    classId,
+    userId: first.userId,
+    status: "CONFIRMED" as const,
+    packageUsed: first.packageUsed,
+  };
+  const booking = await prisma.booking
+    .create({ data: { ...baseBookingData, spotNumber: assignedSpot } })
+    .catch((e: unknown) => {
+      // A concurrent promotion grabbed the spot → fall back to no spot rather
+      // than failing the promotion (unique on [classId, spotNumber]).
+      if (assignedSpot != null && (e as { code?: string })?.code === "P2002") {
+        return prisma.booking.create({ data: { ...baseBookingData, spotNumber: null } });
+      }
+      throw e;
+    });
 
   if (first.packageUsed) {
     await recognizeBookingSafe({
