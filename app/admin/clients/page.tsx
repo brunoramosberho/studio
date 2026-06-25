@@ -50,6 +50,7 @@ interface ClientsResponse {
   skip: number;
   take: number;
   hasMore: boolean;
+  availablePackages?: { id: string; name: string }[];
 }
 
 const PAGE_SIZE = 50;
@@ -79,7 +80,8 @@ interface InsightsData {
   };
 }
 
-type Filter = "all" | "active" | "expiring" | "inactive" | "new" | "pwa";
+type Filter = "all" | "active" | "with_booking" | "expiring" | "inactive" | "new" | "pwa";
+type Sort = "recent" | "oldest" | "name" | "last_active";
 
 const stagger = {
   hidden: {},
@@ -133,6 +135,8 @@ export default function AdminClientsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
+  const [sort, setSort] = useState<Sort>("recent");
+  const [packageFilter, setPackageFilter] = useState("");
   const [showInsights, setShowInsights] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [pages, setPages] = useState(1);
@@ -144,11 +148,12 @@ export default function AdminClientsPage() {
 
   useEffect(() => {
     setPages(1);
-  }, [activeFilter, debouncedSearch]);
+  }, [activeFilter, sort, packageFilter, debouncedSearch]);
 
   const FILTERS: { key: Filter; label: string }[] = [
     { key: "all", label: t("filterAll") },
     { key: "active", label: t("filterActive") },
+    { key: "with_booking", label: t("filterWithBooking") },
     { key: "expiring", label: t("filterExpiring") },
     { key: "inactive", label: t("filterInactive") },
     { key: "new", label: t("filterNew") },
@@ -157,13 +162,15 @@ export default function AdminClientsPage() {
 
   const take = pages * PAGE_SIZE;
   const { data, isLoading, isFetching } = useQuery<ClientsResponse>({
-    queryKey: ["admin-clients", activeFilter, debouncedSearch, take],
+    queryKey: ["admin-clients", activeFilter, sort, packageFilter, debouncedSearch, take],
     queryFn: async () => {
       const qs = new URLSearchParams({
         filter: activeFilter,
+        sort,
         skip: "0",
         take: String(take),
       });
+      if (packageFilter) qs.set("packageId", packageFilter);
       if (debouncedSearch) qs.set("search", debouncedSearch);
       const res = await fetch(`/api/admin/clients?${qs.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch");
@@ -444,6 +451,34 @@ export default function AdminClientsPage() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+      </div>
+
+      {/* Sort + package */}
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as Sort)}
+          className="h-9 cursor-pointer rounded-full border border-border bg-card px-3 text-sm text-foreground outline-none focus:ring-1 focus:ring-admin"
+        >
+          <option value="recent">{t("sortRecent")}</option>
+          <option value="oldest">{t("sortOldest")}</option>
+          <option value="name">{t("sortName")}</option>
+          <option value="last_active">{t("sortLastActive")}</option>
+        </select>
+        {(data?.availablePackages?.length ?? 0) > 0 && (
+          <select
+            value={packageFilter}
+            onChange={(e) => setPackageFilter(e.target.value)}
+            className="h-9 cursor-pointer rounded-full border border-border bg-card px-3 text-sm text-foreground outline-none focus:ring-1 focus:ring-admin"
+          >
+            <option value="">{t("filterAllPackages")}</option>
+            {data!.availablePackages!.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Client list */}

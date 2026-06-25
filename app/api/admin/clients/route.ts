@@ -3,7 +3,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 
-type ClientFilter = "all" | "active" | "expiring" | "inactive" | "new" | "pwa";
+type ClientFilter = "all" | "active" | "with_booking" | "expiring" | "inactive" | "new" | "pwa";
+type ClientSort = "recent" | "oldest" | "name" | "last_active";
 
 const PAGE_SIZE_DEFAULT = 50;
 const PAGE_SIZE_MAX = 200;
@@ -14,6 +15,8 @@ export async function GET(request: NextRequest) {
 
   const params = request.nextUrl.searchParams;
   const filter = (params.get("filter") ?? "all") as ClientFilter;
+  const sort = (params.get("sort") ?? "recent") as ClientSort;
+  const packageId = params.get("packageId")?.trim() || null;
   const search = params.get("search")?.trim() ?? "";
   const skip = Math.max(0, parseInt(params.get("skip") ?? "0", 10) || 0);
   const take = Math.min(
@@ -57,6 +60,11 @@ export async function GET(request: NextRequest) {
     case "active":
       userWhere.packages = { some: { tenantId, status: "ACTIVE", expiresAt: { gt: now } } };
       break;
+    case "with_booking":
+      userWhere.bookings = {
+        some: { status: "CONFIRMED", class: { tenantId, startsAt: { gte: now } } },
+      };
+      break;
     case "expiring":
       userWhere.packages = {
         some: { tenantId, status: "ACTIVE", expiresAt: { gt: now, lte: sevenDaysFromNow } },
@@ -86,13 +94,29 @@ export async function GET(request: NextRequest) {
       break;
   }
 
-  const [total, memberships] = await Promise.all([
+  // "By package" — independent of the tab; shows clients holding that package.
+  if (packageId) {
+    userWhere.packages = {
+      some: { tenantId, status: "ACTIVE", expiresAt: { gt: now }, packageId },
+    };
+  }
+
+  const orderBy: Prisma.MembershipOrderByWithRelationInput =
+    sort === "oldest"
+      ? { createdAt: "asc" }
+      : sort === "name"
+        ? { user: { name: "asc" } }
+        : sort === "last_active"
+          ? { lastSeenAt: { sort: "desc", nulls: "last" } }
+          : { createdAt: "desc" };
+
+  const [total, memberships, availablePackages] = await Promise.all([
     prisma.membership.count({ where: baseWhere }),
     prisma.membership.findMany({
       where: baseWhere,
       skip,
       take,
-      orderBy: { createdAt: "asc" },
+      orderBy,
       include: {
         user: {
           select: {
@@ -115,6 +139,11 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+    }),
+    prisma.package.findMany({
+      where: { tenantId, isActive: true, deletedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -194,5 +223,6 @@ export async function GET(request: NextRequest) {
     skip,
     take,
     hasMore: skip + clients.length < total,
+    availablePackages,
   });
 }
