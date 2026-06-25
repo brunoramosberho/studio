@@ -123,6 +123,19 @@ interface ClassRosterProps {
   classInfo: ClassInfo;
 }
 
+type RosterData = {
+  roster: RosterMember[];
+  waitlist: WaitlistMember[];
+  wellhubBookings: WellhubBooking[];
+  blockCheckinWithoutWaiver: boolean;
+  room: {
+    id: string;
+    name: string;
+    maxCapacity: number;
+    layout: RoomLayoutData | null;
+  } | null;
+};
+
 // ── Avatar colors derived from memberId ──
 
 const AVATAR_COLORS = [
@@ -228,18 +241,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryClient, classId]);
 
-  const { data, isLoading } = useQuery<{
-    roster: RosterMember[];
-    waitlist: WaitlistMember[];
-    wellhubBookings: WellhubBooking[];
-    blockCheckinWithoutWaiver: boolean;
-    room: {
-      id: string;
-      name: string;
-      maxCapacity: number;
-      layout: RoomLayoutData | null;
-    } | null;
-  }>({
+  const { data, isLoading } = useQuery<RosterData>({
     queryKey: rosterKey,
     queryFn: () => fetch(`/api/check-in/roster/${classId}`).then((r) => r.json()),
     refetchInterval: 30_000,
@@ -335,11 +337,32 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
-      invalidateClassData();
-      toast.success(t("spotMoved"));
+    // Optimistic: move the person on the map right away; roll back if the
+    // server rejects it (e.g. the spot was taken in the meantime).
+    onMutate: async ({ bookingId, spotNumber }) => {
+      await queryClient.cancelQueries({ queryKey: rosterKey });
+      const previous = queryClient.getQueryData<RosterData>(rosterKey);
+      queryClient.setQueryData<RosterData>(rosterKey, (old) =>
+        old
+          ? {
+              ...old,
+              roster: old.roster.map((m) =>
+                m.bookingId === bookingId ? { ...m, spotNumber } : m,
+              ),
+              wellhubBookings: old.wellhubBookings.map((w) =>
+                w.companionBookingId === bookingId ? { ...w, spotNumber } : w,
+              ),
+            }
+          : old,
+      );
+      return { previous };
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(rosterKey, ctx.previous);
+      toast.error(err.message);
+    },
+    onSuccess: () => toast.success(t("spotMoved")),
+    onSettled: () => invalidateClassData(),
   });
 
   const handleCheckIn = useCallback(
