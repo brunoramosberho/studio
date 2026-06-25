@@ -93,6 +93,7 @@ interface WellhubBooking {
   email: string | null;
   phone: string | null;
   magicUserId: string | null;
+  spotNumber: number | null;
   checkedInAt: string | null;
   createdAt: string;
 }
@@ -386,7 +387,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
   const startFormatted = format(new Date(classInfo.startTime), "HH:mm");
 
-  // Occupancy map for the room view: spotNumber → member identity.
+  // Occupancy map for the room view: spotNumber → member identity. Includes
+  // Wellhub bookings (which hold a seat via their companion booking) so the
+  // map paints them even though they're listed in the separate Wellhub panel.
   const spotMap = useMemo<Record<number, SpotInfo>>(() => {
     const map: Record<number, SpotInfo> = {};
     for (const m of roster) {
@@ -397,16 +400,27 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
         userImage: m.memberImage,
       };
     }
+    for (const w of wellhubBookings) {
+      if (w.spotNumber == null) continue;
+      map[w.spotNumber] = {
+        status: "occupied",
+        userName: w.memberName,
+        userImage: null,
+      };
+    }
     return map;
-  }, [roster]);
+  }, [roster, wellhubBookings]);
 
   const spotToMemberId = useMemo(() => {
     const map = new Map<number, string>();
     for (const m of roster) {
       if (m.spotNumber != null) map.set(m.spotNumber, m.memberId);
     }
+    for (const w of wellhubBookings) {
+      if (w.spotNumber != null) map.set(w.spotNumber, w.platformBookingId);
+    }
     return map;
-  }, [roster]);
+  }, [roster, wellhubBookings]);
 
   const selectedMember =
     roster.find((m) => m.memberId === selectedMemberId) ?? null;
