@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useOptimistic, useCallback, useEffect, useMemo, useRef, startTransition } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import {
   Search,
   UserPlus,
@@ -1019,9 +1020,18 @@ function RosterRow({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <p className="text-[13px] font-medium text-stone-900 dark:text-foreground truncate">
-            {member.memberName}
-          </p>
+          {member.isGuest ? (
+            <p className="text-[13px] font-medium text-stone-900 dark:text-foreground truncate">
+              {member.memberName}
+            </p>
+          ) : (
+            <Link
+              href={`/admin/clients/${member.memberId}`}
+              className="min-w-0 truncate text-[13px] font-medium text-stone-900 transition-colors hover:text-admin hover:underline dark:text-foreground"
+            >
+              {member.memberName}
+            </Link>
+          )}
           {member.isGuest && (
             <span className="inline-flex shrink-0 items-center rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
               {tc("guest")}
@@ -1197,7 +1207,16 @@ function WellhubBookingsSection({
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <p className="text-sm font-medium text-stone-900 truncate dark:text-foreground">{b.memberName}</p>
+                {b.magicUserId ? (
+                  <Link
+                    href={`/admin/clients/${b.magicUserId}`}
+                    className="min-w-0 truncate text-sm font-medium text-stone-900 transition-colors hover:text-admin hover:underline dark:text-foreground"
+                  >
+                    {b.memberName}
+                  </Link>
+                ) : (
+                  <p className="text-sm font-medium text-stone-900 truncate dark:text-foreground">{b.memberName}</p>
+                )}
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold uppercase tracking-wide dark:bg-orange-500/20 dark:text-orange-300">
                   Wellhub
                 </span>
