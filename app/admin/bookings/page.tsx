@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { Loader2, CalendarCheck2, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
-import { timeAgo, cn } from "@/lib/utils";
+import { timeAgo, cn, PLATFORM_LABELS } from "@/lib/utils";
 
 interface BookingRow {
   id: string;
@@ -15,8 +15,10 @@ interface BookingRow {
   userName: string;
   userImage: string | null;
   className: string;
+  coachName: string | null;
   studioName: string | null;
   classStartsAt: string;
+  platform: string | null;
   status: string;
   createdAt: string;
 }
@@ -84,14 +86,25 @@ export default function AdminBookingsPage() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {b.userName}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {b.userName}
+                      </p>
+                      {b.platform && (
+                        <span className="shrink-0 rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+                          {PLATFORM_LABELS[b.platform] ?? b.platform}
+                        </span>
+                      )}
+                    </div>
                     <p className="truncate text-xs text-muted">
-                      {b.className}
-                      {b.studioName ? ` · ${b.studioName}` : ""}
-                      {" · "}
-                      {format(new Date(b.classStartsAt), "EEE d MMM, HH:mm", { locale: dfns })}
+                      {[
+                        b.className,
+                        b.coachName,
+                        b.studioName,
+                        format(new Date(b.classStartsAt), "EEE d MMM, HH:mm", { locale: dfns }),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">

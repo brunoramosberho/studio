@@ -8,6 +8,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Display names for partner platforms (PlatformType enum values). */
+export const PLATFORM_LABELS: Record<string, string> = {
+  classpass: "ClassPass",
+  wellhub: "Wellhub",
+  totalpass: "TotalPass",
+  fitpass: "Fitpass",
+};
+
 /**
  * Title-case a person's name as they type: capitalises the first letter of
  * every word while preserving the spacing the user is typing (including a

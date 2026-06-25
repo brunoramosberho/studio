@@ -35,7 +35,7 @@ import {
   type RevenueMixSlice,
 } from "@/components/admin/dashboard/revenue-mix-donut";
 import { useTranslations } from "next-intl";
-import { timeAgo, formatDate } from "@/lib/utils";
+import { timeAgo, formatDate, PLATFORM_LABELS } from "@/lib/utils";
 
 interface DashboardData {
   bookingsToday: number;
@@ -55,6 +55,9 @@ interface DashboardData {
     userName: string;
     userImage: string | null;
     className: string;
+    coachName: string | null;
+    classTimeLabel: string;
+    platform: string | null;
     createdAt: string;
   }[];
   classesToday: number;
@@ -226,8 +229,19 @@ export function AdminDashboard() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{booking.userName}</p>
-                    <p className="truncate text-xs text-muted">{booking.className}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-medium">{booking.userName}</p>
+                      {booking.platform && (
+                        <span className="shrink-0 rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+                          {PLATFORM_LABELS[booking.platform] ?? booking.platform}
+                        </span>
+                      )}
+                    </div>
+                    <p className="truncate text-xs text-muted">
+                      {[booking.className, booking.coachName, booking.classTimeLabel]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
                   </div>
                   <span className="shrink-0 text-xs text-muted">
                     {timeAgo(booking.createdAt)}

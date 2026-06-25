@@ -27,9 +27,11 @@ export async function GET(request: NextRequest) {
           select: {
             startsAt: true,
             classType: { select: { name: true } },
+            coach: { select: { name: true } },
             room: { select: { studio: { select: { name: true } } } },
           },
         },
+        platformBooking: { select: { platform: true } },
       },
     });
 
@@ -43,8 +45,10 @@ export async function GET(request: NextRequest) {
         userName: b.user?.name ?? b.guestName ?? "Invitado",
         userImage: b.user?.image ?? null,
         className: b.class.classType.name,
+        coachName: b.class.coach?.name ?? null,
         studioName: b.class.room?.studio?.name ?? null,
         classStartsAt: b.class.startsAt.toISOString(),
+        platform: b.platformBooking?.platform ?? null,
         status: b.status,
         createdAt: b.createdAt.toISOString(),
       })),

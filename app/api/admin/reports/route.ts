@@ -4,6 +4,22 @@ import { requirePermission } from "@/lib/tenant";
 
 const DAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
+// Weekday + time in the studio's timezone (so it reads right regardless of
+// where the admin is viewing from), e.g. "Vie 8:00".
+function formatClassWhen(date: Date, timezone: string | null): string {
+  const tzOpts = timezone ? { timeZone: timezone } : {};
+  const dayRaw = date
+    .toLocaleDateString("es-ES", { weekday: "short", ...tzOpts })
+    .replace(".", "");
+  const day = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1);
+  const time = date.toLocaleTimeString("es-ES", {
+    hour: "numeric",
+    minute: "2-digit",
+    ...tzOpts,
+  });
+  return `${day} ${time}`;
+}
+
 function startOf(date: Date, unit: "day" | "week" | "month"): Date {
   const d = new Date(date);
   if (unit === "day") {
@@ -206,8 +222,13 @@ export async function GET() {
         include: {
           user: { select: { id: true, name: true, image: true } },
           class: {
-            include: { classType: { select: { name: true } } },
+            include: {
+              classType: { select: { name: true } },
+              coach: { select: { name: true } },
+              room: { include: { studio: { include: { city: { select: { timezone: true } } } } } },
+            },
           },
+          platformBooking: { select: { platform: true } },
         },
       }),
 
@@ -455,6 +476,12 @@ export async function GET() {
       userName: b.user?.name ?? b.guestName ?? "Invitado",
       userImage: b.user?.image ?? null,
       className: b.class.classType.name,
+      coachName: b.class.coach?.name ?? null,
+      classTimeLabel: formatClassWhen(
+        b.class.startsAt,
+        b.class.room?.studio?.city?.timezone ?? null,
+      ),
+      platform: b.platformBooking?.platform ?? null,
       createdAt: b.createdAt.toISOString(),
     }));
 
