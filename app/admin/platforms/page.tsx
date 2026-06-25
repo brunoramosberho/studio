@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -833,7 +833,42 @@ function QuotasTab({ demo }: { demo: boolean }) {
   const [editingQuota, setEditingQuota] = useState<{ classId: string; className: string; maxCapacity: number } | null>(null);
   const [quotaValues, setQuotaValues] = useState<{ classpass: string; wellhub: string }>({ classpass: "0", wellhub: "0" });
   const [demoOverrides, setDemoOverrides] = useState<Record<string, { cp: number; gp: number }>>({});
+  const [defaultQuotaDraft, setDefaultQuotaDraft] = useState<string>("");
   const queryClient = useQueryClient();
+
+  // Wellhub default quota lives on the Wellhub config; surface it here so the
+  // admin sets the auto-quota next to the per-class quotas.
+  const { data: wellhubConfig } = useQuery<{ wellhubDefaultQuota: number | null } | null>({
+    queryKey: ["wellhub-config-defaultquota"],
+    queryFn: async () => {
+      const res = await fetch("/api/platforms/wellhub/config");
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !demo,
+  });
+  useEffect(() => {
+    setDefaultQuotaDraft(
+      wellhubConfig?.wellhubDefaultQuota != null ? String(wellhubConfig.wellhubDefaultQuota) : "",
+    );
+  }, [wellhubConfig?.wellhubDefaultQuota]);
+
+  const saveDefaultQuota = useMutation({
+    mutationFn: async (value: number | null) => {
+      const res = await fetch("/api/platforms/wellhub/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wellhubDefaultQuota: value }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["wellhub-config-defaultquota"] });
+      toast.success("Cupo por defecto guardado — se aplica a clases nuevas al volverse visibles");
+    },
+    onError: () => toast.error("No se pudo guardar el cupo por defecto"),
+  });
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const ws = format(weekStart, "yyyy-MM-dd");
@@ -945,6 +980,44 @@ function QuotasTab({ demo }: { demo: boolean }) {
 
   return (
     <div className="space-y-4">
+      {/* Wellhub default quota — auto-applied to classes as they become visible. */}
+      {!demo && (
+        <Card>
+          <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold">Cupo automático de Wellhub</p>
+              <p className="text-xs text-muted">
+                Se aplica a cada clase cuando entra a la ventana visible para tus clientes.
+                Wellhub nunca ve clases que tus miembros aún no pueden reservar.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted">Lugares por clase</span>
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                className="w-20 text-center"
+                placeholder="—"
+                value={defaultQuotaDraft}
+                onChange={(e) => setDefaultQuotaDraft(e.target.value)}
+              />
+              <Button
+                size="sm"
+                onClick={() =>
+                  saveDefaultQuota.mutate(
+                    defaultQuotaDraft.trim() === "" ? null : Number(defaultQuotaDraft),
+                  )
+                }
+                disabled={saveDefaultQuota.isPending}
+              >
+                Guardar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Week nav */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="icon" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}>

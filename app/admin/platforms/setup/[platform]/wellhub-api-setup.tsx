@@ -89,7 +89,6 @@ export function WellhubApiSetup() {
   const [gymIdDraft, setGymIdDraft] = useState<string>("");
   const [localeDraft, setLocaleDraft] = useState<string>("es");
   const [tokenDraft, setTokenDraft] = useState<string>("");
-  const [quotaDraft, setQuotaDraft] = useState<string>("");
   const [freshSecret, setFreshSecret] = useState<string | null>(null);
 
   // Commercial conditions draft (strings for inputs; percents shown 0..100).
@@ -114,7 +113,6 @@ export function WellhubApiSetup() {
       freeVisitsPerMonth:
         config.freeVisitsPerMonth != null ? String(config.freeVisitsPerMonth) : "",
     });
-    setQuotaDraft(config.wellhubDefaultQuota != null ? String(config.wellhubDefaultQuota) : "");
   }, [config]);
   const [simSlotId, setSimSlotId] = useState<string>("");
   const [simClassId, setSimClassId] = useState<string>("");
@@ -520,36 +518,6 @@ export function WellhubApiSetup() {
               <option value="api">API (push schedule + webhooks)</option>
               <option value="legacy_email">Email (modo legado)</option>
             </select>
-          </div>
-
-          {/* Default quota — auto-applied as classes enter the visible window. */}
-          <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-            <div className="text-xs font-medium">Cupo automático de Wellhub</div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm">Lugares por clase:</span>
-              <Input
-                type="number" min="0" step="1" className="w-24"
-                value={quotaDraft}
-                onChange={(e) => setQuotaDraft(e.target.value)}
-                placeholder="ej. 2"
-              />
-              <Button
-                size="sm"
-                onClick={() =>
-                  saveConfig.mutate({
-                    wellhubDefaultQuota: quotaDraft.trim() === "" ? null : Number(quotaDraft),
-                  })
-                }
-                disabled={saveConfig.isPending}
-              >
-                Guardar
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Se aplica automáticamente a cada clase <strong>cuando entra a la ventana
-              visible para tus clientes</strong> (no antes). Wellhub nunca ve clases que tus
-              miembros aún no pueden reservar. Déjalo vacío para asignar cupos solo a mano.
-            </p>
           </div>
 
           {/* Commercial conditions — mirror the Wellhub contract so the
