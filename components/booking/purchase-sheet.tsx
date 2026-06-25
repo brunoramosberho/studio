@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaymentForm } from "@/components/checkout/PaymentForm";
+import { CardBrandIcon } from "@/components/payments/card-brand-icon";
 import type { Package } from "@prisma/client";
 
 interface PurchaseSheetProps {
@@ -52,13 +53,6 @@ interface SavedCard {
   expMonth: number;
   expYear: number;
 }
-
-const brandLabels: Record<string, string> = {
-  visa: "Visa",
-  mastercard: "Mastercard",
-  amex: "Amex",
-  discover: "Discover",
-};
 
 type Step = "confirm" | "guest" | "processing" | "select-card" | "payment" | "done";
 
@@ -622,9 +616,7 @@ export function PurchaseSheet({
                       disabled={!!payingWithCard}
                       className="flex w-full items-center gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3.5 text-left transition-colors active:bg-surface disabled:opacity-60"
                     >
-                      <div className="flex h-9 w-12 items-center justify-center rounded-lg border border-border/30 bg-surface text-[10px] font-bold uppercase tracking-wider text-muted">
-                        {brandLabels[card.brand] ?? card.brand}
-                      </div>
+                      <CardBrandIcon brand={card.brand} />
                       <div className="flex-1">
                         <p className="text-[14px] font-medium text-foreground">
                           ····  {card.last4}
