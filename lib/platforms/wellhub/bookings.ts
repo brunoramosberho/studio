@@ -132,6 +132,7 @@ export async function processBookingRequested(
     slotId: data.slot.id,
     uniqueToken: data.user.unique_token,
     memberName: data.user.name ?? null,
+    guestEmail: data.user.email ?? null,
     confirmationDeadline,
   });
 
@@ -187,7 +188,10 @@ export async function processBookingRequested(
 /**
  * Reserve a seat and record the PlatformBooking in ONE transaction so the
  * quota counter and the row can't diverge. Enforces BOTH the platform quota
- * cap and the shared physical capacity.
+ * cap and the shared physical capacity. On RESERVED it also creates a
+ * seat-holding companion Booking (guest-style, no charge / credit / revenue)
+ * with an auto-assigned spot so the member shows on the spot map, attendance
+ * list, and capacity counters like any other booking.
  */
 async function reserveAndRecord(args: {
   tenantId: string;
@@ -196,12 +200,13 @@ async function reserveAndRecord(args: {
   slotId: number;
   uniqueToken: string;
   memberName: string | null;
+  guestEmail: string | null;
   confirmationDeadline: Date;
 }): Promise<{ status: WellhubBookingStatus; reason?: WellhubBookingRejectionReason }> {
   return prisma.$transaction(async (tx) => {
     const decision = await decideReservation(tx, args.classId);
 
-    await tx.platformBooking.create({
+    const pb = await tx.platformBooking.create({
       data: {
         tenantId: args.tenantId,
         classId: args.classId,
@@ -216,10 +221,71 @@ async function reserveAndRecord(args: {
         confirmationDeadline: args.confirmationDeadline,
         rejectionReason: decision.reason ?? null,
       },
+      select: { id: true },
     });
+
+    if (decision.status === "RESERVED") {
+      const spotNumber = await assignFreeSpot(tx, args.classId);
+      await tx.booking.create({
+        data: {
+          tenantId: args.tenantId,
+          classId: args.classId,
+          userId: null,
+          guestName: args.memberName ?? `Wellhub ${args.uniqueToken.slice(-4)}`,
+          guestEmail: args.guestEmail,
+          spotNumber,
+          privacy: "PRIVATE",
+          status: "CONFIRMED",
+          platformBookingId: pb.id,
+        },
+      });
+    }
 
     return decision;
   });
+}
+
+/**
+ * Lowest free spot number (1..maxCapacity) not taken by a consuming Booking or
+ * a BlockedSpot. Only rooms with a configured spot layout use spot numbers;
+ * for spotless rooms the companion is created without a spot (it still holds a
+ * seat via the capacity counters). Returns null when no numbered spot is free.
+ */
+async function assignFreeSpot(
+  tx: Prisma.TransactionClient,
+  classId: string,
+): Promise<number | null> {
+  const cls = await tx.class.findUnique({
+    where: { id: classId },
+    select: { room: { select: { maxCapacity: true, layout: true } } },
+  });
+  const capacity = cls?.room?.maxCapacity ?? 0;
+  if (capacity <= 0) return null;
+
+  // Mirror the waitlist-promotion rule: only assign a spot when the room has a
+  // spot layout, otherwise the map isn't spot-based and a number is meaningless.
+  const layout = cls?.room?.layout as { spots?: unknown[] } | null;
+  if (!layout?.spots?.length) return null;
+
+  const [booked, blocked] = await Promise.all([
+    tx.booking.findMany({
+      where: { classId, status: { in: [...MAGIC_CONSUMING_STATUSES] }, spotNumber: { not: null } },
+      select: { spotNumber: true },
+    }),
+    tx.blockedSpot.findMany({
+      where: { classId, spotNumber: { not: null } },
+      select: { spotNumber: true },
+    }),
+  ]);
+
+  const taken = new Set<number>();
+  for (const b of booked) if (b.spotNumber != null) taken.add(b.spotNumber);
+  for (const b of blocked) if (b.spotNumber != null) taken.add(b.spotNumber);
+
+  for (let i = 1; i <= capacity; i++) {
+    if (!taken.has(i)) return i;
+  }
+  return null;
 }
 
 /**
@@ -253,8 +319,13 @@ async function decideReservation(
   if (!cls?.room) {
     return { status: "REJECTED", reason: "CLASS_NOT_FOUND" };
   }
+  // Exclude platform rows that already hold a companion Booking: those seats are
+  // counted in cls._count.bookings above (a Wellhub reservation creates a
+  // seat-holding companion). The companion for THIS booking doesn't exist yet,
+  // but companions from OTHER Wellhub reservations do — counting them here too
+  // would double-subtract those seats.
   const platformBooked = await tx.platformBooking.count({
-    where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+    where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES }, companionBooking: { is: null } },
   });
   const physicalSpotsLeft =
     cls.room.maxCapacity - cls._count.bookings - cls._count.blockedSpots - platformBooked;
@@ -371,7 +442,7 @@ export async function processBookingCanceled(
     ["confirmed", "checked_in", "pending_confirmation"] as PlatformBookingStatus[]
   ).includes(booking.status);
 
-  // Mark cancelled + decrement quota in one transaction.
+  // Mark cancelled + decrement quota + free the companion seat in one txn.
   await prisma.$transaction(async (tx) => {
     await tx.platformBooking.update({
       where: { id: booking.id },
@@ -386,6 +457,10 @@ export async function processBookingCanceled(
         data: { bookedSpots: { decrement: 1 } },
       });
     }
+    // Release the seat-holding companion Booking so its spot frees up. The FK
+    // is ON DELETE CASCADE, but we delete explicitly to free the spot now (the
+    // PlatformBooking row is kept for history as a cancelled record).
+    await tx.booking.deleteMany({ where: { platformBookingId: booking.id } });
   });
 
   // Only cascade when a seat actually opened.
@@ -450,7 +525,25 @@ export async function processCheckinBookingOccurred(
       checkedInAt: new Date(data.timestamp * 1000),
     },
   });
+  // Keep the companion seat in sync so attendance lists mark them present.
+  await syncCompanionStatus(booking.id, "ATTENDED");
   return { updated: true };
+}
+
+/**
+ * Mirror a PlatformBooking's status onto its seat-holding companion Booking so
+ * the spot map and attendance list stay in sync. Called from every check-in
+ * path (webhook, automated trigger, manual admin). No-op when there's no
+ * companion (email-sourced rows, spotless flows).
+ */
+export async function syncCompanionStatus(
+  platformBookingId: string,
+  status: "CONFIRMED" | "ATTENDED" | "NO_SHOW",
+): Promise<void> {
+  await prisma.booking.updateMany({
+    where: { platformBookingId },
+    data: { status },
+  });
 }
 
 export const __SLA_INTERNAL = {

@@ -63,6 +63,8 @@ export async function POST(
         where: { id },
         data: { status: "checked_in", checkedInAt: new Date(), checkedInBy: session.user.id },
       });
+      const { syncCompanionStatus } = await import("@/lib/platforms/wellhub");
+      await syncCompanionStatus(id, "ATTENDED");
       return NextResponse.json({
         booking: updated,
         reminder: null,
@@ -75,6 +77,8 @@ export async function POST(
       where: { id },
       data: { status: "checked_in", checkedInAt: new Date(), checkedInBy: session.user.id },
     });
+    const { syncCompanionStatus } = await import("@/lib/platforms/wellhub");
+    await syncCompanionStatus(id, "ATTENDED");
 
     const config = await prisma.studioPlatformConfig.findFirst({
       where: { tenantId: tenant.id, platform: booking.platform, isActive: true },

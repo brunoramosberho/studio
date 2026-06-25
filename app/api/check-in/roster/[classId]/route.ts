@@ -55,7 +55,13 @@ export async function GET(
     }
 
     const bookings = await prisma.booking.findMany({
-      where: { classId, status: { in: ["CONFIRMED", "ATTENDED", "NO_SHOW"] } },
+      // Exclude platform companion seats — Wellhub members are listed in their
+      // own `wellhubBookings` section (avoids showing them twice).
+      where: {
+        classId,
+        status: { in: ["CONFIRMED", "ATTENDED", "NO_SHOW"] },
+        platformBookingId: null,
+      },
       include: {
         user: {
           select: {
@@ -299,6 +305,7 @@ export async function GET(
         wellhubProductId: true,
         checkedInAt: true,
         createdAt: true,
+        companionBooking: { select: { spotNumber: true } },
       },
     });
 
@@ -353,6 +360,8 @@ export async function GET(
         email: link?.email ?? null,
         phone: link?.phone ?? null,
         magicUserId: link?.userId ?? null,
+        // Spot held by the companion Booking so the room map can render it.
+        spotNumber: b.companionBooking?.spotNumber ?? null,
         checkedInAt: b.checkedInAt?.toISOString() ?? null,
         createdAt: b.createdAt.toISOString(),
       };

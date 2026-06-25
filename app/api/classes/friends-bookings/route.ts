@@ -81,6 +81,7 @@ export async function GET() {
       where: {
         classId: { in: classes.map((c) => c.id) },
         status: { in: PLATFORM_CONSUMING_STATUSES },
+        companionBooking: { is: null },
       },
       _count: true,
     });

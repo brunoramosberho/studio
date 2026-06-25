@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
 import { findPackageForClass, deductCredit, userPackageIncludeForBooking, ensureSubscriptionUserPackages } from "@/lib/credits";
-import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
+import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     const platformBooked = await prisma.platformBooking.count({
-      where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+      where: platformBookedNoCompanionWhere(classId),
     });
     const spotsLeft =
       classData.room.maxCapacity -

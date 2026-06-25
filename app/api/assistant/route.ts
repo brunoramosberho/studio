@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       where: {
         classId: { in: upcomingClasses.map((c) => c.id) },
         status: { in: PLATFORM_CONSUMING_STATUSES },
+        companionBooking: { is: null },
       },
       _count: true,
     });

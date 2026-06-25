@@ -7,14 +7,19 @@
 //   - Platform members      → PlatformBooking rows (Wellhub/ClassPass) in a
 //                             consuming status
 //
-// Availability = maxCapacity − confirmedBookings − blockedSpots − platformBooked
+// A Wellhub reservation also creates a seat-holding companion Booking, so it
+// is ALREADY counted in the Booking total. To avoid double-counting, the
+// `platformBooked` term counts only platform reservations WITHOUT a companion
+// (ClassPass email bookings + any legacy Wellhub rows pre-companion).
+//
+// Availability = maxCapacity − confirmedBookings − blockedSpots − platformBookedNoCompanion
 //
 // This guarantees we never oversell the room and that a seat freed by ANY
 // channel becomes immediately bookable by ANY channel. Platform `quotaSpots`
 // is a *cap* on how many of the shared seats a given platform may take — it is
 // NOT extra capacity on top of the room.
 
-import type { PlatformBookingStatus } from "@prisma/client";
+import type { PlatformBookingStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 /** Platform booking statuses that physically occupy a seat. */
@@ -23,6 +28,21 @@ export const PLATFORM_CONSUMING_STATUSES: PlatformBookingStatus[] = [
   "checked_in",
   "pending_confirmation",
 ];
+
+/**
+ * Where-clause for platform bookings that occupy a seat but DON'T have a
+ * companion Booking (so they aren't already in the Booking count). Use this
+ * for the `platformBooked` term in availability math.
+ */
+export function platformBookedNoCompanionWhere(
+  classId: string,
+): Prisma.PlatformBookingWhereInput {
+  return {
+    classId,
+    status: { in: PLATFORM_CONSUMING_STATUSES },
+    companionBooking: { is: null },
+  };
+}
 
 /** Magic booking statuses that physically occupy a seat. */
 export const MAGIC_CONSUMING_STATUSES = ["CONFIRMED", "ATTENDED"] as const;
@@ -58,7 +78,7 @@ export async function getClassAvailability(
   if (!cls?.room) return null;
 
   const platformBooked = await prisma.platformBooking.count({
-    where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+    where: platformBookedNoCompanionWhere(classId),
   });
 
   const maxCapacity = cls.room.maxCapacity;

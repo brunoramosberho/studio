@@ -5,7 +5,7 @@ import { cancelClassWithRefunds } from "@/lib/class-cancel";
 import { BookingStatus } from "@prisma/client";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 import { normalizeRules } from "@/lib/song-rules";
-import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
+import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
 
 export async function GET(
   _request: NextRequest,
@@ -70,7 +70,7 @@ export async function GET(
 
     const blockedCount = classData._count.blockedSpots;
     const platformBooked = await prisma.platformBooking.count({
-      where: { classId: id, status: { in: PLATFORM_CONSUMING_STATUSES } },
+      where: platformBookedNoCompanionWhere(id),
     });
     const spotsLeft = classData.room.maxCapacity - classData._count.bookings - blockedCount - platformBooked;
 

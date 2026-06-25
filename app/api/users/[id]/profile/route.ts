@@ -188,7 +188,7 @@ export async function GET(
 
     const platformCounts = await prisma.platformBooking.groupBy({
       by: ["classId"],
-      where: { classId: { in: classIds }, status: { in: PLATFORM_CONSUMING_STATUSES } },
+      where: { classId: { in: classIds }, status: { in: PLATFORM_CONSUMING_STATUSES }, companionBooking: { is: null } },
       _count: true,
     });
     const platformByClass = new Map(platformCounts.map((p) => [p.classId, p._count]));
@@ -280,7 +280,7 @@ export async function GET(
 
   const upcomingPlatformCounts = await prisma.platformBooking.groupBy({
     by: ["classId"],
-    where: { classId: { in: upcomingClassIds }, status: { in: PLATFORM_CONSUMING_STATUSES } },
+    where: { classId: { in: upcomingClassIds }, status: { in: PLATFORM_CONSUMING_STATUSES }, companionBooking: { is: null } },
     _count: true,
   });
   const upcomingPlatformByClass = new Map(upcomingPlatformCounts.map((p) => [p.classId, p._count]));

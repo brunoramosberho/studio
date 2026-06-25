@@ -3,7 +3,7 @@ import { sendPushToUser, sendPushToMany } from "@/lib/push";
 import { sendWaitlistPromotion, sendSpotAvailable, getTenantBaseUrl } from "@/lib/email";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { shouldHideCoach } from "@/lib/coach";
-import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
+import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
 
 /**
  * Refund the credit held by a waitlist entry back to the user's package.
@@ -66,8 +66,10 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
 
   // Count platform (Wellhub/ClassPass) seats too — they occupy the same room.
   // Without this we would promote a member into a physically full class.
+  // Exclude rows with a companion Booking — those are already in the Booking
+  // count above, so counting them here would double-subtract the seat.
   const platformBooked = await prisma.platformBooking.count({
-    where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+    where: platformBookedNoCompanionWhere(classId),
   });
 
   const spotsLeft =
@@ -281,7 +283,7 @@ export async function notifySpotWatchers(classId: string, tenantId: string) {
   if (!classData) return;
 
   const platformBooked = await prisma.platformBooking.count({
-    where: { classId, status: { in: PLATFORM_CONSUMING_STATUSES } },
+    where: platformBookedNoCompanionWhere(classId),
   });
 
   const spotsLeft =

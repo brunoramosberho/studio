@@ -859,6 +859,14 @@ model Booking {
   parentBooking   Booking?  @relation("BookingGuests", fields: [parentBookingId], references: [id], onDelete: SetNull)
   guestBookings   Booking[] @relation("BookingGuests")
 
+  // When set, this Booking is a seat-holding companion for a platform
+  // (Wellhub/ClassPass) reservation: it occupies a spot and shows on rosters
+  // but is never charged, never consumes a credit, and never recognizes
+  // revenue (the platform pays separately). Deleting the PlatformBooking
+  // cascades to free the seat.
+  platformBookingId String?          @unique
+  platformBooking   PlatformBooking? @relation(fields: [platformBookingId], references: [id], onDelete: Cascade)
+
   biometrics ClassBiometrics[]
 
   // Revenue recognition snapshot. imputedValueCents and classWeightSnapshot
@@ -1986,6 +1994,12 @@ model PlatformBooking {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  // The "companion" Booking that holds a physical seat for this platform
+  // reservation (guest-style, no charge / credit / revenue). Lets the spot
+  // map, attendance list, and capacity counters treat a Wellhub member like
+  // any other booked seat. Null for email-sourced rows that don't auto-seat.
+  companionBooking Booking?
 
   @@index([tenantId, classId])
   @@index([tenantId, platform])

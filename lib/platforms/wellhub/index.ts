@@ -65,6 +65,7 @@ export {
   processBookingCanceled,
   processCheckinBookingOccurred,
   cascadeFreedSeat,
+  syncCompanionStatus,
 } from "./bookings";
 
 export {

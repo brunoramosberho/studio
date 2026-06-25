@@ -161,6 +161,8 @@ export async function validateWellhubVisitForCheckin(opts: {
       where: { id: platformBooking.id },
       data: { status: "checked_in", checkedInAt: new Date() },
     });
+    const { syncCompanionStatus } = await import("./bookings");
+    await syncCompanionStatus(platformBooking.id, "ATTENDED");
   }
 
   await prisma.wellhubUserLink.updateMany({
@@ -270,6 +272,8 @@ export async function processCheckinWebhook(
       where: { id: booking.id },
       data: { status: "checked_in", checkedInAt: new Date(data.timestamp * 1000) },
     });
+    const { syncCompanionStatus } = await import("./bookings");
+    await syncCompanionStatus(booking.id, "ATTENDED");
   }
 
   return { validated: true };

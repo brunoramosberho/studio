@@ -232,8 +232,13 @@ export async function patchWellhubCapacityForClass(
   }
 
   const [magicBookingsCount, wellhubBookingsCount, blockedCount] = await Promise.all([
+    // Only count REAL Magic seats here. Platform reservations (Wellhub/ClassPass)
+    // now create a companion Booking, so they show up as CONFIRMED bookings too.
+    // Excluding `platformBookingId != null` keeps platform seats out of this
+    // term — they're counted separately via wellhubBookingsCount/otherPlatformCount,
+    // so each physical person is subtracted from capacity exactly once.
     prisma.booking.count({
-      where: { classId, status: { in: ["CONFIRMED", "ATTENDED"] } },
+      where: { classId, status: { in: ["CONFIRMED", "ATTENDED"] }, platformBookingId: null },
     }),
     prisma.platformBooking.count({
       where: { classId, platform: "wellhub", status: { in: CONSUMING_STATUSES } },
