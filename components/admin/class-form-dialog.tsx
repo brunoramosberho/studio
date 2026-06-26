@@ -75,6 +75,7 @@ interface PickerClassType {
 
 type ScheduleMode = "single" | "recurring";
 type EditScope = "this" | "thisAndFuture" | "all";
+type WellhubQuotaChoice = "default" | "custom" | "closed";
 
 interface ClassFormData {
   classTypeId: string;
@@ -136,6 +137,13 @@ export function ClassFormDialog({
   // themselves available, or is on time-off), we stage it here and prompt
   // for explicit confirmation before applying to formData.
   const [pendingCoach, setPendingCoach] = useState<PickerCoach | null>(null);
+
+  // Wellhub quota control state. `choice` drives the segmented control; the
+  // custom spots are only used when choice === "custom". These map to the
+  // `wellhubQuota` field sent on save (null/0/positive). The field is only
+  // rendered (and only sent) when Wellhub is active in API mode.
+  const [wellhubChoice, setWellhubChoice] = useState<WellhubQuotaChoice>("default");
+  const [wellhubCustom, setWellhubCustom] = useState<number>(1);
 
   const isEditingSeries = !!(editingClass?.recurringId);
 
@@ -210,9 +218,68 @@ export function ClassFormDialog({
     [allPackages],
   );
 
+  // --- Wellhub quota ---
+  // For CREATE we read the tenant config to know whether Wellhub is active
+  // (api mode) and its default quota. For EDIT we hit the per-class endpoint,
+  // which both tells us if Wellhub is active and the existing override.
+  const { data: wellhubConfig } = useQuery<{
+    wellhubMode?: "api" | "legacy_email" | "disabled" | null;
+    wellhubDefaultQuota?: number | null;
+  } | null>({
+    queryKey: ["wellhub-config"],
+    queryFn: async () => {
+      const res = await fetch("/api/platforms/wellhub/config");
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: open && !editingClass,
+  });
+
+  const { data: wellhubQuotaData } = useQuery<{
+    enabled: boolean;
+    defaultQuota?: number | null;
+    override?: number | "closed" | null;
+  }>({
+    queryKey: ["wellhub-quota", editingClass?.id ?? null],
+    queryFn: async () => {
+      const res = await fetch(`/api/classes/${editingClass!.id}/wellhub-quota`);
+      if (!res.ok) return { enabled: false };
+      return res.json();
+    },
+    enabled: open && !!editingClass?.id,
+  });
+
+  // Wellhub is shown only when it's active (api mode). For edit that's the
+  // endpoint's `enabled`; for create it's the config's wellhubMode.
+  const wellhubActive = editingClass
+    ? wellhubQuotaData?.enabled === true
+    : wellhubConfig?.wellhubMode === "api";
+
+  // The tenant default to surface in the "Use default quota" label.
+  const wellhubDefaultQuota = editingClass
+    ? wellhubQuotaData?.defaultQuota ?? null
+    : wellhubConfig?.wellhubDefaultQuota ?? null;
+
+  // Map the control state to the value the API expects:
+  //   "default" → null (follow tenant default)
+  //   "closed"  → 0 (never goes to Wellhub)
+  //   "custom"  → the number (>= 1; guard otherwise falls back to default/null)
+  function wellhubQuotaValue(): number | null {
+    if (wellhubChoice === "closed") return 0;
+    if (wellhubChoice === "custom") {
+      return wellhubCustom >= 1 ? wellhubCustom : null;
+    }
+    return null;
+  }
+
   useEffect(() => {
     if (!open) return;
     setEditScope(null);
+    // Reset the Wellhub control to its baseline whenever the dialog opens. For
+    // edit it'll be re-derived from the endpoint once it loads (effect below);
+    // for create it stays on "default" (follow the tenant default).
+    setWellhubChoice("default");
+    setWellhubCustom(1);
     if (editingClass) {
       setMode("single");
       const start = new Date(editingClass.startsAt);
@@ -245,6 +312,23 @@ export function ClassFormDialog({
       });
     }
   }, [open, editingClass, defaultDate, defaultTime]);
+
+  // Derive the Wellhub control from the existing class's override once the
+  // per-class endpoint resolves. null → follow default; "closed" → closed;
+  // a number → explicit custom override (prefilled).
+  useEffect(() => {
+    if (!open || !editingClass) return;
+    if (!wellhubQuotaData?.enabled) return;
+    const override = wellhubQuotaData.override;
+    if (override === "closed") {
+      setWellhubChoice("closed");
+    } else if (typeof override === "number") {
+      setWellhubChoice("custom");
+      setWellhubCustom(Math.max(1, override));
+    } else {
+      setWellhubChoice("default");
+    }
+  }, [open, editingClass, wellhubQuotaData]);
 
   const availableRooms = studios?.flatMap((s) =>
     // Honour the schedule's studio scoping (if any): the picker shouldn't
@@ -427,7 +511,7 @@ export function ClassFormDialog({
       const [hh, mm] = formData.time.split(":").map(Number);
       const startsAt = zonedWallTimeToUtc(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, tz);
       const endsAt = addMinutes(startsAt, formData.duration);
-      const payload = {
+      const payload: Record<string, unknown> = {
         classTypeId: formData.classTypeId,
         coachId: formData.coachProfileId,
         startsAt: startsAt.toISOString(),
@@ -437,6 +521,8 @@ export function ClassFormDialog({
         songRequestsEnabled: formData.songRequestsEnabled,
         songRequestRules: formData.songRequestsEnabled ? formData.songRequestRules : [],
       };
+      // Only send wellhubQuota when the control was shown (Wellhub active).
+      if (wellhubActive) payload.wellhubQuota = wellhubQuotaValue();
       const url = editingClass ? `/api/classes/${editingClass.id}` : "/api/classes";
       const method = editingClass ? "PUT" : "POST";
       const res = await fetch(url, {
@@ -459,7 +545,7 @@ export function ClassFormDialog({
 
   const saveBulkMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const payload: Record<string, unknown> = {
         classTypeId: formData.classTypeId,
         coachId: formData.coachProfileId,
         roomId: formData.roomId,
@@ -472,6 +558,8 @@ export function ClassFormDialog({
         songRequestsEnabled: formData.songRequestsEnabled,
         songRequestRules: formData.songRequestsEnabled ? formData.songRequestRules : [],
       };
+      // Only send wellhubQuota when the control was shown (Wellhub active).
+      if (wellhubActive) payload.wellhubQuota = wellhubQuotaValue();
       const res = await fetch("/api/classes/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -507,6 +595,9 @@ export function ClassFormDialog({
         payload.time = formData.time;
         payload.duration = formData.duration;
       }
+      // Only send wellhubQuota when the control was shown (Wellhub active).
+      // The backend applies it across the selected scope.
+      if (wellhubActive) payload.wellhubQuota = wellhubQuotaValue();
       const scopeParam = scope === "all" ? "scope=all" : `scope=from&fromId=${editingClass.id}`;
       const res = await fetch(`/api/classes/series/${editingClass.recurringId}?${scopeParam}`, {
         method: "PUT",
@@ -721,6 +812,48 @@ export function ClassFormDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Wellhub quota — only when Wellhub is active (api mode). */}
+          {wellhubActive && (
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted">
+                {t("wellhubQuotaLabel")}
+              </label>
+              <div className="flex gap-1 rounded-xl bg-surface p-1">
+                {(["default", "custom", "closed"] as const).map((choice) => (
+                  <button
+                    key={choice}
+                    type="button"
+                    onClick={() => setWellhubChoice(choice)}
+                    className={`flex flex-1 items-center justify-center rounded-lg px-2 py-1.5 text-[13px] font-medium transition-all ${
+                      wellhubChoice === choice
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted hover:text-foreground"
+                    }`}
+                  >
+                    {choice === "default"
+                      ? wellhubDefaultQuota != null
+                        ? `${t("wellhubQuotaDefault")} (${wellhubDefaultQuota})`
+                        : t("wellhubQuotaDefault")
+                      : choice === "custom"
+                        ? t("wellhubQuotaCustom")
+                        : t("wellhubQuotaClosed")}
+                  </button>
+                ))}
+              </div>
+              {wellhubChoice === "custom" && (
+                <Input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={wellhubCustom}
+                  onChange={(e) => setWellhubCustom(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="mt-2"
+                />
+              )}
+              <p className="mt-1 text-[11px] text-muted">{t("wellhubQuotaHelp")}</p>
+            </div>
+          )}
 
           {/* Bulk edit (thisAndFuture/all): only time + duration are editable,
               and only when no live reservations exist on affected classes. */}

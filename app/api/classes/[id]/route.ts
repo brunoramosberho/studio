@@ -274,7 +274,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag, songRequestsEnabled, songRequestRules, blockingNotes } = body;
+    const { classTypeId, coachId, startsAt, endsAt, roomId, status, notes, tag, songRequestsEnabled, songRequestRules, blockingNotes, wellhubQuota } = body;
 
     // If cancelling via PUT, use the full cancel flow (refund + email)
     if (status === "CANCELLED" && existing.status !== "CANCELLED") {
@@ -312,9 +312,13 @@ export async function PUT(
       },
     });
 
-    // Push the change to Wellhub. Errors land on Class.wellhubLastError.
+    // Apply the per-class Wellhub quota choice (null=default, 0=closed, N=override)
+    // then push the change to Wellhub. Errors land on Class.wellhubLastError.
     try {
-      const { syncClassToWellhub } = await import("@/lib/platforms/wellhub");
+      const { applyWellhubQuotaToClass, syncClassToWellhub } = await import("@/lib/platforms/wellhub");
+      if (wellhubQuota !== undefined) {
+        await applyWellhubQuotaToClass(ctx.tenant.id, id, wellhubQuota === null ? null : Number(wellhubQuota));
+      }
       await syncClassToWellhub(id);
     } catch (syncError) {
       console.error("[wellhub] sync after class update failed", syncError);

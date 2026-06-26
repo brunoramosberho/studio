@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
     const ctx = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { classTypeId, coachId, startsAt, endsAt, roomId, isRecurring, recurringId, notes, tag, songRequestsEnabled, songRequestRules } = body;
+    const { classTypeId, coachId, startsAt, endsAt, roomId, isRecurring, recurringId, notes, tag, songRequestsEnabled, songRequestRules, wellhubQuota } = body;
 
     const resolvedSongEnabled = songRequestsEnabled ?? true;
     const resolvedSongRules = resolvedSongEnabled
@@ -261,10 +261,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Best-effort sync to Wellhub. Errors are recorded on Class.wellhubLastError
-    // and surfaced via PlatformAlert; we never block class creation on them.
+    // Apply the per-class Wellhub quota choice, then best-effort sync to
+    // Wellhub. Errors are recorded on Class.wellhubLastError and surfaced via
+    // PlatformAlert; we never block class creation on them.
     try {
-      const { syncClassToWellhub } = await import("@/lib/platforms/wellhub");
+      const { applyWellhubQuotaToClass, syncClassToWellhub } = await import("@/lib/platforms/wellhub");
+      if (wellhubQuota !== undefined) {
+        await applyWellhubQuotaToClass(ctx.tenant.id, newClass.id, wellhubQuota === null ? null : Number(wellhubQuota));
+      }
       await syncClassToWellhub(newClass.id);
     } catch (syncError) {
       console.error("[wellhub] sync after class create failed", syncError);

@@ -73,7 +73,7 @@ export async function PUT(
     const fromId = request.nextUrl.searchParams.get("fromId");
 
     const body = await request.json();
-    const { coachId, roomId, classTypeId, tag, songRequestsEnabled, songRequestRules, time, duration } = body;
+    const { coachId, roomId, classTypeId, tag, songRequestsEnabled, songRequestRules, time, duration, wellhubQuota } = body;
 
     const isReschedule = typeof time === "string" || typeof duration === "number";
     if (typeof time === "string" && !/^\d{2}:\d{2}$/.test(time)) {
@@ -91,7 +91,8 @@ export async function PUT(
     if (songRequestsEnabled !== undefined) data.songRequestsEnabled = songRequestsEnabled;
     if (songRequestRules !== undefined) data.songRequestRules = normalizeRules(songRequestRules);
 
-    if (Object.keys(data).length === 0 && !isReschedule) {
+    const hasQuotaChange = wellhubQuota !== undefined;
+    if (Object.keys(data).length === 0 && !isReschedule && !hasQuotaChange) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
@@ -104,17 +105,49 @@ export async function PUT(
       if (fromClass) startsAtFilter.gte = fromClass.startsAt;
     }
 
-    if (!isReschedule) {
-      const result = await prisma.class.updateMany({
-        where: {
-          recurringId,
-          tenantId: ctx.tenant.id,
-          status: "SCHEDULED",
-          startsAt: startsAtFilter,
-        },
-        data,
+    // Apply the per-class Wellhub quota across the scope, then re-sync each
+    // affected class to Wellhub in the background (the visibility gate keeps
+    // out-of-window classes out until they become visible; the response isn't
+    // blocked on N API calls).
+    async function applyQuotaAcrossScope() {
+      if (!hasQuotaChange) return;
+      const scopeClasses = await prisma.class.findMany({
+        where: { recurringId, tenantId: ctx.tenant.id, status: "SCHEDULED", startsAt: startsAtFilter },
+        select: { id: true },
       });
-      return NextResponse.json({ count: result.count });
+      const { applyWellhubQuotaToClass, syncClassToWellhub } = await import("@/lib/platforms/wellhub");
+      const normalized = wellhubQuota === null ? null : Number(wellhubQuota);
+      for (const c of scopeClasses) {
+        await applyWellhubQuotaToClass(ctx.tenant.id, c.id, normalized);
+      }
+      // Fire-and-forget the re-sync so the admin's save returns immediately.
+      void (async () => {
+        for (const c of scopeClasses) {
+          try {
+            await syncClassToWellhub(c.id);
+          } catch (err) {
+            console.error("[wellhub] series quota re-sync failed", { classId: c.id, err });
+          }
+        }
+      })();
+    }
+
+    if (!isReschedule) {
+      let count = 0;
+      if (Object.keys(data).length > 0) {
+        const result = await prisma.class.updateMany({
+          where: {
+            recurringId,
+            tenantId: ctx.tenant.id,
+            status: "SCHEDULED",
+            startsAt: startsAtFilter,
+          },
+          data,
+        });
+        count = result.count;
+      }
+      await applyQuotaAcrossScope();
+      return NextResponse.json({ count });
     }
 
     // Reschedule path: per-class update with booking + conflict guards.
@@ -274,6 +307,7 @@ export async function PUT(
       }
     });
 
+    await applyQuotaAcrossScope();
     return NextResponse.json({ count });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden"].includes(error.message)) {

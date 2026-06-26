@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       classTypeId, coachId, roomId, time, duration, days,
-      dateFrom, dateTo, tag, songRequestsEnabled, songRequestRules,
+      dateFrom, dateTo, tag, songRequestsEnabled, songRequestRules, wellhubQuota,
     } = body;
 
     if (!classTypeId || !coachId || !roomId || !time || !duration || !days?.length || !dateFrom || !dateTo) {
@@ -200,6 +200,33 @@ export async function POST(request: NextRequest) {
         songRequestRules: resolvedSongRules,
       })),
     });
+
+    // Apply the per-class Wellhub quota to the freshly-created series, then
+    // re-sync in the background (visibility gate keeps out-of-window classes
+    // out until they become visible). createMany doesn't return ids, so fetch
+    // them by recurringId.
+    if (wellhubQuota !== undefined) {
+      const newClasses = await prisma.class.findMany({
+        where: { recurringId, tenantId: ctx.tenant.id },
+        select: { id: true },
+      });
+      const { applyWellhubQuotaToClass, syncClassToWellhub } = await import("@/lib/platforms/wellhub");
+      const normalized = wellhubQuota === null ? null : Number(wellhubQuota);
+      for (const c of newClasses) {
+        await applyWellhubQuotaToClass(ctx.tenant.id, c.id, normalized).catch((e) =>
+          console.error("[wellhub] bulk quota apply failed", { classId: c.id, e }),
+        );
+      }
+      void (async () => {
+        for (const c of newClasses) {
+          try {
+            await syncClassToWellhub(c.id);
+          } catch (err) {
+            console.error("[wellhub] bulk quota re-sync failed", { classId: c.id, err });
+          }
+        }
+      })();
+    }
 
     return NextResponse.json({
       count: created.count,

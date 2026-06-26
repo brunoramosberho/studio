@@ -93,6 +93,7 @@ export {
   unsyncClassFromWellhub,
   hideClassTypeInWellhub,
   patchWellhubCapacityForClass,
+  applyWellhubQuotaToClass,
 } from "./sync";
 export type { WellhubSyncResult } from "./sync";
 

@@ -46,6 +46,45 @@ export interface WellhubSyncResult {
 }
 
 /**
+ * Apply a per-class Wellhub quota choice from the class editor. Three states:
+ *   - quota === null  → "use default": delete any override row so the class
+ *     follows the tenant default (the cron re-applies it).
+ *   - quota === 0     → "closed to Wellhub": upsert a row with quotaSpots=0 and
+ *     isClosedManually=true so the default never re-opens it.
+ *   - quota > 0       → explicit override: upsert quotaSpots=quota, not closed.
+ *
+ * Does NOT call sync — the caller syncs the class afterwards (single edit) or
+ * batches the re-sync (series edit).
+ */
+export async function applyWellhubQuotaToClass(
+  tenantId: string,
+  classId: string,
+  quota: number | null,
+): Promise<void> {
+  if (quota === null) {
+    await prisma.schedulePlatformQuota.deleteMany({ where: { classId, platform: "wellhub" } });
+    return;
+  }
+  const closed = quota <= 0;
+  await prisma.schedulePlatformQuota.upsert({
+    where: { classId_platform: { classId, platform: "wellhub" } },
+    create: {
+      tenantId,
+      classId,
+      platform: "wellhub",
+      quotaSpots: closed ? 0 : quota,
+      isClosedManually: closed,
+      ...(closed ? { closedAt: new Date() } : {}),
+    },
+    update: {
+      quotaSpots: closed ? 0 : quota,
+      isClosedManually: closed,
+      ...(closed ? { closedAt: new Date() } : { closedAt: null, closedBy: null }),
+    },
+  });
+}
+
+/**
  * Push the current state of a Magic Class to Wellhub. Idempotent: safe to
  * call after every create/update of the Class or its SchedulePlatformQuota.
  */
@@ -73,10 +112,17 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
     return await markStatus(classId, "excluded", "outside_visible_window");
   }
 
-  // Auto-apply the tenant default quota when the class has none yet. Lets the
-  // window-sync cron expose newly-visible classes without manual per-class
-  // quota entry.
-  if ((!ctx.quotaSpots || ctx.quotaSpots <= 0) && ctx.tenantConfig.defaultQuota && ctx.tenantConfig.defaultQuota > 0) {
+  // Closed-to-Wellhub override: an explicit quota row with isClosedManually
+  // means the admin deliberately excluded this class — the default must NOT
+  // re-open it. Keep it out of Wellhub.
+  if (ctx.quotaClosedManually) {
+    return await unsyncClassFromWellhub(classId);
+  }
+
+  // Auto-apply the tenant default quota ONLY when the class has no quota row at
+  // all (quotaHasRow=false). A row with quotaSpots>0 is an explicit override we
+  // never overwrite; a row with quotaSpots=0+closed was handled above.
+  if (!ctx.quotaHasRow && ctx.tenantConfig.defaultQuota && ctx.tenantConfig.defaultQuota > 0) {
     await prisma.schedulePlatformQuota.upsert({
       where: { classId_platform: { classId, platform: "wellhub" } },
       create: {
@@ -334,6 +380,10 @@ interface ClassContext {
   coachName: string;
   originalCoachName: string | null;
   quotaSpots: number;
+  /** True when a SchedulePlatformQuota row exists for this class (= override). */
+  quotaHasRow: boolean;
+  /** True when the row exists and is marked closed-to-Wellhub. */
+  quotaClosedManually: boolean;
   tenantConfig: {
     tenantId: string;
     wellhubGymId: number | null;
@@ -370,7 +420,7 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
       room: { select: { name: true, maxCapacity: true } },
       platformQuotas: {
         where: { platform: "wellhub" },
-        select: { quotaSpots: true },
+        select: { quotaSpots: true, isClosedManually: true },
       },
     },
   });
@@ -396,6 +446,8 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
     coachName: cls.coach.name,
     originalCoachName: cls.originalCoach?.name ?? null,
     quotaSpots: cls.platformQuotas[0]?.quotaSpots ?? 0,
+    quotaHasRow: cls.platformQuotas.length > 0,
+    quotaClosedManually: cls.platformQuotas[0]?.isClosedManually ?? false,
     tenantConfig: tenantConfig
       ? {
           tenantId: tenantConfig.tenantId,

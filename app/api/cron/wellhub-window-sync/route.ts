@@ -60,7 +60,9 @@ export async function GET(request: NextRequest) {
     const timezone = await resolveScheduleTimezone(tenant);
     const visibleUntil = computeVisibleUntil(now, tenant, timezone);
 
-    // 1) SYNC IN — in-window, mapped, not yet synced.
+    // 1) SYNC IN — in-window, mapped, not yet synced, and NOT closed-to-Wellhub.
+    // A class with an explicit closed override (isClosedManually) is skipped so
+    // the default never re-opens it.
     const toSync = await prisma.class.findMany({
       where: {
         tenantId: tenant.id,
@@ -68,6 +70,7 @@ export async function GET(request: NextRequest) {
         startsAt: { gte: now, lte: visibleUntil },
         wellhubSlotId: null,
         classType: { wellhubProductId: { not: null } },
+        NOT: { platformQuotas: { some: { platform: "wellhub", isClosedManually: true } } },
       },
       take: MAX_CLASSES_PER_TENANT,
       select: { id: true },
