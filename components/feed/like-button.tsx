@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Heart, ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,14 @@ export function LikeButton({
   const [count, setCount] = useState(initialCount);
   const [animating, setAnimating] = useState(false);
   const busyRef = useRef(false);
+
+  // Re-sync with server data when the feed refetches (e.g. new likes from
+  // other members) — but not mid-request, so we don't stomp the optimistic +1.
+  useEffect(() => {
+    if (busyRef.current) return;
+    setLiked(initialLiked);
+    setCount(initialCount);
+  }, [initialLiked, initialCount]);
 
   const toggle = useCallback(async () => {
     if (busyRef.current) return;
