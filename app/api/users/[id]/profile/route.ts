@@ -75,6 +75,7 @@ export async function GET(
 
   const isFriend = friendshipStatus === "ACCEPTED";
   const isCoach = userRole === "COACH";
+  const isSelf = targetId === currentUserId;
 
   // Shared classes (classes both users attended/booked)
   const myClassIds = await prisma.booking.findMany({
@@ -120,7 +121,7 @@ export async function GET(
   const avatarMeta = await getUsersAvatarMeta([targetId], tenantId);
   const meta = avatarMeta.get(targetId);
 
-  const showSocials = isFriend || isCoach;
+  const showSocials = isFriend || isCoach || isSelf;
   const base = {
     id: user.id,
     name: user.name,
@@ -134,6 +135,7 @@ export async function GET(
     pendingFromMe,
     isFriend,
     isCoach,
+    isSelf,
     loyaltyLevel,
     hasActiveMembership: meta?.hasActiveMembership ?? false,
     level: meta?.level ?? null,
@@ -214,12 +216,12 @@ export async function GET(
     });
   }
 
-  // Not friends: limited view
-  if (!isFriend) {
+  // Not friends (and not your own profile): limited view
+  if (!isFriend && !isSelf) {
     return NextResponse.json(base);
   }
 
-  // Friends: full view
+  // Friends (or yourself): full view
   const now = new Date();
 
   // Past classes attended (scoped to this tenant)

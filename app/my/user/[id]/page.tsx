@@ -75,6 +75,7 @@ interface UserProfile {
   pendingFromMe: boolean;
   isFriend: boolean;
   isCoach: boolean;
+  isSelf: boolean;
   instagramUser?: string | null;
   stravaUser?: string | null;
   coachBio?: string | null;
@@ -319,7 +320,7 @@ export default function UserProfilePage({
     level: profile.level as UserAvatarUser["level"],
   };
 
-  const showAddFriend = !profile.isFriend && !profile.pendingFromMe && profile.friendshipStatus !== "PENDING";
+  const showAddFriend = !profile.isSelf && !profile.isFriend && !profile.pendingFromMe && profile.friendshipStatus !== "PENDING";
   const showPendingSent = profile.pendingFromMe;
   const showAcceptRequest = profile.friendshipStatus === "PENDING" && !profile.pendingFromMe;
 
@@ -410,13 +411,22 @@ export default function UserProfilePage({
             <p className="text-[12px] text-muted">Amigos</p>
           </div>
           <div className="text-center">
-            <p className="font-display text-lg font-bold text-foreground">{profile.sharedClassCount}</p>
-            <p className="text-[12px] text-muted">Clases juntos</p>
+            <p className="font-display text-lg font-bold text-foreground">
+              {profile.isSelf ? (profile.loyaltyLevel?.totalClasses ?? 0) : profile.sharedClassCount}
+            </p>
+            <p className="text-[12px] text-muted">{profile.isSelf ? "Clases" : "Clases juntos"}</p>
           </div>
         </motion.div>
 
         {/* Friendship CTA */}
         <motion.div custom={2} variants={fadeUp} initial="hidden" animate="show">
+          {profile.isSelf && (
+            <div className="rounded-xl bg-surface px-4 py-2.5 text-center">
+              <p className="text-[13px] font-medium text-muted">
+                Este es tu perfil · así lo ven tus amigos
+              </p>
+            </div>
+          )}
           {showAddFriend && (
             <Button
               className="w-full gap-2"
@@ -495,8 +505,8 @@ export default function UserProfilePage({
           </motion.div>
         )}
 
-        {/* ===== NON-FRIEND VIEW (non-coach) ===== */}
-        {!profile.isFriend && !profile.isCoach && (
+        {/* ===== NON-FRIEND VIEW (non-coach, not self) ===== */}
+        {!profile.isFriend && !profile.isCoach && !profile.isSelf && (
           <motion.div custom={3} variants={fadeUp} initial="hidden" animate="show">
             <div className="rounded-2xl border border-border/50 bg-card py-10 text-center">
               <Users className="mx-auto h-7 w-7 text-muted/40" />
@@ -510,8 +520,8 @@ export default function UserProfilePage({
           </motion.div>
         )}
 
-        {/* ===== FRIEND VIEW ===== */}
-        {profile.isFriend && !profile.isCoach && (
+        {/* ===== FRIEND VIEW (also your own profile) ===== */}
+        {(profile.isFriend || profile.isSelf) && !profile.isCoach && (
           <motion.div className="space-y-4" custom={3} variants={fadeUp} initial="hidden" animate="show">
             {/* Tabs */}
             <div className="flex gap-1 rounded-xl bg-surface p-1">
