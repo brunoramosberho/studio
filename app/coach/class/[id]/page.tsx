@@ -39,6 +39,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
 import { MediaGallery } from "@/components/feed/media-gallery";
 import { cn, formatDate, formatTime } from "@/lib/utils";
+import { compressImage } from "@/lib/media-utils";
+import { toast } from "sonner";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
 import { RequestSubstituteButton } from "@/components/coach/request-substitute-button";
 import { ShareClassButton } from "@/components/coach/share-class-button";
@@ -461,19 +463,27 @@ export default function ClassRosterPage() {
     const files = e.target.files;
     if (!files || files.length === 0 || !feedEventId) return;
 
-    const newPreviews = Array.from(files).map((f) => URL.createObjectURL(f));
+    const selected = Array.from(files);
+    const newPreviews = selected.map((f) => URL.createObjectURL(f));
     setPreviewUrls((prev) => [...prev, ...newPreviews]);
     setUploadingPhotos(true);
 
-    for (const file of Array.from(files)) {
-      const form = new FormData();
-      form.append("file", file);
+    let failed = 0;
+    for (const file of selected) {
       try {
-        await fetch(`/api/feed/${feedEventId}/photos`, {
+        // Downscale first — raw phone photos blow past the serverless body
+        // limit and the upload fails silently.
+        const processed = await compressImage(file);
+        const form = new FormData();
+        form.append("file", processed);
+        const res = await fetch(`/api/feed/${feedEventId}/photos`, {
           method: "POST",
           body: form,
         });
-      } catch {}
+        if (!res.ok) failed++;
+      } catch {
+        failed++;
+      }
     }
 
     setUploadingPhotos(false);
@@ -481,6 +491,14 @@ export default function ClassRosterPage() {
     newPreviews.forEach((url) => URL.revokeObjectURL(url));
     refetchFeed();
     if (fileInputRef.current) fileInputRef.current.value = "";
+
+    if (failed > 0) {
+      toast.error(
+        failed === selected.length
+          ? "No se pudieron subir las fotos. Intenta de nuevo."
+          : `No se pudieron subir ${failed} foto${failed > 1 ? "s" : ""}.`,
+      );
+    }
   }
 
   const getAttendance = (booking: BookingEntry): AttendanceStatus =>

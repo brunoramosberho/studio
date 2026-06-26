@@ -47,7 +47,10 @@ export async function POST(
       const payload = feedEvent.payload as Record<string, unknown>;
       const attendees = (payload.attendees as { id: string }[]) ?? [];
       const isAttendee = attendees.some((a) => a.id === session.user.id);
-      if (!isAttendee) {
+      // The class's instructor isn't in the attendee list but owns the post —
+      // allow them to add photos too (mirrors the DELETE coach check below).
+      const isCoach = payload.coachUserId === session.user.id;
+      if (!isAttendee && !isCoach) {
         return NextResponse.json({ error: "Only attendees can upload photos" }, { status: 403 });
       }
     }
