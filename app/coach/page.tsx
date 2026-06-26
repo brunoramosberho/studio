@@ -135,7 +135,7 @@ export default function CoachDashboard() {
     ?.filter((c) => new Date(c.startsAt) > now)
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   const upcomingWeek = weekClasses
-    ?.filter((c) => new Date(c.startsAt) > now)
+    ?.filter((c) => new Date(c.startsAt) > now && !isToday(c.startsAt))
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   const nextClass = upcoming?.[0] ?? upcomingWeek?.[0] ?? null;
   const countdown = useCountdown(nextClass ? new Date(nextClass.startsAt) : null);
@@ -358,11 +358,11 @@ export default function CoachDashboard() {
         )}
       </motion.div>
       {/* Upcoming this week */}
-      {weekClasses && weekClasses.length > 0 && (
+      {upcomingWeek && upcomingWeek.length > 0 && (
         <motion.div variants={stagger} initial="hidden" animate="show">
           <h2 className="mb-4 font-display text-xl font-bold">{t("upcomingDays")}</h2>
           <div className="space-y-3">
-            {weekClasses.slice(0, 10).map((cls) => {
+            {upcomingWeek.slice(0, 10).map((cls) => {
               const enrolled = cls._count?.bookings ?? cls.bookings.length;
               const capacity = cls.room?.maxCapacity ?? 0;
               const classDate = new Date(cls.startsAt);
