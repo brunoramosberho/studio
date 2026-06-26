@@ -19,6 +19,11 @@ async function generateImageThumbnail(
 ): Promise<Buffer | null> {
   try {
     return await sharp(file)
+      // Bake EXIF orientation into the pixels (and drop the tag) before
+      // resizing — sharp doesn't auto-rotate, so without this, phone photos
+      // with an orientation tag come out sideways in the thumbnail while the
+      // full-size original (which <img> auto-orients) looks fine.
+      .rotate()
       .resize(THUMB_WIDTH, undefined, { withoutEnlargement: true })
       .jpeg({ quality: THUMB_QUALITY })
       .toBuffer();
