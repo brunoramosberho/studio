@@ -169,12 +169,16 @@ function AttendeesRow({
             showBadge={false}
           />
         ))}
+        {extra > 0 && (
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface text-[9px] font-semibold text-muted ring-2 ring-card">
+            +{extra}
+          </span>
+        )}
       </div>
       <span className="text-[12px] text-muted">
         {attendees.length === 1
           ? maskLastName(attendees[0].name)
           : `${attendees.length} ${t("attendees")}`}
-        {extra > 0 && ` ${t("moreCount", { count: extra })}`}
       </span>
     </button>
   );
