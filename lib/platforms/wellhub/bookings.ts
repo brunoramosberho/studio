@@ -225,7 +225,7 @@ async function reserveAndRecord(args: {
     });
 
     if (decision.status === "RESERVED") {
-      const spotNumber = await assignFreeSpot(tx, args.classId);
+      const spotNumber = await assignWalkinSpot(tx, args.classId);
       await tx.booking.create({
         data: {
           tenantId: args.tenantId,
@@ -250,8 +250,10 @@ async function reserveAndRecord(args: {
  * a BlockedSpot. Only rooms with a configured spot layout use spot numbers;
  * for spotless rooms the companion is created without a spot (it still holds a
  * seat via the capacity counters). Returns null when no numbered spot is free.
+ *
+ * Exported as `assignWalkinSpot` for the walk-in path in access-control.ts.
  */
-async function assignFreeSpot(
+export async function assignWalkinSpot(
   tx: Prisma.TransactionClient,
   classId: string,
 ): Promise<number | null> {

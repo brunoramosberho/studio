@@ -255,26 +255,184 @@ export async function processCheckinWebhook(
     throw error;
   }
 
-  // 3) Best-effort: link to an existing PlatformBooking if one exists.
-  const booking = await prisma.platformBooking.findFirst({
-    where: {
-      tenantId: tenant.tenantId,
-      platform: "wellhub",
-      wellhubUserUniqueToken: data.user.unique_token,
-      status: { in: ["confirmed", "pending_confirmation"] },
-    },
-    orderBy: { createdAt: "desc" },
-    select: { id: true },
+  // 3) Resolve which class this check-in belongs to. The `checkin` webhook
+  // doesn't carry a class/booking, so we match by time (see checkin-match.ts).
+  const checkinAt = new Date(data.timestamp * 1000);
+  const resolution = await resolveCheckinToClass({
+    tenantId: tenant.tenantId,
+    uniqueToken: data.user.unique_token,
+    gymId: data.gym.id,
+    productId: data.gym.product?.id ?? null,
+    checkinAt,
   });
 
-  if (booking) {
-    await prisma.platformBooking.update({
-      where: { id: booking.id },
-      data: { status: "checked_in", checkedInAt: new Date(data.timestamp * 1000) },
-    });
-    const { syncCompanionStatus } = await import("./bookings");
-    await syncCompanionStatus(booking.id, "ATTENDED");
+  if (resolution.kind === "reservation" || resolution.kind === "walkin") {
+    return { validated: true, reason: resolution.kind };
+  }
+  // No class matched → record visit (already done above) + alert the front-desk.
+  return { validated: true, reason: "unmatched_no_class" };
+}
+
+/**
+ * Decide which class a Wellhub check-in belongs to, and apply it.
+ *
+ * Path 1 — reservation: the member already booked. Among THEIR confirmed
+ *          bookings, pick the class closest to the check-in time and mark it.
+ * Path 2 — walk-in: no reservation matches. Among ALL studio classes for the
+ *          check-in's product, pick the closest and auto-create a
+ *          reservation + seat (NOT gated by quota — a consummated check-in is
+ *          a fact, not a request).
+ * Fallback — neither matches: create an unmatched_checkin alert.
+ */
+async function resolveCheckinToClass(args: {
+  tenantId: string;
+  uniqueToken: string;
+  gymId: number;
+  productId: number | null;
+  checkinAt: Date;
+}): Promise<{ kind: "reservation" | "walkin" | "unmatched" }> {
+  const { pickClosestClass } = await import("./checkin-match");
+  const { syncCompanionStatus } = await import("./bookings");
+
+  // ── Path 1: existing reservation ────────────────────────────────────────
+  const reservations = await prisma.platformBooking.findMany({
+    where: {
+      tenantId: args.tenantId,
+      platform: "wellhub",
+      wellhubUserUniqueToken: args.uniqueToken,
+      status: { in: ["confirmed", "pending_confirmation"] },
+    },
+    select: { id: true, class: { select: { id: true, startsAt: true, endsAt: true } } },
+  });
+
+  if (reservations.length > 0) {
+    const matched = pickClosestClass(
+      reservations.map((r) => ({ id: r.id, startsAt: r.class.startsAt, endsAt: r.class.endsAt })),
+      args.checkinAt,
+    );
+    if (matched.match) {
+      await prisma.platformBooking.update({
+        where: { id: matched.match.id },
+        data: { status: "checked_in", checkedInAt: args.checkinAt },
+      });
+      await syncCompanionStatus(matched.match.id, "ATTENDED");
+      return { kind: "reservation" };
+    }
+    // Reservations exist but none in the time window → fall through to walk-in
+    // matching (e.g. they checked in for a class they didn't book).
   }
 
-  return { validated: true };
+  // ── Path 2: walk-in (no matching reservation) ───────────────────────────
+  // Candidate classes: this tenant's classes mapped to the check-in's product,
+  // around the check-in time. We bound the SQL window generously and let the
+  // pure matcher apply the exact acceptance window.
+  const windowStart = new Date(args.checkinAt.getTime() - 3 * 60 * 60 * 1000);
+  const windowEnd = new Date(args.checkinAt.getTime() + 3 * 60 * 60 * 1000);
+  const candidateClasses = await prisma.class.findMany({
+    where: {
+      tenantId: args.tenantId,
+      status: "SCHEDULED",
+      startsAt: { gte: windowStart, lte: windowEnd },
+      ...(args.productId
+        ? { classType: { wellhubProductId: args.productId } }
+        : { classType: { wellhubProductId: { not: null } } }),
+    },
+    select: { id: true, startsAt: true, endsAt: true },
+  });
+
+  const walkinMatch = pickClosestClass(candidateClasses, args.checkinAt);
+  if (walkinMatch.match) {
+    await createWalkinBooking({
+      tenantId: args.tenantId,
+      classId: walkinMatch.match.id,
+      uniqueToken: args.uniqueToken,
+      checkinAt: args.checkinAt,
+    });
+    return { kind: "walkin" };
+  }
+
+  // ── Fallback: nothing matched → alert for manual assignment ─────────────
+  const { createPlatformAlert } = await import("@/lib/platforms/alerts");
+  await createPlatformAlert({
+    tenantId: args.tenantId,
+    platform: "wellhub",
+    type: "unmatched_checkin",
+  }).catch((err) => console.error("[wellhub] unmatched_checkin alert failed", err));
+  return { kind: "unmatched" };
+}
+
+/**
+ * Create a walk-in: a Wellhub member who checked in without a reservation.
+ * NOT gated by quota — they're physically here and Wellhub already validated
+ * the visit. Idempotent on (token, class): a duplicate webhook won't double-seat.
+ */
+async function createWalkinBooking(args: {
+  tenantId: string;
+  classId: string;
+  uniqueToken: string;
+  checkinAt: Date;
+}): Promise<void> {
+  // Idempotency: if this user already has a (non-cancelled) wellhub booking on
+  // this class, just ensure it's checked_in instead of creating a second one.
+  const existing = await prisma.platformBooking.findFirst({
+    where: {
+      tenantId: args.tenantId,
+      classId: args.classId,
+      platform: "wellhub",
+      wellhubUserUniqueToken: args.uniqueToken,
+      status: { not: "cancelled" },
+    },
+    select: { id: true },
+  });
+  const { syncCompanionStatus } = await import("./bookings");
+  if (existing) {
+    await prisma.platformBooking.update({
+      where: { id: existing.id },
+      data: { status: "checked_in", checkedInAt: args.checkinAt },
+    });
+    await syncCompanionStatus(existing.id, "ATTENDED");
+    return;
+  }
+
+  const link = await prisma.wellhubUserLink.findFirst({
+    where: { tenantId: args.tenantId, wellhubUniqueToken: args.uniqueToken },
+    select: { fullName: true, email: true },
+  });
+  const memberName =
+    link?.fullName ?? `Wellhub ${args.uniqueToken.slice(-4)} (walk-in)`;
+
+  const { assignWalkinSpot } = await import("./bookings");
+
+  await prisma.$transaction(async (tx) => {
+    const pb = await tx.platformBooking.create({
+      data: {
+        tenantId: args.tenantId,
+        classId: args.classId,
+        platform: "wellhub",
+        platformBookingId: `walkin_${args.uniqueToken}_${args.classId}`,
+        memberName,
+        status: "checked_in",
+        source: "wellhub_api",
+        wellhubUserUniqueToken: args.uniqueToken,
+        checkedInAt: args.checkinAt,
+        notes: "wellhub_walkin",
+      },
+      select: { id: true },
+    });
+
+    const spot = await assignWalkinSpot(tx, args.classId);
+    await tx.booking.create({
+      data: {
+        tenantId: args.tenantId,
+        classId: args.classId,
+        userId: null,
+        guestName: memberName,
+        guestEmail: link?.email ?? null,
+        spotNumber: spot,
+        privacy: "PRIVATE",
+        status: "ATTENDED",
+        platformBookingId: pb.id,
+      },
+    });
+  });
 }

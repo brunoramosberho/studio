@@ -6,6 +6,7 @@ export type AlertType =
   | "class_full"
   | "spot_freed"
   | "unmatched_booking"
+  | "unmatched_checkin"
   | "wellhub_sync_error"
   | "wellhub_booking_rejected"
   | "wellhub_reconciliation_mismatch";
@@ -19,6 +20,8 @@ const ALERT_MESSAGES: Record<AlertType, (...args: string[]) => string> = {
     `Se liberó un spot en ${className}. ¿Quieres abrir spots en plataformas externas?`,
   unmatched_booking: () =>
     `Llegó una reserva de plataforma que no pudimos asociar a ninguna clase. Revísala y regístrala manualmente.`,
+  unmatched_checkin: (_className: string, platform: string) =>
+    `Un miembro de ${platform} hizo check-in pero no pudimos asociarlo a ninguna clase. Asígnalo manualmente desde el check-in.`,
   wellhub_sync_error: (className: string) =>
     `Falló la sincronización con Wellhub para ${className}. Revisa los logs y reintenta.`,
   wellhub_booking_rejected: (className: string) =>
