@@ -25,6 +25,16 @@ const AUTH_ERROR_PATTERNS = [
   /session expired/i,
 ];
 
+// A stale bundle (after a deploy) requests chunk files the new build no longer
+// serves. These are the messages browsers/Next emit when a dynamic import fails.
+const CHUNK_ERROR_PATTERNS = [
+  /loading chunk [\w-]+ failed/i,
+  /loading css chunk/i,
+  /failed to fetch dynamically imported module/i,
+  /importing a module script failed/i,
+  /error loading dynamically imported module/i,
+];
+
 const AUTH_COOKIE_PATTERNS = [
   /^(__Secure-)?authjs\./i, // NextAuth — all variants (admin/client/super)
   /^next-auth\./i,
@@ -59,45 +69,65 @@ export function ErrorBoundaryContent({
   const recovering = AUTH_ERROR_PATTERNS.some((p) =>
     p.test(error.message || ""),
   );
+  const isChunkError =
+    error.name === "ChunkLoadError" ||
+    CHUNK_ERROR_PATTERNS.some((p) => p.test(error.message || ""));
 
   useEffect(() => {
     // Always surface the message so Vercel runtime logs catch it.
     console.error("Render error caught by global boundary:", error);
 
-    if (!recovering) return;
-    clearAuthCookies();
-    const t = setTimeout(() => {
-      window.location.replace("/login");
-    }, 400);
-    return () => clearTimeout(t);
-  }, [error, recovering]);
+    if (recovering) {
+      clearAuthCookies();
+      const t = setTimeout(() => {
+        window.location.replace("/login");
+      }, 400);
+      return () => clearTimeout(t);
+    }
+
+    if (isChunkError && typeof window !== "undefined") {
+      // Hard-reload to pull the fresh build. Guard against reload loops (a
+      // genuinely-missing chunk, not just skew) by retrying at most once / 10s.
+      const KEY = "__chunk_reload_ts__";
+      const nowTs = Date.now();
+      const last = Number(window.sessionStorage.getItem(KEY) || "0");
+      if (nowTs - last > 10_000) {
+        window.sessionStorage.setItem(KEY, String(nowTs));
+        window.location.reload();
+      }
+    }
+  }, [error, recovering, isChunkError]);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 text-center">
       <div className="w-full rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
         <h1 className="text-xl font-semibold text-stone-900">
-          {recovering ? "Limpiando sesión…" : "Algo salió mal"}
+          {recovering ? "Limpiando sesión…" : isChunkError ? "Actualizando…" : "Algo salió mal"}
         </h1>
         <p className="mt-2 text-sm text-stone-500">
           {recovering
             ? "Detectamos un problema con tu sesión. Te enviamos al inicio en un momento."
-            : "Tuvimos un problema cargando esta página. Intenta de nuevo o vuelve al inicio."}
+            : isChunkError
+              ? "Hay una versión nueva de la app. Estamos recargando la página…"
+              : "Tuvimos un problema cargando esta página. Intenta de nuevo o vuelve al inicio."}
         </p>
         {!recovering && (
           <div className="mt-6 flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => reset()}
+              onClick={() => (isChunkError ? window.location.reload() : reset())}
               className="rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800"
             >
-              Reintentar
+              {isChunkError ? "Recargar" : "Reintentar"}
             </button>
-            <a
-              href="/login"
-              className="rounded-lg border border-stone-200 px-4 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
-            >
-              Volver al inicio de sesión
-            </a>
+            {!isChunkError && (
+              <a
+                href="/login"
+                className="rounded-lg border border-stone-200 px-4 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
+              >
+                Volver al inicio de sesión
+              </a>
+            )}
           </div>
         )}
         {error.digest && (
