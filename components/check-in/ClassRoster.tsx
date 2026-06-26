@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useOptimistic, useCallback, useEffect, useMemo, useRef, startTransition } from "react";
+import { useState, useOptimistic, useCallback, useEffect, useMemo, useRef, startTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import {
@@ -34,7 +34,8 @@ import {
   CancelBookingDialog,
   MoveBookingDialog,
 } from "@/components/admin/booking-actions";
-import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2 } from "lucide-react";
+import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2, MoreVertical } from "lucide-react";
+import { createPortal } from "react-dom";
 
 // ── Types ──
 
@@ -943,6 +944,136 @@ function ConfirmDialog({
   );
 }
 
+// ── Row action menu (kebab) ──
+
+interface RowAction {
+  key: string;
+  label: string;
+  hint?: string;
+  icon: ReactNode;
+  danger?: boolean;
+  onClick: () => void;
+}
+
+/**
+ * Always-visible "⋯" trigger that opens a labelled action menu. Used instead of
+ * hover-only icon buttons so secondary row actions are reachable on touch
+ * (iPad), and each action gets a name + one-line hint explaining what it does.
+ * The menu is portaled to <body> with fixed positioning so the roster's
+ * overflow-y-auto scroll container can't clip it.
+ */
+function RowActionMenu({ actions, label }: { actions: RowAction[]; label: string }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const MENU_W = 232;
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    // A fixed-position menu would drift from its button on scroll/resize.
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (open) {
+            setOpen(false);
+            return;
+          }
+          const r = btnRef.current?.getBoundingClientRect();
+          if (r) {
+            const menuH = actions.length * 60 + 8;
+            const top =
+              r.bottom + 6 + menuH > window.innerHeight - 8
+                ? Math.max(8, r.top - menuH - 6)
+                : r.bottom + 6;
+            const left = Math.max(
+              8,
+              Math.min(r.right - MENU_W, window.innerWidth - MENU_W - 8),
+            );
+            setPos({ top, left });
+          }
+          setOpen(true);
+        }}
+        aria-label={label}
+        title={label}
+        className="p-1.5 rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600 dark:text-stone-500 dark:hover:bg-white/10 dark:hover:text-stone-200"
+      >
+        <MoreVertical size={16} />
+      </button>
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[70]"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+            }}
+          >
+            <div
+              className="absolute overflow-hidden rounded-xl border border-stone-200 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-stone-900"
+              style={{ top: pos.top, left: pos.left, width: MENU_W }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {actions.map((a) => (
+                <button
+                  key={a.key}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                    a.onClick();
+                  }}
+                  className={cn(
+                    "flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors",
+                    a.danger
+                      ? "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                      : "text-stone-700 hover:bg-stone-50 dark:text-stone-200 dark:hover:bg-white/5",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 shrink-0",
+                      a.danger
+                        ? "text-red-500 dark:text-red-400"
+                        : "text-stone-400 dark:text-stone-500",
+                    )}
+                  >
+                    {a.icon}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium leading-tight">{a.label}</span>
+                    {a.hint && (
+                      <span className="mt-0.5 block text-xs leading-snug text-stone-400 dark:text-stone-500">
+                        {a.hint}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
 // ── Roster Row ──
 
 function RosterRow({
@@ -1114,7 +1245,9 @@ function RosterRow({
                   e.stopPropagation();
                   onUndoRequest();
                 }}
-                className="p-1.5 rounded-full text-stone-300 hover:text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors md:opacity-0 md:group-hover:opacity-100"
+                aria-label={tc("undoCheckin")}
+                title={tc("undoCheckin")}
+                className="p-1.5 rounded-full text-stone-300 hover:text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors"
               >
                 <Undo2 size={12} />
               </button>
@@ -1122,31 +1255,37 @@ function RosterRow({
           </div>
         ) : (
           <div className="flex items-center gap-0.5">
-            {!isFinished && onMove && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMove();
-                }}
-                aria-label={tc("moveBooking")}
-                title={tc("moveBooking")}
-                className="p-1.5 rounded-full text-stone-300 transition-colors hover:bg-admin/10 hover:text-admin md:opacity-0 md:group-hover:opacity-100"
-              >
-                <ArrowRightLeft size={12} />
-              </button>
-            )}
-            {!isFinished && onCancel && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCancel();
-                }}
-                aria-label={tc("cancelBooking")}
-                title={tc("cancelBooking")}
-                className="p-1.5 rounded-full text-stone-300 transition-colors hover:bg-red-50 hover:text-red-500 md:opacity-0 md:group-hover:opacity-100"
-              >
-                <Trash2 size={12} />
-              </button>
+            {!isFinished && (onMove || onCancel) && (
+              <RowActionMenu
+                label={tc("moreOptions")}
+                actions={
+                  [
+                    ...(onMove
+                      ? [
+                          {
+                            key: "move",
+                            label: tc("moveBooking"),
+                            hint: tc("moveBookingHint"),
+                            icon: <ArrowRightLeft size={16} />,
+                            onClick: onMove,
+                          },
+                        ]
+                      : []),
+                    ...(onCancel
+                      ? [
+                          {
+                            key: "cancel",
+                            label: tc("cancelBooking"),
+                            hint: tc("cancelBookingHint"),
+                            icon: <Trash2 size={16} />,
+                            danger: true,
+                            onClick: onCancel,
+                          },
+                        ]
+                      : []),
+                  ] as RowAction[]
+                }
+              />
             )}
             <button
               onClick={(e) => {
