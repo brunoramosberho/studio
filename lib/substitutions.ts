@@ -9,6 +9,7 @@ import {
   sendSwapApproved,
   sendSwapAcceptedPendingAdmin,
   sendSwapProposal,
+  sendSubstitutionApprovalToAdmin,
 } from "@/lib/email";
 import { getBrandingForTenantId } from "@/lib/branding.server";
 import {
@@ -741,6 +742,18 @@ async function getAdminUserIds(tenantId: string): Promise<string[]> {
   return memberships.map((m) => m.userId);
 }
 
+async function getAdminContacts(tenantId: string) {
+  const memberships = await prisma.membership.findMany({
+    where: { tenantId, role: "ADMIN" },
+    select: { user: { select: { id: true, name: true, email: true } } },
+  });
+  return memberships.map((m) => ({
+    userId: m.user.id,
+    email: m.user.email,
+    name: m.user.name ?? "",
+  }));
+}
+
 interface NotifyAdminPendingArgs {
   tenantId: string;
   tenantSlug: string;
@@ -762,8 +775,9 @@ interface NotifyAdminPendingArgs {
 export async function notifyAdminsOfSubFlow(
   args: NotifyAdminPendingArgs,
 ): Promise<void> {
-  const adminIds = await getAdminUserIds(args.tenantId);
-  if (adminIds.length === 0) return;
+  const admins = await getAdminContacts(args.tenantId);
+  if (admins.length === 0) return;
+  const adminIds = admins.map((a) => a.userId);
 
   await prisma.notification.createMany({
     data: adminIds.map((userId) => ({
@@ -794,6 +808,30 @@ export async function notifyAdminsOfSubFlow(
     },
     args.tenantId,
   );
+
+  // Email the admins when they actually have to approve — push/in-app can be
+  // missed, and coverage requests are time-sensitive. (Purely informational
+  // flows skip the email to avoid inbox noise.)
+  if (args.needsApproval) {
+    const branding = await getBrandingForTenantId(args.tenantId);
+    const reviewUrl = `${getTenantBaseUrl(args.tenantSlug)}/admin/substitutions`;
+    await Promise.allSettled(
+      admins
+        .filter((a) => a.email)
+        .map((a) =>
+          sendSubstitutionApprovalToAdmin({
+            to: a.email!,
+            toName: a.name,
+            coachName: args.fromCoachName,
+            className: args.className,
+            startsAt: args.startsAt,
+            mode: args.mode,
+            reviewUrl,
+            branding,
+          }),
+        ),
+    );
+  }
 }
 
 interface NotifySwapTargetArgs {

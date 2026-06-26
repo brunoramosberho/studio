@@ -1403,6 +1403,91 @@ export async function sendSubstitutionRejected({
 }
 
 /**
+ * Sent to admins when a substitution (or swap) needs their approval before
+ * coaches are notified. Pairs with the in-app + push alert so it can't be missed.
+ */
+export async function sendSubstitutionApprovalToAdmin({
+  to,
+  toName,
+  coachName,
+  className,
+  startsAt,
+  mode,
+  reviewUrl,
+  branding,
+}: {
+  to: string;
+  toName: string;
+  coachName: string;
+  className: string;
+  startsAt: Date;
+  mode: "REQUEST" | "MANUAL_ASSIGN" | "SWAP";
+  reviewUrl: string;
+  branding: StudioBranding;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = toName?.split(" ")[0] || "";
+    const isSwap = mode === "SWAP";
+    const title = isSwap ? "Aprobar intercambio" : "Aprobar suplencia";
+    const lead = isSwap
+      ? `<strong>${coachName}</strong> aceptó un intercambio de clases que necesita tu aprobación.`
+      : `<strong>${coachName}</strong> solicitó una suplencia que necesita tu aprobación antes de avisar a los instructores.`;
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:${b.colorAccent}15;line-height:56px;font-size:28px;">&#128260;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          ${title}
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          ${firstName ? `Hola ${firstName}. ` : ""}${lead}
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>Fecha</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(startsAt)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Hora</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startsAt)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Instructor</strong></td>
+              <td style="padding:3px 0 3px 16px;">${coachName}</td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${reviewUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Revisar solicitud
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Aprueba o asigna la cobertura desde el panel de suplencias.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `${title}: ${className}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send substitution approval email:", error);
+  }
+}
+
+/**
  * Sent to the coach being asked to swap. They give the requester their class
  * and take the requester's in return — pending their acceptance + admin sign-off.
  */
