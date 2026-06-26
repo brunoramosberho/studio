@@ -297,7 +297,7 @@ function AdminMain({ children }: { children: React.ReactNode }) {
 
   return (
     <main
-      className="flex-1 px-4 py-6 transition-[margin] duration-300 ease-in-out sm:px-6 lg:px-8"
+      className="min-w-0 flex-1 px-4 py-6 transition-[margin] duration-300 ease-in-out sm:px-6 lg:px-8"
       style={{
         marginRight: isSidebarPush ? `${panelWidth}px` : undefined,
       }}
