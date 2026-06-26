@@ -11,6 +11,7 @@ import {
   Banknote,
   Layers,
   CalendarOff,
+  ArrowLeftRight,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -80,6 +81,13 @@ const PILLS: Record<ActionItemKey, { icon: LucideIcon; label: LabelFn }> = {
       c === 1
         ? t("admin.actionItems.pendingAvailabilityOne")
         : t("admin.actionItems.pendingAvailabilityMany", { count: c }),
+  },
+  pending_substitutions: {
+    icon: ArrowLeftRight,
+    label: (t, c) =>
+      c === 1
+        ? t("admin.actionItems.pendingSubstitutionsOne")
+        : t("admin.actionItems.pendingSubstitutionsMany", { count: c }),
   },
 };
 

@@ -330,7 +330,9 @@
       "openDebtsOne": "1 deuda abierta",
       "openDebtsMany": "{count} deudas abiertas",
       "pendingAvailabilityOne": "1 solicitud de disponibilidad",
-      "pendingAvailabilityMany": "{count} solicitudes de disponibilidad"
+      "pendingAvailabilityMany": "{count} solicitudes de disponibilidad",
+      "pendingSubstitutionsOne": "1 suplencia por aprobar",
+      "pendingSubstitutionsMany": "{count} suplencias por aprobar"
     },
     "onboardingHero": {
       "kicker": "Configuración inicial",

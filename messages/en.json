@@ -330,7 +330,9 @@
       "openDebtsOne": "1 open debt",
       "openDebtsMany": "{count} open debts",
       "pendingAvailabilityOne": "1 availability request",
-      "pendingAvailabilityMany": "{count} availability requests"
+      "pendingAvailabilityMany": "{count} availability requests",
+      "pendingSubstitutionsOne": "1 substitution to approve",
+      "pendingSubstitutionsMany": "{count} substitutions to approve"
     },
     "onboardingHero": {
       "kicker": "Initial setup",

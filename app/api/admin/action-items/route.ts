@@ -21,7 +21,8 @@ export type ActionItemKey =
   | "saas_payment_failed"
   | "platform_alerts"
   | "open_debts"
-  | "pending_availability";
+  | "pending_availability"
+  | "pending_substitutions";
 
 export interface ActionItem {
   key: ActionItemKey;
@@ -40,7 +41,7 @@ export async function GET() {
     const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
     const now = new Date();
 
-    const [pendingNoShows, platformAlerts, openDebts, pendingAvailability] = await Promise.all([
+    const [pendingNoShows, platformAlerts, openDebts, pendingAvailability, pendingSubstitutions] = await Promise.all([
       prisma.pendingPenalty.count({
         where: { tenantId: tenant.id, status: "pending" },
       }),
@@ -52,6 +53,9 @@ export async function GET() {
       }),
       prisma.coachAvailabilityBlock.count({
         where: { tenantId: tenant.id, status: "pending_approval" },
+      }),
+      prisma.substitutionRequest.count({
+        where: { tenantId: tenant.id, status: "PENDING_ADMIN" },
       }),
     ]);
 
@@ -138,6 +142,15 @@ export async function GET() {
         severity: "info",
         count: pendingAvailability,
         href: "/admin/availability",
+      });
+    }
+
+    if (pendingSubstitutions > 0) {
+      items.push({
+        key: "pending_substitutions",
+        severity: "warning",
+        count: pendingSubstitutions,
+        href: "/admin/substitutions",
       });
     }
 
