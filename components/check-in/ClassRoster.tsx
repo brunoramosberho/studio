@@ -1185,6 +1185,7 @@ function WellhubBookingsSection({
   isFinished: boolean;
 }) {
   const queryClient = useQueryClient();
+  const [moveTarget, setMoveTarget] = useState<WellhubBooking | null>(null);
 
   const checkInMutation = useMutation({
     mutationFn: async (platformBookingId: string) => {
@@ -1244,6 +1245,15 @@ function WellhubBookingsSection({
                 )}
               </div>
             </div>
+            {/* Move to another class — fixes a check-in that landed on the
+                wrong class (e.g. a mis-matched walk-in). */}
+            <button
+              onClick={() => setMoveTarget(b)}
+              title="Mover de clase"
+              className="p-1 rounded-md text-stone-400 hover:text-admin hover:bg-admin/10 transition-colors"
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+            </button>
             {isCheckedIn ? (
               <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                 ✓ {b.checkedInAt ? format(new Date(b.checkedInAt), "HH:mm") : "Asistió"}
@@ -1264,6 +1274,22 @@ function WellhubBookingsSection({
           </div>
         );
       })}
+
+      {moveTarget && (
+        <MoveBookingDialog
+          open={!!moveTarget}
+          onOpenChange={(o) => !o && setMoveTarget(null)}
+          bookingId={moveTarget.platformBookingId}
+          memberName={moveTarget.memberName ?? "—"}
+          currentClassId={classId}
+          endpoint={(pbId) => `/api/platforms/bookings/${pbId}/move`}
+          onSuccess={() => {
+            setMoveTarget(null);
+            queryClient.invalidateQueries({ queryKey: ["check-in-roster", classId] });
+            queryClient.invalidateQueries({ queryKey: ["check-in-classes"] });
+          }}
+        />
+      )}
     </div>
   );
 }

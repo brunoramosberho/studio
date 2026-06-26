@@ -123,6 +123,7 @@ export function MoveBookingDialog({
   currentClassId,
   currentClassTypeId,
   onSuccess,
+  endpoint,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -131,6 +132,11 @@ export function MoveBookingDialog({
   currentClassId: string;
   currentClassTypeId?: string | null;
   onSuccess?: () => void;
+  /**
+   * POST endpoint factory for the move. Defaults to the member-booking move.
+   * Wellhub passes the platform-booking move endpoint. Receives the booking id.
+   */
+  endpoint?: (id: string) => string;
 }) {
   const t = useTranslations("admin");
   const [search, setSearch] = useState("");
@@ -153,7 +159,8 @@ export function MoveBookingDialog({
       id: string;
       targetClassId: string;
     }) => {
-      const res = await fetch(`/api/admin/bookings/${id}/move`, {
+      const url = endpoint ? endpoint(id) : `/api/admin/bookings/${id}/move`;
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetClassId }),
