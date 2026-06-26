@@ -70,12 +70,16 @@ interface BookingEntry {
   id: string;
   status: BookingStatus;
   stats?: AttendeeStats;
+  // Platform (Wellhub/etc.) and manual-guest bookings have no native user —
+  // their display name lives on guestName.
+  guestName: string | null;
+  platformBookingId: string | null;
   user: {
     id: string;
     name: string | null;
     image: string | null;
     email: string;
-  };
+  } | null;
 }
 
 interface ClassDetail extends Omit<ClassWithDetails, "bookings"> {
@@ -327,9 +331,10 @@ export default function ClassRosterPage() {
       const attendedUserIds = classData!.bookings
         .filter((b) => {
           const status = attendance[b.id] ?? b.status;
-          return status === "ATTENDED";
+          // Platform/guest bookings have no native user to credit.
+          return status === "ATTENDED" && b.user;
         })
-        .map((b) => b.user.id);
+        .map((b) => b.user!.id);
 
       const res = await fetch(`/api/classes/${id}/complete`, {
         method: "POST",
@@ -954,14 +959,24 @@ export default function ClassRosterPage() {
                     <div className="mt-2 space-y-2">
                       {classData.bookings.map((booking) => {
                         const status = getAttendance(booking);
-                        const name = booking.user.name ?? booking.user.email;
+                        const name =
+                          booking.user?.name ??
+                          booking.user?.email ??
+                          booking.guestName ??
+                          "Invitado";
                         return (
                           <div
                             key={booking.id}
                             className="flex items-center gap-3 rounded-xl bg-card p-3"
                           >
                             <UserAvatar
-                              user={booking.user as UserAvatarUser}
+                              user={
+                                (booking.user ?? {
+                                  id: booking.id,
+                                  name: booking.guestName,
+                                  image: null,
+                                }) as UserAvatarUser
+                              }
                               size={32}
                               showBadge={false}
                             />
@@ -1022,7 +1037,11 @@ export default function ClassRosterPage() {
               >
                 {classData.bookings.map((booking) => {
                   const status = getAttendance(booking);
-                  const name = booking.user.name ?? booking.user.email;
+                  const name =
+                    booking.user?.name ??
+                    booking.user?.email ??
+                    booking.guestName ??
+                    "Invitado";
 
                   return (
                     <motion.div key={booking.id} variants={fadeUp}>
@@ -1042,7 +1061,13 @@ export default function ClassRosterPage() {
                         <CardContent className="p-3">
                           <div className="flex items-start gap-3">
                             <UserAvatar
-                              user={booking.user as UserAvatarUser}
+                              user={
+                                (booking.user ?? {
+                                  id: booking.id,
+                                  name: booking.guestName,
+                                  image: null,
+                                }) as UserAvatarUser
+                              }
                               size={40}
                               className="mt-0.5"
                             />
