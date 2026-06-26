@@ -527,10 +527,14 @@ export function MgicAIProvider({ children }: { children: React.ReactNode }) {
 
 function MgicAIButton() {
   const { toggle, isOpen, suppressFab } = useMgicAI();
+  const pathname = usePathname();
+  // Check-in is a focused, full-bleed workflow (often on a tablet) — the
+  // floating launcher gets in the way there.
+  const hideOnRoute = pathname === "/admin/check-in";
 
   return (
     <AnimatePresence>
-      {!isOpen && !suppressFab && (
+      {!isOpen && !suppressFab && !hideOnRoute && (
         <motion.button
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}

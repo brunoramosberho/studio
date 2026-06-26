@@ -264,6 +264,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
   const suppressCollapseRef = useRef(false);
+  const collapseCooldownRef = useRef(false);
 
   // Cancel / move a member's booking from the check-in roster.
   const [cancelTarget, setCancelTarget] = useState<RosterMember | null>(null);
@@ -521,13 +522,28 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const handleRosterScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
       const st = e.currentTarget.scrollTop;
+      // Skip while a programmatic scroll or a post-toggle cooldown is active —
+      // collapsing the map shifts the layout, which would otherwise fire more
+      // scroll events and make it flip-flop.
+      if (suppressCollapseRef.current || collapseCooldownRef.current || !hasRoomMap) {
+        lastScrollTopRef.current = st;
+        return;
+      }
       const delta = st - lastScrollTopRef.current;
       lastScrollTopRef.current = st;
-      if (suppressCollapseRef.current || !hasRoomMap) return;
-      if (delta > 6 && st > 28) setMapOpen(false);
-      else if (delta < -6) setMapOpen(true);
+      // Collapse when scrolling down away from the top; reveal when scrolling
+      // up or near the top (hysteresis avoids toggling around one point).
+      const next =
+        delta > 10 && st > 48 ? false : delta < -10 || st < 8 ? true : null;
+      if (next === null || next === mapOpen) return;
+      setMapOpen(next);
+      collapseCooldownRef.current = true;
+      setTimeout(() => {
+        collapseCooldownRef.current = false;
+        lastScrollTopRef.current = listRef.current?.scrollTop ?? 0;
+      }, 360);
     },
-    [hasRoomMap],
+    [hasRoomMap, mapOpen],
   );
 
   // One search field rendered in two slots (desktop inline / mobile below);
