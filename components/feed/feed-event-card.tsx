@@ -341,11 +341,11 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
       {/* Playlist — locked hint for non-attendees, full for attendees */}
       {hasPlaylist && !userAttended && !isInstructor && (
         <div className="px-4 pb-2">
-          <div className="flex items-center gap-2.5 rounded-[10px] border border-neutral-200/50 bg-neutral-50/40 px-3 py-2 opacity-70">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-300">
+          <div className="flex items-center gap-2.5 rounded-[10px] border border-border/50 bg-surface/50 px-3 py-2 opacity-80">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-300 dark:bg-neutral-600">
               <Lock className="h-3 w-3 text-white" />
             </div>
-            <span className="flex-1 text-[13px] font-medium text-neutral-400">
+            <span className="flex-1 text-[13px] font-medium text-muted">
               {t("playlistAvailable")}
             </span>
           </div>
@@ -358,8 +358,8 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
             className={cn(
               "flex w-full items-center gap-2.5 rounded-[10px] border px-3 py-2 text-left transition-all active:scale-[0.98]",
               playlistOpen
-                ? "border-neutral-200 bg-neutral-50"
-                : "border-neutral-200/70 bg-neutral-50/60 hover:bg-neutral-100/60",
+                ? "border-border bg-surface"
+                : "border-border/70 bg-surface/60 hover:bg-surface",
             )}
           >
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-500">
@@ -369,15 +369,15 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
               {t("classPlaylist")}
             </span>
             <ChevronUp className={cn(
-              "h-4 w-4 text-neutral-400 transition-transform duration-200",
+              "h-4 w-4 text-muted transition-transform duration-200",
               !playlistOpen && "rotate-180",
             )} />
           </button>
           {playlistOpen && (
-            <div className="mt-1.5 overflow-hidden rounded-[10px] border border-neutral-200/80 bg-card">
+            <div className="mt-1.5 overflow-hidden rounded-[10px] border border-border/80 bg-card">
               {playlistLoading ? (
                 <div className="flex items-center justify-center py-6">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-200 border-t-emerald-500" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-emerald-500" />
                 </div>
               ) : playlistTracks.length === 0 ? (
                 <p className="py-4 text-center text-xs text-muted">{t("noSongs")}</p>
@@ -386,11 +386,11 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
                   <div
                     key={track.id}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 transition-colors hover:bg-neutral-50/80",
-                      idx > 0 && "border-t border-neutral-100/70",
+                      "flex items-center gap-3 px-3 py-2 transition-colors hover:bg-surface/60",
+                      idx > 0 && "border-t border-border/60",
                     )}
                   >
-                    <span className="w-4 text-right text-[12px] tabular-nums text-neutral-400">
+                    <span className="w-4 text-right text-[12px] tabular-nums text-muted">
                       {idx + 1}
                     </span>
                     {track.albumArt ? (
@@ -400,13 +400,13 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
                         className="h-10 w-10 shrink-0 rounded-[5px] object-cover shadow-sm"
                       />
                     ) : (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[5px] bg-neutral-100">
-                        <Music className="h-4 w-4 text-neutral-400" />
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[5px] bg-surface">
+                        <Music className="h-4 w-4 text-muted" />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-semibold leading-tight text-foreground/90">{track.title}</p>
-                      <p className="truncate text-[12px] leading-tight text-neutral-500">{track.artist}</p>
+                      <p className="truncate text-[12px] leading-tight text-muted">{track.artist}</p>
                     </div>
                   </div>
                 ))
