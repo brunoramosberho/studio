@@ -108,7 +108,7 @@ export function InstructorPostTools({
   });
 
   return (
-    <div className="mx-4 mb-3 overflow-hidden rounded-xl border border-accent/25 bg-accent/[0.04]">
+    <div className="mx-4 mb-3 overflow-hidden rounded-xl border border-accent/25 bg-accent/[0.04] dark:border-accent/30 dark:bg-accent/[0.08]">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
@@ -147,7 +147,7 @@ export function InstructorPostTools({
               className="w-full resize-none rounded-lg border border-border/60 bg-card px-3 py-2 text-[14px] text-foreground focus:outline-none focus:ring-1 focus:ring-accent/40"
             />
             {saved && (
-              <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+              <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
                 <Check className="h-3 w-3" /> {t("captionSaved")}
               </p>
             )}
@@ -163,7 +163,7 @@ export function InstructorPostTools({
                 {tracks.map((track) => (
                   <div
                     key={track.id}
-                    className="flex items-center gap-2 rounded-lg bg-card px-2 py-1.5"
+                    className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-2 py-1.5"
                   >
                     {track.albumArt ? (
                       <img
@@ -184,7 +184,7 @@ export function InstructorPostTools({
                       onClick={() => removeTrack.mutate(track.id)}
                       disabled={removeTrack.isPending}
                       aria-label={t("removeSong")}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-red-50 hover:text-red-500"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/15 dark:hover:text-red-400"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -193,6 +193,7 @@ export function InstructorPostTools({
               </div>
             )}
             <SpotifyTrackPicker
+              addOnSelect
               onConfirm={async (track) => {
                 await addTrack.mutateAsync(track);
               }}

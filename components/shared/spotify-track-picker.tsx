@@ -26,6 +26,12 @@ interface SpotifyTrackPickerProps {
   className?: string;
   /** Ej. limpiar mensaje de error del padre al escribir de nuevo */
   onSearchInteraction?: () => void;
+  /**
+   * One-tap mode: tapping a search result calls `onConfirm` immediately and
+   * clears the input (no select-then-confirm step, no confirm button). Used
+   * where you add many items in a row, e.g. building a playlist.
+   */
+  addOnSelect?: boolean;
 }
 
 export function SpotifyTrackPicker({
@@ -38,6 +44,7 @@ export function SpotifyTrackPicker({
   searchPlaceholder = "Busca una canción o artista...",
   className = "",
   onSearchInteraction,
+  addOnSelect = false,
 }: SpotifyTrackPickerProps) {
   const { colorAccent: accent } = useBranding();
   const [query, setQuery] = useState("");
@@ -84,7 +91,20 @@ export function SpotifyTrackPicker({
     [],
   );
 
-  const handleSelect = (track: SpotifyTrack) => {
+  const handleSelect = async (track: SpotifyTrack) => {
+    if (addOnSelect) {
+      // One-tap: add immediately and reset for the next search.
+      setResults([]);
+      setQuery("");
+      setSelected(null);
+      inputRef.current?.focus();
+      try {
+        await onConfirm(track);
+      } catch {
+        /* errores gestionados por el padre */
+      }
+      return;
+    }
     setSelected(track);
     setResults([]);
     setQuery(`${track.name} — ${track.artist}`);
@@ -127,7 +147,7 @@ export function SpotifyTrackPicker({
             <X className="h-4 w-4" />
           </button>
         )}
-        {searching && (
+        {(searching || (addOnSelect && isSubmitting)) && (
           <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted" />
         )}
       </div>
@@ -210,33 +230,37 @@ export function SpotifyTrackPicker({
         )}
       </AnimatePresence>
 
-      <div className="mt-5 flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={!selected || isSubmitting || confirmDisabled}
-          className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-40"
-          style={{ backgroundColor: accent }}
-        >
-          {isSubmitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              <Music className="h-4 w-4" />
-              {confirmLabel}
-            </>
+      {(!addOnSelect || onSkip) && (
+        <div className="mt-5 flex flex-col gap-2">
+          {!addOnSelect && (
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={!selected || isSubmitting || confirmDisabled}
+              className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-40"
+              style={{ backgroundColor: accent }}
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Music className="h-4 w-4" />
+                  {confirmLabel}
+                </>
+              )}
+            </button>
           )}
-        </button>
-        {onSkip && (
-          <button
-            type="button"
-            onClick={onSkip}
-            className="w-full py-2 text-sm text-muted transition-colors hover:text-foreground"
-          >
-            {skipLabel}
-          </button>
-        )}
-      </div>
+          {onSkip && (
+            <button
+              type="button"
+              onClick={onSkip}
+              className="w-full py-2 text-sm text-muted transition-colors hover:text-foreground"
+            >
+              {skipLabel}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
