@@ -15,6 +15,7 @@ const TYPE_LABEL_KEYS: Record<string, string> = {
   SUBSCRIPTION: "typeSubscription",
   ON_DEMAND_SUBSCRIPTION: "typeOnDemand",
   OFFER: "typeOffer",
+  WELLHUB: "typeWellhub",
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -22,6 +23,7 @@ const TYPE_COLORS: Record<string, string> = {
   SUBSCRIPTION: "#10b981",
   ON_DEMAND_SUBSCRIPTION: "#8b5cf6",
   OFFER: "#f59e0b",
+  WELLHUB: "#ec4899",
 };
 
 const FALLBACK_COLORS = ["#64748b", "#0ea5e9", "#ef4444", "#ec4899"];
@@ -42,6 +44,7 @@ export function RevenueMixDonut({
   const t = useTranslations("admin.revenueMixDonut");
   const formatMoney = useFormatMoney();
   const total = mix.reduce((s, x) => s + x.amount, 0);
+  const wellhubAmount = mix.find((m) => m.type === "WELLHUB")?.amount ?? 0;
 
   const data: PieEntry[] = mix.map((m, i) => ({
     name: TYPE_LABEL_KEYS[m.type] ? t(TYPE_LABEL_KEYS[m.type]) : m.type,
@@ -64,6 +67,11 @@ export function RevenueMixDonut({
         <p className="mt-1 text-[15px] font-semibold text-foreground">
           {formatMoney(total)}
         </p>
+        {wellhubAmount > 0 && (
+          <p className="mt-0.5 text-[11px] text-muted/70">
+            {t("inclWellhub", { amount: formatMoney(wellhubAmount) })}
+          </p>
+        )}
       </div>
 
       {total === 0 ? (

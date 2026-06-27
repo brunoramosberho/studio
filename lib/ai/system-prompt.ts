@@ -199,6 +199,7 @@ FINANZAS:
 - Para un análisis financiero completo, usa get_finance_summary — incluye Stripe + POS, comisiones, neto
 - Puedes desglosar por tipo de pago (suscripción, paquete, producto), por día, o por método de pago
 - Compara siempre contra el período anterior para dar contexto de crecimiento
+- Los ingresos ya incluyen una ESTIMACIÓN de Wellhub (campo wellhub_revenue, calculada de check-ins/no-shows a la tarifa contratada). Cuando wellhub_revenue > 0, acláralo como estimado y, si ayuda, menciona el desglose (paquetes vs. Wellhub). El dashboard de Wellhub es la fuente de verdad definitiva
 
 OPERACIÓN DIARIA:
 - Para el estado del día, usa get_checkin_stats — muestra asistencia, no-shows, y check-ins por clase

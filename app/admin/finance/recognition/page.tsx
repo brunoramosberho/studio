@@ -32,6 +32,11 @@ interface RevenueReport {
     monthlyBreakageCents: number;
     expirationBreakageCents: number;
   };
+  // Estimated Wellhub settlement — outside the ASC 606 ledger, shown separately.
+  wellhubEstimate?: {
+    totalCents: number;
+    checkins: number;
+  };
   byDiscipline: {
     disciplineId: string;
     disciplineName: string;
@@ -209,6 +214,23 @@ export default function RevenueRecognitionPage() {
           }
         />
       </section>
+
+      {data?.wellhubEstimate && data.wellhubEstimate.totalCents > 0 && (
+        <div className="flex flex-wrap items-baseline justify-between gap-2 rounded-sm border border-pink-200 bg-pink-50 px-4 py-3 dark:border-pink-500/30 dark:bg-pink-500/10">
+          <div>
+            <p className="text-sm font-medium text-pink-900 dark:text-pink-200">
+              Wellhub (estimado)
+            </p>
+            <p className="text-xs text-pink-700/80 dark:text-pink-300/70">
+              {data.wellhubEstimate.checkins} check-ins · fuera del ledger ASC 606,
+              no suma al reconocido
+            </p>
+          </div>
+          <p className="text-lg font-semibold tabular-nums text-pink-900 dark:text-pink-200">
+            {formatCurrency(fromCents(data.wellhubEstimate.totalCents), currency)}
+          </p>
+        </div>
+      )}
 
       <InfoBanner />
 

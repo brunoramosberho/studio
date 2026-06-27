@@ -409,7 +409,9 @@
       "typePack": "Packs",
       "typeSubscription": "Subscriptions",
       "typeOnDemand": "On-demand",
-      "typeOffer": "Intro offers"
+      "typeOffer": "Intro offers",
+      "typeWellhub": "Wellhub (est.)",
+      "inclWellhub": "incl. {amount} Wellhub (estimated)"
     },
     "weeklyOutlook": {
       "lowOccupancy": "Low-occupancy classes",
@@ -756,6 +758,9 @@
     "productsLabel": "Store",
     "penalties": "Penalties",
     "externalPlatforms": "External platforms",
+    "wellhub": "Wellhub",
+    "wellhubEstimate": "Wellhub (est.)",
+    "inclWellhub": "incl. {amount} Wellhub (estimated)",
     "subscription": "Subscription",
     "packageLabel": "Package / Credit",
     "productLabel": "Product",

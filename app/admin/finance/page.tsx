@@ -42,6 +42,8 @@ interface FinanceSummary {
   upcomingRenewalsAmount: number;
   upcomingRenewalsCount: number;
   vsPreviousPeriod: { grossRevenue: number; mrr: number };
+  wellhubRevenue: number;
+  wellhubCheckins: number;
 }
 
 interface BySource {
@@ -113,6 +115,7 @@ const sourceColors: Record<string, string> = {
   products: "#1D9E75",
   penalties: "#E24B4A",
   classpass: "#7F77DD",
+  wellhub: "#EC4899",
 };
 
 const sourceLabelKeys: Record<string, string> = {
@@ -121,6 +124,7 @@ const sourceLabelKeys: Record<string, string> = {
   products: "productsLabel",
   penalties: "penalties",
   classpass: "externalPlatforms",
+  wellhub: "wellhubEstimate",
 };
 
 const methodStyles: Record<string, string> = {
@@ -310,9 +314,17 @@ export default function FinancePage() {
                 <p className="text-[18px] sm:text-[22px] font-medium leading-tight truncate">
                   {formatCurrency(summary?.grossRevenue ?? 0)}
                 </p>
-                <p className="text-[11px] text-stone-400 mt-1 truncate">
-                  {t("stripeFeesDashboard")}
-                </p>
+                {(summary?.wellhubRevenue ?? 0) > 0 ? (
+                  <p className="text-[11px] text-stone-400 mt-1 truncate">
+                    {t("inclWellhub", {
+                      amount: formatCurrency(summary?.wellhubRevenue ?? 0),
+                    })}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-stone-400 mt-1 truncate">
+                    {t("stripeFeesDashboard")}
+                  </p>
+                )}
                 <TrendBadge value={summary?.vsPreviousPeriod.grossRevenue ?? 0} label={t("vsPrevPeriod")} />
               </div>
             </motion.div>

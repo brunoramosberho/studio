@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
 import { getCoverageStatus, getSubstituteSuggestions, getZone } from "@/lib/availability";
+import { getPlatformSettlementForRange } from "@/lib/platforms/settlement";
 import type { BookingStatus } from "@prisma/client";
 import {
   startOfWeek,
@@ -119,6 +120,7 @@ async function getStudioOverview(
   const days = periodToDays(input.period);
   const since = daysAgo(days);
   const prevSince = daysAgo(days * 2);
+  const now = new Date();
   const confirmedOrAttended = { in: CONFIRMED_OR_ATTENDED };
 
   const [
@@ -130,6 +132,8 @@ async function getStudioOverview(
     prevPurchases,
     totalMembers,
     classesThisWeek,
+    wellhub,
+    wellhubPrev,
   ] = await Promise.all([
     prisma.class.findMany({
       where: { tenantId, startsAt: { gte: since }, status: { not: "CANCELLED" } },
@@ -167,6 +171,9 @@ async function getStudioOverview(
     prisma.class.count({
       where: { tenantId, startsAt: { gte: daysAgo(7) }, status: { not: "CANCELLED" } },
     }),
+    // Estimated Wellhub (and other partner) settlement for the same windows.
+    getPlatformSettlementForRange(tenantId, since, now),
+    getPlatformSettlementForRange(tenantId, prevSince, since),
   ]);
 
   const fillRate = (list: typeof classes) => {
@@ -178,8 +185,10 @@ async function getStudioOverview(
     return Math.round((sum / list.length) * 100);
   };
 
-  const revenue = purchases.reduce((s, p) => s + p.package.price, 0);
-  const prevRevenue = prevPurchases.reduce((s, p) => s + p.package.price, 0);
+  const packageRevenue = purchases.reduce((s, p) => s + p.package.price, 0);
+  const revenue = packageRevenue + wellhub.total;
+  const prevRevenue =
+    prevPurchases.reduce((s, p) => s + p.package.price, 0) + wellhubPrev.total;
 
   return {
     period: input.period,
@@ -194,6 +203,9 @@ async function getStudioOverview(
     revenue,
     prev_revenue: prevRevenue,
     revenue_change_pct: prevRevenue > 0 ? Math.round(((revenue - prevRevenue) / prevRevenue) * 100) : null,
+    package_revenue: packageRevenue,
+    wellhub_revenue: wellhub.total,
+    wellhub_checkins: wellhub.checkins,
     classes_this_week: classesThisWeek,
   };
 }
@@ -588,8 +600,9 @@ async function getRevenueSummary(
   const days = periodToDays(input.period);
   const since = daysAgo(days);
   const prevSince = daysAgo(days * 2);
+  const now = new Date();
 
-  const [current, previous] = await Promise.all([
+  const [current, previous, wellhub, wellhubPrev] = await Promise.all([
     prisma.userPackage.findMany({
       where: { tenantId, purchasedAt: { gte: since } },
       include: {
@@ -601,10 +614,16 @@ async function getRevenueSummary(
       where: { tenantId, purchasedAt: { gte: prevSince, lt: since } },
       include: { package: { select: { price: true } } },
     }),
+    // Estimated Wellhub (and other partner) settlement for the same windows, so
+    // Spark's revenue answers include partner income alongside package sales.
+    getPlatformSettlementForRange(tenantId, since, now),
+    getPlatformSettlementForRange(tenantId, prevSince, since),
   ]);
 
-  const totalRevenue = current.reduce((s, p) => s + p.package.price, 0);
-  const prevRevenue = previous.reduce((s, p) => s + p.package.price, 0);
+  const packageRevenue = current.reduce((s, p) => s + p.package.price, 0);
+  const totalRevenue = packageRevenue + wellhub.total;
+  const prevRevenue =
+    previous.reduce((s, p) => s + p.package.price, 0) + wellhubPrev.total;
 
   const result: Record<string, unknown> = {
     period: input.period,
@@ -612,6 +631,14 @@ async function getRevenueSummary(
     prev_period_revenue: prevRevenue,
     change_pct: prevRevenue > 0 ? Math.round(((totalRevenue - prevRevenue) / prevRevenue) * 100) : null,
     total_purchases: current.length,
+    package_revenue: packageRevenue,
+    // Wellhub estimate (already included in total_revenue). 0 if not configured.
+    wellhub_revenue: wellhub.total,
+    wellhub_checkins: wellhub.checkins,
+    wellhub_note:
+      wellhub.total > 0
+        ? "Wellhub is an estimate from check-ins/no-shows at the contracted rate; the partner dashboard is the source of truth."
+        : undefined,
   };
 
   if (input.breakdown_by === "membership_type") {
@@ -1918,21 +1945,26 @@ async function getFinanceSummary(
   const days = input.period_days ?? 30;
   const since = daysAgo(days);
   const prevSince = daysAgo(days * 2);
+  const now = new Date();
 
-  const [stripePayments, prevStripe, posTransactions, prevPos] = await Promise.all([
-    prisma.stripePayment.findMany({
-      where: { tenantId, createdAt: { gte: since }, status: "succeeded" },
-    }),
-    prisma.stripePayment.findMany({
-      where: { tenantId, createdAt: { gte: prevSince, lt: since }, status: "succeeded" },
-    }),
-    prisma.posTransaction.findMany({
-      where: { tenantId, createdAt: { gte: since }, status: "completed" },
-    }),
-    prisma.posTransaction.findMany({
-      where: { tenantId, createdAt: { gte: prevSince, lt: since }, status: "completed" },
-    }),
-  ]);
+  const [stripePayments, prevStripe, posTransactions, prevPos, wellhub, wellhubPrev] =
+    await Promise.all([
+      prisma.stripePayment.findMany({
+        where: { tenantId, createdAt: { gte: since }, status: "succeeded" },
+      }),
+      prisma.stripePayment.findMany({
+        where: { tenantId, createdAt: { gte: prevSince, lt: since }, status: "succeeded" },
+      }),
+      prisma.posTransaction.findMany({
+        where: { tenantId, createdAt: { gte: since }, status: "completed" },
+      }),
+      prisma.posTransaction.findMany({
+        where: { tenantId, createdAt: { gte: prevSince, lt: since }, status: "completed" },
+      }),
+      // Estimated Wellhub (and other partner) settlement, folded into the totals.
+      getPlatformSettlementForRange(tenantId, since, now),
+      getPlatformSettlementForRange(tenantId, prevSince, since),
+    ]);
 
   const stripeTotal = stripePayments.reduce((s, p) => s + p.amount, 0);
   const stripeNet = stripePayments.reduce((s, p) => s + (p.netAmount ?? p.amount), 0);
@@ -1941,8 +1973,8 @@ async function getFinanceSummary(
   const posNet = posTransactions.reduce((s, p) => s + (p.netAmount ?? p.amount), 0);
 
   const prevTotal = prevStripe.reduce((s, p) => s + p.amount, 0) +
-    prevPos.reduce((s, p) => s + p.amount, 0);
-  const currentTotal = stripeTotal + posTotal;
+    prevPos.reduce((s, p) => s + p.amount, 0) + wellhubPrev.total;
+  const currentTotal = stripeTotal + posTotal + wellhub.total;
 
   const result: Record<string, unknown> = {
     period_days: days,
@@ -1960,7 +1992,13 @@ async function getFinanceSummary(
       net: Math.round(posNet * 100) / 100,
       transactions: posTransactions.length,
     },
-    total_net: Math.round((stripeNet + posNet) * 100) / 100,
+    wellhub: {
+      gross: wellhub.total,
+      checkins: wellhub.checkins,
+      estimate: true,
+      note: "Estimate from check-ins/no-shows at the contracted rate; partner dashboard is the source of truth.",
+    },
+    total_net: Math.round((stripeNet + posNet + wellhub.total) * 100) / 100,
   };
 
   if (input.breakdown_by === "type") {

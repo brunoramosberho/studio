@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/tenant";
+import { getPlatformSettlementForRange } from "@/lib/platforms/settlement";
 
 type Range = "today" | "month" | "last30" | "last90" | "year";
 
@@ -72,6 +73,8 @@ export async function GET(request: NextRequest) {
       newSubscriptions,
       failedStripePayments,
       upcomingSubscriptions,
+      wellhubSettlement,
+      wellhubPrevSettlement,
     ] = await Promise.all([
       prisma.stripePayment.findMany({
         where: {
@@ -134,15 +137,22 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { currentPeriodEnd: "asc" },
       }),
+      // Estimated Wellhub (and other partner) settlement for the selected
+      // period and the previous one — folded into gross revenue below. This is
+      // an estimate (the partner dashboard is the source of truth) and is never
+      // written to the RevenueEvent ledger.
+      getPlatformSettlementForRange(tenantId, start, end),
+      getPlatformSettlementForRange(tenantId, prev.start, prev.end),
     ]);
 
     const stripeGross = stripePayments.reduce((s, p) => s + p.amount, 0);
     const posGross = posTransactions.reduce((s, p) => s + p.amount, 0);
-    const grossRevenue = stripeGross + posGross;
+    const grossRevenue = stripeGross + posGross + wellhubSettlement.total;
 
     const prevGross =
       prevStripePayments.reduce((s, p) => s + p.amount, 0) +
-      prevPosTransactions.reduce((s, p) => s + p.amount, 0);
+      prevPosTransactions.reduce((s, p) => s + p.amount, 0) +
+      wellhubPrevSettlement.total;
 
     const mrr = activeSubscriptions.reduce((s, sub) => s + sub.package.price, 0);
 
@@ -189,6 +199,9 @@ export async function GET(request: NextRequest) {
       products: 0,
       penalties: 0,
       classpass: 0,
+      // Wellhub estimate — added as its own source so the breakdown reconciles
+      // with grossRevenue (which now includes it).
+      wellhub: wellhubSettlement.total,
     };
 
     for (const p of stripePayments) {
@@ -283,6 +296,9 @@ export async function GET(request: NextRequest) {
         upcomingRenewalsAmount,
         upcomingRenewalsCount: upcomingSubscriptions.length,
         vsPreviousPeriod,
+        // Wellhub portion of grossRevenue (estimate). 0 when no platform set up.
+        wellhubRevenue: wellhubSettlement.total,
+        wellhubCheckins: wellhubSettlement.checkins,
       },
       bySource,
       dailyRevenue,

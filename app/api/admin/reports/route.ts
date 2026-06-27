@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/tenant";
+import { getPlatformSettlementForRange } from "@/lib/platforms/settlement";
 
 const DAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
@@ -490,14 +491,23 @@ export async function GET() {
       (s, p) => s + p.package.price,
       0,
     );
-    const revenueThisMonth = monthPurchases.reduce(
+    // Estimated Wellhub (and other partner) settlement, folded into the
+    // month-to-date revenue so the dashboard reflects partner income alongside
+    // package sales. This-month is MTD; previous month is the full month so the
+    // comparison matches `revenuePrevMonth`. Display-only — never written to the
+    // RevenueEvent ledger.
+    const [wellhubThisMonth, wellhubPrevMonth] = await Promise.all([
+      getPlatformSettlementForRange(tenantId, monthStart, now),
+      getPlatformSettlementForRange(tenantId, prevMonthStart, monthStart),
+    ]);
+    const packageRevenueThisMonth = monthPurchases.reduce(
       (s, p) => s + p.package.price,
       0,
     );
-    const revenuePrevMonth = prevMonthPurchasesRaw.reduce(
-      (s, p) => s + p.package.price,
-      0,
-    );
+    const revenueThisMonth = packageRevenueThisMonth + wellhubThisMonth.total;
+    const revenuePrevMonth =
+      prevMonthPurchasesRaw.reduce((s, p) => s + p.package.price, 0) +
+      wellhubPrevMonth.total;
     const activeMembersCount = activeUserIds.length;
 
     // Alerts
@@ -567,6 +577,10 @@ export async function GET() {
       revenueThisMonth,
       revenuePrevMonth,
       revenueMonthChange: pctChange(revenueThisMonth, revenuePrevMonth),
+      // Wellhub (and other partner) portion of revenueThisMonth — surfaced so
+      // the dashboard can label it as an estimate. 0 when no platform configured.
+      wellhubRevenueThisMonth: wellhubThisMonth.total,
+      wellhubCheckinsThisMonth: wellhubThisMonth.checkins,
       completedClassesMonth: completedClassesMonth,
       activeMembersCount,
 
@@ -629,10 +643,16 @@ export async function GET() {
           const t = p.package.type ?? "PACK";
           byType[t] = (byType[t] ?? 0) + p.package.price;
         }
-        return Object.entries(byType).map(([type, amount]) => ({
+        const slices = Object.entries(byType).map(([type, amount]) => ({
           type,
           amount,
         }));
+        // Wellhub (and other partner) settlement, shown as its own slice so the
+        // month-to-date total includes it. Labeled as an estimate in the UI.
+        if (wellhubThisMonth.total > 0) {
+          slices.push({ type: "WELLHUB", amount: wellhubThisMonth.total });
+        }
+        return slices;
       })(),
       activeSubscriptionsCount: monthSubsPayments,
     });

@@ -65,6 +65,8 @@ interface DashboardData {
   revenueToday: number;
   revenueThisMonth: number;
   revenueMonthChange: number;
+  wellhubRevenueThisMonth: number;
+  wellhubCheckinsThisMonth: number;
   completedClassesMonth: number;
   activeMembersCount: number;
   lowOccupancyClasses: {
