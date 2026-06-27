@@ -17,7 +17,8 @@ import {
   type CoachSlotStatus,
   getCoachStatusForSlot,
 } from "@/lib/availability";
-import { getWallClockInZone } from "@/lib/utils";
+import { getWallClockInZone, formatTime } from "@/lib/utils";
+import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
 
 /**
  * A coach is "eligible" to substitute on a class when:
@@ -252,11 +253,39 @@ interface NotifyArgs {
   recipients: { userId: string; email: string | null; name: string }[];
 }
 
+/**
+ * The IANA timezone the class actually happens in (its studio's city), so
+ * notification times render in the studio's local time — not the UTC server's.
+ * Falls back to the tenant's schedule timezone.
+ */
+async function resolveClassTimezone(tenantId: string, classId: string): Promise<string> {
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    select: {
+      room: { select: { studio: { select: { city: { select: { timezone: true } } } } } },
+    },
+  });
+  const cityTz = cls?.room?.studio?.city?.timezone;
+  if (cityTz) return cityTz;
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, scheduleReleaseTimezone: true },
+  });
+  return tenant ? resolveScheduleTimezone(tenant) : "Europe/Madrid";
+}
+
 export async function notifyCandidates(args: NotifyArgs): Promise<void> {
   if (args.recipients.length === 0) return;
 
   const branding = await getBrandingForTenantId(args.tenantId);
   const inboxUrl = `${getTenantBaseUrl(args.tenantSlug)}/coach/substitutions`;
+  const tz = await resolveClassTimezone(args.tenantId, args.classId);
+  const dateShort = args.startsAt.toLocaleDateString("es-ES", {
+    timeZone: tz,
+    day: "numeric",
+    month: "short",
+  });
+  const whenLabel = `${dateShort}, ${formatTime(args.startsAt, tz)}`;
 
   await prisma.notification.createMany({
     data: args.recipients.map((r) => ({
@@ -271,9 +300,9 @@ export async function notifyCandidates(args: NotifyArgs): Promise<void> {
     {
       title: `Suplencia: ${args.className}`,
       body:
-        args.mode === "DIRECT"
+        (args.mode === "DIRECT"
           ? `${args.fromCoachName} te eligió como suplente`
-          : `${args.fromCoachName} busca suplente`,
+          : `${args.fromCoachName} busca suplente`) + ` · ${whenLabel}`,
       url: "/coach/substitutions",
       tag: `substitution-${args.classId}`,
     },
@@ -291,6 +320,7 @@ export async function notifyCandidates(args: NotifyArgs): Promise<void> {
           className: args.className,
           date: args.startsAt,
           startTime: args.startsAt,
+          timeZone: tz,
           mode: args.mode,
           note: args.note,
           inboxUrl,
@@ -778,6 +808,13 @@ export async function notifyAdminsOfSubFlow(
   const admins = await getAdminContacts(args.tenantId);
   if (admins.length === 0) return;
   const adminIds = admins.map((a) => a.userId);
+  const tz = await resolveClassTimezone(args.tenantId, args.classId);
+  const dateShort = args.startsAt.toLocaleDateString("es-ES", {
+    timeZone: tz,
+    day: "numeric",
+    month: "short",
+  });
+  const whenLabel = `${dateShort}, ${formatTime(args.startsAt, tz)}`;
 
   await prisma.notification.createMany({
     data: adminIds.map((userId) => ({
@@ -802,7 +839,7 @@ export async function notifyAdminsOfSubFlow(
     adminIds,
     {
       title: subject,
-      body: `${args.fromCoachName} · ${args.className}`,
+      body: `${args.fromCoachName} · ${whenLabel}`,
       url: "/admin/substitutions",
       tag: `sub-admin-${args.requestId}`,
     },
@@ -825,6 +862,7 @@ export async function notifyAdminsOfSubFlow(
             coachName: args.fromCoachName,
             className: args.className,
             startsAt: args.startsAt,
+            timeZone: tz,
             mode: args.mode,
             reviewUrl,
             branding,

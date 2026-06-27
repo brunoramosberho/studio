@@ -96,8 +96,19 @@ function resolveLegacyIntlLocale(currency: string, locale?: string): string {
   }
 }
 
-export function formatDate(date: Date | string, locale?: string): string {
+export function formatDate(date: Date | string, locale?: string, timeZone?: string): string {
   const d = new Date(date);
+  if (timeZone) {
+    // Format in the given IANA timezone (native Intl) — for server-side use
+    // like emails/push where the studio's local date must be shown regardless
+    // of the (UTC) server timezone.
+    return d.toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
+      timeZone,
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
   const loc = getDateLocale(locale);
   if (locale === "en") return format(d, "MMMM d, yyyy", { locale: loc });
   return format(d, "d 'de' MMMM, yyyy", { locale: loc });

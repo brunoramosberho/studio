@@ -1213,6 +1213,7 @@ export async function sendSubstitutionRequest({
   note,
   inboxUrl,
   branding,
+  timeZone,
 }: {
   to: string;
   toName: string;
@@ -1224,6 +1225,7 @@ export async function sendSubstitutionRequest({
   note?: string | null;
   inboxUrl: string;
   branding: StudioBranding;
+  timeZone?: string;
 }) {
   try {
     const b = branding;
@@ -1251,11 +1253,11 @@ export async function sendSubstitutionRequest({
           <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
             <tr>
               <td style="padding:3px 0;"><strong>Fecha</strong></td>
-              <td style="padding:3px 0 3px 16px;">${formatDate(date)}</td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date, undefined, timeZone)}</td>
             </tr>
             <tr>
               <td style="padding:3px 0;"><strong>Hora</strong></td>
-              <td style="padding:3px 0 3px 16px;">${formatTime(startTime)}</td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timeZone)}</td>
             </tr>
           </table>
           ${note ? `<p style="margin:12px 0 0;font-size:13px;color:${b.colorMuted};font-style:italic;">"${note}"</p>` : ""}
@@ -1415,6 +1417,7 @@ export async function sendSubstitutionApprovalToAdmin({
   mode,
   reviewUrl,
   branding,
+  timeZone,
 }: {
   to: string;
   toName: string;
@@ -1424,6 +1427,7 @@ export async function sendSubstitutionApprovalToAdmin({
   mode: "REQUEST" | "MANUAL_ASSIGN" | "SWAP";
   reviewUrl: string;
   branding: StudioBranding;
+  timeZone?: string;
 }) {
   try {
     const b = branding;
@@ -1452,11 +1456,11 @@ export async function sendSubstitutionApprovalToAdmin({
           <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
             <tr>
               <td style="padding:3px 0;"><strong>Fecha</strong></td>
-              <td style="padding:3px 0 3px 16px;">${formatDate(startsAt)}</td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(startsAt, undefined, timeZone)}</td>
             </tr>
             <tr>
               <td style="padding:3px 0;"><strong>Hora</strong></td>
-              <td style="padding:3px 0 3px 16px;">${formatTime(startsAt)}</td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startsAt, timeZone)}</td>
             </tr>
             <tr>
               <td style="padding:3px 0;"><strong>Instructor</strong></td>
