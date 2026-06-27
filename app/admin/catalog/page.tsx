@@ -39,14 +39,14 @@ const GROUPS: {
   icon: typeof Package;
   match: (t: PackageData["type"]) => boolean;
 }[] = [
-  { key: "OFFER", titleKey: "offers", icon: Gift, match: (t) => t === "OFFER" },
-  { key: "PACK", titleKey: "packages", icon: Package, match: (t) => t === "PACK" },
   {
     key: "SUB",
     titleKey: "subscriptions",
     icon: RefreshCw,
     match: (t) => t === "SUBSCRIPTION" || t === "ON_DEMAND_SUBSCRIPTION",
   },
+  { key: "OFFER", titleKey: "offers", icon: Gift, match: (t) => t === "OFFER" },
+  { key: "PACK", titleKey: "packages", icon: Package, match: (t) => t === "PACK" },
 ];
 
 export default function AdminCatalogPage() {

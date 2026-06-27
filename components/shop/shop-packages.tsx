@@ -41,9 +41,9 @@ interface PackageData {
 const isSub = (t: PackageData["type"]) => t === "SUBSCRIPTION" || t === "ON_DEMAND_SUBSCRIPTION";
 
 const GROUPS: { key: string; title: string; icon: typeof Package; match: (t: PackageData["type"]) => boolean }[] = [
+  { key: "SUB", title: "Suscripciones", icon: RefreshCw, match: isSub },
   { key: "OFFER", title: "Ofertas", icon: Gift, match: (t) => t === "OFFER" },
   { key: "PACK", title: "Paquetes", icon: Package, match: (t) => t === "PACK" },
-  { key: "SUB", title: "Suscripciones", icon: RefreshCw, match: isSub },
 ];
 
 export function ShopPackages() {
