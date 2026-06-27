@@ -13,6 +13,7 @@ import { LikeButton } from "./like-button";
 import { CommentsSheet } from "./comments-sheet";
 import { MediaGallery } from "./media-gallery";
 import { PhotoUpload } from "./photo-upload";
+import { InstructorPostTools } from "./instructor-post-tools";
 import { PollCard, type PollData } from "./poll-card";
 import { PeopleListSheet, type PersonItem } from "./people-list-sheet";
 import { DisciplineSheet, type DisciplineData } from "./discipline-sheet";
@@ -204,6 +205,9 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
   const currentUserId = session?.user?.id;
   const hasPlaylist = p.hasPlaylist === true;
   const userAttended = currentUserId ? attendees.some((a) => a.id === currentUserId) : false;
+  // The instructor who taught the class can manage the post inline (photos,
+  // caption, playlist) — they authored the post, so the APIs already allow it.
+  const isInstructor = !!currentUserId && currentUserId === (p.coachUserId as string | undefined);
   const avgRating = typeof p.avgRating === "number" ? (p.avgRating as number) : null;
   const canSeePlaylist = hasPlaylist && userAttended;
 
@@ -322,8 +326,20 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
         )}
       </div>
 
+      {/* Instructor inline tools (photos / caption / playlist) */}
+      {isInstructor && (p.classId as string) && (
+        <InstructorPostTools
+          eventId={event.id}
+          classId={p.classId as string}
+          initialCaption={caption ?? ""}
+          onPhotoUploaded={(photo) =>
+            setMedia((prev) => [...prev, { ...photo, thumbnailUrl: null }])
+          }
+        />
+      )}
+
       {/* Playlist — locked hint for non-attendees, full for attendees */}
-      {hasPlaylist && !userAttended && (
+      {hasPlaylist && !userAttended && !isInstructor && (
         <div className="px-4 pb-2">
           <div className="flex items-center gap-2.5 rounded-[10px] border border-neutral-200/50 bg-neutral-50/40 px-3 py-2 opacity-70">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-300">
@@ -335,7 +351,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
           </div>
         </div>
       )}
-      {canSeePlaylist && (
+      {canSeePlaylist && !isInstructor && (
         <div className="px-4 pb-2">
           <button
             onClick={handleTogglePlaylist}
