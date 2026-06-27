@@ -125,6 +125,7 @@ export function PaymentStep() {
             price: item.price,
             currency: item.currency,
             quantity: item.quantity,
+            shopifyVariantId: item.shopifyVariantId,
             metadata: item.metadata,
           })),
           selectedClass: selectedClass
@@ -169,6 +170,9 @@ export function PaymentStep() {
       });
       setStep("confirmation");
       toast.success(t("saleProcessed"));
+      if (data.shopifyOrderError) {
+        toast.warning(t("shopifyOrderFailed"));
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message);

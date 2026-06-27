@@ -42,19 +42,35 @@ interface PackageItem {
   classTypes: { id: string; name: string }[];
 }
 
+interface ProductVariant {
+  id: string;
+  title: string;
+  sku: string | null;
+  price: number;
+  currency: string;
+  options: { name: string; value: string }[];
+  /** Units available at the POS location; null = inventory not tracked. */
+  available: number | null;
+}
+
+interface ProductItem {
+  id: string;
+  title: string;
+  productType: string | null;
+  imageUrl: string | null;
+  variants: ProductVariant[];
+}
+
 interface ProductCategory {
   id: string;
   name: string;
   products: ProductItem[];
 }
 
-interface ProductItem {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  currency: string;
-  imageUrl: string | null;
+interface PosProductsResponse {
+  source: "shopify" | "native";
+  categories: ProductCategory[];
+  shopifyError?: string;
 }
 
 type CategoryDef = {
@@ -93,6 +109,7 @@ export function CartStep() {
     !!selectedClass && selectedClass.spotNumber === undefined,
   );
   const [productSearch, setProductSearch] = useState("");
+  const [productCat, setProductCat] = useState<string>("all");
 
   const { data: packages = [], isLoading: packagesLoading } = useQuery<
     PackageItem[]
@@ -106,16 +123,18 @@ export function CartStep() {
     staleTime: 30_000,
   });
 
-  const { data: productCategories = [], isLoading: productsLoading } =
-    useQuery<ProductCategory[]>({
+  const { data: productData, isLoading: productsLoading } =
+    useQuery<PosProductsResponse>({
       queryKey: ["pos-products"],
       queryFn: async () => {
-        const res = await fetch("/api/shop");
-        if (!res.ok) return [];
+        const res = await fetch("/api/admin/pos/products");
+        if (!res.ok) return { source: "native", categories: [] };
         return res.json();
       },
       staleTime: 30_000,
     });
+
+  const productCategories = productData?.categories ?? [];
 
   const memberships = packages.filter(
     (p) => p.type === "SUBSCRIPTION" && p.isActive,
@@ -124,12 +143,15 @@ export function CartStep() {
     (p) => (p.type === "PACK" || p.type === "OFFER") && p.isActive,
   );
 
-  const allProducts = productCategories.flatMap((c) => c.products);
+  const scopedProducts =
+    productCat === "all"
+      ? productCategories.flatMap((c) => c.products)
+      : (productCategories.find((c) => c.id === productCat)?.products ?? []);
   const filteredProducts = productSearch.trim()
-    ? allProducts.filter((p) =>
-        p.name.toLowerCase().includes(productSearch.toLowerCase()),
+    ? scopedProducts.filter((p) =>
+        p.title.toLowerCase().includes(productSearch.toLowerCase()),
       )
-    : allProducts;
+    : scopedProducts;
 
   function handleClassSelected(
     cls: { id: string; classType: { id: string; name: string }; startsAt: string },
@@ -169,16 +191,66 @@ export function CartStep() {
     toast.success(t("addedToCart", { name: pkg.name }));
   }
 
-  function handleAddProduct(product: ProductItem) {
+  const isShopify = productData?.source === "shopify";
+
+  function variantLabel(product: ProductItem, variant: ProductVariant): string {
+    // Prefer the option values ("M / Negro"); fall back to the variant title.
+    const opts = variant.options
+      .map((o) => o.value)
+      .filter(Boolean)
+      .join(" / ");
+    const suffix = opts || (variant.title === product.title ? "" : variant.title);
+    return suffix ? `${product.title} · ${suffix}` : product.title;
+  }
+
+  function handleAddVariant(product: ProductItem, variant: ProductVariant) {
+    const name = variantLabel(product, variant);
     addToCart({
       type: "product",
-      referenceId: product.id,
-      name: product.name,
-      price: product.price,
-      currency: product.currency,
+      // Use the variant id as the cart key so different sizes don't merge.
+      referenceId: variant.id,
+      name,
+      price: variant.price,
+      currency: variant.currency,
       quantity: 1,
+      shopifyVariantId: isShopify ? variant.id : undefined,
+      variantName: variant.title,
     });
-    toast.success(t("addedToCart", { name: product.name }));
+    if (variant.available != null && variant.available <= 0) {
+      toast.warning(t("soldOutButAdded", { name }));
+    } else {
+      toast.success(t("addedToCart", { name }));
+    }
+  }
+
+  // Stock badge for a variant. Untracked inventory (null) shows nothing; zero
+  // or less shows "Agotado" (but selling is still allowed); low stock is amber.
+  function renderStock(available: number | null, inline = false) {
+    if (available == null) return null;
+    if (available <= 0) {
+      return (
+        <span
+          className={cn(
+            "rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-950/40 dark:text-red-300",
+            !inline && "mt-0.5 inline-block",
+          )}
+        >
+          {t("soldOut")}
+        </span>
+      );
+    }
+    const low = available <= 3;
+    return (
+      <span
+        className={cn(
+          "text-[10px] font-medium",
+          inline ? "" : "mt-0.5 block",
+          low ? "text-amber-600 dark:text-amber-400" : "text-muted",
+        )}
+      >
+        {t("unitsAvailable", { n: available })}
+      </span>
+    );
   }
 
   const total = cartTotal();
@@ -374,6 +446,45 @@ export function CartStep() {
           {activeCategory === "product" && (
             <div className="space-y-3">
               <h4 className="text-sm font-semibold">{t("product")}</h4>
+
+              {productData?.shopifyError && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-300/60 bg-amber-50 p-2.5 text-[11px] text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>{t("shopifyInventoryError")}</span>
+                </div>
+              )}
+
+              {/* Category filter */}
+              {productCategories.length > 1 && (
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setProductCat("all")}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                      productCat === "all"
+                        ? "border-admin bg-admin/10 text-admin"
+                        : "border-border text-muted hover:bg-surface",
+                    )}
+                  >
+                    {t("allCategories")}
+                  </button>
+                  {productCategories.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setProductCat(c.id)}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                        productCat === c.id
+                          ? "border-admin bg-admin/10 text-admin"
+                          : "border-border text-muted hover:bg-surface",
+                      )}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
                 <Search className="h-4 w-4 shrink-0 text-muted/50" />
                 <input
@@ -394,36 +505,77 @@ export function CartStep() {
                 </p>
               ) : (
                 <div className="space-y-1.5">
-                  {filteredProducts.map((product) => (
-                    <button
-                      key={product.id}
-                      onClick={() => handleAddProduct(product)}
-                      className="flex w-full items-center gap-3 rounded-lg border border-border/50 bg-card px-3 py-2.5 text-left transition-colors hover:bg-surface"
-                    >
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt=""
-                          className="h-10 w-10 shrink-0 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface">
-                          <ShoppingBag className="h-4 w-4 text-muted/50" />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{product.name}</p>
-                        {product.description && (
-                          <p className="truncate text-xs text-muted max-w-md">
-                            {product.description}
-                          </p>
+                  {filteredProducts.map((product) => {
+                    const single = product.variants.length === 1;
+                    return (
+                      <div
+                        key={product.id}
+                        className="rounded-lg border border-border/50 bg-card px-3 py-2.5"
+                      >
+                        <button
+                          type="button"
+                          disabled={!single}
+                          onClick={
+                            single
+                              ? () => handleAddVariant(product, product.variants[0])
+                              : undefined
+                          }
+                          className={cn(
+                            "flex w-full items-center gap-3 text-left",
+                            single && "transition-opacity hover:opacity-80",
+                          )}
+                        >
+                          {product.imageUrl ? (
+                            <img
+                              src={product.imageUrl}
+                              alt=""
+                              className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface">
+                              <ShoppingBag className="h-4 w-4 text-muted/50" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium">{product.title}</p>
+                            {single ? (
+                              renderStock(product.variants[0].available)
+                            ) : (
+                              <p className="text-xs text-muted">
+                                {t("pickSize")}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-sm font-semibold text-foreground">
+                            {formatCurrency(
+                              product.variants[0].price,
+                              product.variants[0].currency,
+                            )}
+                          </span>
+                        </button>
+
+                        {/* Variant / size chips */}
+                        {!single && (
+                          <div className="mt-2.5 flex flex-wrap gap-1.5 pl-[52px]">
+                            {product.variants.map((v) => (
+                              <button
+                                key={v.id}
+                                type="button"
+                                onClick={() => handleAddVariant(product, v)}
+                                className="flex items-center gap-1.5 rounded-lg border border-border bg-surface/40 px-2.5 py-1.5 text-xs transition-colors hover:bg-surface"
+                              >
+                                <span className="font-medium">
+                                  {v.options.map((o) => o.value).join(" / ") ||
+                                    v.title}
+                                </span>
+                                {renderStock(v.available, true)}
+                              </button>
+                            ))}
+                          </div>
                         )}
                       </div>
-                      <span className="text-sm font-semibold text-foreground">
-                        {formatCurrency(product.price, product.currency)}
-                      </span>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -326,6 +326,29 @@ model ShopifyConfig {
   shopDomain String
   // Storefront API access token, encrypted before persisting.
   storefrontAccessToken String @db.Text
+  // Shopify Dev Dashboard app credentials for the Admin API (client-credentials
+  // grant). The POS exchanges these for a short-lived access token to read
+  // per-location inventory and create orders. Optional — only set when the
+  // studio wires up the in-studio POS. App scopes needed: read_products,
+  // read_inventory, read_locations, write_orders, read_orders. The app must be
+  // installed on this shop. (clientSecret is encrypted at rest.)
+  adminClientId     String?
+  adminClientSecret String? @db.Text
+  // The ".myshopify.com" domain the POS/Admin integration targets. Required for
+  // the client-credentials token exchange and order creation, which only work
+  // on the myshopify domain (shopDomain may be a vanity domain like a custom
+  // store URL — accepted by the Storefront API but not by the Admin OAuth).
+  // Falls back to shopDomain when null.
+  adminShopDomain   String?
+  // Reserved (legacy): an earlier design stored a static Admin API token here.
+  // Superseded by the client-credentials flow above; kept nullable for safety.
+  adminAccessToken String? @db.Text
+  // The Shopify location (GID, e.g. "gid://shopify/Location/123") whose
+  // inventory the in-studio POS reads from and decrements on sale — the
+  // "physical store" location. Null = POS Shopify integration not configured.
+  posLocationId   String?
+  // Human-readable name of the location above, for display in the admin UI.
+  posLocationName String?
   // When false the connection is kept but the public shop falls back to the
   // native catalog (lets the studio pause Shopify without losing credentials).
   isActive Boolean @default(true)

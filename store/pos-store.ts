@@ -16,6 +16,11 @@ export interface PosCartItem {
   price: number;
   currency: string;
   quantity: number;
+  // For Shopify-sourced products: the variant GID. Its presence tells the sale
+  // route to create an order in Shopify (which decrements the location's stock).
+  shopifyVariantId?: string;
+  // Human-readable variant label (e.g. "M / Negro") for receipts/display.
+  variantName?: string;
   metadata?: Record<string, unknown>;
 }
 

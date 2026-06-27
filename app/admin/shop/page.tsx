@@ -33,6 +33,7 @@ import { formatCurrency, cn } from "@/lib/utils";
 import { useCurrency } from "@/components/tenant-provider";
 import { useTranslations } from "next-intl";
 import { ShopifyConnectionCard } from "@/components/admin/shopify-connection-card";
+import { ShopifyPosCard } from "@/components/admin/shopify-pos-card";
 
 interface Category {
   id: string;
@@ -340,6 +341,9 @@ export default function AdminShopPage() {
 
       {/* Shopify connection */}
       <ShopifyConnectionCard />
+
+      {/* Shopify POS (per-location inventory + orders) */}
+      <ShopifyPosCard />
 
       {/* Categories */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>

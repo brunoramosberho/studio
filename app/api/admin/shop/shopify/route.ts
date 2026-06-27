@@ -10,7 +10,7 @@ function errorResponse(e: unknown) {
   return NextResponse.json({ error: msg }, { status });
 }
 
-// Status of the tenant's Shopify connection (never returns the token).
+// Status of the tenant's Shopify connection (never returns the tokens).
 export async function GET() {
   try {
     const ctx = await requirePermission("shop");
@@ -21,9 +21,21 @@ export async function GET() {
         isActive: true,
         lastSyncedAt: true,
         lastError: true,
+        adminClientId: true,
+        adminClientSecret: true,
+        adminShopDomain: true,
+        posLocationId: true,
+        posLocationName: true,
       },
     });
-    return NextResponse.json({ connected: !!config, ...(config ?? {}) });
+    if (!config) return NextResponse.json({ connected: false });
+    const { adminClientId, adminClientSecret, ...rest } = config;
+    return NextResponse.json({
+      connected: true,
+      ...rest,
+      // Whether the Admin API (POS inventory/orders) is wired up. Never leak creds.
+      adminConnected: !!(adminClientId && adminClientSecret),
+    });
   } catch (e) {
     return errorResponse(e);
   }

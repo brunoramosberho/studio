@@ -12,6 +12,9 @@ import {
 import { sendPosReceiptEmail, getTenantBaseUrl } from "@/lib/email";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
+import { createPosOrder } from "@/lib/shopify/admin";
+import { getAdminConnection } from "@/lib/shopify/admin-token";
+import { Prisma } from "@prisma/client";
 
 interface CartItem {
   type: "package" | "product";
@@ -20,6 +23,9 @@ interface CartItem {
   price: number;
   currency: string;
   quantity: number;
+  // Present for Shopify-sourced products: the variant GID. Triggers creation of
+  // an order in Shopify so the physical-store location's inventory decrements.
+  shopifyVariantId?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -321,6 +327,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 4.5. Create the order in Shopify for physical-store products so its
+    // inventory decrements and the sale shows up in Shopify's reports. The POS
+    // already collected payment, so a Shopify failure must NOT roll back the
+    // sale — we log it, tag the transactions, and surface a flag to reconcile.
+    let shopifyOrder: { id: number; name: string } | null = null;
+    let shopifyOrderError: string | null = null;
+    const shopifyItems = paidItems.filter(
+      (i) => i.type === "product" && i.shopifyVariantId,
+    );
+    if (shopifyItems.length > 0) {
+      const config = await prisma.shopifyConfig.findUnique({
+        where: { tenantId },
+        select: { posLocationId: true },
+      });
+      if (config?.posLocationId) {
+        try {
+          const conn = await getAdminConnection(tenantId);
+          if (conn) {
+            shopifyOrder = await createPosOrder(conn.shopDomain, conn.token, {
+              locationId: config.posLocationId,
+              lineItems: shopifyItems.map((i) => ({
+                variantId: i.shopifyVariantId as string,
+                quantity: i.quantity,
+              })),
+              email: customer.email,
+            });
+          }
+        } catch (err) {
+          shopifyOrderError =
+            err instanceof Error ? err.message : "Shopify order failed";
+          console.error("[pos-sale] Shopify order creation failed", err);
+        }
+      }
+    }
+
     // 5. Create one PosTransaction per paid item (all payment methods)
     const dbPaymentMethod =
       paymentMethod === "terminal" ? "card" : paymentMethod;
@@ -332,6 +373,18 @@ export async function POST(request: NextRequest) {
           : item.type === "product"
             ? item.referenceId
             : undefined;
+
+      const itemMetadata: Record<string, string | number> = {};
+      if (stripePaymentIntentId)
+        itemMetadata.stripePaymentIntentId = stripePaymentIntentId;
+      if (item.type === "product" && item.shopifyVariantId) {
+        itemMetadata.shopifyVariantId = item.shopifyVariantId;
+        if (shopifyOrder) {
+          itemMetadata.shopifyOrderId = shopifyOrder.id;
+          itemMetadata.shopifyOrderName = shopifyOrder.name;
+        }
+        if (shopifyOrderError) itemMetadata.shopifyOrderError = shopifyOrderError;
+      }
 
       const tx = await prisma.posTransaction.create({
         data: {
@@ -346,8 +399,8 @@ export async function POST(request: NextRequest) {
           status: "completed",
           processedById: adminUserId,
           referenceId: refId,
-          ...(stripePaymentIntentId && {
-            metadata: { stripePaymentIntentId },
+          ...(Object.keys(itemMetadata).length > 0 && {
+            metadata: itemMetadata as Prisma.InputJsonObject,
           }),
         },
       });
@@ -405,6 +458,8 @@ export async function POST(request: NextRequest) {
       currency,
       results,
       customerName: customer.name,
+      ...(shopifyOrder && { shopifyOrderName: shopifyOrder.name }),
+      ...(shopifyOrderError && { shopifyOrderError }),
     });
   } catch (error) {
     console.error("POST /api/admin/pos/sale error:", error);
