@@ -7,6 +7,7 @@ import { ShoppingBag, ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useBranding } from "@/components/branding-provider";
+import { ShopPackages } from "@/components/shop/shop-packages";
 
 interface ShopProduct {
   id: string;
@@ -26,6 +27,7 @@ interface ShopCategory {
 
 export default function ShopPage() {
   const { colorAccent } = useBranding();
+  const [mode, setMode] = useState<"products" | "packages">("products");
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(null);
 
@@ -56,11 +58,38 @@ export default function ShopPage() {
     <div className="min-h-dvh bg-background pb-28">
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-5">
           <h1 className="font-display text-2xl font-bold text-foreground">Tienda</h1>
-          <p className="text-sm text-muted">Descubre nuestros productos</p>
+          <p className="text-sm text-muted">Productos y paquetes de clases</p>
         </div>
 
+        {/* Productos | Paquetes toggle */}
+        <div className="mb-6 inline-flex rounded-full bg-surface p-1">
+          {(
+            [
+              { key: "products", label: "Productos" },
+              { key: "packages", label: "Paquetes" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setMode(tab.key)}
+              className={cn(
+                "rounded-full px-5 py-1.5 text-sm font-medium transition-all",
+                mode === tab.key
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted hover:text-foreground",
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {mode === "packages" ? (
+          <ShopPackages />
+        ) : (
+          <>
         {/* Category filter */}
         {categories.length > 1 && (
           <div className="mb-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -152,6 +181,8 @@ export default function ShopPage() {
               ))}
             </AnimatePresence>
           </div>
+        )}
+          </>
         )}
       </div>
 
