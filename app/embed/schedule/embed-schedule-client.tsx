@@ -19,7 +19,7 @@ import {
   isPast,
 } from "date-fns";
 import { es, enUS } from "date-fns/locale";
-import { Asterisk, ChevronDown, Dumbbell, Loader2 } from "lucide-react";
+import { Asterisk, ChevronDown, Dumbbell, Loader2, Ticket } from "lucide-react";
 import { cn, formatTime } from "@/lib/utils";
 import { getIconComponent } from "@/components/admin/icon-picker";
 
@@ -352,13 +352,23 @@ export function EmbedScheduleClient({
         <h1 className="font-display text-xl font-bold leading-tight text-foreground lg:text-[1.75rem]">
           {te("title")}
         </h1>
-        <button
-          type="button"
-          onClick={() => openInParent("/login")}
-          className="shrink-0 text-[13px] font-medium text-accent transition-opacity hover:opacity-80"
-        >
-          {te("myAccount")}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => openInParent("/packages")}
+            className="flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1 text-[12px] font-semibold text-accent transition-opacity hover:opacity-80"
+          >
+            <Ticket className="h-3.5 w-3.5" />
+            {te("viewPackages")}
+          </button>
+          <button
+            type="button"
+            onClick={() => openInParent("/login")}
+            className="text-[13px] font-medium text-accent transition-opacity hover:opacity-80"
+          >
+            {te("myAccount")}
+          </button>
+        </div>
       </div>
 
       {/* ── Mobile / narrow layout ── */}

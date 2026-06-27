@@ -2603,6 +2603,7 @@
   "schedule": {
     "unlimited": "Ilimitado",
     "classesCount": "{count} clases",
+    "viewPackages": "Ver paquetes",
     "allCoaches": "Todos",
     "viewProfile": "Ver perfil",
     "today": "hoy",
@@ -2790,6 +2791,7 @@
   "embed": {
     "title": "Encontrar una clase",
     "myAccount": "Mi cuenta",
+    "viewPackages": "Ver paquetes",
     "timezoneHint": "Todas las fechas y horas se muestran en la zona horaria de la ubicacion.",
     "reserve": "Reservar",
     "finished": "Finalizada",

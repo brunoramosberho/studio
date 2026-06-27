@@ -476,14 +476,23 @@ export function ScheduleClient({
             {title}
           </h1>
           <div className="flex items-center gap-2">
-            {!hideCredits && credits !== null && (
-              <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
-                <Ticket className="h-3.5 w-3.5 text-accent" />
-                <span className="text-[12px] font-semibold text-accent">
-                  {credits === -1 ? t("unlimited") : t("classesCount", { count: credits })}
-                </span>
-              </div>
-            )}
+            {!hideCredits &&
+              (credits === null || credits === 0 ? (
+                <ClassLink
+                  href="/packages"
+                  className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-[12px] font-semibold text-accent transition-colors active:bg-accent/20"
+                >
+                  <Ticket className="h-3.5 w-3.5" />
+                  {t("viewPackages")}
+                </ClassLink>
+              ) : (
+                <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1">
+                  <Ticket className="h-3.5 w-3.5 text-accent" />
+                  <span className="text-[12px] font-semibold text-accent">
+                    {credits === -1 ? t("unlimited") : t("classesCount", { count: credits })}
+                  </span>
+                </div>
+              ))}
             {showCityFilter && (
               <div className="relative">
                 <select

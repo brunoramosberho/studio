@@ -2603,6 +2603,7 @@
   "schedule": {
     "unlimited": "Unlimited",
     "classesCount": "{count} classes",
+    "viewPackages": "View packages",
     "allCoaches": "All",
     "viewProfile": "View profile",
     "today": "today",
@@ -2790,6 +2791,7 @@
   "embed": {
     "title": "Find a class",
     "myAccount": "My account",
+    "viewPackages": "View packages",
     "timezoneHint": "All dates and times are shown in the location's time zone.",
     "reserve": "Reserve",
     "finished": "Finished",
