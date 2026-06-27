@@ -17,6 +17,8 @@ export type AdminPermission =
   | "pos"
   | "waitlist"
   | "orders"
+  // Read-only pricing catalog (view packages/prices to show clients; no edit)
+  | "pricingView"
   // Team management
   | "coaches"
   | "availability"
@@ -52,7 +54,7 @@ export type AdminPermission =
 
 export const ALL_PERMISSIONS: AdminPermission[] = [
   "dashboard", "schedule", "classes", "checkIn", "noShowReview", "clients",
-  "feed", "achievements", "pos", "waitlist", "orders",
+  "feed", "achievements", "pos", "waitlist", "orders", "pricingView",
   "coaches", "availability", "disciplines",
   "finance", "packages", "subscriptions", "shop", "platforms", "onDemand",
   "reports", "analytics", "conversion",
@@ -77,6 +79,7 @@ const FRONT_DESK_PERMISSIONS: Set<AdminPermission> = new Set([
   "pos",
   "waitlist",
   "orders",
+  "pricingView",
 ]);
 
 /**

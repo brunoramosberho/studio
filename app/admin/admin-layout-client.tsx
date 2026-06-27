@@ -93,12 +93,13 @@ interface NavGroup {
 
 const directItems: NavItem[] = [
   { href: "/admin", labelKey: "dashboard", icon: LayoutDashboard, permission: "dashboard", keywordsKey: "kw.dashboard" },
-  { href: "/admin/schedule", labelKey: "schedule", icon: CalendarDays, permission: "schedule", badgeKey: "pendingWaitlist", contextKey: "activeClasses", keywordsKey: "kw.schedule", match: (p) => p.startsWith("/admin/schedule") || p.startsWith("/admin/classes") || p.startsWith("/admin/class/") },
   { href: "/admin/check-in", labelKey: "checkIn", icon: ClipboardCheck, permission: "checkIn", badgeKey: "pendingNoShows", keywordsKey: "kw.checkIn", match: (p) => p.startsWith("/admin/check-in") || p.startsWith("/admin/no-shows") },
+  { href: "/admin/schedule", labelKey: "schedule", icon: CalendarDays, permission: "schedule", badgeKey: "pendingWaitlist", contextKey: "activeClasses", keywordsKey: "kw.schedule", match: (p) => p.startsWith("/admin/schedule") || p.startsWith("/admin/classes") || p.startsWith("/admin/class/") },
   { href: "/admin/clients", labelKey: "clients", icon: Users, permission: "clients", badgeKey: "newClients", keywordsKey: "kw.clients", match: (p) => p.startsWith("/admin/clients") || p.startsWith("/admin/leads") },
   { href: "/admin/feed", labelKey: "memberHome", icon: Home, permission: "feed", badgeKey: "recentFeed", keywordsKey: "kw.memberHome" },
   { href: "/admin/orders", labelKey: "orders", icon: Coffee, permission: "orders", feature: "orders", badgeKey: "activeOrders", keywordsKey: "kw.orders" },
   { href: "#pos", labelKey: "pos", icon: ShoppingBag, permission: "pos", keywordsKey: "kw.pos" },
+  { href: "/admin/catalog", labelKey: "packagesView", icon: Package, permission: "pricingView", keywordsKey: "kw.packagesView", match: (p) => p.startsWith("/admin/catalog") },
 ];
 
 const navGroups: NavGroup[] = [
