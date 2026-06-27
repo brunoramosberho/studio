@@ -8,6 +8,7 @@ import { userHasOpenDebt } from "@/lib/billing/debt";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { shouldHideCoach } from "@/lib/coach";
 import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
+import { getPackagePurchaseLimitError } from "@/lib/packages/purchase-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -172,6 +173,21 @@ export async function POST(request: NextRequest) {
         },
         { status: 403 },
       );
+    }
+
+    // Per-customer purchase cap (e.g. a one-per-customer offer).
+    if (finalUserId) {
+      const purchaseLimitError = await getPackagePurchaseLimitError(
+        pkg,
+        finalUserId,
+        tenant.id,
+      );
+      if (purchaseLimitError) {
+        return NextResponse.json(
+          { error: purchaseLimitError, code: "purchase_limit_reached" },
+          { status: 403 },
+        );
+      }
     }
 
     // Atomic: create package + booking in a single transaction

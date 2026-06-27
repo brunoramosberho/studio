@@ -187,6 +187,14 @@ export async function PUT(
       if (!parsed.ok) return parsed.res;
       data.maxConcurrentUpcomingBookings = parsed.v;
     }
+    if (body.maxPurchasesPerCustomer !== undefined) {
+      const parsed = readOptionalPositiveInt(
+        body.maxPurchasesPerCustomer,
+        "maxPurchasesPerCustomer",
+      );
+      if (!parsed.ok) return parsed.res;
+      data.maxPurchasesPerCustomer = parsed.v;
+    }
 
     if (classTypeIds !== undefined) {
       if (!Array.isArray(classTypeIds)) {

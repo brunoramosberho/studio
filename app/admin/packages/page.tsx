@@ -65,6 +65,7 @@ interface PackageData {
   includesOnDemand: boolean;
   maxBookingsPerDay: number | null;
   maxConcurrentUpcomingBookings: number | null;
+  maxPurchasesPerCustomer: number | null;
 }
 
 type PackageKind = PackageData["type"];
@@ -144,6 +145,7 @@ interface FormState {
   includesOnDemand: boolean;
   maxBookingsPerDay: string;
   maxConcurrentUpcomingBookings: string;
+  maxPurchasesPerCustomer: string;
 }
 
 function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
@@ -168,6 +170,7 @@ function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
     includesOnDemand: false,
     maxBookingsPerDay: "",
     maxConcurrentUpcomingBookings: "",
+    maxPurchasesPerCustomer: "",
   };
 }
 
@@ -203,6 +206,8 @@ function formFromPackage(pkg: PackageData, defaultCurrency = "EUR"): FormState {
     maxBookingsPerDay: pkg.maxBookingsPerDay == null ? "" : String(pkg.maxBookingsPerDay),
     maxConcurrentUpcomingBookings:
       pkg.maxConcurrentUpcomingBookings == null ? "" : String(pkg.maxConcurrentUpcomingBookings),
+    maxPurchasesPerCustomer:
+      pkg.maxPurchasesPerCustomer == null ? "" : String(pkg.maxPurchasesPerCustomer),
   };
 }
 
@@ -268,6 +273,10 @@ function buildPayload(form: FormState) {
     maxConcurrentUpcomingBookings:
       form.type === "SUBSCRIPTION" && form.maxConcurrentUpcomingBookings.trim() !== ""
         ? parseInt(form.maxConcurrentUpcomingBookings, 10)
+        : null,
+    maxPurchasesPerCustomer:
+      form.type === "OFFER" && form.maxPurchasesPerCustomer.trim() !== ""
+        ? parseInt(form.maxPurchasesPerCustomer, 10)
         : null,
   };
 }
@@ -966,6 +975,37 @@ export default function AdminPackagesPage() {
                       Reservas pendientes a futuro al mismo tiempo. Evita acaparar slots peak.
                     </p>
                   </div>
+                </div>
+              </div>
+            ) : null}
+
+            {form.type === "OFFER" ? (
+              <div className="space-y-3 rounded-xl border border-input-border/60 bg-surface/50 p-3">
+                <p className="text-sm font-medium">Límite por cliente</p>
+                <p className="text-xs text-muted">
+                  Opcional. Limita cuántas veces un mismo cliente puede comprar esta oferta. Déjalo vacío para sin límite.
+                </p>
+                <div>
+                  <label
+                    className="mb-1 block text-xs font-medium"
+                    htmlFor="pkg-max-per-customer"
+                  >
+                    Máx. compras por cliente
+                  </label>
+                  <Input
+                    id="pkg-max-per-customer"
+                    type="number"
+                    min={1}
+                    value={form.maxPurchasesPerCustomer}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, maxPurchasesPerCustomer: e.target.value }))
+                    }
+                    placeholder="Sin límite"
+                    className="sm:max-w-[220px]"
+                  />
+                  <p className="mt-1 text-xs text-muted">
+                    Ej. 1 = oferta de un solo uso por cliente. Solo cuenta compras completadas (no pendientes ni reembolsadas).
+                  </p>
                 </div>
               </div>
             ) : null}

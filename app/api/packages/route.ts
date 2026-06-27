@@ -172,6 +172,10 @@ export async function POST(request: NextRequest) {
     if (!concurrentLimit.ok) {
       return NextResponse.json({ error: `maxConcurrentUpcomingBookings ${concurrentLimit.error}` }, { status: 400 });
     }
+    const perCustomerLimit = parseOptionalPositiveInt(body.maxPurchasesPerCustomer);
+    if (!perCustomerLimit.ok) {
+      return NextResponse.json({ error: `maxPurchasesPerCustomer ${perCustomerLimit.error}` }, { status: 400 });
+    }
     // Limits only make sense for SUBSCRIPTION packages — strip them on other types
     // so the form doesn't accidentally persist leftover values.
     const isSubscription = pkgType === PackageType.SUBSCRIPTION;
@@ -206,6 +210,7 @@ export async function POST(request: NextRequest) {
           pkgType === PackageType.SUBSCRIPTION ? Boolean(body.includesOnDemand) : false,
         maxBookingsPerDay: isSubscription ? dayLimit.v : null,
         maxConcurrentUpcomingBookings: isSubscription ? concurrentLimit.v : null,
+        maxPurchasesPerCustomer: perCustomerLimit.v,
         ...(Array.isArray(classTypeIds) && classTypeIds.length > 0
           ? {
               classTypes: {

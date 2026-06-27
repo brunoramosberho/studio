@@ -1038,6 +1038,12 @@ model Package {
   eligibleClassesFrom  DateTime?
   eligibleClassesUntil DateTime?
 
+  // Cap how many times a single customer can purchase this package. Null =
+  // unlimited (the default — existing packages are unaffected). Mainly for
+  // one-per-customer intro/offer SKUs. Enforced at purchase time by counting
+  // the customer's ACTIVE/DISPUTED UserPackages for this package.
+  maxPurchasesPerCustomer Int?
+
   // When true, members holding this package (or subscription) also get access
   // to the studio's on-demand video catalogue without needing a separate
   // ON_DEMAND_SUBSCRIPTION. Used to bundle on-demand into existing unlimited

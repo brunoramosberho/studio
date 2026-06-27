@@ -4,6 +4,7 @@ import { requireAuth, requireTenant } from "@/lib/tenant";
 import { createMemberPayment } from "@/lib/stripe/payments";
 import { createCreditUsagesForPackage } from "@/lib/credits";
 import { userHasOpenDebt } from "@/lib/billing/debt";
+import { getPackagePurchaseLimitError } from "@/lib/packages/purchase-limit";
 
 async function validateAndApplyDiscount(
   discountCode: string,
@@ -219,6 +220,19 @@ export async function POST(request: NextRequest) {
           error:
             "Tienes un saldo pendiente con el estudio. Contacta a administración para resolverlo antes de comprar.",
         },
+        { status: 403 },
+      );
+    }
+
+    // Per-customer purchase cap (e.g. a one-per-customer offer).
+    const purchaseLimitError = await getPackagePurchaseLimitError(
+      pkg,
+      finalUserId,
+      tenant.id,
+    );
+    if (purchaseLimitError) {
+      return NextResponse.json(
+        { error: purchaseLimitError, code: "purchase_limit_reached" },
         { status: 403 },
       );
     }
