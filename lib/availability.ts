@@ -243,30 +243,45 @@ export function getCoachStatusForSlot(args: {
   // 2) Availability check. Only active availability blocks count — a
   //    pending one shouldn't reserve the coach for a slot they haven't
   //    been approved to take yet.
+  // The class window must be FULLY covered by the union of the coach's active
+  // availability ranges (restricted to the target studio). A class that starts
+  // before — or ends after — the coach's window isn't coverable, even if it
+  // overlaps part of it. time_off is already handled above.
+  const availBlocks = blocks.filter(
+    (b) => b.kind === "availability" && b.status === "active",
+  );
+  const relevant = studioAgnostic
+    ? availBlocks
+    : availBlocks.filter((b) =>
+        b.studioPreferences?.some((p) => p.studioId === studioId),
+      );
+  const availRanges = mergeRanges(
+    relevant.flatMap((b) => blockCoverageOnDate(b, date)),
+  );
+  const fullyCovered = availRanges.some(
+    (r) => r.startMin <= startMin && r.endMin >= endMin,
+  );
+  if (!fullyCovered) return "unavailable";
+
+  // Best studio preference among the blocks that cover any part of the slot.
   let best: CoachSlotStatus = "unavailable";
-  for (const b of blocks) {
-    if (b.kind !== "availability") continue;
-    if (b.status !== "active") continue;
+  for (const b of relevant) {
     const cov = blockCoverageOnDate(b, date);
     if (!cov.some((c) => rangesOverlap(c, slot))) continue;
 
     if (studioAgnostic) {
-      // No specific studio context — take the best preference present on
-      // this block regardless of which location it points at.
       for (const p of b.studioPreferences ?? []) {
         if (p.preference === "preferred") return "preferred";
         if (p.preference === "ok_if_needed" && best === "unavailable") {
           best = "ok_if_needed";
         }
       }
-      continue;
-    }
-
-    const pref = b.studioPreferences?.find((p) => p.studioId === studioId);
-    if (!pref) continue;
-    if (pref.preference === "preferred") return "preferred";
-    if (pref.preference === "ok_if_needed" && best === "unavailable") {
-      best = "ok_if_needed";
+    } else {
+      const pref = b.studioPreferences?.find((p) => p.studioId === studioId);
+      if (pref?.preference === "preferred") return "preferred";
+      if (pref?.preference === "ok_if_needed" && best === "unavailable") {
+        best = "ok_if_needed";
+      }
     }
   }
   return best;

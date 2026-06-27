@@ -7,6 +7,8 @@ import {
   getMondayBasedDow,
   parseHhmm,
 } from "@/lib/availability";
+import { getWallClockInZone } from "@/lib/utils";
+import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,6 +27,7 @@ export async function GET(request: NextRequest) {
 
     const openH = parseInt(tenant.studioOpenTime.split(":")[0]);
     const closeH = parseInt(tenant.studioCloseTime.split(":")[0]);
+    const tz = await resolveScheduleTimezone(tenant);
 
     const coachProfiles = await prisma.coachProfile.findMany({
       where: { tenantId: tenant.id },
@@ -105,7 +108,9 @@ export async function GET(request: NextRequest) {
       const slots: Slot[] = [];
 
       for (let h = openH; h < closeH; h++) {
-        const classAtHour = coachClasses.find((c) => c.startsAt.getHours() === h);
+        const classAtHour = coachClasses.find(
+          (c) => getWallClockInZone(c.startsAt, tz).hour === h,
+        );
 
         if (classAtHour) {
           slots.push({
