@@ -315,6 +315,13 @@
     "expiringInWeek": "Vencen en los proximos 7 dias",
     "birthdaysThisWeek": "Cumpleanos de la semana",
     "alerts": "Alertas",
+    "catalog": {
+      "title": "Paquetes y precios",
+      "empty": "No hay paquetes activos todavía.",
+      "perMonth": "/mes",
+      "perYear": "/año",
+      "maxPerCustomer": "Máx. {n} por cliente"
+    },
     "actionItems": {
       "needsAttention": "Necesita tu atención",
       "toReview": "Para revisar",

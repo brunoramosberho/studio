@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { CheckCircle2, Gift, Package, RefreshCw, Info } from "lucide-react";
+import { CheckCircle2, Gift, Package, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, cn } from "@/lib/utils";
 
@@ -35,15 +35,15 @@ interface PackageData {
 
 const GROUPS: {
   key: string;
-  title: string;
+  titleKey: "offers" | "packages" | "subscriptions";
   icon: typeof Package;
   match: (t: PackageData["type"]) => boolean;
 }[] = [
-  { key: "OFFER", title: "Ofertas", icon: Gift, match: (t) => t === "OFFER" },
-  { key: "PACK", title: "Paquetes", icon: Package, match: (t) => t === "PACK" },
+  { key: "OFFER", titleKey: "offers", icon: Gift, match: (t) => t === "OFFER" },
+  { key: "PACK", titleKey: "packages", icon: Package, match: (t) => t === "PACK" },
   {
     key: "SUB",
-    title: "Suscripciones",
+    titleKey: "subscriptions",
     icon: RefreshCw,
     match: (t) => t === "SUBSCRIPTION" || t === "ON_DEMAND_SUBSCRIPTION",
   },
@@ -51,6 +51,7 @@ const GROUPS: {
 
 export default function AdminCatalogPage() {
   const t = useTranslations("public");
+  const tc = useTranslations("admin.catalog");
 
   const { data: packages = [], isLoading } = useQuery<PackageData[]>({
     queryKey: ["admin-catalog"],
@@ -104,13 +105,7 @@ export default function AdminCatalogPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold sm:text-3xl">Paquetes y precios</h1>
-        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
-          <Info className="h-3.5 w-3.5 shrink-0" />
-          Referencia de solo lectura — para mostrar a los clientes cuando preguntan por costos.
-        </p>
-      </div>
+      <h1 className="font-display text-2xl font-bold sm:text-3xl">{tc("title")}</h1>
 
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -120,7 +115,7 @@ export default function AdminCatalogPage() {
         </div>
       ) : active.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/60 py-16 text-center text-muted">
-          No hay paquetes activos todavía.
+          {tc("empty")}
         </div>
       ) : (
         GROUPS.map((group) => {
@@ -132,7 +127,7 @@ export default function AdminCatalogPage() {
               <div className="flex items-center gap-2">
                 <GroupIcon className="h-4 w-4 text-muted/70" />
                 <h2 className="text-[12px] font-semibold uppercase tracking-wider text-muted/60">
-                  {group.title}
+                  {t(group.titleKey)}
                 </h2>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -144,21 +139,14 @@ export default function AdminCatalogPage() {
                       pkg.isPromo ? "border-accent/40" : "border-border/60",
                     )}
                   >
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
-                      {pkg.type === "OFFER"
-                        ? "Oferta"
-                        : pkg.type === "SUBSCRIPTION" || pkg.type === "ON_DEMAND_SUBSCRIPTION"
-                          ? "Suscripción"
-                          : "Paquete"}
-                    </p>
-                    <h3 className="mt-1 font-display text-lg font-bold text-foreground">{pkg.name}</h3>
+                    <h3 className="font-display text-lg font-bold text-foreground">{pkg.name}</h3>
                     <div className="mt-2 flex items-baseline gap-1">
                       <span className="font-display text-2xl font-bold text-foreground">
                         {formatCurrency(pkg.price, pkg.currency)}
                       </span>
                       {(pkg.type === "SUBSCRIPTION" || pkg.type === "ON_DEMAND_SUBSCRIPTION") && (
                         <span className="text-sm text-muted">
-                          /{pkg.recurringInterval === "year" ? "año" : "mes"}
+                          {pkg.recurringInterval === "year" ? tc("perYear") : tc("perMonth")}
                         </span>
                       )}
                     </div>
@@ -179,7 +167,7 @@ export default function AdminCatalogPage() {
                     )}
                     {pkg.maxPurchasesPerCustomer != null && (
                       <p className="mt-2 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                        Máx. {pkg.maxPurchasesPerCustomer} por cliente
+                        {tc("maxPerCustomer", { n: pkg.maxPurchasesPerCustomer })}
                       </p>
                     )}
                   </div>

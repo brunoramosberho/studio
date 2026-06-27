@@ -315,6 +315,13 @@
     "expiringInWeek": "Expiring in the next 7 days",
     "birthdaysThisWeek": "Birthdays this week",
     "alerts": "Alerts",
+    "catalog": {
+      "title": "Packages & prices",
+      "empty": "No active packages yet.",
+      "perMonth": "/mo",
+      "perYear": "/yr",
+      "maxPerCustomer": "Max {n} per customer"
+    },
     "actionItems": {
       "needsAttention": "Needs your attention",
       "toReview": "To review",
