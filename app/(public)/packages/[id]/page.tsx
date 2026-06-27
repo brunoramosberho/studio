@@ -58,6 +58,8 @@ interface PackageData {
   includesOnDemand?: boolean;
   maxBookingsPerDay?: number | null;
   maxConcurrentUpcomingBookings?: number | null;
+  maxPurchasesPerCustomer?: number | null;
+  purchaseLimitReached?: boolean;
 }
 
 const SUBSCRIPTION_TYPES_DETAIL: PackageData["type"][] = [
@@ -378,12 +380,15 @@ export default function PackageDetailPage() {
             size="lg"
             className="w-full rounded-full py-6 text-base"
             onClick={() => setSheetOpen(true)}
+            disabled={pkg.purchaseLimitReached}
           >
-            {isSubscription(pkg.type)
-              ? `Suscribirme por ${formatCurrency(pkg.price, pkg.currency)}/${pkg.recurringInterval === "year" ? "año" : "mes"}`
-              : pkg.isPromo
-                ? "Probar ahora"
-                : `Comprar por ${formatCurrency(pkg.price, pkg.currency)}`}
+            {pkg.purchaseLimitReached
+              ? "Ya la adquiriste"
+              : isSubscription(pkg.type)
+                ? `Suscribirme por ${formatCurrency(pkg.price, pkg.currency)}/${pkg.recurringInterval === "year" ? "año" : "mes"}`
+                : pkg.isPromo
+                  ? "Probar ahora"
+                  : `Comprar por ${formatCurrency(pkg.price, pkg.currency)}`}
           </Button>
         </motion.div>
       </div>

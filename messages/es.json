@@ -1930,6 +1930,7 @@
     "tryNow": "Probar ahora",
     "subscribe": "Suscribirme",
     "buyFor": "Comprar por {price}",
+    "alreadyClaimed": "Ya la adquiriste",
     "daysUnit": "días",
     "weeksUnit": "sem",
     "monthUnit": "mes",

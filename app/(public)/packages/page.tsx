@@ -51,6 +51,8 @@ interface PackageData {
   recurringInterval: string | null;
   sortOrder: number;
   includesOnDemand?: boolean;
+  maxPurchasesPerCustomer?: number | null;
+  purchaseLimitReached?: boolean;
 }
 
 interface UserPackageSummary {
@@ -216,6 +218,7 @@ export default function PackagesPage() {
   function handleBuy(e: React.MouseEvent, pkg: PackageData) {
     e.preventDefault();
     e.stopPropagation();
+    if (pkg.purchaseLimitReached) return;
     setSelectedPkg(pkg);
     setSheetOpen(true);
   }
@@ -388,12 +391,15 @@ export default function PackagesPage() {
                       <Button
                         className="flex-1 rounded-full"
                         onClick={(e) => handleBuy(e, pkg)}
+                        disabled={pkg.purchaseLimitReached}
                       >
-                        {pkg.isPromo
-                          ? t("tryNow")
-                          : isSubscriptionType(pkg.type)
-                            ? t("subscribe")
-                            : t("buyFor", { price: formatCurrency(pkg.price, pkg.currency) })}
+                        {pkg.purchaseLimitReached
+                          ? t("alreadyClaimed")
+                          : pkg.isPromo
+                            ? t("tryNow")
+                            : isSubscriptionType(pkg.type)
+                              ? t("subscribe")
+                              : t("buyFor", { price: formatCurrency(pkg.price, pkg.currency) })}
                       </Button>
                       <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/50 text-muted transition-colors sm:hidden">
                         <ChevronRight className="h-4 w-4" />

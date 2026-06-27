@@ -51,7 +51,38 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(packages);
+    // Flag packages whose per-customer purchase cap the signed-in buyer has
+    // already reached, so the catalog can show them as unavailable instead of
+    // letting the buyer tap Buy and hit a 403.
+    const userId = authCtx?.session?.user?.id;
+    const reached = new Set<string>();
+    if (userId) {
+      const limited = packages.filter((p) => p.maxPurchasesPerCustomer != null);
+      if (limited.length > 0) {
+        const owned = await prisma.userPackage.findMany({
+          where: {
+            userId,
+            tenantId: tenant.id,
+            packageId: { in: limited.map((p) => p.id) },
+            status: { in: ["ACTIVE", "DISPUTED"] },
+          },
+          select: { packageId: true },
+        });
+        const counts = new Map<string, number>();
+        for (const o of owned) {
+          counts.set(o.packageId, (counts.get(o.packageId) ?? 0) + 1);
+        }
+        for (const p of limited) {
+          if ((counts.get(p.id) ?? 0) >= (p.maxPurchasesPerCustomer ?? Infinity)) {
+            reached.add(p.id);
+          }
+        }
+      }
+    }
+
+    return NextResponse.json(
+      packages.map((p) => ({ ...p, purchaseLimitReached: reached.has(p.id) })),
+    );
   } catch (error) {
     if (
       error instanceof Error &&
