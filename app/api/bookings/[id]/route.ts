@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/tenant";
+import { requireAuth, roleAtLeast } from "@/lib/tenant";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
 import { restoreCredit } from "@/lib/credits";
 import {
@@ -136,9 +136,12 @@ export async function PUT(
     }
 
     const isOwner = booking.userId === session.user.id;
-    const isAdmin = membership.role === "ADMIN";
-    const isCoach = membership.role === "COACH";
-    if (!isOwner && !isAdmin && !isCoach) {
+    // Any staff member (COACH, FRONT_DESK, or ADMIN) can manage a booking from
+    // the admin/check-in surfaces — front desk in particular needs to free a
+    // spot when a member calls to say they're not coming, even moments before
+    // (or just after) the class starts.
+    const isStaff = roleAtLeast(membership.role, "COACH");
+    if (!isOwner && !isStaff) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -146,10 +149,10 @@ export async function PUT(
     if (status === "CANCELLED") {
       const windowMs = await getCancellationWindowMs(tenant.id);
 
-      // Staff (admin/coach) can override the cancellation policy: force a
-      // credit refund (bypassing the cancellation window) or force forfeiture,
-      // regardless of timing. Members get the standard window-based behaviour.
-      const isStaff = isAdmin || isCoach;
+      // Staff (coach/front-desk/admin) can override the cancellation policy:
+      // force a credit refund (bypassing the cancellation window) or force
+      // forfeiture, regardless of timing. Members get the standard
+      // window-based behaviour.
       const refundOverride =
         isStaff && typeof body.refundCredit === "boolean"
           ? (body.refundCredit as boolean)
