@@ -28,6 +28,7 @@ interface ClassItem {
   waitlistCount: number;
   isLive: boolean;
   isFinished: boolean;
+  recentlyFinished: boolean;
 }
 
 function formatDateLabel(date: Date, td: (key: string) => string): string {
@@ -323,6 +324,7 @@ export default function CheckInPage() {
                   capacity: selectedClass.capacity,
                   enrolledCount: selectedClass.enrolledCount,
                   isFinished: selectedClass.isFinished || isPastDate,
+                  recentlyFinished: selectedClass.recentlyFinished,
                 }}
               />
             </div>

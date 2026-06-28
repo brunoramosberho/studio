@@ -45,6 +45,7 @@ export async function GET(
         startsAt: true,
         endsAt: true,
         coachId: true,
+        waitlistSnapshot: true,
         room: {
           select: { id: true, name: true, maxCapacity: true, layout: true },
         },
@@ -284,7 +285,29 @@ export async function GET(
       memberImage: w.user.image,
       position: w.position,
       since: w.createdAt.toISOString(),
+      released: false,
     }));
+
+    // For a past class the live entries are gone (refunded + cleared at start),
+    // so fall back to the snapshot taken then — shown read-only as "was on the
+    // waitlist" so staff can see who had been waiting.
+    if (waitlistData.length === 0 && Array.isArray(cls.waitlistSnapshot)) {
+      const snap = cls.waitlistSnapshot as {
+        userId: string;
+        name: string | null;
+        image: string | null;
+      }[];
+      snap.forEach((s, i) => {
+        waitlistData.push({
+          memberId: s.userId,
+          memberName: s.name,
+          memberImage: s.image,
+          position: i + 1,
+          since: cls.startsAt.toISOString(),
+          released: true,
+        });
+      });
+    }
 
     // ── Wellhub bookings on this class ───────────────────────────────────
     // Surfaced as a separate list so the UI can render them with a Wellhub

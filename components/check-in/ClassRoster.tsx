@@ -81,6 +81,8 @@ interface WaitlistMember {
   memberImage: string | null;
   position: number;
   since: string;
+  /** Historical snapshot entry (class already started) — shown read-only. */
+  released?: boolean;
 }
 
 interface WellhubBooking {
@@ -118,6 +120,8 @@ interface ClassInfo {
   capacity: number;
   enrolledCount: number;
   isFinished: boolean;
+  /** Finished, but recently enough that late attendance registration is allowed. */
+  recentlyFinished?: boolean;
 }
 
 interface ClassRosterProps {
@@ -220,6 +224,12 @@ function AttendeeTags({ stats }: { stats: AttendeeStats }) {
 export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const queryClient = useQueryClient();
   const t = useTranslations("checkin");
+  // Actions (check-in, walk-in, no-show, promote) stay enabled while the class
+  // is live/upcoming, and also for a short window after it ends so front desk
+  // can register someone who was missed. `recentlyFinished` is computed server-
+  // side (24h after end) to keep this render pure.
+  const canEdit = !classInfo.isFinished || classInfo.recentlyFinished === true;
+  const lateRegistration = classInfo.isFinished && canEdit;
   const [searchQuery, setSearchQuery] = useState("");
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [walkInQuery, setWalkInQuery] = useState("");
@@ -397,7 +407,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
   const handleCheckIn = useCallback(
     (member: RosterMember) => {
-      if (classInfo.isFinished) return;
+      if (!canEdit) return;
       if (member.waiverPending && blockWaiver) {
         setWaiverConfirm(member.memberId);
         return;
@@ -417,7 +427,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           : { memberId: member.memberId, method: "manual" },
       );
     },
-    [classInfo.isFinished, classInfo.startTime, addOptimistic, checkInMutation, blockWaiver],
+    [canEdit, classInfo.startTime, addOptimistic, checkInMutation, blockWaiver],
   );
 
   const confirmPaymentCheckIn = useCallback(() => {
@@ -433,10 +443,10 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
   const handleUndoRequest = useCallback(
     (memberId: string) => {
-      if (classInfo.isFinished) return;
+      if (!canEdit) return;
       setUndoConfirm(memberId);
     },
-    [classInfo.isFinished],
+    [canEdit],
   );
 
   const confirmUndo = useCallback(() => {
@@ -651,8 +661,15 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
       {/* Finished banner */}
       {classInfo.isFinished && (
-        <div className="px-4 py-2 bg-stone-100 text-stone-500 text-xs text-center border-b border-stone-100 dark:bg-surface dark:text-muted dark:border-border/60">
-          {t("classFinished")}
+        <div
+          className={cn(
+            "px-4 py-2 text-xs text-center border-b",
+            lateRegistration
+              ? "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20"
+              : "bg-stone-100 text-stone-500 border-stone-100 dark:bg-surface dark:text-muted dark:border-border/60",
+          )}
+        >
+          {lateRegistration ? t("classFinishedLate") : t("classFinished")}
         </div>
       )}
 
@@ -692,7 +709,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                       return;
                     }
                     // Free spot + a selection armed → move the occupant here.
-                    if (selectedSpot != null && !classInfo.isFinished) {
+                    if (selectedSpot != null && canEdit) {
                       const bookingId = bookingIdForSpot(selectedSpot);
                       if (bookingId) {
                         moveSpotMutation.mutate({ bookingId, spotNumber: spot });
@@ -701,7 +718,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                       return;
                     }
                     // Free spot, nothing selected → open the walk-in flow.
-                    if (!classInfo.isFinished) {
+                    if (canEdit) {
                       setWalkInSpot(spot);
                       setWalkInOpen(true);
                     }
@@ -710,7 +727,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                   coachName={classInfo.coachName}
                   revealOccupants
                 />
-                {selectedSpot != null && !classInfo.isFinished ? (
+                {selectedSpot != null && canEdit ? (
                   <p className="mt-2 text-center text-[11px] text-accent">
                     {t("moveHint", { name: selectedName })}{" "}
                     <button
@@ -749,7 +766,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
             <RosterRow
               key={member.memberId}
               member={member}
-              isFinished={classInfo.isFinished}
+              isFinished={!canEdit}
               onCheckIn={() => handleCheckIn(member)}
               onUndoRequest={() => handleUndoRequest(member.memberId)}
               onPhotoClick={member.memberImage
@@ -783,7 +800,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           <WellhubBookingsSection
             bookings={wellhubBookings}
             classId={classId}
-            isFinished={classInfo.isFinished}
+            isFinished={!canEdit}
           />
         )}
 
@@ -792,14 +809,14 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           <WaitlistSection
             waitlist={waitlist}
             classId={classId}
-            isFinished={classInfo.isFinished}
+            isFinished={!canEdit}
             capacity={classInfo.capacity}
             enrolled={enrolledCount}
           />
         )}
 
         {/* Walk-in button */}
-        {!classInfo.isFinished && (
+        {canEdit && (
           <div className="px-3 sm:px-4 py-3">
             <button
               onClick={() => setWalkInOpen(true)}
@@ -1557,7 +1574,7 @@ function WaitlistSection({
   return (
     <div className="bg-stone-50 border-t border-stone-100 px-4 py-3 dark:bg-surface/40 dark:border-border/60">
       <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-2 dark:text-muted">
-        {t("waitlist")}
+        {waitlist.some((w) => !w.released) ? t("waitlist") : t("waitlistPast")}
       </p>
       {waitlist.map((w) => (
         <div key={w.memberId} className="flex items-center gap-3 py-1.5">
@@ -1565,6 +1582,7 @@ function WaitlistSection({
             className={cn(
               "w-[26px] h-[26px] rounded-full flex items-center justify-center text-[10px] font-medium shrink-0",
               getAvatarColor(w.memberId),
+              w.released && "opacity-70",
             )}
           >
             {(w.memberName ?? "?")[0].toUpperCase()}
@@ -1572,10 +1590,12 @@ function WaitlistSection({
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-stone-700 truncate dark:text-foreground">{w.memberName}</p>
             <p className="text-[10px] text-stone-400 dark:text-muted">
-              {t("waitingSince")} {format(new Date(w.since), "HH:mm", { locale: es })}
+              {w.released
+                ? t("wasOnWaitlist")
+                : `${t("waitingSince")} ${format(new Date(w.since), "HH:mm", { locale: es })}`}
             </p>
           </div>
-          {!isFinished && (
+          {!isFinished && !w.released && (
             <button
               onClick={() => promoteMutation.mutate({ memberId: w.memberId, force: false })}
               disabled={promoteMutation.isPending}

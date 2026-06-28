@@ -59,6 +59,12 @@ export async function GET(request: NextRequest) {
       waitlistCount: c._count.waitlist,
       isLive: now >= c.startsAt && now <= c.endsAt,
       isFinished: now > c.endsAt,
+      // Finished but still within the late-registration window — front desk can
+      // still register a missed attendee or mark a no-show for a short while
+      // after the class ends.
+      recentlyFinished:
+        now > c.endsAt &&
+        now.getTime() - c.endsAt.getTime() < 24 * 60 * 60 * 1000,
     }));
 
     return NextResponse.json(result);

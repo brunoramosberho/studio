@@ -776,6 +776,10 @@ model Class {
   recurringId          String?
   notes                String?
   tag                  String?
+  // Snapshot of who was still on the waitlist when the class started (the live
+  // entries are refunded + cleared at that point). Lets the check-in roster
+  // show "was on the waitlist" for past classes. Shape: [{ userId, name, image }].
+  waitlistSnapshot     Json?
   bookings             Booking[]
   waitlist             Waitlist[]
   spotNotifyMe         ClassNotifyMe[]

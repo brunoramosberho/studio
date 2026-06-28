@@ -298,7 +298,13 @@ export async function refundAndClearWaitlist(
 ) {
   const entries = await prisma.waitlist.findMany({
     where: { classId, tenantId },
-    select: { id: true, packageUsed: true, userId: true },
+    orderBy: { position: "asc" },
+    select: {
+      id: true,
+      packageUsed: true,
+      userId: true,
+      user: { select: { name: true, image: true } },
+    },
   });
 
   for (const entry of entries) {
@@ -306,6 +312,18 @@ export async function refundAndClearWaitlist(
   }
 
   if (entries.length > 0) {
+    // Preserve who was still waiting (for the "was on the waitlist" view on past
+    // classes) before clearing the live entries.
+    await prisma.class.update({
+      where: { id: classId },
+      data: {
+        waitlistSnapshot: entries.map((e) => ({
+          userId: e.userId,
+          name: e.user?.name ?? null,
+          image: e.user?.image ?? null,
+        })),
+      },
+    });
     await prisma.waitlist.deleteMany({ where: { classId, tenantId } });
   }
 
