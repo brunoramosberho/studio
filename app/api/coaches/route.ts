@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getTenant } from "@/lib/tenant";
-import { computeVisibleUntil, resolveScheduleTimezone } from "@/lib/schedule/visibility";
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,13 +25,9 @@ export async function GET(request: NextRequest) {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-    // Occupancy should reflect only what members can actually book: past classes
-    // + future classes within the schedule-visibility window. Future classes
-    // beyond the booking horizon sit at ~0 bookings simply because nobody can
-    // book them yet, which unfairly drags the average down.
-    const scheduleTimezone = await resolveScheduleTimezone(tenant);
-    const visibleUntil = computeVisibleUntil(now, tenant, scheduleTimezone);
-
+    // Occupancy should reflect only classes that have already taken place. Future
+    // classes are still filling up (and may be beyond the booking horizon), so
+    // counting them would unfairly drag the average down.
     const coachIds = coaches.map((c) => c.id);
 
     const classesThisMonthRaw = await prisma.class.findMany({
@@ -108,8 +103,8 @@ export async function GET(request: NextRequest) {
       let totalOccupancy = 0;
       let classesWithCapacity = 0;
       for (const cls of coachClasses) {
-        // Only count classes that are (or were) open for booking.
-        if (cls.startsAt > visibleUntil) continue;
+        // Only count classes that have already taken place — skip future ones.
+        if (cls.startsAt >= now) continue;
         if (cls.room.maxCapacity > 0) {
           totalOccupancy += cls._count.bookings / cls.room.maxCapacity;
           classesWithCapacity++;
