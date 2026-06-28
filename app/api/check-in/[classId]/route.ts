@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { getMemberWaiverStatus } from "@/lib/waiver/status";
+import { reconcileCreditOnLateAttendance } from "@/lib/credits";
 
 export async function POST(
   request: NextRequest,
@@ -75,16 +76,50 @@ export async function POST(
       },
     });
 
-    // Sync: also mark booking as ATTENDED
-    prisma.booking.updateMany({
-      where: {
-        classId,
-        userId: memberId,
-        tenantId: ctx.tenant.id,
-        status: { in: ["CONFIRMED", "NO_SHOW"] },
-      },
-      data: { status: "ATTENDED" },
-    }).catch((err) => console.error("Check-in booking sync failed:", err));
+    // Sync: mark the booking ATTENDED. If we're correcting a no-show (the member
+    // turned up after being marked absent), also revert any queued penalty and
+    // restore a credit that was forfeited — otherwise an attendee would still be
+    // penalised when the pending penalty auto-confirms.
+    (async () => {
+      const bk = await prisma.booking.findFirst({
+        where: {
+          classId,
+          userId: memberId,
+          tenantId: ctx.tenant.id,
+          status: { in: ["CONFIRMED", "NO_SHOW"] },
+        },
+        include: { class: { select: { classTypeId: true } } },
+      });
+      if (!bk) return;
+      await prisma.booking.update({
+        where: { id: bk.id },
+        data: { status: "ATTENDED" },
+      });
+      if (bk.status !== "NO_SHOW") return;
+      // Waive the pending FEE (they came, so no penalty)...
+      const pending = await prisma.pendingPenalty.findUnique({
+        where: { bookingId: bk.id },
+      });
+      if (pending && pending.status === "pending") {
+        await prisma.pendingPenalty.update({
+          where: { id: pending.id },
+          data: {
+            status: "reverted",
+            resolvedAt: new Date(),
+            resolvedBy: ctx.session.user.id,
+            resolutionNote: "Reverted: member checked in",
+          },
+        });
+      }
+      // ...but the class credit stays consumed — they attended, so it pays for
+      // the class (re-consumed if a lenient no-show had refunded it).
+      await reconcileCreditOnLateAttendance({
+        bookingId: bk.id,
+        packageUsed: bk.packageUsed,
+        creditLost: bk.creditLost,
+        classTypeId: bk.class.classTypeId,
+      });
+    })().catch((err) => console.error("Check-in booking sync failed:", err));
 
     updateLifecycle(memberId, ctx.tenant.id, "attended").catch(
       (err) => console.error("Lifecycle update (attended) failed:", err),

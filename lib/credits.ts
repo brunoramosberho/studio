@@ -163,6 +163,43 @@ export async function deductCredit(
 }
 
 /**
+ * A member marked no-show later turns out to have attended (front desk checks
+ * them in / an admin corrects the status). The class credit must end up
+ * consumed, exactly like a normal attendance — the credit was deducted at
+ * booking, so:
+ *  - a strict no-show kept it consumed (creditLost) → keep it, just clear the
+ *    "forfeited" flag (it now pays for the attended class);
+ *  - a lenient no-show refunded it (creditLost = false) → re-consume it.
+ * Unlimited packs never consume a credit, so they are left untouched. The
+ * monetary fee (the pending penalty) is reverted separately by the caller.
+ */
+export async function reconcileCreditOnLateAttendance(args: {
+  bookingId: string;
+  packageUsed: string | null;
+  creditLost: boolean;
+  classTypeId: string;
+}): Promise<void> {
+  const { bookingId, packageUsed, creditLost, classTypeId } = args;
+  if (!packageUsed) return;
+
+  if (creditLost) {
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { creditLost: false },
+    });
+    return;
+  }
+
+  const pkg = await prisma.userPackage.findUnique({
+    where: { id: packageUsed },
+    select: { creditsTotal: true },
+  });
+  if (pkg && pkg.creditsTotal !== null) {
+    await deductCredit(packageUsed, classTypeId);
+  }
+}
+
+/**
  * Restore one credit to the correct counter (allocation row or single pool).
  */
 export async function restoreCredit(

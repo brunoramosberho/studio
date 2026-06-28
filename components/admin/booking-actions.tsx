@@ -26,12 +26,19 @@ export function CancelBookingDialog({
   bookingId,
   memberName,
   onSuccess,
+  autoPromote = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bookingId: string | null;
   memberName: string;
   onSuccess?: () => void;
+  /**
+   * Whether cancelling should auto-promote the waitlist. The check-in surface
+   * passes false so the freed seat is filled manually (the present person),
+   * not automatically by waitlist position.
+   */
+  autoPromote?: boolean;
 }) {
   const t = useTranslations("admin");
   const [refundCredit, setRefundCredit] = useState(true);
@@ -41,7 +48,7 @@ export function CancelBookingDialog({
       const res = await fetch(`/api/bookings/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "CANCELLED", refundCredit: refund }),
+        body: JSON.stringify({ status: "CANCELLED", refundCredit: refund, autoPromote }),
       });
       if (!res.ok) throw new Error("cancel failed");
       return res.json();

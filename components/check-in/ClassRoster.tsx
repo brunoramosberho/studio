@@ -34,7 +34,7 @@ import {
   CancelBookingDialog,
   MoveBookingDialog,
 } from "@/components/admin/booking-actions";
-import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2, MoreVertical } from "lucide-react";
+import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2, MoreVertical, UserX } from "lucide-react";
 import { createPortal } from "react-dom";
 
 // ── Types ──
@@ -270,6 +270,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   // Cancel / move a member's booking from the check-in roster.
   const [cancelTarget, setCancelTarget] = useState<RosterMember | null>(null);
   const [moveTarget, setMoveTarget] = useState<RosterMember | null>(null);
+  const [noShowTarget, setNoShowTarget] = useState<RosterMember | null>(null);
 
   const [optimisticRoster, addOptimistic] = useOptimistic(
     roster,
@@ -321,6 +322,32 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       return res.json();
     },
     onSuccess: () => invalidateClassData(),
+    onError: (err: Error) => {
+      toast.error(err.message);
+      invalidateClassData();
+    },
+  });
+
+  // Mark a member as no-show: frees the seat (no auto-promotion) and records
+  // the absence per the tenant's policy. The freed seat is then filled manually
+  // via Promote (waitlist) or Walk-in.
+  const noShowMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "NO_SHOW" }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? t("noShowError"));
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.success(t("noShowMarked"));
+      invalidateClassData();
+    },
     onError: (err: Error) => {
       toast.error(err.message);
       invalidateClassData();
@@ -742,6 +769,11 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
               }
               onMove={member.isGuest ? undefined : () => setMoveTarget(member)}
               onCancel={member.isGuest ? undefined : () => setCancelTarget(member)}
+              onNoShow={
+                member.isGuest || member.bookingStatus === "NO_SHOW"
+                  ? undefined
+                  : () => setNoShowTarget(member)
+              }
             />
           ))
         )}
@@ -878,6 +910,24 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           bookingId={cancelTarget.bookingId}
           memberName={cancelTarget.memberName ?? "—"}
           onSuccess={() => invalidateClassData()}
+          autoPromote={false}
+        />
+      )}
+
+      {noShowTarget && (
+        <ConfirmDialog
+          icon={<UserX className="h-5 w-5 shrink-0 text-amber-500" />}
+          title={t("noShowConfirmTitle")}
+          description={t("noShowConfirmDesc", {
+            name: noShowTarget.memberName ?? t("thisMember"),
+          })}
+          confirmLabel={t("noShowConfirm")}
+          confirmClassName="bg-amber-500 text-white hover:bg-amber-600"
+          onConfirm={() => {
+            noShowMutation.mutate(noShowTarget.bookingId);
+            setNoShowTarget(null);
+          }}
+          onCancel={() => setNoShowTarget(null)}
         />
       )}
 
@@ -1086,6 +1136,7 @@ function RosterRow({
   onSelectSpot,
   onMove,
   onCancel,
+  onNoShow,
 }: {
   member: RosterMember;
   isFinished: boolean;
@@ -1096,8 +1147,10 @@ function RosterRow({
   onSelectSpot?: () => void;
   onMove?: () => void;
   onCancel?: () => void;
+  onNoShow?: () => void;
 }) {
   const isCheckedIn = !!member.checkIn;
+  const isNoShow = member.bookingStatus === "NO_SHOW";
   const isLate = member.checkIn?.status === "late";
   const hasBirthday = member.stats?.birthdayLabel === "today";
   const hasPhoto = !!member.memberImage;
@@ -1132,6 +1185,7 @@ function RosterRow({
         isCheckedIn ? "bg-emerald-50/70 dark:bg-emerald-500/10" : "hover:bg-stone-50 dark:hover:bg-surface/60",
         hasBirthday && !isCheckedIn && "bg-pink-50/50 dark:bg-pink-500/10",
         hasBirthday && isCheckedIn && "bg-gradient-to-r from-emerald-50/70 to-pink-50/50 dark:from-emerald-500/10 dark:to-pink-500/10",
+        isNoShow && "bg-amber-50/40 opacity-70 dark:bg-amber-500/5",
         isSelected && "ring-2 ring-inset ring-accent/60 bg-accent/5 dark:bg-accent/10",
       )}
     >
@@ -1182,6 +1236,11 @@ function RosterRow({
           {member.isGuest && (
             <span className="inline-flex shrink-0 items-center rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
               {tc("guest")}
+            </span>
+          )}
+          {isNoShow && (
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+              <UserX size={10} /> {tc("noShowBadge")}
             </span>
           )}
           {member.spotNumber != null && onSelectSpot && (
@@ -1255,11 +1314,22 @@ function RosterRow({
           </div>
         ) : (
           <div className="flex items-center gap-0.5">
-            {!isFinished && (onMove || onCancel) && (
+            {!isFinished && (onMove || onCancel || onNoShow) && (
               <RowActionMenu
                 label={tc("moreOptions")}
                 actions={
                   [
+                    ...(onNoShow
+                      ? [
+                          {
+                            key: "noshow",
+                            label: tc("noShowBooking"),
+                            hint: tc("noShowBookingHint"),
+                            icon: <UserX size={16} />,
+                            onClick: onNoShow,
+                          },
+                        ]
+                      : []),
                     ...(onMove
                       ? [
                           {
@@ -1455,10 +1525,13 @@ function WaitlistSection({
   const t = useTranslations("checkin");
   const promoteMutation = useMutation({
     mutationFn: async ({ memberId, force }: { memberId: string; force: boolean }) => {
-      const res = await fetch("/api/check-in/walkin", {
+      // Proper waitlist promotion: reuses the credit the entry already holds (no
+      // double charge), removes the waitlist entry, and — since the person is at
+      // the desk — marks them attended in one step.
+      const res = await fetch(`/api/waitlist/${classId}/promote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ classId, memberId, force }),
+        body: JSON.stringify({ memberId, markAttended: true, force }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {

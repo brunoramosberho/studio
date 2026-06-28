@@ -43,12 +43,43 @@ export async function reorderWaitlistPositions(
   );
 }
 
+export interface PromoteOptions {
+  /** Promote this specific waitlist entry instead of the first by position. */
+  waitlistEntryId?: string;
+  /** Promote the entry held by this member (alternative selector). */
+  memberId?: string;
+  /**
+   * Mark the promoted booking ATTENDED + create a CheckIn in one step. Used at
+   * the front desk when the person is physically present (e.g. someone from the
+   * waitlist already at the studio), so they don't need a second check-in tap.
+   */
+  markAttended?: boolean;
+  /** Staff user id recorded on the CheckIn when markAttended is set. */
+  checkedInBy?: string;
+  /** Bypass the capacity guard (staff override for a full room). */
+  force?: boolean;
+  /**
+   * Send the "you got a spot" push/email. Defaults to false when markAttended
+   * (the person is already here) and true otherwise.
+   */
+  notify?: boolean;
+}
+
 /**
- * Promote the first person on the waitlist for a class into a confirmed booking.
- * Handles: create booking, delete waitlist entry, reorder, send email + push.
- * Returns the created booking or null if the waitlist is empty.
+ * Promote someone on the waitlist for a class into a booking. By default takes
+ * the first by position and creates a CONFIRMED booking, reusing the credit the
+ * waitlist entry already holds (no double charge), deleting the entry, and
+ * notifying them. Options allow promoting a specific person and/or marking them
+ * attended on the spot (front-desk use). Returns the booking, or null if there
+ * is no matching entry or the room is full (and not forced).
  */
-export async function promoteFromWaitlist(classId: string, tenantId: string) {
+export async function promoteFromWaitlist(
+  classId: string,
+  tenantId: string,
+  options: PromoteOptions = {},
+) {
+  const { waitlistEntryId, memberId, markAttended = false, checkedInBy, force = false } = options;
+  const shouldNotify = options.notify ?? !markAttended;
   const classData = await prisma.class.findUnique({
     where: { id: classId },
     include: {
@@ -77,10 +108,14 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
     classData._count.bookings -
     classData._count.blockedSpots -
     platformBooked;
-  if (spotsLeft <= 0) return null;
+  if (spotsLeft <= 0 && !force) return null;
 
   const first = await prisma.waitlist.findFirst({
-    where: { classId, tenantId },
+    where: waitlistEntryId
+      ? { id: waitlistEntryId, classId, tenantId }
+      : memberId
+        ? { classId, tenantId, userId: memberId }
+        : { classId, tenantId },
     orderBy: { position: "asc" },
     include: {
       user: { select: { id: true, name: true, email: true } },
@@ -140,7 +175,7 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
     tenantId,
     classId,
     userId: first.userId,
-    status: "CONFIRMED" as const,
+    status: markAttended ? ("ATTENDED" as const) : ("CONFIRMED" as const),
     packageUsed: first.packageUsed,
   };
   const booking = await prisma.booking
@@ -167,39 +202,66 @@ export async function promoteFromWaitlist(classId: string, tenantId: string) {
   await prisma.waitlist.delete({ where: { id: first.id } });
   await reorderWaitlistPositions(classId, tenantId);
 
+  // Front-desk promotion of someone already present: record attendance now so
+  // they appear checked-in on the roster without a second tap.
+  if (markAttended) {
+    await prisma.checkIn
+      .upsert({
+        where: { classId_memberId: { classId, memberId: first.userId } },
+        create: {
+          tenantId,
+          classId,
+          memberId: first.userId,
+          checkedInBy: checkedInBy ?? first.userId,
+          method: "manual",
+          status: new Date() > first.class.startsAt ? "late" : "present",
+        },
+        update: {},
+      })
+      .catch((err) => console.error("Promote→CheckIn sync failed:", err));
+
+    import("@/lib/referrals/lifecycle")
+      .then(({ updateLifecycle }) => updateLifecycle(first.userId, tenantId, "attended"))
+      .catch((err) => console.error("Promote lifecycle update failed:", err));
+  }
+
   const userName = first.user.name ?? "Cliente";
   const cls = first.class;
 
-  sendPushToUser(first.userId, {
-    title: "¡Entraste a la clase!",
-    body: `Se liberó un lugar en ${cls.classType.name} y ya tienes tu reserva.`,
-    url: `/class/${classId}`,
-    tag: `waitlist-promoted-${classId}`,
-  }, tenantId).catch(() => {});
+  // Skip the "you got a spot" notifications when the person is already at the
+  // desk (markAttended) — they don't need to be told they got in.
+  if (shouldNotify) {
+    sendPushToUser(first.userId, {
+      title: "¡Entraste a la clase!",
+      body: `Se liberó un lugar en ${cls.classType.name} y ya tienes tu reserva.`,
+      url: `/class/${classId}`,
+      tag: `waitlist-promoted-${classId}`,
+    }, tenantId).catch(() => {});
 
-  if (first.user.email) {
-    const hideCoach = shouldHideCoach(tenantHide, { endsAt: cls.endsAt });
-    sendWaitlistPromotion({
-      to: first.user.email,
-      name: userName,
-      className: cls.classType.name,
-      coachName: hideCoach ? null : cls.coach.name,
-      date: cls.startsAt,
-      startTime: cls.startsAt,
-      location: cls.room?.studio?.name ?? undefined,
-      timezone: cls.room?.studio?.city?.timezone,
-    }).catch(() => {});
+    if (first.user.email) {
+      const hideCoach = shouldHideCoach(tenantHide, { endsAt: cls.endsAt });
+      sendWaitlistPromotion({
+        to: first.user.email,
+        name: userName,
+        className: cls.classType.name,
+        coachName: hideCoach ? null : cls.coach.name,
+        date: cls.startsAt,
+        startTime: cls.startsAt,
+        location: cls.room?.studio?.name ?? undefined,
+        timezone: cls.room?.studio?.city?.timezone,
+      }).catch(() => {});
+    }
+
+    prisma.notification
+      .create({
+        data: {
+          tenantId,
+          userId: first.userId,
+          type: "WAITLIST_PROMOTED",
+        },
+      })
+      .catch(() => {});
   }
-
-  prisma.notification
-    .create({
-      data: {
-        tenantId,
-        userId: first.userId,
-        type: "WAITLIST_PROMOTED",
-      },
-    })
-    .catch(() => {});
 
   return booking;
 }

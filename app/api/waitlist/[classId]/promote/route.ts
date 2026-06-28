@@ -1,18 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { promoteFromWaitlist } from "@/lib/waitlist";
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ classId: string }> },
 ) {
   try {
-    const { tenant } = await requireRole("ADMIN", "FRONT_DESK");
+    const { tenant, session } = await requireRole("ADMIN", "FRONT_DESK");
     const { classId } = await params;
+    const body = await request.json().catch(() => ({}));
+    const { entryId, memberId, markAttended, force } = body as {
+      entryId?: string;
+      memberId?: string;
+      markAttended?: boolean;
+      force?: boolean;
+    };
 
-    const booking = await promoteFromWaitlist(classId, tenant.id);
+    const booking = await promoteFromWaitlist(classId, tenant.id, {
+      waitlistEntryId: entryId,
+      memberId,
+      markAttended: markAttended === true,
+      checkedInBy: session.user.id,
+      force: force === true,
+    });
 
     if (!booking) {
+      // Distinguish a full room (front desk can force) from an empty/stale
+      // waitlist so the UI can prompt for confirmation vs. just refresh.
+      const remaining = await prisma.waitlist.count({
+        where: { classId, tenantId: tenant.id },
+      });
+      if (remaining > 0 && force !== true) {
+        return NextResponse.json(
+          { error: "Class is full", requiresConfirmation: true },
+          { status: 409 },
+        );
+      }
       return NextResponse.json(
         { error: "Waitlist is empty" },
         { status: 404 },

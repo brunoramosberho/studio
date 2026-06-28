@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, roleAtLeast } from "@/lib/tenant";
 import { checkAchievements, createGroupedAchievementEvents } from "@/lib/achievements";
-import { restoreCredit } from "@/lib/credits";
+import { restoreCredit, reconcileCreditOnLateAttendance } from "@/lib/credits";
 import {
   createPendingPenalty,
   hasAnyPenalty,
@@ -115,6 +115,11 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     const { status } = body;
+    // Whether freeing this seat should auto-promote the waitlist. Defaults to
+    // true (member self-cancel from /my wants the seat refilled + notified).
+    // The check-in surface passes false so front desk keeps manual control at
+    // class time (promote the person who's actually present, not just #1).
+    const autoPromote = body.autoPromote !== false;
 
     if (!status || !["ATTENDED", "NO_SHOW", "CANCELLED"].includes(status)) {
       return NextResponse.json(
@@ -252,7 +257,10 @@ export async function PUT(
       data: {
         status,
         ...(status === "CANCELLED" ? { spotNumber: null, creditLost } : {}),
-        ...(status === "NO_SHOW" ? { creditLost } : {}),
+        // No-show vacates the seat too: free the spot so the room map opens it
+        // up for a walk-in / manual promotion (the row stays as a no-show
+        // record, just without a physical spot).
+        ...(status === "NO_SHOW" ? { spotNumber: null, creditLost } : {}),
       },
       include: {
         class: {
@@ -283,10 +291,13 @@ export async function PUT(
 
       // Free the seat across all channels: promote Magic waitlist, notify
       // spot-watchers, and re-push availability to Wellhub so a freed seat
-      // resurfaces there too.
-      import("@/lib/platforms/wellhub")
-        .then(({ cascadeFreedSeat }) => cascadeFreedSeat(booking.classId, tenant.id))
-        .catch((err) => console.error("Cancel cascade failed:", err));
+      // resurfaces there too. Skipped when autoPromote is false (front-desk
+      // cancel at class time keeps manual control over who fills the spot).
+      if (autoPromote) {
+        import("@/lib/platforms/wellhub")
+          .then(({ cascadeFreedSeat }) => cascadeFreedSeat(booking.classId, tenant.id))
+          .catch((err) => console.error("Cancel cascade failed:", err));
+      }
     }
 
     if (status === "ATTENDED" && booking.userId) {
@@ -325,8 +336,9 @@ export async function PUT(
     }
 
     // Status change to ATTENDED (e.g. admin correcting an auto-marked no-show)
-    // should revert any pending penalty and refund the lost credit if it was
-    // going to be lost under the policy.
+    // waives any pending penalty fee. The class credit stays consumed — the
+    // member attended, so it pays for the class (a normal CONFIRMED→ATTENDED
+    // has no pending penalty and is skipped by the no-show guard below).
     if (status === "ATTENDED") {
       const pending = await prisma.pendingPenalty.findUnique({
         where: { bookingId: booking.id },
@@ -341,13 +353,14 @@ export async function PUT(
             resolutionNote: "Reverted: booking marked ATTENDED",
           },
         });
-        if (pending.loseCredit && booking.packageUsed && booking.creditLost) {
-          await restoreCredit(booking.packageUsed, booking.class.classTypeId);
-          await prisma.booking.update({
-            where: { id: booking.id },
-            data: { creditLost: false },
-          });
-        }
+      }
+      if (booking.status === "NO_SHOW") {
+        await reconcileCreditOnLateAttendance({
+          bookingId: booking.id,
+          packageUsed: booking.packageUsed,
+          creditLost: booking.creditLost,
+          classTypeId: booking.class.classTypeId,
+        });
       }
     }
 
