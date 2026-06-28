@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getAuthContext } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { capitalizeName, composeName, splitName } from "@/lib/utils";
 import { generateSignatureHash } from "@/lib/waiver/hash";
-import { generateSignedPdf } from "@/lib/waiver/pdf";
-import { uploadMedia } from "@/lib/supabase-storage";
+import { generateAndStoreWaiverPdf } from "@/lib/waiver/store-pdf";
 import { verifyWaiverToken } from "@/lib/waiver/token";
 
 async function resolveIdentity(req: NextRequest, body: Record<string, unknown>) {
@@ -169,67 +168,15 @@ export async function POST(req: NextRequest) {
         },
       });
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { name: true },
-  });
-
-  // PDF generation runs async — don't block the response
-  generatePdfInBackground(signatureRecord.id, waiver, tenant?.name ?? "", {
-    memberName: participantName,
-    phone,
-    birthDate,
-    signatureBase64: signatureData,
-    signatureHash,
-    ipAddress,
-    signedAt: signatureRecord.signedAt,
-  }).catch((err) => {
-    console.error("[waiver] PDF generation failed:", err);
-  });
+  // Generate + store the signed PDF after responding. `after()` guarantees the
+  // task runs to completion (unlike the previous fire-and-forget, which
+  // serverless could cut off when the response returned), so the download is
+  // reliably available — without making the member wait while signing.
+  after(() =>
+    generateAndStoreWaiverPdf(signatureRecord.id).catch((err) => {
+      console.error("[waiver] PDF generation failed:", err);
+    }),
+  );
 
   return NextResponse.json({ success: true, signatureId: signatureRecord.id });
-}
-
-async function generatePdfInBackground(
-  signatureId: string,
-  waiver: { id: string; title: string; content: string; version: number; tenantId: string },
-  studioName: string,
-  data: {
-    memberName: string;
-    phone?: string;
-    birthDate?: string;
-    signatureBase64: string;
-    signatureHash: string;
-    ipAddress: string;
-    signedAt: Date;
-  },
-) {
-  const pdfBytes = await generateSignedPdf({
-    waiverTitle: waiver.title,
-    waiverContent: waiver.content.replace(
-      /\{\{nombre_estudio\}\}/g,
-      studioName,
-    ).replace(
-      /\{\{nombre_cliente\}\}/g,
-      data.memberName,
-    ),
-    studioName,
-    memberName: data.memberName,
-    phone: data.phone,
-    birthDate: data.birthDate,
-    signatureBase64: data.signatureBase64,
-    signatureHash: data.signatureHash,
-    ipAddress: data.ipAddress,
-    signedAt: data.signedAt,
-    waiverVersion: waiver.version,
-  });
-
-  const filename = `waivers/${waiver.tenantId}/${signatureId}.pdf`;
-  const buffer = Buffer.from(pdfBytes);
-  const { url } = await uploadMedia(buffer, filename, "application/pdf");
-
-  await prisma.waiverSignature.update({
-    where: { id: signatureId },
-    data: { pdfStorageKey: url },
-  });
 }
