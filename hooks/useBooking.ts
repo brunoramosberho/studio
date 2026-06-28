@@ -10,6 +10,12 @@ interface BookingPayload {
   guests?: { name: string; email: string; spotNumber?: number }[];
 }
 
+interface AddGuestsPayload {
+  bookingId: string;
+  packageId?: string;
+  guests: { name: string; email: string; spotNumber?: number }[];
+}
+
 interface BookingError {
   error: string;
   full?: boolean;
@@ -41,6 +47,29 @@ export function useBooking() {
     },
   });
 
+  // Invite guests onto a booking the member already holds.
+  const addGuestsMutation = useMutation({
+    mutationFn: async ({ bookingId, ...payload }: AddGuestsPayload) => {
+      const res = await fetch(`/api/bookings/${bookingId}/guests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw { ...data, status: res.status } as BookingError;
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
+    },
+  });
+
   return {
     book: mutation.mutate,
     bookAsync: mutation.mutateAsync,
@@ -48,5 +77,7 @@ export function useBooking() {
     error: mutation.error as BookingError | null,
     data: mutation.data,
     reset: mutation.reset,
+    addGuestsAsync: addGuestsMutation.mutateAsync,
+    isAddingGuests: addGuestsMutation.isPending,
   };
 }
