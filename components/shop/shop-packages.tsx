@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { CheckCircle2, Gift, Package, RefreshCw } from "lucide-react";
+import { CheckCircle2, Gift, Package, RefreshCw, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PurchaseSheet } from "@/components/booking/purchase-sheet";
@@ -36,6 +36,7 @@ interface PackageData {
   includesOnDemand?: boolean;
   sortOrder: number;
   purchaseLimitReached?: boolean;
+  minCommitmentMonths?: number | null;
 }
 
 const isSub = (t: PackageData["type"]) => t === "SUBSCRIPTION" || t === "ON_DEMAND_SUBSCRIPTION";
@@ -154,6 +155,13 @@ export function ShopPackages() {
                         </span>
                       )}
                     </div>
+
+                    {isSub(pkg.type) && (pkg.minCommitmentMonths ?? 0) > 0 && (
+                      <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                        <Lock className="mt-0.5 h-3 w-3 shrink-0" />
+                        <span>{t("minCommitmentFeature", { months: pkg.minCommitmentMonths ?? 0 })}</span>
+                      </div>
+                    )}
 
                     <ul className="mt-3 flex-1 space-y-1.5">
                       {buildFeatures(pkg).map((f) => (
