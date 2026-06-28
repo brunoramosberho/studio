@@ -18,6 +18,7 @@ interface CatalogConfig {
       price: number;
       currency: string;
       recurringInterval: string | null;
+      minCommitmentMonths?: number | null;
     } | null;
   } | null;
 }
@@ -66,6 +67,7 @@ export function SubscribeOnDemandSheet({
         // On-demand is always unlimited access — `null` triggers the
         // "Unlimited classes" copy in SubscribeSheet.
         credits: null,
+        minCommitmentMonths: pkg.minCommitmentMonths ?? null,
       }}
       onSuccess={() => {
         qc.invalidateQueries({ queryKey: ["on-demand-catalog"] });

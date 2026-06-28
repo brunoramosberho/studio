@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { addMonths } from "date-fns";
 import { getSubscriptionPeriod, toStripeAmount } from "./helpers";
 import { prisma } from "@/lib/db";
 import { getStripeClientForTenantId } from "./tenant-stripe";
@@ -106,7 +107,7 @@ export async function createMemberSubscription({
 
   const pkg = await prisma.package.findUniqueOrThrow({
     where: { id: packageId },
-    select: { recurringInterval: true },
+    select: { recurringInterval: true, minCommitmentMonths: true },
   });
 
   const period = getSubscriptionPeriod(subscription);
@@ -120,6 +121,14 @@ export async function createMemberSubscription({
     pkg.recurringInterval === "year" ? 365 * 24 * 3600 : 30 * 24 * 3600;
   const periodEnd = period?.end ?? nowSec + intervalSec;
 
+  // Snapshot the minimum-commitment end from the package at signup, so later
+  // config changes never alter an existing member's commitment.
+  const commitmentMonths = pkg.minCommitmentMonths ?? 0;
+  const commitmentEndsAt =
+    commitmentMonths > 0
+      ? addMonths(new Date(periodStart * 1000), commitmentMonths)
+      : null;
+
   await prisma.memberSubscription.create({
     data: {
       tenantId,
@@ -130,6 +139,7 @@ export async function createMemberSubscription({
       status: subscription.status,
       currentPeriodStart: new Date(periodStart * 1000),
       currentPeriodEnd: new Date(periodEnd * 1000),
+      commitmentEndsAt,
     },
   });
 
@@ -162,17 +172,38 @@ export async function cancelMemberSubscription(
       where: { stripeSubscriptionId: subscriptionId },
       data: { status: "canceled", canceledAt: new Date() },
     });
-  } else {
+    return null;
+  }
+
+  // Still under the minimum commitment → schedule the cancellation for the
+  // commitment end (a fixed future date) rather than the next period end, so the
+  // member fulfils the term without having to come back and cancel later.
+  const underCommitment =
+    !!memberSub.commitmentEndsAt && new Date() < memberSub.commitmentEndsAt;
+
+  if (underCommitment) {
     await stripe.subscriptions.update(
       subscriptionId,
-      { cancel_at_period_end: true },
+      { cancel_at: Math.floor(memberSub.commitmentEndsAt!.getTime() / 1000) },
       { stripeAccount: memberSub.tenant.stripeAccountId },
     );
     await prisma.memberSubscription.update({
       where: { stripeSubscriptionId: subscriptionId },
-      data: { cancelAtPeriodEnd: true },
+      data: { cancelRequested: true },
     });
+    return { effectiveAt: memberSub.commitmentEndsAt!, underCommitment: true };
   }
+
+  await stripe.subscriptions.update(
+    subscriptionId,
+    { cancel_at_period_end: true },
+    { stripeAccount: memberSub.tenant.stripeAccountId },
+  );
+  await prisma.memberSubscription.update({
+    where: { stripeSubscriptionId: subscriptionId },
+    data: { cancelAtPeriodEnd: true },
+  });
+  return { effectiveAt: memberSub.currentPeriodEnd, underCommitment: false };
 }
 
 /**
@@ -195,15 +226,17 @@ export async function reactivateMemberSubscription(subscriptionId: string) {
 
   const stripe = await getStripeClientForTenantId(memberSub.tenantId);
 
+  // Clear both kinds of pending cancellation: `cancel_at_period_end` (normal)
+  // and a fixed `cancel_at` (commitment-scheduled).
   await stripe.subscriptions.update(
     subscriptionId,
-    { cancel_at_period_end: false },
+    { cancel_at_period_end: false, cancel_at: null },
     { stripeAccount: memberSub.tenant.stripeAccountId },
   );
 
   await prisma.memberSubscription.update({
     where: { stripeSubscriptionId: subscriptionId },
-    data: { cancelAtPeriodEnd: false },
+    data: { cancelAtPeriodEnd: false, cancelRequested: false },
   });
 }
 

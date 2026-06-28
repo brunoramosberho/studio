@@ -66,6 +66,7 @@ interface PackageData {
   maxBookingsPerDay: number | null;
   maxConcurrentUpcomingBookings: number | null;
   maxPurchasesPerCustomer: number | null;
+  minCommitmentMonths: number | null;
 }
 
 type PackageKind = PackageData["type"];
@@ -146,6 +147,7 @@ interface FormState {
   maxBookingsPerDay: string;
   maxConcurrentUpcomingBookings: string;
   maxPurchasesPerCustomer: string;
+  minCommitmentMonths: string;
 }
 
 function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
@@ -171,6 +173,7 @@ function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
     maxBookingsPerDay: "",
     maxConcurrentUpcomingBookings: "",
     maxPurchasesPerCustomer: "",
+    minCommitmentMonths: "",
   };
 }
 
@@ -208,6 +211,8 @@ function formFromPackage(pkg: PackageData, defaultCurrency = "EUR"): FormState {
       pkg.maxConcurrentUpcomingBookings == null ? "" : String(pkg.maxConcurrentUpcomingBookings),
     maxPurchasesPerCustomer:
       pkg.maxPurchasesPerCustomer == null ? "" : String(pkg.maxPurchasesPerCustomer),
+    minCommitmentMonths:
+      pkg.minCommitmentMonths == null ? "" : String(pkg.minCommitmentMonths),
   };
 }
 
@@ -277,6 +282,11 @@ function buildPayload(form: FormState) {
     maxPurchasesPerCustomer:
       form.type === "OFFER" && form.maxPurchasesPerCustomer.trim() !== ""
         ? parseInt(form.maxPurchasesPerCustomer, 10)
+        : null,
+    minCommitmentMonths:
+      (form.type === "SUBSCRIPTION" || form.type === "ON_DEMAND_SUBSCRIPTION") &&
+      form.minCommitmentMonths.trim() !== ""
+        ? parseInt(form.minCommitmentMonths, 10)
         : null,
   };
 }
@@ -904,6 +914,25 @@ export default function AdminPackagesPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            ) : null}
+
+            {form.type === "SUBSCRIPTION" || form.type === "ON_DEMAND_SUBSCRIPTION" ? (
+              <div>
+                <label className="mb-1 block text-sm font-medium" htmlFor="pkg-commitment">
+                  {t("minCommitmentLabel")}
+                </label>
+                <Input
+                  id="pkg-commitment"
+                  type="number"
+                  min={1}
+                  value={form.minCommitmentMonths}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, minCommitmentMonths: e.target.value }))
+                  }
+                  placeholder={t("minCommitmentPlaceholder")}
+                />
+                <p className="mt-1 text-xs text-muted">{t("minCommitmentHint")}</p>
               </div>
             ) : null}
 

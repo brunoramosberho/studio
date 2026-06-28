@@ -35,6 +35,8 @@ interface MemberSub {
   stripeSubscriptionId: string;
   status: string;
   cancelAtPeriodEnd: boolean;
+  cancelRequested: boolean;
+  commitmentEndsAt: string | null;
   currentPeriodStart: string;
   currentPeriodEnd: string;
   pausedAt: string | null;
@@ -148,7 +150,13 @@ export default function MembershipDetailPage() {
 
   async function handleCancel() {
     if (!subscription) return;
-    if (!confirm("¿Cancelar suscripción? Seguirás teniendo acceso hasta el fin del periodo actual.")) return;
+    const underCommitment =
+      !!subscription.commitmentEndsAt &&
+      new Date() < new Date(subscription.commitmentEndsAt);
+    const message = underCommitment
+      ? `Tu plan tiene permanencia mínima hasta el ${formatDateLong(subscription.commitmentEndsAt!)}. Tu suscripción seguirá activa y se cancelará automáticamente en esa fecha. ¿Continuar?`
+      : "¿Cancelar suscripción? Seguirás teniendo acceso hasta el fin del periodo actual.";
+    if (!confirm(message)) return;
     setCanceling(true);
     try {
       const res = await fetch("/api/stripe/member-subscription", {
@@ -157,7 +165,13 @@ export default function MembershipDetailPage() {
         body: JSON.stringify({ subscriptionId: subscription.stripeSubscriptionId }),
       });
       if (res.ok) {
-        setSubscription((prev) => prev ? { ...prev, cancelAtPeriodEnd: true } : prev);
+        setSubscription((prev) =>
+          prev
+            ? underCommitment
+              ? { ...prev, cancelRequested: true }
+              : { ...prev, cancelAtPeriodEnd: true }
+            : prev,
+        );
       }
     } catch {}
     setCanceling(false);
@@ -173,7 +187,9 @@ export default function MembershipDetailPage() {
         body: JSON.stringify({ subscriptionId: subscription.stripeSubscriptionId }),
       });
       if (res.ok) {
-        setSubscription((prev) => prev ? { ...prev, cancelAtPeriodEnd: false } : prev);
+        setSubscription((prev) =>
+          prev ? { ...prev, cancelAtPeriodEnd: false, cancelRequested: false } : prev,
+        );
       }
     } catch {}
     setReactivating(false);
@@ -282,6 +298,16 @@ function SubscriptionDetail({
   const isActive = sub.status === "active" || sub.status === "trialing";
   const periodEnd = formatDateLong(sub.currentPeriodEnd);
   const periodEndShort = formatDateShort(sub.currentPeriodEnd);
+  // A pending cancellation is either the normal "at period end" or a
+  // commitment-aware one (scheduled for the commitment end). The effective date
+  // differs: commitment end vs. current period end.
+  const pendingCancel = sub.cancelAtPeriodEnd || sub.cancelRequested;
+  const cancelDateRaw =
+    sub.cancelRequested && sub.commitmentEndsAt
+      ? sub.commitmentEndsAt
+      : sub.currentPeriodEnd;
+  const cancelDate = formatDateLong(cancelDateRaw);
+  const cancelDateShort = formatDateShort(cancelDateRaw);
 
   return (
     <PageTransition>
@@ -320,8 +346,8 @@ function SubscriptionDetail({
               </span>
               <span className="text-muted">·</span>
               <Badge variant={badge.variant}>{badge.text}</Badge>
-              {sub.cancelAtPeriodEnd && sub.status !== "canceled" && (
-                <Badge variant="warning">Cancela {periodEndShort}</Badge>
+              {pendingCancel && sub.status !== "canceled" && (
+                <Badge variant="warning">Cancela {cancelDateShort}</Badge>
               )}
             </div>
             <h1 className="mt-2 font-display text-2xl font-bold leading-tight text-foreground">
@@ -336,8 +362,8 @@ function SubscriptionDetail({
           <div className="flex items-center gap-2.5 text-sm text-muted">
             <Clock className="h-4 w-4 flex-shrink-0" />
             <span>
-              {sub.cancelAtPeriodEnd
-                ? `Acceso hasta: ${periodEnd}`
+              {pendingCancel
+                ? `Acceso hasta: ${cancelDate}`
                 : `Próxima renovación: ${periodEnd}`}
             </span>
           </div>
@@ -494,7 +520,7 @@ function SubscriptionDetail({
 
           {/* Actions */}
           <div className="space-y-3 pb-8">
-            {sub.cancelAtPeriodEnd && sub.status !== "canceled" ? (
+            {pendingCancel && sub.status !== "canceled" ? (
               <Button
                 variant="outline"
                 className="w-full rounded-full"
@@ -508,7 +534,7 @@ function SubscriptionDetail({
                 )}
                 Reactivar suscripción
               </Button>
-            ) : isActive && !sub.cancelAtPeriodEnd ? (
+            ) : isActive && !pendingCancel ? (
               <button
                 onClick={onCancel}
                 disabled={canceling}

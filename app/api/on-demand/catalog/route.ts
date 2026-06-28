@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
             price: true,
             currency: true,
             recurringInterval: true,
+            minCommitmentMonths: true,
           },
         },
       },

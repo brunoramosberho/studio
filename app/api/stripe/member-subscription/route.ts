@@ -171,7 +171,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    if (!memberSub.cancelAtPeriodEnd) {
+    if (!memberSub.cancelAtPeriodEnd && !memberSub.cancelRequested) {
       return NextResponse.json(
         { error: "Subscription is not pending cancellation" },
         { status: 400 },
@@ -221,9 +221,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await cancelMemberSubscription(subscriptionId, false);
+    const result = await cancelMemberSubscription(subscriptionId, false);
 
-    return NextResponse.json({ ok: true, cancelAtPeriodEnd: true });
+    return NextResponse.json({
+      ok: true,
+      cancelAtPeriodEnd: true,
+      effectiveAt: result?.effectiveAt ?? null,
+      underCommitment: result?.underCommitment ?? false,
+    });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Internal server error";

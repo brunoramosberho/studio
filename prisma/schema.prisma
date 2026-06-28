@@ -1044,6 +1044,10 @@ model Package {
   country           Country?    @relation(fields: [countryId], references: [id])
   classTypes        ClassType[] @relation("PackageClassTypes")
   recurringInterval String?
+  // Minimum commitment for subscription packages: the member can't end the
+  // subscription before this many months have elapsed (a requested cancellation
+  // is scheduled to take effect at the commitment end instead). Null/0 = none.
+  minCommitmentMonths Int?
   sortOrder         Int         @default(0)
 
   allowGuests         Boolean @default(false)
@@ -1106,6 +1110,14 @@ model MemberSubscription {
   currentPeriodStart   DateTime
   currentPeriodEnd     DateTime
   cancelAtPeriodEnd    Boolean   @default(false)
+  // Minimum-commitment end (snapshot of package.minCommitmentMonths at signup).
+  // Until this date, a member cancellation is scheduled for here, not the next
+  // period end. Null = no commitment.
+  commitmentEndsAt     DateTime?
+  // Member asked to cancel while still under commitment — Stripe is told to
+  // cancel at `commitmentEndsAt` (not the period end), so this is tracked
+  // separately from `cancelAtPeriodEnd` (which the webhook owns).
+  cancelRequested      Boolean   @default(false)
   pausedAt             DateTime?
   resumesAt            DateTime?
   canceledAt           DateTime?

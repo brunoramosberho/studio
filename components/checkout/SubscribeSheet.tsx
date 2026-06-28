@@ -12,6 +12,7 @@ import {
   X,
   Plus,
   ChevronRight,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaymentForm } from "@/components/checkout/PaymentForm";
@@ -27,6 +28,7 @@ interface SubscribeSheetProps {
     currency: string;
     recurringInterval: string | null;
     credits: number | null;
+    minCommitmentMonths?: number | null;
   };
   onSuccess?: () => void;
 }
@@ -221,6 +223,14 @@ export function SubscribeSheet({
                       {formatted}<span className="text-sm font-normal text-muted">/{interval}</span>
                     </p>
                   </div>
+                  {(pkg.minCommitmentMonths ?? 0) > 0 && (
+                    <div className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 dark:bg-amber-500/10">
+                      <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        {t("minCommitmentNotice", { months: pkg.minCommitmentMonths ?? 0 })}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Payment method section */}

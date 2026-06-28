@@ -207,9 +207,17 @@ export async function POST(request: NextRequest) {
     if (!perCustomerLimit.ok) {
       return NextResponse.json({ error: `maxPurchasesPerCustomer ${perCustomerLimit.error}` }, { status: 400 });
     }
+    const commitmentMonths = parseOptionalPositiveInt(body.minCommitmentMonths);
+    if (!commitmentMonths.ok) {
+      return NextResponse.json({ error: `minCommitmentMonths ${commitmentMonths.error}` }, { status: 400 });
+    }
     // Limits only make sense for SUBSCRIPTION packages — strip them on other types
     // so the form doesn't accidentally persist leftover values.
     const isSubscription = pkgType === PackageType.SUBSCRIPTION;
+    // Minimum commitment applies to both recurring subscription kinds.
+    const isRecurringSub =
+      pkgType === PackageType.SUBSCRIPTION ||
+      pkgType === PackageType.ON_DEMAND_SUBSCRIPTION;
 
     const created = await prisma.package.create({
       data: {
@@ -242,6 +250,7 @@ export async function POST(request: NextRequest) {
         maxBookingsPerDay: isSubscription ? dayLimit.v : null,
         maxConcurrentUpcomingBookings: isSubscription ? concurrentLimit.v : null,
         maxPurchasesPerCustomer: perCustomerLimit.v,
+        minCommitmentMonths: isRecurringSub ? commitmentMonths.v : null,
         ...(Array.isArray(classTypeIds) && classTypeIds.length > 0
           ? {
               classTypes: {
