@@ -24,6 +24,7 @@ import {
   CalendarPlus,
   Clock,
   Users,
+  UserPlus,
   ListMusic,
   Music,
   ChevronUp,
@@ -92,7 +93,14 @@ interface ClassData {
     name: string;
     user?: { name?: string | null; image?: string | null } | null;
   };
-  bookings: { id: string; userId: string | null; spotNumber: number | null; status: string }[];
+  bookings: {
+    id: string;
+    userId: string | null;
+    spotNumber: number | null;
+    status: string;
+    parentBookingId?: string | null;
+    guestName?: string | null;
+  }[];
   _count: { bookings: number; blockedSpots?: number; waitlist: number; songRequests?: number };
   spotsLeft: number;
   spotMap: Record<number, SpotInfo>;
@@ -140,7 +148,7 @@ export default function ClassDetailPage() {
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
   const queryClient = useQueryClient();
-  const { bookAsync, isBooking } = useBooking();
+  const { bookAsync, isBooking, addGuestsAsync, isAddingGuests } = useBooking();
   const isAuthenticated = authStatus === "authenticated";
   const { packages: userPackages, isLoading: packagesLoading } = usePackages(isAuthenticated);
 
@@ -177,6 +185,8 @@ export default function ClassDetailPage() {
   const [guests, setGuests] = useState<GuestEntry[]>([]);
   const [guestSpots, setGuestSpots] = useState<Record<number, number>>({}); // guestIndex → spotNumber
   const [selectingGuestSpot, setSelectingGuestSpot] = useState<number | null>(null); // index of guest we're assigning a spot to
+  const [addingGuests, setAddingGuests] = useState(false); // invite-a-guest panel open (after own booking)
+  const [guestAddError, setGuestAddError] = useState<string | null>(null);
 
   // /payment/success hands off here with ?bookedAfterPayment=1&spot=N&email=…
   // when a guest just paid + got their seat. Hydrate the local "you reserved"
@@ -341,6 +351,28 @@ export default function ClassDetailPage() {
   );
   const myBookedSpot = myBooking?.spotNumber ?? null;
 
+  // The booking we attach invited guests to: the member's existing reservation,
+  // or the one just created this session (before the class query refetches).
+  const parentBookingId = myBooking?.id ?? createdBookingId;
+
+  // Guests already invited onto this booking — so we never offer more than the
+  // package allows and can show who's already coming.
+  const myExistingGuests = (cls?.bookings ?? []).filter(
+    (b) =>
+      b.parentBookingId &&
+      parentBookingId &&
+      b.parentBookingId === parentBookingId &&
+      (b.status === "CONFIRMED" || b.status === "ATTENDED"),
+  );
+  const remainingGuestSlots =
+    guestConfig.maxGuests == null
+      ? null
+      : Math.max(0, guestConfig.maxGuests - myExistingGuests.length);
+
+  // Adding guests after booking only spends one credit per guest (the member
+  // already paid for their own spot).
+  const hasEnoughCreditsForGuests = availableCreditsForBooking >= guests.length;
+
   useEffect(() => {
     if (myBookedSpot) setSelectedSpot(null);
   }, [myBookedSpot]);
@@ -428,6 +460,30 @@ export default function ClassDetailPage() {
       handleDirectBook();
     } else {
       setSheetOpen(true);
+    }
+  }
+
+  // Invite guests onto an already-confirmed booking.
+  async function handleAddGuests() {
+    setGuestAddError(null);
+    if (!parentBookingId || guests.length === 0) return;
+    try {
+      await addGuestsAsync({
+        bookingId: parentBookingId,
+        packageId: validPackages[0]?.id,
+        guests: guests.map((g, i) => ({
+          ...g,
+          ...(guestSpots[i] != null && { spotNumber: guestSpots[i] }),
+        })),
+      });
+      setGuests([]);
+      setGuestSpots({});
+      setSelectingGuestSpot(null);
+      setAddingGuests(false);
+      await queryClient.refetchQueries({ queryKey: ["classes", id] });
+      queryClient.invalidateQueries({ queryKey: ["packages", "mine"] });
+    } catch (err: any) {
+      setGuestAddError(err.error || t("couldNotBook"));
     }
   }
 
@@ -983,7 +1039,7 @@ export default function ClassDetailPage() {
                     setError(null);
                   }}
                   myBookedSpot={myBookedSpot}
-                  disabled={!!myBooking || bookingSuccess}
+                  disabled={(!!myBooking || bookingSuccess) && selectingGuestSpot === null}
                   layout={cls.room.layout}
                   coachName={cls.coach.name}
                 />
@@ -1535,6 +1591,158 @@ export default function ClassDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Invite a guest onto your booking */}
+            {isAuthenticated &&
+              guestConfig.allowGuests &&
+              (!!myBooking || bookingSuccess) &&
+              parentBookingId && (
+                <div className="mt-4 space-y-3">
+                  {/* Guests already coming with you */}
+                  {myExistingGuests.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted/60">
+                        Tus invitados
+                      </p>
+                      {myExistingGuests.map((g) => (
+                        <div
+                          key={g.id}
+                          className="flex items-center gap-2.5 rounded-xl border border-border bg-surface/50 px-3 py-2"
+                        >
+                          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[11px] font-bold text-emerald-700">
+                            {g.spotNumber ?? "·"}
+                          </div>
+                          <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                            {g.guestName}
+                          </p>
+                          {g.spotNumber && (
+                            <span className="text-xs text-muted">
+                              {t("spotLabel")} {g.spotNumber}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {addingGuests ? (
+                    <div className="space-y-3 rounded-2xl border border-border/60 bg-card p-3">
+                      <GuestListInput
+                        guests={guests}
+                        onChange={(newGuests) => {
+                          setGuests(newGuests);
+                          setGuestSpots((prev) => {
+                            const cleaned: Record<number, number> = {};
+                            for (const [k, v] of Object.entries(prev)) {
+                              if (Number(k) < newGuests.length) cleaned[Number(k)] = v;
+                            }
+                            return cleaned;
+                          });
+                          if (
+                            selectingGuestSpot !== null &&
+                            selectingGuestSpot >= newGuests.length
+                          ) {
+                            setSelectingGuestSpot(null);
+                          }
+                        }}
+                        maxGuests={remainingGuestSlots}
+                        disabled={isAddingGuests}
+                        hasLayout={!!hasLayout}
+                        guestSpots={guestSpots}
+                        selectingGuestSpot={selectingGuestSpot}
+                        onSelectGuestSpot={(idx) => setSelectingGuestSpot(idx)}
+                        onRemoveGuestSpot={(idx) => {
+                          setGuestSpots((prev) => {
+                            const next = { ...prev };
+                            delete next[idx];
+                            return next;
+                          });
+                        }}
+                      />
+
+                      {guests.length > 0 && (
+                        <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3">
+                          <Users className="h-5 w-5 flex-shrink-0 text-accent" />
+                          <div className="flex-1 text-sm">
+                            <span className="font-medium text-foreground">
+                              {guests.length} crédito{guests.length > 1 ? "s" : ""}
+                            </span>
+                            <span className="text-muted">
+                              {" "}({guests.length} invitado{guests.length > 1 ? "s" : ""})
+                            </span>
+                          </div>
+                          {!hasEnoughCreditsForGuests &&
+                            availableCreditsForBooking !== Infinity && (
+                              <span className="text-xs font-medium text-red-600">
+                                Solo tienes {availableCreditsForBooking}
+                              </span>
+                            )}
+                        </div>
+                      )}
+
+                      {guestAddError && (
+                        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                          {guestAddError}
+                        </p>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button
+                          className="flex-1 rounded-full"
+                          onClick={handleAddGuests}
+                          disabled={
+                            isAddingGuests ||
+                            guests.length === 0 ||
+                            (!!hasLayout &&
+                              Object.keys(guestSpots).length < guests.length) ||
+                            !hasEnoughCreditsForGuests
+                          }
+                        >
+                          {isAddingGuests && (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          )}
+                          {!!hasLayout &&
+                          guests.length > 0 &&
+                          Object.keys(guestSpots).length < guests.length
+                            ? `Asigna lugar a ${guests.length - Object.keys(guestSpots).length} invitado${guests.length - Object.keys(guestSpots).length > 1 ? "s" : ""}`
+                            : guests.length > 0
+                              ? `Reservar para ${guests.length} invitado${guests.length > 1 ? "s" : ""}`
+                              : "Agrega un invitado"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="rounded-full"
+                          disabled={isAddingGuests}
+                          onClick={() => {
+                            setAddingGuests(false);
+                            setGuests([]);
+                            setGuestSpots({});
+                            setSelectingGuestSpot(null);
+                            setGuestAddError(null);
+                          }}
+                        >
+                          {t("goBack")}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : classFull ? (
+                    <p className="text-xs text-muted/60">
+                      No hay lugares disponibles para invitados.
+                    </p>
+                  ) : remainingGuestSlots == null || remainingGuestSlots > 0 ? (
+                    <button
+                      onClick={() => {
+                        setAddingGuests(true);
+                        setGuestAddError(null);
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm font-medium text-muted transition-colors hover:border-accent/40 hover:bg-accent/5 hover:text-accent"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Invitar a alguien
+                    </button>
+                  ) : null}
+                </div>
+              )}
 
             {/* Policy */}
             <div className="mt-10 flex items-start gap-2.5">
