@@ -258,6 +258,19 @@ export async function pauseSubscription(
 
   const stripe = await getStripeClientForTenantId(memberSub.tenantId);
 
+  // A pause collects nothing, so it shouldn't shorten a minimum commitment:
+  // push the commitment end forward by the (planned) pause length so the member
+  // still completes the full committed paid time. Resuming early gives the
+  // unused remainder back (see resumeSubscription).
+  const now = new Date();
+  let commitmentEndsAt = memberSub.commitmentEndsAt;
+  if (resumesAt && commitmentEndsAt && commitmentEndsAt > now) {
+    const extensionMs = resumesAt.getTime() - now.getTime();
+    if (extensionMs > 0) {
+      commitmentEndsAt = new Date(commitmentEndsAt.getTime() + extensionMs);
+    }
+  }
+
   await stripe.subscriptions.update(
     subscriptionId,
     {
@@ -275,8 +288,9 @@ export async function pauseSubscription(
     where: { stripeSubscriptionId: subscriptionId },
     data: {
       status: "paused",
-      pausedAt: new Date(),
+      pausedAt: now,
       resumesAt: resumesAt ?? null,
+      commitmentEndsAt,
     },
   });
 }
@@ -296,6 +310,32 @@ export async function resumeSubscription(subscriptionId: string) {
 
   const stripe = await getStripeClientForTenantId(memberSub.tenantId);
 
+  // Reconcile the commitment extension applied at pause time — only when the
+  // commitment was still active when paused (commitmentEndsAt after pausedAt),
+  // so an already-fulfilled commitment is left untouched.
+  const now = new Date();
+  let commitmentEndsAt = memberSub.commitmentEndsAt;
+  if (
+    commitmentEndsAt &&
+    memberSub.pausedAt &&
+    commitmentEndsAt > memberSub.pausedAt
+  ) {
+    if (memberSub.resumesAt) {
+      // Planned pause already pushed the commitment by the full planned length;
+      // resuming early hands back the unused remainder.
+      const unusedMs = memberSub.resumesAt.getTime() - now.getTime();
+      if (unusedMs > 0) {
+        commitmentEndsAt = new Date(commitmentEndsAt.getTime() - unusedMs);
+      }
+    } else {
+      // Open-ended pause (no planned resume): extend by the time actually paused.
+      const pausedMs = now.getTime() - memberSub.pausedAt.getTime();
+      if (pausedMs > 0) {
+        commitmentEndsAt = new Date(commitmentEndsAt.getTime() + pausedMs);
+      }
+    }
+  }
+
   await stripe.subscriptions.update(
     subscriptionId,
     { pause_collection: "" as unknown as Stripe.SubscriptionUpdateParams.PauseCollection },
@@ -308,6 +348,7 @@ export async function resumeSubscription(subscriptionId: string) {
       status: "active",
       pausedAt: null,
       resumesAt: null,
+      commitmentEndsAt,
     },
   });
 }

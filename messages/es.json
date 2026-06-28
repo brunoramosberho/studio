@@ -1244,6 +1244,7 @@
     "pauseSubscription": "Pausar suscripcion",
     "pauseDays": "Dias de pausa",
     "pauseAutoResume": "Se reanudara automaticamente despues",
+    "pauseExtendsCommitment": "Si el plan tiene permanencia, se extiende por estos días.",
     "pauseAction": "Pausar",
     "subscriptionUpdated": "Suscripcion actualizada",
     "subscriptionUpdateError": "Error al actualizar",

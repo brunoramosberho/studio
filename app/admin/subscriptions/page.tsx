@@ -226,6 +226,9 @@ export default function AdminSubscriptionsPage() {
                 <p className="mt-1 text-[11px] text-muted">
                   {t("pauseAutoResume")}
                 </p>
+                <p className="mt-1 text-[11px] text-muted">
+                  {t("pauseExtendsCommitment")}
+                </p>
               </div>
               <div className="flex gap-2">
                 <Button

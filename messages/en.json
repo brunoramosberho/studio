@@ -1244,6 +1244,7 @@
     "pauseSubscription": "Pause subscription",
     "pauseDays": "Pause days",
     "pauseAutoResume": "Will resume automatically after",
+    "pauseExtendsCommitment": "If the plan has a minimum commitment, it's extended by these days.",
     "pauseAction": "Pause",
     "subscriptionUpdated": "Subscription updated",
     "subscriptionUpdateError": "Error updating subscription",
