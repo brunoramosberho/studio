@@ -1960,6 +1960,7 @@
     "yearsUnit": "años",
     "annualRenewal": "Renovación anual",
     "monthlyRenewal": "Renovación mensual",
+    "minCommitmentFeature": "Permanencia mínima de {months} meses",
     "validFor": "Válido por",
     "anyDiscipline": "Cualquier disciplina",
     "invitesToJoin": "te invita a unirte a {studio}",

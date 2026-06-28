@@ -18,6 +18,7 @@ import {
   Check,
   Video,
   Sunrise,
+  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ interface PackageData {
   classTypes: ClassTypeRef[];
   creditAllocations?: CreditAlloc[];
   recurringInterval: string | null;
+  minCommitmentMonths?: number | null;
   sortOrder: number;
   includesOnDemand?: boolean;
   maxBookingsPerDay?: number | null;
@@ -218,6 +220,12 @@ export default function PackageDetailPage() {
                   : `Caduca despues de ${validDaysLabel(pkg.validDays)}`}
               </span>
             </div>
+            {isSubscription(pkg.type) && (pkg.minCommitmentMonths ?? 0) > 0 && (
+              <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 px-2.5 py-2 text-sm font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                <Lock className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>Permanencia mínima de {pkg.minCommitmentMonths} meses</span>
+              </div>
+            )}
             <div className="flex items-center gap-2.5 text-sm text-muted">
               <CreditCard className="h-4 w-4 flex-shrink-0" />
               <span>

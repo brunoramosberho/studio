@@ -15,6 +15,7 @@ import {
   CalendarSync,
   ChevronRight,
   Video,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,6 +54,7 @@ interface PackageData {
   includesOnDemand?: boolean;
   maxPurchasesPerCustomer?: number | null;
   purchaseLimitReached?: boolean;
+  minCommitmentMonths?: number | null;
 }
 
 interface UserPackageSummary {
@@ -374,6 +376,13 @@ export default function PackagesPage() {
                         </span>
                       )}
                     </div>
+
+                    {isSubscriptionType(pkg.type) && (pkg.minCommitmentMonths ?? 0) > 0 && (
+                      <div className="mb-3 flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 sm:mb-5 sm:text-xs">
+                        <Lock className="mt-0.5 h-3 w-3 flex-shrink-0 sm:h-3.5 sm:w-3.5" />
+                        <span>{t("minCommitmentFeature", { months: pkg.minCommitmentMonths ?? 0 })}</span>
+                      </div>
+                    )}
 
                     <ul className="flex-1 space-y-1.5 sm:space-y-2.5">
                       {features.map((feature) => (

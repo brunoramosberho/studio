@@ -31,6 +31,7 @@ interface PackageData {
   includesOnDemand?: boolean;
   sortOrder: number;
   maxPurchasesPerCustomer?: number | null;
+  minCommitmentMonths?: number | null;
 }
 
 const GROUPS: {
@@ -78,6 +79,8 @@ export default function AdminCatalogPage() {
     if (pkg.type === "ON_DEMAND_SUBSCRIPTION") {
       features.push(t("onDemandUnlimited"));
       features.push(pkg.recurringInterval === "year" ? t("annualRenewal") : t("monthlyRenewal"));
+      if (pkg.minCommitmentMonths)
+        features.push(t("minCommitmentFeature", { months: pkg.minCommitmentMonths }));
       return features;
     }
     if (pkg.creditAllocations && pkg.creditAllocations.length > 0) {
@@ -89,6 +92,8 @@ export default function AdminCatalogPage() {
     }
     if (pkg.type === "SUBSCRIPTION") {
       features.push(pkg.recurringInterval === "year" ? t("annualRenewal") : t("monthlyRenewal"));
+      if (pkg.minCommitmentMonths)
+        features.push(t("minCommitmentFeature", { months: pkg.minCommitmentMonths }));
     } else {
       features.push(`${t("validFor")} ${validDaysShort(pkg.validDays)}`);
     }
