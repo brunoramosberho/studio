@@ -35,7 +35,11 @@ export async function POST(
     if (feedEvent.eventType === "CLASS_COMPLETED") {
       const payload = feedEvent.payload as Record<string, unknown>;
       const attendees = (payload.attendees as { id: string }[]) ?? [];
-      if (!attendees.some((a) => a.id === session.user.id)) {
+      const isAttendee = attendees.some((a) => a.id === session.user.id);
+      // The class's instructor isn't in the attendee list but owns the post —
+      // allow them to request upload URLs too (mirrors the POST /photos check).
+      const isCoach = payload.coachUserId === session.user.id;
+      if (!isAttendee && !isCoach) {
         return NextResponse.json(
           { error: "Only attendees can upload" },
           { status: 403 },
