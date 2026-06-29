@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBranding } from "@/components/branding-provider";
 import { MgicAIBriefing } from "@/components/admin/MgicAI/BriefingCard";
 import { AdminActionItems } from "@/components/admin/action-items";
+import { QuotaSuggestions } from "@/components/admin/QuotaSuggestions";
 import {
   OnboardingChecklistHero,
   useOnboardingChecklist,
@@ -142,6 +143,8 @@ export function AdminDashboard() {
       {!isEmpty && (
         <>
           <AdminActionItems />
+
+          <QuotaSuggestions />
 
           {/* Hero visualizations replacing the old KPI grid */}
           <motion.div

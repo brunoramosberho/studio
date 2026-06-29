@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Globe2,
   Plus,
@@ -42,6 +43,7 @@ import { useCurrency } from "@/components/tenant-provider";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
 import { formatMoney } from "@/lib/currency";
+import type { QuotaSuggestion } from "@/lib/platforms/quota-suggestions";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -479,6 +481,12 @@ function PlatformDot({ platform }: { platform: string }) {
 export default function AdminPlatformsPage() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
+  const searchParams = useSearchParams();
+  // Deep-link support: an external link (e.g. the dashboard Wellhub-suggestion
+  // card) can open a specific tab and pre-fill the quota editor for a class.
+  const [tab, setTab] = useState(searchParams.get("tab") ?? "resumen");
+  const editClass = searchParams.get("editClass");
+  const suggestWellhub = searchParams.get("suggestWellhub");
   const { data: configs, isLoading } = useQuery<PlatformConfig[]>({
     queryKey: ["platform-configs"],
     queryFn: async () => {
@@ -514,7 +522,7 @@ export default function AdminPlatformsPage() {
 
       <IntegrationsLanding configs={configs ?? []} />
 
-      <Tabs defaultValue="resumen">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="resumen">{t("summaryTab")}</TabsTrigger>
           <TabsTrigger value="quotas">Quotas</TabsTrigger>
@@ -525,7 +533,9 @@ export default function AdminPlatformsPage() {
         </TabsList>
 
         <TabsContent value="resumen"><ResumenTab demo={isDemo} /></TabsContent>
-        <TabsContent value="quotas"><QuotasTab demo={isDemo} /></TabsContent>
+        <TabsContent value="quotas">
+          <QuotasTab demo={isDemo} deepLinkClassId={editClass} deepLinkWellhub={suggestWellhub} />
+        </TabsContent>
         <TabsContent value="reservas"><ReservasTab demo={isDemo} /></TabsContent>
         <TabsContent value="conversion"><WellhubConversionTab /></TabsContent>
         <TabsContent value="exportar"><ExportarTab demo={isDemo} /></TabsContent>
@@ -828,12 +838,23 @@ function PendingCheckinRow({ booking, demo }: { booking: PlatformBooking; demo?:
 
 // ─── Tab: Quotas ────────────────────────────────────────
 
-function QuotasTab({ demo }: { demo: boolean }) {
+function QuotasTab({
+  demo,
+  deepLinkClassId,
+  deepLinkWellhub,
+}: {
+  demo: boolean;
+  deepLinkClassId?: string | null;
+  deepLinkWellhub?: string | null;
+}) {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [editingQuota, setEditingQuota] = useState<{ classId: string; className: string; maxCapacity: number } | null>(null);
   const [quotaValues, setQuotaValues] = useState<{ classpass: string; wellhub: string }>({ classpass: "0", wellhub: "0" });
   const [demoOverrides, setDemoOverrides] = useState<Record<string, { cp: number; gp: number }>>({});
   const [defaultQuotaDraft, setDefaultQuotaDraft] = useState<string>("");
+  // Tracks whether the deep-link editor has already been opened, so navigating
+  // weeks afterwards doesn't keep re-triggering it.
+  const [deepLinkOpened, setDeepLinkOpened] = useState(false);
   const queryClient = useQueryClient();
 
   // Wellhub default quota lives on the Wellhub config; surface it here so the
@@ -943,6 +964,43 @@ function QuotasTab({ demo }: { demo: boolean }) {
     });
     setEditingQuota({ classId, className, maxCapacity });
   }
+
+  // ── Deep-link: open the editor for a specific class with a suggested Wellhub
+  // value pre-filled (driven by ?editClass / ?suggestWellhub on the page URL).
+  // We need the class's startsAt to load the correct week, so fetch the live
+  // suggestions which carry it.
+  const { data: deepLinkSuggestions } = useQuery<{ suggestions: QuotaSuggestion[] }>({
+    queryKey: ["platform-quota-suggestions-deeplink"],
+    queryFn: async () => {
+      const res = await fetch("/api/platforms/quota-suggestions");
+      if (!res.ok) return { suggestions: [] };
+      return res.json();
+    },
+    enabled: !demo && !!deepLinkClassId && !deepLinkOpened,
+  });
+
+  // Step 1: once we know the target class's startsAt, jump to its week so the
+  // quota query for that week loads.
+  useEffect(() => {
+    if (demo || !deepLinkClassId || deepLinkOpened) return;
+    const sug = deepLinkSuggestions?.suggestions.find((s) => s.classId === deepLinkClassId);
+    if (!sug) return;
+    setCurrentWeek(new Date(sug.startsAt));
+  }, [demo, deepLinkClassId, deepLinkOpened, deepLinkSuggestions]);
+
+  // Step 2: once the class's quota rows land in effectiveQuotas for that week,
+  // open the editor and pre-fill the suggested Wellhub value.
+  useEffect(() => {
+    if (demo || !deepLinkClassId || deepLinkOpened) return;
+    const row = effectiveQuotas?.find((q) => q.classId === deepLinkClassId);
+    if (!row) return;
+    openEditor(deepLinkClassId, row.class.classType.name, row.class.room.maxCapacity);
+    if (deepLinkWellhub != null && deepLinkWellhub !== "") {
+      setQuotaValues((v) => ({ ...v, wellhub: deepLinkWellhub }));
+    }
+    setDeepLinkOpened(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo, deepLinkClassId, deepLinkWellhub, deepLinkOpened, effectiveQuotas]);
 
   async function handleSave() {
     if (!editingQuota) return;

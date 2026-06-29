@@ -347,6 +347,12 @@
       "pendingSubstitutionsOne": "1 suplencia por aprobar",
       "pendingSubstitutionsMany": "{count} suplencias por aprobar"
     },
+    "quotaSuggestions": {
+      "heading": "Sugerencias de Wellhub",
+      "quotaChange": "Cupo {current} → {suggested}",
+      "raiseCta": "Modificar Quota",
+      "lowerCta": "Ajustar Quota"
+    },
     "onboardingHero": {
       "kicker": "Configuración inicial",
       "heroTitle": "Vamos a poner en marcha {studioName}, {firstName}.",
