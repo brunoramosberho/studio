@@ -37,6 +37,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LevelHexCard } from "@/components/profile/level-hex-card";
 import { ActivityCalendar } from "@/components/profile/activity-calendar";
 import { WearableConnections } from "@/components/profile/wearable-connections";
+import { AddToAppleWalletButton } from "@/components/wallet/add-to-apple-wallet-button";
 import { cn } from "@/lib/utils";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
@@ -231,6 +232,7 @@ export default function ProfilePage() {
 
   const { data: gamification } = useQuery<{
     hasActiveMembership?: boolean;
+    walletPassAvailable?: boolean;
     level: { name: string; icon: string; color: string; minClasses: number; sortOrder: number } | null;
     nextLevel: { name: string; icon: string; color: string; minClasses: number; sortOrder: number } | null;
     totalClasses: number;
@@ -415,6 +417,15 @@ export default function ProfilePage() {
           0,
         );
 
+  // Apple Wallet pass is iOS/macOS only — hide the button elsewhere. Checked
+  // after mount to avoid an SSR/hydration mismatch.
+  const [isApplePlatform, setIsApplePlatform] = useState(false);
+  useEffect(() => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const platform = typeof navigator !== "undefined" ? navigator.platform : "";
+    setIsApplePlatform(/iPhone|iPad|iPod/.test(ua) || /Mac/.test(platform));
+  }, []);
+
   return (
     <PageTransition>
       <div className="space-y-5 pb-20">
@@ -534,6 +545,19 @@ export default function ProfilePage() {
             </Card>
           </Link>
         </motion.div>
+
+        {/* Apple Wallet membership pass — active subscribers on Apple devices */}
+        {gamification?.hasActiveMembership && gamification?.walletPassAvailable && isApplePlatform && (
+          <motion.div
+            custom={1.5}
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            className="flex justify-center"
+          >
+            <AddToAppleWalletButton className="w-full max-w-xs" />
+          </motion.div>
+        )}
 
         {/* Level: hex badge + progress (expandable) */}
         {gamification?.level && (

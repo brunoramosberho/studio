@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { feedAchievementTypeFromKey } from "@/lib/gamification/catalog";
+import { isApplePassConfigured } from "@/lib/wallet/config";
 
 export async function GET() {
   try {
@@ -92,6 +93,7 @@ export async function GET() {
 
     return NextResponse.json({
       hasActiveMembership: !!activeSub,
+      walletPassAvailable: isApplePassConfigured(),
       levelsEnabled,
       achievementsEnabled,
       level: currentLevel && levelsEnabled

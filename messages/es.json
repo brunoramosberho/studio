@@ -1,4 +1,7 @@
 {
+  "wallet": {
+    "addToAppleWallet": "Agregar a Apple Wallet"
+  },
   "common": {
     "save": "Guardar",
     "saved": "Guardado",

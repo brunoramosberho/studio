@@ -1,5 +1,7 @@
+import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { startOfWeek } from "date-fns";
+import { pushApplePassUpdate } from "@/lib/wallet/apns";
 
 /**
  * Recalcula estadísticas de gamificación desde reservas ATTENDED del tenant.
@@ -98,6 +100,12 @@ export async function syncMemberProgressFromBookings(
       lastClassDate: lastDateOnly,
     },
   });
+
+  // Best-effort: refresh the member's Apple Wallet pass after the response
+  // (classes / level may have changed). Skipped outside a request context.
+  try {
+    after(() => pushApplePassUpdate(userId, tenantId).catch(() => {}));
+  } catch {}
 
   return {
     totalClassesAttended,

@@ -1630,6 +1630,26 @@ model PushSubscription {
   @@index([tenantId])
 }
 
+// Devices registered to receive Apple Wallet pass updates (PassKit web service).
+// One row per (device, pass). serialNumber is "<tenantSlug>.<userId>"; userId +
+// tenantId let us find a member's registrations to push when their pass data
+// (level, classes, membership) changes.
+model ApplePassRegistration {
+  id                      String   @id @default(cuid())
+  deviceLibraryIdentifier String
+  serialNumber            String
+  passTypeIdentifier      String
+  pushToken               String
+  userId                  String
+  tenantId                String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@unique([deviceLibraryIdentifier, serialNumber])
+  @@index([serialNumber])
+  @@index([userId, tenantId])
+}
+
 // ── Shop ──
 
 model ProductCategory {

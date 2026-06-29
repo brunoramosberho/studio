@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
   // only used by the coach-payments Excel export; bundling it into the shared
   // [root-of-the-server] chunk made cold starts time out (503s) on unrelated
   // routes like /class RSC navigations. Marked external + dynamically imported.
-  serverExternalPackages: ["exceljs"],
+  serverExternalPackages: ["exceljs", "passkit-generator", "sharp"],
   allowedDevOrigins: [
     "http://betoro.localhost:3000",
     "http://sandbox-revive.localhost:3000",
