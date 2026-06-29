@@ -555,7 +555,7 @@ export default function ProfilePage() {
             animate="show"
             className="flex justify-center"
           >
-            <AddToAppleWalletButton className="w-full max-w-xs" />
+            <AddToAppleWalletButton />
           </motion.div>
         )}
 
