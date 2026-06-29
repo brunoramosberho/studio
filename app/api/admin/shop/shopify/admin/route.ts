@@ -94,9 +94,13 @@ export async function PUT(request: NextRequest) {
 
     // Surface missing scopes early so the studio fixes the app config.
     // Shopify returns scopes comma-separated (e.g. "read_products,read_inventory");
-    // split on commas and/or whitespace to be safe.
+    // split on commas and/or whitespace to be safe. A granted write_X scope also
+    // satisfies a required read_X (Shopify collapses read_X when write_X is set).
     const granted = new Set(scope.split(/[\s,]+/).filter(Boolean));
-    const missing = REQUIRED_SCOPES.filter((s) => !granted.has(s));
+    const satisfied = (s: string) =>
+      granted.has(s) ||
+      (s.startsWith("read_") && granted.has(`write_${s.slice(5)}`));
+    const missing = REQUIRED_SCOPES.filter((s) => !satisfied(s));
     if (missing.length > 0) {
       return NextResponse.json(
         {
