@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { streamAssistantResponse, type AssistantMessage } from "@/lib/claude";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { requireTenant } from "@/lib/tenant";
 import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
+import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
+import { formatTime, formatDateTimeInZone } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,11 +57,14 @@ export async function POST(request: NextRequest) {
     });
     const platformByClass = new Map(platformCounts.map((p) => [p.classId, p._count]));
 
+    // Format class times in the studio's timezone (stored UTC) so the AI
+    // reasons about local times, not UTC.
+    const tz = await resolveScheduleTimezone(tenant);
     const scheduleContext = upcomingClasses
       .map((c) => {
         const spotsLeft = c.room.maxCapacity - c._count.bookings - (platformByClass.get(c.id) ?? 0);
-        const day = format(c.startsAt, "EEEE d 'de' MMMM", { locale: es });
-        const time = format(c.startsAt, "h:mm a");
+        const day = formatDateTimeInZone(c.startsAt, tz).replace(/,?\s*\d{1,2}:\d{2}$/, "");
+        const time = formatTime(c.startsAt, tz);
         return `- ${c.classType.name} | ${day} ${time} | Coach: ${c.coach.name} | Nivel: ${c.classType.level} | Lugares: ${spotsLeft}/${c.room.maxCapacity} | Estudio: ${c.room.studio.name}`;
       })
       .join("\n");

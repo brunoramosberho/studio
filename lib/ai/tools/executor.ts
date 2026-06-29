@@ -2,6 +2,13 @@ import { prisma } from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
 import { getCoverageStatus, getSubstituteSuggestions, getZone } from "@/lib/availability";
 import { getPlatformSettlementForRange } from "@/lib/platforms/settlement";
+import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
+import {
+  formatDateInZone,
+  formatTime24InZone,
+  formatDateTimeInZone,
+  formatWeekdayInZone,
+} from "@/lib/utils";
 import type { BookingStatus } from "@prisma/client";
 import {
   startOfWeek,
@@ -13,6 +20,21 @@ import {
 import { es } from "date-fns/locale";
 
 const CONFIRMED_OR_ATTENDED: BookingStatus[] = ["CONFIRMED", "ATTENDED"];
+
+// Resolve the studio timezone once per tenant (cached for the process). Class
+// times are stored UTC; the AI must reason in studio-local time so "the 8am
+// class" means 8am in the studio, not UTC.
+const _tzCache = new Map<string, Promise<string>>();
+function getTenantTz(tenantId: string): Promise<string> {
+  let p = _tzCache.get(tenantId);
+  if (!p) {
+    p = prisma.tenant
+      .findUnique({ where: { id: tenantId }, select: { id: true, scheduleReleaseTimezone: true } })
+      .then((t) => resolveScheduleTimezone(t ?? { id: tenantId, scheduleReleaseTimezone: null }));
+    _tzCache.set(tenantId, p);
+  }
+  return p;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function executeTool(name: string, input: any, tenantId: string, adminUserId?: string): Promise<unknown> {
@@ -773,6 +795,7 @@ async function createClassBatch(
   if (!input.classes || input.classes.length === 0) {
     return { error: "No se proporcionaron clases para crear" };
   }
+  const updTz = await getTenantTz(tenantId);
 
   if (input.classes.length > 50) {
     return { error: "Máximo 50 clases por batch" };
@@ -802,7 +825,7 @@ async function createClassBatch(
       });
       results.push({
         success: true,
-        summary: `${newClass.classType.name} — ${format(newClass.startsAt, "EEEE d MMM HH:mm", { locale: es })} con ${newClass.coach.name} en ${newClass.room.name}`,
+        summary: `${newClass.classType.name} — ${formatDateTimeInZone(newClass.startsAt, updTz)} con ${newClass.coach.name} en ${newClass.room.name}`,
       });
     } catch (err) {
       results.push({
@@ -848,16 +871,17 @@ async function updateClass(
 
   if (!cls) return { error: "Clase no encontrada" };
 
+  const updTz = await getTenantTz(tenantId);
   const updateData: Record<string, unknown> = {};
   const changes: string[] = [];
 
   if (input.starts_at) {
     updateData.startsAt = new Date(input.starts_at);
-    changes.push(`horario inicio → ${format(new Date(input.starts_at), "EEEE d MMM HH:mm", { locale: es })}`);
+    changes.push(`horario inicio → ${formatDateTimeInZone(new Date(input.starts_at), updTz)}`);
   }
   if (input.ends_at) {
     updateData.endsAt = new Date(input.ends_at);
-    changes.push(`horario fin → ${format(new Date(input.ends_at), "HH:mm", { locale: es })}`);
+    changes.push(`horario fin → ${formatTime24InZone(new Date(input.ends_at), updTz)}`);
   }
   if (input.coach_id) {
     updateData.coachId = input.coach_id;
@@ -981,11 +1005,12 @@ async function proposeWeeklySchedule(
   ]);
 
   // Analyze fill rates by day of week + time slot + class type
+  const tz = await getTenantTz(tenantId);
   const slotPerformance = new Map<string, { total: number; fillRateSum: number; waitlistTotal: number; count: number }>();
 
   for (const c of historicalClasses) {
-    const dayOfWeek = format(c.startsAt, "EEEE", { locale: es });
-    const hour = format(c.startsAt, "HH:mm");
+    const dayOfWeek = formatWeekdayInZone(c.startsAt, tz);
+    const hour = formatTime24InZone(c.startsAt, tz);
     const key = `${dayOfWeek}|${hour}|${c.classType.name}`;
     const existing = slotPerformance.get(key) ?? { total: 0, fillRateSum: 0, waitlistTotal: 0, count: 0 };
     const capacity = c.room.maxCapacity || 1;
@@ -1523,9 +1548,10 @@ async function getAvailabilityCoverage(
     select: { coachId: true, startsAt: true },
   });
 
+  const covTz = await getTenantTz(tenantId);
   const classesByCoachDay: Record<string, boolean> = {};
   for (const c of scheduledClasses) {
-    classesByCoachDay[`${c.coachId}_${format(c.startsAt, "yyyy-MM-dd")}`] = true;
+    classesByCoachDay[`${c.coachId}_${formatDateInZone(c.startsAt, covTz)}`] = true;
   }
 
   const coaches = coachProfiles.map((profile) => {
@@ -1575,6 +1601,7 @@ async function getAvailabilityCoverage(
 }
 
 async function getAvailabilityPending(tenantId: string) {
+  const pendingTz = await getTenantTz(tenantId);
   const tenantConfig = await prisma.tenant.findUniqueOrThrow({
     where: { id: tenantId },
     select: { zoneRedDays: true, zoneYellowDays: true },
@@ -1628,8 +1655,8 @@ async function getAvailabilityPending(tenantId: string) {
             const best = subs.find((s) => s.available) ?? null;
             return {
               class_id: c.id,
-              date: format(c.startsAt, "EEE d MMM", { locale: es }),
-              time: format(c.startsAt, "HH:mm"),
+              date: new Intl.DateTimeFormat("es-ES", { weekday: "short", day: "numeric", month: "short", timeZone: pendingTz }).format(c.startsAt),
+              time: formatTime24InZone(c.startsAt, pendingTz),
               class_type: c.classType.name,
               enrolled: c._count.bookings,
               capacity: c.room.maxCapacity,

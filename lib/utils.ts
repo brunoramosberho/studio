@@ -213,6 +213,38 @@ export function formatTime(date: Date | string, timeZone?: string): string {
   return format(d, "h:mm a");
 }
 
+/**
+ * Localized "weekday d mon HH:mm" for a UTC instant observed in `timeZone`,
+ * e.g. "lun 29 jun 08:00". Intl-based so no extra dependency. Used to give the
+ * AI assistant studio-local times instead of UTC.
+ */
+export function formatDateTimeInZone(
+  date: Date | string,
+  timeZone: string,
+  locale = "es-ES",
+): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone,
+  }).format(new Date(date));
+}
+
+/** Localized weekday name (e.g. "lunes") for a UTC instant in `timeZone`. */
+export function formatWeekdayInZone(
+  date: Date | string,
+  timeZone: string,
+  locale = "es-ES",
+): string {
+  return new Intl.DateTimeFormat(locale, { weekday: "long", timeZone }).format(
+    new Date(date),
+  );
+}
+
 export function formatTimeRange(start: Date | string, end: Date | string): string {
   return `${formatTime(start)} – ${formatTime(end)}`;
 }
