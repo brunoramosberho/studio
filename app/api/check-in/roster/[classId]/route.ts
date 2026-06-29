@@ -328,7 +328,7 @@ export async function GET(
         wellhubProductId: true,
         checkedInAt: true,
         createdAt: true,
-        companionBooking: { select: { id: true, spotNumber: true } },
+        companionBooking: { select: { id: true, spotNumber: true, status: true } },
       },
     });
 
@@ -387,6 +387,8 @@ export async function GET(
         // (and move it — companionBookingId is the booking to re-spot).
         spotNumber: b.companionBooking?.spotNumber ?? null,
         companionBookingId: b.companionBooking?.id ?? null,
+        // ATTENDED = occupying a seat; NO_SHOW = seat freed (Wellhub still paid).
+        seatFreed: b.companionBooking?.status === "NO_SHOW",
         checkedInAt: b.checkedInAt?.toISOString() ?? null,
         createdAt: b.createdAt.toISOString(),
       };

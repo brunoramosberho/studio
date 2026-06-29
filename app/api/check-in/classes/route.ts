@@ -32,10 +32,18 @@ export async function GET(request: NextRequest) {
         },
         _count: {
           select: {
+            // enrolled = every consuming seat (members + Wellhub companions).
             bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
             waitlist: true,
-            checkIns: true,
           },
+        },
+        // Present = bookings marked ATTENDED. This unifies member check-ins
+        // (which set the booking ATTENDED) and Wellhub companions (whose
+        // attendance is the ATTENDED status, not a CheckIn row). Counting
+        // CheckIn rows undercounted Wellhub members → false "N no check-in".
+        bookings: {
+          where: { status: "ATTENDED" },
+          select: { id: true },
         },
       },
       orderBy: { startsAt: "asc" },
@@ -55,7 +63,7 @@ export async function GET(request: NextRequest) {
       studioName: c.room.studio.name,
       capacity: c.room.maxCapacity,
       enrolledCount: c._count.bookings,
-      checkedInCount: c._count.checkIns,
+      checkedInCount: c.bookings.length,
       waitlistCount: c._count.waitlist,
       isLive: now >= c.startsAt && now <= c.endsAt,
       isFinished: now > c.endsAt,

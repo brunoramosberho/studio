@@ -99,6 +99,7 @@ interface WellhubBooking {
   magicUserId: string | null;
   spotNumber: number | null;
   companionBookingId: string | null;
+  seatFreed: boolean;
   checkedInAt: string | null;
   createdAt: string;
 }
@@ -1413,6 +1414,31 @@ function WellhubBookingsSection({
   const queryClient = useQueryClient();
   const [moveTarget, setMoveTarget] = useState<WellhubBooking | null>(null);
 
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["check-in-roster", classId] });
+    queryClient.invalidateQueries({ queryKey: ["check-in-classes"] });
+  };
+
+  // Internal no-show: frees the physical seat (so someone else can take it)
+  // while keeping the Wellhub check-in (the studio still gets paid). Toggle.
+  const noShowMutation = useMutation({
+    mutationFn: async ({ platformBookingId, noShow }: { platformBookingId: string; noShow: boolean }) => {
+      const res = await fetch(`/api/platforms/bookings/${platformBookingId}/no-show`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ noShow }),
+      });
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(b.error ?? "Falló");
+      return b;
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(vars.noShow ? "Asiento liberado (pago de Wellhub conservado)" : "Asiento restaurado");
+      invalidate();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const checkInMutation = useMutation({
     mutationFn: async (platformBookingId: string) => {
       const res = await fetch(`/api/platforms/bookings/${platformBookingId}/checkin`, {
@@ -1471,6 +1497,25 @@ function WellhubBookingsSection({
                 )}
               </div>
             </div>
+            {/* Internal no-show: free the seat but keep the Wellhub payment.
+                Only meaningful once they've checked in. Toggle. */}
+            {isCheckedIn && (
+              <button
+                onClick={() =>
+                  noShowMutation.mutate({ platformBookingId: b.platformBookingId, noShow: !b.seatFreed })
+                }
+                disabled={noShowMutation.isPending}
+                title={b.seatFreed ? "Restaurar asiento" : "Liberar asiento (no llegó). Conserva el pago de Wellhub."}
+                className={cn(
+                  "p-1 rounded-md transition-colors disabled:opacity-50",
+                  b.seatFreed
+                    ? "text-emerald-500 hover:bg-emerald-500/10"
+                    : "text-stone-400 hover:text-amber-600 hover:bg-amber-500/10",
+                )}
+              >
+                <UserX className="h-3.5 w-3.5" />
+              </button>
+            )}
             {/* Move to another class — fixes a check-in that landed on the
                 wrong class (e.g. a mis-matched walk-in). */}
             <button
@@ -1480,7 +1525,11 @@ function WellhubBookingsSection({
             >
               <ArrowRightLeft className="h-3.5 w-3.5" />
             </button>
-            {isCheckedIn ? (
+            {b.seatFreed ? (
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                Asiento liberado
+              </span>
+            ) : isCheckedIn ? (
               <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                 ✓ {b.checkedInAt ? format(new Date(b.checkedInAt), "HH:mm") : "Asistió"}
               </span>
