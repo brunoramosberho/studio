@@ -128,15 +128,26 @@ function formatHour(h: number) {
   return `${h.toString().padStart(2, "0")}:00`;
 }
 
+interface WellhubBriefSuggestion {
+  className: string;
+  startsAt: string;
+  type: "raise" | "lower";
+  currentQuota: number;
+  suggestedQuota: number;
+  wellhubBooked: number;
+  physicalSeatsLeft: number;
+}
+
 function buildCfoPrompt(params: {
   firstName: string;
   studioName: string;
   range: string;
   data: FinanceData;
   insights: InsightsData | null;
+  wellhubSuggestions: WellhubBriefSuggestion[];
   formatCurrency: (amount: number, overrideCode?: string | null) => string;
 }) {
-  const { firstName, studioName, range, data, insights, formatCurrency } = params;
+  const { firstName, studioName, range, data, insights, wellhubSuggestions, formatCurrency } = params;
   const { summary, bySource, dailyRevenue } = data;
 
   const rangeLabel: Record<string, string> = {
@@ -245,6 +256,29 @@ SALUD DEL MRR
 - Retención de cohortes recientes: ${cohortLines}`;
   }
 
+  // ─── Wellhub occupancy section (today + next 2 days) ─────────
+  let wellhubSection = "";
+  if (wellhubSuggestions.length > 0) {
+    const raise = wellhubSuggestions.filter((s) => s.type === "raise");
+    const lower = wellhubSuggestions.filter((s) => s.type === "lower");
+    const fmtWhen = (iso: string) =>
+      new Date(iso).toLocaleString("es-ES", {
+        weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+      });
+    const raiseLines = raise
+      .slice(0, 6)
+      .map((s) => `- ${s.className} (${fmtWhen(s.startsAt)}): Wellhub lleno ${s.wellhubBooked}/${s.currentQuota}, ${s.physicalSeatsLeft} asientos libres → subir cupo a ${s.suggestedQuota}`)
+      .join("\n");
+    const lowerLines = lower
+      .slice(0, 4)
+      .map((s) => `- ${s.className} (${fmtWhen(s.startsAt)}): clase llena de miembros, Wellhub usa ${s.wellhubBooked}/${s.currentQuota} → considerar bajar`)
+      .join("\n");
+    wellhubSection = `
+WELLHUB — OCUPACIÓN PRÓXIMOS DÍAS (oportunidad de cupo)
+${raise.length ? `Clases donde Wellhub está al tope pero quedan asientos (estás rechazando reservas que pagan):\n${raiseLines}` : "Sin clases con Wellhub saturado y asientos libres."}
+${lower.length ? `\nClases llenas de miembros con cupo de Wellhub sin usar:\n${lowerLines}` : ""}`;
+  }
+
   return `Soy ${firstName}, admin de ${studioName}. Acabo de abrir la página de finanzas (/admin/finance) con el período "${rangeLabel[range] ?? range}".
 
 Necesito que actúes como MI CFO de confianza de un boutique studio. No como un chatbot — como el CFO del studio que lleva meses conmigo, conoce la operación, y me va a dar un read rápido de cómo estamos financieramente.
@@ -271,6 +305,7 @@ COMPORTAMIENTO
 ${trendNote ? `- ${trendNote}` : ""}
 ${operationalSection}
 ${recurrenceHealthSection}
+${wellhubSection}
 
 INSTRUCCIONES PARA TU RESPUESTA:
 - Ya tienes todos los datos arriba — responde DIRECTAMENTE sin llamar herramientas.
@@ -278,6 +313,7 @@ INSTRUCCIONES PARA TU RESPUESTA:
 - NO repitas los números tal cual te los pasé — interprétalos como un CFO experimentado en fitness boutique.
 - Formato: 3-5 bullets con análisis punzante (no genérico). Cada bullet debe decir algo que yo NO vería con solo mirar las tarjetas.
 - Prioriza cruces fuertes: p.ej. "tal clase llena + tal coach vacío = reasignar"; "MRR crece pero X miembros pagan sin venir = churn latente"; "top 10 miembros concentran Y% = riesgo si se van"; "waitlist en X slot = abrir más clases".
+- Si la sección WELLHUB muestra clases con el cupo saturado y asientos libres, señálalo como dinero que se está dejando en la mesa: recomienda subir el cupo en esas clases concretas (estás rechazando reservas de Wellhub que sí caben). Es una de las acciones de mayor ROI inmediato.
 - Si ves una capacidad desperdiciada clara (clase/coach con fill bajo), mencionarlo es valioso — aunque no haya revenue exacto, el coste del coach sí está ocurriendo.
 - Cierra con una línea final en **negritas** con UNA recomendación concreta accionable — la que tú priorizarías si estuvieras en mi silla hoy.
 - Tono: directo, cálido, con opinión. Usa emojis sutiles (→ ✓ ⚠ ↑ ↓) cuando aporten.
@@ -319,6 +355,17 @@ export function FinanceBriefingCard({ range }: { range: string }) {
       return res.json();
     },
     retry: 1,
+  });
+
+  // Wellhub quota opportunities (today + next 2 days) to enrich the brief.
+  const { data: wellhubSug } = useQuery<{ enabled: boolean; suggestions: WellhubBriefSuggestion[] }>({
+    queryKey: ["wellhub-quota-suggestions-brief"],
+    queryFn: async () => {
+      const res = await fetch("/api/platforms/quota-suggestions");
+      if (!res.ok) return { enabled: false, suggestions: [] };
+      return res.json();
+    },
+    retry: 0,
   });
 
   // Reset state when period changes
@@ -366,6 +413,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
                 range,
                 data: finance,
                 insights: insights ?? null,
+                wellhubSuggestions: wellhubSug?.enabled ? wellhubSug.suggestions : [],
                 formatCurrency,
               }),
             },
@@ -416,7 +464,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
       setError(true);
       setLoading(false);
     }
-  }, [finance, insights, insightsError, session?.user?.name, dismissed, content, firstName, studioName, range]);
+  }, [finance, insights, insightsError, wellhubSug, session?.user?.name, dismissed, content, firstName, studioName, range]);
 
   useEffect(() => {
     fetchBriefing();
