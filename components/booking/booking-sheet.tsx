@@ -279,6 +279,15 @@ export function BookingSheet({
 
   function handleSelectPackage(pkg: Package) {
     if (bookingInFlight.current) return;
+    // Memberships are recurring and need an account, so they can't be booked via
+    // the one-time guest flow. Instead of dead-ending, send the guest to sign in
+    // (their email may already have an account) and on to the membership page to
+    // contract it — then they can book with the membership.
+    if ((pkg as { type?: string }).type === "SUBSCRIPTION") {
+      const target = `/packages/${pkg.id}`;
+      router.push(`/login?callbackUrl=${encodeURIComponent(target)}`);
+      return;
+    }
     setSelectedPkg(pkg);
     setError(null);
     executeBooking(pkg);
