@@ -12,7 +12,10 @@ import {
 import { sendPosReceiptEmail, getTenantBaseUrl } from "@/lib/email";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
-import { createPosOrder } from "@/lib/shopify/admin";
+import {
+  createPosOrder,
+  decrementInventoryAtLocation,
+} from "@/lib/shopify/admin";
 import { getAdminConnection } from "@/lib/shopify/admin-token";
 import { Prisma } from "@prisma/client";
 
@@ -345,14 +348,23 @@ export async function POST(request: NextRequest) {
         try {
           const conn = await getAdminConnection(tenantId);
           if (conn) {
+            const lineItems = shopifyItems.map((i) => ({
+              variantId: i.shopifyVariantId as string,
+              quantity: i.quantity,
+            }));
             shopifyOrder = await createPosOrder(conn.shopDomain, conn.token, {
               locationId: config.posLocationId,
-              lineItems: shopifyItems.map((i) => ({
-                variantId: i.shopifyVariantId as string,
-                quantity: i.quantity,
-              })),
+              lineItems,
               email: customer.email,
             });
+            // The order doesn't move inventory — decrement the chosen physical
+            // location's stock explicitly.
+            await decrementInventoryAtLocation(
+              conn.shopDomain,
+              conn.token,
+              config.posLocationId,
+              lineItems,
+            );
           }
         } catch (err) {
           shopifyOrderError =

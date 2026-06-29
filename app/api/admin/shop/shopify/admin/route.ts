@@ -15,6 +15,7 @@ function errorResponse(e: unknown) {
 const REQUIRED_SCOPES = [
   "read_products",
   "read_inventory",
+  "write_inventory",
   "read_locations",
   "write_orders",
 ];

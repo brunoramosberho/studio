@@ -1061,7 +1061,7 @@
     "shopifyPosDomainHint": "Your store's .myshopify.com domain (e.g. your-store.myshopify.com). The Admin API uses this even if your public shop uses a custom domain.",
     "shopifyClientIdLabel": "Client ID",
     "shopifyClientSecretLabel": "Client Secret",
-    "shopifyAdminTokenHint": "In the Shopify Dev Dashboard: create an app, enable the Admin API scopes (read_products, read_inventory, read_locations, write_orders, read_orders) and install it on THIS store. Then copy the Client ID and Client Secret from the app's Settings.",
+    "shopifyAdminTokenHint": "In the Shopify Dev Dashboard: create an app, enable the Admin API scopes (read_products, read_inventory, write_inventory, read_locations, write_orders, read_orders) and install it on THIS store. Then copy the Client ID and Client Secret from the app's Settings.",
     "shopifyPosLocationLabel": "Physical store location",
     "shopifyPosLocationHint": "The POS reads and decrements this location's inventory (not the online channel's).",
     "shopifyPosLocationSave": "Save location",

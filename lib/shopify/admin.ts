@@ -360,9 +360,9 @@ export interface CreatedPosOrder {
 }
 
 /**
- * Create a paid order in Shopify assigned to `locationId` so that location's
- * inventory is decremented (inventory_behaviour=decrement_obeying_policy). Uses
- * the REST endpoint because it accepts an explicit location for the decrement.
+ * Create a paid order in Shopify (the sales record). Inventory is NOT touched
+ * here — call decrementInventoryAtLocation separately so the decrement lands on
+ * the chosen physical-store location deterministically. Uses the REST endpoint.
  *
  * Throws a human-readable error on failure; callers decide whether to surface
  * it without rolling back the already-collected POS payment.
@@ -376,14 +376,16 @@ export async function createPosOrder(
     email?: string | null;
   },
 ): Promise<CreatedPosOrder> {
+  // Inventory is handled explicitly via decrementInventoryAtLocation (the order
+  // endpoint's inventory_behaviour proved unreliable and decremented nothing),
+  // so the order itself must NOT touch inventory — hence "bypass".
   const order = {
     line_items: params.lineItems.map((l) => ({
       variant_id: Number(numericId(l.variantId)),
       quantity: l.quantity,
     })),
     financial_status: "paid",
-    inventory_behaviour: "decrement_obeying_policy",
-    location_id: Number(numericId(params.locationId)),
+    inventory_behaviour: "bypass",
     ...(params.email ? { email: params.email } : {}),
     tags: "POS, Magic",
   };
@@ -416,4 +418,81 @@ export async function createPosOrder(
   }
 
   return { id: json.order.id, name: json.order.name };
+}
+
+/**
+ * Decrement each variant's "available" quantity at `locationId` by the sold
+ * amount, via inventoryAdjustQuantities. This is how the POS sale actually
+ * reduces the physical store's stock (the order endpoint doesn't do it
+ * reliably). Resolves each variant's inventory item first, then adjusts.
+ *
+ * Throws a human-readable error on failure.
+ */
+export async function decrementInventoryAtLocation(
+  shopDomain: string,
+  token: string,
+  locationId: string,
+  items: PosOrderLine[],
+): Promise<void> {
+  const variantIds = [...new Set(items.map((i) => i.variantId))];
+
+  // Resolve the inventory item id for each variant.
+  const data = await adminQuery<{
+    nodes: ({ id: string; inventoryItem: { id: string } | null } | null)[];
+  }>(
+    shopDomain,
+    token,
+    /* GraphQL */ `
+      query VariantInventoryItems($ids: [ID!]!) {
+        nodes(ids: $ids) {
+          ... on ProductVariant { id inventoryItem { id } }
+        }
+      }
+    `,
+    { ids: variantIds },
+  );
+
+  const invItemByVariant = new Map<string, string>();
+  for (const n of data.nodes) {
+    if (n?.inventoryItem) invItemByVariant.set(n.id, n.inventoryItem.id);
+  }
+
+  const changes: {
+    delta: number;
+    inventoryItemId: string;
+    locationId: string;
+  }[] = [];
+  for (const item of items) {
+    const inventoryItemId = invItemByVariant.get(item.variantId);
+    if (!inventoryItemId) continue;
+    changes.push({
+      delta: -Math.abs(item.quantity),
+      inventoryItemId,
+      locationId,
+    });
+  }
+
+  if (changes.length === 0) return;
+
+  const res = await adminQuery<{
+    inventoryAdjustQuantities: {
+      userErrors: { field: string[] | null; message: string }[];
+    };
+  }>(
+    shopDomain,
+    token,
+    /* GraphQL */ `
+      mutation PosInventoryDecrement($input: InventoryAdjustQuantitiesInput!) {
+        inventoryAdjustQuantities(input: $input) {
+          userErrors { field message }
+        }
+      }
+    `,
+    { input: { reason: "correction", name: "available", changes } },
+  );
+
+  const errors = res.inventoryAdjustQuantities?.userErrors ?? [];
+  if (errors.length > 0) {
+    throw new Error(errors.map((e) => e.message).join("; "));
+  }
 }
