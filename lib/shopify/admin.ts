@@ -496,3 +496,62 @@ export async function decrementInventoryAtLocation(
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 }
+
+/**
+ * Mark a (bypass) order as fulfilled — the item was handed over in person. The
+ * order claimed no inventory (inventory_behaviour=bypass), so fulfilling it does
+ * NOT move stock (verified): inventory is handled by decrementInventoryAtLocation.
+ * Requires the write_merchant_managed_fulfillment_orders scope.
+ *
+ * Throws a human-readable error on failure.
+ */
+export async function fulfillPosOrder(
+  shopDomain: string,
+  token: string,
+  orderId: number,
+): Promise<void> {
+  const data = await adminQuery<{
+    order: {
+      fulfillmentOrders: { nodes: { id: string; status: string }[] };
+    } | null;
+  }>(
+    shopDomain,
+    token,
+    /* GraphQL */ `
+      query OrderFulfillmentOrders($id: ID!) {
+        order(id: $id) {
+          fulfillmentOrders(first: 10) { nodes { id status } }
+        }
+      }
+    `,
+    { id: `gid://shopify/Order/${orderId}` },
+  );
+
+  const openIds = (data.order?.fulfillmentOrders.nodes ?? [])
+    .filter((f) => f.status === "OPEN" || f.status === "IN_PROGRESS")
+    .map((f) => ({ fulfillmentOrderId: f.id }));
+
+  if (openIds.length === 0) return;
+
+  const res = await adminQuery<{
+    fulfillmentCreate: {
+      userErrors: { field: string[] | null; message: string }[];
+    };
+  }>(
+    shopDomain,
+    token,
+    /* GraphQL */ `
+      mutation PosFulfill($f: FulfillmentInput!) {
+        fulfillmentCreate(fulfillment: $f) {
+          userErrors { field message }
+        }
+      }
+    `,
+    { f: { lineItemsByFulfillmentOrder: openIds } },
+  );
+
+  const errors = res.fulfillmentCreate?.userErrors ?? [];
+  if (errors.length > 0) {
+    throw new Error(errors.map((e) => e.message).join("; "));
+  }
+}

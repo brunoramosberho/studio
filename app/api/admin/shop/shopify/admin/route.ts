@@ -18,6 +18,7 @@ const REQUIRED_SCOPES = [
   "write_inventory",
   "read_locations",
   "write_orders",
+  "write_merchant_managed_fulfillment_orders",
 ];
 
 // Configure the Admin API side of the Shopify connection: the Dev Dashboard

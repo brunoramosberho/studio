@@ -936,7 +936,7 @@
     "shopifyPosDomainHint": "El dominio .myshopify.com de tu tienda (ej. tu-tienda.myshopify.com). Es el que usa el Admin API, aunque tu shop público use un dominio propio.",
     "shopifyClientIdLabel": "Client ID",
     "shopifyClientSecretLabel": "Client Secret",
-    "shopifyAdminTokenHint": "En el Dev Dashboard de Shopify: crea una app, activa los permisos de Admin API (read_products, read_inventory, write_inventory, read_locations, write_orders, read_orders) e instálala en ESTA tienda. Luego copia el Client ID y el Client Secret desde Configuración de la app.",
+    "shopifyAdminTokenHint": "En el Dev Dashboard de Shopify: crea una app, activa los permisos de Admin API (read_products, read_inventory, write_inventory, read_locations, write_orders, read_orders, write_merchant_managed_fulfillment_orders) e instálala en ESTA tienda. Luego copia el Client ID y el Client Secret desde Configuración de la app.",
     "shopifyPosLocationLabel": "Ubicación de la tienda física",
     "shopifyPosLocationHint": "El POS lee y descuenta el inventario de esta ubicación (no el del canal online).",
     "shopifyPosLocationSave": "Guardar ubicación",

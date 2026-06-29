@@ -15,6 +15,7 @@ import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
 import {
   createPosOrder,
   decrementInventoryAtLocation,
+  fulfillPosOrder,
 } from "@/lib/shopify/admin";
 import { getAdminConnection } from "@/lib/shopify/admin-token";
 import { Prisma } from "@prisma/client";
@@ -365,6 +366,21 @@ export async function POST(request: NextRequest) {
               config.posLocationId,
               lineItems,
             );
+            // Mark the order fulfilled (item handed over in person). Best-effort:
+            // the sale + inventory are already done, so a fulfillment hiccup must
+            // not fail the sale.
+            try {
+              await fulfillPosOrder(
+                conn.shopDomain,
+                conn.token,
+                shopifyOrder.id,
+              );
+            } catch (ferr) {
+              console.error(
+                "[pos-sale] Shopify fulfillment failed (order + inventory ok)",
+                ferr,
+              );
+            }
           }
         } catch (err) {
           shopifyOrderError =
