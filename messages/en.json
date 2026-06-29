@@ -2321,6 +2321,7 @@
     "selectPackageToBook": "Select a package to book your spot",
     "recommended": "Recommended",
     "firstTime": "First time",
+    "alreadyPurchased": "Already bought",
     "unlimited": "Unlimited",
     "classesCount": "{count} class(es)",
     "validDays": "{days} days",

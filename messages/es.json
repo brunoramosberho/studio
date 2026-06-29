@@ -2321,6 +2321,7 @@
     "selectPackageToBook": "Selecciona un paquete para reservar tu lugar",
     "recommended": "Recomendado",
     "firstTime": "Primera vez",
+    "alreadyPurchased": "Ya adquirido",
     "unlimited": "Ilimitado",
     "classesCount": "{count} clase(s)",
     "validDays": "{days} dias",

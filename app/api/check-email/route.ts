@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
+import { getMaxedPackageIds } from "@/lib/packages/purchase-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,11 +43,17 @@ export async function POST(request: NextRequest) {
       return sum + Math.max(0, (p.creditsTotal ?? 0) - p.creditsUsed);
     }, 0);
 
+    // Capped packages this customer can no longer buy — so the booking picker
+    // can show them as "already bought" instead of letting them tap Buy and hit
+    // the server-side 403.
+    const maxedPackageIds = await getMaxedPackageIds(user.id, tenant.id);
+
     return NextResponse.json({
       exists: true,
       hasCredits,
       credits: totalCredits === Infinity ? -1 : totalCredits,
       name: user.name,
+      maxedPackageIds,
     });
   } catch (error) {
     console.error("POST /api/check-email error:", error);

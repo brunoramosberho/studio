@@ -104,6 +104,7 @@ interface EmailCheckResult {
   hasCredits: boolean;
   credits: number;
   name: string | null;
+  maxedPackageIds?: string[];
 }
 
 export function BookingSheet({
@@ -671,26 +672,34 @@ export function BookingSheet({
 
                 <div className="space-y-2.5">
                   {packages.map((pkg) => {
-                    const isRecommended = !pkg.isPromo && pkg.id === recommendedPkgId;
+                    const maxed = emailCheck?.maxedPackageIds?.includes(pkg.id) ?? false;
+                    const isRecommended = !maxed && !pkg.isPromo && pkg.id === recommendedPkgId;
                     return (
                       <button
                         key={pkg.id}
-                        onClick={() => handleSelectPackage(pkg)}
-                        disabled={loading}
+                        onClick={() => !maxed && handleSelectPackage(pkg)}
+                        disabled={loading || maxed}
                         className={cn(
                           "group relative w-full rounded-2xl border p-4 text-left transition-all",
-                          isRecommended
-                            ? "border-accent bg-accent/5 hover:border-accent hover:shadow-md"
-                            : "border-border hover:border-foreground/20 hover:shadow-md",
+                          maxed
+                            ? "cursor-not-allowed border-border/60 bg-surface/40 opacity-60"
+                            : isRecommended
+                              ? "border-accent bg-accent/5 hover:border-accent hover:shadow-md"
+                              : "border-border hover:border-foreground/20 hover:shadow-md",
                         )}
                       >
+                        {maxed && (
+                          <div className="absolute -top-2.5 right-3 rounded-full bg-stone-200 px-2.5 py-0.5 text-[10px] font-bold text-stone-600 dark:bg-surface dark:text-muted">
+                            {t("alreadyPurchased")}
+                          </div>
+                        )}
                         {isRecommended && (
                           <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
                             <Sparkles className="h-3 w-3" />
                             {t("recommended")}
                           </div>
                         )}
-                        {pkg.isPromo && (
+                        {!maxed && pkg.isPromo && (
                           <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
                             <Sparkles className="h-3 w-3" />
                             {t("firstTime")}

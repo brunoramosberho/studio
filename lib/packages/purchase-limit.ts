@@ -35,3 +35,35 @@ export async function getPackagePurchaseLimitError(
     ? "Esta oferta es de un solo uso por cliente y ya la adquiriste."
     : `Esta oferta permite un máximo de ${max} compras por cliente y ya alcanzaste el límite.`;
 }
+
+/**
+ * Batched version: of this tenant's capped packages, which has `userId` already
+ * maxed out? Lets a catalog/picker mark them as unavailable up front (same
+ * ACTIVE/DISPUTED counting as `getPackagePurchaseLimitError`).
+ */
+export async function getMaxedPackageIds(
+  userId: string,
+  tenantId: string,
+): Promise<string[]> {
+  const capped = await prisma.package.findMany({
+    where: { tenantId, isActive: true, maxPurchasesPerCustomer: { not: null } },
+    select: { id: true, maxPurchasesPerCustomer: true },
+  });
+  if (capped.length === 0) return [];
+
+  const owned = await prisma.userPackage.groupBy({
+    by: ["packageId"],
+    where: {
+      userId,
+      tenantId,
+      packageId: { in: capped.map((p) => p.id) },
+      status: { in: ["ACTIVE", "DISPUTED"] },
+    },
+    _count: true,
+  });
+  const counts = new Map(owned.map((o) => [o.packageId, o._count]));
+
+  return capped
+    .filter((p) => (counts.get(p.id) ?? 0) >= (p.maxPurchasesPerCustomer ?? Infinity))
+    .map((p) => p.id);
+}
