@@ -62,6 +62,12 @@ interface RosterMember {
   membershipPackageType: string | null;
   remainingClasses: number | null;
   isUnlimited: boolean;
+  /** Days until the credit pack expires (credit packs only; null otherwise). */
+  membershipExpiresInDays: number | null;
+  /** Their membership/subscription is set to cancel. */
+  membershipCancelling: boolean;
+  /** When the membership will actually end (ISO), if cancelling. */
+  membershipCancelAt: string | null;
   hasPaymentPending: boolean;
   waiverPending: boolean;
   memberSince: string;
@@ -1183,7 +1189,15 @@ function RosterRow({
   }, [isCheckedIn]);
 
   const tc = useTranslations("checkin");
-  const packageLabel = member.isGuest
+  // Sales / retention signals for front desk.
+  const lowCredits =
+    !member.isUnlimited &&
+    member.remainingClasses != null &&
+    member.remainingClasses <= 2;
+  const expiringSoon =
+    member.membershipExpiresInDays != null && member.membershipExpiresInDays <= 7;
+
+  let packageLabel = member.isGuest
     ? member.hostName
       ? tc("guestOf", { name: member.hostName })
       : tc("guest")
@@ -1194,6 +1208,9 @@ function RosterRow({
         : member.remainingClasses != null
           ? `${member.membershipType} · ${tc("remainingClasses", { num: member.remainingClasses })}`
           : member.membershipType;
+  if (!member.isGuest && expiringSoon && member.membershipExpiresInDays != null) {
+    packageLabel += ` · ${tc("expiresInDays", { num: member.membershipExpiresInDays })}`;
+  }
 
   return (
     <div
@@ -1279,13 +1296,27 @@ function RosterRow({
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <p className={cn(
             "text-[11px] truncate",
-            member.hasPaymentPending ? "text-red-500 dark:text-red-300" : "text-stone-400 dark:text-muted",
+            member.hasPaymentPending
+              ? "text-red-500 dark:text-red-300"
+              : lowCredits || expiringSoon
+                ? "text-amber-600 font-medium dark:text-amber-400"
+                : "text-stone-400 dark:text-muted",
           )}>
             {packageLabel}
           </p>
+          {member.membershipCancelling && (
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+              <AlertTriangle size={9} />
+              {member.membershipCancelAt
+                ? tc("membershipCancelsOn", {
+                    date: format(new Date(member.membershipCancelAt), "d MMM", { locale: es }),
+                  })
+                : tc("membershipCancelling")}
+            </span>
+          )}
           {member.waiverPending && (
             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
               <FileText size={9} />

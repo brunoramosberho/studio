@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/tenant";
 
 type UserPackageRow = {
   creditsUsed: number;
+  expiresAt: Date;
   package: { name: string; type: string; credits: number | null };
   [key: string]: unknown;
 };
@@ -127,6 +128,32 @@ export async function GET(
     const cancelMap = new Map(cancelCounts.map((r) => [r.userId, r._count]));
     const allMap = new Map(allBookingCounts.map((r) => [r.userId, r._count]));
 
+    // Subscriptions pending cancellation — so front desk can spot a member
+    // about to lose their membership and try to retain them.
+    const subscriptions = userIds.length > 0
+      ? await prisma.memberSubscription.findMany({
+          where: {
+            tenantId: ctx.tenant.id,
+            userId: { in: userIds },
+            status: { in: ["active", "trialing"] },
+          },
+          select: {
+            userId: true,
+            cancelAtPeriodEnd: true,
+            cancelRequested: true,
+            currentPeriodEnd: true,
+            commitmentEndsAt: true,
+          },
+        })
+      : [];
+    const cancelingSubMap = new Map<string, Date | null>();
+    for (const s of subscriptions) {
+      if (!s.cancelAtPeriodEnd && !s.cancelRequested) continue;
+      const cancelAt =
+        s.cancelRequested && s.commitmentEndsAt ? s.commitmentEndsAt : s.currentPeriodEnd;
+      cancelingSubMap.set(s.userId, cancelAt);
+    }
+
     // Waiver status for all members
     const activeWaiver = await prisma.waiver.findFirst({
       where: { tenantId: ctx.tenant.id, status: "active" },
@@ -198,6 +225,16 @@ export async function GET(
           ? Math.max(0, activePackage.package.credits - (activePackage.creditsUsed ?? 0))
           : null;
 
+        // Expiry warning is for credit packs only — an unlimited subscription's
+        // UserPackage "expires" each billing period and just renews, so it's not
+        // a sales signal; the cancellation flag below is what matters there.
+        const expiresAt = activePackage?.expiresAt ?? null;
+        const membershipExpiresInDays =
+          !isUnlimited && expiresAt
+            ? Math.ceil((expiresAt.getTime() - now.getTime()) / 86_400_000)
+            : null;
+        const membershipCancelAt = cancelingSubMap.get(user.id) ?? null;
+
         // Stats
         const uid = user.id;
         const totalClasses = totalMap.get(uid) ?? 0;
@@ -244,6 +281,9 @@ export async function GET(
           membershipPackageType: activePackage?.package.type ?? null,
           remainingClasses: remainingCredits,
           isUnlimited,
+          membershipExpiresInDays,
+          membershipCancelling: cancelingSubMap.has(user.id),
+          membershipCancelAt: membershipCancelAt ? membershipCancelAt.toISOString() : null,
           hasPaymentPending: hasExpiredMembership,
           waiverPending,
           memberSince,
