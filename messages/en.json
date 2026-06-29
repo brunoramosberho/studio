@@ -4,6 +4,7 @@
     "saved": "Saved",
     "saving": "Saving...",
     "cancel": "Cancel",
+    "emailDidYouMean": "Did you mean {suggestion}?",
     "delete": "Delete",
     "confirm": "Confirm",
     "confirmCancel": "Confirm cancellation",

@@ -4,6 +4,7 @@
     "saved": "Guardado",
     "saving": "Guardando...",
     "cancel": "Cancelar",
+    "emailDidYouMean": "¿Quisiste decir {suggestion}?",
     "delete": "Eliminar",
     "confirm": "Confirmar",
     "confirmCancel": "Confirmar cancelacion",

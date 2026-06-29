@@ -179,6 +179,7 @@ export function PhoneInput({
           ref={inputRef}
           type="tel"
           inputMode="numeric"
+          autoComplete="tel-national"
           value={nationalNumber}
           onChange={(e) => handleNationalChange(e.target.value)}
           placeholder={placeholder || "Número de teléfono"}

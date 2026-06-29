@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmailSuggestion } from "@/components/ui/email-suggestion";
 import { PaymentForm } from "@/components/checkout/PaymentForm";
 import { CardBrandIcon } from "@/components/payments/card-brand-icon";
 import type { Package } from "@prisma/client";
@@ -487,11 +488,14 @@ export function PurchaseSheet({
                     <label className="mb-1.5 block text-xs font-medium text-muted">Email</label>
                     <Input
                       type="email"
+                      inputMode="email"
+                      autoComplete="email"
                       placeholder="tu@correo.com"
                       value={guestEmail}
                       onChange={(e) => setGuestEmail(e.target.value)}
                       required
                     />
+                    <EmailSuggestion email={guestEmail} onAccept={setGuestEmail} />
                   </div>
 
                   {/* Discount code (guest step) */}

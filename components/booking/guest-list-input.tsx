@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, X, UserPlus, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmailSuggestion } from "@/components/ui/email-suggestion";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -184,6 +185,8 @@ export function GuestListInput({
               </label>
               <Input
                 type="email"
+                inputMode="email"
+                autoComplete="email"
                 placeholder="correo@ejemplo.com"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
@@ -191,6 +194,7 @@ export function GuestListInput({
                 className="min-h-[44px]"
                 onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               />
+              <EmailSuggestion email={newEmail} onAccept={setNewEmail} />
             </div>
             {error && (
               <p className="text-xs text-red-600">{error}</p>

@@ -9,6 +9,7 @@ import { Loader2, ArrowRight, ShoppingBag, LogIn, Clock, Users, Bell, BellRing }
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { EmailSuggestion } from "@/components/ui/email-suggestion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import { useBookingStore } from "@/store/booking-store";
@@ -634,10 +635,16 @@ export function BookingFlow({ classId }: BookingFlowProps) {
                     </label>
                     <Input
                       type="email"
+                      inputMode="email"
+                      autoComplete="email"
                       placeholder="tu@correo.com"
                       value={store.guestEmail}
                       onChange={(e) => store.setGuestEmail(e.target.value)}
                       className="min-h-[48px]"
+                    />
+                    <EmailSuggestion
+                      email={store.guestEmail}
+                      onAccept={store.setGuestEmail}
                     />
                   </div>
                   <Button

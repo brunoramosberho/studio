@@ -17,6 +17,7 @@ import {
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmailSuggestion } from "@/components/ui/email-suggestion";
 import { PageTransition } from "@/components/shared/page-transition";
 import { useBranding } from "@/components/branding-provider";
 
@@ -463,15 +464,18 @@ function LoginForm({ isAdminPortal = false }: { isAdminPortal?: boolean }) {
               </div>
 
               <form onSubmit={handleEmailSubmit} className="space-y-4">
-                <Input
-                  type="email"
-                  inputMode="email"
-                  placeholder="tu@correo.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
+                <div>
+                  <Input
+                    type="email"
+                    inputMode="email"
+                    placeholder="tu@correo.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                  <EmailSuggestion email={email} onAccept={setEmail} />
+                </div>
                 <Button
                   type="submit"
                   variant="secondary"

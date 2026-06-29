@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmailSuggestion } from "@/components/ui/email-suggestion";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
 import { cn, formatTime } from "@/lib/utils";
 import type { Package } from "@prisma/client";
@@ -474,6 +475,7 @@ export function BookingSheet({
                       required
                       autoFocus
                     />
+                    <EmailSuggestion email={guestEmail} onAccept={handleEmailChange} />
                   </div>
 
                   {checkingEmail && (
