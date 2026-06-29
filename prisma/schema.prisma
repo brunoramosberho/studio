@@ -2004,6 +2004,10 @@ model SchedulePlatformQuota {
   quotaSpots       Int          @default(0)
   bookedSpots      Int          @default(0)
   isClosedManually Boolean      @default(false)
+  // True when this row was auto-created from the tenant's default quota (so a
+  // later default change updates it). False = an explicit manual override the
+  // admin set in the class editor (a default change leaves it alone).
+  isAutoQuota      Boolean      @default(false)
   closedAt         DateTime?
   closedBy         String?
   createdAt        DateTime     @default(now())

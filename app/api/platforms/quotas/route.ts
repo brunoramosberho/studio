@@ -121,8 +121,9 @@ export async function POST(request: NextRequest) {
         classId,
         platform,
         quotaSpots,
+        isAutoQuota: false, // set per-class in the Quotas tab → manual override
       },
-      update: { quotaSpots },
+      update: { quotaSpots, isAutoQuota: false },
     });
 
     // Keep Wellhub's published availability in sync when a Wellhub quota

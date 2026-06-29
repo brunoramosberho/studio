@@ -114,6 +114,36 @@ export async function PATCH(request: NextRequest) {
       update: data,
     });
 
+    // When the default quota changes, propagate it to every class that's
+    // following the default (isAutoQuota=true). Manual overrides (isAutoQuota
+    // =false) and closed classes are left untouched. Re-sync those classes to
+    // Wellhub in the background so availability tracks the new default.
+    if (wellhubDefaultQuota !== undefined) {
+      const newDefault = data.wellhubDefaultQuota as number | null;
+      if (typeof newDefault === "number" && newDefault > 0) {
+        const autoRows = await prisma.schedulePlatformQuota.findMany({
+          where: { tenantId: tenant.id, platform: "wellhub", isAutoQuota: true },
+          select: { classId: true },
+        });
+        await prisma.schedulePlatformQuota.updateMany({
+          where: { tenantId: tenant.id, platform: "wellhub", isAutoQuota: true },
+          data: { quotaSpots: newDefault },
+        });
+        if (autoRows.length > 0) {
+          void (async () => {
+            const { syncClassToWellhub } = await import("@/lib/platforms/wellhub");
+            for (const r of autoRows) {
+              try {
+                await syncClassToWellhub(r.classId);
+              } catch (err) {
+                console.error("[wellhub] default-change re-sync failed", { classId: r.classId, err });
+              }
+            }
+          })();
+        }
+      }
+    }
+
     return NextResponse.json(strip(config));
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Tenant not found"].includes(error.message)) {

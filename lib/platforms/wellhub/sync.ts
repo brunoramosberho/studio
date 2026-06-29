@@ -74,11 +74,13 @@ export async function applyWellhubQuotaToClass(
       platform: "wellhub",
       quotaSpots: closed ? 0 : quota,
       isClosedManually: closed,
+      isAutoQuota: false, // explicit manual override → default changes leave it alone
       ...(closed ? { closedAt: new Date() } : {}),
     },
     update: {
       quotaSpots: closed ? 0 : quota,
       isClosedManually: closed,
+      isAutoQuota: false,
       ...(closed ? { closedAt: new Date() } : { closedAt: null, closedBy: null }),
     },
   });
@@ -130,8 +132,9 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
         classId,
         platform: "wellhub",
         quotaSpots: ctx.tenantConfig.defaultQuota,
+        isAutoQuota: true, // came from the default → follows default changes
       },
-      update: { quotaSpots: ctx.tenantConfig.defaultQuota },
+      update: { quotaSpots: ctx.tenantConfig.defaultQuota, isAutoQuota: true },
     });
     ctx.quotaSpots = ctx.tenantConfig.defaultQuota;
   }
