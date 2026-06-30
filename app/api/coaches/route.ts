@@ -46,7 +46,18 @@ export async function GET(request: NextRequest) {
         room: { select: { maxCapacity: true } },
         _count: {
           select: {
-            bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
+            // Billable seats — consistent with the coach detail page + pay
+            // (see lib/coach/pay.ts): booked/attended, a forfeited credit (no-show
+            // or late cancel), or a charged no-show fee.
+            bookings: {
+              where: {
+                OR: [
+                  { status: { in: ["CONFIRMED", "ATTENDED"] } },
+                  { status: { in: ["NO_SHOW", "CANCELLED"] }, creditLost: true },
+                  { status: "NO_SHOW", pendingPenalty: { is: { status: "confirmed", chargeFee: true } } },
+                ],
+              },
+            },
           },
         },
       },
@@ -73,7 +84,18 @@ export async function GET(request: NextRequest) {
         },
         _count: {
           select: {
-            bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
+            // Billable seats — consistent with the coach detail page + pay
+            // (see lib/coach/pay.ts): booked/attended, a forfeited credit (no-show
+            // or late cancel), or a charged no-show fee.
+            bookings: {
+              where: {
+                OR: [
+                  { status: { in: ["CONFIRMED", "ATTENDED"] } },
+                  { status: { in: ["NO_SHOW", "CANCELLED"] }, creditLost: true },
+                  { status: "NO_SHOW", pendingPenalty: { is: { status: "confirmed", chargeFee: true } } },
+                ],
+              },
+            },
           },
         },
       },
@@ -106,7 +128,9 @@ export async function GET(request: NextRequest) {
         // Only count classes that have already taken place — skip future ones.
         if (cls.startsAt >= now) continue;
         if (cls.room.maxCapacity > 0) {
-          totalOccupancy += cls._count.bookings / cls.room.maxCapacity;
+          // Cap at capacity — a forfeited seat that gets rebooked would otherwise
+          // push occupancy past 100%.
+          totalOccupancy += Math.min(cls._count.bookings, cls.room.maxCapacity) / cls.room.maxCapacity;
           classesWithCapacity++;
         }
       }
