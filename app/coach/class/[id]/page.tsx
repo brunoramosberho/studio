@@ -30,6 +30,10 @@ import {
   Send,
   Check,
   PartyPopper,
+  History,
+  Grid3x3,
+  ChevronRight,
+  Smartphone,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +46,7 @@ import { cn, formatDate, formatTime } from "@/lib/utils";
 import { compressImage } from "@/lib/media-utils";
 import { toast } from "sonner";
 import { SpotifyTrackPicker, type SpotifyTrack } from "@/components/shared/spotify-track-picker";
+import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
 import { RequestSubstituteButton } from "@/components/coach/request-substitute-button";
 import { ShareClassButton } from "@/components/coach/share-class-button";
 import type { ClassWithDetails, BookingStatus } from "@/types";
@@ -64,17 +69,20 @@ interface AttendeeStats {
   isTopClient: boolean;
   birthdayLabel: "today" | "yesterday" | "this_week" | null;
   cancelRate: number | null;
+  // Was this attendee also in the coach's previous class with the same instructor.
+  wasInLastClass?: boolean;
 }
 
 interface BookingEntry {
   id: string;
   status: BookingStatus;
+  spotNumber: number | null;
   stats?: AttendeeStats;
   // Platform (Wellhub/etc.) and manual-guest bookings have no native user —
   // their display name lives on guestName.
   guestName: string | null;
   platformBookingId: string | null;
-  platformBooking: { platform: string } | null;
+  platformBooking: { platform: string; memberName: string | null } | null;
   user: {
     id: string;
     name: string | null;
@@ -85,6 +93,14 @@ interface BookingEntry {
 
 interface ClassDetail extends Omit<ClassWithDetails, "bookings"> {
   bookings: BookingEntry[];
+  // The coach's previous class with this instructor (for the repeat-attendee
+  // indicator + a link to review its routine/playlist). Null on the first class.
+  lastClass: {
+    id: string;
+    startsAt: string;
+    className: string;
+    attendeeCount: number;
+  } | null;
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -94,13 +110,22 @@ const PLATFORM_LABELS: Record<string, string> = {
   fitpass: "FitPass",
 };
 
-/** Display label for a booking — the platform name (Wellhub…) for platform
- *  bookings, otherwise the member/guest name. */
+/** Display name for a booking — the actual person's name so coaches can call
+ *  everyone (incl. Wellhub members) by name. The platform is shown separately as
+ *  a tag, so here we only fall back to the platform label when we have no name. */
 function bookingDisplayName(b: BookingEntry): string {
   if (b.user?.name) return b.user.name;
+  if (b.platformBooking?.memberName) return b.platformBooking.memberName;
+  if (b.guestName) return b.guestName;
   if (b.user?.email) return b.user.email;
   if (b.platformBooking) return PLATFORM_LABELS[b.platformBooking.platform] ?? "Plataforma";
-  return b.guestName ?? "Invitado";
+  return "Invitado";
+}
+
+/** Platform label (Wellhub…) for a platform booking, else null. */
+function bookingPlatformLabel(b: BookingEntry): string | null {
+  if (!b.platformBooking) return null;
+  return PLATFORM_LABELS[b.platformBooking.platform] ?? "Plataforma";
 }
 
 interface FeedPhoto {
@@ -160,8 +185,22 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 };
 
-function AttendeeTags({ stats }: { stats: AttendeeStats }) {
+function AttendeeTags({
+  stats,
+  platformLabel,
+}: {
+  stats: AttendeeStats;
+  platformLabel?: string | null;
+}) {
   const tags: { label: string; icon: React.ReactNode; className: string }[] = [];
+
+  if (platformLabel) {
+    tags.push({
+      label: platformLabel,
+      icon: <Smartphone className="h-3 w-3" />,
+      className: "bg-sky-100 text-sky-700 border-sky-200",
+    });
+  }
 
   if (stats.birthdayLabel === "today") {
     tags.push({
@@ -194,6 +233,14 @@ function AttendeeTags({ stats }: { stats: AttendeeStats }) {
       label: "Primera contigo",
       icon: <UserPlus className="h-3 w-3" />,
       className: "bg-violet-100 text-violet-700 border-violet-200",
+    });
+  }
+
+  if (stats.wasInLastClass) {
+    tags.push({
+      label: "En tu última clase",
+      icon: <History className="h-3 w-3" />,
+      className: "bg-teal-100 text-teal-700 border-teal-200",
     });
   }
 
@@ -264,6 +311,9 @@ export default function ClassRosterPage() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [showRoster, setShowRoster] = useState(false);
+  // Tapped spot on the room map — reveals that occupant's name below the map
+  // (on phones StudioMap shows avatars without name labels).
+  const [mapSpot, setMapSpot] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const captionTimerRef = useRef<NodeJS.Timeout>(undefined);
 
@@ -572,6 +622,29 @@ export default function ClassRosterPage() {
   const capacity = classData.room?.maxCapacity ?? 0;
   const attendedCount = classData.bookings.filter(
     (b) => getAttendance(b) === "ATTENDED",
+  ).length;
+
+  // Room map with first names — the coach sees everyone (the public/member map
+  // only reveals friends). Only rendered when the room has a configured layout.
+  const roomLayout = classData.room?.layout
+    ? (classData.room.layout as unknown as RoomLayoutData)
+    : null;
+  const hasLayout = !!roomLayout && (roomLayout.spots?.length ?? 0) > 0;
+  const spotMap: Record<number, SpotInfo> = {};
+  for (const b of classData.bookings) {
+    if (b.spotNumber == null) continue;
+    spotMap[b.spotNumber] = {
+      status: "occupied",
+      userName: bookingDisplayName(b),
+      userImage: b.user?.image ?? null,
+    };
+  }
+
+  // Attendees who were also in the coach's previous class with this instructor —
+  // a discreet heads-up to vary the routine/playlist for returning faces.
+  const lastClass = classData.lastClass;
+  const repeatFromLastClass = classData.bookings.filter(
+    (b) => b.stats?.wasInLastClass,
   ).length;
 
   const photos = feedEvent?.photos ?? [];
@@ -1029,6 +1102,66 @@ export default function ClassRosterPage() {
       {/* ─── ROSTER FLOW (upcoming or past uncompleted) ─── */}
       {!showPostFlow && (
         <>
+          {/* Room map with each attendee's first name (coach sees everyone) */}
+          {hasLayout && (
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Grid3x3 className="h-4 w-4 text-coach" />
+                  Mapa de la sala
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StudioMap
+                  maxCapacity={capacity}
+                  spotMap={spotMap}
+                  selectedSpot={mapSpot}
+                  onSelectSpot={(s) =>
+                    setMapSpot((cur) => (cur === s ? null : s))
+                  }
+                  layout={roomLayout}
+                  coachName={classData.coach.name}
+                  revealOccupants
+                />
+                {mapSpot != null && spotMap[mapSpot]?.userName && (
+                  <p className="mt-3 text-center text-sm font-semibold text-foreground">
+                    Lugar {mapSpot} · {spotMap[mapSpot]?.userName}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Repeat faces from the coach's previous class — links back to it so
+              the instructor can check the routine/playlist they ran. */}
+          {lastClass && repeatFromLastClass > 0 && (
+            <Link
+              href={`/coach/class/${lastClass.id}`}
+              className="flex items-center gap-3 rounded-2xl border border-teal-200 bg-teal-50/70 p-3.5 transition-colors hover:bg-teal-50 dark:border-teal-500/30 dark:bg-teal-500/10 dark:hover:bg-teal-500/15"
+            >
+              <History className="h-5 w-5 shrink-0 text-teal-600 dark:text-teal-300" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground">
+                  {repeatFromLastClass}{" "}
+                  {repeatFromLastClass === 1
+                    ? "asistente repite"
+                    : "asistentes repiten"}{" "}
+                  de tu última clase
+                </p>
+                <p className="truncate text-xs text-muted">
+                  {lastClass.className} ·{" "}
+                  {new Date(lastClass.startsAt).toLocaleDateString("es", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                  })}{" "}
+                  · ver rutina y playlist
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-300" />
+            </Link>
+          )}
+
           <div>
             <h2 className="mb-4 font-display text-xl font-bold">
               Lista de asistencia
@@ -1086,7 +1219,10 @@ export default function ClassRosterPage() {
                                 {name}
                               </p>
                               {booking.stats && (
-                                <AttendeeTags stats={booking.stats} />
+                                <AttendeeTags
+                                  stats={booking.stats}
+                                  platformLabel={bookingPlatformLabel(booking)}
+                                />
                               )}
                             </div>
 

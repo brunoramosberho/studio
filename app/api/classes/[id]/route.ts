@@ -48,9 +48,12 @@ export async function GET(
                 createdAt: true,
               },
             },
-            // Platform companion bookings (Wellhub/ClassPass/…) so the coach
-            // view can label them by platform instead of "Invitado".
-            platformBooking: { select: { platform: true } },
+            // Platform companion bookings (Wellhub/ClassPass/…). memberName lets
+            // the coach call them by name; wellhubUserUniqueToken is the stable
+            // identity used to detect repeat attendance across classes.
+            platformBooking: {
+              select: { platform: true, memberName: true, wellhubUserUniqueToken: true },
+            },
           },
         },
         blockedSpots: {
@@ -132,11 +135,14 @@ export async function GET(
     }
 
     let bookings;
+    // The coach's previous class with the same instructor (for the "repeat from
+    // your last class" indicator + a link to review what was done there).
+    let lastClass: { id: string; startsAt: Date; className: string; attendeeCount: number } | null = null;
 
     if (isCoachOrAdmin && classData.bookings.length > 0) {
       const userIds = classData.bookings.filter((b) => b.user).map((b) => b.user!.id);
 
-      const [totalCounts, coachCounts, cancelCounts, allBookingCounts] = await Promise.all([
+      const [totalCounts, coachCounts, cancelCounts, allBookingCounts, lastClassData] = await Promise.all([
         prisma.booking.groupBy({
           by: ["userId"],
           where: {
@@ -167,12 +173,71 @@ export async function GET(
           where: { userId: { in: userIds } },
           _count: true,
         }),
+        // The coach's previous (most recent past) class with this same coach —
+        // its attendees power the "was in your last class" repeat indicator so
+        // the coach can vary the routine/playlist for returning faces.
+        prisma.class.findFirst({
+          where: {
+            tenantId: tenant.id,
+            coachId: classData.coachId,
+            startsAt: { lt: classData.startsAt },
+            status: { not: "CANCELLED" },
+          },
+          orderBy: { startsAt: "desc" },
+          select: {
+            id: true,
+            startsAt: true,
+            classType: { select: { name: true } },
+            bookings: {
+              where: { status: { in: ["ATTENDED", "CONFIRMED"] } },
+              select: {
+                userId: true,
+                guestEmail: true,
+                platformBooking: {
+                  select: { wellhubUserUniqueToken: true, memberName: true },
+                },
+              },
+            },
+          },
+        }),
       ]);
 
       const totalMap = new Map(totalCounts.map((r) => [r.userId, r._count]));
       const coachMap = new Map(coachCounts.map((r) => [r.userId, r._count]));
       const cancelMap = new Map(cancelCounts.map((r) => [r.userId, r._count]));
       const allMap = new Map(allBookingCounts.map((r) => [r.userId, r._count]));
+      // Identity that survives across classes: members by id, guests by email,
+      // Wellhub members by their stable unique token (name as a fallback). Lets
+      // the repeat indicator catch guests + platform members, not just logged-in.
+      const identityKey = (b: {
+        userId: string | null;
+        guestEmail: string | null;
+        platformBooking: {
+          wellhubUserUniqueToken: string | null;
+          memberName: string | null;
+        } | null;
+      }): string | null => {
+        if (b.userId) return `u:${b.userId}`;
+        if (b.guestEmail) return `e:${b.guestEmail.trim().toLowerCase()}`;
+        if (b.platformBooking?.wellhubUserUniqueToken)
+          return `w:${b.platformBooking.wellhubUserUniqueToken}`;
+        if (b.platformBooking?.memberName)
+          return `n:${b.platformBooking.memberName.trim().toLowerCase()}`;
+        return null;
+      };
+      const lastKeys = new Set(
+        (lastClassData?.bookings ?? [])
+          .map(identityKey)
+          .filter((x): x is string => !!x),
+      );
+      if (lastClassData) {
+        lastClass = {
+          id: lastClassData.id,
+          startsAt: lastClassData.startsAt,
+          className: lastClassData.classType.name,
+          attendeeCount: lastClassData.bookings.length,
+        };
+      }
 
       const now = new Date();
       const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -185,10 +250,14 @@ export async function GET(
         const cancelled = cancelMap.get(uid) ?? 0;
         const allBookings = allMap.get(uid) ?? 0;
         const cancelRate = allBookings >= 3 ? Math.round((cancelled / allBookings) * 100) : null;
+        const hasUser = !!b.user?.id;
         const isNewMember = b.user ? b.user.createdAt >= thirtyDaysAgo : false;
-        const isFirstEver = totalClasses <= 1;
-        const isFirstWithCoach = classesWithCoach <= 1;
+        // History tags only make sense for logged-in members — a guest/platform
+        // booking has no userId to count past visits by, so don't imply "first".
+        const isFirstEver = hasUser && totalClasses <= 1;
+        const isFirstWithCoach = hasUser && classesWithCoach <= 1;
         const isTopClient = totalClasses >= 10;
+        const repeatKey = identityKey(b);
 
         let birthdayLabel: string | null = null;
         if (b.user?.birthday) {
@@ -217,6 +286,7 @@ export async function GET(
             isTopClient,
             birthdayLabel,
             cancelRate,
+            wasInLastClass: !!repeatKey && lastKeys.has(repeatKey),
           },
         };
       });
@@ -250,7 +320,7 @@ export async function GET(
       !isStaff && shouldHideCoach(tenant, { endsAt: classData.endsAt });
     const coach = hideCoach ? redactedCoach(baseCoach) : baseCoach;
 
-    return NextResponse.json({ ...classData, coach, bookings, spotsLeft, spotMap, myWaitlistEntry, myNotifyMe });
+    return NextResponse.json({ ...classData, coach, bookings, spotsLeft, spotMap, myWaitlistEntry, myNotifyMe, lastClass });
   } catch (error) {
     console.error("GET /api/classes/[id] error:", error);
     return NextResponse.json(

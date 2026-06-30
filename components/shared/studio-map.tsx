@@ -168,13 +168,14 @@ export function StudioMap({
   // name label) so the auto-fit container measures the content correctly.
   const isDesktop = useIsDesktopViewport();
   const reveal = !!revealOccupants;
-  // On phones the reveal map shrinks to a compact, name-less size that auto-fits
-  // the width (no min-scale floor → no horizontal scroll). Occupant avatars
-  // still show, and tapping a spot highlights it + names it below the map.
-  const showLabels = reveal && isDesktop;
+  // The reveal map (admin check-in / coach roster) always shows the occupant's
+  // first name under their avatar so staff can see who is where at a glance —
+  // on phones it just renders in a smaller font. Tapping a spot still highlights
+  // it + names it below the map for the long names that truncate.
+  const showLabels = reveal;
   const avatarSize = reveal ? (isDesktop ? 52 : 40) : 38;
-  const cellW = reveal ? (isDesktop ? 76 : 44) : 42;
-  const labelH = showLabels ? 16 : 0;
+  const cellW = reveal ? (isDesktop ? 76 : 48) : 42;
+  const labelH = showLabels ? (isDesktop ? 16 : 12) : 0;
   const cellH = reveal ? avatarSize + 2 + labelH : 42;
   // Only the desktop reveal map keeps the legibility floor (it scrolls instead
   // of shrinking below it). Everywhere else free-shrink to fit the container.
@@ -301,9 +302,14 @@ export function StudioMap({
           </div>
         )}
 
-        {/* Always-visible occupant name (admin check-in only) */}
+        {/* Always-visible occupant first name (reveal map — desktop + mobile) */}
         {showLabels && (
-          <span className="mt-0.5 block w-full truncate px-0.5 text-center text-[11px] leading-[16px] font-medium text-neutral-700 dark:text-foreground">
+          <span
+            className={cn(
+              "mt-0.5 block w-full truncate px-0.5 text-center font-medium text-neutral-700 dark:text-foreground",
+              isDesktop ? "text-[11px] leading-[16px]" : "text-[9px] leading-[12px]",
+            )}
+          >
             {info?.userName ? info.userName.split(" ")[0] : ""}
           </span>
         )}
