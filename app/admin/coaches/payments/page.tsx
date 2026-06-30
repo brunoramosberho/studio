@@ -359,24 +359,15 @@ export default function CoachPaymentsPage() {
                               </span>
                             </td>
                             <td className="px-3 py-2 text-muted">{l.studioName}</td>
-                            <td className="px-3 py-2 text-center">
-                              {l.chargedNoShows + l.chargedLateCancels > 0 ? (
-                                <span
-                                  className="cursor-help border-b border-dotted border-muted/50"
-                                  title={[
-                                    t("seatAttended", { n: l.attended }),
-                                    l.chargedNoShows > 0 ? t("seatNoShow", { n: l.chargedNoShows }) : null,
-                                    l.chargedLateCancels > 0 ? t("seatLateCancel", { n: l.chargedLateCancels }) : null,
-                                    l.capped ? t("seatCapped") : null,
-                                  ]
-                                    .filter(Boolean)
-                                    .join(" · ")}
-                                >
-                                  {l.attendees}/{l.capacity}
-                                  <span className="text-accent">*</span>
-                                </span>
-                              ) : (
-                                <>{l.attendees}/{l.capacity}</>
+                            <td className="px-3 py-2 text-center align-top">
+                              <div className="whitespace-nowrap">{l.attendees}/{l.capacity}</div>
+                              {l.chargedNoShows + l.chargedLateCancels > 0 && (
+                                <div className="mt-0.5 text-[9px] leading-tight text-muted">
+                                  {t("seatAttended", { n: l.attended })}
+                                  {l.chargedNoShows > 0 && ` + ${t("seatNoShow", { n: l.chargedNoShows })}`}
+                                  {l.chargedLateCancels > 0 && ` + ${t("seatLateCancel", { n: l.chargedLateCancels })}`}
+                                  {l.capped && ` · ${t("seatCapped")}`}
+                                </div>
                               )}
                             </td>
                             <td className="px-3 py-2 text-center">{l.occupancyPct}%</td>
