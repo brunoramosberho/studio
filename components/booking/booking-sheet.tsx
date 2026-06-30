@@ -27,6 +27,7 @@ import { cn, formatTime } from "@/lib/utils";
 import type { Package } from "@prisma/client";
 import { ProductPickStep } from "./product-pick-step";
 import { PurchaseSheet } from "./purchase-sheet";
+import { SubscribeSheet } from "./subscribe-sheet";
 
 function GuestLoginPrompt({ email, classId }: { email: string; classId: string }) {
   const t = useTranslations("bookingSheet");
@@ -135,6 +136,7 @@ export function BookingSheet({
   const [error, setError] = useState<string | null>(null);
   const [needsPackagePurchase, setNeedsPackagePurchase] = useState(false);
   const [purchaseInline, setPurchaseInline] = useState<Package | null>(null);
+  const [subscribeInline, setSubscribeInline] = useState<Package | null>(null);
   const [result, setResult] = useState<{
     bookingId: string;
     spotNumber: number;
@@ -251,6 +253,8 @@ export function BookingSheet({
       setResult(null);
       setLoading(false);
       setEmailCheck(null);
+      setPurchaseInline(null);
+      setSubscribeInline(null);
       bookingInFlight.current = false;
     }
   }, [open, isLoggedIn]);
@@ -279,13 +283,12 @@ export function BookingSheet({
 
   function handleSelectPackage(pkg: Package) {
     if (bookingInFlight.current) return;
-    // Memberships are recurring and need an account, so they can't be booked via
-    // the one-time guest flow. Instead of dead-ending, send the guest to sign in
-    // (their email may already have an account) and on to the membership page to
-    // contract it — then they can book with the membership.
+    // Memberships are recurring and need an account. Rather than bouncing the
+    // guest out to /login, open the inline subscribe flow: it creates the
+    // account + Stripe subscription, takes the first payment, and books this
+    // class — all without leaving /class/[id].
     if ((pkg as { type?: string }).type === "SUBSCRIPTION") {
-      const target = `/packages/${pkg.id}`;
-      router.push(`/login?callbackUrl=${encodeURIComponent(target)}`);
+      setSubscribeInline(pkg);
       return;
     }
     setSelectedPkg(pkg);
@@ -880,6 +883,26 @@ export function BookingSheet({
               setPurchaseInline(null);
             }
           }}
+        />
+      )}
+
+      {subscribeInline && (
+        <SubscribeSheet
+          open
+          pkg={subscribeInline}
+          onClose={() => setSubscribeInline(null)}
+          classId={classId}
+          spotNumber={spotNumber}
+          privacy={privacy}
+          guest={
+            !isLoggedIn && guestName.trim() && guestEmail.trim()
+              ? {
+                  name: guestName,
+                  email: guestEmail,
+                  phone: guestPhone || undefined,
+                }
+              : undefined
+          }
         />
       )}
     </>

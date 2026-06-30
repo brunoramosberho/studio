@@ -15,6 +15,11 @@ export default function PaymentSuccessPage() {
   const redirectStatus = params.get("redirect_status");
   const paymentIntentId = params.get("payment_intent");
   const shouldBook = params.get("book") === "1";
+  // Inline subscribe-and-book: after the first invoice payment, finalize the
+  // subscription (materialize the membership) and book the class.
+  const isSubscribe = params.get("subscribe") === "1";
+  const subscriptionId = params.get("subscriptionId");
+  const subscribePrivacy = params.get("privacy");
   const classId = params.get("classId");
   const spotNumberParam = params.get("spotNumber");
   const spotNumber = spotNumberParam ? Number(spotNumberParam) : null;
@@ -40,7 +45,7 @@ export default function PaymentSuccessPage() {
     let cancelled = false;
 
     async function attemptBooking() {
-      if (!shouldBook || !classId) {
+      if (!classId || (!shouldBook && !isSubscribe)) {
         // Nothing to chain — just acknowledge the payment.
         setStatus("succeeded");
         setTimeout(() => router.replace("/my/packages"), 700);
@@ -53,15 +58,23 @@ export default function PaymentSuccessPage() {
 
       while (!cancelled) {
         try {
-          const res = await fetch("/api/bookings", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              classId,
-              paymentIntentId,
-              ...(spotNumber != null && { spotNumber }),
-            }),
-          });
+          const res = await fetch(
+            isSubscribe ? "/api/book-and-subscribe/finalize" : "/api/bookings",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(
+                isSubscribe
+                  ? {
+                      subscriptionId,
+                      classId,
+                      ...(subscribePrivacy && { privacy: subscribePrivacy }),
+                      ...(spotNumber != null && { spotNumber }),
+                    }
+                  : { classId, paymentIntentId, ...(spotNumber != null && { spotNumber }) },
+              ),
+            },
+          );
 
           if (res.ok) {
             // Pull data from response to hand off to the class page so it can
@@ -135,7 +148,7 @@ export default function PaymentSuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [paymentIntentId, redirectStatus, router, shouldBook, classId, spotNumber]);
+  }, [paymentIntentId, redirectStatus, router, shouldBook, classId, spotNumber, isSubscribe, subscriptionId, subscribePrivacy]);
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-6">
