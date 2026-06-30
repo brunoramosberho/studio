@@ -657,6 +657,7 @@ function AudienceEditor({
   setRecommendedId: (v: string | null) => void;
   allPackages: SubscriptionPackage[];
 }) {
+  const td = useTranslations("decoy");
   const [suggesting, setSuggesting] = useState(false);
   const [explanation, setExplanation] = useState<string | null>(null);
 
@@ -722,7 +723,7 @@ function AudienceEditor({
           ) : (
             <Sparkles className="h-3.5 w-3.5" />
           )}
-          Sugerir con Spark
+          {td("suggestWithSpark")}
         </button>
       </div>
       <div className="space-y-2">
@@ -735,10 +736,10 @@ function AudienceEditor({
               </span>
               <Select value={id || "__none__"} onValueChange={(v) => setSlot(i, v)}>
                 <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Elegir paquete" />
+                  <SelectValue placeholder={td("choosePackage")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">— vacío —</SelectItem>
+                  <SelectItem value="__none__">{td("emptySlot")}</SelectItem>
                   {allPackages.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
@@ -752,7 +753,7 @@ function AudienceEditor({
                 onClick={() =>
                   setRecommendedId(recommendedId === id ? null : id)
                 }
-                title="Marcar como recomendado (preferred pick)"
+                title={td("markRecommended")}
                 className="shrink-0 rounded-lg p-1.5 transition-colors hover:bg-surface disabled:opacity-30"
               >
                 <Star
@@ -792,15 +793,17 @@ function AudienceEditor({
               ) : (
                 <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
               )}
-              {c.message}
+              {(td as (k: string, v?: Record<string, string | number>) => string)(
+                c.key,
+                c.values,
+              )}
             </p>
           ))}
         </div>
       )}
 
       <p className="mt-2 flex items-center gap-1 text-[11px] text-muted">
-        <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> = preferido
-        (badge &ldquo;Recomendado&rdquo;). El orden 1→3 es el que verá el cliente.
+        <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {td("preferredHint")}
       </p>
     </div>
   );
@@ -814,6 +817,7 @@ function CuratedPackagesConfig({
   allPackages: SubscriptionPackage[];
 }) {
   const tc = useTranslations("common");
+  const td = useTranslations("decoy");
   const queryClient = useQueryClient();
   const [enabled, setEnabled] = useState(config.curatedEnabled);
   const [ftIds, setFtIds] = useState<string[]>(config.curatedFirstTimerIds ?? []);
@@ -867,13 +871,9 @@ function CuratedPackagesConfig({
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-foreground">
-            Paquetes destacados · efecto decoy
+            {td("title")}
           </h3>
-          <p className="text-xs text-muted">
-            Muestra 3 paquetes elegidos (con un preferido) en el booking y
-            /packages; el resto queda en “ver más”. Apagado → se muestran todos
-            como hoy.
-          </p>
+          <p className="text-xs text-muted">{td("description")}</p>
         </div>
         <Switch
           checked={enabled}
@@ -886,20 +886,13 @@ function CuratedPackagesConfig({
       <div className="space-y-4 border-t border-border px-6 py-5">
         <div className="rounded-xl bg-surface p-4 text-[11px] leading-relaxed text-muted">
           <p className="mb-1.5 flex items-center gap-1.5 font-semibold text-foreground">
-            <Info className="h-3.5 w-3.5" /> Cómo funciona el efecto decoy
+            <Info className="h-3.5 w-3.5" /> {td("howItWorks")}
           </p>
-          <p>
-            Elige 3 opciones: un <b>ancla</b> barata (mete el pie), tu{" "}
-            <b>objetivo</b> ⭐ (lo que quieres empujar) y un <b>decoy</b> que
-            cuesta ≥ que el objetivo pero ofrece menos — así el objetivo se
-            vuelve la elección obvia. Configura los sets y <b>guarda</b>; luego
-            actívalo con el switch de arriba. &ldquo;Sugerir con Spark&rdquo; lo
-            arma por ti.
-          </p>
+          <p>{td("explainer")}</p>
         </div>
         <AudienceEditor
-          title="Primera reserva"
-          hint="Para quien nunca ha comprado. Objetivo: que vuelva."
+          title={td("firstTimerTitle")}
+          hint={td("firstTimerHint")}
           audience="firstTimer"
           ids={ftIds}
           setIds={setFtIds}
@@ -908,8 +901,8 @@ function CuratedPackagesConfig({
           allPackages={allPackages}
         />
         <AudienceEditor
-          title="Cliente recurrente"
-          hint="Para quien ya compró antes. Objetivo: suscripción / paquete mayor."
+          title={td("returningTitle")}
+          hint={td("returningHint")}
           audience="returning"
           ids={rtIds}
           setIds={setRtIds}
@@ -920,10 +913,10 @@ function CuratedPackagesConfig({
         <div className="flex items-center justify-between gap-3 pt-1">
           <p className="text-[11px] text-muted">
             {enabled
-              ? "Activo. Los cambios se aplican al guardar."
+              ? td("statusActive")
               : anyConfigured
-                ? "Guarda y actívalo con el switch de arriba."
-                : "Configura al menos un set para poder activarlo."}
+                ? td("statusReady")
+                : td("statusEmpty")}
           </p>
           <Button
             size="sm"

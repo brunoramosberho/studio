@@ -21,7 +21,9 @@ export interface DecoyPackage {
 
 export interface DecoyCheck {
   level: "ok" | "warn";
-  message: string;
+  /** i18n key under the "decoy" namespace; the UI translates it with `values`. */
+  key: string;
+  values?: Record<string, string | number>;
 }
 
 export interface DecoyAnalysis {
@@ -61,48 +63,35 @@ export function analyzeDecoy(
   const checks: DecoyCheck[] = [];
 
   if (curated.length === 0) {
-    return { checks: [{ level: "warn", message: "Elige los paquetes a destacar." }], verdict: "incomplete" };
+    return { checks: [{ level: "warn", key: "checkChoose" }], verdict: "incomplete" };
   }
   if (curated.length < 2) {
-    return {
-      checks: [{ level: "warn", message: "Elige al menos 2 (3 para el efecto completo)." }],
-      verdict: "incomplete",
-    };
+    return { checks: [{ level: "warn", key: "checkAtLeastTwo" }], verdict: "incomplete" };
   }
 
   const target = curated.find((p) => p.id === recommendedId) ?? null;
   if (!target) {
-    checks.push({ level: "warn", message: "Marca tu preferido (⭐) — el que quieres empujar." });
+    checks.push({ level: "warn", key: "checkMarkPreferred" });
     return { checks, verdict: "incomplete" };
   }
-  checks.push({ level: "ok", message: `Objetivo: ${target.name} (tu preferido).` });
+  checks.push({ level: "ok", key: "checkTarget", values: { name: target.name } });
 
   const others = curated.filter((p) => p.id !== target.id);
 
   // Decoy — the option that makes the target obvious.
   const decoy = others.find((o) => isDecoyFor(target, o));
   if (decoy) {
-    checks.push({
-      level: "ok",
-      message: `Decoy: ${decoy.name} cuesta ≥ pero ofrece menos → hace obvio a ${target.name}.`,
-    });
+    checks.push({ level: "ok", key: "checkHasDecoy", values: { decoy: decoy.name, target: target.name } });
   } else {
-    checks.push({
-      level: "warn",
-      message:
-        "Falta un decoy: una opción que cueste ≥ que tu preferido pero ofrezca menos (peor €/clase o menos clases). Sin eso el efecto no empuja.",
-    });
+    checks.push({ level: "warn", key: "checkNoDecoy" });
   }
 
   // Anchor — a cheaper entry so the target feels accessible (target isn't cheapest).
   const anchor = others.find((o) => o.price < target.price);
   if (anchor) {
-    checks.push({ level: "ok", message: `Ancla: ${anchor.name} (más barato) hace accesible a ${target.name}.` });
+    checks.push({ level: "ok", key: "checkHasAnchor", values: { anchor: anchor.name, target: target.name } });
   } else {
-    checks.push({
-      level: "warn",
-      message: `${target.name} es el más barato → es un ancla, no un objetivo. Considera empujar uno de valor medio.`,
-    });
+    checks.push({ level: "warn", key: "checkNoAnchor", values: { target: target.name } });
   }
 
   // The target shouldn't be the worst value (or a customer picks another).
@@ -110,10 +99,7 @@ export function analyzeDecoy(
   if (t !== null) {
     const betterValue = others.find((o) => isUnlimited(o) || (perClass(o) ?? Infinity) < t);
     if (betterValue) {
-      checks.push({
-        level: "warn",
-        message: `${betterValue.name} tiene mejor valor que tu preferido — el cliente podría elegirlo a él.`,
-      });
+      checks.push({ level: "warn", key: "checkBetterValue", values: { name: betterValue.name } });
     }
   }
 
@@ -123,13 +109,15 @@ export function analyzeDecoy(
   if (audience === "returning") {
     const limited = curated.filter((p) => p.maxPurchasesPerCustomer != null);
     if (limited.length > 0) {
-      const targetLimited = target.maxPurchasesPerCustomer != null;
-      checks.push({
-        level: targetLimited ? "warn" : "ok",
-        message: targetLimited
-          ? `${target.name} es de compra limitada — un recurrente que ya lo compró verá la siguiente opción en su lugar. Para recurrentes, lo ideal es un objetivo sin límite (p. ej. una suscripción).`
-          : `${limited.map((p) => p.name).join(", ")} ${limited.length > 1 ? "tienen" : "tiene"} límite de compra — quien ya lo compró verá la siguiente opción.`,
-      });
+      if (target.maxPurchasesPerCustomer != null) {
+        checks.push({ level: "warn", key: "checkLimitedTarget", values: { name: target.name } });
+      } else {
+        checks.push({
+          level: "ok",
+          key: "checkLimitedOthers",
+          values: { names: limited.map((p) => p.name).join(", "), count: limited.length },
+        });
+      }
     }
   }
 

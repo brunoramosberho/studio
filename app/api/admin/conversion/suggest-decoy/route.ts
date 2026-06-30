@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getLocale } from "next-intl/server";
 import { requireRole, getTenantCurrency } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { suggestDecoyWithAI } from "@/lib/ai/suggest-decoy";
@@ -30,7 +31,13 @@ export async function POST(request: NextRequest) {
     }));
 
     const currency = (await getTenantCurrency()).code;
-    const result = await suggestDecoyWithAI(decoyPackages, audience, currency);
+    const locale = await getLocale();
+    const result = await suggestDecoyWithAI(
+      decoyPackages,
+      audience,
+      currency,
+      locale === "en" ? "en" : "es",
+    );
     return NextResponse.json(result);
   } catch (error: unknown) {
     const message =

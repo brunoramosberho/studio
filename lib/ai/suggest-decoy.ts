@@ -18,11 +18,15 @@ export async function suggestDecoyWithAI(
   packages: DecoyPackage[],
   audience: "firstTimer" | "returning",
   currency: string,
+  language: "es" | "en" = "es",
 ): Promise<DecoySuggestion> {
+  const langName = language === "en" ? "English" : "Spanish";
   const fallback = (): DecoySuggestion => ({
     ...suggestDecoyHeuristic(packages, audience),
     explanation:
-      "Sugerencia automática por precio y valor por clase (Spark no disponible).",
+      language === "en"
+        ? "Automatic suggestion by price and value per class (Spark unavailable)."
+        : "Sugerencia automática por precio y valor por clase (Spark no disponible).",
     source: "heuristic",
   });
 
@@ -75,8 +79,7 @@ export async function suggestDecoyWithAI(
               },
               explanation: {
                 type: "string",
-                description:
-                  "2-3 short sentences in Spanish explaining the anchor/target/decoy roles and why this set pushes the target.",
+                description: `2-3 short sentences in ${langName} explaining the anchor/target/decoy roles and why this set pushes the target.`,
               },
             },
             required: ["anchorId", "targetId", "decoyId", "explanation"],
@@ -94,10 +97,10 @@ The decoy effect needs three roles, in this order:
 2. TARGET — the option you want them to choose (the "recommended").
 3. DECOY — priced at or ABOVE the target but clearly WORSE value (fewer classes or worse price-per-class). Its only job is to make the target the obvious choice.
 
-Return THREE DISTINCT package ids (anchorId, targetId, decoyId) — never the same id twice, never a name in an id field. Your Spanish explanation must describe exactly those three packages by name and match the ids you chose. If no perfect decoy exists, pick the closest. Catalog (prices in ${currency}):
+Return THREE DISTINCT package ids (anchorId, targetId, decoyId) — never the same id twice, never a name in an id field. Your ${langName} explanation must describe exactly those three packages by name and match the ids you chose. If no perfect decoy exists, pick the closest. Catalog (prices in ${currency}):
 ${JSON.stringify(catalog, null, 2)}
 
-Call propose_decoy with three distinct ids from the catalog and a short Spanish explanation that matches them.`,
+Call propose_decoy with three distinct ids from the catalog and a short ${langName} explanation that matches them.`,
         },
       ],
     });

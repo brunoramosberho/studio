@@ -297,6 +297,7 @@ function buildPayload(form: FormState) {
 export default function AdminPackagesPage() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
+  const td = useTranslations("decoy");
   const queryClient = useQueryClient();
   const tenantCurrency = useCurrency();
   const [activeTab, setActiveTab] = useState<PackageKind>("OFFER");
@@ -500,12 +501,9 @@ export default function AdminPackagesPage() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground">
-            Destaca paquetes con el efecto decoy
+            {td("bannerTitle")}
           </p>
-          <p className="text-xs text-muted">
-            Cura 3 opciones (con un preferido) para primera-vez y recurrentes —
-            Spark valida y sugiere el mejor set.
-          </p>
+          <p className="text-xs text-muted">{td("bannerSubtitle")}</p>
         </div>
         <ArrowRight className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
       </Link>
