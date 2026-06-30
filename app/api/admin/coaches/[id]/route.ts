@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole, getTenantCurrency } from "@/lib/tenant";
-import { getTenantHolidaySet, holidayKey } from "@/lib/holidays/calendar";
+import { computeCoachPay } from "@/lib/coach/pay";
 
 export async function GET(
   _request: NextRequest,
@@ -66,7 +66,18 @@ export async function GET(
           room: { select: { name: true, maxCapacity: true, studio: { select: { name: true } } } },
           _count: {
             select: {
-              bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
+              // Billable seats — the studio earned from these (see lib/coach/pay.ts):
+              // booked/attended, a forfeited credit (no-show or late cancel), or a
+              // charged no-show fee. Keeps occupancy consistent with what's paid.
+              bookings: {
+                where: {
+                  OR: [
+                    { status: { in: ["CONFIRMED", "ATTENDED"] } },
+                    { status: { in: ["NO_SHOW", "CANCELLED"] }, creditLost: true },
+                    { status: "NO_SHOW", pendingPenalty: { is: { status: "confirmed", chargeFee: true } } },
+                  ],
+                },
+              },
             },
           },
         },
@@ -89,7 +100,18 @@ export async function GET(
           room: { select: { name: true, maxCapacity: true, studio: { select: { name: true } } } },
           _count: {
             select: {
-              bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
+              // Billable seats — the studio earned from these (see lib/coach/pay.ts):
+              // booked/attended, a forfeited credit (no-show or late cancel), or a
+              // charged no-show fee. Keeps occupancy consistent with what's paid.
+              bookings: {
+                where: {
+                  OR: [
+                    { status: { in: ["CONFIRMED", "ATTENDED"] } },
+                    { status: { in: ["NO_SHOW", "CANCELLED"] }, creditLost: true },
+                    { status: "NO_SHOW", pendingPenalty: { is: { status: "confirmed", chargeFee: true } } },
+                  ],
+                },
+              },
             },
           },
         },
@@ -110,7 +132,18 @@ export async function GET(
           room: { select: { name: true, maxCapacity: true, studio: { select: { name: true } } } },
           _count: {
             select: {
-              bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
+              // Billable seats — the studio earned from these (see lib/coach/pay.ts):
+              // booked/attended, a forfeited credit (no-show or late cancel), or a
+              // charged no-show fee. Keeps occupancy consistent with what's paid.
+              bookings: {
+                where: {
+                  OR: [
+                    { status: { in: ["CONFIRMED", "ATTENDED"] } },
+                    { status: { in: ["NO_SHOW", "CANCELLED"] }, creditLost: true },
+                    { status: "NO_SHOW", pendingPenalty: { is: { status: "confirmed", chargeFee: true } } },
+                  ],
+                },
+              },
             },
           },
         },
@@ -120,13 +153,23 @@ export async function GET(
     ]);
 
     const monthClassCount = classesThisMonth.length;
+    // Cap billable seats at room capacity — a forfeited seat that gets rebooked
+    // would otherwise double-count and push occupancy past 100%.
+    const billableOf = (cls: {
+      _count: { bookings: number };
+      room: { maxCapacity: number };
+    }) =>
+      cls.room.maxCapacity > 0
+        ? Math.min(cls._count.bookings, cls.room.maxCapacity)
+        : cls._count.bookings;
     let totalOccupancy = 0;
     let classesWithCap = 0;
     let totalStudentsMonth = 0;
     for (const cls of classesThisMonth) {
-      totalStudentsMonth += cls._count.bookings;
+      const billable = billableOf(cls);
+      totalStudentsMonth += billable;
       if (cls.room.maxCapacity > 0) {
-        totalOccupancy += cls._count.bookings / cls.room.maxCapacity;
+        totalOccupancy += billable / cls.room.maxCapacity;
         classesWithCap++;
       }
     }
@@ -158,8 +201,17 @@ export async function GET(
         class: { coachId: id, tenantId: ctx.tenant.id, startsAt: { gte: monthStart, lte: monthEnd } },
       },
     });
+    // No-show rate is a frequency over real attendance opportunities, so its
+    // denominator stays physical (attended + no-shows) — independent of the
+    // billable seat count used for occupancy/pay.
+    const attendedBookingsMonth = await prisma.booking.count({
+      where: {
+        status: { in: ["CONFIRMED", "ATTENDED"] },
+        class: { coachId: id, tenantId: ctx.tenant.id, startsAt: { gte: monthStart, lte: monthEnd } },
+      },
+    });
 
-    const totalBookingsMonth = totalStudentsMonth + noShowCount;
+    const totalBookingsMonth = attendedBookingsMonth + noShowCount;
     const noShowRate = totalBookingsMonth > 0 ? Math.round((noShowCount / totalBookingsMonth) * 100) : 0;
 
     const typeBreakdown = new Map<string, { name: string; color: string; count: number; students: number }>();
@@ -167,11 +219,15 @@ export async function GET(
       const key = cls.classType.id;
       const existing = typeBreakdown.get(key) ?? { name: cls.classType.name, color: cls.classType.color, count: 0, students: 0 };
       existing.count++;
-      existing.students += cls._count.bookings;
+      existing.students += billableOf(cls);
       typeBreakdown.set(key, existing);
     }
 
-    const earnings = await calculateEarnings(id, ctx.tenant.id, monthStart, monthEnd);
+    // Pay comes from the single source of truth (lib/coach/pay.ts) so this page
+    // matches admin payroll + the instructor's own view.
+    const currency = (await getTenantCurrency()).code;
+    const pay = await computeCoachPay(id, ctx.tenant.id, monthStart, monthEnd, currency, now);
+    const earnings = { total: pay.total, breakdown: pay.breakdown, currency: pay.currency };
 
     const formatClass = (cls: any) => ({
       id: cls.id,
@@ -184,8 +240,8 @@ export async function GET(
       roomName: cls.room.name,
       studioName: cls.room.studio.name,
       capacity: cls.room.maxCapacity,
-      booked: cls._count.bookings,
-      occupancy: cls.room.maxCapacity > 0 ? Math.round((cls._count.bookings / cls.room.maxCapacity) * 100) : 0,
+      booked: billableOf(cls),
+      occupancy: cls.room.maxCapacity > 0 ? Math.round((billableOf(cls) / cls.room.maxCapacity) * 100) : 0,
     });
 
     return NextResponse.json({
@@ -254,165 +310,4 @@ export async function PUT(
     console.error("PUT /api/admin/coaches/[id] error:", error);
     return NextResponse.json({ error: "Error interno" }, { status: 500 });
   }
-}
-
-async function calculateEarnings(
-  coachProfileId: string,
-  tenantId: string,
-  from: Date,
-  to: Date,
-) {
-  const payRates = await prisma.coachPayRate.findMany({
-    where: {
-      coachProfileId,
-      tenantId,
-      isActive: true,
-      effectiveFrom: { lte: to },
-      OR: [{ effectiveTo: null }, { effectiveTo: { gte: from } }],
-    },
-  });
-
-  if (payRates.length === 0) {
-    const tenantCurrency = await getTenantCurrency();
-    return { total: 0, breakdown: [], currency: tenantCurrency.code };
-  }
-
-  const classes = await prisma.class.findMany({
-    where: {
-      coachId: coachProfileId,
-      tenantId,
-      startsAt: { gte: from, lte: to },
-      status: { not: "CANCELLED" },
-    },
-    select: {
-      id: true,
-      classTypeId: true,
-      startsAt: true,
-      tag: true,
-      room: { select: { maxCapacity: true, studioId: true } },
-      _count: {
-        select: {
-          bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
-        },
-      },
-    },
-  });
-
-  const holidaySet = await getTenantHolidaySet(tenantId, from, to);
-
-  function getMultiplier(rate: typeof payRates[0], classStartsAt: Date, classTag?: string | null) {
-    const bm = rate.bonusMultiplier ?? 1;
-    if (bm <= 1) return 1;
-    const days = (rate.bonusDays as number[] | null) ?? [];
-    const tags = rate.bonusTags ?? [];
-    const dayMatch = days.length > 0 && days.includes(classStartsAt.getDay());
-    const tagMatch = tags.length > 0 && classTag && tags.includes(classTag);
-    const holidayMatch = rate.bonusOnHolidays && holidaySet.has(holidayKey(classStartsAt));
-    return (dayMatch || tagMatch || holidayMatch) ? bm : 1;
-  }
-
-  // A rate applies to a class when its scope (studio / class type) is null
-  // (any) or matches the class. Among the per-class rates of the SAME type,
-  // the most specific match wins for that class (studio+type > studio > type >
-  // all) — they don't stack. MONTHLY_FIXED is a flat base and always applies.
-  const rateMatchesClass = (
-    rate: (typeof payRates)[0],
-    cls: (typeof classes)[0],
-  ) => {
-    if (rate.studioId && rate.studioId !== cls.room.studioId) return false;
-    if (rate.classTypeId && rate.classTypeId !== cls.classTypeId) return false;
-    // A rate only applies to classes that fall within its validity window, so
-    // date-bounded rates (e.g. an opening-weekend flat rate) don't bleed into
-    // other days. effectiveFrom/effectiveTo previously only filtered the rate
-    // list for the period, not per class.
-    const start = new Date(cls.startsAt);
-    if (start < new Date(rate.effectiveFrom)) return false;
-    if (rate.effectiveTo && start > new Date(rate.effectiveTo)) return false;
-    return true;
-  };
-  const specificity = (rate: (typeof payRates)[0]) =>
-    (rate.studioId ? 2 : 0) + (rate.classTypeId ? 1 : 0);
-
-  const PER_CLASS_TYPES = ["PER_CLASS", "PER_STUDENT", "OCCUPANCY_TIER"] as const;
-
-  // Assign each class to its winning rate, per per-class rate type.
-  const wonByRate = new Map<string, typeof classes>();
-  for (const cls of classes) {
-    for (const rtype of PER_CLASS_TYPES) {
-      let winner: (typeof payRates)[0] | null = null;
-      for (const rate of payRates) {
-        if (rate.type !== rtype || !rateMatchesClass(rate, cls)) continue;
-        if (!winner || specificity(rate) > specificity(winner)) winner = rate;
-      }
-      if (!winner) continue;
-      const list = wonByRate.get(winner.id);
-      if (list) list.push(cls);
-      else wonByRate.set(winner.id, [cls]);
-    }
-  }
-
-  let total = 0;
-  const breakdown: { type: string; label: string; amount: number }[] = [];
-
-  for (const rate of payRates) {
-    if (rate.type === "MONTHLY_FIXED") {
-      total += rate.amount;
-      breakdown.push({ type: "MONTHLY_FIXED", label: "Sueldo fijo mensual", amount: rate.amount });
-      continue;
-    }
-
-    const matchingClasses = wonByRate.get(rate.id) ?? [];
-    if (matchingClasses.length === 0) continue;
-
-    switch (rate.type) {
-      case "PER_CLASS": {
-        let amt = 0;
-        for (const cls of matchingClasses) {
-          amt += rate.amount * getMultiplier(rate, new Date(cls.startsAt), cls.tag);
-        }
-        total += amt;
-        breakdown.push({ type: "PER_CLASS", label: `$${rate.amount} × ${matchingClasses.length} clases`, amount: Math.round(amt * 100) / 100 });
-        break;
-      }
-      case "PER_STUDENT": {
-        let amt = 0;
-        for (const cls of matchingClasses) {
-          amt += cls._count.bookings * rate.amount * getMultiplier(rate, new Date(cls.startsAt), cls.tag);
-        }
-        total += amt;
-        const totalStudents = matchingClasses.reduce((s, c) => s + c._count.bookings, 0);
-        breakdown.push({
-          type: "PER_STUDENT",
-          label: `$${rate.amount} × ${totalStudents} alumnos`,
-          amount: Math.round(amt * 100) / 100,
-        });
-        break;
-      }
-      case "OCCUPANCY_TIER": {
-        const tiers = (rate.occupancyTiers as { min: number; max: number; amount: number }[]) ?? [];
-        let tierTotal = 0;
-        for (const cls of matchingClasses) {
-          const metric = rate.tierBasis === "headcount"
-            ? cls._count.bookings
-            : cls.room.maxCapacity > 0
-              ? Math.round((cls._count.bookings / cls.room.maxCapacity) * 100)
-              : 0;
-          const tier = tiers.find((t) => metric >= t.min && metric <= t.max);
-          if (tier) {
-            tierTotal += tier.amount * getMultiplier(rate, new Date(cls.startsAt), cls.tag);
-          }
-        }
-        total += tierTotal;
-        breakdown.push({
-          type: "OCCUPANCY_TIER",
-          label: `Bono por ocupación (${matchingClasses.length} clases)`,
-          amount: Math.round(tierTotal * 100) / 100,
-        });
-        break;
-      }
-    }
-  }
-
-  const fallbackCurrency = payRates[0]?.currency ?? (await getTenantCurrency()).code;
-  return { total: Math.round(total * 100) / 100, breakdown, currency: fallbackCurrency };
 }
