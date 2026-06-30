@@ -219,7 +219,12 @@ export function BookingSheet({
     curated: curatedPackages,
     rest: restPackages,
     recommendedId: curatedRecommendedId,
-  } = splitCuratedPackages(packages, curation, curationAudience);
+  } = splitCuratedPackages(
+    packages,
+    curation,
+    curationAudience,
+    new Set(emailCheck?.maxedPackageIds ?? []),
+  );
 
   const checkEmail = useCallback(async (email: string) => {
     if (!email || !email.includes("@")) {

@@ -113,6 +113,7 @@ interface SubscriptionPackage {
   currency: string;
   credits: number | null;
   type: string;
+  maxPurchasesPerCustomer: number | null;
 }
 
 // ── Helpers ──
@@ -671,8 +672,15 @@ function AudienceEditor({
     .filter(Boolean)
     .map((id) => allPackages.find((p) => p.id === id))
     .filter((p): p is SubscriptionPackage => !!p)
-    .map((p) => ({ id: p.id, name: p.name, price: p.price, credits: p.credits, type: p.type }));
-  const analysis = analyzeDecoy(chosen, recommendedId);
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      credits: p.credits,
+      type: p.type,
+      maxPurchasesPerCustomer: p.maxPurchasesPerCustomer,
+    }));
+  const analysis = analyzeDecoy(chosen, recommendedId, audience);
 
   async function handleSuggest() {
     setSuggesting(true);
@@ -805,7 +813,9 @@ function CuratedPackagesConfig({
   config: ConversionConfig;
   allPackages: SubscriptionPackage[];
 }) {
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
+  const [enabled, setEnabled] = useState(config.curatedEnabled);
   const [ftIds, setFtIds] = useState<string[]>(config.curatedFirstTimerIds ?? []);
   const [ftRec, setFtRec] = useState<string | null>(
     config.curatedFirstTimerRecommendedId ?? null,
@@ -817,8 +827,9 @@ function CuratedPackagesConfig({
   const [saving, setSaving] = useState(false);
 
   const clean = (arr: string[]) => Array.from(new Set(arr.filter(Boolean)));
+  const anyConfigured = clean(ftIds).length > 0 || clean(rtIds).length > 0;
 
-  async function handleSave() {
+  async function persist(nextEnabled: boolean) {
     setSaving(true);
     try {
       const ft = clean(ftIds);
@@ -827,7 +838,7 @@ function CuratedPackagesConfig({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          curatedEnabled: true,
+          curatedEnabled: nextEnabled,
           curatedFirstTimerIds: ft,
           curatedFirstTimerRecommendedId: ft.includes(ftRec ?? "") ? ftRec : null,
           curatedReturningIds: rt,
@@ -840,26 +851,39 @@ function CuratedPackagesConfig({
     }
   }
 
-  async function handleToggle(enabled: boolean) {
-    await fetch("/api/admin/conversion/config", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ curatedEnabled: enabled }),
-    });
-    queryClient.invalidateQueries({ queryKey: ["conversion-config"] });
+  // Toggle controls "live" only — the editor below is always available, so the
+  // admin can build + save the sets before turning it on. Can't go live empty.
+  async function handleToggle(v: boolean) {
+    if (v && !anyConfigured) return;
+    setEnabled(v);
+    await persist(v);
   }
 
   return (
-    <ConfigCard
-      title="Paquetes destacados · efecto decoy"
-      description="Muestra 3 paquetes elegidos (con un preferido) en el booking y /packages; el resto queda en “ver más”. Apagado → se muestran todos como hoy."
-      icon={<Sparkles className="h-5 w-5 text-amber-600" />}
-      enabled={config.curatedEnabled}
-      onToggle={handleToggle}
-      saving={saving}
-      onSave={handleSave}
-    >
-      <div className="space-y-4">
+    <div className="rounded-2xl border border-border bg-card">
+      <div className="flex items-center gap-4 px-6 py-5">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-surface">
+          <Sparkles className="h-5 w-5 text-amber-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-foreground">
+            Paquetes destacados · efecto decoy
+          </h3>
+          <p className="text-xs text-muted">
+            Muestra 3 paquetes elegidos (con un preferido) en el booking y
+            /packages; el resto queda en “ver más”. Apagado → se muestran todos
+            como hoy.
+          </p>
+        </div>
+        <Switch
+          checked={enabled}
+          onCheckedChange={handleToggle}
+          disabled={!enabled && !anyConfigured}
+          className="data-[state=checked]:bg-[#3730B8] data-[state=unchecked]:bg-stone-300"
+        />
+      </div>
+
+      <div className="space-y-4 border-t border-border px-6 py-5">
         <div className="rounded-xl bg-surface p-4 text-[11px] leading-relaxed text-muted">
           <p className="mb-1.5 flex items-center gap-1.5 font-semibold text-foreground">
             <Info className="h-3.5 w-3.5" /> Cómo funciona el efecto decoy
@@ -868,8 +892,9 @@ function CuratedPackagesConfig({
             Elige 3 opciones: un <b>ancla</b> barata (mete el pie), tu{" "}
             <b>objetivo</b> ⭐ (lo que quieres empujar) y un <b>decoy</b> que
             cuesta ≥ que el objetivo pero ofrece menos — así el objetivo se
-            vuelve la elección obvia. La validación de abajo te dice si está bien
-            armado, y &ldquo;Sugerir con Spark&rdquo; lo arma por ti.
+            vuelve la elección obvia. Configura los sets y <b>guarda</b>; luego
+            actívalo con el switch de arriba. &ldquo;Sugerir con Spark&rdquo; lo
+            arma por ti.
           </p>
         </div>
         <AudienceEditor
@@ -892,8 +917,30 @@ function CuratedPackagesConfig({
           setRecommendedId={setRtRec}
           allPackages={allPackages}
         />
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <p className="text-[11px] text-muted">
+            {enabled
+              ? "Activo. Los cambios se aplican al guardar."
+              : anyConfigured
+                ? "Guarda y actívalo con el switch de arriba."
+                : "Configura al menos un set para poder activarlo."}
+          </p>
+          <Button
+            size="sm"
+            onClick={() => persist(enabled)}
+            disabled={saving}
+            className="bg-[#3730B8] hover:bg-[#2D27A0]"
+          >
+            {saving ? (
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-3.5 w-3.5" />
+            )}
+            {tc("save")}
+          </Button>
+        </div>
       </div>
-    </ConfigCard>
+    </div>
   );
 }
 

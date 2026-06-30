@@ -28,22 +28,38 @@ export function splitCuratedPackages<T extends { id: string }>(
   packages: T[],
   curation: PackageCuration | undefined | null,
   audience: CurationAudience,
+  /** Package ids the viewer can no longer buy (purchase limit reached). */
+  maxedIds?: Set<string>,
 ): CuratedSplit<T> {
   const set = curation?.enabled ? curation[audience] : null;
   if (!set || set.ids.length === 0) {
     return { isCurated: false, curated: packages, rest: [], recommendedId: null };
   }
   const byId = new Map(packages.map((p) => [p.id, p]));
-  const curated = set.ids
+  const configured = set.ids
     .map((id) => byId.get(id))
     .filter((p): p is T => !!p);
+  if (configured.length === 0) {
+    return { isCurated: false, curated: packages, rest: [], recommendedId: null };
+  }
+  const configuredIds = new Set(configured.map((p) => p.id));
+  const maxed = maxedIds ?? new Set<string>();
+
+  // Drop curated packages the viewer can't buy again and backfill from the rest,
+  // so they always see a full set of *buyable* options ("next option").
+  const buyable = configured.filter((p) => !maxed.has(p.id));
+  const restPool = packages.filter((p) => !configuredIds.has(p.id));
+  const needed = configured.length - buyable.length;
+  const backfill =
+    needed > 0 ? restPool.filter((p) => !maxed.has(p.id)).slice(0, needed) : [];
+  const curated = [...buyable, ...backfill];
   if (curated.length === 0) {
     return { isCurated: false, curated: packages, rest: [], recommendedId: null };
   }
-  const curatedIds = new Set(curated.map((p) => p.id));
-  const rest = packages.filter((p) => !curatedIds.has(p.id));
+  const shownIds = new Set(curated.map((p) => p.id));
+  const rest = packages.filter((p) => !shownIds.has(p.id));
   const recommendedId =
-    set.recommendedId && curatedIds.has(set.recommendedId)
+    set.recommendedId && shownIds.has(set.recommendedId) && !maxed.has(set.recommendedId)
       ? set.recommendedId
       : null;
   return { isCurated: true, curated, rest, recommendedId };

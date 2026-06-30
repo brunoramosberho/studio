@@ -244,7 +244,14 @@ export default function PackagesPage() {
     curated: curatedPackages,
     rest: restPackages,
     recommendedId: curatedRecommendedId,
-  } = splitCuratedPackages(visiblePackages, curation, curationAudience);
+  } = splitCuratedPackages(
+    visiblePackages,
+    curation,
+    curationAudience,
+    new Set(
+      visiblePackages.filter((p) => p.purchaseLimitReached).map((p) => p.id),
+    ),
+  );
   const displayPackages = isCurated
     ? showMorePackages
       ? [...curatedPackages, ...restPackages]

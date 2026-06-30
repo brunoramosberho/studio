@@ -15,6 +15,8 @@ export interface DecoyPackage {
   /** null = unlimited */
   credits: number | null;
   type: string;
+  /** null = unlimited purchases; a number caps how many times one client can buy it. */
+  maxPurchasesPerCustomer?: number | null;
 }
 
 export interface DecoyCheck {
@@ -54,6 +56,7 @@ function isDecoyFor(target: DecoyPackage, other: DecoyPackage): boolean {
 export function analyzeDecoy(
   curated: DecoyPackage[],
   recommendedId: string | null,
+  audience?: "firstTimer" | "returning",
 ): DecoyAnalysis {
   const checks: DecoyCheck[] = [];
 
@@ -110,6 +113,22 @@ export function analyzeDecoy(
       checks.push({
         level: "warn",
         message: `${betterValue.name} tiene mejor valor que tu preferido — el cliente podría elegirlo a él.`,
+      });
+    }
+  }
+
+  // Purchase-limit awareness — a once-only package is fine for a first timer
+  // (never bought it) but for returning customers who already own it the booking
+  // falls back to the next option, so flag it (especially when it's the target).
+  if (audience === "returning") {
+    const limited = curated.filter((p) => p.maxPurchasesPerCustomer != null);
+    if (limited.length > 0) {
+      const targetLimited = target.maxPurchasesPerCustomer != null;
+      checks.push({
+        level: targetLimited ? "warn" : "ok",
+        message: targetLimited
+          ? `${target.name} es de compra limitada — un recurrente que ya lo compró verá la siguiente opción en su lugar. Para recurrentes, lo ideal es un objetivo sin límite (p. ej. una suscripción).`
+          : `${limited.map((p) => p.name).join(", ")} ${limited.length > 1 ? "tienen" : "tiene"} límite de compra — quien ya lo compró verá la siguiente opción.`,
       });
     }
   }
