@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { getQuotaSuggestions } from "@/lib/platforms/quota-suggestions";
+import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
 
 export async function GET() {
   try {
@@ -21,8 +22,11 @@ export async function GET() {
       return NextResponse.json({ enabled: false, suggestions: [] });
     }
 
-    const suggestions = await getQuotaSuggestions(tenant.id);
-    return NextResponse.json({ enabled: true, suggestions });
+    const [suggestions, timezone] = await Promise.all([
+      getQuotaSuggestions(tenant.id),
+      resolveScheduleTimezone(tenant),
+    ]);
+    return NextResponse.json({ enabled: true, suggestions, timezone });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: 401 });

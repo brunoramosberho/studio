@@ -11,6 +11,8 @@ import type { QuotaSuggestion } from "@/lib/platforms/quota-suggestions";
 interface QuotaSuggestionsResponse {
   enabled: boolean;
   suggestions: QuotaSuggestion[];
+  /** Studio IANA timezone — class times are stored UTC and shown in this zone. */
+  timezone?: string;
 }
 
 // "raise" suggestions are revenue opportunities (emerald accent); "lower" are
@@ -26,14 +28,16 @@ const TYPE_STYLES: Record<QuotaSuggestion["type"], { card: string; icon: string 
   },
 };
 
-function formatClassTime(startsAt: string): string {
-  // Display-only; render in the viewer's locale with a compact day + time.
+function formatClassTime(startsAt: string, timeZone?: string): string {
+  // Class times are stored UTC; render in the studio's timezone (falls back to
+  // the viewer's locale zone when unknown).
   return new Date(startsAt).toLocaleString(undefined, {
     weekday: "short",
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone,
   });
 }
 
@@ -59,7 +63,7 @@ export function QuotaSuggestions() {
       </p>
       <div className="space-y-2">
         {suggestions.map((s) => (
-          <SuggestionCard key={`${s.classId}-${s.type}`} suggestion={s} t={t} />
+          <SuggestionCard key={`${s.classId}-${s.type}`} suggestion={s} t={t} timeZone={data.timezone} />
         ))}
       </div>
     </div>
@@ -69,9 +73,11 @@ export function QuotaSuggestions() {
 function SuggestionCard({
   suggestion: s,
   t,
+  timeZone,
 }: {
   suggestion: QuotaSuggestion;
   t: (key: string, values?: Record<string, string | number>) => string;
+  timeZone?: string;
 }) {
   const styles = TYPE_STYLES[s.type];
   const Icon = s.type === "raise" ? TrendingUp : TrendingDown;
@@ -91,7 +97,7 @@ function SuggestionCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <p className="truncate text-sm font-semibold">{s.className}</p>
-            <span className="text-xs text-muted">{formatClassTime(s.startsAt)}</span>
+            <span className="text-xs text-muted">{formatClassTime(s.startsAt, timeZone)}</span>
           </div>
           <p className="mt-0.5 text-xs text-muted">{s.reason}</p>
           <p className="mt-1 text-xs font-medium">

@@ -145,9 +145,11 @@ function buildCfoPrompt(params: {
   data: FinanceData;
   insights: InsightsData | null;
   wellhubSuggestions: WellhubBriefSuggestion[];
+  /** Studio IANA timezone — class times are stored UTC and shown in this zone. */
+  timezone: string;
   formatCurrency: (amount: number, overrideCode?: string | null) => string;
 }) {
-  const { firstName, studioName, range, data, insights, wellhubSuggestions, formatCurrency } = params;
+  const { firstName, studioName, range, data, insights, wellhubSuggestions, timezone, formatCurrency } = params;
   const { summary, bySource, dailyRevenue } = data;
 
   const rangeLabel: Record<string, string> = {
@@ -264,6 +266,7 @@ SALUD DEL MRR
     const fmtWhen = (iso: string) =>
       new Date(iso).toLocaleString("es-ES", {
         weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+        timeZone: timezone,
       });
     const raiseLines = raise
       .slice(0, 6)
@@ -358,7 +361,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
   });
 
   // Wellhub quota opportunities (today + next 2 days) to enrich the brief.
-  const { data: wellhubSug } = useQuery<{ enabled: boolean; suggestions: WellhubBriefSuggestion[] }>({
+  const { data: wellhubSug } = useQuery<{ enabled: boolean; suggestions: WellhubBriefSuggestion[]; timezone?: string }>({
     queryKey: ["wellhub-quota-suggestions-brief"],
     queryFn: async () => {
       const res = await fetch("/api/platforms/quota-suggestions");
@@ -414,6 +417,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
                 data: finance,
                 insights: insights ?? null,
                 wellhubSuggestions: wellhubSug?.enabled ? wellhubSug.suggestions : [],
+                timezone: wellhubSug?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
                 formatCurrency,
               }),
             },

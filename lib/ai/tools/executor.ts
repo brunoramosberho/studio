@@ -2187,6 +2187,7 @@ async function getPlatformStatus(
 ) {
   const days = input.period_days ?? 7;
   const since = daysAgo(days);
+  const tz = await getTenantTz(tenantId);
   const platformFilter = input.platform && input.platform !== "all"
     ? { platform: input.platform as "classpass" | "wellhub" }
     : {};
@@ -2260,6 +2261,9 @@ async function getPlatformStatus(
     upcoming_quotas: quotas.slice(0, 20).map((q) => ({
       platform: q.platform,
       class_type: q.class.classType.name,
+      // Studio-local display time (class startsAt is stored UTC). Use this, not
+      // starts_at, when showing the hour to the user.
+      local_time: formatDateTimeInZone(q.class.startsAt, tz),
       starts_at: q.class.startsAt.toISOString(),
       quota_spots: q.quotaSpots,
       booked_spots: q.bookedSpots,
