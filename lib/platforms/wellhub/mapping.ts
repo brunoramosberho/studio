@@ -6,7 +6,8 @@ import type {
   WellhubSlotCreatePayload,
 } from "./types";
 
-// Wellhub hard caps `cancellable_until` to 24h before the slot.
+// Wellhub hard-caps `cancellable_until` to at most 24h before the slot; we
+// never send a window larger than this.
 const MIN_CANCELLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // Slot lengths are constrained to 1..200 minutes per the API spec.
@@ -50,6 +51,8 @@ export interface MagicClassForSync {
   bookedSpots: number;
   /** Primary instructor first, substitute second when applicable. */
   instructors: MagicInstructorForSync[];
+  /** Tenant's free-cancellation window in hours (tenant.cancellationWindowHours). */
+  cancellationWindowHours: number;
 }
 
 // ─── ClassType ↔ Wellhub Class ────────────────────────────────────────────
@@ -116,9 +119,15 @@ export function classToWellhubSlotPayload(
   const totalCapacity = clampCapacity(cls.capacity);
   const totalBooked = Math.max(0, Math.min(totalCapacity, Math.floor(cls.bookedSpots)));
 
-  // Wellhub silently truncates cancellable_until to 24h before occur_date, so
-  // we send exactly that value to keep behavior deterministic.
-  const cancellableUntil = new Date(cls.startsAt.getTime() - MIN_CANCELLATION_WINDOW_MS);
+  // Free-cancellation deadline = class start − the tenant's cancellation
+  // window (tenant.cancellationWindowHours). Wellhub caps this at 24h before
+  // the class, so we clamp to a max of 24h to stay deterministic; smaller
+  // windows (e.g. Be Toro's 12h) pass through unchanged.
+  const windowMs = Math.min(
+    MIN_CANCELLATION_WINDOW_MS,
+    Math.max(0, cls.cancellationWindowHours) * 60 * 60 * 1000,
+  );
+  const cancellableUntil = new Date(cls.startsAt.getTime() - windowMs);
 
   const instructors = cls.instructors.slice(0, 8).map((i) => ({
     name: truncate(i.name, MAX_INSTRUCTOR_NAME),

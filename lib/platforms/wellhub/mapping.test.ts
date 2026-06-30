@@ -26,6 +26,7 @@ const sampleClass = (overrides: Partial<MagicClassForSync> = {}): MagicClassForS
   capacity: 10,
   bookedSpots: 3,
   instructors: [{ name: "Ana García" }],
+  cancellationWindowHours: 24,
   ...overrides,
 });
 
@@ -98,8 +99,26 @@ describe("classToWellhubSlotPayload", () => {
     expect(payload.length_in_minutes).toBe(60);
   });
 
-  it("sets cancellable_until exactly 24h before the slot", () => {
+  it("sets cancellable_until from the tenant window (24h here)", () => {
     const payload = classToWellhubSlotPayload(sampleClass(), sampleClassType);
+    expect(payload.cancellable_until).toBe("2026-06-14T17:00:00.000Z");
+  });
+
+  it("uses a shorter tenant cancellation window (12h → 12h before)", () => {
+    const payload = classToWellhubSlotPayload(
+      sampleClass({ cancellationWindowHours: 12 }),
+      sampleClassType,
+    );
+    // class start 2026-06-15T17:00Z − 12h = 2026-06-15T05:00Z
+    expect(payload.cancellable_until).toBe("2026-06-15T05:00:00.000Z");
+  });
+
+  it("clamps a tenant window larger than Wellhub's 24h cap", () => {
+    const payload = classToWellhubSlotPayload(
+      sampleClass({ cancellationWindowHours: 48 }),
+      sampleClassType,
+    );
+    // 48h requested, but Wellhub caps at 24h → 24h before.
     expect(payload.cancellable_until).toBe("2026-06-14T17:00:00.000Z");
   });
 

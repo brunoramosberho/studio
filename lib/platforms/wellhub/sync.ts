@@ -382,6 +382,8 @@ interface ClassContext {
   roomCapacity: number;
   coachName: string;
   originalCoachName: string | null;
+  /** Tenant free-cancellation window in hours (tenant.cancellationWindowHours). */
+  cancellationWindowHours: number;
   quotaSpots: number;
   /** True when a SchedulePlatformQuota row exists for this class (= override). */
   quotaHasRow: boolean;
@@ -429,10 +431,16 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
   });
   if (!cls) return null;
 
-  const tenantConfig = await prisma.studioPlatformConfig.findFirst({
-    where: { tenantId: cls.tenantId, platform: "wellhub" },
-    select: { tenantId: true, wellhubGymId: true, wellhubMode: true, wellhubDefaultQuota: true },
-  });
+  const [tenantConfig, tenant] = await Promise.all([
+    prisma.studioPlatformConfig.findFirst({
+      where: { tenantId: cls.tenantId, platform: "wellhub" },
+      select: { tenantId: true, wellhubGymId: true, wellhubMode: true, wellhubDefaultQuota: true },
+    }),
+    prisma.tenant.findUnique({
+      where: { id: cls.tenantId },
+      select: { cancellationWindowHours: true },
+    }),
+  ]);
 
   return {
     cls: {
@@ -448,6 +456,7 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
     roomCapacity: cls.room?.maxCapacity ?? 0,
     coachName: cls.coach.name,
     originalCoachName: cls.originalCoach?.name ?? null,
+    cancellationWindowHours: tenant?.cancellationWindowHours ?? 12,
     quotaSpots: cls.platformQuotas[0]?.quotaSpots ?? 0,
     quotaHasRow: cls.platformQuotas.length > 0,
     quotaClosedManually: cls.platformQuotas[0]?.isClosedManually ?? false,
@@ -545,6 +554,7 @@ function toMagicClassForSync(ctx: ClassContext): MagicClassForSync {
     capacity: ctx.quotaSpots,
     bookedSpots: 0, // Capacity is updated separately via patchWellhubCapacityForClass.
     instructors,
+    cancellationWindowHours: ctx.cancellationWindowHours,
   };
 }
 
