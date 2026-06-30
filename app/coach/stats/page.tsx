@@ -57,6 +57,12 @@ interface ClassEarning {
   capacity: number;
   occupancy: number;
   earned: number;
+  // Seat breakdown behind `students` (billable seats), so the coach sees why a
+  // class counts what it does.
+  attended: number;
+  chargedNoShows: number;
+  chargedLateCancels: number;
+  capped: boolean;
 }
 
 interface CoachStatsData {
@@ -326,6 +332,9 @@ export default function CoachStatsPage() {
                     </button>
                   )}
                 </div>
+                <p className="mb-3 text-[11px] leading-relaxed text-muted">
+                  {t("billableLegend")}
+                </p>
                 <div className="space-y-1">
                   {(showAllClasses ? classEarnings : classEarnings.slice(0, 8)).map((cls) => (
                     <Link
@@ -342,6 +351,16 @@ export default function CoachStatsPage() {
                         <p className="text-[11px] text-muted">
                           {formatClassDate(cls.startsAt)} · {formatTime(cls.startsAt)} · {cls.students}/{cls.capacity}
                         </p>
+                        {(cls.chargedNoShows > 0 || cls.chargedLateCancels > 0) && (
+                          <p className="mt-0.5 text-[10px] text-muted/80">
+                            {t("seatAttended", { n: cls.attended })}
+                            {cls.chargedNoShows > 0 &&
+                              ` + ${t("seatNoShow", { n: cls.chargedNoShows })}`}
+                            {cls.chargedLateCancels > 0 &&
+                              ` + ${t("seatLateCancel", { n: cls.chargedLateCancels })}`}
+                            {cls.capped && ` · ${t("seatCapped")}`}
+                          </p>
+                        )}
                       </div>
                       <div className="shrink-0 text-right">
                         <p className={cn(

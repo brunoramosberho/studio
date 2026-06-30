@@ -1648,6 +1648,11 @@
     "thisMonth": "Este mes",
     "totalLabel": "Total",
     "earningsPerClass": "Ganancia por clase",
+    "billableLegend": "Tu pago cuenta lugares facturables: quienes asistieron, más los no-shows y cancelaciones tardías que el estudio cobró, hasta llenar la sala.",
+    "seatAttended": "{n} asistieron",
+    "seatNoShow": "{n} no-show",
+    "seatLateCancel": "{n} canc. tardía",
+    "seatCapped": "tope de sala",
     "showLess": "Ver menos",
     "showAll": "Ver todas ({count})",
     "activity": "Actividad",
@@ -2176,7 +2181,12 @@
     "colAmount": "Monto",
     "ratePerClass": "Por clase",
     "ratePerStudent": "Por alumno",
-    "rateOccupancy": "Bono ocupación"
+    "rateOccupancy": "Bono ocupación",
+    "billableLegend": "“Asist.” cuenta lugares facturables: quienes asistieron, más los no-shows y cancelaciones tardías que el estudio cobró, hasta llenar la sala.",
+    "seatAttended": "{n} asistieron",
+    "seatNoShow": "{n} no-show",
+    "seatLateCancel": "{n} canc. tardía",
+    "seatCapped": "tope de sala"
   },
   "install": {
     "close": "Cerrar",

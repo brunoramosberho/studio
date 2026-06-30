@@ -1648,6 +1648,11 @@
     "thisMonth": "This month",
     "totalLabel": "Total",
     "earningsPerClass": "Earnings per class",
+    "billableLegend": "Your pay counts billable seats: who attended, plus the no-shows and late cancellations the studio charged for, up to a full room.",
+    "seatAttended": "{n} attended",
+    "seatNoShow": "{n} no-show",
+    "seatLateCancel": "{n} late cancel",
+    "seatCapped": "room cap",
     "showLess": "Show less",
     "showAll": "Show all ({count})",
     "activity": "Activity",
@@ -2176,7 +2181,12 @@
     "colAmount": "Amount",
     "ratePerClass": "Per class",
     "ratePerStudent": "Per student",
-    "rateOccupancy": "Occupancy bonus"
+    "rateOccupancy": "Occupancy bonus",
+    "billableLegend": "“Att.” counts billable seats: who attended, plus the no-shows and late cancellations the studio charged for, up to a full room.",
+    "seatAttended": "{n} attended",
+    "seatNoShow": "{n} no-show",
+    "seatLateCancel": "{n} late cancel",
+    "seatCapped": "room cap"
   },
   "install": {
     "close": "Close",

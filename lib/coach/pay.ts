@@ -29,7 +29,16 @@ export interface CoachPayClassLine {
   studioName: string;
   roomName: string;
   capacity: number;
+  /** Billable seats the pay is based on (attended + chargedNoShows + chargedLateCancels, capped at capacity). */
   attendees: number;
+  /** Physically present or still-booked (CONFIRMED + ATTENDED). */
+  attended: number;
+  /** No-shows the studio charged for (lost credit or charged a fee). */
+  chargedNoShows: number;
+  /** Late cancellations that forfeited the credit (studio kept the money). */
+  chargedLateCancels: number;
+  /** True when raw billable exceeded capacity and was capped (e.g. rebooked seats). */
+  capped: boolean;
   occupancyPct: number;
   rateType: "PER_CLASS" | "PER_STUDENT" | "OCCUPANCY_TIER";
   rateLabel: string;
@@ -109,14 +118,43 @@ export async function computeCoachPay(
           studio: { select: { name: true } },
         },
       },
-      _count: {
-        select: {
-          bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
-        },
-      },
     },
     orderBy: { startsAt: "asc" },
   });
+
+  // Billable seats split into their parts so admin + coach can see *why* a class
+  // counts what it does. The studio earned from a seat — so it's billable — when:
+  //   • attended  — CONFIRMED / ATTENDED (booked or showed up).
+  //   • no-show   — the credit was forfeited (creditLost) or a fee was charged
+  //                 (e.g. an unlimited member with no credit to lose).
+  //   • late cancel — the credit was forfeited (an on-time cancel restores it, so
+  //                 creditLost stays false and the freed seat earns nothing).
+  const classIds = classes.map((c) => c.id);
+  const [attendedRows, noShowRows, lateCancelRows] = await Promise.all([
+    prisma.booking.groupBy({
+      by: ["classId"],
+      where: { tenantId, classId: { in: classIds }, status: { in: ["CONFIRMED", "ATTENDED"] } },
+      _count: true,
+    }),
+    prisma.booking.groupBy({
+      by: ["classId"],
+      where: {
+        tenantId,
+        classId: { in: classIds },
+        status: "NO_SHOW",
+        OR: [{ creditLost: true }, { pendingPenalty: { is: { status: "confirmed", chargeFee: true } } }],
+      },
+      _count: true,
+    }),
+    prisma.booking.groupBy({
+      by: ["classId"],
+      where: { tenantId, classId: { in: classIds }, status: "CANCELLED", creditLost: true },
+      _count: true,
+    }),
+  ]);
+  const attendedMap = new Map(attendedRows.map((r) => [r.classId, r._count]));
+  const noShowMap = new Map(noShowRows.map((r) => [r.classId, r._count]));
+  const lateCancelMap = new Map(lateCancelRows.map((r) => [r.classId, r._count]));
 
   const holidaySet = await getTenantHolidaySet(tenantId, from, to);
 
@@ -174,9 +212,20 @@ export async function computeCoachPay(
   for (const cls of classes) {
     const startsAt = new Date(cls.startsAt);
     const isPast = startsAt < now;
+    const attended = attendedMap.get(cls.id) ?? 0;
+    const chargedNoShows = noShowMap.get(cls.id) ?? 0;
+    const chargedLateCancels = lateCancelMap.get(cls.id) ?? 0;
+    const rawBillable = attended + chargedNoShows + chargedLateCancels;
+    // Billable seats can momentarily exceed capacity when a late-cancelled (and
+    // forfeited) seat is rebooked — both the canceller and the new booking are
+    // real revenue. Cap at capacity so a coach is credited for at most a full
+    // room (avoids >100% occupancy, which would also miss any tier maxing at 100).
+    const billableSeats =
+      cls.room.maxCapacity > 0 ? Math.min(rawBillable, cls.room.maxCapacity) : rawBillable;
+    const capped = cls.room.maxCapacity > 0 && rawBillable > cls.room.maxCapacity;
     const occupancyPct =
       cls.room.maxCapacity > 0
-        ? Math.round((cls._count.bookings / cls.room.maxCapacity) * 100)
+        ? Math.round((billableSeats / cls.room.maxCapacity) * 100)
         : 0;
 
     for (const rtype of PER_CLASS_TYPES) {
@@ -195,12 +244,12 @@ export async function computeCoachPay(
         amount = winner.amount * mult;
         rateLabel = `${winner.amount}/clase`;
       } else if (rtype === "PER_STUDENT") {
-        amount = cls._count.bookings * winner.amount * mult;
-        rateLabel = `${winner.amount}/alumno × ${cls._count.bookings}`;
+        amount = billableSeats * winner.amount * mult;
+        rateLabel = `${winner.amount}/alumno × ${billableSeats}`;
       } else {
         const tiers =
           (winner.occupancyTiers as { min: number; max: number; amount: number }[] | null) ?? [];
-        const metric = winner.tierBasis === "headcount" ? cls._count.bookings : occupancyPct;
+        const metric = winner.tierBasis === "headcount" ? billableSeats : occupancyPct;
         const tier = tiers.find((t) => metric >= t.min && metric <= t.max);
         if (!tier) continue;
         amount = tier.amount * mult;
@@ -217,7 +266,11 @@ export async function computeCoachPay(
         studioName: cls.room.studio?.name ?? "",
         roomName: cls.room.name,
         capacity: cls.room.maxCapacity,
-        attendees: cls._count.bookings,
+        attendees: billableSeats,
+        attended,
+        chargedNoShows,
+        chargedLateCancels,
+        capped,
         occupancyPct,
         rateType: rtype,
         rateLabel,

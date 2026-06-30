@@ -31,6 +31,10 @@ interface ClassLine {
   studioName: string;
   roomName: string;
   attendees: number;
+  attended: number;
+  chargedNoShows: number;
+  chargedLateCancels: number;
+  capped: boolean;
   capacity: number;
   occupancyPct: number;
   rateType: "PER_CLASS" | "PER_STUDENT" | "OCCUPANCY_TIER";
@@ -271,6 +275,9 @@ export default function CoachPaymentsPage() {
         </Card>
       ) : (
         <div className="space-y-2">
+          <p className="px-1 text-[11px] leading-relaxed text-muted">
+            {t("billableLegend")}
+          </p>
           {rows.map((c) => {
             const open = expanded.has(c.coachId);
             return (
@@ -352,7 +359,26 @@ export default function CoachPaymentsPage() {
                               </span>
                             </td>
                             <td className="px-3 py-2 text-muted">{l.studioName}</td>
-                            <td className="px-3 py-2 text-center">{l.attendees}/{l.capacity}</td>
+                            <td className="px-3 py-2 text-center">
+                              {l.chargedNoShows + l.chargedLateCancels > 0 ? (
+                                <span
+                                  className="cursor-help border-b border-dotted border-muted/50"
+                                  title={[
+                                    t("seatAttended", { n: l.attended }),
+                                    l.chargedNoShows > 0 ? t("seatNoShow", { n: l.chargedNoShows }) : null,
+                                    l.chargedLateCancels > 0 ? t("seatLateCancel", { n: l.chargedLateCancels }) : null,
+                                    l.capped ? t("seatCapped") : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                >
+                                  {l.attendees}/{l.capacity}
+                                  <span className="text-accent">*</span>
+                                </span>
+                              ) : (
+                                <>{l.attendees}/{l.capacity}</>
+                              )}
+                            </td>
                             <td className="px-3 py-2 text-center">{l.occupancyPct}%</td>
                             <td className="px-3 py-2 text-xs text-muted">
                               {rateLabel(l.rateType)}
