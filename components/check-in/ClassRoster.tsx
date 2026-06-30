@@ -474,8 +474,15 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
       )
     : optimisticRoster;
 
-  const presentCount = optimisticRoster.filter((m) => m.checkIn).length;
-  const enrolledCount = optimisticRoster.length;
+  // Wellhub bookings hold seats too (their own list), so they count toward
+  // enrolled, and their platform check-in (checkedInAt / "checked_in") toward
+  // present — otherwise the header tallies undercount Wellhub members.
+  const wellhubPresentCount = wellhubBookings.filter(
+    (w) => w.checkedInAt != null || w.status === "checked_in",
+  ).length;
+  const presentCount =
+    optimisticRoster.filter((m) => m.checkIn).length + wellhubPresentCount;
+  const enrolledCount = optimisticRoster.length + wellhubBookings.length;
   const pendingCount = enrolledCount - presentCount;
 
   const startFormatted = format(new Date(classInfo.startTime), "HH:mm");

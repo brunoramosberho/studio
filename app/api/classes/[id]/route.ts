@@ -48,6 +48,9 @@ export async function GET(
                 createdAt: true,
               },
             },
+            // Platform companion bookings (Wellhub/ClassPass/…) so the coach
+            // view can label them by platform instead of "Invitado".
+            platformBooking: { select: { platform: true } },
           },
         },
         blockedSpots: {

@@ -74,6 +74,7 @@ interface BookingEntry {
   // their display name lives on guestName.
   guestName: string | null;
   platformBookingId: string | null;
+  platformBooking: { platform: string } | null;
   user: {
     id: string;
     name: string | null;
@@ -84,6 +85,22 @@ interface BookingEntry {
 
 interface ClassDetail extends Omit<ClassWithDetails, "bookings"> {
   bookings: BookingEntry[];
+}
+
+const PLATFORM_LABELS: Record<string, string> = {
+  classpass: "ClassPass",
+  wellhub: "Wellhub",
+  totalpass: "TotalPass",
+  fitpass: "FitPass",
+};
+
+/** Display label for a booking — the platform name (Wellhub…) for platform
+ *  bookings, otherwise the member/guest name. */
+function bookingDisplayName(b: BookingEntry): string {
+  if (b.user?.name) return b.user.name;
+  if (b.user?.email) return b.user.email;
+  if (b.platformBooking) return PLATFORM_LABELS[b.platformBooking.platform] ?? "Plataforma";
+  return b.guestName ?? "Invitado";
 }
 
 interface FeedPhoto {
@@ -959,11 +976,7 @@ export default function ClassRosterPage() {
                     <div className="mt-2 space-y-2">
                       {classData.bookings.map((booking) => {
                         const status = getAttendance(booking);
-                        const name =
-                          booking.user?.name ??
-                          booking.user?.email ??
-                          booking.guestName ??
-                          "Invitado";
+                        const name = bookingDisplayName(booking);
                         return (
                           <div
                             key={booking.id}
@@ -973,7 +986,7 @@ export default function ClassRosterPage() {
                               user={
                                 (booking.user ?? {
                                   id: booking.id,
-                                  name: booking.guestName,
+                                  name: bookingDisplayName(booking),
                                   image: null,
                                 }) as UserAvatarUser
                               }
@@ -1037,11 +1050,7 @@ export default function ClassRosterPage() {
               >
                 {classData.bookings.map((booking) => {
                   const status = getAttendance(booking);
-                  const name =
-                    booking.user?.name ??
-                    booking.user?.email ??
-                    booking.guestName ??
-                    "Invitado";
+                  const name = bookingDisplayName(booking);
 
                   return (
                     <motion.div key={booking.id} variants={fadeUp}>
@@ -1064,7 +1073,7 @@ export default function ClassRosterPage() {
                               user={
                                 (booking.user ?? {
                                   id: booking.id,
-                                  name: booking.guestName,
+                                  name: bookingDisplayName(booking),
                                   image: null,
                                 }) as UserAvatarUser
                               }
