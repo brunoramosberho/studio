@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { computeSettlement, type SettlementInput } from "./liquidation-math";
 
-// Be Toro's real Wellhub contract.
+// Be Toro's real Wellhub contract. No-show / late-cancel are FIXED fees
+// (€10.50 flat each), not a percentage of the €15 check-in rate.
 const betoro = {
   ratePerVisit: 15,
-  noShowPercent: 0.7,
-  lateCancelPercent: 0.7,
+  noShowFee: 10.5,
+  lateCancelFee: 10.5,
   maxPayoutPerVisitor: 150,
   freeVisitsPerMonth: 0,
 };
@@ -25,12 +26,19 @@ describe("computeSettlement", () => {
     expect(r.payableCheckins).toBe(3);
   });
 
-  it("pays no-show and late-cancel at the configured percentage", () => {
+  it("pays no-show and late-cancel at the fixed fee", () => {
     const r = computeSettlement([ev("u1", "no_show"), ev("u2", "late_cancel")], betoro);
-    // 15 * 0.7 = 10.5 each
+    // €10.50 flat each → 21 total
     expect(r.total).toBe(21);
     expect(r.payableNoShows).toBe(1);
     expect(r.payableLateCancels).toBe(1);
+  });
+
+  it("does not scale the fixed fee with the check-in rate", () => {
+    // Doubling ratePerVisit must NOT change the no-show / late-cancel payout.
+    const pricier = { ...betoro, ratePerVisit: 30 };
+    const r = computeSettlement([ev("u1", "no_show"), ev("u2", "late_cancel")], pricier);
+    expect(r.total).toBe(21); // still €10.50 + €10.50
   });
 
   it("caps a single visitor at maxPayoutPerVisitor per month", () => {

@@ -30,8 +30,8 @@ interface WellhubConfig {
   wellhubLastError: string | null;
   ratePerVisit: number | null;
   maxPayoutPerVisitor: number | null;
-  noShowPercent: number | null;
-  lateCancelPercent: number | null;
+  noShowFee: number | null;
+  lateCancelFee: number | null;
   freeVisitsPerMonth: number | null;
   wellhubDefaultQuota: number | null;
   portalUrl: string | null;
@@ -91,12 +91,12 @@ export function WellhubApiSetup() {
   const [tokenDraft, setTokenDraft] = useState<string>("");
   const [freshSecret, setFreshSecret] = useState<string | null>(null);
 
-  // Commercial conditions draft (strings for inputs; percents shown 0..100).
+  // Commercial conditions draft (strings for inputs; fees in € as entered).
   const [ccDraft, setCcDraft] = useState({
     ratePerVisit: "",
     maxPayoutPerVisitor: "",
-    noShowPercent: "",
-    lateCancelPercent: "",
+    noShowFee: "",
+    lateCancelFee: "",
     freeVisitsPerMonth: "",
   });
   // Seed the draft once the config loads (or changes).
@@ -106,10 +106,8 @@ export function WellhubApiSetup() {
       ratePerVisit: config.ratePerVisit != null ? String(config.ratePerVisit) : "",
       maxPayoutPerVisitor:
         config.maxPayoutPerVisitor != null ? String(config.maxPayoutPerVisitor) : "",
-      noShowPercent:
-        config.noShowPercent != null ? String(Math.round(config.noShowPercent * 100)) : "",
-      lateCancelPercent:
-        config.lateCancelPercent != null ? String(Math.round(config.lateCancelPercent * 100)) : "",
+      noShowFee: config.noShowFee != null ? String(config.noShowFee) : "",
+      lateCancelFee: config.lateCancelFee != null ? String(config.lateCancelFee) : "",
       freeVisitsPerMonth:
         config.freeVisitsPerMonth != null ? String(config.freeVisitsPerMonth) : "",
     });
@@ -542,19 +540,19 @@ export function WellhubApiSetup() {
                 />
               </label>
               <label className="flex items-center justify-between gap-2 text-sm">
-                <span>No-show (% del check-in)</span>
+                <span>No-show (€ fijo)</span>
                 <Input
-                  type="number" step="1" min="0" max="100" className="w-28"
-                  value={ccDraft.noShowPercent}
-                  onChange={(e) => setCcDraft((d) => ({ ...d, noShowPercent: e.target.value }))}
+                  type="number" step="0.01" min="0" className="w-28"
+                  value={ccDraft.noShowFee}
+                  onChange={(e) => setCcDraft((d) => ({ ...d, noShowFee: e.target.value }))}
                 />
               </label>
               <label className="flex items-center justify-between gap-2 text-sm">
-                <span>Cancelación tardía (%)</span>
+                <span>Cancelación tardía (€ fijo)</span>
                 <Input
-                  type="number" step="1" min="0" max="100" className="w-28"
-                  value={ccDraft.lateCancelPercent}
-                  onChange={(e) => setCcDraft((d) => ({ ...d, lateCancelPercent: e.target.value }))}
+                  type="number" step="0.01" min="0" className="w-28"
+                  value={ccDraft.lateCancelFee}
+                  onChange={(e) => setCcDraft((d) => ({ ...d, lateCancelFee: e.target.value }))}
                 />
               </label>
               <label className="flex items-center justify-between gap-2 text-sm">
@@ -570,12 +568,11 @@ export function WellhubApiSetup() {
               size="sm"
               onClick={() => {
                 const num = (s: string) => (s.trim() === "" ? null : Number(s));
-                const pct = (s: string) => (s.trim() === "" ? null : Number(s) / 100);
                 saveConfig.mutate({
                   ratePerVisit: num(ccDraft.ratePerVisit),
                   maxPayoutPerVisitor: num(ccDraft.maxPayoutPerVisitor),
-                  noShowPercent: pct(ccDraft.noShowPercent),
-                  lateCancelPercent: pct(ccDraft.lateCancelPercent),
+                  noShowFee: num(ccDraft.noShowFee),
+                  lateCancelFee: num(ccDraft.lateCancelFee),
                   freeVisitsPerMonth: num(ccDraft.freeVisitsPerMonth),
                 });
               }}
@@ -584,7 +581,7 @@ export function WellhubApiSetup() {
               Guardar condiciones
             </Button>
             <p className="text-xs text-muted-foreground">
-              Para Be Toro: €15 check-in · €150 máx/mes · 70% no-show · 70% cancelación tardía · 0 gratis.
+              Para Be Toro: €15 check-in · €150 máx/mes · €10.50 no-show · €10.50 cancelación tardía · 0 gratis.
             </p>
           </div>
 

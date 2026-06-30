@@ -46,8 +46,8 @@ export async function PATCH(request: NextRequest) {
       wellhubAuthToken,
       ratePerVisit,
       maxPayoutPerVisitor,
-      noShowPercent,
-      lateCancelPercent,
+      noShowFee,
+      lateCancelFee,
       freeVisitsPerMonth,
       wellhubDefaultQuota,
       portalUrl,
@@ -60,9 +60,9 @@ export async function PATCH(request: NextRequest) {
       wellhubAuthToken?: string | null;
       ratePerVisit?: number | null;
       maxPayoutPerVisitor?: number | null;
-      /** Fraction 0..1 (UI sends percent; we store the fraction). */
-      noShowPercent?: number | null;
-      lateCancelPercent?: number | null;
+      /** Fixed euro fee the partner pays for a no-show / late cancel. */
+      noShowFee?: number | null;
+      lateCancelFee?: number | null;
       freeVisitsPerMonth?: number | null;
       wellhubDefaultQuota?: number | null;
       portalUrl?: string | null;
@@ -73,9 +73,9 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Invalid wellhubMode" }, { status: 400 });
     }
 
-    // Percentages arrive as fractions (0..1). Clamp defensively.
-    const clampFraction = (v: number | null | undefined) =>
-      v == null ? v : Math.max(0, Math.min(1, v));
+    // Fixed fees are amounts in the studio currency; clamp away negatives.
+    const clampFee = (v: number | null | undefined) =>
+      v == null ? v : Math.max(0, v);
 
     const data: Record<string, unknown> = {};
     if (wellhubGymId !== undefined) data.wellhubGymId = wellhubGymId;
@@ -83,8 +83,8 @@ export async function PATCH(request: NextRequest) {
     if (wellhubLocale !== undefined) data.wellhubLocale = wellhubLocale;
     if (ratePerVisit !== undefined) data.ratePerVisit = ratePerVisit;
     if (maxPayoutPerVisitor !== undefined) data.maxPayoutPerVisitor = maxPayoutPerVisitor;
-    if (noShowPercent !== undefined) data.noShowPercent = clampFraction(noShowPercent);
-    if (lateCancelPercent !== undefined) data.lateCancelPercent = clampFraction(lateCancelPercent);
+    if (noShowFee !== undefined) data.noShowFee = clampFee(noShowFee);
+    if (lateCancelFee !== undefined) data.lateCancelFee = clampFee(lateCancelFee);
     if (freeVisitsPerMonth !== undefined) data.freeVisitsPerMonth = freeVisitsPerMonth;
     if (wellhubDefaultQuota !== undefined) {
       data.wellhubDefaultQuota =

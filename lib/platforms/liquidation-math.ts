@@ -2,8 +2,8 @@
 // can be unit-tested exhaustively. Mirrors the partner's commercial contract:
 //
 //   - check-in            → full ratePerVisit
-//   - no-show             → ratePerVisit * noShowPercent
-//   - late cancellation   → ratePerVisit * lateCancelPercent
+//   - no-show             → noShowFee (a FIXED amount, not a % of ratePerVisit)
+//   - late cancellation   → lateCancelFee (a FIXED amount, not a %)
 //   - free visits / month → first N paying events for a visitor earn 0
 //   - per-visitor cap     → a single visitor can't earn the studio more than
 //                           maxPayoutPerVisitor in one month
@@ -21,10 +21,10 @@ export interface SettlementInput {
 
 export interface SettlementConditions {
   ratePerVisit: number;
-  /** Fraction 0..1 of ratePerVisit paid for a no-show. */
-  noShowPercent: number;
-  /** Fraction 0..1 of ratePerVisit paid for a late cancellation. */
-  lateCancelPercent: number;
+  /** Fixed amount paid for a no-show (not a fraction of ratePerVisit). */
+  noShowFee: number;
+  /** Fixed amount paid for a late cancellation (not a fraction). */
+  lateCancelFee: number;
   /** Max the studio can earn from one visitor in the month (0/undefined = no cap). */
   maxPayoutPerVisitor?: number | null;
   /** Visits that earn nothing per visitor per month (trial). */
@@ -46,9 +46,9 @@ function grossFor(type: SettlementEventType, c: SettlementConditions): number {
     case "checkin":
       return c.ratePerVisit;
     case "no_show":
-      return c.ratePerVisit * (c.noShowPercent ?? 0);
+      return c.noShowFee ?? 0;
     case "late_cancel":
-      return c.ratePerVisit * (c.lateCancelPercent ?? 0);
+      return c.lateCancelFee ?? 0;
   }
 }
 

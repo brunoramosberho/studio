@@ -1981,12 +1981,14 @@ model StudioPlatformConfig {
   // liquidation estimate). ratePerVisit above is the per-check-in payout.
   //   - maxPayoutPerVisitor: cap on what one visitor can earn the studio per
   //     calendar month (e.g. Wellhub €150).
-  //   - noShowPercent / lateCancelPercent: fraction (0..1) of ratePerVisit paid
-  //     for a no-show / post-period late cancellation (e.g. Wellhub 0.70).
+  //   - noShowFee / lateCancelFee: FIXED amount (same currency unit as
+  //     ratePerVisit) the partner pays for a no-show / post-period late
+  //     cancellation. Contractual flat fees, NOT a % of ratePerVisit — e.g. Be
+  //     Toro pays €10.50 flat for each.
   //   - freeVisitsPerMonth: visits that don't generate payout (trial).
   maxPayoutPerVisitor Float?
-  noShowPercent       Float?
-  lateCancelPercent   Float?
+  noShowFee           Float?
+  lateCancelFee       Float?
   freeVisitsPerMonth  Int?
 
   // Wellhub API integration (only meaningful when platform = wellhub).

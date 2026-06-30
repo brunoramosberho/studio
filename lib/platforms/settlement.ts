@@ -42,8 +42,8 @@ export async function getPlatformSettlementForRange(
       platform: true,
       ratePerVisit: true,
       maxPayoutPerVisitor: true,
-      noShowPercent: true,
-      lateCancelPercent: true,
+      noShowFee: true,
+      lateCancelFee: true,
       freeVisitsPerMonth: true,
     },
   });
@@ -91,8 +91,8 @@ export async function getPlatformSettlementForRange(
     const cfg = cfgByPlatform.get(platform);
     const s = computeSettlement(events, {
       ratePerVisit: cfg?.ratePerVisit ?? 0,
-      noShowPercent: cfg?.noShowPercent ?? 0,
-      lateCancelPercent: cfg?.lateCancelPercent ?? 0,
+      noShowFee: cfg?.noShowFee ?? 0,
+      lateCancelFee: cfg?.lateCancelFee ?? 0,
       maxPayoutPerVisitor: cfg?.maxPayoutPerVisitor ?? null,
       freeVisitsPerMonth: cfg?.freeVisitsPerMonth ?? null,
     });

@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
         platform: true,
         ratePerVisit: true,
         maxPayoutPerVisitor: true,
-        noShowPercent: true,
-        lateCancelPercent: true,
+        noShowFee: true,
+        lateCancelFee: true,
         freeVisitsPerMonth: true,
       },
     });
@@ -78,8 +78,8 @@ export async function GET(request: NextRequest) {
       const cfg = configByPlatform[platform];
       const conditions = {
         ratePerVisit: cfg?.ratePerVisit ?? 0,
-        noShowPercent: cfg?.noShowPercent ?? 0,
-        lateCancelPercent: cfg?.lateCancelPercent ?? 0,
+        noShowFee: cfg?.noShowFee ?? 0,
+        lateCancelFee: cfg?.lateCancelFee ?? 0,
         maxPayoutPerVisitor: cfg?.maxPayoutPerVisitor ?? null,
         freeVisitsPerMonth: cfg?.freeVisitsPerMonth ?? null,
       };
