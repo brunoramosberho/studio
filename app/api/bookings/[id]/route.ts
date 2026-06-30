@@ -8,6 +8,7 @@ import {
   hasAnyPenalty,
   resolveNoShowPenalty,
 } from "@/lib/no-show-penalty";
+import { buildClassAttendees } from "@/lib/feed/attendees";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -26,20 +27,21 @@ async function syncCompletedClassFeedEvent(classId: string, tenantId: string) {
       classType: true,
       coach: { include: { user: { select: { name: true, image: true } } } },
       bookings: {
-        where: { status: "ATTENDED" },
+        // Attended members + guest/platform (Wellhub, Gympass) bookings that
+        // weren't cancelled or marked no-show.
+        where: {
+          OR: [
+            { status: "ATTENDED" },
+            { userId: null, status: { notIn: ["CANCELLED", "NO_SHOW"] } },
+          ],
+        },
         include: { user: { select: { id: true, name: true, image: true } } },
       },
     },
   });
   if (!cls) return;
 
-  const attendees = cls.bookings
-    .filter((b) => b.userId)
-    .map((b) => ({
-      id: b.userId!,
-      name: b.user?.name ?? "Miembro",
-      image: b.user?.image ?? null,
-    }));
+  const attendees = await buildClassAttendees(cls.bookings, tenantId);
 
   const existingEvent = await prisma.feedEvent.findFirst({
     where: {

@@ -7,6 +7,7 @@ import {
   type GrantedAchievement,
 } from "@/lib/achievements";
 import { sendPushToMany } from "@/lib/push";
+import { buildClassAttendees } from "@/lib/feed/attendees";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -81,13 +82,12 @@ export async function POST(
       });
     }
 
-    const attendees = cls.bookings
-      .filter((b) => b.userId && idsToMark.includes(b.userId))
-      .map((b) => ({
-        id: b.userId!,
-        name: b.user?.name ?? "Miembro",
-        image: b.user?.image ?? null,
-      }));
+    // Members who attended + guest/platform (Wellhub, Gympass) bookings that
+    // weren't cancelled or marked no-show — so the post shows everyone present.
+    const presentBookings = cls.bookings.filter((b) =>
+      b.userId ? idsToMark.includes(b.userId) : b.status !== "NO_SHOW",
+    );
+    const attendees = await buildClassAttendees(presentBookings, ctx.tenant.id);
 
     let feedEventId: string | null = null;
 

@@ -29,6 +29,7 @@ interface Attendee {
   image: string | null;
   hasActiveMembership?: boolean;
   level?: string | null;
+  isGuest?: boolean;
 }
 
 interface MediaItem {
@@ -238,6 +239,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
     id: a.id,
     name: a.name,
     image: a.image,
+    isGuest: a.isGuest,
   }));
 
   return (

@@ -16,6 +16,8 @@ export interface PersonItem {
   subtitle?: string;
   hasActiveMembership?: boolean;
   level?: string | null;
+  /** Guest / platform attendee with no member profile — not tappable. */
+  isGuest?: boolean;
 }
 
 interface PeopleListSheetProps {
@@ -162,14 +164,16 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
               <div className="space-y-0.5">
                 {people.map((person) => {
                   const state = getState(person.id);
+                  const isGuest = person.isGuest === true;
                   return (
                     <div
                       key={person.id}
                       className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors"
                     >
                       <button
-                        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left disabled:cursor-default"
                         onClick={() => handlePersonTap(person.id)}
+                        disabled={isGuest}
                       >
                         <UserAvatar
                           user={person as UserAvatarUser}
@@ -187,7 +191,7 @@ export function PeopleListSheet({ open, onClose, title, people: rawPeople }: Peo
                         </div>
                       </button>
 
-                      {state === "idle" && (
+                      {!isGuest && state === "idle" && (
                         <button
                           onClick={() => handleAddFriend(person.id)}
                           className="shrink-0 rounded-full border border-accent px-3 py-1.5 text-[12px] font-semibold text-accent transition-colors active:bg-accent/10"
