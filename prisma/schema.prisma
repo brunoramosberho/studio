@@ -2288,6 +2288,17 @@ model MembershipConversionConfig {
 
   maxNudgesPerMemberPerWeek Int @default(1)
 
+  // Curated package merchandising (behavioural-economics decoy effect). When
+  // enabled, the booking flow + /packages surface a hand-picked set of packages
+  // (ordered, with one "recommended" preferred pick) instead of the full list,
+  // with the rest behind a "see more". Two audiences: never-purchased ("first
+  // timer") vs has-purchased ("returning"). Off by default → full list as today.
+  curatedEnabled                 Boolean  @default(false)
+  curatedFirstTimerIds           String[] @default([]) // ordered package ids
+  curatedFirstTimerRecommendedId String?
+  curatedReturningIds            String[] @default([]) // ordered package ids
+  curatedReturningRecommendedId  String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

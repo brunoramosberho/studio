@@ -19,6 +19,10 @@ import {
   Loader2,
   Info,
   Save,
+  Star,
+  Sparkles,
+  Check,
+  AlertTriangle,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -33,6 +37,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { analyzeDecoy, type DecoyPackage } from "@/lib/packages/decoy";
 import { useFormatMoney } from "@/components/tenant-provider";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { INSIGHTS_TABS } from "@/components/admin/section-tab-configs";
@@ -94,6 +99,11 @@ interface ConversionConfig {
   packageUpgradeTiming: string;
   packageUpgradeCredit: boolean;
   maxNudgesPerMemberPerWeek: number;
+  curatedEnabled: boolean;
+  curatedFirstTimerIds: string[];
+  curatedFirstTimerRecommendedId: string | null;
+  curatedReturningIds: string[];
+  curatedReturningRecommendedId: string | null;
 }
 
 interface SubscriptionPackage {
@@ -101,6 +111,8 @@ interface SubscriptionPackage {
   name: string;
   price: number;
   currency: string;
+  credits: number | null;
+  type: string;
 }
 
 // ── Helpers ──
@@ -517,6 +529,16 @@ function ConfigTab() {
     },
   });
 
+  const { data: allPackages } = useQuery<SubscriptionPackage[]>({
+    queryKey: ["all-packages-for-curation"],
+    queryFn: async () => {
+      const res = await fetch("/api/packages");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : data.packages ?? [];
+    },
+  });
+
   if (configLoading || !config) {
     return (
       <div className="space-y-6">
@@ -539,6 +561,7 @@ function ConfigTab() {
       />
       <SavingsEmailConfig config={config} />
       <PackageUpgradeConfig config={config} />
+      <CuratedPackagesConfig config={config} allPackages={allPackages ?? []} />
     </div>
   );
 }
@@ -609,6 +632,266 @@ function ConfigCard({
         </motion.div>
       )}
     </div>
+  );
+}
+
+// ── Curated packages (behavioural-economics decoy effect) ──
+
+function AudienceEditor({
+  title,
+  hint,
+  audience,
+  ids,
+  setIds,
+  recommendedId,
+  setRecommendedId,
+  allPackages,
+}: {
+  title: string;
+  hint: string;
+  audience: "firstTimer" | "returning";
+  ids: string[];
+  setIds: (v: string[]) => void;
+  recommendedId: string | null;
+  setRecommendedId: (v: string | null) => void;
+  allPackages: SubscriptionPackage[];
+}) {
+  const [suggesting, setSuggesting] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(null);
+
+  const setSlot = (i: number, value: string) => {
+    const next = [...ids];
+    while (next.length <= i) next.push("");
+    next[i] = value === "__none__" ? "" : value;
+    setIds(next);
+    if (recommendedId && !next.includes(recommendedId)) setRecommendedId(null);
+  };
+
+  const chosen: DecoyPackage[] = ids
+    .filter(Boolean)
+    .map((id) => allPackages.find((p) => p.id === id))
+    .filter((p): p is SubscriptionPackage => !!p)
+    .map((p) => ({ id: p.id, name: p.name, price: p.price, credits: p.credits, type: p.type }));
+  const analysis = analyzeDecoy(chosen, recommendedId);
+
+  async function handleSuggest() {
+    setSuggesting(true);
+    try {
+      const res = await fetch("/api/admin/conversion/suggest-decoy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audience }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.ids) && data.ids.length) {
+        setIds(data.ids);
+        setRecommendedId(data.recommendedId ?? null);
+        setExplanation(data.explanation ?? null);
+      }
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-stone-200 p-4">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+            {title}
+          </p>
+          <p className="mt-0.5 text-[11px] text-stone-400">{hint}</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleSuggest}
+          disabled={suggesting}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+        >
+          {suggesting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="h-3.5 w-3.5" />
+          )}
+          Sugerir con Spark
+        </button>
+      </div>
+      <div className="space-y-2">
+        {[0, 1, 2].map((i) => {
+          const id = ids[i] ?? "";
+          return (
+            <div key={i} className="flex items-center gap-2">
+              <span className="w-4 text-center text-xs font-medium text-stone-400">
+                {i + 1}
+              </span>
+              <Select value={id || "__none__"} onValueChange={(v) => setSlot(i, v)}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Elegir paquete" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— vacío —</SelectItem>
+                  {allPackages.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                disabled={!id}
+                onClick={() =>
+                  setRecommendedId(recommendedId === id ? null : id)
+                }
+                title="Marcar como recomendado (preferred pick)"
+                className="shrink-0 rounded-lg p-1.5 transition-colors hover:bg-stone-100 disabled:opacity-30"
+              >
+                <Star
+                  className={cn(
+                    "h-4 w-4",
+                    recommendedId === id && id
+                      ? "fill-amber-400 text-amber-400"
+                      : "text-stone-300",
+                  )}
+                />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      {explanation && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50/70 p-2.5 text-[11px] text-amber-800">
+          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+          <span>{explanation}</span>
+        </div>
+      )}
+
+      {chosen.length >= 2 && (
+        <div className="mt-3 space-y-1 border-t border-stone-100 pt-2.5">
+          {analysis.checks.map((c, i) => (
+            <p
+              key={i}
+              className={cn(
+                "flex items-start gap-1.5 text-[11px]",
+                c.level === "ok" ? "text-emerald-600" : "text-amber-600",
+              )}
+            >
+              {c.level === "ok" ? (
+                <Check className="mt-0.5 h-3 w-3 shrink-0" />
+              ) : (
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+              )}
+              {c.message}
+            </p>
+          ))}
+        </div>
+      )}
+
+      <p className="mt-2 flex items-center gap-1 text-[11px] text-stone-400">
+        <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> = preferido
+        (badge &ldquo;Recomendado&rdquo;). El orden 1→3 es el que verá el cliente.
+      </p>
+    </div>
+  );
+}
+
+function CuratedPackagesConfig({
+  config,
+  allPackages,
+}: {
+  config: ConversionConfig;
+  allPackages: SubscriptionPackage[];
+}) {
+  const queryClient = useQueryClient();
+  const [ftIds, setFtIds] = useState<string[]>(config.curatedFirstTimerIds ?? []);
+  const [ftRec, setFtRec] = useState<string | null>(
+    config.curatedFirstTimerRecommendedId ?? null,
+  );
+  const [rtIds, setRtIds] = useState<string[]>(config.curatedReturningIds ?? []);
+  const [rtRec, setRtRec] = useState<string | null>(
+    config.curatedReturningRecommendedId ?? null,
+  );
+  const [saving, setSaving] = useState(false);
+
+  const clean = (arr: string[]) => Array.from(new Set(arr.filter(Boolean)));
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const ft = clean(ftIds);
+      const rt = clean(rtIds);
+      await fetch("/api/admin/conversion/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          curatedEnabled: true,
+          curatedFirstTimerIds: ft,
+          curatedFirstTimerRecommendedId: ft.includes(ftRec ?? "") ? ftRec : null,
+          curatedReturningIds: rt,
+          curatedReturningRecommendedId: rt.includes(rtRec ?? "") ? rtRec : null,
+        }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["conversion-config"] });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggle(enabled: boolean) {
+    await fetch("/api/admin/conversion/config", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ curatedEnabled: enabled }),
+    });
+    queryClient.invalidateQueries({ queryKey: ["conversion-config"] });
+  }
+
+  return (
+    <ConfigCard
+      title="Paquetes destacados · efecto decoy"
+      description="Muestra 3 paquetes elegidos (con un preferido) en el booking y /packages; el resto queda en “ver más”. Apagado → se muestran todos como hoy."
+      icon={<Sparkles className="h-5 w-5 text-amber-600" />}
+      enabled={config.curatedEnabled}
+      onToggle={handleToggle}
+      saving={saving}
+      onSave={handleSave}
+    >
+      <div className="space-y-4">
+        <div className="rounded-xl bg-stone-50 p-4 text-[11px] leading-relaxed text-stone-500">
+          <p className="mb-1.5 flex items-center gap-1.5 font-semibold text-stone-600">
+            <Info className="h-3.5 w-3.5" /> Cómo funciona el efecto decoy
+          </p>
+          <p>
+            Elige 3 opciones: un <b>ancla</b> barata (mete el pie), tu{" "}
+            <b>objetivo</b> ⭐ (lo que quieres empujar) y un <b>decoy</b> que
+            cuesta ≥ que el objetivo pero ofrece menos — así el objetivo se
+            vuelve la elección obvia. La validación de abajo te dice si está bien
+            armado, y &ldquo;Sugerir con Spark&rdquo; lo arma por ti.
+          </p>
+        </div>
+        <AudienceEditor
+          title="Primera reserva"
+          hint="Para quien nunca ha comprado. Objetivo: que vuelva."
+          audience="firstTimer"
+          ids={ftIds}
+          setIds={setFtIds}
+          recommendedId={ftRec}
+          setRecommendedId={setFtRec}
+          allPackages={allPackages}
+        />
+        <AudienceEditor
+          title="Cliente recurrente"
+          hint="Para quien ya compró antes. Objetivo: suscripción / paquete mayor."
+          audience="returning"
+          ids={rtIds}
+          setIds={setRtIds}
+          recommendedId={rtRec}
+          setRecommendedId={setRtRec}
+          allPackages={allPackages}
+        />
+      </div>
+    </ConfigCard>
   );
 }
 

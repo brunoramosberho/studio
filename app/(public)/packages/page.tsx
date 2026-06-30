@@ -14,6 +14,8 @@ import {
   Layers,
   CalendarSync,
   ChevronRight,
+  ChevronDown,
+  Sparkles,
   Video,
   Lock,
 } from "lucide-react";
@@ -23,6 +25,11 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { PurchaseSheet } from "@/components/booking/purchase-sheet";
 import { SubscribeSheet } from "@/components/checkout/SubscribeSheet";
 import { formatCurrency, cn } from "@/lib/utils";
+import {
+  splitCuratedPackages,
+  type PackageCuration,
+  type CurationAudience,
+} from "@/lib/packages/curation";
 import { useTranslations } from "next-intl";
 
 interface ClassTypeRef {
@@ -184,6 +191,16 @@ export default function PackagesPage() {
     enabled: isLoggedIn,
   });
 
+  const { data: curation } = useQuery<PackageCuration>({
+    queryKey: ["packages-curation"],
+    queryFn: async () => {
+      const res = await fetch("/api/packages/curation");
+      if (!res.ok) throw new Error("failed");
+      return res.json();
+    },
+  });
+  const [showMorePackages, setShowMorePackages] = useState(false);
+
   const isReturningUser = myPackages.length > 0;
   const now = Date.now();
   const activeCredits = myPackages
@@ -216,6 +233,23 @@ export default function PackagesPage() {
       ),
     [visiblePackages, currentTab],
   );
+
+  // Curated decoy display: pick the audience + show the hand-picked set first,
+  // with the rest behind "see more". When off → the normal tabbed browse.
+  const curationAudience: CurationAudience = isReturningUser
+    ? "returning"
+    : "firstTimer";
+  const {
+    isCurated,
+    curated: curatedPackages,
+    rest: restPackages,
+    recommendedId: curatedRecommendedId,
+  } = splitCuratedPackages(visiblePackages, curation, curationAudience);
+  const displayPackages = isCurated
+    ? showMorePackages
+      ? [...curatedPackages, ...restPackages]
+      : curatedPackages
+    : filtered;
 
   function handleBuy(e: React.MouseEvent, pkg: PackageData) {
     e.preventDefault();
@@ -269,7 +303,7 @@ export default function PackagesPage() {
         )}
 
         {/* Tabs */}
-        {!loading && availableTabs.length > 1 && (
+        {!loading && !isCurated && availableTabs.length > 1 && (
           <div className="mb-8 flex justify-center">
             <div className="flex gap-1 rounded-xl bg-surface p-1">
               {availableTabs.map((tab) => {
@@ -312,8 +346,9 @@ export default function PackagesPage() {
             animate="show"
             key={currentTab}
           >
-            {filtered.map((pkg) => {
+            {displayPackages.map((pkg) => {
               const features = buildFeatures(pkg);
+              const isRec = isCurated && pkg.id === curatedRecommendedId;
 
               return (
                 <motion.div key={pkg.id} variants={fadeUp}>
@@ -321,17 +356,26 @@ export default function PackagesPage() {
                     href={`/packages/${pkg.id}`}
                     className={cn(
                       "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-card p-4 sm:p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-warm-md active:scale-[0.98]",
-                      pkg.isPromo && "border-2 border-dashed border-accent/40",
+                      isRec
+                        ? "border-2 border-accent"
+                        : pkg.isPromo && "border-2 border-dashed border-accent/40",
                     )}
                   >
-                    {pkg.isPromo && (
+                    {isRec ? (
+                      <div className="absolute -top-0 right-3 rounded-b-lg bg-accent px-2.5 py-0.5 sm:right-4 sm:px-3 sm:py-1">
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-white sm:text-[11px]">
+                          <Sparkles className="h-3 w-3" />
+                          {t("recommended")}
+                        </span>
+                      </div>
+                    ) : pkg.isPromo ? (
                       <div className="absolute -top-0 right-3 rounded-b-lg bg-accent/10 px-2.5 py-0.5 sm:right-4 sm:px-3 sm:py-1">
                         <span className="flex items-center gap-1 text-[10px] font-semibold text-accent sm:text-[11px]">
                           <Gift className="h-3 w-3" />
                           {t("firstTime")}
                         </span>
                       </div>
-                    )}
+                    ) : null}
 
                     <div className="mb-3 sm:mb-4">
                       <div className="mb-0.5 flex items-center gap-2 sm:mb-1">
@@ -419,6 +463,19 @@ export default function PackagesPage() {
               );
             })}
           </motion.div>
+        )}
+
+        {!loading && isCurated && restPackages.length > 0 && !showMorePackages && (
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setShowMorePackages(true)}
+              className="flex items-center gap-1.5 rounded-full border border-border px-5 py-2.5 text-sm font-medium text-muted transition-colors hover:border-foreground/30 hover:text-foreground"
+            >
+              {t("seeMoreOptions")}
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
         )}
 
       </div>

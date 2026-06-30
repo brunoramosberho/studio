@@ -43,6 +43,11 @@ export async function PATCH(request: NextRequest) {
       "packageUpgradeTiming",
       "packageUpgradeCredit",
       "maxNudgesPerMemberPerWeek",
+      "curatedEnabled",
+      "curatedFirstTimerIds",
+      "curatedFirstTimerRecommendedId",
+      "curatedReturningIds",
+      "curatedReturningRecommendedId",
     ] as const;
 
     const data: Record<string, unknown> = {};

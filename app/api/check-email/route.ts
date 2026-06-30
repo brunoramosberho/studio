@@ -16,6 +16,12 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         name: true,
+        // Has this email ever purchased here — drives the curated-packages
+        // "first timer" vs "returning" audience.
+        memberships: {
+          where: { tenantId: tenant.id },
+          select: { firstPurchaseAt: true },
+        },
         packages: {
           where: {
             tenantId: tenant.id,
@@ -54,6 +60,7 @@ export async function POST(request: NextRequest) {
       credits: totalCredits === Infinity ? -1 : totalCredits,
       name: user.name,
       maxedPackageIds,
+      hasPurchased: user.memberships[0]?.firstPurchaseAt != null,
     });
   } catch (error) {
     console.error("POST /api/check-email error:", error);

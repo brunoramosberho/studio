@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Mail,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,11 @@ import { EmailSuggestion } from "@/components/ui/email-suggestion";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
 import { cn, formatTime } from "@/lib/utils";
 import type { Package } from "@prisma/client";
+import {
+  splitCuratedPackages,
+  type PackageCuration,
+  type CurationAudience,
+} from "@/lib/packages/curation";
 import { ProductPickStep } from "./product-pick-step";
 import { PurchaseSheet } from "./purchase-sheet";
 import { SubscribeSheet } from "./subscribe-sheet";
@@ -106,6 +112,7 @@ interface EmailCheckResult {
   credits: number;
   name: string | null;
   maxedPackageIds?: string[];
+  hasPurchased?: boolean;
 }
 
 export function BookingSheet({
@@ -147,6 +154,7 @@ export function BookingSheet({
   const [checkingEmail, setCheckingEmail] = useState(false);
   const emailCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bookingInFlight = useRef(false);
+  const [showMorePackages, setShowMorePackages] = useState(false);
 
   const { data: allPackages = [] } = useQuery<Package[]>({
     queryKey: ["packages-catalog"],
@@ -166,6 +174,16 @@ export function BookingSheet({
       return res.json();
     },
     enabled: open && isLoggedIn,
+  });
+
+  const { data: curation } = useQuery<PackageCuration>({
+    queryKey: ["packages-curation"],
+    queryFn: async () => {
+      const res = await fetch("/api/packages/curation");
+      if (!res.ok) throw new Error("failed");
+      return res.json();
+    },
+    enabled: open,
   });
 
   const isReturningUser = isLoggedIn && myPackages.length > 0;
@@ -191,6 +209,17 @@ export function BookingSheet({
     }
     return true;
   });
+
+  // Curated decoy display: pick the audience (never-purchased vs returning) and
+  // split the list into the hand-picked set + the rest (behind "see more").
+  const curationAudience: CurationAudience =
+    isReturningUser || emailCheck?.hasPurchased ? "returning" : "firstTimer";
+  const {
+    isCurated,
+    curated: curatedPackages,
+    rest: restPackages,
+    recommendedId: curatedRecommendedId,
+  } = splitCuratedPackages(packages, curation, curationAudience);
 
   const checkEmail = useCallback(async (email: string) => {
     if (!email || !email.includes("@")) {
@@ -408,6 +437,80 @@ export function BookingSheet({
       .sort((a, b) => (a.price / (a.credits ?? 1)) - (b.price / (b.credits ?? 1)))[0];
     return bestValue?.id ?? null;
   })();
+
+  // When a curated set applies the preferred pick comes from the admin's choice;
+  // otherwise fall back to the auto-recommended package.
+  const effectiveRecommendedId = isCurated
+    ? curatedRecommendedId
+    : recommendedPkgId;
+
+  const renderPackageCard = (pkg: Package) => {
+    const maxed = emailCheck?.maxedPackageIds?.includes(pkg.id) ?? false;
+    const isRecommended = !maxed && pkg.id === effectiveRecommendedId;
+    const showPromo = !maxed && !isRecommended && pkg.isPromo;
+    return (
+      <button
+        key={pkg.id}
+        onClick={() => !maxed && handleSelectPackage(pkg)}
+        disabled={loading || maxed}
+        className={cn(
+          "group relative w-full rounded-2xl border p-4 text-left transition-all",
+          maxed
+            ? "cursor-not-allowed border-border/60 bg-surface/40 opacity-60"
+            : isRecommended
+              ? "border-accent bg-accent/5 hover:border-accent hover:shadow-md"
+              : "border-border hover:border-foreground/20 hover:shadow-md",
+        )}
+      >
+        {maxed && (
+          <div className="absolute -top-2.5 right-3 rounded-full bg-stone-200 px-2.5 py-0.5 text-[10px] font-bold text-stone-600 dark:bg-surface dark:text-muted">
+            {t("alreadyPurchased")}
+          </div>
+        )}
+        {isRecommended && (
+          <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
+            <Sparkles className="h-3 w-3" />
+            {t("recommended")}
+          </div>
+        )}
+        {showPromo && (
+          <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
+            <Sparkles className="h-3 w-3" />
+            {t("firstTime")}
+          </div>
+        )}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-display text-base font-bold text-foreground">
+              {pkg.name}
+            </p>
+            {pkg.description && (
+              <p className="mt-0.5 text-xs text-muted line-clamp-1">
+                {pkg.description}
+              </p>
+            )}
+            <div className="mt-2 flex items-center gap-3 text-xs text-muted">
+              <span className="flex items-center gap-1">
+                <Ticket className="h-3 w-3" />
+                {pkg.credits === null ? t("unlimited") : t("classesCount", { count: pkg.credits })}
+              </span>
+              <span>{t("validDays", { days: pkg.validDays })}</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="font-display text-lg font-bold text-foreground">
+              {formatPrice(pkg)}
+            </p>
+            {pkg.credits && pkg.credits > 1 && (
+              <p className="text-[10px] text-muted">
+                {formatPrice({ ...pkg, price: pkg.price / pkg.credits } as Package)}/{t("perClass")}
+              </p>
+            )}
+          </div>
+        </div>
+      </button>
+    );
+  };
 
   if (!open) return null;
 
@@ -683,72 +786,18 @@ export function BookingSheet({
                 )}
 
                 <div className="space-y-2.5">
-                  {packages.map((pkg) => {
-                    const maxed = emailCheck?.maxedPackageIds?.includes(pkg.id) ?? false;
-                    const isRecommended = !maxed && !pkg.isPromo && pkg.id === recommendedPkgId;
-                    return (
-                      <button
-                        key={pkg.id}
-                        onClick={() => !maxed && handleSelectPackage(pkg)}
-                        disabled={loading || maxed}
-                        className={cn(
-                          "group relative w-full rounded-2xl border p-4 text-left transition-all",
-                          maxed
-                            ? "cursor-not-allowed border-border/60 bg-surface/40 opacity-60"
-                            : isRecommended
-                              ? "border-accent bg-accent/5 hover:border-accent hover:shadow-md"
-                              : "border-border hover:border-foreground/20 hover:shadow-md",
-                        )}
-                      >
-                        {maxed && (
-                          <div className="absolute -top-2.5 right-3 rounded-full bg-stone-200 px-2.5 py-0.5 text-[10px] font-bold text-stone-600 dark:bg-surface dark:text-muted">
-                            {t("alreadyPurchased")}
-                          </div>
-                        )}
-                        {isRecommended && (
-                          <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
-                            <Sparkles className="h-3 w-3" />
-                            {t("recommended")}
-                          </div>
-                        )}
-                        {!maxed && pkg.isPromo && (
-                          <div className="absolute -top-2.5 right-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">
-                            <Sparkles className="h-3 w-3" />
-                            {t("firstTime")}
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-display text-base font-bold text-foreground">
-                              {pkg.name}
-                            </p>
-                            {pkg.description && (
-                              <p className="mt-0.5 text-xs text-muted line-clamp-1">
-                                {pkg.description}
-                              </p>
-                            )}
-                            <div className="mt-2 flex items-center gap-3 text-xs text-muted">
-                              <span className="flex items-center gap-1">
-                                <Ticket className="h-3 w-3" />
-                                {pkg.credits === null ? t("unlimited") : t("classesCount", { count: pkg.credits })}
-                              </span>
-                              <span>{t("validDays", { days: pkg.validDays })}</span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-display text-lg font-bold text-foreground">
-                              {formatPrice(pkg)}
-                            </p>
-                            {pkg.credits && pkg.credits > 1 && (
-                              <p className="text-[10px] text-muted">
-                                {formatPrice({ ...pkg, price: pkg.price / pkg.credits } as Package)}/{t("perClass")}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                  {(isCurated ? curatedPackages : packages).map(renderPackageCard)}
+                  {isCurated && restPackages.length > 0 && !showMorePackages && (
+                    <button
+                      type="button"
+                      onClick={() => setShowMorePackages(true)}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-medium text-muted transition-colors hover:border-foreground/30 hover:text-foreground"
+                    >
+                      {t("seeMoreOptions")}
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  )}
+                  {isCurated && showMorePackages && restPackages.map(renderPackageCard)}
                 </div>
 
                 {!isLoggedIn && (

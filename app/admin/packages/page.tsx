@@ -15,7 +15,10 @@ import {
   CalendarSync,
   Video,
   Trash2,
+  Sparkles,
+  ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -487,6 +490,25 @@ export default function AdminPackagesPage() {
           {tc("new")}
         </Button>
       </div>
+
+      <Link
+        href="/admin/conversion"
+        className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 transition-colors hover:bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 dark:hover:bg-amber-500/15"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-500/20">
+          <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-300" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">
+            Destaca paquetes con el efecto decoy
+          </p>
+          <p className="text-xs text-muted">
+            Cura 3 opciones (con un preferido) para primera-vez y recurrentes —
+            Spark valida y sugiere el mejor set.
+          </p>
+        </div>
+        <ArrowRight className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+      </Link>
 
       <div className="flex gap-1 overflow-x-auto rounded-xl bg-surface p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TAB_CONFIG.map((tab) => {
