@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -29,6 +30,13 @@ import { useTranslations } from "next-intl";
 import { FinanceBriefingCard } from "@/components/admin/MgicAI/FinanceBriefingCard";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { FINANCE_TABS } from "@/components/admin/section-tab-configs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+} from "@/components/ui/select";
 
 // ── Types ──
 
@@ -99,7 +107,13 @@ interface Transaction {
   status: string;
   processedBy: { id: string; name: string; initials: string; avatarColor: string } | null;
   processedByType: string;
+  saleKind: "pos" | "stripe";
   createdAt: string;
+}
+
+interface StaffOption {
+  userId: string;
+  user: { id: string; name: string | null; email: string | null } | null;
 }
 
 interface TransactionsResponse {
@@ -235,6 +249,47 @@ export default function FinancePage() {
       return res.json();
     },
   });
+
+  // Staff roster for reassigning a sale's seller. Requires staff-management
+  // permission server-side; if the admin lacks it the request 403s and the
+  // reassign control simply doesn't render (seller stays read-only).
+  const { data: staffData } = useQuery<{ staff: StaffOption[] }>({
+    queryKey: ["admin-staff-roster"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/staff");
+      if (!res.ok) throw new Error("forbidden");
+      return res.json();
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const staff = staffData?.staff ?? null;
+
+  const queryClient = useQueryClient();
+  const [reassigningId, setReassigningId] = useState<string | null>(null);
+  const handleReassign = useCallback(
+    async (saleKind: "pos" | "stripe", id: string, userId: string | null) => {
+      setReassigningId(id);
+      try {
+        const res = await fetch(
+          `/api/admin/staff/payments/${saleKind}/${id}/attribute`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId }),
+          },
+        );
+        if (!res.ok) throw new Error("failed");
+        await queryClient.invalidateQueries({ queryKey: ["admin-finance-tx"] });
+        toast.success(t("sellerUpdated"));
+      } catch {
+        toast.error(t("sellerUpdateError"));
+      } finally {
+        setReassigningId(null);
+      }
+    },
+    [queryClient, t],
+  );
 
   const handleExport = useCallback(async () => {
     const res = await fetch(`/api/admin/finance/export?range=${range}`);
@@ -620,7 +675,13 @@ export default function FinancePage() {
                     </td>
                     {/* Processed By */}
                     <td className="px-4 py-2.5 hidden lg:table-cell">
-                      <ProcessedByCell transaction={txn} t={t} />
+                      <SellerCell
+                        transaction={txn}
+                        t={t}
+                        staff={staff}
+                        pending={reassigningId === txn.id}
+                        onReassign={handleReassign}
+                      />
                     </td>
                     {/* Date */}
                     <td className="px-4 py-2.5 text-right">
@@ -802,27 +863,86 @@ function StatusBadge({ status, createdAt, t }: { status: string; createdAt: stri
   return <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 font-medium">● {t("statusPending")}</span>;
 }
 
-function ProcessedByCell({ transaction: txn, t }: { transaction: Transaction; t: (key: string) => string }) {
+const SELLER_SYSTEM_VALUE = "__system__";
+
+function SellerDisplay({ transaction: txn, t }: { transaction: Transaction; t: (key: string) => string }) {
   if (txn.processedByType === "system" || !txn.processedBy) {
     return (
-      <div className="flex items-center gap-1.5">
-        <div className="w-5 h-5 rounded-full bg-stone-100 flex items-center justify-center">
+      <div className="flex items-center gap-1.5 min-w-0">
+        <div className="w-5 h-5 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
           <Zap className="w-3 h-3 text-stone-400" />
         </div>
-        <span className="text-xs text-stone-400">{t("systemLabel")}</span>
+        <span className="text-xs text-stone-400 truncate">{t("systemLabel")}</span>
       </div>
     );
   }
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 min-w-0">
       <div
-        className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium text-white"
+        className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium text-white shrink-0"
         style={{ backgroundColor: txn.processedBy.avatarColor }}
       >
         {txn.processedBy.initials}
       </div>
-      <span className="text-xs text-stone-600">{txn.processedBy.name}</span>
+      <span className="text-xs text-stone-600 truncate">{txn.processedBy.name}</span>
     </div>
+  );
+}
+
+function SellerCell({
+  transaction: txn,
+  t,
+  staff,
+  pending,
+  onReassign,
+}: {
+  transaction: Transaction;
+  t: (key: string) => string;
+  staff: StaffOption[] | null;
+  pending: boolean;
+  onReassign: (saleKind: "pos" | "stripe", id: string, userId: string | null) => void;
+}) {
+  // Reassignable when we have the staff roster (i.e. the admin can manage
+  // staff) and the sale was made by a person: POS/manual sales always, online
+  // sales only once already attributed to a seller.
+  const reassignable =
+    staff != null &&
+    staff.length > 0 &&
+    (txn.saleKind === "pos" || txn.processedByType === "staff");
+
+  if (!reassignable) {
+    return <SellerDisplay transaction={txn} t={t} />;
+  }
+
+  return (
+    <Select
+      value={txn.processedBy?.id ?? SELLER_SYSTEM_VALUE}
+      onValueChange={(v) =>
+        onReassign(txn.saleKind, txn.id, v === SELLER_SYSTEM_VALUE ? null : v)
+      }
+      disabled={pending}
+    >
+      <SelectTrigger
+        aria-label={t("reassignSeller")}
+        title={t("reassignSeller")}
+        className={cn(
+          "h-auto w-auto max-w-[150px] gap-1 rounded border-0 bg-transparent px-1 py-0.5 shadow-none",
+          "hover:bg-stone-100 focus-visible:ring-1 focus-visible:ring-offset-0",
+          pending && "opacity-60",
+        )}
+      >
+        <SellerDisplay transaction={txn} t={t} />
+      </SelectTrigger>
+      <SelectContent>
+        {staff!.map((s) => (
+          <SelectItem key={s.userId} value={s.userId}>
+            {s.user?.name?.trim() || s.user?.email || "—"}
+          </SelectItem>
+        ))}
+        <SelectSeparator />
+        <SelectItem value={SELLER_SYSTEM_VALUE}>{t("sellerNone")}</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }
 

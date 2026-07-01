@@ -41,6 +41,16 @@ function getDateRange(range: Range, month?: string) {
   return { start, end };
 }
 
+function initialsOf(name: string | null | undefined): string {
+  if (!name) return "";
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 function getConceptType(type: string): string {
   if (type === "subscription") return "subscription";
   if (type === "membership" || type === "class" || type === "package") return "package";
@@ -94,6 +104,7 @@ export async function GET(request: NextRequest) {
         where: stripeWhere,
         include: {
           member: { select: { id: true, name: true, email: true } },
+          soldBy: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: "desc" },
       }),
@@ -189,6 +200,9 @@ export async function GET(request: NextRequest) {
       status: string;
       processedBy: { id: string; name: string; initials: string; avatarColor: string } | null;
       processedByType: string;
+      // Which underlying table this row maps to — lets the admin UI hit the
+      // right attribute endpoint (.../payments/{saleKind}/{id}/attribute).
+      saleKind: "pos" | "stripe";
       createdAt: string;
     }
 
@@ -224,8 +238,16 @@ export async function GET(request: NextRequest) {
         availableOn: sp.availableOn?.toISOString() ?? null,
         isFeesEstimated: false,
         status: sp.status,
-        processedBy: null,
-        processedByType: "system",
+        processedBy: sp.soldBy
+          ? {
+              id: sp.soldBy.id,
+              name: sp.soldBy.name ?? "",
+              initials: initialsOf(sp.soldBy.name),
+              avatarColor: "#1A2C4E",
+            }
+          : null,
+        processedByType: sp.soldBy ? "staff" : "system",
+        saleKind: "stripe",
         createdAt: sp.createdAt.toISOString(),
       });
     }
@@ -237,14 +259,7 @@ export async function GET(request: NextRequest) {
         pt.paymentMethod === "cash" ? "cash"
         : pt.paymentMethod === "saved_card" ? "stripe"
         : "tpv";
-      const initials = pt.processedBy?.name
-        ? pt.processedBy.name
-            .split(" ")
-            .map((w: string) => w[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 2)
-        : "";
+      const initials = initialsOf(pt.processedBy?.name);
 
       let fee = pt.fee;
       let netAmount = pt.netAmount;
@@ -322,6 +337,7 @@ export async function GET(request: NextRequest) {
             }
           : null,
         processedByType: pt.processedBy ? "staff" : "system",
+        saleKind: "pos",
         createdAt: pt.createdAt.toISOString(),
       });
     }
