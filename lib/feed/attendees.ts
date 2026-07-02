@@ -103,3 +103,56 @@ export async function buildClassAttendees(
 
   return attendees;
 }
+
+/**
+ * Append any guest/platform (Wellhub, Gympass) attendees that are missing from
+ * a class's existing CLASS_COMPLETED feed post. Additive + idempotent: keeps
+ * the members already listed and only adds not-yet-present, not-cancelled,
+ * not-no-show guest bookings. No-op if the class has no completed post yet
+ * (the completion path will include them when it creates the post).
+ *
+ * Used to catch platform check-ins that land *after* the post was created
+ * (e.g. a Wellhub member who checks in a few minutes after the cron already
+ * auto-completed the class), so no manual backfill is ever needed.
+ *
+ * Returns the number of attendees appended.
+ */
+export async function syncCompletedClassAttendees(
+  classId: string,
+  tenantId: string,
+): Promise<number> {
+  const event = await prisma.feedEvent.findFirst({
+    where: {
+      tenantId,
+      eventType: "CLASS_COMPLETED",
+      payload: { path: ["classId"], equals: classId },
+    },
+    select: { id: true, payload: true },
+  });
+  if (!event) return 0;
+
+  const payload = (event.payload as Record<string, unknown>) ?? {};
+  const prev = (payload.attendees as { id: string }[]) ?? [];
+  const prevIds = new Set(prev.map((a) => a.id));
+
+  const guestBookings = await prisma.booking.findMany({
+    where: {
+      classId,
+      userId: null,
+      status: { notIn: ["CANCELLED", "NO_SHOW"] },
+    },
+    include: { user: { select: { id: true, name: true, image: true } } },
+  });
+  if (guestBookings.length === 0) return 0;
+
+  const guests = await buildClassAttendees(guestBookings, tenantId);
+  const toAppend = guests.filter((a) => !prevIds.has(a.id));
+  if (toAppend.length === 0) return 0;
+
+  const attendees = [...prev, ...toAppend];
+  await prisma.feedEvent.update({
+    where: { id: event.id },
+    data: { payload: { ...payload, attendees, attendeeCount: attendees.length } },
+  });
+  return toAppend.length;
+}

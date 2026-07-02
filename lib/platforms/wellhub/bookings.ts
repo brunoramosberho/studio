@@ -22,6 +22,7 @@ import {
   PLATFORM_CONSUMING_STATUSES,
 } from "@/lib/booking/availability";
 import { promoteFromWaitlist, notifySpotWatchers } from "@/lib/waitlist";
+import { syncCompletedClassAttendees } from "@/lib/feed/attendees";
 import { bookingApi, getWellhubTokenForTenant } from "./client";
 import { evaluateReservationDecision } from "./decision";
 import { resolveTenantByWellhubGymId } from "./resolve";
@@ -562,6 +563,22 @@ export async function syncCompanionStatus(
     where: { platformBookingId },
     data: { status },
   });
+
+  // If this is a check-in that lands after the class was already auto-completed
+  // and its feed post created, append the attendee so late Wellhub check-ins
+  // still show up — no manual backfill needed. Best-effort: never block or fail
+  // the check-in on a feed hiccup. No-op when the class has no completed post.
+  if (status === "ATTENDED") {
+    const b = await prisma.booking.findFirst({
+      where: { platformBookingId },
+      select: { classId: true, tenantId: true },
+    });
+    if (b) {
+      await syncCompletedClassAttendees(b.classId, b.tenantId).catch((err) =>
+        console.error("[wellhub] syncCompletedClassAttendees failed", err),
+      );
+    }
+  }
 }
 
 export const __SLA_INTERNAL = {

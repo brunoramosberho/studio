@@ -18,6 +18,7 @@ import {
 } from "@/lib/no-show-penalty";
 import { restoreCredit } from "@/lib/credits";
 import { formatTime } from "@/lib/utils";
+import { buildClassAttendees } from "@/lib/feed/attendees";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -190,13 +191,13 @@ export async function GET(request: NextRequest) {
         data: { status: "COMPLETED" },
       });
 
-      const attendees = cls.bookings
-        .filter((b) => b.userId && b.status === "ATTENDED")
-        .map((b) => ({
-          id: b.userId!,
-          name: b.user?.name ?? "Miembro",
-          image: b.user?.image ?? null,
-        }));
+      // Everyone actually present: members marked ATTENDED + guest/platform
+      // (Wellhub, Gympass) bookings that checked in (also ATTENDED). Bookings
+      // still CONFIRMED at this point were just marked NO_SHOW above, so
+      // filtering on ATTENDED excludes them. buildClassAttendees adds the
+      // guest/platform people the old member-only filter used to drop.
+      const presentBookings = cls.bookings.filter((b) => b.status === "ATTENDED");
+      const attendees = await buildClassAttendees(presentBookings, tenant.id);
 
       if (attendees.length > 0 && cls.coach.userId) {
         const tz = cls.room?.studio?.city?.timezone ?? undefined;
@@ -236,7 +237,11 @@ export async function GET(request: NextRequest) {
           },
         });
 
-        const attendedUserIds = attendees.map((a) => a.id);
+        // Members only — guest/platform attendees have synthetic `guest:*`
+        // ids and no app account, so they get no achievements or push.
+        const attendedUserIds = attendees
+          .filter((a) => !a.isGuest)
+          .map((a) => a.id);
         const allGrants: GrantedAchievement[] = [];
         for (const userId of attendedUserIds) {
           const granted = await checkAchievements(userId, tenant.id);
