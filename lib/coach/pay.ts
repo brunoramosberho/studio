@@ -59,6 +59,78 @@ export interface CoachPayResult {
   hasRates: boolean;
 }
 
+/** One rate applied to a class (a class can earn under more than one rate type). */
+export interface CoachEarningLine {
+  rateType: CoachPayClassLine["rateType"];
+  /** Server-formatted formula, e.g. "150/clase", "50/alumno × 8", "Tier 10-15 → 200". */
+  rateLabel: string;
+  multiplier: number;
+  amount: number;
+}
+
+/** Per-class earning for the coach's own view: the total plus the seat breakdown
+ *  and the rate lines behind it, so the coach sees exactly how it was computed. */
+export interface CoachClassEarning {
+  id: string;
+  startsAt: Date;
+  className: string;
+  classColor: string;
+  capacity: number;
+  occupancy: number;
+  /** Billable seats the pay is based on (attended + charged no-shows + late cancels, capped). */
+  billableSeats: number;
+  attended: number;
+  chargedNoShows: number;
+  chargedLateCancels: number;
+  capped: boolean;
+  isPast: boolean;
+  earned: number;
+  lines: CoachEarningLine[];
+}
+
+/**
+ * Collapse computeCoachPay's per-(class × rate) lines into one row per class:
+ * sums the amounts and keeps each rate line (the "how it was calculated"),
+ * carrying the seat breakdown through. Sorted by class time.
+ */
+export function collapseClassEarnings(
+  classLines: CoachPayClassLine[],
+): CoachClassEarning[] {
+  const byClass = new Map<string, CoachClassEarning>();
+  for (const l of classLines) {
+    let row = byClass.get(l.classId);
+    if (!row) {
+      row = {
+        id: l.classId,
+        startsAt: l.startsAt,
+        className: l.classTypeName,
+        classColor: l.classTypeColor,
+        capacity: l.capacity,
+        occupancy: l.occupancyPct,
+        billableSeats: l.attendees,
+        attended: l.attended,
+        chargedNoShows: l.chargedNoShows,
+        chargedLateCancels: l.chargedLateCancels,
+        capped: l.capped,
+        isPast: l.isPast,
+        earned: 0,
+        lines: [],
+      };
+      byClass.set(l.classId, row);
+    }
+    row.earned = round2(row.earned + l.amount);
+    row.lines.push({
+      rateType: l.rateType,
+      rateLabel: l.rateLabel,
+      multiplier: l.multiplier,
+      amount: l.amount,
+    });
+  }
+  return Array.from(byClass.values()).sort(
+    (a, b) => a.startsAt.getTime() - b.startsAt.getTime(),
+  );
+}
+
 const TYPE_LABEL: Record<string, string> = {
   MONTHLY_FIXED: "Sueldo fijo mensual",
   PER_CLASS: "Por clase",

@@ -1,25 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, getTenantCurrency } from "@/lib/tenant";
-import { computeCoachPay } from "@/lib/coach/pay";
-
-// Per-class earnings row for the coach's own view. Carries the seat breakdown
-// (attended + charged no-shows + charged late cancels, capped at capacity) so the
-// coach sees the same transparent math as admin payroll.
-type ClassEarning = {
-  id: string;
-  startsAt: Date;
-  className: string;
-  classColor: string;
-  students: number;
-  capacity: number;
-  occupancy: number;
-  earned: number;
-  attended: number;
-  chargedNoShows: number;
-  chargedLateCancels: number;
-  capped: boolean;
-};
+import { computeCoachPay, collapseClassEarnings } from "@/lib/coach/pay";
 
 export async function GET() {
   try {
@@ -150,31 +132,20 @@ export async function GET() {
     });
     const weekEarnings = summarize(weekPay);
     const monthEarnings = summarize(monthPay);
-    // computeCoachPay emits one line per (class × rate type); collapse to one row
-    // per class (summing the amounts) and surface the seat breakdown.
-    const classEarningsMap = new Map<string, ClassEarning>();
-    for (const l of monthPay.classLines) {
-      const existing = classEarningsMap.get(l.classId);
-      if (existing) {
-        existing.earned = Math.round((existing.earned + l.amount) * 100) / 100;
-      } else {
-        classEarningsMap.set(l.classId, {
-          id: l.classId,
-          startsAt: l.startsAt,
-          className: l.classTypeName,
-          classColor: l.classTypeColor,
-          students: l.attendees,
-          capacity: l.capacity,
-          occupancy: l.occupancyPct,
-          earned: l.amount,
-          attended: l.attended,
-          chargedNoShows: l.chargedNoShows,
-          chargedLateCancels: l.chargedLateCancels,
-          capped: l.capped,
-        });
-      }
-    }
-    const classEarnings = Array.from(classEarningsMap.values());
+    // One row per class with the seat breakdown + rate lines (shared with the
+    // per-month endpoint so the coach sees the same transparent math everywhere).
+    const classEarnings = collapseClassEarnings(monthPay.classLines);
+
+    // Earliest month the coach has a class, so the UI knows how far back the
+    // month picker can step.
+    const firstClass = await prisma.class.findFirst({
+      where: baseWhere,
+      orderBy: { startsAt: "asc" },
+      select: { startsAt: true },
+    });
+    const earliestMonth = firstClass
+      ? `${firstClass.startsAt.getFullYear()}-${String(firstClass.startsAt.getMonth() + 1).padStart(2, "0")}`
+      : null;
 
     return NextResponse.json({
       week: { total: weekTotal, given: weekGiven, students: weekStudents },
@@ -184,6 +155,7 @@ export async function GET() {
       earnings: monthEarnings,
       weekEarnings,
       classEarnings,
+      earliestMonth,
       history: classHistory.map((c) => ({
         id: c.id,
         startsAt: c.startsAt,

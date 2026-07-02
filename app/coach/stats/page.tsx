@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Users,
   TrendingUp,
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
   Clock,
@@ -48,21 +49,31 @@ interface EarningsData {
   hasRates: boolean;
 }
 
+interface EarningLine {
+  rateType: "PER_CLASS" | "PER_STUDENT" | "OCCUPANCY_TIER";
+  rateLabel: string;
+  multiplier: number;
+  amount: number;
+}
+
 interface ClassEarning {
   id: string;
   startsAt: string;
   className: string;
   classColor: string;
-  students: number;
+  // Billable seats behind the pay, plus the parts so the coach sees why a
+  // class counts what it does.
+  billableSeats: number;
   capacity: number;
   occupancy: number;
-  earned: number;
-  // Seat breakdown behind `students` (billable seats), so the coach sees why a
-  // class counts what it does.
   attended: number;
   chargedNoShows: number;
   chargedLateCancels: number;
   capped: boolean;
+  isPast: boolean;
+  earned: number;
+  // The rate line(s) applied to this class — the "how it was calculated".
+  lines: EarningLine[];
 }
 
 interface CoachStatsData {
@@ -73,7 +84,16 @@ interface CoachStatsData {
   earnings?: EarningsData;
   weekEarnings?: EarningsData;
   classEarnings?: ClassEarning[];
+  earliestMonth?: string | null;
   history: HistoryEntry[];
+}
+
+// Response of GET /api/coach/earnings?month=YYYY-MM (a superset of EarningsData).
+interface MonthEarnings extends EarningsData {
+  month: string;
+  monthlyFixed: number;
+  classesCount: number;
+  classEarnings: ClassEarning[];
 }
 
 interface MonthGroup {
@@ -143,6 +163,22 @@ function groupByMonth(classes: HistoryEntry[]): MonthGroup[] {
     });
 }
 
+// Step a 1-indexed YYYY-MM key by whole months.
+function shiftMonth(key: string, delta: number): string {
+  const [y, m] = key.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// "2026-07" → "julio 2026".
+function formatMonthLabel(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("es-MX", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function CoachStatsPage() {
   const t = useTranslations("coach");
   const periodLabels: Record<Period, string> = {
@@ -155,6 +191,15 @@ export default function CoachStatsPage() {
   const [showAllClasses, setShowAllClasses] = useState(false);
   const [earningsView, setEarningsView] = useState<"week" | "month">("month");
 
+  // 1-indexed YYYY-MM for the earnings month picker (distinct from the
+  // 0-indexed history grouping key further down).
+  const nowMonthKey = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
+  const [selectedMonth, setSelectedMonth] = useState<string>(nowMonthKey);
+  const isCurrentMonth = selectedMonth === nowMonthKey;
+
   const { data, isLoading } = useQuery<CoachStatsData>({
     queryKey: ["coach-stats"],
     queryFn: async () => {
@@ -164,11 +209,41 @@ export default function CoachStatsPage() {
     },
   });
 
+  // Past months load on demand; the current month + week come from the stats
+  // payload above.
+  const { data: monthEarn, isFetching: monthFetching } = useQuery<MonthEarnings>({
+    queryKey: ["coach-earnings", selectedMonth],
+    queryFn: async () => {
+      const res = await fetch(`/api/coach/earnings?month=${selectedMonth}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: earningsView === "month" && !isCurrentMonth,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const current = data?.[period];
   const pastClasses = useMemo(() => data?.history.filter((c) => c.isPast) ?? [], [data]);
   const monthGroups = useMemo(() => groupByMonth(pastClasses), [pastClasses]);
-  const earnings = earningsView === "week" ? data?.weekEarnings : data?.earnings;
-  const classEarnings = data?.classEarnings ?? [];
+
+  // Whether the coach has pay rates at all (stable across month navigation) —
+  // gates the whole earnings section so stepping to an empty month never hides
+  // the month picker.
+  const coachHasRates = !!(data?.earnings?.hasRates || data?.weekEarnings?.hasRates);
+  // Active earnings summary + per-class detail for the selected view/month.
+  const earnings: EarningsData | undefined =
+    earningsView === "week"
+      ? data?.weekEarnings
+      : isCurrentMonth
+        ? data?.earnings
+        : monthEarn;
+  const classEarnings: ClassEarning[] =
+    earningsView === "week"
+      ? []
+      : isCurrentMonth
+        ? data?.classEarnings ?? []
+        : monthEarn?.classEarnings ?? [];
+  const canStepBack = !data?.earliestMonth || selectedMonth > data.earliestMonth;
 
   const currentMonthKey = useMemo(() => {
     const d = new Date();
@@ -231,7 +306,7 @@ export default function CoachStatsPage() {
       </motion.div>
 
       {/* ── Earnings section ── */}
-      {!isLoading && earnings?.hasRates && (
+      {!isLoading && coachHasRates && (
         <motion.div variants={fadeUp} initial="hidden" animate="show" className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 font-display text-lg font-bold">
@@ -264,115 +339,167 @@ export default function CoachStatsPage() {
             </div>
           </div>
 
-          <Card className="border-green-100 bg-gradient-to-br from-green-50/40 to-transparent">
-            <CardContent className="p-5">
-              <motion.div
-                key={earningsView}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
+          {/* Month stepper — browse past months */}
+          {earningsView === "month" && (
+            <div className="flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-2 py-1.5">
+              <button
+                onClick={() => canStepBack && setSelectedMonth(shiftMonth(selectedMonth, -1))}
+                disabled={!canStepBack}
+                aria-label={t("prevMonth")}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors hover:bg-card hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
               >
-                <p className="font-display text-3xl font-bold text-green-700">
-                  {fmt(earnings.total, earnings.currency)}
-                </p>
-                <p className="mt-0.5 text-xs text-green-600/70">
-                  {earningsView === "week" ? t("thisWeek") : t("thisMonth")}
-                </p>
-                {earnings.projected > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px]">
-                    <span className="text-green-700">
-                      {t("earnedLabel")}: <strong>{fmt(earnings.earnedSoFar, earnings.currency)}</strong>
-                    </span>
-                    <span className="text-muted">
-                      {t("projectedLabel")}: {fmt(earnings.projected, earnings.currency)} · {t("estimateShort")}
-                    </span>
-                  </div>
-                )}
-                {earnings.breakdown.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {earnings.breakdown.map((b, i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <span className="text-sm text-green-700/80">{b.label}</span>
-                        <span className="font-mono text-sm font-semibold text-green-800">
-                          {fmt(b.amount, earnings.currency)}
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-sm font-semibold capitalize">
+                {formatMonthLabel(selectedMonth)}
+              </span>
+              <button
+                onClick={() => !isCurrentMonth && setSelectedMonth(shiftMonth(selectedMonth, 1))}
+                disabled={isCurrentMonth}
+                aria-label={t("nextMonth")}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors hover:bg-card hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {earningsView === "month" && !isCurrentMonth && monthFetching && !monthEarn ? (
+            <Skeleton className="h-32 w-full rounded-xl" />
+          ) : earnings ? (
+            <>
+              <Card className="border-green-100 bg-gradient-to-br from-green-50/40 to-transparent">
+                <CardContent className="p-5">
+                  <motion.div
+                    key={earningsView === "week" ? "week" : selectedMonth}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <p className="font-display text-3xl font-bold text-green-700">
+                      {fmt(earnings.total, earnings.currency)}
+                    </p>
+                    <p className="mt-0.5 text-xs capitalize text-green-600/70">
+                      {earningsView === "week" ? t("thisWeek") : formatMonthLabel(selectedMonth)}
+                    </p>
+                    {earnings.projected > 0 && (
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px]">
+                        <span className="text-green-700">
+                          {t("earnedLabel")}: <strong>{fmt(earnings.earnedSoFar, earnings.currency)}</strong>
                         </span>
-                      </div>
-                    ))}
-                    {earnings.breakdown.length > 1 && (
-                      <div className="border-t border-green-200/50 pt-2 flex items-center justify-between">
-                        <span className="text-sm font-semibold text-green-700">{t("totalLabel")}</span>
-                        <span className="font-mono text-sm font-bold text-green-800">
-                          {fmt(earnings.total, earnings.currency)}
+                        <span className="text-muted">
+                          {t("projectedLabel")}: {fmt(earnings.projected, earnings.currency)} · {t("estimateShort")}
                         </span>
                       </div>
                     )}
-                  </div>
-                )}
-              </motion.div>
-            </CardContent>
-          </Card>
-
-          {/* Per-class earnings */}
-          {classEarnings.length > 0 && earningsView === "month" && (
-            <Card>
-              <CardContent className="p-5">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Coins className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-semibold">{t("earningsPerClass")}</span>
-                    <Badge variant="secondary" className="text-[10px]">
-                      {classEarnings.length}
-                    </Badge>
-                  </div>
-                  {classEarnings.length > 8 && (
-                    <button
-                      onClick={() => setShowAllClasses(!showAllClasses)}
-                      className="text-xs font-medium text-coach hover:underline"
-                    >
-                      {showAllClasses ? t("showLess") : t("showAll", { count: classEarnings.length })}
-                    </button>
-                  )}
-                </div>
-                <p className="mb-3 text-[11px] leading-relaxed text-muted">
-                  {t("billableLegend")}
-                </p>
-                <div className="space-y-1">
-                  {(showAllClasses ? classEarnings : classEarnings.slice(0, 8)).map((cls) => (
-                    <Link
-                      key={cls.id}
-                      href={`/coach/class/${cls.id}`}
-                      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-surface/50"
-                    >
-                      <span
-                        className="h-6 w-0.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: cls.classColor }}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{cls.className}</p>
-                        <p className="text-[11px] text-muted">
-                          {formatClassDate(cls.startsAt)} · {formatTime(cls.startsAt)} · {cls.students}/{cls.capacity}
-                        </p>
-                        {(cls.chargedNoShows > 0 || cls.chargedLateCancels > 0) && (
-                          <p className="mt-0.5 text-[10px] text-muted/80">
-                            {t("seatAttended", { n: cls.attended })}
-                            {cls.chargedNoShows > 0 &&
-                              ` + ${t("seatNoShow", { n: cls.chargedNoShows })}`}
-                            {cls.chargedLateCancels > 0 &&
-                              ` + ${t("seatLateCancel", { n: cls.chargedLateCancels })}`}
-                            {cls.capped && ` · ${t("seatCapped")}`}
-                          </p>
+                    {earnings.breakdown.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        {earnings.breakdown.map((b, i) => (
+                          <div key={i} className="flex items-center justify-between">
+                            <span className="text-sm text-green-700/80">{b.label}</span>
+                            <span className="font-mono text-sm font-semibold text-green-800">
+                              {fmt(b.amount, earnings.currency)}
+                            </span>
+                          </div>
+                        ))}
+                        {earnings.breakdown.length > 1 && (
+                          <div className="border-t border-green-200/50 pt-2 flex items-center justify-between">
+                            <span className="text-sm font-semibold text-green-700">{t("totalLabel")}</span>
+                            <span className="font-mono text-sm font-bold text-green-800">
+                              {fmt(earnings.total, earnings.currency)}
+                            </span>
+                          </div>
                         )}
                       </div>
-                      <div className="shrink-0 text-right">
-                        <p className={cn(
-                          "font-mono text-sm font-bold",
-                          cls.earned > 0 ? "text-green-700" : "text-muted",
-                        )}>
-                          {cls.earned > 0 ? fmt(cls.earned, earnings.currency) : "—"}
-                        </p>
+                    )}
+                  </motion.div>
+                </CardContent>
+              </Card>
+
+              {/* Per-class earnings — each row shows how the pay was calculated */}
+              {classEarnings.length > 0 && earningsView === "month" && (
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Coins className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-semibold">{t("earningsPerClass")}</span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {classEarnings.length}
+                        </Badge>
                       </div>
-                    </Link>
-                  ))}
-                </div>
+                      {classEarnings.length > 8 && (
+                        <button
+                          onClick={() => setShowAllClasses(!showAllClasses)}
+                          className="text-xs font-medium text-coach hover:underline"
+                        >
+                          {showAllClasses ? t("showLess") : t("showAll", { count: classEarnings.length })}
+                        </button>
+                      )}
+                    </div>
+                    <p className="mb-3 text-[11px] leading-relaxed text-muted">
+                      {t("billableLegend")}
+                    </p>
+                    <div className="space-y-1">
+                      {(showAllClasses ? classEarnings : classEarnings.slice(0, 8)).map((cls) => (
+                        <Link
+                          key={cls.id}
+                          href={`/coach/class/${cls.id}`}
+                          className="block rounded-lg px-2.5 py-2 transition-colors hover:bg-surface/50"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className="h-6 w-0.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: cls.classColor }}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium">{cls.className}</p>
+                              <p className="text-[11px] text-muted">
+                                {formatClassDate(cls.startsAt)} · {formatTime(cls.startsAt)} · {cls.billableSeats}/{cls.capacity}
+                              </p>
+                              {(cls.chargedNoShows > 0 || cls.chargedLateCancels > 0) && (
+                                <p className="mt-0.5 text-[10px] text-muted/80">
+                                  {t("seatAttended", { n: cls.attended })}
+                                  {cls.chargedNoShows > 0 &&
+                                    ` + ${t("seatNoShow", { n: cls.chargedNoShows })}`}
+                                  {cls.chargedLateCancels > 0 &&
+                                    ` + ${t("seatLateCancel", { n: cls.chargedLateCancels })}`}
+                                  {cls.capped && ` · ${t("seatCapped")}`}
+                                </p>
+                              )}
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className={cn(
+                                "font-mono text-sm font-bold",
+                                cls.earned > 0 ? "text-green-700" : "text-muted",
+                              )}>
+                                {cls.earned > 0 ? fmt(cls.earned, earnings.currency) : "—"}
+                              </p>
+                            </div>
+                          </div>
+                          {cls.lines.length > 0 && (
+                            <div className="ml-3 mt-1.5 space-y-0.5 border-l border-border/50 pl-2.5">
+                              {cls.lines.map((ln, i) => (
+                                <div key={i} className="flex items-center justify-between gap-2 text-[10px] text-muted">
+                                  <span className="truncate">
+                                    {ln.rateLabel}
+                                    {ln.multiplier > 1 ? ` · ×${ln.multiplier} ${t("bonusShort")}` : ""}
+                                  </span>
+                                  <span className="shrink-0 font-mono">{fmt(ln.amount, earnings.currency)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </Link>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          ) : (
+            <Card>
+              <CardContent className="p-5 text-center text-sm text-muted">
+                {t("noEarningsMonth")}
               </CardContent>
             </Card>
           )}
