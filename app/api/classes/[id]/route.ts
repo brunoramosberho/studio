@@ -135,8 +135,9 @@ export async function GET(
     }
 
     let bookings;
-    // The coach's previous class with the same instructor (for the "repeat from
-    // your last class" indicator + a link to review what was done there).
+    // The coach's previous class of the same discipline (class type) for the
+    // "repeat from your last class" indicator + a link to review what was done
+    // there.
     let lastClass: { id: string; startsAt: Date; className: string; attendeeCount: number } | null = null;
 
     if (isCoachOrAdmin && classData.bookings.length > 0) {
@@ -173,13 +174,16 @@ export async function GET(
           where: { userId: { in: userIds } },
           _count: true,
         }),
-        // The coach's previous (most recent past) class with this same coach —
-        // its attendees power the "was in your last class" repeat indicator so
-        // the coach can vary the routine/playlist for returning faces.
+        // The coach's previous (most recent past) class of the SAME discipline
+        // (class type) — its attendees power the "was in your last class" repeat
+        // indicator so the coach can vary the routine/playlist for returning
+        // faces. Scoped to classTypeId so a coach who teaches several formats
+        // (e.g. BTM vs BTM Tone) compares each against its own last session.
         prisma.class.findFirst({
           where: {
             tenantId: tenant.id,
             coachId: classData.coachId,
+            classTypeId: classData.classTypeId,
             startsAt: { lt: classData.startsAt },
             status: { not: "CANCELLED" },
           },
