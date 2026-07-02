@@ -81,7 +81,21 @@ export async function cancelClassWithRefunds(classId: string, tenantId: string):
     }
   }
 
-  // 3. Refund waitlist
+  // 3. Cancel any platform (Wellhub/ClassPass) reservations still marked active
+  // so they don't linger as phantom "pending check-ins" on a class that no
+  // longer happens. The member is notified on the partner's side by the slot
+  // deletion (unsyncClassFromWellhub, called from the route) which cascades to
+  // cancel their booking; this keeps OUR records consistent. `checked_in` rows
+  // are left alone — they represent real attendance/payment we keep on record.
+  await prisma.platformBooking.updateMany({
+    where: {
+      classId,
+      status: { in: ["confirmed", "pending_confirmation"] },
+    },
+    data: { status: "cancelled", notes: "class_cancelled" },
+  });
+
+  // 4. Refund waitlist
   refundAndClearWaitlist(classId, tenantId).catch((err) =>
     console.error(`Waitlist refund for class ${classId} failed:`, err),
   );
