@@ -180,6 +180,22 @@ export async function processBookingRequested(
       where: { wellhubBookingNumber: data.slot.booking_number },
       data: { status: "confirmed", parsedAt: new Date() },
     });
+    // Push fresh availability to Wellhub NOW so its total_booked reflects this
+    // seat immediately. We own that counter; without this it stays stale (too
+    // low) until the next direct booking / cancel / 15-min reconcile cron,
+    // leaving a window where Wellhub shows phantom availability on a now-full
+    // class and a second member's request gets rejected. Best-effort and
+    // awaited (serverless may freeze after the response): the reconcile cron is
+    // the backstop, so a failure here must not 5xx the webhook.
+    try {
+      const { patchWellhubCapacityForClass } = await import("./sync");
+      await patchWellhubCapacityForClass(cls.id);
+    } catch (err) {
+      console.error("[wellhub] capacity re-sync after confirm failed", {
+        classId: cls.id,
+        err,
+      });
+    }
   }
 
   return decision;
