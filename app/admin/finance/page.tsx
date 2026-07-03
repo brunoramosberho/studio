@@ -378,7 +378,7 @@ export default function FinancePage() {
       </motion.div>
 
       {/* Spark CFO Briefing */}
-      <FinanceBriefingCard range={range} />
+      <FinanceBriefingCard range={range} month={month} />
 
       {/* Summary Cards */}
       <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">

@@ -4,17 +4,23 @@ import { requirePermission } from "@/lib/tenant";
 
 type Range = "today" | "month" | "last30" | "last90" | "year";
 
-function getDateRange(range: Range) {
+function getDateRange(range: Range, month?: string) {
   const now = new Date();
   let start: Date;
-  const end: Date = now;
+  let end: Date = now;
 
   switch (range) {
     case "today":
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       break;
     case "month":
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      if (month) {
+        const [y, m] = month.split("-").map(Number);
+        start = new Date(y, m - 1, 1);
+        end = new Date(y, m, 0, 23, 59, 59, 999);
+      } else {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
       break;
     case "last30":
       start = new Date(now);
@@ -107,7 +113,8 @@ export async function GET(request: NextRequest) {
 
     const params = request.nextUrl.searchParams;
     const range = (params.get("range") ?? "month") as Range;
-    const { start, end } = getDateRange(range);
+    const month = params.get("month") ?? undefined;
+    const { start, end } = getDateRange(range, month);
     const now = new Date();
 
     // Load classes within period that were not cancelled, with bookings + coach + room + type

@@ -142,6 +142,8 @@ function buildCfoPrompt(params: {
   firstName: string;
   studioName: string;
   range: string;
+  /** Human label for the period; set for a specific month, else derived from range. */
+  periodLabel?: string | null;
   data: FinanceData;
   insights: InsightsData | null;
   wellhubSuggestions: WellhubBriefSuggestion[];
@@ -149,7 +151,7 @@ function buildCfoPrompt(params: {
   timezone: string;
   formatCurrency: (amount: number, overrideCode?: string | null) => string;
 }) {
-  const { firstName, studioName, range, data, insights, wellhubSuggestions, timezone, formatCurrency } = params;
+  const { firstName, studioName, range, periodLabel, data, insights, wellhubSuggestions, timezone, formatCurrency } = params;
   const { summary, bySource, dailyRevenue } = data;
 
   const rangeLabel: Record<string, string> = {
@@ -282,11 +284,11 @@ ${raise.length ? `Clases donde Wellhub está al tope pero quedan asientos (está
 ${lower.length ? `\nClases llenas de miembros con cupo de Wellhub sin usar:\n${lowerLines}` : ""}`;
   }
 
-  return `Soy ${firstName}, admin de ${studioName}. Acabo de abrir la página de finanzas (/admin/finance) con el período "${rangeLabel[range] ?? range}".
+  return `Soy ${firstName}, admin de ${studioName}. Acabo de abrir la página de finanzas (/admin/finance) con el período "${periodLabel ?? rangeLabel[range] ?? range}".
 
 Necesito que actúes como MI CFO de confianza de un boutique studio. No como un chatbot — como el CFO del studio que lleva meses conmigo, conoce la operación, y me va a dar un read rápido de cómo estamos financieramente.
 
-Estos son los datos duros de ${rangeLabel[range] ?? range}:
+Estos son los datos duros de ${periodLabel ?? rangeLabel[range] ?? range}:
 
 INGRESOS Y RECURRENCIA
 - Ingresos brutos: ${formatCurrency(summary.grossRevenue)} (${summary.vsPreviousPeriod.grossRevenue >= 0 ? "+" : ""}${summary.vsPreviousPeriod.grossRevenue}% vs periodo anterior)
@@ -327,7 +329,7 @@ INSTRUCCIONES PARA TU RESPUESTA:
 const DISMISS_KEY_PREFIX = "mgic-ai-finance-briefing-dismissed";
 const CACHE_KEY_PREFIX = "mgic-ai-finance-briefing-cache";
 
-export function FinanceBriefingCard({ range }: { range: string }) {
+export function FinanceBriefingCard({ range, month }: { range: string; month?: string | null }) {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
@@ -340,20 +342,32 @@ export function FinanceBriefingCard({ range }: { range: string }) {
 
   const adminName = session?.user?.name || "Admin";
   const firstName = adminName.split(" ")[0];
+  // A specific past month pins the period; otherwise the preset range is used.
+  const periodKey = month ?? range;
+  const periodLabel = month
+    ? (() => {
+        const [y, m] = month.split("-").map(Number);
+        const l = new Date(y, m - 1, 1).toLocaleDateString("es-ES", {
+          month: "long",
+          year: "numeric",
+        });
+        return l.charAt(0).toUpperCase() + l.slice(1);
+      })()
+    : null;
 
   const { data: finance, isLoading: financeLd } = useQuery<FinanceData>({
-    queryKey: ["admin-finance", range],
+    queryKey: ["admin-finance", range, month],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/finance?range=${range}`);
+      const res = await fetch(`/api/admin/finance?range=${range}${month ? `&month=${month}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
   });
 
   const { data: insights, isError: insightsError } = useQuery<InsightsData>({
-    queryKey: ["admin-finance-insights", range],
+    queryKey: ["admin-finance-insights", range, month],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/finance/insights?range=${range}`);
+      const res = await fetch(`/api/admin/finance/insights?range=${range}${month ? `&month=${month}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch insights");
       return res.json();
     },
@@ -373,7 +387,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
 
   // Reset state when period changes
   useEffect(() => {
-    const dismissKey = todayKey(DISMISS_KEY_PREFIX, range);
+    const dismissKey = todayKey(DISMISS_KEY_PREFIX, periodKey);
     if (typeof window !== "undefined" && localStorage.getItem(dismissKey)) {
       setDismissed(true);
       setLoading(false);
@@ -384,12 +398,12 @@ export function FinanceBriefingCard({ range }: { range: string }) {
     setError(false);
     setLoading(true);
 
-    const cached = typeof window !== "undefined" ? localStorage.getItem(todayKey(CACHE_KEY_PREFIX, range)) : null;
+    const cached = typeof window !== "undefined" ? localStorage.getItem(todayKey(CACHE_KEY_PREFIX, periodKey)) : null;
     if (cached) {
       setContent(cached);
       setLoading(false);
     }
-  }, [range]);
+  }, [periodKey]);
 
   const fetchBriefing = useCallback(async () => {
     if (!finance || !session?.user?.name) return;
@@ -397,7 +411,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
     // Wait for insights too — they enrich the prompt meaningfully.
     // If insights errored, proceed without them (briefing still works from base finance data).
     if (insights === undefined && !insightsError) return;
-    const cacheId = `${range}-${new Date().toISOString().slice(0, 10)}`;
+    const cacheId = `${periodKey}-${new Date().toISOString().slice(0, 10)}`;
     if (hasFetched.current === cacheId) return;
     if (content) return;
     hasFetched.current = cacheId;
@@ -414,6 +428,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
                 firstName,
                 studioName,
                 range,
+                periodLabel,
                 data: finance,
                 insights: insights ?? null,
                 wellhubSuggestions: wellhubSug?.enabled ? wellhubSug.suggestions : [],
@@ -468,7 +483,7 @@ export function FinanceBriefingCard({ range }: { range: string }) {
       setError(true);
       setLoading(false);
     }
-  }, [finance, insights, insightsError, wellhubSug, session?.user?.name, dismissed, content, firstName, studioName, range]);
+  }, [finance, insights, insightsError, wellhubSug, session?.user?.name, dismissed, content, firstName, studioName, range, periodKey, periodLabel]);
 
   useEffect(() => {
     fetchBriefing();
