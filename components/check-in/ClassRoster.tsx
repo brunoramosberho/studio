@@ -91,6 +91,13 @@ interface WaitlistMember {
   released?: boolean;
 }
 
+interface NotifyMeMember {
+  memberId: string;
+  memberName: string | null;
+  memberImage: string | null;
+  since: string;
+}
+
 interface WellhubBooking {
   platformBookingId: string;
   source: "wellhub";
@@ -139,6 +146,7 @@ interface ClassRosterProps {
 type RosterData = {
   roster: RosterMember[];
   waitlist: WaitlistMember[];
+  notifyMe: NotifyMeMember[];
   wellhubBookings: WellhubBooking[];
   blockCheckinWithoutWaiver: boolean;
   room: {
@@ -269,6 +277,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const roster = useMemo(() => data?.roster ?? [], [data?.roster]);
   const blockWaiver = data?.blockCheckinWithoutWaiver ?? false;
   const waitlist = data?.waitlist ?? [];
+  const notifyMe = data?.notifyMe ?? [];
   const wellhubBookings = data?.wellhubBookings ?? [];
   const room = data?.room ?? null;
 
@@ -643,6 +652,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
               { value: enrolledCount, label: t("enrolled"), highlight: false },
               { value: pendingCount, label: t("pending"), highlight: pendingCount > 0 },
               { value: waitlist.length, label: t("waitlist"), highlight: false },
+              ...(notifyMe.length > 0
+                ? [{ value: notifyMe.length, label: t("notifyMe"), highlight: false }]
+                : []),
             ].map((stat) => (
               <div key={stat.label} className="text-center leading-none">
                 <p
@@ -828,6 +840,9 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
             enrolled={enrolledCount}
           />
         )}
+
+        {/* Notify-me section — people who asked to be told when a spot opens */}
+        {notifyMe.length > 0 && <NotifyMeSection notifyMe={notifyMe} />}
 
         {/* Walk-in button */}
         {canEdit && (
@@ -1608,6 +1623,37 @@ function WellhubBookingsSection({
 }
 
 // ── Waitlist Section ──
+
+function NotifyMeSection({ notifyMe }: { notifyMe: NotifyMeMember[] }) {
+  const t = useTranslations("checkin");
+  return (
+    <div className="bg-stone-50 border-t border-stone-100 px-4 py-3 dark:bg-surface/40 dark:border-border/60">
+      <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-2 dark:text-muted">
+        {t("notifyMe")}
+      </p>
+      {notifyMe.map((n) => (
+        <div key={n.memberId} className="flex items-center gap-3 py-1.5">
+          <div
+            className={cn(
+              "w-[26px] h-[26px] rounded-full flex items-center justify-center text-[10px] font-medium shrink-0",
+              getAvatarColor(n.memberId),
+            )}
+          >
+            {(n.memberName ?? "?")[0].toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-stone-700 truncate dark:text-foreground">
+              {n.memberName}
+            </p>
+            <p className="text-[10px] text-stone-400 dark:text-muted">
+              {t("notifyMeSince")} {format(new Date(n.since), "HH:mm", { locale: es })}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function WaitlistSection({
   waitlist,

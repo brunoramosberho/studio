@@ -349,6 +349,19 @@ export async function GET(
       });
     }
 
+    // ── Notify-me sign-ups (people who asked to be told when a spot opens) ──
+    const notifyMeRaw = await prisma.classNotifyMe.findMany({
+      where: { classId },
+      include: { user: { select: { id: true, name: true, image: true } } },
+      orderBy: { createdAt: "asc" },
+    });
+    const notifyMeData = notifyMeRaw.map((n) => ({
+      memberId: n.user.id,
+      memberName: n.user.name,
+      memberImage: n.user.image,
+      since: n.createdAt.toISOString(),
+    }));
+
     // ── Wellhub bookings on this class ───────────────────────────────────
     // Surfaced as a separate list so the UI can render them with a Wellhub
     // badge and the right check-in action (which calls /access/v1/validate).
@@ -437,6 +450,7 @@ export async function GET(
     return NextResponse.json({
       roster,
       waitlist: waitlistData,
+      notifyMe: notifyMeData,
       wellhubBookings: wellhubRoster,
       blockCheckinWithoutWaiver: activeWaiver?.blockCheckinWithoutSignature ?? false,
       room: cls.room

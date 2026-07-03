@@ -26,6 +26,7 @@ interface ClassItem {
   enrolledCount: number;
   checkedInCount: number;
   waitlistCount: number;
+  notifyMeCount: number;
   isLive: boolean;
   isFinished: boolean;
   recentlyFinished: boolean;
@@ -402,6 +403,11 @@ function ClassListItem({
         {c.waitlistCount > 0 && (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">
             {t("onWaitlistCount", { count: c.waitlistCount })}
+          </span>
+        )}
+        {c.notifyMeCount > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-700">
+            {t("onNotifyMeCount", { count: c.notifyMeCount })}
           </span>
         )}
       </div>

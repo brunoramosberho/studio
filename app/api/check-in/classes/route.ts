@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
             // enrolled = every consuming seat (members + Wellhub companions).
             bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
             waitlist: true,
+            spotNotifyMe: true,
           },
         },
         // Present = bookings marked ATTENDED. This unifies member check-ins
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
       enrolledCount: c._count.bookings,
       checkedInCount: c.bookings.length,
       waitlistCount: c._count.waitlist,
+      notifyMeCount: c._count.spotNotifyMe,
       isLive: now >= c.startsAt && now <= c.endsAt,
       isFinished: now > c.endsAt,
       // Finished but still within the late-registration window — front desk can
