@@ -58,12 +58,37 @@ export async function GET() {
 
     const earnedIds = new Set(achievements.map((a) => a.achievementId));
 
-    const currentLevel = progress?.currentLevel ?? levels[0] ?? null;
-    const nextLevel = currentLevel
-      ? levels.find((l) => l.minClasses > currentLevel.minClasses) ?? null
-      : levels[1] ?? null;
-
     const totalClasses = progress?.totalClassesAttended ?? 0;
+
+    // Apply the tenant's overrides (name + threshold) up front, then derive the
+    // whole ladder from the EFFECTIVE thresholds. The level cards already use
+    // the overridden thresholds for `reached`; deriving current/next/progress
+    // the same way keeps them in sync. (Previously current/next/classesToNext
+    // used the default minClasses, so an edited threshold — e.g. Favorite
+    // 10 → 20 — made the badge say "6 to Favorite" while the card said 20.)
+    const effectiveLevels = levels
+      .map((l) => {
+        const ovr = levelOverrides[String(l.sortOrder)];
+        return {
+          id: l.id,
+          name: ovr?.name ?? l.name,
+          icon: l.icon,
+          color: l.color,
+          minClasses: ovr?.minClasses ?? l.minClasses,
+          sortOrder: l.sortOrder,
+        };
+      })
+      .sort((a, b) => a.minClasses - b.minClasses);
+
+    // Current = highest level whose (effective) threshold is met; next = the one
+    // after it in the ladder.
+    let currentIdx = 0;
+    for (let i = 0; i < effectiveLevels.length; i++) {
+      if (totalClasses >= effectiveLevels[i].minClasses) currentIdx = i;
+    }
+    const currentLevel = effectiveLevels[currentIdx] ?? null;
+    const nextLevel = effectiveLevels[currentIdx + 1] ?? null;
+
     const classesToNext = nextLevel ? Math.max(0, nextLevel.minClasses - totalClasses) : 0;
     const progressPercent =
       currentLevel && nextLevel && nextLevel.minClasses > currentLevel.minClasses
@@ -79,38 +104,22 @@ export async function GET() {
           ? 100
           : 0;
 
-    const applyLevelOverride = (l: typeof levels[number]) => {
-      const ovr = levelOverrides[String(l.sortOrder)];
-      return {
-        id: l.id,
-        name: ovr?.name ?? l.name,
-        icon: l.icon,
-        color: l.color,
-        minClasses: ovr?.minClasses ?? l.minClasses,
-        sortOrder: l.sortOrder,
-      };
-    };
-
     return NextResponse.json({
       hasActiveMembership: !!activeSub,
       walletPassAvailable: isApplePassConfigured(),
       levelsEnabled,
       achievementsEnabled,
-      level: currentLevel && levelsEnabled
-        ? { ...applyLevelOverride(currentLevel) }
-        : null,
-      nextLevel: nextLevel && levelsEnabled
-        ? { ...applyLevelOverride(nextLevel) }
-        : null,
+      level: currentLevel && levelsEnabled ? { ...currentLevel } : null,
+      nextLevel: nextLevel && levelsEnabled ? { ...nextLevel } : null,
       totalClasses,
       classesToNext,
       progressPercent,
       currentStreak: progress?.currentStreak ?? 0,
       longestStreak: progress?.longestStreak ?? 0,
       levels: levelsEnabled
-        ? levels.map((l) => ({
-            ...applyLevelOverride(l),
-            reached: totalClasses >= (levelOverrides[String(l.sortOrder)]?.minClasses ?? l.minClasses),
+        ? effectiveLevels.map((l) => ({
+            ...l,
+            reached: totalClasses >= l.minClasses,
             isCurrent: l.id === currentLevel?.id,
           }))
         : [],
