@@ -316,9 +316,29 @@ async function checkLevelUp(
   });
   if (cfg && !cfg.levelsEnabled) return;
 
-  const levels = await prisma.loyaltyLevel.findMany({
-    orderBy: { minClasses: "asc" },
-  });
+  // Apply the tenant's overrides (name + threshold) and rank by the EFFECTIVE
+  // threshold, so members level up at the studio's configured pace — not the
+  // catalog default. Keeps this in sync with the member-facing progress
+  // (app/api/gamification/me), which also derives the ladder from the overrides.
+  const overrides = (cfg?.levelOverrides ?? {}) as Record<
+    string,
+    { name?: string; minClasses?: number }
+  >;
+  const levels = (
+    await prisma.loyaltyLevel.findMany({ orderBy: { minClasses: "asc" } })
+  )
+    .map((l) => {
+      const ovr = overrides[String(l.sortOrder)];
+      return {
+        id: l.id,
+        name: ovr?.name ?? l.name,
+        icon: l.icon,
+        color: l.color,
+        sortOrder: l.sortOrder,
+        minClasses: ovr?.minClasses ?? l.minClasses,
+      };
+    })
+    .sort((a, b) => a.minClasses - b.minClasses);
   if (levels.length === 0) return;
 
   let target = levels[0];
@@ -328,6 +348,7 @@ async function checkLevelUp(
 
   const progress = await prisma.memberProgress.findUnique({
     where: { userId_tenantId: { userId, tenantId } },
+    include: { currentLevel: { select: { sortOrder: true } } },
   });
   if (!progress) return;
 
@@ -340,6 +361,10 @@ async function checkLevelUp(
   }
 
   if (progress.currentLevelId === target.id) return;
+
+  // Only promote — never demote a member if a threshold was later raised above a
+  // level they already earned. They keep it; LEVEL_UP fires only when moving up.
+  if (target.sortOrder <= (progress.currentLevel?.sortOrder ?? 0)) return;
 
   await prisma.memberProgress.update({
     where: { userId_tenantId: { userId, tenantId } },
