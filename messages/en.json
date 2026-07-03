@@ -1218,6 +1218,7 @@
     "periodToday": "Today",
     "periodMonth": "This month",
     "periodLast30": "Last 30 days",
+    "specificMonth": "Specific month",
     "periodLast90": "Last 90 days",
     "periodYear": "This year",
     "methodAll": "All",

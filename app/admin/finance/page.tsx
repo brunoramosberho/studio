@@ -225,6 +225,20 @@ export default function FinancePage() {
   const tc = useTranslations("common");
   const formatCurrency = useFormatMoney();
   const [range, setRange] = useState<string>("month");
+  // A specific past month (YYYY-MM) selected from the period picker, or null for
+  // the presets (this month / last 30d / …). When set, range is pinned to "month".
+  const [month, setMonth] = useState<string | null>(null);
+  const monthOptions = (() => {
+    const opts: { value: string; label: string }[] = [];
+    const now = new Date();
+    for (let i = 1; i <= 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = format(d, "LLLL yyyy", { locale: es });
+      opts.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) });
+    }
+    return opts;
+  })();
   const [method, setMethod] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -232,18 +246,19 @@ export default function FinancePage() {
   const renewalsRef = useRef<HTMLDivElement>(null);
 
   const { data: finance, isLoading: financeLd } = useQuery<FinanceData>({
-    queryKey: ["admin-finance", range],
+    queryKey: ["admin-finance", range, month],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/finance?range=${range}`);
+      const res = await fetch(`/api/admin/finance?range=${range}${month ? `&month=${month}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
   });
 
   const { data: txData, isLoading: txLd } = useQuery<TransactionsResponse>({
-    queryKey: ["admin-finance-tx", range, method, search, page],
+    queryKey: ["admin-finance-tx", range, month, method, search, page],
     queryFn: async () => {
       const params = new URLSearchParams({ range, method, search, page: String(page), limit: "25" });
+      if (month) params.set("month", month);
       const res = await fetch(`/api/admin/finance/transactions?${params}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
@@ -292,15 +307,15 @@ export default function FinancePage() {
   );
 
   const handleExport = useCallback(async () => {
-    const res = await fetch(`/api/admin/finance/export?range=${range}`);
+    const res = await fetch(`/api/admin/finance/export?range=${range}${month ? `&month=${month}` : ""}`);
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `finanzas-${range}.csv`;
+    a.download = `finanzas-${month ?? range}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [range]);
+  }, [range, month]);
 
   const summary = finance?.summary;
   const allTx = txData?.transactions ?? [];
@@ -329,13 +344,28 @@ export default function FinancePage() {
         </div>
         <div className="flex items-center gap-2">
           <select
-            value={range}
-            onChange={(e) => { setRange(e.target.value); setPage(1); }}
+            value={month ?? range}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^\d{4}-\d{2}$/.test(v)) {
+                setMonth(v);
+                setRange("month");
+              } else {
+                setMonth(null);
+                setRange(v);
+              }
+              setPage(1);
+            }}
             className="rounded-lg border border-stone-200 bg-card px-3 py-1.5 text-sm text-stone-700 outline-none focus:border-stone-400"
           >
             {periods.map((p) => (
               <option key={p.value} value={p.value}>{t(p.labelKey)}</option>
             ))}
+            <optgroup label={t("specificMonth")}>
+              {monthOptions.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </optgroup>
           </select>
           <button
             onClick={handleExport}
