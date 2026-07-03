@@ -303,15 +303,28 @@ export default function ClassDetailPage() {
 
   const hasCredits = validPackages.length > 0;
 
-  // Guest configuration from the first valid package
-  const guestConfig = useMemo(() => {
-    const pkg = validPackages[0]?.package as any;
+  // Guest eligibility is independent of remaining credits: a member can bring a
+  // guest as long as they hold a non-expired package (covering this discipline)
+  // that allows guests — the guest's spot is paid for separately (they buy a
+  // credit if they've run out). Prefer a package that actually allows guests.
+  const guestEligiblePackages = userPackages
+    .filter((p) => new Date(p.expiresAt) > now)
+    .filter((p) => {
+      const cts = (p.package as any)?.classTypes;
+      if (!cts?.length) return true;
+      return classTypeId ? cts.some((ct: { id: string }) => ct.id === classTypeId) : true;
+    });
+  const guestConfig = (() => {
+    const pkg = (
+      guestEligiblePackages.find((p) => (p.package as any)?.allowGuests === true) ??
+      guestEligiblePackages[0]
+    )?.package as any;
     if (!pkg) return { allowGuests: false, maxGuests: null as number | null };
     return {
       allowGuests: pkg.allowGuests === true,
       maxGuests: pkg.maxGuestsPerBooking as number | null,
     };
-  }, [validPackages]);
+  })();
 
   // Available credits for credit summary display
   const availableCreditsForBooking = useMemo(() => {
@@ -1687,28 +1700,36 @@ export default function ClassDetailPage() {
                       )}
 
                       <div className="flex gap-2">
-                        <Button
-                          className="flex-1 rounded-full"
-                          onClick={handleAddGuests}
-                          disabled={
-                            isAddingGuests ||
-                            guests.length === 0 ||
-                            (!!hasLayout &&
-                              Object.keys(guestSpots).length < guests.length) ||
-                            !hasEnoughCreditsForGuests
-                          }
-                        >
-                          {isAddingGuests && (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          )}
-                          {!!hasLayout &&
-                          guests.length > 0 &&
-                          Object.keys(guestSpots).length < guests.length
-                            ? `Asigna lugar a ${guests.length - Object.keys(guestSpots).length} invitado${guests.length - Object.keys(guestSpots).length > 1 ? "s" : ""}`
-                            : guests.length > 0
-                              ? `Reservar para ${guests.length} invitado${guests.length > 1 ? "s" : ""}`
-                              : "Agrega un invitado"}
-                        </Button>
+                        {guests.length > 0 && !hasEnoughCreditsForGuests ? (
+                          <Button
+                            className="flex-1 rounded-full"
+                            onClick={() => router.push("/packages")}
+                          >
+                            Comprar un crédito para invitar
+                          </Button>
+                        ) : (
+                          <Button
+                            className="flex-1 rounded-full"
+                            onClick={handleAddGuests}
+                            disabled={
+                              isAddingGuests ||
+                              guests.length === 0 ||
+                              (!!hasLayout &&
+                                Object.keys(guestSpots).length < guests.length)
+                            }
+                          >
+                            {isAddingGuests && (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            {!!hasLayout &&
+                            guests.length > 0 &&
+                            Object.keys(guestSpots).length < guests.length
+                              ? `Asigna lugar a ${guests.length - Object.keys(guestSpots).length} invitado${guests.length - Object.keys(guestSpots).length > 1 ? "s" : ""}`
+                              : guests.length > 0
+                                ? `Reservar para ${guests.length} invitado${guests.length > 1 ? "s" : ""}`
+                                : "Agrega un invitado"}
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           className="rounded-full"
