@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { EmailSuggestion } from "@/components/ui/email-suggestion";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export interface GuestEntry {
   name: string;
@@ -40,6 +41,7 @@ export function GuestListInput({
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations("classDetail");
 
   const canAddMore = maxGuests == null || guests.length < maxGuests;
 
@@ -49,15 +51,15 @@ export function GuestListInput({
     const trimmedEmail = newEmail.trim().toLowerCase();
 
     if (!trimmedName) {
-      setError("Ingresa el nombre completo");
+      setError(t("guestEnterFullName"));
       return;
     }
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Ingresa un correo electrónico válido");
+      setError(t("guestEnterValidEmail"));
       return;
     }
     if (guests.some((g) => g.email.toLowerCase() === trimmedEmail)) {
-      setError("Este correo ya fue agregado");
+      setError(t("guestEmailAlreadyAdded"));
       return;
     }
 
@@ -144,7 +146,7 @@ export function GuestListInput({
                         : "border-border text-muted hover:border-emerald-400 hover:text-emerald-700",
                     )}
                   >
-                    {isSelecting ? "Seleccionando..." : "Asignar lugar"}
+                    {isSelecting ? t("guestSelecting") : t("guestAssignSpot")}
                   </button>
                 )
               )}
@@ -168,10 +170,10 @@ export function GuestListInput({
           <CardContent className="space-y-3 p-4">
             <div>
               <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
-                Nombre completo
+                {t("guestFullNameLabel")}
               </label>
               <Input
-                placeholder="Nombre del invitado"
+                placeholder={t("guestNamePlaceholder")}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 disabled={disabled}
@@ -187,7 +189,7 @@ export function GuestListInput({
                 type="email"
                 inputMode="email"
                 autoComplete="email"
-                placeholder="correo@ejemplo.com"
+                placeholder={t("guestEmailPlaceholder")}
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 disabled={disabled}
@@ -208,7 +210,7 @@ export function GuestListInput({
                 className="gap-1.5"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Agregar
+                {t("guestAddButton")}
               </Button>
               <Button
                 type="button"

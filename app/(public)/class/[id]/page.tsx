@@ -1516,15 +1516,15 @@ export default function ClassDetailPage() {
                             <Users className="h-5 w-5 flex-shrink-0 text-accent" />
                             <div className="flex-1 text-sm">
                               <span className="font-medium text-foreground">
-                                {totalPeople} crédito{totalPeople > 1 ? "s" : ""}
+                                {t("creditsCount", { count: totalPeople })}
                               </span>
                               <span className="text-muted">
-                                {" "}(tú + {guests.length} invitado{guests.length > 1 ? "s" : ""})
+                                {" "}{t("youPlusGuests", { count: guests.length })}
                               </span>
                             </div>
                             {!hasEnoughCreditsForAll && availableCreditsForBooking !== Infinity && (
                               <span className="text-xs font-medium text-red-600">
-                                Solo tienes {availableCreditsForBooking}
+                                {t("onlyHaveCredits", { n: availableCreditsForBooking })}
                               </span>
                             )}
                           </div>
@@ -1550,9 +1550,9 @@ export default function ClassDetailPage() {
                       {hasLayout && !selectedSpot
                         ? t("selectSpot")
                         : hasLayout && guests.length > 0 && Object.keys(guestSpots).length < guests.length
-                          ? `Asigna lugar a ${guests.length - Object.keys(guestSpots).length} invitado${guests.length - Object.keys(guestSpots).length > 1 ? "s" : ""}`
+                          ? t("assignSpotToGuests", { count: guests.length - Object.keys(guestSpots).length })
                           : guests.length > 0
-                            ? `Reservar para ${totalPeople} persona${totalPeople > 1 ? "s" : ""}`
+                            ? t("bookForPeople", { count: totalPeople })
                             : t("bookClass")}
                     </Button>
                   </div>
@@ -1615,7 +1615,7 @@ export default function ClassDetailPage() {
                   {myExistingGuests.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted/60">
-                        Tus invitados
+                        {t("yourGuests")}
                       </p>
                       {myExistingGuests.map((g) => (
                         <div
@@ -1678,16 +1678,16 @@ export default function ClassDetailPage() {
                           <Users className="h-5 w-5 flex-shrink-0 text-accent" />
                           <div className="flex-1 text-sm">
                             <span className="font-medium text-foreground">
-                              {guests.length} crédito{guests.length > 1 ? "s" : ""}
+                              {t("creditsCount", { count: guests.length })}
                             </span>
                             <span className="text-muted">
-                              {" "}({guests.length} invitado{guests.length > 1 ? "s" : ""})
+                              {" "}{t("guestsParen", { count: guests.length })}
                             </span>
                           </div>
                           {!hasEnoughCreditsForGuests &&
                             availableCreditsForBooking !== Infinity && (
                               <span className="text-xs font-medium text-red-600">
-                                Solo tienes {availableCreditsForBooking}
+                                {t("onlyHaveCredits", { n: availableCreditsForBooking })}
                               </span>
                             )}
                         </div>
@@ -1705,7 +1705,7 @@ export default function ClassDetailPage() {
                             className="flex-1 rounded-full"
                             onClick={() => router.push("/packages")}
                           >
-                            Comprar un crédito para invitar
+                            {t("buyCreditToInvite")}
                           </Button>
                         ) : (
                           <Button
@@ -1724,10 +1724,10 @@ export default function ClassDetailPage() {
                             {!!hasLayout &&
                             guests.length > 0 &&
                             Object.keys(guestSpots).length < guests.length
-                              ? `Asigna lugar a ${guests.length - Object.keys(guestSpots).length} invitado${guests.length - Object.keys(guestSpots).length > 1 ? "s" : ""}`
+                              ? t("assignSpotToGuests", { count: guests.length - Object.keys(guestSpots).length })
                               : guests.length > 0
-                                ? `Reservar para ${guests.length} invitado${guests.length > 1 ? "s" : ""}`
-                                : "Agrega un invitado"}
+                                ? t("bookForGuests", { count: guests.length })
+                                : t("addAGuest")}
                           </Button>
                         )}
                         <Button
@@ -1748,7 +1748,7 @@ export default function ClassDetailPage() {
                     </div>
                   ) : classFull ? (
                     <p className="text-xs text-muted/60">
-                      No hay lugares disponibles para invitados.
+                      {t("noSpotsForGuests")}
                     </p>
                   ) : remainingGuestSlots == null || remainingGuestSlots > 0 ? (
                     <button
@@ -1759,7 +1759,7 @@ export default function ClassDetailPage() {
                       className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm font-medium text-muted transition-colors hover:border-accent/40 hover:bg-accent/5 hover:text-accent"
                     >
                       <UserPlus className="h-4 w-4" />
-                      Invitar a alguien
+                      {t("inviteSomeone")}
                     </button>
                   ) : null}
                 </div>
