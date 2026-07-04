@@ -270,6 +270,9 @@ export async function processCheckinWebhook(
     return { validated: true, reason: resolution.kind };
   }
   // No class matched → record visit (already done above) + alert the front-desk.
+  // Keep the full payload in the logs — it's our only copy of the raw event
+  // and the first thing needed to diagnose why matching failed.
+  console.error("[wellhub] unmatched checkin payload", JSON.stringify(event));
   return { validated: true, reason: "unmatched_no_class" };
 }
 
@@ -340,7 +343,35 @@ async function resolveCheckinToClass(args: {
     select: { id: true, startsAt: true, endsAt: true },
   });
 
-  const walkinMatch = pickClosestClass(candidateClasses, args.checkinAt);
+  let walkinMatch = pickClosestClass(candidateClasses, args.checkinAt);
+
+  // The checkin webhook's product id doesn't always line up with the Booking
+  // API product we mapped on ClassType (Wellhub uses separate catalogs), which
+  // stranded real walk-ins (Teresa, 2026-07-04: BTM 5 min away, zero
+  // candidates). If the product-filtered search finds nothing, retry by time
+  // alone across all Wellhub-enabled class types — a validated check-in is a
+  // person standing at the studio, so the nearest class is the right answer.
+  if (!walkinMatch.match && args.productId) {
+    const anyProductClasses = await prisma.class.findMany({
+      where: {
+        tenantId: args.tenantId,
+        status: "SCHEDULED",
+        startsAt: { gte: windowStart, lte: windowEnd },
+        classType: { wellhubProductId: { not: null } },
+      },
+      select: { id: true, startsAt: true, endsAt: true },
+    });
+    walkinMatch = pickClosestClass(anyProductClasses, args.checkinAt);
+    if (walkinMatch.match) {
+      console.warn("[wellhub] walk-in matched via product-agnostic fallback", {
+        tenantId: args.tenantId,
+        uniqueToken: args.uniqueToken,
+        checkinProductId: args.productId,
+        classId: walkinMatch.match.id,
+      });
+    }
+  }
+
   if (walkinMatch.match) {
     await createWalkinBooking({
       tenantId: args.tenantId,
@@ -352,11 +383,29 @@ async function resolveCheckinToClass(args: {
   }
 
   // ── Fallback: nothing matched → alert for manual assignment ─────────────
+  // Include who/when/what so the front-desk can actually act on it (the
+  // canned message alone proved useless — nobody could tell who checked in).
+  const link = await prisma.wellhubUserLink.findFirst({
+    where: { tenantId: args.tenantId, wellhubUniqueToken: args.uniqueToken },
+    select: { fullName: true },
+  });
+  const tenantRow = await prisma.tenant.findUnique({
+    where: { id: args.tenantId },
+    select: { id: true, scheduleReleaseTimezone: true },
+  });
+  let localTime = args.checkinAt.toISOString();
+  if (tenantRow) {
+    const { resolveScheduleTimezone } = await import("@/lib/schedule/visibility");
+    const { formatDateTimeInZone } = await import("@/lib/utils");
+    const tz = await resolveScheduleTimezone(tenantRow);
+    localTime = formatDateTimeInZone(args.checkinAt, tz);
+  }
   const { createPlatformAlert } = await import("@/lib/platforms/alerts");
   await createPlatformAlert({
     tenantId: args.tenantId,
     platform: "wellhub",
     type: "unmatched_checkin",
+    detail: `Miembro: ${link?.fullName ?? "desconocido"} (token ${args.uniqueToken}) · hora: ${localTime} · producto: ${args.productId ?? "n/d"}.`,
   }).catch((err) => console.error("[wellhub] unmatched_checkin alert failed", err));
   return { kind: "unmatched" };
 }

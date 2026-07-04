@@ -36,15 +36,19 @@ export async function createPlatformAlert({
   platform,
   type,
   className,
+  detail,
 }: {
   tenantId: string;
   classId?: string;
   platform: PlatformType;
   type: AlertType;
   className?: string;
+  /** Extra context appended to the canned message (who/when/what) so the alert is actionable. */
+  detail?: string;
 }) {
   const platformLabel = platform === "classpass" ? "ClassPass" : "Wellhub";
-  const message = ALERT_MESSAGES[type](className ?? "Clase", platformLabel);
+  const base = ALERT_MESSAGES[type](className ?? "Clase", platformLabel);
+  const message = detail ? `${base} ${detail}` : base;
 
   return prisma.platformAlert.create({
     data: {
