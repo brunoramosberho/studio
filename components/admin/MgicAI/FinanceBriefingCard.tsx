@@ -320,6 +320,7 @@ INSTRUCCIONES PARA TU RESPUESTA:
 - Prioriza cruces fuertes: p.ej. "tal clase llena + tal coach vacío = reasignar"; "MRR crece pero X miembros pagan sin venir = churn latente"; "top 10 miembros concentran Y% = riesgo si se van"; "waitlist en X slot = abrir más clases".
 - Si la sección WELLHUB muestra clases con el cupo saturado y asientos libres, señálalo como dinero que se está dejando en la mesa: recomienda subir el cupo en esas clases concretas (estás rechazando reservas de Wellhub que sí caben). Es una de las acciones de mayor ROI inmediato.
 - Si ves una capacidad desperdiciada clara (clase/coach con fill bajo), mencionarlo es valioso — aunque no haya revenue exacto, el coste del coach sí está ocurriendo.
+- Cancelar una CLASE completa (toda la sesión programada, no una reserva de un miembro) es una decisión del admin (baja inscripción / cambio de planes), NO del instructor — nunca la interpretes como falla del coach ni la cuentes en su contra.
 - Cierra con una línea final en **negritas** con UNA recomendación concreta accionable — la que tú priorizarías si estuvieras en mi silla hoy.
 - Tono: directo, cálido, con opinión. Usa emojis sutiles (→ ✓ ⚠ ↑ ↓) cuando aporten.
 - No uses encabezados ni tablas. Solo bullets cortos y la recomendación final en negritas.
