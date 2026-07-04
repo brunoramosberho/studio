@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import type { PlatformType } from "@prisma/client";
+import type { PlatformType, Prisma } from "@prisma/client";
 
 export type AlertType =
   | "quota_full"
@@ -37,6 +37,7 @@ export async function createPlatformAlert({
   type,
   className,
   detail,
+  metadata,
 }: {
   tenantId: string;
   classId?: string;
@@ -45,6 +46,8 @@ export async function createPlatformAlert({
   className?: string;
   /** Extra context appended to the canned message (who/when/what) so the alert is actionable. */
   detail?: string;
+  /** Structured context (e.g. unmatched_checkin: token/name/time/product) for the alert detail UI. */
+  metadata?: Record<string, unknown>;
 }) {
   const platformLabel = platform === "classpass" ? "ClassPass" : "Wellhub";
   const base = ALERT_MESSAGES[type](className ?? "Clase", platformLabel);
@@ -57,6 +60,7 @@ export async function createPlatformAlert({
       platform,
       type,
       message,
+      metadata: (metadata as Prisma.InputJsonValue | undefined) ?? undefined,
     },
   });
 }

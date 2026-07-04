@@ -123,6 +123,23 @@ interface PlatformAlert {
   message: string;
   classId: string | null;
   createdAt: string;
+  metadata?: {
+    kind?: string;
+    wellhubUniqueToken?: string;
+    memberName?: string | null;
+    checkinAt?: string;
+    productId?: number | null;
+  } | null;
+}
+
+interface AssignCandidate {
+  id: string;
+  name: string;
+  coachName: string | null;
+  roomName: string | null;
+  startsAt: string;
+  startsAtLabel: string;
+  distanceMinutes: number;
 }
 
 type LiquidationEntry = { className: string; date: string; bookingId: string };
@@ -727,6 +744,10 @@ function ResumenTab({ demo }: { demo: boolean }) {
 
 function AlertList({ alerts, demo }: { alerts: PlatformAlert[]; demo?: boolean }) {
   const queryClient = useQueryClient();
+  const [detailAlert, setDetailAlert] = useState<PlatformAlert | null>(null);
+  // Two-step resolve: first click arms the button ("¿Confirmar?"), second
+  // click resolves. Prevents losing an alert by tapping it out of curiosity.
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   const resolveMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -737,6 +758,8 @@ function AlertList({ alerts, demo }: { alerts: PlatformAlert[]; demo?: boolean }
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-alerts"] });
       toast.success("Alerta resuelta");
+      setConfirmingId(null);
+      setDetailAlert(null);
     },
   });
 
@@ -744,11 +767,18 @@ function AlertList({ alerts, demo }: { alerts: PlatformAlert[]; demo?: boolean }
     <div className="space-y-1.5">
       {alerts.map((alert) => {
         const isWarning = alert.type === "class_full" || alert.type === "unmatched_booking";
+        const confirming = confirmingId === alert.id;
         return (
           <Card
             key={alert.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              setConfirmingId(null);
+              setDetailAlert(alert);
+            }}
             className={cn(
-              "border-l-4",
+              "cursor-pointer border-l-4 transition-colors hover:bg-muted/40",
               isWarning ? "border-l-orange-400" : "border-l-blue-400",
             )}
           >
@@ -767,22 +797,206 @@ function AlertList({ alerts, demo }: { alerts: PlatformAlert[]; demo?: boolean }
                   </span>
                 </div>
                 <p className="mt-0.5 text-sm text-foreground">{alert.message}</p>
+                <p className="mt-0.5 text-[11px] text-muted">Toca para ver el detalle</p>
               </div>
               <Button
-                variant="ghost"
+                variant={confirming ? "destructive" : "ghost"}
                 size="sm"
                 className="shrink-0 gap-1 text-xs"
-                onClick={() => demo ? toast.info("Modo demo — conecta una plataforma para gestionar alertas") : resolveMutation.mutate(alert.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (demo) {
+                    toast.info("Modo demo — conecta una plataforma para gestionar alertas");
+                    return;
+                  }
+                  if (confirming) {
+                    resolveMutation.mutate(alert.id);
+                  } else {
+                    setConfirmingId(alert.id);
+                  }
+                }}
                 disabled={resolveMutation.isPending}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Resolver
+                {confirming ? "¿Confirmar?" : "Resolver"}
               </Button>
             </CardContent>
           </Card>
         );
       })}
+
+      <AlertDetailDialog
+        alert={detailAlert}
+        demo={demo}
+        onClose={() => setDetailAlert(null)}
+        onResolve={(id) => resolveMutation.mutate(id)}
+        resolving={resolveMutation.isPending}
+      />
     </div>
+  );
+}
+
+function AlertDetailDialog({
+  alert,
+  demo,
+  onClose,
+  onResolve,
+  resolving,
+}: {
+  alert: PlatformAlert | null;
+  demo?: boolean;
+  onClose: () => void;
+  onResolve: (id: string) => void;
+  resolving: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const isUnmatchedCheckin = alert?.type === "unmatched_checkin";
+
+  // Candidates + enriched metadata come from the assign endpoint (server
+  // resolves the studio timezone so times arrive pre-formatted).
+  const { data: assignData, isLoading: loadingCandidates } = useQuery<{
+    metadata: (PlatformAlert["metadata"] & { checkinAtLabel?: string }) | null;
+    candidates: AssignCandidate[];
+  }>({
+    queryKey: ["alert-assign", alert?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/platforms/alerts/${alert!.id}/assign`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!alert && isUnmatchedCheckin && !demo,
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async (classId: string) => {
+      const res = await fetch(`/api/platforms/alerts/${alert!.id}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform-alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["platform-bookings-summary"] });
+      toast.success("Check-in asignado a la clase");
+      onClose();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const meta = assignData?.metadata ?? alert?.metadata ?? null;
+  const candidates = assignData?.candidates ?? [];
+  const closestId = candidates.length
+    ? [...candidates].sort((a, b) => a.distanceMinutes - b.distanceMinutes)[0].id
+    : null;
+
+  return (
+    <Dialog open={!!alert} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            {isUnmatchedCheckin ? "Check-in sin clase" : "Detalle de alerta"}
+          </DialogTitle>
+        </DialogHeader>
+
+        {alert && (
+          <div className="space-y-3 text-sm">
+            <p className="text-foreground">{alert.message}</p>
+
+            {isUnmatchedCheckin && meta && (
+              <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+                <p><span className="text-muted">Miembro:</span> <span className="font-medium">{meta.memberName ?? "Desconocido"}</span></p>
+                {meta.wellhubUniqueToken && (
+                  <p><span className="text-muted">Token Wellhub:</span> {meta.wellhubUniqueToken}</p>
+                )}
+                {"checkinAtLabel" in (meta as object) && (meta as { checkinAtLabel?: string }).checkinAtLabel && (
+                  <p><span className="text-muted">Check-in:</span> {(meta as { checkinAtLabel?: string }).checkinAtLabel}</p>
+                )}
+              </div>
+            )}
+
+            {isUnmatchedCheckin && !demo && (
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted">
+                  Asignar a una clase cercana:
+                </p>
+                {loadingCandidates ? (
+                  <Skeleton className="h-16 rounded-md" />
+                ) : candidates.length === 0 ? (
+                  <p className="text-xs text-muted">
+                    {meta
+                      ? "No hay clases cercanas al horario del check-in."
+                      : "Esta alerta no tiene datos del check-in (es anterior a esta función). Márcala como resuelta."}
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {candidates.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between gap-2 rounded-md border p-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {c.name}
+                            {c.id === closestId && (
+                              <Badge variant="secondary" className="ml-1.5 text-[10px]">más cercana</Badge>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted">
+                            {c.startsAtLabel}
+                            {c.coachName ? ` · ${c.coachName}` : ""}
+                            {c.roomName ? ` · ${c.roomName}` : ""}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="shrink-0 bg-admin text-xs hover:bg-admin/90"
+                          onClick={() => assignMutation.mutate(c.id)}
+                          disabled={assignMutation.isPending}
+                        >
+                          {assignMutation.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            "Asignar"
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Cerrar
+          </Button>
+          {alert && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-xs"
+              onClick={() => {
+                if (demo) {
+                  toast.info("Modo demo — conecta una plataforma para gestionar alertas");
+                  return;
+                }
+                onResolve(alert.id);
+              }}
+              disabled={resolving}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Marcar resuelta sin asignar
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -406,6 +406,13 @@ async function resolveCheckinToClass(args: {
     platform: "wellhub",
     type: "unmatched_checkin",
     detail: `Miembro: ${link?.fullName ?? "desconocido"} (token ${args.uniqueToken}) · hora: ${localTime} · producto: ${args.productId ?? "n/d"}.`,
+    metadata: {
+      kind: "unmatched_checkin",
+      wellhubUniqueToken: args.uniqueToken,
+      memberName: link?.fullName ?? null,
+      checkinAt: args.checkinAt.toISOString(),
+      productId: args.productId,
+    },
   }).catch((err) => console.error("[wellhub] unmatched_checkin alert failed", err));
   return { kind: "unmatched" };
 }
@@ -414,8 +421,11 @@ async function resolveCheckinToClass(args: {
  * Create a walk-in: a Wellhub member who checked in without a reservation.
  * NOT gated by quota — they're physically here and Wellhub already validated
  * the visit. Idempotent on (token, class): a duplicate webhook won't double-seat.
+ *
+ * Exported for the manual-assignment flow (unmatched_checkin alert → admin
+ * picks the class → POST /api/platforms/alerts/[id]/assign).
  */
-async function createWalkinBooking(args: {
+export async function createWalkinBooking(args: {
   tenantId: string;
   classId: string;
   uniqueToken: string;

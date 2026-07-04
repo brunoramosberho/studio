@@ -2090,6 +2090,10 @@ model PlatformAlert {
   platform   PlatformType
   type       String
   message    String
+  /// Structured context for actionable alerts (e.g. unmatched_checkin stores
+  /// { wellhubUniqueToken, memberName, checkinAt, productId } so the admin UI
+  /// can offer "assign to this class" instead of parsing the message text).
+  metadata   Json?
   isResolved Boolean      @default(false)
   resolvedAt DateTime?
   resolvedBy String?
