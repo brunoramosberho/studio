@@ -22,12 +22,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
-import { cascadeFreedSeat } from "@/lib/platforms/wellhub";
+import { cascadeFreedSeat, syncCompanionStatus } from "@/lib/platforms/wellhub";
 
 // Heal classes starting within this window. Past classes don't matter; far
 // future ones get healed on their own webhook traffic + later cron passes.
 const LOOKAHEAD_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_CLASSES = 500;
+
+// A confirmed Wellhub booking whose class ended this long ago without a
+// check-in is a no-show. The grace period covers late check-in webhooks
+// (member scans on the way out, Wellhub-side delays). If a check-in still
+// arrives after we mark it, the walk-in path finds the row (status !=
+// cancelled) and flips it back to checked_in — self-healing.
+const NO_SHOW_GRACE_MS = 2 * 60 * 60 * 1000;
+const MAX_NO_SHOW_BATCH = 200;
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -116,12 +124,49 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // ── No-show sweep ────────────────────────────────────────────────────────
+  // Nothing else ever marks these: a confirmed booking on a long-finished
+  // class used to sit in "pending check-in" forever. Only `confirmed` rows —
+  // stale pending_confirmation was never a real booking on Wellhub's side
+  // (their 15-min SLA already auto-rejected it), so it must not become a
+  // payable no-show in our liquidation estimate.
+  let noShows = 0;
+  const noShowCutoff = new Date(now.getTime() - NO_SHOW_GRACE_MS);
+  const staleBookings = await prisma.platformBooking.findMany({
+    where: {
+      platform: "wellhub",
+      tenantId: { in: tenantIds },
+      status: "confirmed",
+      class: {
+        endsAt: { lt: noShowCutoff },
+        status: { in: ["SCHEDULED", "COMPLETED"] },
+      },
+    },
+    take: MAX_NO_SHOW_BATCH,
+    select: { id: true },
+  });
+  for (const b of staleBookings) {
+    try {
+      await prisma.platformBooking.update({
+        where: { id: b.id },
+        data: { status: "absent", notes: "auto_no_show" },
+      });
+      // Mirror onto the companion seat so rosters/history read NO_SHOW too.
+      await syncCompanionStatus(b.id, "NO_SHOW");
+      noShows++;
+    } catch (error) {
+      errors++;
+      console.error("[wellhub-reconcile] no-show sweep failed", { id: b.id, error });
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     tenants: tenantIds.length,
     scanned,
     healed,
     resynced,
+    noShows,
     errors,
   });
 }
