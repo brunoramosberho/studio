@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/tenant";
-import { getMonthlyRevenueReport } from "@/lib/revenue/reports";
+import { getEstimatedEarnings } from "@/lib/revenue/estimated-earnings";
 import { CSV_BOM, escCsv } from "@/lib/csv";
 
 const DOW_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -25,115 +25,67 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const report = await getMonthlyRevenueReport(tenantId, month);
+    const report = await getEstimatedEarnings(tenantId, month);
     const currency = report.currency.toUpperCase();
     const fmt = (cents: number) => (cents / 100).toFixed(2);
+    const KIND: Record<string, string> = {
+      pack: "Paquete",
+      subscription: "Suscripción",
+      dropin: "Drop-in",
+      platform: "Plataforma",
+      other: "Otro",
+    };
 
     const lines: string[] = [];
 
     lines.push(
-      [
-        escCsv("Ingresos reconocidos"),
-        escCsv(month),
-        escCsv(currency),
-      ].join(","),
+      [escCsv("Ingresos estimados"), escCsv(month), escCsv(currency)].join(","),
     );
-    lines.push(
-      ["Reconocido total", fmt(report.summary.totalRecognizedCents)].join(","),
-    );
+    lines.push(["Total estimado", fmt(report.summary.totalCents)].join(","));
     lines.push(
       ["Atribuido a clases", fmt(report.summary.attributedCents)].join(","),
     );
-    lines.push(["Breakage", fmt(report.summary.breakageCents)].join(","));
     lines.push(
-      [
-        "Breakage mensual",
-        fmt(report.breakageDetail.monthlyBreakageCents),
-      ].join(","),
+      ["Breakage (suscripciones)", fmt(report.summary.breakageCents)].join(","),
     );
-    lines.push(
-      [
-        "Breakage por caducidad",
-        fmt(report.breakageDetail.expirationBreakageCents),
-      ].join(","),
-    );
+    lines.push(["Tope drop-in", fmt(report.dropInCapCents)].join(","));
 
     lines.push("");
-    lines.push("Por paquete");
-    lines.push(
-      ["Paquete", "Tipo", "Atribuciones", "Ingreso", "Ingreso / reserva"].join(
-        ",",
-      ),
-    );
+    lines.push("Por fuente");
+    lines.push(["Fuente", "Tipo", "Atribuciones", "Ingreso est.", "Breakage"].join(","));
     for (const row of report.byPackage) {
       lines.push(
         [
-          escCsv(row.packageName),
-          escCsv(row.packageType ?? ""),
+          escCsv(row.name),
+          escCsv(KIND[row.kind] ?? row.kind),
           row.attributions,
           fmt(row.revenueCents),
-          fmt(row.avgPerAttributionCents),
+          fmt(row.breakageCents),
         ].join(","),
       );
     }
 
     lines.push("");
     lines.push("Por disciplina");
-    lines.push(["Disciplina", "Atribuciones", "Ingreso", "Promedio"].join(","));
+    lines.push(["Disciplina", "Atribuciones", "Ingreso est."].join(","));
     for (const row of report.byDiscipline) {
       lines.push(
-        [
-          escCsv(row.disciplineName),
-          row.attributions,
-          fmt(row.revenueCents),
-          fmt(row.avgPerAttributionCents),
-        ].join(","),
+        [escCsv(row.disciplineName), row.attributions, fmt(row.revenueCents)].join(","),
       );
     }
 
     lines.push("");
-    lines.push("Por disciplina y paquete");
-    lines.push(
-      [
-        "Disciplina",
-        "Paquete",
-        "Tipo",
-        "Atribuciones",
-        "Ingreso",
-        "Ingreso / reserva",
-      ].join(","),
-    );
-    for (const disc of report.byDisciplinePackage) {
-      for (const pkg of disc.packages) {
-        lines.push(
-          [
-            escCsv(disc.disciplineName),
-            escCsv(pkg.packageName),
-            escCsv(pkg.packageType ?? ""),
-            pkg.attributions,
-            fmt(pkg.revenueCents),
-            fmt(pkg.avgPerAttributionCents),
-          ].join(","),
-        );
-      }
-    }
-
-    lines.push("");
     lines.push("Por coach");
-    lines.push(["Coach", "Atribuciones", "Ingreso"].join(","));
+    lines.push(["Coach", "Atribuciones", "Ingreso est."].join(","));
     for (const row of report.byCoach) {
       lines.push(
-        [
-          escCsv(row.coachName),
-          row.attributions,
-          fmt(row.revenueCents),
-        ].join(","),
+        [escCsv(row.coachName), row.attributions, fmt(row.revenueCents)].join(","),
       );
     }
 
     lines.push("");
     lines.push("Por franja horaria");
-    lines.push(["Día", "Hora", "Atribuciones", "Ingreso"].join(","));
+    lines.push(["Día", "Hora", "Atribuciones", "Ingreso est."].join(","));
     for (const row of report.byTimeslot) {
       lines.push(
         [
@@ -146,7 +98,7 @@ export async function GET(request: NextRequest) {
     }
 
     const csv = CSV_BOM + lines.join("\n");
-    const filename = `ingresos-reconocidos-${slug}-${month}.csv`;
+    const filename = `ingresos-estimados-${slug}-${month}.csv`;
 
     return new NextResponse(csv, {
       headers: {

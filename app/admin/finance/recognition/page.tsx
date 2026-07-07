@@ -1,12 +1,10 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   ArrowLeft,
-  ChevronDown,
-  ChevronRight,
   Download,
   Info,
   Package,
@@ -19,60 +17,37 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { FINANCE_TABS } from "@/components/admin/section-tab-configs";
 
+type SourceKind = "pack" | "subscription" | "dropin" | "platform" | "other";
+
 interface RevenueReport {
   tenantId: string;
   month: string;
   currency: string;
+  dropInCapCents: number;
   summary: {
     attributedCents: number;
     breakageCents: number;
-    totalRecognizedCents: number;
-  };
-  breakageDetail: {
-    monthlyBreakageCents: number;
-    expirationBreakageCents: number;
-  };
-  // Estimated Wellhub settlement — outside the ASC 606 ledger, shown separately.
-  wellhubEstimate?: {
     totalCents: number;
-    checkins: number;
   };
+  byPackage: {
+    key: string;
+    name: string;
+    kind: SourceKind;
+    attributions: number;
+    revenueCents: number;
+    breakageCents: number;
+  }[];
   byDiscipline: {
     disciplineId: string;
     disciplineName: string;
     attributions: number;
     revenueCents: number;
-    avgPerAttributionCents: number;
-    wellhubCents: number;
   }[];
   byCoach: {
     coachId: string;
     coachName: string;
     attributions: number;
     revenueCents: number;
-    wellhubCents: number;
-  }[];
-  byPackage: {
-    packageId: string | null;
-    packageName: string;
-    packageType: string | null;
-    attributions: number;
-    revenueCents: number;
-    avgPerAttributionCents: number;
-    wellhubCents: number;
-  }[];
-  byDisciplinePackage: {
-    disciplineId: string;
-    disciplineName: string;
-    revenueCents: number;
-    packages: {
-      packageId: string | null;
-      packageName: string;
-      packageType: string | null;
-      attributions: number;
-      revenueCents: number;
-      avgPerAttributionCents: number;
-    }[];
   }[];
   byTimeslot: {
     dayOfWeek: number;
@@ -89,6 +64,14 @@ interface RevenueReport {
   }[];
 }
 
+const KIND_LABEL: Record<SourceKind, string> = {
+  pack: "Paquete",
+  subscription: "Suscripción",
+  dropin: "Drop-in",
+  platform: "Plataforma",
+  other: "Otro",
+};
+
 const DOW_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 function currentMonth(): string {
@@ -103,16 +86,6 @@ function fromCents(c: number): number {
 export default function RevenueRecognitionPage() {
   const tenantCurrency = useCurrency();
   const [month, setMonth] = useState<string>(currentMonth());
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-  const toggleExpanded = (disciplineId: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(disciplineId)) next.delete(disciplineId);
-      else next.add(disciplineId);
-      return next;
-    });
-  };
 
   const { data, isLoading, error } = useQuery<RevenueReport>({
     queryKey: ["revenue-recognition", month],
@@ -126,9 +99,9 @@ export default function RevenueRecognitionPage() {
   const currency = (data?.currency ?? tenantCurrency.code).toUpperCase();
 
   const attributedShare = useMemo(() => {
-    if (!data || data.summary.totalRecognizedCents === 0) return 0;
+    if (!data || data.summary.totalCents === 0) return 0;
     return Math.round(
-      (data.summary.attributedCents / data.summary.totalRecognizedCents) * 100,
+      (data.summary.attributedCents / data.summary.totalCents) * 100,
     );
   }, [data]);
 
@@ -141,7 +114,7 @@ export default function RevenueRecognitionPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ingresos-reconocidos-${month}.csv`;
+    a.download = `ingresos-estimados-${month}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -165,9 +138,9 @@ export default function RevenueRecognitionPage() {
               Ingresos por clase
             </h1>
             <p className="mt-1 text-sm text-muted">
-              Atribución de ingresos reconocidos a clases, coaches y franjas
-              horarias. Incluye el reparto mensual de bonos ilimitados y
-              caducidad de bonos (breakage).
+              Estimado de ganancias atribuidas a clases, coaches y disciplinas —
+              paquetes, suscripciones y Wellhub, cada asistencia valorada hasta
+              el precio de una clase suelta.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -198,9 +171,9 @@ export default function RevenueRecognitionPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         <SummaryCard
-          label="Reconocido total"
-          value={isLoading ? null : formatCurrency(fromCents(data?.summary.totalRecognizedCents ?? 0), currency)}
-          sublabel="Gross, pre-IVA, pre-fee de plataforma"
+          label="Total estimado"
+          value={isLoading ? null : formatCurrency(fromCents(data?.summary.totalCents ?? 0), currency)}
+          sublabel="Atribuido + breakage · estimado, pre-IVA/fees"
         />
         <SummaryCard
           label="Atribuido a clases"
@@ -208,32 +181,15 @@ export default function RevenueRecognitionPage() {
           sublabel={`${attributedShare}% del total`}
         />
         <SummaryCard
-          label="Breakage"
+          label="Breakage (suscripciones)"
           value={isLoading ? null : formatCurrency(fromCents(data?.summary.breakageCents ?? 0), currency)}
           sublabel={
-            data
-              ? `${formatCurrency(fromCents(data.breakageDetail.monthlyBreakageCents), currency)} mensual · ${formatCurrency(fromCents(data.breakageDetail.expirationBreakageCents), currency)} caducidad`
+            data && data.dropInCapCents > 0
+              ? `Tope por clase: ${formatCurrency(fromCents(data.dropInCapCents), currency)}`
               : undefined
           }
         />
       </section>
-
-      {data?.wellhubEstimate && data.wellhubEstimate.totalCents > 0 && (
-        <div className="flex flex-wrap items-baseline justify-between gap-2 rounded-sm border border-pink-200 bg-pink-50 px-4 py-3 dark:border-pink-500/30 dark:bg-pink-500/10">
-          <div>
-            <p className="text-sm font-medium text-pink-900 dark:text-pink-200">
-              Wellhub (estimado)
-            </p>
-            <p className="text-xs text-pink-700/80 dark:text-pink-300/70">
-              {data.wellhubEstimate.checkins} check-ins · fuera del ledger ASC 606,
-              no suma al reconocido
-            </p>
-          </div>
-          <p className="text-lg font-semibold tabular-nums text-pink-900 dark:text-pink-200">
-            {formatCurrency(fromCents(data.wellhubEstimate.totalCents), currency)}
-          </p>
-        </div>
-      )}
 
       <InfoBanner />
 
@@ -245,40 +201,30 @@ export default function RevenueRecognitionPage() {
             <table className="w-full text-sm">
               <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted">
                 <tr>
-                  <th className="py-2">Paquete</th>
+                  <th className="py-2">Fuente</th>
+                  <th className="py-2">Tipo</th>
                   <th className="py-2 text-right">Atrib.</th>
-                  <th className="py-2 text-right">Ingreso</th>
-                  <th className="py-2 text-right">Ingreso / reserva</th>
+                  <th className="py-2 text-right">Ingreso est.</th>
+                  <th className="py-2 text-right">Breakage</th>
                 </tr>
               </thead>
               <tbody>
-                {(data?.byPackage ?? []).map((row) => {
-                  const isPlatform = row.packageType === "PLATFORM";
-                  return (
-                    <tr
-                      key={row.packageId ?? `fallback:${row.packageName}`}
-                      className="border-t border-border/50"
-                    >
-                      <td className="py-2 font-medium">
-                        {row.packageName}
-                        {isPlatform && <EstBadge />}
-                      </td>
-                      <td className="py-2 text-right tabular-nums">{row.attributions}</td>
-                      <td className="py-2 text-right tabular-nums">
-                        {formatCurrency(
-                          fromCents(isPlatform ? row.wellhubCents : row.revenueCents),
-                          currency,
-                        )}
-                      </td>
-                      <td className="py-2 text-right tabular-nums text-muted">
-                        {isPlatform
-                          ? "—"
-                          : formatCurrency(fromCents(row.avgPerAttributionCents), currency)}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {(data?.byPackage ?? []).length === 0 && <EmptyRow colSpan={4} />}
+                {(data?.byPackage ?? []).map((row) => (
+                  <tr key={row.key} className="border-t border-border/50">
+                    <td className="py-2 font-medium">{row.name}</td>
+                    <td className="py-2 text-xs text-muted">{KIND_LABEL[row.kind]}</td>
+                    <td className="py-2 text-right tabular-nums">{row.attributions}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      {formatCurrency(fromCents(row.revenueCents), currency)}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-amber-700 dark:text-amber-400">
+                      {row.breakageCents > 0
+                        ? formatCurrency(fromCents(row.breakageCents), currency)
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+                {(data?.byPackage ?? []).length === 0 && <EmptyRow colSpan={5} />}
               </tbody>
             </table>
           </div>
@@ -293,76 +239,23 @@ export default function RevenueRecognitionPage() {
             <table className="w-full text-sm">
               <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted">
                 <tr>
-                  <th className="py-2" aria-label="Expandir" />
                   <th className="py-2">Disciplina</th>
                   <th className="py-2 text-right">Atrib.</th>
-                  <th className="py-2 text-right">Ingreso</th>
-                  <th className="py-2 text-right">Promedio</th>
-                  <th className="py-2 text-right">Wellhub (est.)</th>
+                  <th className="py-2 text-right">Ingreso est.</th>
                 </tr>
               </thead>
               <tbody>
-                {(data?.byDiscipline ?? []).map((row) => {
-                  const detail = data?.byDisciplinePackage.find(
-                    (d) => d.disciplineId === row.disciplineId,
-                  );
-                  const isExpanded = expanded.has(row.disciplineId);
-                  const canExpand = (detail?.packages.length ?? 0) > 0;
-                  return (
-                    <Fragment key={row.disciplineId}>
-                      <tr
-                        className={cn(
-                          "border-t border-border/50",
-                          canExpand && "cursor-pointer hover:bg-surface/60",
-                        )}
-                        onClick={() =>
-                          canExpand && toggleExpanded(row.disciplineId)
-                        }
-                      >
-                        <td className="w-6 py-2 pl-1 text-muted">
-                          {canExpand ? (
-                            isExpanded ? (
-                              <ChevronDown className="h-3.5 w-3.5" />
-                            ) : (
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            )
-                          ) : null}
-                        </td>
-                        <td className="py-2 font-medium">{row.disciplineName}</td>
-                        <td className="py-2 text-right tabular-nums">
-                          {row.attributions}
-                        </td>
-                        <td className="py-2 text-right tabular-nums">
-                          {formatCurrency(fromCents(row.revenueCents), currency)}
-                        </td>
-                        <td className="py-2 text-right tabular-nums text-muted">
-                          {formatCurrency(
-                            fromCents(row.avgPerAttributionCents),
-                            currency,
-                          )}
-                        </td>
-                        <td className="py-2 text-right tabular-nums text-amber-700 dark:text-amber-400">
-                          {row.wellhubCents > 0
-                            ? formatCurrency(fromCents(row.wellhubCents), currency)
-                            : "—"}
-                        </td>
-                      </tr>
-                      {isExpanded && detail && (
-                        <tr className="border-t border-border/30 bg-surface/40">
-                          <td />
-                          <td colSpan={5} className="py-2 pr-2">
-                            <DisciplinePackageDetail
-                              packages={detail.packages}
-                              currency={currency}
-                            />
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  );
-                })}
+                {(data?.byDiscipline ?? []).map((row) => (
+                  <tr key={row.disciplineId} className="border-t border-border/50">
+                    <td className="py-2 font-medium">{row.disciplineName}</td>
+                    <td className="py-2 text-right tabular-nums">{row.attributions}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      {formatCurrency(fromCents(row.revenueCents), currency)}
+                    </td>
+                  </tr>
+                ))}
                 {(data?.byDiscipline ?? []).length === 0 && (
-                  <EmptyRow colSpan={6} />
+                  <EmptyRow colSpan={3} />
                 )}
               </tbody>
             </table>
@@ -378,8 +271,7 @@ export default function RevenueRecognitionPage() {
                 <tr>
                   <th className="py-2">Coach</th>
                   <th className="py-2 text-right">Atrib.</th>
-                  <th className="py-2 text-right">Ingreso</th>
-                  <th className="py-2 text-right">Wellhub (est.)</th>
+                  <th className="py-2 text-right">Ingreso est.</th>
                 </tr>
               </thead>
               <tbody>
@@ -390,14 +282,9 @@ export default function RevenueRecognitionPage() {
                     <td className="py-2 text-right tabular-nums">
                       {formatCurrency(fromCents(row.revenueCents), currency)}
                     </td>
-                    <td className="py-2 text-right tabular-nums text-amber-700 dark:text-amber-400">
-                      {row.wellhubCents > 0
-                        ? formatCurrency(fromCents(row.wellhubCents), currency)
-                        : "—"}
-                    </td>
                   </tr>
                 ))}
-                {(data?.byCoach ?? []).length === 0 && <EmptyRow colSpan={4} />}
+                {(data?.byCoach ?? []).length === 0 && <EmptyRow colSpan={3} />}
               </tbody>
             </table>
           )}
@@ -471,77 +358,21 @@ function EmptyRow({ colSpan }: { colSpan: number }) {
   );
 }
 
-// Marks a value as an estimate (Wellhub), kept separate from ASC 606 recognized.
-function EstBadge() {
-  return (
-    <span className="ml-1.5 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-      est.
-    </span>
-  );
-}
-
 function InfoBanner() {
   return (
     <div className="flex items-start gap-2 rounded-sm border border-border/50 bg-surface p-3 text-xs text-muted">
       <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <p>
-        Las clases no generan ingresos por sí mismas: el dinero viene de
-        bonos, ilimitados, pases simples y penalizaciones. Aquí lo repartimos
-        entre las clases que lo consumieron (atribuido) o lo marcamos como no
-        consumido (breakage).
+        Estimado de ganancias: cada asistencia (paquete, suscripción o Wellhub)
+        se atribuye a su clase, valorada hasta el precio de una clase suelta
+        (drop-in). Lo que una suscripción paga y no &quot;gasta&quot; en clases
+        ese mes es breakage. Es una estimación de a dónde va tu ingreso, no la
+        contabilidad reconocida (ASC 606).
       </p>
     </div>
   );
 }
 
-function DisciplinePackageDetail({
-  packages,
-  currency,
-}: {
-  packages: {
-    packageId: string | null;
-    packageName: string;
-    attributions: number;
-    revenueCents: number;
-    avgPerAttributionCents: number;
-  }[];
-  currency: string;
-}) {
-  if (packages.length === 0) {
-    return (
-      <p className="py-2 text-xs text-muted">Sin detalle de paquetes.</p>
-    );
-  }
-  return (
-    <table className="w-full text-xs">
-      <thead className="text-left font-medium uppercase tracking-wide text-muted">
-        <tr>
-          <th className="py-1">Paquete</th>
-          <th className="py-1 text-right">Atrib.</th>
-          <th className="py-1 text-right">Ingreso</th>
-          <th className="py-1 text-right">Ingreso / reserva</th>
-        </tr>
-      </thead>
-      <tbody>
-        {packages.map((p) => (
-          <tr
-            key={p.packageId ?? `fallback:${p.packageName}`}
-            className="border-t border-border/30"
-          >
-            <td className="py-1 font-medium">{p.packageName}</td>
-            <td className="py-1 text-right tabular-nums">{p.attributions}</td>
-            <td className="py-1 text-right tabular-nums">
-              {formatCurrency(fromCents(p.revenueCents), currency)}
-            </td>
-            <td className="py-1 text-right tabular-nums text-muted">
-              {formatCurrency(fromCents(p.avgPerAttributionCents), currency)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
 
 function TimeslotHeatmap({
   data,
