@@ -43,12 +43,14 @@ interface RevenueReport {
     attributions: number;
     revenueCents: number;
     avgPerAttributionCents: number;
+    wellhubCents: number;
   }[];
   byCoach: {
     coachId: string;
     coachName: string;
     attributions: number;
     revenueCents: number;
+    wellhubCents: number;
   }[];
   byPackage: {
     packageId: string | null;
@@ -57,6 +59,7 @@ interface RevenueReport {
     attributions: number;
     revenueCents: number;
     avgPerAttributionCents: number;
+    wellhubCents: number;
   }[];
   byDisciplinePackage: {
     disciplineId: string;
@@ -249,21 +252,32 @@ export default function RevenueRecognitionPage() {
                 </tr>
               </thead>
               <tbody>
-                {(data?.byPackage ?? []).map((row) => (
-                  <tr
-                    key={row.packageId ?? `fallback:${row.packageName}`}
-                    className="border-t border-border/50"
-                  >
-                    <td className="py-2 font-medium">{row.packageName}</td>
-                    <td className="py-2 text-right tabular-nums">{row.attributions}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {formatCurrency(fromCents(row.revenueCents), currency)}
-                    </td>
-                    <td className="py-2 text-right tabular-nums text-muted">
-                      {formatCurrency(fromCents(row.avgPerAttributionCents), currency)}
-                    </td>
-                  </tr>
-                ))}
+                {(data?.byPackage ?? []).map((row) => {
+                  const isPlatform = row.packageType === "PLATFORM";
+                  return (
+                    <tr
+                      key={row.packageId ?? `fallback:${row.packageName}`}
+                      className="border-t border-border/50"
+                    >
+                      <td className="py-2 font-medium">
+                        {row.packageName}
+                        {isPlatform && <EstBadge />}
+                      </td>
+                      <td className="py-2 text-right tabular-nums">{row.attributions}</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {formatCurrency(
+                          fromCents(isPlatform ? row.wellhubCents : row.revenueCents),
+                          currency,
+                        )}
+                      </td>
+                      <td className="py-2 text-right tabular-nums text-muted">
+                        {isPlatform
+                          ? "—"
+                          : formatCurrency(fromCents(row.avgPerAttributionCents), currency)}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {(data?.byPackage ?? []).length === 0 && <EmptyRow colSpan={4} />}
               </tbody>
             </table>
@@ -284,6 +298,7 @@ export default function RevenueRecognitionPage() {
                   <th className="py-2 text-right">Atrib.</th>
                   <th className="py-2 text-right">Ingreso</th>
                   <th className="py-2 text-right">Promedio</th>
+                  <th className="py-2 text-right">Wellhub (est.)</th>
                 </tr>
               </thead>
               <tbody>
@@ -326,11 +341,16 @@ export default function RevenueRecognitionPage() {
                             currency,
                           )}
                         </td>
+                        <td className="py-2 text-right tabular-nums text-amber-700 dark:text-amber-400">
+                          {row.wellhubCents > 0
+                            ? formatCurrency(fromCents(row.wellhubCents), currency)
+                            : "—"}
+                        </td>
                       </tr>
                       {isExpanded && detail && (
                         <tr className="border-t border-border/30 bg-surface/40">
                           <td />
-                          <td colSpan={4} className="py-2 pr-2">
+                          <td colSpan={5} className="py-2 pr-2">
                             <DisciplinePackageDetail
                               packages={detail.packages}
                               currency={currency}
@@ -342,7 +362,7 @@ export default function RevenueRecognitionPage() {
                   );
                 })}
                 {(data?.byDiscipline ?? []).length === 0 && (
-                  <EmptyRow colSpan={5} />
+                  <EmptyRow colSpan={6} />
                 )}
               </tbody>
             </table>
@@ -359,6 +379,7 @@ export default function RevenueRecognitionPage() {
                   <th className="py-2">Coach</th>
                   <th className="py-2 text-right">Atrib.</th>
                   <th className="py-2 text-right">Ingreso</th>
+                  <th className="py-2 text-right">Wellhub (est.)</th>
                 </tr>
               </thead>
               <tbody>
@@ -369,9 +390,14 @@ export default function RevenueRecognitionPage() {
                     <td className="py-2 text-right tabular-nums">
                       {formatCurrency(fromCents(row.revenueCents), currency)}
                     </td>
+                    <td className="py-2 text-right tabular-nums text-amber-700 dark:text-amber-400">
+                      {row.wellhubCents > 0
+                        ? formatCurrency(fromCents(row.wellhubCents), currency)
+                        : "—"}
+                    </td>
                   </tr>
                 ))}
-                {(data?.byCoach ?? []).length === 0 && <EmptyRow colSpan={3} />}
+                {(data?.byCoach ?? []).length === 0 && <EmptyRow colSpan={4} />}
               </tbody>
             </table>
           )}
@@ -442,6 +468,15 @@ function EmptyRow({ colSpan }: { colSpan: number }) {
         Sin datos para este mes.
       </td>
     </tr>
+  );
+}
+
+// Marks a value as an estimate (Wellhub), kept separate from ASC 606 recognized.
+function EstBadge() {
+  return (
+    <span className="ml-1.5 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+      est.
+    </span>
   );
 }
 
