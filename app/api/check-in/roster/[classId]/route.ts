@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 
+// Minimum lifetime bookings before we surface a member's cancellation rate.
+// With a tiny history a single cancellation reads as a scary % (cancel your
+// first booking, attend the next → "50% cancela"), which unfairly flags new
+// members. Require a large enough sample for the rate to mean something.
+// Keep in sync with /api/classes/[id].
+const MIN_BOOKINGS_FOR_CANCEL_RATE = 10;
+
 type UserPackageRow = {
   creditsUsed: number;
   expiresAt: Date;
@@ -241,7 +248,10 @@ export async function GET(
         const classesWithCoach = coachMap.get(uid) ?? 0;
         const cancelled = cancelMap.get(uid) ?? 0;
         const allBookings = allMap.get(uid) ?? 0;
-        const cancelRate = allBookings >= 3 ? Math.round((cancelled / allBookings) * 100) : null;
+        const cancelRate =
+          allBookings >= MIN_BOOKINGS_FOR_CANCEL_RATE
+            ? Math.round((cancelled / allBookings) * 100)
+            : null;
         const isNewMember = user.createdAt >= thirtyDaysAgo;
         const isFirstEver = totalClasses <= 1;
         const isFirstWithCoach = classesWithCoach <= 1;

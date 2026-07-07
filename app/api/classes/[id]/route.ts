@@ -7,6 +7,13 @@ import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 import { normalizeRules } from "@/lib/song-rules";
 import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
 
+// Minimum lifetime bookings before we surface a member's cancellation rate.
+// With a tiny history a single cancellation reads as a scary % (cancel your
+// first booking, attend the next → "50% cancela"), which unfairly flags new
+// members. Require a large enough sample for the rate to mean something.
+// Keep in sync with /api/check-in/roster/[classId].
+const MIN_BOOKINGS_FOR_CANCEL_RATE = 10;
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -253,7 +260,10 @@ export async function GET(
         const classesWithCoach = coachMap.get(uid) ?? 0;
         const cancelled = cancelMap.get(uid) ?? 0;
         const allBookings = allMap.get(uid) ?? 0;
-        const cancelRate = allBookings >= 3 ? Math.round((cancelled / allBookings) * 100) : null;
+        const cancelRate =
+          allBookings >= MIN_BOOKINGS_FOR_CANCEL_RATE
+            ? Math.round((cancelled / allBookings) * 100)
+            : null;
         const hasUser = !!b.user?.id;
         const isNewMember = b.user ? b.user.createdAt >= thirtyDaysAgo : false;
         // History tags only make sense for logged-in members — a guest/platform
