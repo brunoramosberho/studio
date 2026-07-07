@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ChevronDown,
+  ChevronRight,
   Download,
   Info,
   Package,
@@ -19,6 +21,16 @@ import { FINANCE_TABS } from "@/components/admin/section-tab-configs";
 
 type SourceKind = "pack" | "subscription" | "dropin" | "platform" | "other";
 
+interface SourceRow {
+  key: string;
+  name: string;
+  kind: SourceKind;
+  attributions: number;
+  revenueCents: number;
+  avgPerAttributionCents: number;
+  breakageCents: number;
+}
+
 interface RevenueReport {
   tenantId: string;
   month: string;
@@ -29,19 +41,14 @@ interface RevenueReport {
     breakageCents: number;
     totalCents: number;
   };
-  byPackage: {
-    key: string;
-    name: string;
-    kind: SourceKind;
-    attributions: number;
-    revenueCents: number;
-    breakageCents: number;
-  }[];
+  byPackage: SourceRow[];
   byDiscipline: {
     disciplineId: string;
     disciplineName: string;
     attributions: number;
     revenueCents: number;
+    avgPerAttributionCents: number;
+    packages: SourceRow[];
   }[];
   byCoach: {
     coachId: string;
@@ -86,6 +93,16 @@ function fromCents(c: number): number {
 export default function RevenueRecognitionPage() {
   const tenantCurrency = useCurrency();
   const [month, setMonth] = useState<string>(currentMonth());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (disciplineId: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(disciplineId)) next.delete(disciplineId);
+      else next.add(disciplineId);
+      return next;
+    });
+  };
 
   const { data, isLoading, error } = useQuery<RevenueReport>({
     queryKey: ["revenue-recognition", month],
@@ -205,6 +222,7 @@ export default function RevenueRecognitionPage() {
                   <th className="py-2">Tipo</th>
                   <th className="py-2 text-right">Atrib.</th>
                   <th className="py-2 text-right">Ingreso est.</th>
+                  <th className="py-2 text-right">Promedio</th>
                   <th className="py-2 text-right">Breakage</th>
                 </tr>
               </thead>
@@ -217,6 +235,11 @@ export default function RevenueRecognitionPage() {
                     <td className="py-2 text-right tabular-nums">
                       {formatCurrency(fromCents(row.revenueCents), currency)}
                     </td>
+                    <td className="py-2 text-right tabular-nums text-muted">
+                      {row.attributions > 0
+                        ? formatCurrency(fromCents(row.avgPerAttributionCents), currency)
+                        : "—"}
+                    </td>
                     <td className="py-2 text-right tabular-nums text-amber-700 dark:text-amber-400">
                       {row.breakageCents > 0
                         ? formatCurrency(fromCents(row.breakageCents), currency)
@@ -224,7 +247,7 @@ export default function RevenueRecognitionPage() {
                     </td>
                   </tr>
                 ))}
-                {(data?.byPackage ?? []).length === 0 && <EmptyRow colSpan={5} />}
+                {(data?.byPackage ?? []).length === 0 && <EmptyRow colSpan={6} />}
               </tbody>
             </table>
           </div>
@@ -239,23 +262,60 @@ export default function RevenueRecognitionPage() {
             <table className="w-full text-sm">
               <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted">
                 <tr>
+                  <th className="py-2" aria-label="Expandir" />
                   <th className="py-2">Disciplina</th>
                   <th className="py-2 text-right">Atrib.</th>
                   <th className="py-2 text-right">Ingreso est.</th>
+                  <th className="py-2 text-right">Promedio</th>
                 </tr>
               </thead>
               <tbody>
-                {(data?.byDiscipline ?? []).map((row) => (
-                  <tr key={row.disciplineId} className="border-t border-border/50">
-                    <td className="py-2 font-medium">{row.disciplineName}</td>
-                    <td className="py-2 text-right tabular-nums">{row.attributions}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {formatCurrency(fromCents(row.revenueCents), currency)}
-                    </td>
-                  </tr>
-                ))}
+                {(data?.byDiscipline ?? []).map((row) => {
+                  const isExpanded = expanded.has(row.disciplineId);
+                  const canExpand = row.packages.length > 0;
+                  return (
+                    <Fragment key={row.disciplineId}>
+                      <tr
+                        className={cn(
+                          "border-t border-border/50",
+                          canExpand && "cursor-pointer hover:bg-surface/60",
+                        )}
+                        onClick={() => canExpand && toggleExpanded(row.disciplineId)}
+                      >
+                        <td className="w-6 py-2 pl-1 text-muted">
+                          {canExpand ? (
+                            isExpanded ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            )
+                          ) : null}
+                        </td>
+                        <td className="py-2 font-medium">{row.disciplineName}</td>
+                        <td className="py-2 text-right tabular-nums">{row.attributions}</td>
+                        <td className="py-2 text-right tabular-nums">
+                          {formatCurrency(fromCents(row.revenueCents), currency)}
+                        </td>
+                        <td className="py-2 text-right tabular-nums text-muted">
+                          {formatCurrency(fromCents(row.avgPerAttributionCents), currency)}
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="border-t border-border/30 bg-surface/40">
+                          <td />
+                          <td colSpan={4} className="py-2 pr-2">
+                            <DisciplinePackageDetail
+                              packages={row.packages}
+                              currency={currency}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
                 {(data?.byDiscipline ?? []).length === 0 && (
-                  <EmptyRow colSpan={3} />
+                  <EmptyRow colSpan={5} />
                 )}
               </tbody>
             </table>
@@ -355,6 +415,46 @@ function EmptyRow({ colSpan }: { colSpan: number }) {
         Sin datos para este mes.
       </td>
     </tr>
+  );
+}
+
+function DisciplinePackageDetail({
+  packages,
+  currency,
+}: {
+  packages: SourceRow[];
+  currency: string;
+}) {
+  if (packages.length === 0) {
+    return <p className="py-2 text-xs text-muted">Sin detalle de fuentes.</p>;
+  }
+  return (
+    <table className="w-full text-xs">
+      <thead className="text-left font-medium uppercase tracking-wide text-muted">
+        <tr>
+          <th className="py-1">Fuente</th>
+          <th className="py-1">Tipo</th>
+          <th className="py-1 text-right">Atrib.</th>
+          <th className="py-1 text-right">Ingreso est.</th>
+          <th className="py-1 text-right">Promedio</th>
+        </tr>
+      </thead>
+      <tbody>
+        {packages.map((p) => (
+          <tr key={p.key} className="border-t border-border/30">
+            <td className="py-1 font-medium">{p.name}</td>
+            <td className="py-1 text-muted">{KIND_LABEL[p.kind]}</td>
+            <td className="py-1 text-right tabular-nums">{p.attributions}</td>
+            <td className="py-1 text-right tabular-nums">
+              {formatCurrency(fromCents(p.revenueCents), currency)}
+            </td>
+            <td className="py-1 text-right tabular-nums text-muted">
+              {formatCurrency(fromCents(p.avgPerAttributionCents), currency)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

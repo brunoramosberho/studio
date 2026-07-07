@@ -33,6 +33,7 @@ export interface EstByPackage {
   kind: EstSourceKind;
   attributions: number;
   revenueCents: number;
+  avgPerAttributionCents: number;
   breakageCents: number;
 }
 
@@ -41,6 +42,9 @@ export interface EstByDiscipline {
   disciplineName: string;
   attributions: number;
   revenueCents: number;
+  avgPerAttributionCents: number;
+  /** Per-source breakdown for the drill-down. */
+  packages: EstByPackage[];
 }
 
 export interface EstByCoach {
@@ -218,12 +222,56 @@ export async function getEstimatedEarnings(
   const subByUser = new Map(subs.map((s) => [s.userId, s.package]));
 
   // ── Accumulators ─────────────────────────────────────────────────────────
-  const perClass = new Map<string, number>(); // classId → attributed cents
-  const classById = new Map<string, ClassLite>();
+  // Every attribution event (a pack/sub attendance, or a Wellhub per-class
+  // settlement) is folded into the discipline / coach / time-slot / heatmap
+  // rollups right here, so "Atrib." means the same thing everywhere (a count of
+  // attributions) and each parent row reconciles exactly with its drill-down.
   const byPackage = new Map<string, EstByPackage>();
+  const byDiscipline = new Map<
+    string,
+    { name: string; attributions: number; cents: number }
+  >();
+  const byCoach = new Map<
+    string,
+    { name: string; attributions: number; cents: number }
+  >();
+  const byTimeslot = new Map<string, EstByTimeslot>();
+  const heatmap = new Map<string, EstHeatmapCell>();
+  let attributedCents = 0;
   const addClass = (cls: ClassLite, cents: number) => {
-    classById.set(cls.id, cls);
-    perClass.set(cls.id, (perClass.get(cls.id) ?? 0) + cents);
+    attributedCents += cents;
+    const d =
+      byDiscipline.get(cls.classTypeId) ??
+      { name: cls.classTypeName, attributions: 0, cents: 0 };
+    d.cents += cents;
+    d.attributions++;
+    byDiscipline.set(cls.classTypeId, d);
+    const co =
+      byCoach.get(cls.coachId) ??
+      { name: cls.coachName, attributions: 0, cents: 0 };
+    co.cents += cents;
+    co.attributions++;
+    byCoach.set(cls.coachId, co);
+    const { dow, hour } = localDayHour(cls.startsAt, cls.timezone);
+    const tsKey = `${dow}-${hour}`;
+    const ts =
+      byTimeslot.get(tsKey) ??
+      { dayOfWeek: dow, hourOfDay: hour, attributions: 0, revenueCents: 0 };
+    ts.revenueCents += cents;
+    ts.attributions++;
+    byTimeslot.set(tsKey, ts);
+    const hKey = `${cls.coachId}-${dow}-${hour}`;
+    const cell =
+      heatmap.get(hKey) ??
+      {
+        coachId: cls.coachId,
+        coachName: cls.coachName,
+        dayOfWeek: dow,
+        hourOfDay: hour,
+        revenueCents: 0,
+      };
+    cell.revenueCents += cents;
+    heatmap.set(hKey, cell);
   };
   const addPkg = (
     key: string,
@@ -235,11 +283,45 @@ export async function getEstimatedEarnings(
   ) => {
     const e =
       byPackage.get(key) ??
-      { key, name, kind, attributions: 0, revenueCents: 0, breakageCents: 0 };
+      {
+        key,
+        name,
+        kind,
+        attributions: 0,
+        revenueCents: 0,
+        avgPerAttributionCents: 0,
+        breakageCents: 0,
+      };
     e.revenueCents += cents;
     e.attributions += attributions;
     e.breakageCents += breakage;
     byPackage.set(key, e);
+  };
+  // Nested discipline → source, for the "Por disciplina" drill-down.
+  const byDiscPkg = new Map<
+    string,
+    {
+      name: string;
+      packages: Map<
+        string,
+        { name: string; kind: EstSourceKind; cents: number; attributions: number }
+      >;
+    }
+  >();
+  const addDiscPkg = (
+    cls: ClassLite,
+    key: string,
+    name: string,
+    kind: EstSourceKind,
+    cents: number,
+  ) => {
+    const disc =
+      byDiscPkg.get(cls.classTypeId) ?? { name: cls.classTypeName, packages: new Map() };
+    const p = disc.packages.get(key) ?? { name, kind, cents: 0, attributions: 0 };
+    p.cents += cents;
+    p.attributions++;
+    disc.packages.set(key, p);
+    byDiscPkg.set(cls.classTypeId, disc);
   };
 
   // Split bookings into subscription-attributed vs. pack/dropin/other.
@@ -287,7 +369,9 @@ export async function getEstimatedEarnings(
     for (const b of attended) {
       const v = Math.min(cap, Math.max(0, monthlyCents - allocated));
       allocated += v;
-      addClass(classOf(b), v);
+      const cls = classOf(b);
+      addClass(cls, v);
+      addDiscPkg(cls, `sub:${plan.id}`, plan.name, "subscription", v);
     }
     const breakage = Math.max(0, monthlyCents - allocated);
     addPkg(`sub:${plan.id}`, plan.name, "subscription", allocated, attended.length, breakage);
@@ -325,8 +409,10 @@ export async function getEstimatedEarnings(
       key = "other";
       name = "Sin fuente";
     }
-    addClass(classOf(b), value);
+    const cls = classOf(b);
+    addClass(cls, value);
     addPkg(key, name, kind, value, 1, 0);
+    addDiscPkg(cls, key, name, kind, value);
   }
 
   // ── Platform (Wellhub) estimate per class ─────────────────────────────────
@@ -347,53 +433,22 @@ export async function getEstimatedEarnings(
     for (const [classId, cents] of wellhub.byClass) {
       const c = whById.get(classId);
       if (!c) continue;
-      addClass(
-        {
-          id: c.id,
-          startsAt: c.startsAt,
-          classTypeId: c.classType.id,
-          classTypeName: c.classType.name,
-          coachId: c.coach.id,
-          coachName: c.coach.name,
-          timezone: c.room?.studio?.city?.timezone ?? null,
-        },
-        cents,
-      );
+      const cls: ClassLite = {
+        id: c.id,
+        startsAt: c.startsAt,
+        classTypeId: c.classType.id,
+        classTypeName: c.classType.name,
+        coachId: c.coach.id,
+        coachName: c.coach.name,
+        timezone: c.room?.studio?.city?.timezone ?? null,
+      };
+      addClass(cls, cents);
+      addDiscPkg(cls, "platform:wellhub", "Wellhub", "platform", cents);
     }
     addPkg("platform:wellhub", "Wellhub", "platform", wellhub.totalCents, wellhub.byClass.size, 0);
   }
 
-  // ── Roll up per class → discipline / coach / time-slot / heatmap ──────────
-  const byDiscipline = new Map<string, { name: string; attributions: number; cents: number }>();
-  const byCoach = new Map<string, { name: string; attributions: number; cents: number }>();
-  const byTimeslot = new Map<string, EstByTimeslot>();
-  const heatmap = new Map<string, EstHeatmapCell>();
-  for (const [classId, cents] of perClass) {
-    const c = classById.get(classId);
-    if (!c) continue;
-    const d = byDiscipline.get(c.classTypeId) ?? { name: c.classTypeName, attributions: 0, cents: 0 };
-    d.cents += cents;
-    d.attributions++;
-    byDiscipline.set(c.classTypeId, d);
-    const co = byCoach.get(c.coachId) ?? { name: c.coachName, attributions: 0, cents: 0 };
-    co.cents += cents;
-    co.attributions++;
-    byCoach.set(c.coachId, co);
-    const { dow, hour } = localDayHour(c.startsAt, c.timezone);
-    const tsKey = `${dow}-${hour}`;
-    const ts = byTimeslot.get(tsKey) ?? { dayOfWeek: dow, hourOfDay: hour, attributions: 0, revenueCents: 0 };
-    ts.revenueCents += cents;
-    ts.attributions++;
-    byTimeslot.set(tsKey, ts);
-    const hKey = `${c.coachId}-${dow}-${hour}`;
-    const cell =
-      heatmap.get(hKey) ??
-      { coachId: c.coachId, coachName: c.coachName, dayOfWeek: dow, hourOfDay: hour, revenueCents: 0 };
-    cell.revenueCents += cents;
-    heatmap.set(hKey, cell);
-  }
-
-  const attributedCents = [...perClass.values()].reduce((s, v) => s + v, 0);
+  // ── Discipline / coach / time-slot / heatmap already rolled up in addClass ─
   const breakageCents = [...byPackage.values()].reduce((s, p) => s + p.breakageCents, 0);
 
   return {
@@ -402,9 +457,32 @@ export async function getEstimatedEarnings(
     currency,
     dropInCapCents: cap,
     summary: { attributedCents, breakageCents, totalCents: attributedCents + breakageCents },
-    byPackage: [...byPackage.values()].sort((a, b) => b.revenueCents - a.revenueCents),
+    byPackage: [...byPackage.values()]
+      .map((p) => ({
+        ...p,
+        avgPerAttributionCents:
+          p.attributions > 0 ? Math.round(p.revenueCents / p.attributions) : 0,
+      }))
+      .sort((a, b) => b.revenueCents - a.revenueCents),
     byDiscipline: [...byDiscipline.entries()]
-      .map(([id, v]) => ({ disciplineId: id, disciplineName: v.name, attributions: v.attributions, revenueCents: v.cents }))
+      .map(([id, v]) => ({
+        disciplineId: id,
+        disciplineName: v.name,
+        attributions: v.attributions,
+        revenueCents: v.cents,
+        avgPerAttributionCents: v.attributions > 0 ? Math.round(v.cents / v.attributions) : 0,
+        packages: [...(byDiscPkg.get(id)?.packages.entries() ?? [])]
+          .map(([pkgKey, p]) => ({
+            key: pkgKey,
+            name: p.name,
+            kind: p.kind,
+            attributions: p.attributions,
+            revenueCents: p.cents,
+            avgPerAttributionCents: p.attributions > 0 ? Math.round(p.cents / p.attributions) : 0,
+            breakageCents: 0,
+          }))
+          .sort((a, b) => b.revenueCents - a.revenueCents),
+      }))
       .sort((a, b) => b.revenueCents - a.revenueCents),
     byCoach: [...byCoach.entries()]
       .map(([id, v]) => ({ coachId: id, coachName: v.name, attributions: v.attributions, revenueCents: v.cents }))
