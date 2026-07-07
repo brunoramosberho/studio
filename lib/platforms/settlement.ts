@@ -126,7 +126,11 @@ export async function getPlatformSettlementByClass(
   tenantId: string,
   start: Date,
   end: Date,
-): Promise<{ byClass: Map<string, number>; totalCents: number }> {
+): Promise<{
+  byClass: Map<string, { cents: number; visits: number }>;
+  totalCents: number;
+  totalVisits: number;
+}> {
   const configs = await prisma.studioPlatformConfig.findMany({
     where: { tenantId, isActive: true },
     select: {
@@ -138,7 +142,8 @@ export async function getPlatformSettlementByClass(
       freeVisitsPerMonth: true,
     },
   });
-  if (configs.length === 0) return { byClass: new Map(), totalCents: 0 };
+  if (configs.length === 0)
+    return { byClass: new Map(), totalCents: 0, totalVisits: 0 };
   const cfgByPlatform = new Map(configs.map((c) => [c.platform as string, c]));
 
   const bookings = await prisma.platformBooking.findMany({
@@ -161,7 +166,14 @@ export async function getPlatformSettlementByClass(
     },
     orderBy: { class: { startsAt: "asc" } },
   });
-  if (bookings.length === 0) return { byClass: new Map(), totalCents: 0 };
+  if (bookings.length === 0)
+    return { byClass: new Map(), totalCents: 0, totalVisits: 0 };
+
+  // Billable events per class (each platformBooking row is one visit — a
+  // check-in, no-show or late-cancel). This is the per-class visit denominator.
+  const visitsByClass = new Map<string, number>();
+  for (const b of bookings)
+    visitsByClass.set(b.classId, (visitsByClass.get(b.classId) ?? 0) + 1);
 
   // Group by (platform, calendar month); track each event's classId in parallel.
   const groups = new Map<
@@ -200,7 +212,9 @@ export async function getPlatformSettlementByClass(
     totalCents += groupCents;
   }
 
-  const byClass = new Map<string, number>();
-  for (const [cid, cents] of byClassRaw) byClass.set(cid, Math.round(cents));
-  return { byClass, totalCents };
+  const byClass = new Map<string, { cents: number; visits: number }>();
+  for (const [cid, visits] of visitsByClass) {
+    byClass.set(cid, { cents: Math.round(byClassRaw.get(cid) ?? 0), visits });
+  }
+  return { byClass, totalCents, totalVisits: bookings.length };
 }

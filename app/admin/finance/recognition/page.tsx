@@ -26,8 +26,10 @@ interface SourceRow {
   name: string;
   kind: SourceKind;
   attributions: number;
+  classCount: number;
   revenueCents: number;
-  avgPerAttributionCents: number;
+  avgPerVisitCents: number;
+  avgPerClassCents: number;
   breakageCents: number;
 }
 
@@ -46,15 +48,20 @@ interface RevenueReport {
     disciplineId: string;
     disciplineName: string;
     attributions: number;
+    classCount: number;
     revenueCents: number;
-    avgPerAttributionCents: number;
+    avgPerVisitCents: number;
+    avgPerClassCents: number;
     packages: SourceRow[];
   }[];
   byCoach: {
     coachId: string;
     coachName: string;
     attributions: number;
+    classCount: number;
     revenueCents: number;
+    avgPerVisitCents: number;
+    avgPerClassCents: number;
   }[];
   byTimeslot: {
     dayOfWeek: number;
@@ -220,9 +227,11 @@ export default function RevenueRecognitionPage() {
                 <tr>
                   <th className="py-2">Fuente</th>
                   <th className="py-2">Tipo</th>
-                  <th className="py-2 text-right">Atrib.</th>
+                  <th className="py-2 text-right">Visitas</th>
+                  <th className="py-2 text-right">Clases</th>
                   <th className="py-2 text-right">Ingreso est.</th>
-                  <th className="py-2 text-right">Promedio</th>
+                  <th className="py-2 text-right">Prom/clase</th>
+                  <th className="py-2 text-right">Prom/visita</th>
                   <th className="py-2 text-right">Breakage</th>
                 </tr>
               </thead>
@@ -232,12 +241,20 @@ export default function RevenueRecognitionPage() {
                     <td className="py-2 font-medium">{row.name}</td>
                     <td className="py-2 text-xs text-muted">{KIND_LABEL[row.kind]}</td>
                     <td className="py-2 text-right tabular-nums">{row.attributions}</td>
+                    <td className="py-2 text-right tabular-nums text-muted">
+                      {row.classCount}
+                    </td>
                     <td className="py-2 text-right tabular-nums">
                       {formatCurrency(fromCents(row.revenueCents), currency)}
                     </td>
                     <td className="py-2 text-right tabular-nums text-muted">
+                      {row.classCount > 0
+                        ? formatCurrency(fromCents(row.avgPerClassCents), currency)
+                        : "—"}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-muted">
                       {row.attributions > 0
-                        ? formatCurrency(fromCents(row.avgPerAttributionCents), currency)
+                        ? formatCurrency(fromCents(row.avgPerVisitCents), currency)
                         : "—"}
                     </td>
                     <td className="py-2 text-right tabular-nums text-amber-700 dark:text-amber-400">
@@ -247,26 +264,28 @@ export default function RevenueRecognitionPage() {
                     </td>
                   </tr>
                 ))}
-                {(data?.byPackage ?? []).length === 0 && <EmptyRow colSpan={6} />}
+                {(data?.byPackage ?? []).length === 0 && <EmptyRow colSpan={8} />}
               </tbody>
             </table>
           </div>
         )}
       </Panel>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Panel icon={<PieChart className="h-4 w-4" />} title="Por disciplina">
-          {isLoading ? (
-            <TableSkeleton rows={4} />
-          ) : (
+      <Panel icon={<PieChart className="h-4 w-4" />} title="Por disciplina">
+        {isLoading ? (
+          <TableSkeleton rows={4} />
+        ) : (
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted">
                 <tr>
                   <th className="py-2" aria-label="Expandir" />
                   <th className="py-2">Disciplina</th>
-                  <th className="py-2 text-right">Atrib.</th>
+                  <th className="py-2 text-right">Visitas</th>
+                  <th className="py-2 text-right">Clases</th>
                   <th className="py-2 text-right">Ingreso est.</th>
-                  <th className="py-2 text-right">Promedio</th>
+                  <th className="py-2 text-right">Prom/clase</th>
+                  <th className="py-2 text-right">Prom/visita</th>
                 </tr>
               </thead>
               <tbody>
@@ -293,17 +312,23 @@ export default function RevenueRecognitionPage() {
                         </td>
                         <td className="py-2 font-medium">{row.disciplineName}</td>
                         <td className="py-2 text-right tabular-nums">{row.attributions}</td>
+                        <td className="py-2 text-right tabular-nums text-muted">
+                          {row.classCount}
+                        </td>
                         <td className="py-2 text-right tabular-nums">
                           {formatCurrency(fromCents(row.revenueCents), currency)}
                         </td>
                         <td className="py-2 text-right tabular-nums text-muted">
-                          {formatCurrency(fromCents(row.avgPerAttributionCents), currency)}
+                          {formatCurrency(fromCents(row.avgPerClassCents), currency)}
+                        </td>
+                        <td className="py-2 text-right tabular-nums text-muted">
+                          {formatCurrency(fromCents(row.avgPerVisitCents), currency)}
                         </td>
                       </tr>
                       {isExpanded && (
                         <tr className="border-t border-border/30 bg-surface/40">
                           <td />
-                          <td colSpan={4} className="py-2 pr-2">
+                          <td colSpan={6} className="py-2 pr-2">
                             <DisciplinePackageDetail
                               packages={row.packages}
                               currency={currency}
@@ -315,23 +340,28 @@ export default function RevenueRecognitionPage() {
                   );
                 })}
                 {(data?.byDiscipline ?? []).length === 0 && (
-                  <EmptyRow colSpan={5} />
+                  <EmptyRow colSpan={7} />
                 )}
               </tbody>
             </table>
-          )}
-        </Panel>
+          </div>
+        )}
+      </Panel>
 
-        <Panel icon={<TrendingUp className="h-4 w-4" />} title="Por coach">
-          {isLoading ? (
-            <TableSkeleton rows={4} />
-          ) : (
+      <Panel icon={<TrendingUp className="h-4 w-4" />} title="Por coach">
+        {isLoading ? (
+          <TableSkeleton rows={4} />
+        ) : (
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted">
                 <tr>
                   <th className="py-2">Coach</th>
-                  <th className="py-2 text-right">Atrib.</th>
+                  <th className="py-2 text-right">Visitas</th>
+                  <th className="py-2 text-right">Clases</th>
                   <th className="py-2 text-right">Ingreso est.</th>
+                  <th className="py-2 text-right">Prom/clase</th>
+                  <th className="py-2 text-right">Prom/visita</th>
                 </tr>
               </thead>
               <tbody>
@@ -339,17 +369,26 @@ export default function RevenueRecognitionPage() {
                   <tr key={row.coachId} className="border-t border-border/50">
                     <td className="py-2 font-medium">{row.coachName}</td>
                     <td className="py-2 text-right tabular-nums">{row.attributions}</td>
+                    <td className="py-2 text-right tabular-nums text-muted">
+                      {row.classCount}
+                    </td>
                     <td className="py-2 text-right tabular-nums">
                       {formatCurrency(fromCents(row.revenueCents), currency)}
                     </td>
+                    <td className="py-2 text-right tabular-nums text-muted">
+                      {formatCurrency(fromCents(row.avgPerClassCents), currency)}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-muted">
+                      {formatCurrency(fromCents(row.avgPerVisitCents), currency)}
+                    </td>
                   </tr>
                 ))}
-                {(data?.byCoach ?? []).length === 0 && <EmptyRow colSpan={3} />}
+                {(data?.byCoach ?? []).length === 0 && <EmptyRow colSpan={6} />}
               </tbody>
             </table>
-          )}
-        </Panel>
-      </section>
+          </div>
+        )}
+      </Panel>
 
       <Panel title="Por franja horaria (día × hora)">
         {isLoading ? <TableSkeleton rows={3} /> : <TimeslotHeatmap data={data} currency={currency} />}
@@ -434,9 +473,11 @@ function DisciplinePackageDetail({
         <tr>
           <th className="py-1">Fuente</th>
           <th className="py-1">Tipo</th>
-          <th className="py-1 text-right">Atrib.</th>
+          <th className="py-1 text-right">Visitas</th>
+          <th className="py-1 text-right">Clases</th>
           <th className="py-1 text-right">Ingreso est.</th>
-          <th className="py-1 text-right">Promedio</th>
+          <th className="py-1 text-right">Prom/clase</th>
+          <th className="py-1 text-right">Prom/visita</th>
         </tr>
       </thead>
       <tbody>
@@ -445,11 +486,15 @@ function DisciplinePackageDetail({
             <td className="py-1 font-medium">{p.name}</td>
             <td className="py-1 text-muted">{KIND_LABEL[p.kind]}</td>
             <td className="py-1 text-right tabular-nums">{p.attributions}</td>
+            <td className="py-1 text-right tabular-nums text-muted">{p.classCount}</td>
             <td className="py-1 text-right tabular-nums">
               {formatCurrency(fromCents(p.revenueCents), currency)}
             </td>
             <td className="py-1 text-right tabular-nums text-muted">
-              {formatCurrency(fromCents(p.avgPerAttributionCents), currency)}
+              {formatCurrency(fromCents(p.avgPerClassCents), currency)}
+            </td>
+            <td className="py-1 text-right tabular-nums text-muted">
+              {formatCurrency(fromCents(p.avgPerVisitCents), currency)}
             </td>
           </tr>
         ))}
@@ -465,9 +510,12 @@ function InfoBanner() {
       <p>
         Estimado de ganancias: cada asistencia (paquete, suscripción o Wellhub)
         se atribuye a su clase, valorada hasta el precio de una clase suelta
-        (drop-in). Lo que una suscripción paga y no &quot;gasta&quot; en clases
-        ese mes es breakage. Es una estimación de a dónde va tu ingreso, no la
-        contabilidad reconocida (ASC 606).
+        (drop-in). <strong>Prom/visita</strong> = ingreso por asistencia (p. ej.
+        Wellhub ≈ su tarifa por visita); <strong>Prom/clase</strong> = ingreso
+        por clase (Wellhub agrupa las varias visitas de una misma clase, más las
+        comisiones fijas por no-show / late-cancel). Lo que una suscripción paga
+        y no &quot;gasta&quot; en clases ese mes es breakage. Es una estimación de
+        a dónde va tu ingreso, no la contabilidad reconocida (ASC 606).
       </p>
     </div>
   );

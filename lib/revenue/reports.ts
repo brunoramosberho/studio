@@ -310,7 +310,7 @@ export async function getMonthlyRevenueReport(
   const whClassById = new Map(whClasses.map((c) => [c.id, c]));
   const wellhubDisc = new Map<string, { name: string; cents: number }>();
   const wellhubCoachMap = new Map<string, { name: string; cents: number }>();
-  for (const [classId, cents] of wellhub.byClass) {
+  for (const [classId, { cents }] of wellhub.byClass) {
     const c = whClassById.get(classId);
     if (!c) continue;
     const d = wellhubDisc.get(c.classType.id) ?? { name: c.classType.name, cents: 0 };

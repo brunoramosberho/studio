@@ -52,14 +52,19 @@ export async function GET(request: NextRequest) {
 
     lines.push("");
     lines.push("Por fuente");
-    lines.push(["Fuente", "Tipo", "Atribuciones", "Ingreso est.", "Breakage"].join(","));
+    lines.push(
+      ["Fuente", "Tipo", "Visitas", "Clases", "Ingreso est.", "Prom/clase", "Prom/visita", "Breakage"].join(","),
+    );
     for (const row of report.byPackage) {
       lines.push(
         [
           escCsv(row.name),
           escCsv(KIND[row.kind] ?? row.kind),
           row.attributions,
+          row.classCount,
           fmt(row.revenueCents),
+          fmt(row.avgPerClassCents),
+          fmt(row.avgPerVisitCents),
           fmt(row.breakageCents),
         ].join(","),
       );
@@ -67,19 +72,37 @@ export async function GET(request: NextRequest) {
 
     lines.push("");
     lines.push("Por disciplina");
-    lines.push(["Disciplina", "Atribuciones", "Ingreso est."].join(","));
+    lines.push(
+      ["Disciplina", "Visitas", "Clases", "Ingreso est.", "Prom/clase", "Prom/visita"].join(","),
+    );
     for (const row of report.byDiscipline) {
       lines.push(
-        [escCsv(row.disciplineName), row.attributions, fmt(row.revenueCents)].join(","),
+        [
+          escCsv(row.disciplineName),
+          row.attributions,
+          row.classCount,
+          fmt(row.revenueCents),
+          fmt(row.avgPerClassCents),
+          fmt(row.avgPerVisitCents),
+        ].join(","),
       );
     }
 
     lines.push("");
     lines.push("Por coach");
-    lines.push(["Coach", "Atribuciones", "Ingreso est."].join(","));
+    lines.push(
+      ["Coach", "Visitas", "Clases", "Ingreso est.", "Prom/clase", "Prom/visita"].join(","),
+    );
     for (const row of report.byCoach) {
       lines.push(
-        [escCsv(row.coachName), row.attributions, fmt(row.revenueCents)].join(","),
+        [
+          escCsv(row.coachName),
+          row.attributions,
+          row.classCount,
+          fmt(row.revenueCents),
+          fmt(row.avgPerClassCents),
+          fmt(row.avgPerVisitCents),
+        ].join(","),
       );
     }
 
