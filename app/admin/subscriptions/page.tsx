@@ -47,6 +47,11 @@ interface SubData {
     currency: string;
     recurringInterval: string | null;
   };
+  usage: {
+    classesThisCycle: number;
+    effectivePerClassCents: number | null;
+    status: "none" | "no_use" | "low_use" | "power_user";
+  } | null;
 }
 
 function useStatusBadge() {
@@ -312,6 +317,29 @@ function SubCard({
           <p className="mt-0.5 text-xs text-muted">
             {sub.package.name} · {formatCurrency(sub.package.price, sub.package.currency)}/{sub.package.recurringInterval === "year" ? t("yearInterval") : t("monthInterval")}
           </p>
+          {sub.usage && (
+            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+              <span className="text-muted">
+                {t("subClassesThisCycle", { count: sub.usage.classesThisCycle })}
+              </span>
+              {sub.usage.effectivePerClassCents != null && (
+                <>
+                  <span className="text-muted/50">·</span>
+                  <span className="text-muted">
+                    {t("subEffectivePerClass", {
+                      amount: formatCurrency(
+                        sub.usage.effectivePerClassCents / 100,
+                        sub.package.currency,
+                      ),
+                    })}
+                  </span>
+                </>
+              )}
+              {sub.usage.status !== "none" && (
+                <UsageBadge status={sub.usage.status} />
+              )}
+            </div>
+          )}
           {sub.status === "paused" && sub.resumesAt && (
             <p className="mt-0.5 text-[11px] text-amber-600">
               {t("resumesOn")}{" "}
@@ -362,5 +390,24 @@ function SubCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function UsageBadge({
+  status,
+}: {
+  status: "none" | "no_use" | "low_use" | "power_user";
+}) {
+  const t = useTranslations("admin");
+  if (status === "none") return null;
+  const config = {
+    no_use: { label: t("subUsageNoUse"), variant: "danger" as const },
+    low_use: { label: t("subUsageLowUse"), variant: "warning" as const },
+    power_user: { label: t("subUsagePowerUser"), variant: "success" as const },
+  }[status];
+  return (
+    <Badge variant={config.variant} className="text-[10px]">
+      {config.label}
+    </Badge>
   );
 }
