@@ -546,8 +546,8 @@ export default function ProfilePage() {
           </Link>
         </motion.div>
 
-        {/* Apple Wallet membership pass — active subscribers on Apple devices */}
-        {gamification?.hasActiveMembership && gamification?.walletPassAvailable && isApplePlatform && (
+        {/* Apple Wallet membership pass — any client on an Apple device */}
+        {gamification?.walletPassAvailable && isApplePlatform && (
           <motion.div
             custom={1.5}
             variants={fadeUp}

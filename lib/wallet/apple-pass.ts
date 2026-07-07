@@ -241,8 +241,6 @@ export interface MembershipPassInput {
   /** PassKit web-service base URL + per-pass token — enables auto-updates. */
   webServiceURL?: string;
   authenticationToken?: string;
-  /** When true the pass renders as voided/expired (e.g. membership ended). */
-  voided?: boolean;
   branding: {
     colorAccent: string;
     colorHeroBg: string;
@@ -294,7 +292,6 @@ export async function generateMembershipPass(input: MembershipPassInput): Promis
       ...(input.webServiceURL && input.authenticationToken
         ? { webServiceURL: input.webServiceURL, authenticationToken: input.authenticationToken }
         : {}),
-      ...(input.voided ? { voided: true } : {}),
     },
   );
 

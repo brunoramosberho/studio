@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { constructConnectStripeWebhookEvent } from "@/lib/stripe/webhook-verify";
+import { pushApplePassUpdate } from "@/lib/wallet/apns";
 import { currencySymbolFor } from "@/lib/currency";
 import { prisma } from "@/lib/db";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
@@ -240,6 +241,14 @@ export async function POST(request: NextRequest) {
             .catch((err) =>
               console.error("[stripe-webhook] commission accrual failed", payment.id, err),
             );
+        }
+        if (payment?.memberId) {
+          const { memberId, tenantId } = payment;
+          // Refresh the member's Apple Wallet pass after the response — a new
+          // pack/membership changes the card's plan line.
+          try {
+            after(() => pushApplePassUpdate(memberId, tenantId).catch(() => {}));
+          } catch {}
         }
         break;
       }
@@ -688,6 +697,9 @@ export async function POST(request: NextRequest) {
             }),
           },
         });
+        try {
+          after(() => pushApplePassUpdate(memberSub.userId, memberSub.tenantId).catch(() => {}));
+        } catch {}
         break;
       }
 
@@ -709,6 +721,9 @@ export async function POST(request: NextRequest) {
             },
             data: { status: "cancelled" },
           });
+          try {
+            after(() => pushApplePassUpdate(memberSub.userId, memberSub.tenantId).catch(() => {}));
+          } catch {}
         }
         break;
       }

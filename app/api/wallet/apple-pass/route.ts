@@ -8,19 +8,24 @@ import { buildMembershipPass } from "@/lib/wallet/build-pass";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Base URL Apple's servers call back to for pass updates (same deployment). */
+/**
+ * Base URL Apple's devices call back to for pass updates (same deployment).
+ * IMPORTANT: Wallet appends `/v1/devices/...` to this itself, so the base must
+ * NOT include `/v1` — including it broke registration (`/v1/v1/...` → 404) and
+ * no pass ever received updates.
+ */
 async function webServiceBaseUrl(): Promise<string | undefined> {
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   if (!host) return undefined;
   const proto = h.get("x-forwarded-proto") ?? "https";
-  return `${proto}://${host}/api/wallet/apple-pass/v1`;
+  return `${proto}://${host}/api/wallet/apple-pass`;
 }
 
 /**
  * Serves the signed `.pkpass` for the logged-in member's Apple Wallet
- * membership card. Gated server-side on an active subscription — the client
- * button visibility is a convenience, this is the real check.
+ * membership card. Available to every client — the card shows their current
+ * plan (or plain "Miembro"); any benefit is validated live at scan time.
  */
 export async function GET() {
   if (!isApplePassConfigured()) {
@@ -42,7 +47,7 @@ export async function GET() {
       webServiceURL: await webServiceBaseUrl(),
     });
     if (!result) {
-      return NextResponse.json({ error: "no_active_membership" }, { status: 403 });
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
     return new NextResponse(new Uint8Array(result.buffer), {
       status: 200,

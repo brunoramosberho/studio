@@ -22,13 +22,13 @@ export async function GET(req: NextRequest, ctx: { params: Params }) {
 
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
-  const webServiceURL = host ? `${proto}://${host}/api/wallet/apple-pass/v1` : undefined;
+  // Wallet appends /v1/... itself — the base URL must not include it.
+  const webServiceURL = host ? `${proto}://${host}/api/wallet/apple-pass` : undefined;
 
   const result = await buildMembershipPass({
     tenantId: resolved.tenantId,
     userId: resolved.userId,
     webServiceURL,
-    voidedIfInactive: true, // a cancelled membership updates to "voided" instead of going stale
   });
   if (!result) return new NextResponse(null, { status: 404 });
 
