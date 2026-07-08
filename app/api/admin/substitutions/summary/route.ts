@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const [coaches, requests] = await Promise.all([
       prisma.coachProfile.findMany({
-        where: { tenantId: tenant.id, isActive: true },
+        where: { tenantId: tenant.id },
         select: { id: true, name: true, photoUrl: true, color: true },
         orderBy: { name: "asc" },
       }),
@@ -79,8 +79,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Coaches with activity but no longer active still deserve a row so the
-    // totals reconcile — lazily create one keyed by id if missing.
+    // A request may reference a coach profile that's since been removed from
+    // the list — lazily create a row keyed by id so the totals reconcile.
     const ensureRow = (id: string): Row => {
       let row = rows.get(id);
       if (!row) {
