@@ -38,6 +38,12 @@ export interface EligibleCoach {
   hasDiscipline: boolean;
   available: boolean;
   slotStatus: CoachSlotStatus;
+  /**
+   * Whether the coach has set up any availability at all. Lets the UI tell apart
+   * an `unavailable` slot that's "not set up yet" from one that's "outside their
+   * marked hours" — same distinction /admin/schedule makes.
+   */
+  availabilityConfigured: boolean;
   hasConflict: boolean;
   weekLoad: number;
 }
@@ -162,6 +168,7 @@ export async function getEligibleCoaches(
       hasDiscipline,
       available,
       slotStatus,
+      availabilityConfigured: hasAnyAvailability,
       hasConflict,
       weekLoad: loadByCoach[p.id] || 0,
     };

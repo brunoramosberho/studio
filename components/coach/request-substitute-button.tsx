@@ -56,6 +56,7 @@ interface EligibleCoach {
   hasDiscipline: boolean;
   available: boolean;
   slotStatus: "preferred" | "ok_if_needed" | "unavailable" | "time_off";
+  availabilityConfigured: boolean;
   hasConflict: boolean;
   weekLoad: number;
 }
@@ -250,14 +251,21 @@ function ReasonFields({
 
 // ── Pill helpers ──────────────────────────────────────────────────────
 
-function CoachStatusPill({ status }: { status: EligibleCoach["slotStatus"] }) {
+function CoachStatusPill({ coach }: { coach: EligibleCoach }) {
+  // Same wording as the coach picker in /admin/schedule. "unavailable" splits
+  // into "Sin configurar" (no availability set up yet) vs "Fuera de su horario"
+  // (has availability, but not for this slot) — clearer than "No marcó disponible".
+  const neutral = "bg-stone-100 text-stone-600 dark:bg-stone-500/15 dark:text-stone-300";
   const map: Record<EligibleCoach["slotStatus"], { label: string; tone: string }> = {
     preferred: { label: "Preferido", tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300" },
     ok_if_needed: { label: "De respaldo", tone: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300" },
-    unavailable: { label: "No marcó disponible", tone: "bg-stone-100 text-stone-600 dark:bg-stone-500/15 dark:text-stone-300" },
+    unavailable: {
+      label: coach.availabilityConfigured ? "Fuera de su horario" : "Sin configurar",
+      tone: neutral,
+    },
     time_off: { label: "Ausente", tone: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
   };
-  const m = map[status];
+  const m = map[coach.slotStatus];
   return (
     <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", m.tone)}>
       {m.label}
@@ -480,7 +488,7 @@ function RequestTab({
                         Tiene clase
                       </Badge>
                     ) : (
-                      <CoachStatusPill status={c.slotStatus} />
+                      <CoachStatusPill coach={c} />
                     )}
                   </button>
                 </li>
@@ -641,7 +649,7 @@ function ManualAssignTab({ classId, onDone }: { classId: string; onDone: () => v
                       Tiene clase
                     </Badge>
                   ) : (
-                    <CoachStatusPill status={c.slotStatus} />
+                    <CoachStatusPill coach={c} />
                   )}
                 </button>
               </li>
