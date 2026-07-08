@@ -59,9 +59,15 @@ interface PendingFile {
 interface PhotoUploadProps {
   eventId: string;
   onUploaded?: (photo: { id: string; url: string; mimeType: string; userId?: string }) => void;
+  /**
+   * When set, the trigger renders as a labeled CTA (icon + text, accent-tinted)
+   * instead of a bare camera icon — so members realize they can add a photo.
+   * Omit where a sibling already labels it (e.g. the instructor tools).
+   */
+  label?: string;
 }
 
-export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
+export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
@@ -248,8 +254,12 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
       <button
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
+        aria-label={label ?? "Agregar foto"}
         className={cn(
-          "flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-muted transition-colors hover:bg-surface",
+          "flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] transition-colors",
+          label
+            ? "font-semibold text-accent hover:bg-accent/10"
+            : "font-medium text-muted hover:bg-surface",
           uploading && "pointer-events-none opacity-50",
         )}
       >
@@ -258,6 +268,7 @@ export function PhotoUpload({ eventId, onUploaded }: PhotoUploadProps) {
         ) : (
           <Camera className="h-4 w-4" />
         )}
+        {label && <span>{label}</span>}
       </button>
 
       {/* Preview overlay */}

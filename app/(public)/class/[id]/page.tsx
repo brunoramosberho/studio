@@ -145,6 +145,7 @@ interface ClassFeedEvent {
 export default function ClassDetailPage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("classDetail");
+  const tFeed = useTranslations("feed");
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
   const queryClient = useQueryClient();
@@ -866,6 +867,7 @@ export default function ClassDetailPage() {
                 />
                 <PhotoUpload
                   eventId={feedEvent.id}
+                  label={tFeed("addPhoto")}
                   onUploaded={(photo) =>
                     setFeedMedia((prev) => [...prev, { ...photo, thumbnailUrl: null }])
                   }

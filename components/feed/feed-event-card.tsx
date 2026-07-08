@@ -321,6 +321,7 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
         {userAttended && (
           <PhotoUpload
             eventId={event.id}
+            label={t("addPhoto")}
             onUploaded={(photo) =>
               setMedia((prev) => [...prev, { ...photo, thumbnailUrl: null }])
             }
