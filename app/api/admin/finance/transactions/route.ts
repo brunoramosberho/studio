@@ -311,11 +311,20 @@ export async function GET(request: NextRequest) {
         posResolvedType === "product" ? "Venta en tienda · POS" :
         posResolvedType === "penalty" ? "Penalización · POS" :
         source === "cash" ? "Pago en efectivo" : "POS · Front desk";
+      // Walk-in (no-account) sales carry an optional name in metadata; surface it
+      // (or "Mostrador") instead of "Sin nombre" so they read as counter sales.
+      const posMeta =
+        pt.metadata && typeof pt.metadata === "object" && !Array.isArray(pt.metadata)
+          ? (pt.metadata as Record<string, unknown>)
+          : null;
+      const walkInName =
+        typeof posMeta?.customerName === "string" ? posMeta.customerName : null;
       unified.push({
         id: pt.id,
         source,
         memberId: pt.member?.id ?? null,
-        memberName: pt.member?.name ?? "Sin nombre",
+        memberName:
+          pt.member?.name ?? walkInName ?? (pt.memberId ? "Sin nombre" : "Mostrador"),
         memberEmail: pt.member?.email ?? "",
         concept: pt.concept ?? posRef?.name ?? null,
         conceptSub: pt.conceptSub ?? posDefaultSub,

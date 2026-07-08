@@ -58,14 +58,152 @@ export async function POST(request: NextRequest) {
       paymentMethod,
       paymentMethodId,
       notes,
+      walkIn,
+      walkInName: walkInNameRaw,
     }: {
-      customerId: string;
+      customerId: string | null;
       items: CartItem[];
       selectedClass?: SelectedClassInfo;
       paymentMethod: "saved_card" | "terminal" | "cash";
       paymentMethodId?: string;
       notes?: string;
+      walkIn?: boolean;
+      walkInName?: string | null;
     } = body;
+
+    // Walk-in counter sale: no account, products only, memberId stays null.
+    // Packs/memberships/classes are consumed by an account over time, so they
+    // are rejected here. Handled entirely in this branch and returned early.
+    if (walkIn) {
+      const walkInName =
+        typeof walkInNameRaw === "string" && walkInNameRaw.trim()
+          ? walkInNameRaw.trim()
+          : null;
+      const productItems = (items ?? []).filter(
+        (i) => i.type === "product" && i.price > 0,
+      );
+      if ((items ?? []).some((i) => i.type !== "product")) {
+        return NextResponse.json(
+          { error: "Walk-in sales can only contain products" },
+          { status: 400 },
+        );
+      }
+      if (productItems.length === 0) {
+        return NextResponse.json(
+          { error: "Walk-in sales require at least one product" },
+          { status: 400 },
+        );
+      }
+
+      const tenantCurrency = await getTenantCurrency();
+      const currency = (
+        productItems[0].currency ?? tenantCurrency.code
+      ).toLowerCase();
+      const totalAmount = productItems.reduce(
+        (sum, i) => sum + i.price * i.quantity,
+        0,
+      );
+
+      // Shopify order for physical-store products — created as a guest order
+      // (no customer/email). A Shopify failure must not roll back the sale.
+      let shopifyOrder: { id: number; name: string } | null = null;
+      let shopifyOrderError: string | null = null;
+      const shopifyItems = productItems.filter((i) => i.shopifyVariantId);
+      if (shopifyItems.length > 0) {
+        const config = await prisma.shopifyConfig.findUnique({
+          where: { tenantId },
+          select: { posLocationId: true },
+        });
+        if (config?.posLocationId) {
+          try {
+            const conn = await getAdminConnection(tenantId);
+            if (conn) {
+              const lineItems = shopifyItems.map((i) => ({
+                variantId: i.shopifyVariantId as string,
+                quantity: i.quantity,
+              }));
+              shopifyOrder = await createPosOrder(conn.shopDomain, conn.token, {
+                locationId: config.posLocationId,
+                lineItems,
+              });
+              await decrementInventoryAtLocation(
+                conn.shopDomain,
+                conn.token,
+                config.posLocationId,
+                lineItems,
+              );
+              try {
+                await fulfillPosOrder(conn.shopDomain, conn.token, shopifyOrder.id);
+              } catch (ferr) {
+                console.error(
+                  "[pos-sale walk-in] Shopify fulfillment failed (order + inventory ok)",
+                  ferr,
+                );
+              }
+            }
+          } catch (err) {
+            shopifyOrderError =
+              err instanceof Error ? err.message : "Shopify order failed";
+            console.error("[pos-sale walk-in] Shopify order creation failed", err);
+          }
+        }
+      }
+
+      // No account → no saved-card charge. Cash stays cash; anything else
+      // (terminal) is recorded as an in-person card payment.
+      const dbPaymentMethod = paymentMethod === "cash" ? "cash" : "card";
+
+      for (const item of productItems) {
+        const itemMetadata: Record<string, string | number | boolean> = {
+          walkIn: true,
+        };
+        if (walkInName) itemMetadata.customerName = walkInName;
+        if (item.shopifyVariantId) {
+          itemMetadata.shopifyVariantId = item.shopifyVariantId;
+          if (shopifyOrder) {
+            itemMetadata.shopifyOrderId = shopifyOrder.id;
+            itemMetadata.shopifyOrderName = shopifyOrder.name;
+          }
+          if (shopifyOrderError) itemMetadata.shopifyOrderError = shopifyOrderError;
+        }
+
+        const tx = await prisma.posTransaction.create({
+          data: {
+            tenantId,
+            memberId: null,
+            amount: item.price * item.quantity,
+            currency,
+            paymentMethod: dbPaymentMethod,
+            type: "product",
+            concept: item.name,
+            conceptSub: notes ?? null,
+            status: "completed",
+            processedById: adminUserId,
+            referenceId: item.referenceId,
+            metadata: itemMetadata as Prisma.InputJsonObject,
+          },
+        });
+
+        // Fire-and-forget commission accrual (attributes to the seller, not the
+        // customer — so walk-ins still credit the staff member). Idempotent.
+        try {
+          const { onPosTransactionCompleted } = await import("@/lib/staff");
+          await onPosTransactionCompleted(tx.id);
+        } catch (err) {
+          console.error("[pos-sale walk-in] commission accrual failed", tx.id, err);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        saleId: `pos_${Date.now()}`,
+        total: totalAmount,
+        currency,
+        customerName: walkInName,
+        ...(shopifyOrder && { shopifyOrderName: shopifyOrder.name }),
+        ...(shopifyOrderError && { shopifyOrderError }),
+      });
+    }
 
     if (!customerId || (!items?.length && !selectedClass)) {
       return NextResponse.json(

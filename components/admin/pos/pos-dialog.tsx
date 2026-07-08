@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
 export function PosDialog() {
-  const { isOpen, closePOS, step, customer, setStep } = usePosStore();
+  const { isOpen, closePOS, step, customer, isWalkIn, setStep } = usePosStore();
   const t = useTranslations("pos");
 
   return (
@@ -44,7 +44,7 @@ export function PosDialog() {
             <StepDot
               label={t("stepCustomer")}
               active={step === "customer"}
-              completed={step !== "customer" && !!customer}
+              completed={step !== "customer" && (!!customer || isWalkIn)}
               onClick={() => step !== "customer" && setStep("customer")}
             />
             <div className="h-px flex-1 bg-border/50" />
@@ -73,7 +73,7 @@ export function PosDialog() {
                   size="sm"
                   className="bg-admin text-white hover:bg-admin/90"
                   onClick={() => setStep("cart")}
-                  disabled={!customer}
+                  disabled={!customer && !isWalkIn}
                 >
                   {t("continue")}
                 </Button>

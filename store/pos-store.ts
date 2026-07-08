@@ -48,6 +48,8 @@ export interface PosSaleResult {
   selectedClass?: PosSelectedClass | null;
   paymentMethod: PosPaymentMethod;
   customerName: string;
+  /** Walk-in sale (no account) — no receipt email is sent. */
+  isWalkIn?: boolean;
 }
 
 interface PosOpenOptions {
@@ -61,6 +63,10 @@ interface PosState {
   isOpen: boolean;
   step: PosStep;
   customer: PosCustomer | null;
+  /** Walk-in counter sale: no account, products only. Mutually exclusive with customer. */
+  isWalkIn: boolean;
+  /** Optional label for a walk-in sale (e.g. to jot "Playera – Juan"); never creates an account. */
+  walkInName: string | null;
   cart: PosCartItem[];
   selectedClass: PosSelectedClass | null;
   saleResult: PosSaleResult | null;
@@ -70,6 +76,8 @@ interface PosState {
   closePOS: () => void;
   setStep: (step: PosStep) => void;
   setCustomer: (customer: PosCustomer | null) => void;
+  setWalkIn: (on: boolean) => void;
+  setWalkInName: (name: string | null) => void;
   setSelectedClass: (cls: PosSelectedClass | null) => void;
   addToCart: (item: Omit<PosCartItem, "id">) => void;
   removeFromCart: (id: string) => void;
@@ -87,6 +95,8 @@ export const usePosStore = create<PosState>((set, get) => ({
   isOpen: false,
   step: "customer",
   customer: null,
+  isWalkIn: false,
+  walkInName: null,
   cart: [],
   selectedClass: null,
   saleResult: null,
@@ -117,6 +127,8 @@ export const usePosStore = create<PosState>((set, get) => ({
       isOpen: true,
       step: customer ? "cart" : "customer",
       customer: customer ?? null,
+      isWalkIn: false,
+      walkInName: null,
       cart: prefilled,
       selectedClass: selectedClass ?? null,
       saleResult: null,
@@ -130,6 +142,8 @@ export const usePosStore = create<PosState>((set, get) => ({
       isOpen: false,
       step: "customer",
       customer: null,
+      isWalkIn: false,
+      walkInName: null,
       cart: [],
       selectedClass: null,
       saleResult: null,
@@ -139,7 +153,14 @@ export const usePosStore = create<PosState>((set, get) => ({
   },
 
   setStep: (step) => set({ step }),
-  setCustomer: (customer) => set({ customer }),
+  // Picking a real customer clears any walk-in mode (mutually exclusive).
+  setCustomer: (customer) => set(customer ? { customer, isWalkIn: false } : { customer }),
+  // Walk-in is a products-only counter sale — no account, no class/credits.
+  setWalkIn: (on) =>
+    set(on
+      ? { isWalkIn: true, customer: null, selectedClass: null }
+      : { isWalkIn: false, walkInName: null }),
+  setWalkInName: (walkInName) => set({ walkInName }),
   setSelectedClass: (cls) => set({ selectedClass: cls }),
 
   addToCart: (item) => {
@@ -178,6 +199,8 @@ export const usePosStore = create<PosState>((set, get) => ({
       isOpen: false,
       step: "customer",
       customer: null,
+      isWalkIn: false,
+      walkInName: null,
       cart: [],
       selectedClass: null,
       saleResult: null,

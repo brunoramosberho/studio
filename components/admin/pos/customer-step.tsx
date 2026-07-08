@@ -10,6 +10,7 @@ import {
   Eye,
   UserCircle,
   Loader2,
+  Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +39,10 @@ export function CustomerStep() {
     customer,
     setCustomer,
     setStep,
+    isWalkIn,
+    walkInName,
+    setWalkIn,
+    setWalkInName,
   } = usePosStore();
 
   const [search, setSearch] = useState("");
@@ -112,6 +117,39 @@ export function CustomerStep() {
     <div className="space-y-5">
       <h3 className="font-display text-lg font-bold">{t("customer")}</h3>
 
+      {isWalkIn ? (
+        /* Walk-in (no account) counter sale — products only, optional name */
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 rounded-xl border border-admin/30 bg-admin/5 px-4 py-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-admin/10">
+              <Store className="h-5 w-5 text-admin" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{t("walkInCustomer")}</p>
+              <p className="text-xs text-muted">{t("walkInHint")}</p>
+            </div>
+            <button
+              onClick={() => setWalkIn(false)}
+              className="rounded-full p-1.5 text-muted hover:bg-surface hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-muted">
+              {t("walkInNameLabel")}
+            </label>
+            <input
+              type="text"
+              value={walkInName ?? ""}
+              onChange={(e) => setWalkInName(e.target.value.trim() ? e.target.value : null)}
+              placeholder={t("walkInNamePlaceholder")}
+              className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none transition-colors focus:border-admin/40 focus:ring-2 focus:ring-admin/10"
+            />
+          </div>
+        </div>
+      ) : (
+      <>
       {/* Customer selector */}
       <div className="flex items-center gap-2.5">
         <div ref={dropdownRef} className="relative flex-1">
@@ -255,6 +293,19 @@ export function CustomerStep() {
           </button>
         )}
       </div>
+
+      {!customer && (
+        <button
+          type="button"
+          onClick={() => setWalkIn(true)}
+          className="flex items-center gap-2 text-xs font-medium text-muted transition-colors hover:text-admin"
+        >
+          <Store className="h-4 w-4" />
+          {t("walkInSale")}
+        </button>
+      )}
+      </>
+      )}
 
       {/* Create client dialog */}
       <CreateClientDialog

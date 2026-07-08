@@ -70,6 +70,8 @@ export function PaymentStep() {
   const tenantCurrency = useCurrency();
   const {
     customer,
+    isWalkIn,
+    walkInName,
     cart,
     selectedClass,
     cartTotal,
@@ -78,13 +80,22 @@ export function PaymentStep() {
     closePOS,
   } = usePosStore();
 
-  const [selectedMethod, setSelectedMethod] =
-    useState<PosPaymentMethod>("saved_card");
+  const [selectedMethod, setSelectedMethod] = useState<PosPaymentMethod>(
+    isWalkIn ? "terminal" : "saved_card",
+  );
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   const total = cartTotal();
   const currency = cart[0]?.currency ?? tenantCurrency.code;
   const hasPaidItems = cart.some((i) => i.price > 0);
+
+  // A walk-in has no account, so there are no saved cards to charge.
+  const paymentMethods = isWalkIn
+    ? PAYMENT_METHODS.filter((m) => m.key !== "saved_card")
+    : PAYMENT_METHODS;
+  const saleForName = isWalkIn
+    ? walkInName ?? t("walkInCustomer")
+    : customer?.name ?? t("customer");
 
   const { data: savedCards = [], isLoading: cardsLoading } = useQuery<
     SavedCard[]
@@ -117,7 +128,9 @@ export function PaymentStep() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerId: customer!.id,
+          customerId: customer?.id ?? null,
+          walkIn: isWalkIn,
+          walkInName: isWalkIn ? walkInName : undefined,
           items: cart.map((item) => ({
             type: item.type,
             referenceId: item.referenceId,
@@ -166,7 +179,8 @@ export function PaymentStep() {
         items: cart,
         selectedClass,
         paymentMethod: hasPaidItems ? selectedMethod : "cash",
-        customerName: data.customerName ?? customer?.name ?? t("customer"),
+        customerName: data.customerName ?? saleForName,
+        isWalkIn,
       });
       setStep("confirmation");
       toast.success(t("saleProcessed"));
@@ -197,7 +211,7 @@ export function PaymentStep() {
               ? `${t("itemsFor", { count: cart.length })} `
               : `${t("saleFor")} `}
             <span className="font-medium text-foreground">
-              {customer?.name ?? t("customer")}
+              {saleForName}
             </span>
           </span>
           <span className="text-lg font-bold">
@@ -216,7 +230,7 @@ export function PaymentStep() {
         <>
           {/* Payment method selection */}
           <div className="space-y-2">
-            {PAYMENT_METHODS.map((method) => {
+            {paymentMethods.map((method) => {
               const isCardOption = method.key === "saved_card";
               const cardDisabled = isCardOption && cardsReady && !hasCards;
               const isSelected = selectedMethod === method.key;

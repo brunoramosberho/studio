@@ -117,8 +117,8 @@ export function ConfirmationStep() {
         </div>
       )}
 
-      {/* Note about email */}
-      {displayTotal > 0 && (
+      {/* Note about email — walk-ins have no account, so no receipt is sent */}
+      {displayTotal > 0 && !saleResult.isWalkIn && (
         <p className="text-center text-xs text-muted">
           {t("receiptSentEmail")}
         </p>

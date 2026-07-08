@@ -92,6 +92,7 @@ export function CartStep() {
   const tenantCurrency = useCurrency();
   const {
     customer,
+    isWalkIn,
     cart,
     selectedClass,
     addToCart,
@@ -102,7 +103,13 @@ export function CartStep() {
     cartTotal,
   } = usePosStore();
 
-  const initialCategory = selectedClass && !selectedClass.hasCredits ? "package" : "class";
+  // Walk-in (no account) can only buy products — packs/memberships/classes are
+  // consumed by an account over time, so they're hidden in that mode.
+  const initialCategory: CartCategory = isWalkIn
+    ? "product"
+    : selectedClass && !selectedClass.hasCredits
+      ? "package"
+      : "class";
   const [activeCategory, setActiveCategory] = useState<CartCategory>(initialCategory);
   const [showClassPicker, setShowClassPicker] = useState(false);
   const [showSpotPicker, setShowSpotPicker] = useState(
@@ -306,7 +313,8 @@ export function CartStep() {
       )}
 
       <div className="flex gap-4">
-        {/* Category sidebar */}
+        {/* Category sidebar — hidden for walk-ins (products only) */}
+        {!isWalkIn && (
         <div className="w-48 shrink-0 space-y-1">
           {CATEGORIES.map((cat) => (
             <button
@@ -329,6 +337,7 @@ export function CartStep() {
             </button>
           ))}
         </div>
+        )}
 
         {/* Category content */}
         <div className="flex-1 min-w-0">
