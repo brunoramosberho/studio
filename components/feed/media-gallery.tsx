@@ -61,6 +61,45 @@ function InlineVideo({ src, poster, className, onClick }: { src: string; poster?
   );
 }
 
+function LightboxVideo({
+  src,
+  poster,
+  active,
+}: {
+  src: string;
+  poster?: string | null;
+  active: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Play when this becomes the on-screen media; pause + rewind when the user
+  // swipes to another photo/video, so only the visible item ever plays. The
+  // adjacent items are pre-mounted (for smooth swiping), so mount-time autoPlay
+  // isn't enough — we drive playback off `active` instead.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (active) {
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+      video.currentTime = 0;
+    }
+  }, [active]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      poster={poster || undefined}
+      className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
+      controls
+      preload={active ? "auto" : "metadata"}
+      playsInline
+    />
+  );
+}
+
 function Lightbox({
   media,
   initialIdx,
@@ -313,14 +352,10 @@ function Lightbox({
               >
                 {isNearby ? (
                   isVideo(item.mimeType) ? (
-                    <video
+                    <LightboxVideo
                       src={item.url}
-                      poster={item.thumbnailUrl || undefined}
-                      className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
-                      controls
-                      autoPlay={i === idx}
-                      preload={i === idx ? "auto" : "metadata"}
-                      playsInline
+                      poster={item.thumbnailUrl}
+                      active={i === idx}
                     />
                   ) : (
                     <img
