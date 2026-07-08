@@ -49,6 +49,7 @@ function formatHeaderDate(date: Date, td: (key: string) => string): string {
 }
 
 const STUDIO_STORAGE_KEY = "check-in-studio-id";
+const CLASS_STORAGE_KEY = "check-in-class-id";
 
 export default function CheckInPage() {
   const t = useTranslations("admin");
@@ -64,6 +65,10 @@ export default function CheckInPage() {
   const { data: allClasses = [], isLoading } = useQuery<ClassItem[]>({
     queryKey: ["check-in-classes", dateStr],
     queryFn: () => fetch(`/api/check-in/classes?date=${dateStr}`).then((r) => r.json()),
+    // Front desk keeps this open all day — poll so the schedule (live class,
+    // counts) stays current without a manual refresh, like the roster does.
+    // Only today needs polling; past/future days are static.
+    refetchInterval: isToday(selectedDate) ? 30_000 : false,
   });
 
   const { data: studios = [], isLoading: isLoadingStudios } = useQuery<{ id: string; name: string }[]>({
@@ -108,12 +113,28 @@ export default function CheckInPage() {
 
   const [showFinished, setShowFinished] = useState(false);
 
-  // Auto-select: live class first, then next upcoming, then first class
+  // Resolve which class is selected. Priority:
+  //   1. Keep the current selection if it's still in the list — so an
+  //      auto-refresh or a check-in (both refetch the class list) never yanks
+  //      the front desk back to the live class mid-task.
+  //   2. Restore the last-selected class across a full page reload.
+  //   3. Auto-select: live class → next upcoming → most recent finished.
   useEffect(() => {
     if (classes.length === 0) {
       setSelectedClassId(null);
       return;
     }
+    if (selectedClassId && classes.some((c) => c.id === selectedClassId)) return;
+
+    const stored =
+      typeof window !== "undefined" ? localStorage.getItem(CLASS_STORAGE_KEY) : null;
+    const storedClass = stored ? classes.find((c) => c.id === stored) : undefined;
+    if (storedClass) {
+      setSelectedClassId(storedClass.id);
+      if (storedClass.isFinished) setShowFinished(true);
+      return;
+    }
+
     const live = classes.find((c) => c.isLive);
     if (live) {
       setSelectedClassId(live.id);
@@ -127,7 +148,7 @@ export default function CheckInPage() {
     // All finished (past day) — select the most recent one
     setSelectedClassId(classes[classes.length - 1].id);
     setShowFinished(true);
-  }, [classes]);
+  }, [classes, selectedClassId]);
 
   useEffect(() => {
     setShowMobileRoster(false);
@@ -136,6 +157,8 @@ export default function CheckInPage() {
   const handleSelectClass = useCallback((classId: string) => {
     setSelectedClassId(classId);
     setShowMobileRoster(true);
+    // Remember the explicit choice so a full page reload restores it.
+    if (typeof window !== "undefined") localStorage.setItem(CLASS_STORAGE_KEY, classId);
   }, []);
 
   const selectedClass = useMemo(
