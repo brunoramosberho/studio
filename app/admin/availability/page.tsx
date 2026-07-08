@@ -144,6 +144,7 @@ interface AvailabilitySettings {
     gapDetected: boolean;
     weeklySummary: boolean;
     autoRejectTimeout: boolean;
+    coachClassReminder: boolean;
   };
 }
 
@@ -1977,6 +1978,7 @@ function NotificationsSection() {
     gapDetected: overrides.gapDetected ?? settings?.notifications.gapDetected ?? true,
     weeklySummary: overrides.weeklySummary ?? settings?.notifications.weeklySummary ?? false,
     autoRejectTimeout: overrides.autoRejectTimeout ?? settings?.notifications.autoRejectTimeout ?? false,
+    coachClassReminder: overrides.coachClassReminder ?? settings?.notifications.coachClassReminder ?? true,
   };
 
   const toggle = useCallback(
@@ -2027,6 +2029,12 @@ function NotificationsSection() {
       key: "autoRejectTimeout",
       label: "Timeout de aprobación",
       description: "Auto-rechazar solicitudes sin respuesta después de 48h",
+    },
+    {
+      key: "coachClassReminder",
+      label: "Recordatorio de clase al instructor",
+      description:
+        "Avisa al instructor por email y push un día antes y una hora antes de cada clase que da",
     },
   ];
 

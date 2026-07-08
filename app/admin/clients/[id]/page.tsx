@@ -52,6 +52,7 @@ import { useFormatMoney } from "@/components/tenant-provider";
 import { format } from "date-fns";
 import { usePosStore } from "@/store/pos-store";
 import { ShoppingBag, Users } from "lucide-react";
+import { CardBrandIcon } from "@/components/payments/card-brand-icon";
 import { useTranslations, useLocale } from "next-intl";
 
 interface ClientDetail {
@@ -68,6 +69,14 @@ interface ClientDetail {
   lastSeenAt: string | null;
   role: string;
   friends: { id: string; name: string | null; image: string | null }[];
+  savedCards: {
+    id: string;
+    brand: string;
+    last4: string;
+    expMonth: number;
+    expYear: number;
+    isDefault: boolean;
+  }[];
   stats: {
     totalClasses: number;
     classesThisMonth: number;
@@ -1061,6 +1070,50 @@ export default function ClientDetailPage() {
                 </div>
               ) : (
                 <p className="text-sm text-muted/60">{t("noPackages")}</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Saved cards (read-only) */}
+          <Card>
+            <CardContent className="p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-admin" />
+                <span className="text-sm font-semibold">{t("savedCards")}</span>
+                {client.savedCards.length > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {client.savedCards.length}
+                  </Badge>
+                )}
+              </div>
+              {client.savedCards.length > 0 ? (
+                <div className="space-y-2">
+                  {client.savedCards.map((card) => (
+                    <div
+                      key={card.id}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
+                    >
+                      <CardBrandIcon brand={card.brand} />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold capitalize">
+                          {card.brand} •••• {card.last4}
+                        </p>
+                        <p className="text-xs text-muted">
+                          {t("cardExpires", {
+                            date: `${String(card.expMonth).padStart(2, "0")}/${String(card.expYear).slice(-2)}`,
+                          })}
+                        </p>
+                      </div>
+                      {card.isDefault && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {t("cardDefault")}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted/60">{t("noSavedCards")}</p>
               )}
             </CardContent>
           </Card>

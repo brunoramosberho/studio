@@ -18,6 +18,7 @@ export async function GET() {
         gapDetected: tenant.notifyGapDetected,
         weeklySummary: tenant.notifyWeeklySummary,
         autoRejectTimeout: tenant.notifyAutoRejectTimeout,
+        coachClassReminder: tenant.notifyCoachClassReminder,
       },
     });
   } catch (error) {
@@ -65,6 +66,7 @@ export async function PATCH(request: NextRequest) {
       if (n.gapDetected !== undefined) data.notifyGapDetected = n.gapDetected;
       if (n.weeklySummary !== undefined) data.notifyWeeklySummary = n.weeklySummary;
       if (n.autoRejectTimeout !== undefined) data.notifyAutoRejectTimeout = n.autoRejectTimeout;
+      if (n.coachClassReminder !== undefined) data.notifyCoachClassReminder = n.coachClassReminder;
     }
 
     const updated = await prisma.tenant.update({
@@ -84,6 +86,7 @@ export async function PATCH(request: NextRequest) {
         gapDetected: updated.notifyGapDetected,
         weeklySummary: updated.notifyWeeklySummary,
         autoRejectTimeout: updated.notifyAutoRejectTimeout,
+        coachClassReminder: updated.notifyCoachClassReminder,
       },
     });
   } catch (error) {

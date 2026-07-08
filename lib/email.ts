@@ -1287,6 +1287,88 @@ export async function sendSubstitutionRequest({
   }
 }
 
+export async function sendCoachClassReminder({
+  to,
+  coachName,
+  className,
+  date,
+  startTime,
+  whenLabel,
+  classUrl,
+  requestSubUrl,
+  branding,
+  timeZone,
+}: {
+  to: string;
+  coachName: string;
+  className: string;
+  date: Date;
+  startTime: Date;
+  whenLabel: string; // e.g. "mañana" or "en 1 hora"
+  classUrl: string;
+  requestSubUrl: string;
+  branding: StudioBranding;
+  timeZone?: string;
+}) {
+  try {
+    const b = branding;
+    const studioFull = `${b.studioName} Studio`;
+    const firstName = coachName?.split(" ")[0] || "";
+
+    const content = `
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:${b.colorAccent}15;line-height:56px;font-size:28px;">&#128197;</div>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:${b.colorFg};">
+          Recordatorio de clase
+        </h1>
+        <p style="margin:0;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+          ${firstName ? `Hola ${firstName}. ` : ""}Das <strong>${className}</strong> ${whenLabel}.
+        </p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorBg};border-radius:14px;margin-bottom:24px;">
+        <tr><td style="padding:20px 24px;">
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:${b.colorAccent};">${className}</h2>
+          <table cellpadding="0" cellspacing="0" style="font-size:14px;color:${b.colorFg};">
+            <tr>
+              <td style="padding:3px 0;"><strong>Fecha</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatDate(date, undefined, timeZone)}</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 0;"><strong>Hora</strong></td>
+              <td style="padding:3px 0 3px 16px;">${formatTime(startTime, timeZone)}</td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+
+      <div style="text-align:center;margin-bottom:16px;">
+        <a href="${classUrl}" target="_blank" style="display:inline-block;background:${b.colorFg};color:${b.colorBg};text-decoration:none;font-size:15px;font-weight:600;padding:14px 40px;border-radius:50px;letter-spacing:0.3px;">
+          Ver la clase
+        </a>
+      </div>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${requestSubUrl}" target="_blank" style="display:inline-block;background:transparent;color:${b.colorFg};text-decoration:none;font-size:14px;font-weight:600;padding:12px 32px;border-radius:50px;border:1px solid ${b.colorMuted}55;">
+          ¿No puedes asistir? Pedir suplencia
+        </a>
+      </div>
+
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
+        Si no puedes dar esta clase, pide una suplencia cuanto antes para dar tiempo a que otro instructor la cubra.
+      </p>`;
+
+    await getResend().emails.send({
+      from: `${studioFull} <${FROM}>`,
+      to,
+      subject: `Recordatorio — ${className} ${whenLabel}`,
+      html: emailShell(b, content),
+    });
+  } catch (error) {
+    console.error("Failed to send coach class reminder email:", error);
+  }
+}
+
 export async function sendSubstitutionAccepted({
   to,
   toName,

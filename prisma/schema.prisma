@@ -124,6 +124,10 @@ model Tenant {
   notifyGapDetected       Boolean @default(true)
   notifyWeeklySummary     Boolean @default(false)
   notifyAutoRejectTimeout Boolean @default(false)
+  // When true, instructors get a reminder (email + push) for each class they
+  // teach — one a day before and one an hour before. Dedupe lives on Class
+  // (coachReminderDaySentAt / coachReminderHourSentAt).
+  notifyCoachClassReminder Boolean @default(true)
 
   locale String @default("es") // "en" | "es"
 
@@ -797,6 +801,9 @@ model Class {
   platformBookings     PlatformBooking[]
   ratings              ClassRating[]
   ratingEmailSent      Boolean                 @default(false)
+  // Dedupe for the instructor class reminders (see Tenant.notifyCoachClassReminder).
+  coachReminderDaySentAt  DateTime?
+  coachReminderHourSentAt DateTime?
   entitlements         Entitlement[]
   revenueEvents        RevenueEvent[]
   substitutionRequests SubstitutionRequest[]   @relation("SubstitutionClass")

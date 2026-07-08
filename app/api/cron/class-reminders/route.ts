@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendPushToUser, sendPushToMany } from "@/lib/push";
-import { sendWaiverReminder } from "@/lib/email";
+import { sendWaiverReminder, sendCoachClassReminder } from "@/lib/email";
 import { tenantToBranding } from "@/lib/branding";
+import { getBrandingForTenantId } from "@/lib/branding.server";
 import { createWaiverToken } from "@/lib/waiver/token";
 import { refundAndClearWaitlist } from "@/lib/waitlist";
 import {
@@ -36,7 +37,12 @@ export async function GET(request: NextRequest) {
 
   const tenants = await prisma.tenant.findMany({
     where: { isActive: true },
-    select: { id: true, hideCoachUntilClassEnds: true },
+    select: {
+      id: true,
+      slug: true,
+      hideCoachUntilClassEnds: true,
+      notifyCoachClassReminder: true,
+    },
   });
 
   let sent = 0;
@@ -98,6 +104,120 @@ export async function GET(request: NextRequest) {
       });
 
       sent++;
+    }
+  }
+
+  // ── Instructor class reminders ────────────────────────────
+  // One reminder a day before the class and one an hour before, sent to the
+  // assigned coach via push + email. Thresholds (within 24h / within 1h) plus
+  // the per-class dedupe columns make this resilient to cron jitter — a class
+  // fires each reminder exactly once regardless of when the tick lands.
+  let coachRemindersSent = 0;
+  const localYMD = (d: Date, tz: string) =>
+    d.toLocaleDateString("en-CA", { timeZone: tz });
+
+  for (const tenant of tenants) {
+    if (!tenant.notifyCoachClassReminder || !tenant.slug) continue;
+
+    const dayAhead = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    const upcoming = await prisma.class.findMany({
+      where: {
+        tenantId: tenant.id,
+        status: "SCHEDULED",
+        startsAt: { gt: now, lte: dayAhead },
+        OR: [
+          { coachReminderDaySentAt: null },
+          { coachReminderHourSentAt: null },
+        ],
+      },
+      include: {
+        classType: { select: { name: true } },
+        coach: {
+          select: {
+            name: true,
+            userId: true,
+            user: { select: { email: true } },
+          },
+        },
+        room: {
+          select: {
+            studio: { select: { city: { select: { timezone: true } } } },
+          },
+        },
+      },
+    });
+
+    if (upcoming.length === 0) continue;
+
+    const branding = await getBrandingForTenantId(tenant.id);
+
+    for (const cls of upcoming) {
+      const coach = cls.coach;
+      if (!coach.userId) continue;
+
+      const minsUntil = (cls.startsAt.getTime() - now.getTime()) / 60_000;
+      // A class is either in the last hour (send the "hour" reminder) or
+      // further out within 24h (send the "day" reminder) — never both on the
+      // same tick, so at most one reminder fires per class per run.
+      const kind: "hour" | "day" | null =
+        minsUntil <= 60
+          ? cls.coachReminderHourSentAt
+            ? null
+            : "hour"
+          : cls.coachReminderDaySentAt
+            ? null
+            : "day";
+      if (!kind) continue;
+
+      const tz = cls.room?.studio?.city?.timezone || "Europe/Madrid";
+      const className = cls.classType.name;
+      const timeStr = formatTime(cls.startsAt, tz);
+      const whenLabel =
+        kind === "hour"
+          ? minsUntil >= 55
+            ? "en 1 hora"
+            : `en ${Math.max(1, Math.round(minsUntil))} min`
+          : localYMD(cls.startsAt, tz) !== localYMD(now, tz)
+            ? "mañana"
+            : "más tarde hoy";
+
+      await sendPushToUser(
+        coach.userId,
+        {
+          title: `${className} · ${whenLabel}`,
+          body: `Recordatorio: das esta clase a las ${timeStr}`,
+          url: `/coach/class/${cls.id}`,
+          tag: `coach-reminder-${kind}-${cls.id}`,
+        },
+        tenant.id,
+      );
+
+      if (coach.user?.email) {
+        const classUrl = `${protocol}://${tenant.slug}.${rootDomain}/coach/class/${cls.id}`;
+        await sendCoachClassReminder({
+          to: coach.user.email,
+          coachName: coach.name ?? "",
+          className,
+          date: cls.startsAt,
+          startTime: cls.startsAt,
+          whenLabel,
+          classUrl,
+          requestSubUrl: `${classUrl}?action=substitute`,
+          branding,
+          timeZone: tz,
+        });
+      }
+
+      await prisma.class.update({
+        where: { id: cls.id },
+        data:
+          kind === "hour"
+            ? { coachReminderHourSentAt: now }
+            : { coachReminderDaySentAt: now },
+      });
+
+      coachRemindersSent++;
     }
   }
 
@@ -455,6 +575,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     sent,
+    coachRemindersSent,
     classesAutoCompleted,
     pendingPenaltiesCreated,
     waitlistRefunded,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
+import { listSavedPaymentMethods } from "@/lib/stripe/payments";
 
 
 function getMethodLabel(source: string): string {
@@ -377,8 +378,18 @@ export async function GET(
       return { id: friend.id, name: friend.name, image: friend.image };
     });
 
+    // Saved cards (read-only). Isolated in try/catch so a Stripe hiccup or a
+    // client with no Stripe customer never breaks the whole profile.
+    let savedCards: Awaited<ReturnType<typeof listSavedPaymentMethods>> = [];
+    try {
+      savedCards = await listSavedPaymentMethods(userId, tenantId);
+    } catch (err) {
+      console.error("Failed to load saved cards for client", userId, err);
+    }
+
     return NextResponse.json({
       friends,
+      savedCards,
       id: user.id,
       name: user.name,
       email: user.email,

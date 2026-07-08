@@ -117,6 +117,7 @@ async function fetchSubstitutions(status: string): Promise<ApiResponse> {
 export default function AdminSubstitutionsPage() {
   const [status, setStatus] = useState<"all" | Status>("PENDING_ADMIN");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [view, setView] = useState<"requests" | "summary">("requests");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-substitutions", status],
@@ -151,6 +152,32 @@ export default function AdminSubstitutionsPage() {
           </Button>
         </div>
 
+        <div className="inline-flex rounded-lg bg-stone-100 p-1">
+          {(
+            [
+              { value: "requests", label: "Solicitudes" },
+              { value: "summary", label: "Resumen por instructor" },
+            ] as const
+          ).map((v) => (
+            <button
+              key={v.value}
+              onClick={() => setView(v.value)}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                view === v.value
+                  ? "border border-stone-200 bg-card text-stone-900"
+                  : "text-stone-500 hover:text-stone-700",
+              )}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+
+        {view === "summary" && <CoachSummaryView />}
+
+        {view === "requests" && (
+        <>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <SummaryCard
             label="Esperan aprobación"
@@ -216,9 +243,171 @@ export default function AdminSubstitutionsPage() {
             ))}
           </div>
         )}
+        </>
+        )}
       </div>
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+    </div>
+  );
+}
+
+interface CoachSummaryRow {
+  id: string;
+  name: string | null;
+  photoUrl: string | null;
+  color: string;
+  requested: number;
+  accepted: number;
+  pending: number;
+  rejected: number;
+  cancelled: number;
+  expired: number;
+  covered: number;
+}
+
+interface SummaryResponse {
+  summary: CoachSummaryRow[];
+  totals: { requested: number; covered: number };
+  days: string;
+}
+
+const RANGE_FILTERS: { value: string; label: string }[] = [
+  { value: "all", label: "Todo" },
+  { value: "7", label: "7 días" },
+  { value: "30", label: "30 días" },
+  { value: "90", label: "90 días" },
+];
+
+function CoachSummaryView() {
+  const [days, setDays] = useState("30");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-substitutions-summary", days],
+    queryFn: async (): Promise<SummaryResponse> => {
+      const res = await fetch(
+        `/api/admin/substitutions/summary?days=${days}`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const rows = data?.summary ?? [];
+  const active = rows.filter((r) => r.requested > 0 || r.covered > 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex flex-wrap rounded-lg bg-stone-100 p-1">
+          {RANGE_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setDays(f.value)}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                days === f.value
+                  ? "border border-stone-200 bg-card text-stone-900"
+                  : "text-stone-500 hover:text-stone-700",
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {data && (
+          <p className="text-xs text-stone-500">
+            {data.totals.requested} solicitud
+            {data.totals.requested === 1 ? "" : "es"} · {data.totals.covered}{" "}
+            cubierta{data.totals.covered === 1 ? "" : "s"}
+          </p>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="rounded-2xl border border-stone-200 bg-card p-8 text-center text-sm text-stone-500">
+          Cargando…
+        </div>
+      ) : active.length === 0 ? (
+        <div className="rounded-2xl border border-stone-200 bg-card p-12 text-center">
+          <Users className="mx-auto mb-3 h-8 w-8 text-stone-300" />
+          <p className="text-sm font-medium text-stone-700">
+            Sin actividad de suplencias en este periodo
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-stone-200 bg-card">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-stone-100 text-left text-xs text-stone-500">
+                  <th className="px-4 py-3 font-medium">Instructor</th>
+                  <th className="px-3 py-3 text-center font-medium">Pedidas</th>
+                  <th className="px-3 py-3 text-center font-medium">Aceptadas</th>
+                  <th className="px-3 py-3 text-center font-medium">Pendientes</th>
+                  <th className="px-3 py-3 text-center font-medium">Rechazadas</th>
+                  <th className="px-3 py-3 text-center font-medium">Canceladas</th>
+                  <th className="px-3 py-3 text-center font-medium">Cubiertas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {active.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="border-b border-stone-50 last:border-0"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        {r.photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={r.photoUrl}
+                            alt={r.name ?? ""}
+                            className="h-7 w-7 rounded-full object-cover"
+                          />
+                        ) : (
+                          <span
+                            className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                            style={{ background: r.color }}
+                          >
+                            {(r.name ?? "?").charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                        <span className="font-medium text-stone-900">
+                          {r.name ?? "Instructor"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-center font-semibold text-stone-900">
+                      {r.requested}
+                    </td>
+                    <td className="px-3 py-3 text-center text-emerald-700">
+                      {r.accepted || "—"}
+                    </td>
+                    <td className="px-3 py-3 text-center text-sky-700">
+                      {r.pending || "—"}
+                    </td>
+                    <td className="px-3 py-3 text-center text-stone-500">
+                      {r.rejected || "—"}
+                    </td>
+                    <td className="px-3 py-3 text-center text-stone-500">
+                      {r.cancelled || "—"}
+                    </td>
+                    <td className="px-3 py-3 text-center font-semibold text-stone-900">
+                      {r.covered || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-stone-400">
+        &quot;Pedidas&quot; = suplencias que el instructor solicitó. &quot;Cubiertas&quot; =
+        clases que tomó de otros instructores.
+      </p>
     </div>
   );
 }
