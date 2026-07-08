@@ -102,6 +102,7 @@ function SetupFlow({ platform }: { platform: Platform }) {
       queryClient.invalidateQueries({ queryKey: ["platform-config"] });
       queryClient.invalidateQueries({ queryKey: ["platform-configs"] });
     },
+    onError: (err: Error) => toast.error(err.message || "No se pudo crear la configuración"),
   });
 
   const activateMutation = useMutation({

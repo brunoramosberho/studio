@@ -14,12 +14,12 @@ export function generateInboundEmail(
   tenantSlug: string,
   platform: PlatformType,
 ): string {
-  if (platform !== "classpass") {
-    // Wellhub no longer participates in the email flow; return a sentinel that
-    // the UI can detect and hide. We do not throw to avoid breaking pages that
-    // still render a generic inbox column.
-    return "";
-  }
+  // Every platform gets a distinct address. Only ClassPass is actually routed
+  // (see parseInboundEmail); for Wellhub/others the address is unused but must
+  // still be unique — StudioPlatformConfig.inboundEmail is `@unique`, so the
+  // previous shared "" placeholder let only ONE tenant ever create a Wellhub
+  // config; the next tenant hit the unique constraint and the create failed
+  // silently. This matches the address the Wellhub config route already writes.
   return `${platform}.${tenantSlug}@${INBOUND_DOMAIN}`;
 }
 
