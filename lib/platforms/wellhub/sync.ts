@@ -156,13 +156,30 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
       wellhubProductId: ctx.classType.wellhubProductId,
     });
 
-    // 3) POST if new, PUT if we already have a wellhubSlotId on file.
+    // 3) POST if new, PUT if we already have a wellhubSlotId on file. If the
+    // PUT 404s, our pointer is stale (the slot was deleted on Wellhub's side —
+    // e.g. a class edit or partner-side cleanup). Re-create it instead of
+    // erroring forever: otherwise every 15-min reconcile pass re-alerts on a
+    // class that can never heal itself.
     let wellhubSlotId = ctx.cls.wellhubSlotId;
     if (!wellhubSlotId) {
       const slot = await createWellhubSlot(gymId, wellhubClassId, slotPayload, token);
       wellhubSlotId = slot.id;
     } else {
-      await updateWellhubSlot(gymId, wellhubClassId, wellhubSlotId, slotPayload, token);
+      try {
+        await updateWellhubSlot(gymId, wellhubClassId, wellhubSlotId, slotPayload, token);
+      } catch (error) {
+        if (error instanceof WellhubApiError && error.isNotFound) {
+          console.warn("[wellhub-sync] stale slot pointer 404 — recreating", {
+            classId,
+            staleSlotId: wellhubSlotId,
+          });
+          const slot = await createWellhubSlot(gymId, wellhubClassId, slotPayload, token);
+          wellhubSlotId = slot.id;
+        } else {
+          throw error;
+        }
+      }
     }
 
     await prisma.class.update({
@@ -584,6 +601,17 @@ async function handleSyncError(
       where: { id: classId },
       data: { wellhubSyncStatus: "error", wellhubLastError: reason, wellhubLastSyncAt: new Date() },
     });
+    // Dedup: one open sync-error alert per class. Without this the 15-min
+    // reconcile cron piled up an identical alert every pass for a class that
+    // couldn't self-heal (observed: 4+ copies for one BTM Tone slot).
+    const openAlert = await prisma.platformAlert.findFirst({
+      where: { tenantId, classId, type: "wellhub_sync_error", isResolved: false },
+      select: { id: true },
+    });
+    if (openAlert) {
+      console.error("[wellhub-sync] error (alert already open)", { classId, tenantId, reason });
+      return;
+    }
   }
   await createPlatformAlert({
     tenantId,
