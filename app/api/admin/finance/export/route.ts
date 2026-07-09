@@ -161,6 +161,8 @@ export async function GET(request: NextRequest) {
       type: string;
       method: string;
       gross: number;
+      original: number | null;
+      discount: number | null;
       fee: number | null;
       net: number | null;
       isEstimated: boolean;
@@ -187,6 +189,8 @@ export async function GET(request: NextRequest) {
         type: resolveTypeLabel(sp.type, sp.referenceId),
         method: "Stripe",
         gross,
+        original: null,
+        discount: null,
         fee: sp.stripeFee ?? null,
         net: sp.netAmount ?? null,
         isEstimated: false,
@@ -231,6 +235,18 @@ export async function GET(request: NextRequest) {
       }
 
       const ref = pt.referenceId ? refMap.get(pt.referenceId) : null;
+      const posMeta =
+        pt.metadata && typeof pt.metadata === "object" && !Array.isArray(pt.metadata)
+          ? (pt.metadata as Record<string, unknown>)
+          : null;
+      const origAmount =
+        typeof posMeta?.originalAmount === "number" ? posMeta.originalAmount : null;
+      const hasDiscount =
+        typeof posMeta?.discountType === "string" && origAmount != null && origAmount > gross;
+      const discount = hasDiscount
+        ? Math.round((origAmount! - gross) * 100) / 100
+        : null;
+
       rows.push({
         date: format(pt.createdAt, "dd/MM/yyyy HH:mm", { locale: es }),
         client: pt.member?.name ?? "Sin nombre",
@@ -239,6 +255,8 @@ export async function GET(request: NextRequest) {
         type: resolveTypeLabel(pt.type, pt.referenceId),
         method: getMethodLabel(source),
         gross,
+        original: hasDiscount ? origAmount : null,
+        discount,
         fee,
         net,
         isEstimated,
@@ -266,6 +284,8 @@ export async function GET(request: NextRequest) {
       "Tipo",
       "Método de pago",
       `Monto bruto (${sym})`,
+      `Monto original (${sym})`,
+      `Descuento (${sym})`,
       `Fee (${sym})`,
       `Neto (${sym})`,
       "Fees estimados",
@@ -287,6 +307,8 @@ export async function GET(request: NextRequest) {
           escCsv(r.type),
           escCsv(r.method),
           r.gross.toFixed(2),
+          r.original != null ? r.original.toFixed(2) : "",
+          r.discount != null ? r.discount.toFixed(2) : "",
           r.fee != null ? r.fee.toFixed(2) : "",
           r.net != null ? r.net.toFixed(2) : "",
           r.isEstimated ? "Sí" : "No",

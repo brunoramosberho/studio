@@ -1097,6 +1097,7 @@ export async function sendPosReceiptEmail({
   customerName,
   items,
   total,
+  discount,
   currency,
   paymentMethod,
   studioUrl,
@@ -1105,6 +1106,8 @@ export async function sendPosReceiptEmail({
   customerName: string;
   items: { name: string; quantity: number; price: number; currency: string }[];
   total: number;
+  /** Whole-sale discount applied (currency units); omitted/0 = none. */
+  discount?: number;
   currency: string;
   paymentMethod: "saved_card" | "terminal" | "cash";
   studioUrl: string;
@@ -1156,6 +1159,18 @@ export async function sendPosReceiptEmail({
       <table width="100%" cellpadding="0" cellspacing="0" style="background:${b.colorFg};border-radius:14px;margin-bottom:16px;">
         <tr><td style="padding:16px 24px;">
           <table width="100%" cellpadding="0" cellspacing="0">
+            ${
+              discount && discount > 0
+                ? `<tr>
+              <td style="font-size:13px;color:${b.colorBg};opacity:0.7;padding-bottom:2px;">Subtotal</td>
+              <td style="font-size:13px;color:${b.colorBg};opacity:0.7;text-align:right;padding-bottom:2px;">${formatCurrency(total + discount, currency)}</td>
+            </tr>
+            <tr>
+              <td style="font-size:13px;color:${b.colorBg};opacity:0.7;padding-bottom:6px;">Descuento</td>
+              <td style="font-size:13px;color:${b.colorBg};opacity:0.7;text-align:right;padding-bottom:6px;">&minus;${formatCurrency(discount, currency)}</td>
+            </tr>`
+                : ""
+            }
             <tr>
               <td style="font-size:16px;font-weight:700;color:${b.colorBg};">Total</td>
               <td style="font-size:16px;font-weight:700;color:${b.colorBg};text-align:right;">

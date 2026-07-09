@@ -1,4 +1,11 @@
 import { create } from "zustand";
+import {
+  type PosDiscount,
+  posDiscountAmount,
+  posNetTotal,
+} from "@/lib/pos/discount";
+
+export type { PosDiscount };
 
 export interface PosCustomer {
   id: string;
@@ -50,6 +57,8 @@ export interface PosSaleResult {
   customerName: string;
   /** Walk-in sale (no account) — no receipt email is sent. */
   isWalkIn?: boolean;
+  /** Whole-sale discount applied (currency units); 0/undefined = none. */
+  discountAmount?: number;
 }
 
 interface PosOpenOptions {
@@ -68,6 +77,8 @@ interface PosState {
   /** Optional label for a walk-in sale (e.g. to jot "Playera – Juan"); never creates an account. */
   walkInName: string | null;
   cart: PosCartItem[];
+  /** Whole-sale discount (percent or fixed amount), applied to the cart total. */
+  discount: PosDiscount | null;
   selectedClass: PosSelectedClass | null;
   saleResult: PosSaleResult | null;
   onComplete: (() => void) | null;
@@ -83,9 +94,15 @@ interface PosState {
   removeFromCart: (id: string) => void;
   updateCartQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
+  setDiscount: (discount: PosDiscount | null) => void;
   setSaleResult: (result: PosSaleResult | null) => void;
   reset: () => void;
 
+  /** Sum of line prices, before discount. */
+  cartSubtotal: () => number;
+  /** Discount amount applied to the subtotal. */
+  cartDiscount: () => number;
+  /** Net total charged (subtotal − discount). */
   cartTotal: () => number;
 }
 
@@ -98,6 +115,7 @@ export const usePosStore = create<PosState>((set, get) => ({
   isWalkIn: false,
   walkInName: null,
   cart: [],
+  discount: null,
   selectedClass: null,
   saleResult: null,
   onComplete: null,
@@ -130,6 +148,7 @@ export const usePosStore = create<PosState>((set, get) => ({
       isWalkIn: false,
       walkInName: null,
       cart: prefilled,
+      discount: null,
       selectedClass: selectedClass ?? null,
       saleResult: null,
       onComplete: onComplete ?? null,
@@ -145,6 +164,7 @@ export const usePosStore = create<PosState>((set, get) => ({
       isWalkIn: false,
       walkInName: null,
       cart: [],
+      discount: null,
       selectedClass: null,
       saleResult: null,
       onComplete: null,
@@ -191,7 +211,8 @@ export const usePosStore = create<PosState>((set, get) => ({
     }
   },
 
-  clearCart: () => set({ cart: [] }),
+  clearCart: () => set({ cart: [], discount: null }),
+  setDiscount: (discount) => set({ discount }),
   setSaleResult: (result) => set({ saleResult: result }),
 
   reset: () =>
@@ -202,10 +223,14 @@ export const usePosStore = create<PosState>((set, get) => ({
       isWalkIn: false,
       walkInName: null,
       cart: [],
+      discount: null,
       selectedClass: null,
       saleResult: null,
       onComplete: null,
     }),
 
-  cartTotal: () => get().cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+  cartSubtotal: () =>
+    get().cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+  cartDiscount: () => posDiscountAmount(get().cartSubtotal(), get().discount),
+  cartTotal: () => posNetTotal(get().cartSubtotal(), get().discount),
 }));

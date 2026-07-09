@@ -197,6 +197,11 @@ export async function GET(request: NextRequest) {
       netAmount: number | null;
       availableOn: string | null;
       isFeesEstimated: boolean;
+      // POS whole-sale discount applied to this line (null = none). `grossAmount`
+      // is already the discounted amount charged; these expose what it was before.
+      discountAmount: number | null;
+      originalAmount: number | null;
+      discountLabel: string | null;
       status: string;
       processedBy: { id: string; name: string; initials: string; avatarColor: string } | null;
       processedByType: string;
@@ -237,6 +242,9 @@ export async function GET(request: NextRequest) {
         netAmount: sp.netAmount ?? null,
         availableOn: sp.availableOn?.toISOString() ?? null,
         isFeesEstimated: false,
+        discountAmount: null,
+        originalAmount: null,
+        discountLabel: null,
         status: sp.status,
         processedBy: sp.soldBy
           ? {
@@ -319,6 +327,19 @@ export async function GET(request: NextRequest) {
           : null;
       const walkInName =
         typeof posMeta?.customerName === "string" ? posMeta.customerName : null;
+      // Whole-sale discount recorded on the line: metadata holds the pre-discount
+      // amount + the order-level type/value; the line's discount is original − charged.
+      const discType = typeof posMeta?.discountType === "string" ? posMeta.discountType : null;
+      const discValue = typeof posMeta?.discountValue === "number" ? posMeta.discountValue : null;
+      const origAmount = typeof posMeta?.originalAmount === "number" ? posMeta.originalAmount : null;
+      const hasDiscount = !!discType && origAmount != null && origAmount > pt.amount;
+      const posDiscountAmount = hasDiscount
+        ? Math.round((origAmount - pt.amount) * 100) / 100
+        : null;
+      // A % applies cleanly per line; a fixed order amount is split across lines,
+      // so only label the percent case and let the UI show the amount otherwise.
+      const posDiscountLabel =
+        hasDiscount && discType === "percent" && discValue != null ? `${discValue}%` : null;
       unified.push({
         id: pt.id,
         source,
@@ -336,6 +357,9 @@ export async function GET(request: NextRequest) {
         netAmount,
         availableOn,
         isFeesEstimated,
+        discountAmount: posDiscountAmount,
+        originalAmount: hasDiscount ? origAmount : null,
+        discountLabel: posDiscountLabel,
         status: pt.status === "completed" ? "succeeded" : pt.status,
         processedBy: pt.processedBy
           ? {

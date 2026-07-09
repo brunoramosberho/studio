@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Search,
   X,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClassPicker } from "./class-picker";
@@ -101,6 +102,8 @@ export function CartStep() {
     setStep,
     setSelectedClass,
     cartTotal,
+    cartSubtotal,
+    cartDiscount,
   } = usePosStore();
 
   // Walk-in (no account) can only buy products — packs/memberships/classes are
@@ -261,6 +264,8 @@ export function CartStep() {
   }
 
   const total = cartTotal();
+  const subtotal = cartSubtotal();
+  const discountAmt = cartDiscount();
   const canProceed = cart.length > 0 || (selectedClass?.hasCredits === true);
 
   return (
@@ -659,13 +664,33 @@ export function CartStep() {
               </div>
             )}
 
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm font-semibold">{t("total")}</span>
-              <span className="text-base font-bold">
-                {total > 0
-                  ? formatCurrency(total, cart[0]?.currency ?? tenantCurrency.code)
-                  : tc("free")}
-              </span>
+            {subtotal > 0 && <DiscountControl />}
+
+            <div className="space-y-1 px-4 py-3">
+              {discountAmt > 0 && (
+                <>
+                  <div className="flex items-center justify-between text-xs text-muted">
+                    <span>{t("subtotal")}</span>
+                    <span className="tabular-nums">
+                      {formatCurrency(subtotal, cart[0]?.currency ?? tenantCurrency.code)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-medium text-emerald-600">
+                    <span>{t("discount")}</span>
+                    <span className="tabular-nums">
+                      −{formatCurrency(discountAmt, cart[0]?.currency ?? tenantCurrency.code)}
+                    </span>
+                  </div>
+                </>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">{t("total")}</span>
+                <span className="text-base font-bold">
+                  {total > 0
+                    ? formatCurrency(total, cart[0]?.currency ?? tenantCurrency.code)
+                    : tc("free")}
+                </span>
+              </div>
             </div>
           </div>
         )}
@@ -715,6 +740,123 @@ export function CartStep() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+// Whole-sale discount editor shown in the cart summary. Applies to the total;
+// the sale route re-derives the same amount server-side so it can never differ.
+function DiscountControl() {
+  const t = useTranslations("pos");
+  const tc = useTranslations("common");
+  const tenantCurrency = useCurrency();
+  const { discount, setDiscount, cartSubtotal, cartDiscount } = usePosStore();
+  const [editing, setEditing] = useState(false);
+  const [type, setType] = useState<"percent" | "amount">(discount?.type ?? "percent");
+  const [value, setValue] = useState(discount ? String(discount.value) : "");
+
+  const applied = cartDiscount();
+  const currency = tenantCurrency.code;
+
+  const apply = () => {
+    const v = parseFloat(value);
+    if (!Number.isFinite(v) || v <= 0) {
+      setDiscount(null);
+    } else {
+      setDiscount({ type, value: v });
+    }
+    setEditing(false);
+  };
+
+  // Applied and not being edited → summary chip + remove.
+  if (discount && applied > 0 && !editing) {
+    return (
+      <div className="flex items-center justify-between border-t border-border/40 px-4 py-2">
+        <button
+          onClick={() => setEditing(true)}
+          className="flex items-center gap-1.5 text-xs font-medium text-admin"
+        >
+          <Tag className="h-3.5 w-3.5" />
+          {t("discount")}{" "}
+          {discount.type === "percent"
+            ? `${discount.value}%`
+            : formatCurrency(discount.value, currency)}
+        </button>
+        <button
+          onClick={() => {
+            setDiscount(null);
+            setValue("");
+          }}
+          className="text-xs text-muted transition-colors hover:text-red-500"
+        >
+          {t("removeDiscount")}
+        </button>
+      </div>
+    );
+  }
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="flex items-center gap-1.5 border-t border-border/40 px-4 py-2 text-xs font-medium text-admin"
+      >
+        <Tag className="h-3.5 w-3.5" />
+        {t("addDiscount")}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t border-border/40 px-4 py-2">
+      <div className="flex overflow-hidden rounded-lg border border-border">
+        <button
+          onClick={() => setType("percent")}
+          className={cn(
+            "px-2.5 py-1 text-xs font-medium transition-colors",
+            type === "percent" ? "bg-admin text-white" : "text-muted hover:bg-surface",
+          )}
+        >
+          %
+        </button>
+        <button
+          onClick={() => setType("amount")}
+          className={cn(
+            "px-2.5 py-1 text-xs font-medium transition-colors",
+            type === "amount" ? "bg-admin text-white" : "text-muted hover:bg-surface",
+          )}
+        >
+          {tenantCurrency.symbol}
+        </button>
+      </div>
+      <input
+        type="number"
+        min={0}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && apply()}
+        placeholder={type === "percent" ? "20" : "100"}
+        autoFocus
+        className="w-20 rounded-lg border border-border bg-card px-2.5 py-1 text-sm outline-none focus:border-admin/40"
+      />
+      <span className="max-w-[130px] truncate text-xs text-muted">
+        {t("subtotal")} {formatCurrency(cartSubtotal(), currency)}
+      </span>
+      <button
+        onClick={apply}
+        className="ml-auto rounded-lg bg-admin px-3 py-1 text-xs font-semibold text-white hover:bg-admin/90"
+      >
+        {t("apply")}
+      </button>
+      <button
+        onClick={() => {
+          setEditing(false);
+          if (!discount) setValue("");
+        }}
+        className="text-xs text-muted hover:text-foreground"
+      >
+        {tc("cancel")}
+      </button>
     </div>
   );
 }

@@ -104,6 +104,9 @@ interface Transaction {
   netAmount: number | null;
   availableOn: string | null;
   isFeesEstimated: boolean;
+  discountAmount: number | null;
+  originalAmount: number | null;
+  discountLabel: string | null;
   status: string;
   processedBy: { id: string; name: string; initials: string; avatarColor: string } | null;
   processedByType: string;
@@ -688,6 +691,11 @@ export default function FinancePage() {
                     {/* Amount */}
                     <td className="px-4 py-2.5 text-right">
                       <p className="text-xs font-medium text-stone-700">{formatCurrency(txn.grossAmount)}</p>
+                      {txn.discountAmount != null && txn.discountAmount > 0 && (
+                        <p className="text-[10px] text-emerald-600">
+                          {txn.discountLabel ? `${txn.discountLabel} · ` : ""}−{formatCurrency(txn.discountAmount)}
+                        </p>
+                      )}
                     </td>
                     {/* Fee / Net */}
                     <td className="px-4 py-2.5 hidden lg:table-cell">
@@ -1013,6 +1021,11 @@ function MobileTxCard({ txn, t }: { txn: Transaction; t: (key: string) => string
         )}
         <div className="text-right shrink-0">
           <p className="text-sm font-semibold text-stone-900">{formatCurrency(txn.grossAmount)}</p>
+          {txn.discountAmount != null && txn.discountAmount > 0 && (
+            <p className="text-[10px] text-emerald-600">
+              {txn.discountLabel ? `${txn.discountLabel} · ` : ""}−{formatCurrency(txn.discountAmount)}
+            </p>
+          )}
           <p className="text-[10px] text-stone-400 mt-0.5">{formatTransactionDate(txn.createdAt, t)}</p>
         </div>
       </div>

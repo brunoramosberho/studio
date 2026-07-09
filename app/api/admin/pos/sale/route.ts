@@ -18,6 +18,12 @@ import {
   fulfillPosOrder,
 } from "@/lib/shopify/admin";
 import { getAdminConnection } from "@/lib/shopify/admin-token";
+import {
+  type PosDiscount,
+  posNetTotal,
+  posDiscountAmount,
+  distributeDiscount,
+} from "@/lib/pos/discount";
 import { Prisma } from "@prisma/client";
 
 interface CartItem {
@@ -60,6 +66,7 @@ export async function POST(request: NextRequest) {
       notes,
       walkIn,
       walkInName: walkInNameRaw,
+      discount,
     }: {
       customerId: string | null;
       items: CartItem[];
@@ -69,6 +76,7 @@ export async function POST(request: NextRequest) {
       notes?: string;
       walkIn?: boolean;
       walkInName?: string | null;
+      discount?: PosDiscount | null;
     } = body;
 
     // Walk-in counter sale: no account, products only, memberId stays null.
@@ -99,10 +107,17 @@ export async function POST(request: NextRequest) {
       const currency = (
         productItems[0].currency ?? tenantCurrency.code
       ).toLowerCase();
-      const totalAmount = productItems.reduce(
+      const grossAmount = productItems.reduce(
         (sum, i) => sum + i.price * i.quantity,
         0,
       );
+      // Whole-sale discount spread across the product lines.
+      const lineNet = distributeDiscount(
+        productItems.map((i) => i.price * i.quantity),
+        discount,
+      );
+      const totalAmount = posNetTotal(grossAmount, discount);
+      const discountTotal = posDiscountAmount(grossAmount, discount);
 
       // Shopify order for physical-store products — created as a guest order
       // (no customer/email). A Shopify failure must not roll back the sale.
@@ -153,11 +168,16 @@ export async function POST(request: NextRequest) {
       // (terminal) is recorded as an in-person card payment.
       const dbPaymentMethod = paymentMethod === "cash" ? "cash" : "card";
 
-      for (const item of productItems) {
+      for (const [idx, item] of productItems.entries()) {
         const itemMetadata: Record<string, string | number | boolean> = {
           walkIn: true,
         };
         if (walkInName) itemMetadata.customerName = walkInName;
+        if (discount && discountTotal > 0) {
+          itemMetadata.discountType = discount.type;
+          itemMetadata.discountValue = discount.value;
+          itemMetadata.originalAmount = item.price * item.quantity;
+        }
         if (item.shopifyVariantId) {
           itemMetadata.shopifyVariantId = item.shopifyVariantId;
           if (shopifyOrder) {
@@ -171,7 +191,7 @@ export async function POST(request: NextRequest) {
           data: {
             tenantId,
             memberId: null,
-            amount: item.price * item.quantity,
+            amount: lineNet[idx],
             currency,
             paymentMethod: dbPaymentMethod,
             type: "product",
@@ -232,9 +252,17 @@ export async function POST(request: NextRequest) {
     }[] = [];
 
     const paidItems = (items ?? []).filter((i) => i.price > 0);
-    const totalAmount = paidItems.reduce(
+    const grossAmount = paidItems.reduce(
       (sum, i) => sum + i.price * i.quantity,
       0,
+    );
+    // Whole-sale discount: what's actually charged, spread across the lines so
+    // each PosTransaction reconciles to the real total.
+    const totalAmount = posNetTotal(grossAmount, discount);
+    const discountTotal = posDiscountAmount(grossAmount, discount);
+    const lineNet = distributeDiscount(
+      paidItems.map((i) => i.price * i.quantity),
+      discount,
     );
     const tenantCurrency = await getTenantCurrency();
     const currency = items?.[0]?.currency ?? tenantCurrency.code;
@@ -532,7 +560,7 @@ export async function POST(request: NextRequest) {
     const dbPaymentMethod =
       paymentMethod === "terminal" ? "card" : paymentMethod;
 
-    for (const item of paidItems) {
+    for (const [idx, item] of paidItems.entries()) {
       const refId =
         item.type === "package"
           ? packageRefMap.get(item.referenceId)
@@ -543,6 +571,11 @@ export async function POST(request: NextRequest) {
       const itemMetadata: Record<string, string | number> = {};
       if (stripePaymentIntentId)
         itemMetadata.stripePaymentIntentId = stripePaymentIntentId;
+      if (discount && discountTotal > 0) {
+        itemMetadata.discountType = discount.type;
+        itemMetadata.discountValue = discount.value;
+        itemMetadata.originalAmount = item.price * item.quantity;
+      }
       if (item.type === "product" && item.shopifyVariantId) {
         itemMetadata.shopifyVariantId = item.shopifyVariantId;
         if (shopifyOrder) {
@@ -556,7 +589,7 @@ export async function POST(request: NextRequest) {
         data: {
           tenantId,
           memberId: customerId,
-          amount: item.price * item.quantity,
+          amount: lineNet[idx],
           currency: currency.toLowerCase(),
           paymentMethod: dbPaymentMethod,
           type: mapItemType(item.type),
@@ -608,6 +641,7 @@ export async function POST(request: NextRequest) {
             currency: i.currency,
           })),
           total: totalAmount,
+          discount: discountTotal > 0 ? discountTotal : undefined,
           currency,
           paymentMethod,
           studioUrl: baseUrl,

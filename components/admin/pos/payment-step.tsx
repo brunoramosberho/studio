@@ -73,8 +73,11 @@ export function PaymentStep() {
     isWalkIn,
     walkInName,
     cart,
+    discount,
     selectedClass,
     cartTotal,
+    cartSubtotal,
+    cartDiscount,
     setStep,
     setSaleResult,
     closePOS,
@@ -86,6 +89,8 @@ export function PaymentStep() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   const total = cartTotal();
+  const subtotal = cartSubtotal();
+  const discountAmt = cartDiscount();
   const currency = cart[0]?.currency ?? tenantCurrency.code;
   const hasPaidItems = cart.some((i) => i.price > 0);
 
@@ -129,6 +134,7 @@ export function PaymentStep() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId: customer?.id ?? null,
+          discount: discount ?? undefined,
           walkIn: isWalkIn,
           walkInName: isWalkIn ? walkInName : undefined,
           items: cart.map((item) => ({
@@ -181,6 +187,7 @@ export function PaymentStep() {
         paymentMethod: hasPaidItems ? selectedMethod : "cash",
         customerName: data.customerName ?? saleForName,
         isWalkIn,
+        discountAmount: discountAmt,
       });
       setStep("confirmation");
       toast.success(t("saleProcessed"));
@@ -218,6 +225,16 @@ export function PaymentStep() {
             {total > 0 ? formatCurrency(total, currency) : tc("free")}
           </span>
         </div>
+        {discountAmt > 0 && (
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted">
+              {t("subtotal")} {formatCurrency(subtotal, currency)}
+            </span>
+            <span className="font-medium text-emerald-600">
+              {t("discount")} −{formatCurrency(discountAmt, currency)}
+            </span>
+          </div>
+        )}
         {selectedClass && (
           <p className="text-xs text-muted">
             + {t("reservation")}: {selectedClass.label}
