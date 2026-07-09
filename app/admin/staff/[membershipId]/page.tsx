@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/components/tenant-provider";
 
 interface StaffDetail {
   membership: {
@@ -173,7 +174,7 @@ export default function StaffDetailPage({
       <div className="flex items-start gap-3">
         <Link
           href="/admin/staff"
-          className="rounded-md border border-border bg-card p-2 hover:bg-accent"
+          className="rounded-md border border-border bg-card p-2 text-muted transition-colors hover:bg-surface hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -378,6 +379,7 @@ function PayRateForm({
   onSubmit: (data: Record<string, unknown>) => void;
   submitting: boolean;
 }) {
+  const currency = useCurrency();
   const [studioId, setStudioId] = useState(initial?.studioId ?? "");
   const [hourly, setHourly] = useState(
     initial?.hourlyRateCents != null ? (initial.hourlyRateCents / 100).toString() : "",
@@ -418,7 +420,7 @@ function PayRateForm({
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <Label>Tarifa por hora (MXN)</Label>
+            <Label>Tarifa por hora ({currency.symbol})</Label>
             <Input
               type="number"
               step="1"
@@ -429,7 +431,7 @@ function PayRateForm({
             />
           </div>
           <div>
-            <Label>Fijo mensual (MXN)</Label>
+            <Label>Fijo mensual ({currency.symbol})</Label>
             <Input
               type="number"
               step="1"
@@ -490,6 +492,7 @@ function CommissionRulesTab({
   rules: CommissionRule[];
   studios: Studio[];
 }) {
+  const currency = useCurrency();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CommissionRule | null>(null);
@@ -601,7 +604,7 @@ function CommissionRulesTab({
                     <div className="mt-1 text-sm">
                       {r.percentBps != null && <span>{formatPercent(r.percentBps)}</span>}
                       {r.flatAmountCents != null && (
-                        <span>{formatCents(r.flatAmountCents, "MXN")} fijo</span>
+                        <span>{formatCents(r.flatAmountCents, currency.code)} fijo</span>
                       )}
                     </div>
                   </div>
@@ -644,6 +647,7 @@ function CommissionRuleForm({
   onSubmit: (data: Record<string, unknown>) => void;
   submitting: boolean;
 }) {
+  const currency = useCurrency();
   const [sourceType, setSourceType] = useState<CommissionRule["sourceType"]>(initial?.sourceType ?? "PACKAGE");
   const [studioId, setStudioId] = useState(initial?.studioId ?? "");
   const [packageId, setPackageId] = useState(initial?.packageId ?? "");
@@ -727,17 +731,17 @@ function CommissionRuleForm({
           </div>
         )}
 
-        <div className="flex gap-3 rounded-md bg-muted p-1">
+        <div className="flex gap-1 rounded-lg border border-border/60 bg-card p-0.5">
           <button
             type="button"
-            className={`flex-1 rounded px-2 py-1 text-sm ${mode === "percent" ? "bg-background shadow" : ""}`}
+            className={`flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${mode === "percent" ? "bg-admin text-white" : "text-muted hover:text-foreground"}`}
             onClick={() => setMode("percent")}
           >
             Porcentaje
           </button>
           <button
             type="button"
-            className={`flex-1 rounded px-2 py-1 text-sm ${mode === "flat" ? "bg-background shadow" : ""}`}
+            className={`flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${mode === "flat" ? "bg-admin text-white" : "text-muted hover:text-foreground"}`}
             onClick={() => setMode("flat")}
           >
             Monto fijo
@@ -758,7 +762,7 @@ function CommissionRuleForm({
           </div>
         ) : (
           <div>
-            <Label>Monto fijo por venta (MXN)</Label>
+            <Label>Monto fijo por venta ({currency.symbol})</Label>
             <Input
               type="number"
               step="1"
@@ -1054,9 +1058,10 @@ function PayrollTab({ membershipId }: { membershipId: string }) {
     },
   });
 
+  const tenantCurrency = useCurrency();
   const line = q.data?.line ?? null;
   const earnings = q.data?.earnings ?? [];
-  const currency = line?.currency ?? "MXN";
+  const currency = line?.currency ?? tenantCurrency.code;
 
   return (
     <div className="mt-4 space-y-4">

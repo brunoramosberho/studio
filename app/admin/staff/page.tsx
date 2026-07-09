@@ -13,7 +13,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatMoney } from "@/components/tenant-provider";
 
 interface StaffListItem {
   membershipId: string;
@@ -43,6 +43,7 @@ function formatClockSince(iso: string) {
 }
 
 export default function StaffIndexPage() {
+  const fmt = useFormatMoney();
   const { data, isLoading } = useQuery<{ staff: StaffListItem[] }>({
     queryKey: ["staff", "list"],
     queryFn: async () => {
@@ -68,19 +69,19 @@ export default function StaffIndexPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/admin/staff/holidays"
-            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-accent"
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground/80 transition-colors hover:bg-surface hover:text-foreground"
           >
             Festivos
           </Link>
           <Link
             href="/admin/staff/timesheet"
-            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-accent"
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground/80 transition-colors hover:bg-surface hover:text-foreground"
           >
             Ver timesheet
           </Link>
           <Link
             href="/admin/staff/payroll"
-            className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
+            className="rounded-md bg-admin px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-admin/90"
           >
             Nómina del mes
           </Link>
@@ -146,7 +147,7 @@ export default function StaffIndexPage() {
                 <li key={s.membershipId}>
                   <Link
                     href={`/admin/staff/${s.membershipId}`}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-accent"
+                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface/60"
                   >
                     <Avatar className="h-9 w-9">
                       {s.user.image ? (
@@ -182,7 +183,7 @@ export default function StaffIndexPage() {
                         {s.monthHours.toFixed(1)}h
                       </div>
                       <div className="text-muted-foreground">
-                        {formatCurrency(s.monthCommissionCents / 100, "MXN")} comisión
+                        {fmt(s.monthCommissionCents / 100)} comisión
                       </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
