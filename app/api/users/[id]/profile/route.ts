@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { enrichPayloadsWithCurrentClassType } from "@/lib/feed-class-payload-sync";
 import { requireAuth, roleAtLeast } from "@/lib/tenant";
-import { computeVisibleUntil, resolveScheduleTimezone } from "@/lib/schedule/visibility";
+import { getVisibleUntilForUser, resolveScheduleTimezone } from "@/lib/schedule/visibility";
 import { getUsersAvatarMeta } from "@/lib/user-avatar-meta";
 import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
 
@@ -154,7 +154,10 @@ export async function GET(
     const startsAtFilter: { gt: Date; lte?: Date } = { gt: now };
     if (!isStaff) {
       const tz = await resolveScheduleTimezone(ctx.tenant);
-      startsAtFilter.lte = computeVisibleUntil(now, ctx.tenant, tz);
+      // Cap to the *viewer's* personal horizon so a member's package perk that
+      // extends /schedule also extends what they see here (and non-members stay
+      // capped at the tenant default).
+      startsAtFilter.lte = await getVisibleUntilForUser(now, ctx.tenant, tz, currentUserId);
     }
     const raw = await prisma.class.findMany({
       where: {

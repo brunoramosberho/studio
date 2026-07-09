@@ -70,6 +70,7 @@ interface PackageData {
   maxConcurrentUpcomingBookings: number | null;
   maxPurchasesPerCustomer: number | null;
   minCommitmentMonths: number | null;
+  scheduleVisibilityDaysAhead: number | null;
 }
 
 type PackageKind = PackageData["type"];
@@ -151,6 +152,7 @@ interface FormState {
   maxConcurrentUpcomingBookings: string;
   maxPurchasesPerCustomer: string;
   minCommitmentMonths: string;
+  scheduleVisibilityDaysAhead: string;
 }
 
 function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
@@ -177,6 +179,7 @@ function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
     maxConcurrentUpcomingBookings: "",
     maxPurchasesPerCustomer: "",
     minCommitmentMonths: "",
+    scheduleVisibilityDaysAhead: "",
   };
 }
 
@@ -216,6 +219,10 @@ function formFromPackage(pkg: PackageData, defaultCurrency = "EUR"): FormState {
       pkg.maxPurchasesPerCustomer == null ? "" : String(pkg.maxPurchasesPerCustomer),
     minCommitmentMonths:
       pkg.minCommitmentMonths == null ? "" : String(pkg.minCommitmentMonths),
+    scheduleVisibilityDaysAhead:
+      pkg.scheduleVisibilityDaysAhead == null
+        ? ""
+        : String(pkg.scheduleVisibilityDaysAhead),
   };
 }
 
@@ -290,6 +297,13 @@ function buildPayload(form: FormState) {
       (form.type === "SUBSCRIPTION" || form.type === "ON_DEMAND_SUBSCRIPTION") &&
       form.minCommitmentMonths.trim() !== ""
         ? parseInt(form.minCommitmentMonths, 10)
+        : null,
+    // Any package/subscription (except on-demand, which isn't a class pass) can
+    // extend how far ahead its holders see the schedule. Blank = tenant default.
+    scheduleVisibilityDaysAhead:
+      form.type !== "ON_DEMAND_SUBSCRIPTION" &&
+      form.scheduleVisibilityDaysAhead.trim() !== ""
+        ? parseInt(form.scheduleVisibilityDaysAhead, 10)
         : null,
   };
 }
@@ -1024,6 +1038,44 @@ export default function AdminPackagesPage() {
                       Reservas pendientes a futuro al mismo tiempo. Evita acaparar slots peak.
                     </p>
                   </div>
+                </div>
+              </div>
+            ) : null}
+
+            {form.type !== "ON_DEMAND_SUBSCRIPTION" ? (
+              <div className="space-y-3 rounded-xl border border-input-border/60 bg-surface/50 p-3">
+                <p className="text-sm font-medium">Visibilidad de horario</p>
+                <p className="text-xs text-muted">
+                  Opcional. Con cuántos días de anticipación pueden ver y reservar
+                  clases quienes tengan este{" "}
+                  {form.type === "SUBSCRIPTION" ? "plan" : "paquete"} activo y con
+                  créditos. Déjalo vacío para usar el default del estudio. Solo
+                  extiende — nunca reduce. Wellhub y quien no lo tenga ven el default.
+                </p>
+                <div className="max-w-[220px]">
+                  <label
+                    className="mb-1 block text-xs font-medium"
+                    htmlFor="pkg-visibility-days"
+                  >
+                    Días de anticipación
+                  </label>
+                  <Input
+                    id="pkg-visibility-days"
+                    type="number"
+                    min={1}
+                    value={form.scheduleVisibilityDaysAhead}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        scheduleVisibilityDaysAhead: e.target.value,
+                      }))
+                    }
+                    placeholder="Default del estudio"
+                  />
+                  <p className="mt-1 text-xs text-muted">
+                    Ej: 21 = 3 semanas. Un cliente con varios planes toma el más
+                    generoso.
+                  </p>
                 </div>
               </div>
             ) : null}

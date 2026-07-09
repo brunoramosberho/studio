@@ -61,6 +61,95 @@ export function computeVisibleUntil(
   return addDaysInZone(endOfDayInZone(now, timezone), days - 1, timezone);
 }
 
+/** A member's held package still counts toward the visibility perk only while
+ * it can actually book something: an allocation-based pack needs a remaining
+ * allocation; a single-pool pack needs remaining credits (null total =
+ * unlimited). Mirrors lib/credits.ts so the perk matches real bookability. */
+function packHasRemainingCredit(p: {
+  creditsTotal: number | null;
+  creditsUsed: number;
+  creditUsages: { creditsTotal: number; creditsUsed: number }[];
+}): boolean {
+  if (p.creditUsages.length > 0) {
+    return p.creditUsages.some((u) => u.creditsUsed < u.creditsTotal);
+  }
+  return p.creditsTotal === null || p.creditsUsed < p.creditsTotal;
+}
+
+/**
+ * The UTC instant up to which a *specific member* can see/book, given the tenant
+ * default plus any per-package `scheduleVisibilityDaysAhead` override on packages
+ * they actively hold. Only ever extends past the default (never restricts). A
+ * package override applies only while the member has remaining credits in it (or
+ * an active subscription). Anonymous (no userId) → the plain tenant default, so
+ * Wellhub and the embed are unaffected.
+ */
+export async function getVisibleUntilForUser(
+  now: Date,
+  tenant: ScheduleVisibilityFields & { id: string },
+  timezone: string,
+  userId: string | null | undefined,
+): Promise<Date> {
+  const defaultUntil = computeVisibleUntil(now, tenant, timezone);
+  if (!userId) return defaultUntil;
+
+  const [packs, subs] = await Promise.all([
+    prisma.userPackage.findMany({
+      where: {
+        userId,
+        tenantId: tenant.id,
+        status: "ACTIVE",
+        expiresAt: { gt: now },
+        package: { scheduleVisibilityDaysAhead: { not: null } },
+      },
+      select: {
+        creditsTotal: true,
+        creditsUsed: true,
+        package: { select: { scheduleVisibilityDaysAhead: true } },
+        creditUsages: { select: { creditsTotal: true, creditsUsed: true } },
+      },
+    }),
+    prisma.memberSubscription.findMany({
+      where: {
+        userId,
+        tenantId: tenant.id,
+        status: { in: ["active", "trialing"] },
+        currentPeriodEnd: { gt: now },
+        pausedAt: null,
+        package: { scheduleVisibilityDaysAhead: { not: null } },
+      },
+      select: { package: { select: { scheduleVisibilityDaysAhead: true } } },
+    }),
+  ]);
+
+  let best = defaultUntil;
+  const consider = (daysAhead: number | null | undefined) => {
+    if (daysAhead == null || daysAhead <= 0) return;
+    // Reuse the ROLLING_DAYS formula so a package horizon lines up exactly with
+    // how the tenant default is computed (end-of-day of today + days - 1).
+    const until = computeVisibleUntil(
+      now,
+      {
+        scheduleVisibilityMode: "ROLLING_DAYS",
+        visibleScheduleDays: daysAhead,
+        scheduleReleaseDayOfWeek: null,
+        scheduleReleaseHour: null,
+        scheduleReleaseWeeksAhead: null,
+        scheduleReleaseTimezone: null,
+      },
+      timezone,
+    );
+    if (until.getTime() > best.getTime()) best = until;
+  };
+
+  for (const p of packs) {
+    if (packHasRemainingCredit(p)) consider(p.package.scheduleVisibilityDaysAhead);
+  }
+  for (const s of subs) consider(s.package.scheduleVisibilityDaysAhead);
+
+  return best;
+}
+
 /** Returns the most recent UTC instant ≤ `now` that lands on (dow, hour:00) in tz. */
 function lastReleaseMomentBefore(
   now: Date,

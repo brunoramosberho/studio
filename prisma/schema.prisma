@@ -1094,6 +1094,14 @@ model Package {
   // tiers without adding a second Stripe charge.
   includesOnDemand Boolean @default(false)
 
+  // Per-package schedule-visibility override: how many days ahead a member
+  // actively holding this package (with remaining credits, or an active
+  // subscription) can see/book classes. Null = use the tenant default. Only
+  // ever *extends* visibility — the effective horizon is max(tenant default,
+  // any held package's override). The tenant default is what Wellhub and
+  // members without an override see. See lib/schedule/visibility.ts.
+  scheduleVisibilityDaysAhead Int?
+
   // Soft-delete marker. We hard-delete a Package when nothing references it,
   // but if there are existing UserPackage / MemberSubscription rows pointing at
   // it (FK with no cascade), we instead stamp deletedAt + flip isActive so the

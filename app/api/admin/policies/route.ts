@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole, requireTenant } from "@/lib/tenant";
-import { computeVisibleUntil, resolveScheduleTimezone } from "@/lib/schedule/visibility";
+import { auth } from "@/lib/auth";
+import {
+  computeVisibleUntil,
+  getVisibleUntilForUser,
+  resolveScheduleTimezone,
+} from "@/lib/schedule/visibility";
 
 /**
  * GET /api/admin/policies
@@ -12,7 +17,14 @@ export async function GET() {
   try {
     const tenant = await requireTenant();
     const timezone = await resolveScheduleTimezone(tenant);
-    const visibleUntilIso = computeVisibleUntil(new Date(), tenant, timezone).toISOString();
+    // Personalise the visible horizon for a logged-in member: packages they hold
+    // (with remaining credits) can extend it past the tenant default. Anonymous
+    // visitors and the embed get the plain default (which is also what Wellhub
+    // sees). Any auth hiccup falls back to the default.
+    const session = await auth().catch(() => null);
+    const visibleUntilIso = (
+      await getVisibleUntilForUser(new Date(), tenant, timezone, session?.user?.id ?? null)
+    ).toISOString();
 
     return NextResponse.json({
       cancellationWindowHours: tenant.cancellationWindowHours,

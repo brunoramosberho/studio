@@ -211,6 +211,10 @@ export async function POST(request: NextRequest) {
     if (!commitmentMonths.ok) {
       return NextResponse.json({ error: `minCommitmentMonths ${commitmentMonths.error}` }, { status: 400 });
     }
+    const visibilityDays = parseOptionalPositiveInt(body.scheduleVisibilityDaysAhead);
+    if (!visibilityDays.ok) {
+      return NextResponse.json({ error: `scheduleVisibilityDaysAhead ${visibilityDays.error}` }, { status: 400 });
+    }
     // Limits only make sense for SUBSCRIPTION packages — strip them on other types
     // so the form doesn't accidentally persist leftover values.
     const isSubscription = pkgType === PackageType.SUBSCRIPTION;
@@ -251,6 +255,8 @@ export async function POST(request: NextRequest) {
         maxConcurrentUpcomingBookings: isSubscription ? concurrentLimit.v : null,
         maxPurchasesPerCustomer: perCustomerLimit.v,
         minCommitmentMonths: isRecurringSub ? commitmentMonths.v : null,
+        scheduleVisibilityDaysAhead:
+          pkgType === PackageType.ON_DEMAND_SUBSCRIPTION ? null : visibilityDays.v,
         ...(Array.isArray(classTypeIds) && classTypeIds.length > 0
           ? {
               classTypes: {

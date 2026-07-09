@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { requireAuth, requireTenant } from "@/lib/tenant";
+import { requireAuth, requireTenant, roleAtLeast } from "@/lib/tenant";
+import { getVisibleUntilForUser, resolveScheduleTimezone } from "@/lib/schedule/visibility";
 import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
 import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
@@ -225,6 +226,44 @@ export async function POST(request: NextRequest) {
         { error: "This class has been cancelled" },
         { status: 400 },
       );
+    }
+
+    // Enforce per-member schedule visibility: a non-staff booker can't reserve a
+    // class further out than their personal horizon (tenant default, extended by
+    // any package perk they hold with remaining credits). Stops a client from
+    // bypassing the /schedule window with a direct API call. Fail-open on any
+    // resolution error so a legitimate booking is never wrongly blocked.
+    if (classData.startsAt.getTime() > Date.now()) {
+      try {
+        let isStaff = false;
+        if (effectiveUserId) {
+          const m = await prisma.membership.findUnique({
+            where: { userId_tenantId: { userId: effectiveUserId, tenantId: tenant.id } },
+            select: { role: true },
+          });
+          isStaff = m ? roleAtLeast(m.role, "COACH") : false;
+        }
+        if (!isStaff) {
+          const tz = await resolveScheduleTimezone(tenant);
+          const horizon = await getVisibleUntilForUser(
+            new Date(),
+            tenant,
+            tz,
+            effectiveUserId ?? null,
+          );
+          if (classData.startsAt.getTime() > horizon.getTime()) {
+            return NextResponse.json(
+              {
+                error:
+                  "Esta clase todavía no está disponible para reservar con tu plan.",
+              },
+              { status: 403 },
+            );
+          }
+        }
+      } catch (err) {
+        console.error("[bookings] visibility enforcement skipped", err);
+      }
     }
 
     const blockedCount = await prisma.blockedSpot.count({ where: { classId } });

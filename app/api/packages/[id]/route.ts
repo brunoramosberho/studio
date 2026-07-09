@@ -203,6 +203,14 @@ export async function PUT(
       if (!parsed.ok) return parsed.res;
       data.minCommitmentMonths = parsed.v;
     }
+    if (body.scheduleVisibilityDaysAhead !== undefined) {
+      const parsed = readOptionalPositiveInt(
+        body.scheduleVisibilityDaysAhead,
+        "scheduleVisibilityDaysAhead",
+      );
+      if (!parsed.ok) return parsed.res;
+      data.scheduleVisibilityDaysAhead = parsed.v;
+    }
 
     if (classTypeIds !== undefined) {
       if (!Array.isArray(classTypeIds)) {
