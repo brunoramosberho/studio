@@ -84,6 +84,7 @@ async function main() {
   // --- Default rating reasons (universal — no classType) ---
   const DEFAULT_RATING_REASONS = [
     { emoji: "👤", text: "La atención del coach" },
+    { emoji: "🛎️", text: "El trato del staff" },
     { emoji: "💪", text: "El nivel de dificultad" },
     { emoji: "🎵", text: "El ambiente de la clase" },
     { emoji: "🏠", text: "El espacio" },

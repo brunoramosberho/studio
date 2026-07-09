@@ -18,6 +18,7 @@ import {
   UserCog,
   Package,
   BarChart3,
+  Star,
   Palette,
   Building2,
   ShieldCheck,
@@ -143,6 +144,7 @@ const navGroups: NavGroup[] = [
     permission: "reports",
     items: [
       { href: "/admin/reports", labelKey: "insights", icon: BarChart3, permission: "reports", keywordsKey: "kw.insights" },
+      { href: "/admin/ratings", labelKey: "ratings", icon: Star, permission: "ratings", keywordsKey: "kw.ratings" },
       { href: "/admin/marketing", labelKey: "acquisition", icon: Megaphone, permission: "marketing", keywordsKey: "kw.acquisition" },
       { href: "/admin/gamification", labelKey: "achievements", icon: GraduationCap, permission: "achievements", feature: "achievements", keywordsKey: "kw.achievements" },
     ],
