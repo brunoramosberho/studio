@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireStaffManagement } from "../../_auth";
+import { parseTiers } from "@/lib/staff/commissions";
 
 export async function PATCH(
   request: NextRequest,
@@ -29,6 +31,18 @@ export async function PATCH(
     if ("flatAmountCents" in body) {
       allowed.flatAmountCents =
         body.flatAmountCents != null ? parseInt(String(body.flatAmountCents), 10) : null;
+    }
+    // Volume tiers. Non-empty → tiered rule (percent/flat forced null); empty or
+    // null → clear tiers and fall back to percent/flat.
+    if ("tiers" in body) {
+      const pt = parseTiers(body.tiers);
+      if (pt.length > 0) {
+        allowed.tiers = pt as unknown as Prisma.InputJsonValue;
+        allowed.percentBps = null;
+        allowed.flatAmountCents = null;
+      } else {
+        allowed.tiers = Prisma.DbNull;
+      }
     }
     if ("studioId" in body) allowed.studioId = body.studioId || null;
     if ("packageId" in body) allowed.packageId = body.packageId || null;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStaffManagement } from "./_auth";
+import { computeTieredCommissions } from "@/lib/staff/commissions";
 
 // Lists every staff member (FRONT_DESK or ADMIN) for this tenant alongside
 // their active shift (if any) and aggregate hours/comissions for the current
@@ -27,8 +28,9 @@ export async function GET() {
     const userIds = memberships.map((m) => m.userId);
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-    const [openShifts, monthShifts, monthCommissions] = await Promise.all([
+    const [openShifts, monthShifts, monthCommissions, tieredComm] = await Promise.all([
       prisma.staffShift.findMany({
         where: { tenantId: ctx.tenant.id, userId: { in: userIds }, status: "OPEN" },
         include: { studio: { select: { id: true, name: true } } },
@@ -53,11 +55,22 @@ export async function GET() {
         },
         _sum: { commissionAmountCents: true },
       }),
+      computeTieredCommissions({
+        tenantId: ctx.tenant.id,
+        userIds,
+        from: monthStart,
+        to: nextMonthStart,
+      }),
     ]);
 
     const openByUser = new Map(openShifts.map((s) => [s.userId, s] as const));
     const minutesByUser = new Map(monthShifts.map((s) => [s.userId, s._sum.durationMinutes ?? 0] as const));
     const commByUser = new Map(monthCommissions.map((s) => [s.userId, s._sum.commissionAmountCents ?? 0] as const));
+    // Fold in volume-tiered commission (computed from the month's sales, not
+    // accrued per-sale).
+    for (const [userId, t] of tieredComm) {
+      commByUser.set(userId, (commByUser.get(userId) ?? 0) + t.totalCents);
+    }
 
     const staff = memberships.map((m) => ({
       membershipId: m.id,

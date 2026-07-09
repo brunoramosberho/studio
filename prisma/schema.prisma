@@ -3184,6 +3184,13 @@ model StaffCommissionRule {
   percentBps      Int?
   // Alternative to percent: flat amount in cents per matching sale.
   flatAmountCents Int?
+  // Volume-tiered commission. Array of { minCents, percentBps } sorted ascending
+  // by minCents (first tier minCents = 0). When set (non-empty), percentBps /
+  // flatAmountCents are ignored: the tier reached by the staff member's total
+  // matching sales in the calendar month sets the rate, and that rate applies to
+  // the WHOLE month's matching sales. Computed at read time (payroll / staff
+  // list), NOT accrued per-sale — the amount isn't final until the month closes.
+  tiers           Json?
 
   isActive      Boolean   @default(true)
   effectiveFrom DateTime  @default(now())

@@ -8,6 +8,50 @@ function moneyToCents(amount: number): number {
   return Math.round(amount * 100);
 }
 
+// ── Volume tiers (Option A: whole-month-at-achieved-tier) ────────────────────
+// A tiered rule pays the rate of the tier its holder's total matching sales
+// reach in the period, applied to that whole volume. Stored as a JSON array of
+// { minCents, percentBps } on StaffCommissionRule.tiers.
+
+export interface CommissionTier {
+  // Inclusive lower bound of monthly matching-sales volume (cents) at which
+  // this tier's rate kicks in. A well-formed list starts at 0.
+  minCents: number;
+  // Rate applied to the WHOLE volume once this tier is reached. 500 = 5%.
+  percentBps: number;
+}
+
+// Parse + sanitize a tiers JSON blob into a sorted, valid tier list. Returns []
+// when the blob isn't a usable tier list, so callers treat the rule as
+// non-tiered (flat percent / flat amount).
+export function parseTiers(raw: unknown): CommissionTier[] {
+  if (!Array.isArray(raw)) return [];
+  const tiers: CommissionTier[] = [];
+  for (const t of raw) {
+    if (!t || typeof t !== "object") continue;
+    const rec = t as Record<string, unknown>;
+    const minCents = Math.round(Number(rec.minCents));
+    const percentBps = Math.round(Number(rec.percentBps));
+    if (!Number.isFinite(minCents) || minCents < 0) continue;
+    if (!Number.isFinite(percentBps) || percentBps < 0 || percentBps > 10_000) continue;
+    tiers.push({ minCents, percentBps });
+  }
+  return tiers.sort((a, b) => a.minCents - b.minCents);
+}
+
+// The tier reached by `volumeCents` — the last tier whose minCents <= volume.
+export function tierForVolume(
+  tiers: CommissionTier[],
+  volumeCents: number,
+): { tier: CommissionTier; index: number } | null {
+  let picked: { tier: CommissionTier; index: number } | null = null;
+  for (let i = 0; i < tiers.length; i++) {
+    if (volumeCents >= tiers[i].minCents) picked = { tier: tiers[i], index: i };
+    else break;
+  }
+  return picked;
+}
+
 // Map a PosTransaction.type / StripePayment.type string to a CommissionSource
 // enum. Falls back to null when we can't classify (no commission triggers).
 function classifySource(saleType: string): CommissionSource | null {
@@ -86,6 +130,9 @@ export async function accrueCommissionsForSale(
 
   let created = 0;
   for (const rule of rules) {
+    // Tiered rules are computed at read time from the month's total volume, not
+    // accrued per-sale — skip them here so they never double-count.
+    if (parseTiers(rule.tiers).length > 0) continue;
     const amount = computeCommissionAmount(target.baseAmountCents, rule);
     if (amount <= 0) continue;
 
@@ -246,4 +293,131 @@ export async function voidCommissionsForSale(args: {
     data: { status: "VOIDED", voidReason: args.reason },
   });
   return res.count;
+}
+
+// The PosTransaction / StripePayment `type` strings that a given commission
+// source counts as sales of. Mirrors classifySource() in reverse.
+function saleTypesForSource(source: CommissionSource): string[] {
+  switch (source) {
+    case "PRODUCT":
+      return ["product"];
+    case "PACKAGE":
+      return ["package"];
+    case "SUBSCRIPTION":
+      return ["subscription", "membership"];
+    case "PENALTY":
+      return ["penalty"];
+    case "POS_ANY":
+      return ["product", "package", "subscription", "membership", "penalty"];
+    default:
+      return [];
+  }
+}
+
+export interface TieredCommissionResult {
+  ruleId: string;
+  sourceType: CommissionSource;
+  studioId: string | null;
+  // Total matching sales for the holder in the period (cents).
+  volumeCents: number;
+  // The rate of the reached tier (bps) and its position in the ladder.
+  percentBps: number;
+  tierIndex: number;
+  tierCount: number;
+  // Commission = volumeCents * percentBps / 10000.
+  amountCents: number;
+}
+
+// Compute volume-tiered commissions for a set of staff over a period (Option A:
+// the tier reached by each holder's total matching sales in the period sets the
+// rate applied to their whole matching volume). Tiered rules never accrue
+// per-sale earnings, so this is the single source of truth for their payout —
+// call it wherever monthly commission is read (staff list, payroll). Sales are
+// counted only inside each rule's own effective window ∩ the period, so an
+// effective-dated tier change doesn't retroactively re-rate earlier sales.
+export async function computeTieredCommissions(args: {
+  tenantId: string;
+  userIds: string[];
+  from: Date;
+  to: Date;
+}): Promise<Map<string, { totalCents: number; rules: TieredCommissionResult[] }>> {
+  const { tenantId, userIds, from, to } = args;
+  const out = new Map<string, { totalCents: number; rules: TieredCommissionResult[] }>();
+  if (userIds.length === 0) return out;
+
+  const rules = await prisma.staffCommissionRule.findMany({
+    where: {
+      tenantId,
+      userId: { in: userIds },
+      isActive: true,
+      effectiveFrom: { lt: to },
+      OR: [{ effectiveTo: null }, { effectiveTo: { gte: from } }],
+    },
+  });
+
+  for (const rule of rules) {
+    const tiers = parseTiers(rule.tiers);
+    if (tiers.length === 0) continue;
+    const saleTypes = saleTypesForSource(rule.sourceType);
+    if (saleTypes.length === 0) continue;
+
+    // Clamp the sales window to the rule's effective window ∩ the period.
+    const windowStart = rule.effectiveFrom > from ? rule.effectiveFrom : from;
+    const windowEnd = rule.effectiveTo && rule.effectiveTo < to ? rule.effectiveTo : to;
+    if (windowEnd <= windowStart) continue;
+
+    const scope: { referenceId?: string } = {};
+    if (rule.productId) scope.referenceId = rule.productId;
+    else if (rule.packageId) scope.referenceId = rule.packageId;
+
+    const [posAgg, stripeAgg] = await Promise.all([
+      prisma.posTransaction.aggregate({
+        where: {
+          tenantId,
+          processedById: rule.userId,
+          status: "completed",
+          type: { in: saleTypes },
+          createdAt: { gte: windowStart, lt: windowEnd },
+          ...scope,
+        },
+        _sum: { amount: true },
+      }),
+      prisma.stripePayment.aggregate({
+        where: {
+          tenantId,
+          soldByUserId: rule.userId,
+          status: "succeeded",
+          type: { in: saleTypes },
+          createdAt: { gte: windowStart, lt: windowEnd },
+          ...scope,
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const volumeCents = moneyToCents(
+      (posAgg._sum.amount ?? 0) + (stripeAgg._sum.amount ?? 0),
+    );
+    if (volumeCents <= 0) continue;
+    const picked = tierForVolume(tiers, volumeCents);
+    if (!picked) continue;
+    const amountCents = Math.round((volumeCents * picked.tier.percentBps) / 10_000);
+    if (amountCents <= 0) continue;
+
+    const entry = out.get(rule.userId) ?? { totalCents: 0, rules: [] };
+    entry.rules.push({
+      ruleId: rule.id,
+      sourceType: rule.sourceType,
+      studioId: rule.studioId,
+      volumeCents,
+      percentBps: picked.tier.percentBps,
+      tierIndex: picked.index,
+      tierCount: tiers.length,
+      amountCents,
+    });
+    entry.totalCents += amountCents;
+    out.set(rule.userId, entry);
+  }
+
+  return out;
 }

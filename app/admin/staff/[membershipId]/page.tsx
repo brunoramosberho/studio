@@ -55,6 +55,11 @@ interface PayRate {
   notes: string | null;
 }
 
+interface CommissionTier {
+  minCents: number;
+  percentBps: number;
+}
+
 interface CommissionRule {
   id: string;
   studioId: string | null;
@@ -66,6 +71,7 @@ interface CommissionRule {
   product: { id: string; name: string } | null;
   percentBps: number | null;
   flatAmountCents: number | null;
+  tiers: CommissionTier[] | null;
   isActive: boolean;
   notes: string | null;
 }
@@ -91,6 +97,14 @@ interface PayrollLine {
   monthlyFixedByStudio: Array<{ studioId: string | null; studioName: string | null; amountCents: number }>;
   commissionTotalCents: number;
   commissionByStudio: Array<{ studioId: string | null; studioName: string | null; amountCents: number; count: number }>;
+  commissionTiers: Array<{
+    ruleId: string;
+    volumeCents: number;
+    percentBps: number;
+    tierIndex: number;
+    tierCount: number;
+    amountCents: number;
+  }>;
   totalCents: number;
   currency: string;
 }
@@ -602,9 +616,31 @@ function CommissionRulesTab({
                       {!r.isActive && <Badge variant="outline">Inactiva</Badge>}
                     </div>
                     <div className="mt-1 text-sm">
-                      {r.percentBps != null && <span>{formatPercent(r.percentBps)}</span>}
-                      {r.flatAmountCents != null && (
-                        <span>{formatCents(r.flatAmountCents, currency.code)} fijo</span>
+                      {r.tiers && r.tiers.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                          <span className="text-muted">Por volumen:</span>
+                          {r.tiers.map((t, i) => (
+                            <span key={i} className="tabular-nums">
+                              {formatPercent(t.percentBps)}
+                              {t.minCents > 0 && (
+                                <span className="text-muted">
+                                  {" ≥"}
+                                  {formatCents(t.minCents, currency.code)}
+                                </span>
+                              )}
+                              {i < r.tiers!.length - 1 && (
+                                <span className="text-muted"> ·</span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          {r.percentBps != null && <span>{formatPercent(r.percentBps)}</span>}
+                          {r.flatAmountCents != null && (
+                            <span>{formatCents(r.flatAmountCents, currency.code)} fijo</span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -659,8 +695,24 @@ function CommissionRuleForm({
     initial?.flatAmountCents != null ? (initial.flatAmountCents / 100).toString() : "",
   );
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [mode, setMode] = useState<"percent" | "flat">(
-    initial?.flatAmountCents != null ? "flat" : "percent",
+  const [mode, setMode] = useState<"percent" | "flat" | "tiers">(
+    initial?.tiers && initial.tiers.length > 0
+      ? "tiers"
+      : initial?.flatAmountCents != null
+        ? "flat"
+        : "percent",
+  );
+  const [tierRows, setTierRows] = useState<Array<{ min: string; pct: string }>>(
+    initial?.tiers && initial.tiers.length > 0
+      ? initial.tiers.map((t) => ({
+          min: (t.minCents / 100).toString(),
+          pct: (t.percentBps / 100).toString(),
+        }))
+      : [
+          { min: "0", pct: "5" },
+          { min: "250", pct: "7" },
+          { min: "600", pct: "10" },
+        ],
   );
 
   return (
@@ -732,22 +784,24 @@ function CommissionRuleForm({
         )}
 
         <div className="flex gap-1 rounded-lg border border-border/60 bg-card p-0.5">
-          <button
-            type="button"
-            className={`flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${mode === "percent" ? "bg-admin text-white" : "text-muted hover:text-foreground"}`}
-            onClick={() => setMode("percent")}
-          >
-            Porcentaje
-          </button>
-          <button
-            type="button"
-            className={`flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${mode === "flat" ? "bg-admin text-white" : "text-muted hover:text-foreground"}`}
-            onClick={() => setMode("flat")}
-          >
-            Monto fijo
-          </button>
+          {(
+            [
+              ["percent", "Porcentaje"],
+              ["flat", "Monto fijo"],
+              ["tiers", "Tramos"],
+            ] as const
+          ).map(([m, label]) => (
+            <button
+              key={m}
+              type="button"
+              className={`flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${mode === m ? "bg-admin text-white" : "text-muted hover:text-foreground"}`}
+              onClick={() => setMode(m)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        {mode === "percent" ? (
+        {mode === "percent" && (
           <div>
             <Label>Porcentaje (%)</Label>
             <Input
@@ -760,7 +814,8 @@ function CommissionRuleForm({
               placeholder="5"
             />
           </div>
-        ) : (
+        )}
+        {mode === "flat" && (
           <div>
             <Label>Monto fijo por venta ({currency.symbol})</Label>
             <Input
@@ -771,6 +826,65 @@ function CommissionRuleForm({
               onChange={(e) => setFlat(e.target.value)}
               placeholder="50"
             />
+          </div>
+        )}
+        {mode === "tiers" && (
+          <div className="space-y-2 rounded-lg border border-border/60 bg-surface/40 p-3">
+            <p className="text-xs text-muted">
+              El nivel que alcancen sus ventas del mes define el % que se paga
+              sobre <strong>toda</strong> su venta del mes. Ej: si vende{" "}
+              {currency.symbol}700 cae en el último tramo y todo se paga a ese %.
+            </p>
+            <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 text-[11px] font-medium text-muted">
+              <span>Ventas del mes desde ({currency.symbol})</span>
+              <span>Comisión (%)</span>
+              <span />
+            </div>
+            {tierRows.map((row, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={row.min}
+                  onChange={(e) =>
+                    setTierRows((rows) =>
+                      rows.map((r, j) => (j === i ? { ...r, min: e.target.value } : r)),
+                    )
+                  }
+                  placeholder="0"
+                />
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={row.pct}
+                  onChange={(e) =>
+                    setTierRows((rows) =>
+                      rows.map((r, j) => (j === i ? { ...r, pct: e.target.value } : r)),
+                    )
+                  }
+                  placeholder="5"
+                />
+                <button
+                  type="button"
+                  className="rounded-md p-2 text-muted transition-colors hover:bg-card hover:text-destructive disabled:opacity-40"
+                  onClick={() => setTierRows((rows) => rows.filter((_, j) => j !== i))}
+                  disabled={tierRows.length <= 1}
+                  aria-label="Quitar tramo"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-xs font-medium text-admin hover:underline"
+              onClick={() => setTierRows((rows) => [...rows, { min: "", pct: "" }])}
+            >
+              <Plus className="h-3.5 w-3.5" /> Agregar tramo
+            </button>
           </div>
         )}
 
@@ -793,6 +907,21 @@ function CommissionRuleForm({
                 flatAmountCents: mode === "flat" && flat
                   ? Math.round(parseFloat(flat) * 100)
                   : null,
+                tiers:
+                  mode === "tiers"
+                    ? tierRows
+                        .map((r) => ({
+                          minCents: Math.round(parseFloat(r.min || "0") * 100),
+                          percentBps: Math.round(parseFloat(r.pct || "0") * 100),
+                        }))
+                        .filter(
+                          (t) =>
+                            Number.isFinite(t.minCents) &&
+                            t.minCents >= 0 &&
+                            Number.isFinite(t.percentBps) &&
+                            t.percentBps > 0,
+                        )
+                    : [],
                 notes,
               })
             }
@@ -1102,7 +1231,10 @@ function PayrollTab({ membershipId }: { membershipId: string }) {
             <Card><CardContent className="p-4">
               <div className="text-xs text-muted-foreground">Comisiones</div>
               <div className="text-2xl font-semibold">{formatCents(line.commissionTotalCents, currency)}</div>
-              <div className="text-xs text-muted-foreground">{earnings.length} ventas</div>
+              <div className="text-xs text-muted-foreground">
+                {earnings.length} {earnings.length === 1 ? "venta" : "ventas"}
+                {line.commissionTiers.length > 0 && " + volumen"}
+              </div>
             </CardContent></Card>
             <Card><CardContent className="p-4">
               <div className="text-xs text-muted-foreground">Total a pagar</div>
@@ -1172,9 +1304,41 @@ function PayrollTab({ membershipId }: { membershipId: string }) {
               </CardContent>
             </Card>
           )}
+
+          {line.commissionTiers.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="mb-2 text-sm font-medium">Comisión por volumen</div>
+                <div className="space-y-2">
+                  {line.commissionTiers.map((t) => (
+                    <div
+                      key={t.ruleId}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <div className="text-muted-foreground">
+                        Vendió{" "}
+                        <span className="font-medium text-foreground">
+                          {formatCents(t.volumeCents, currency)}
+                        </span>{" "}
+                        → Nivel {t.tierIndex + 1} de {t.tierCount} (
+                        {formatPercent(t.percentBps)})
+                      </div>
+                      <div className="font-medium tabular-nums">
+                        {formatCents(t.amountCents, currency)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  El % se define por el total de ventas del mes y aplica a toda
+                  la venta. Se recalcula hasta el cierre del mes.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
-      {line && line.totalHours === 0 && earnings.length === 0 && (
+      {line && line.totalHours === 0 && earnings.length === 0 && line.commissionTiers.length === 0 && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-amber-700 dark:text-amber-300">
           <AlertCircle className="mr-2 inline h-4 w-4" />
           Sin actividad para este periodo.

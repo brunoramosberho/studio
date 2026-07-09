@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireStaffManagement } from "../../_auth";
+import { parseTiers } from "@/lib/staff/commissions";
 
 async function resolveUserId(tenantId: string, membershipId: string) {
   const m = await prisma.membership.findFirst({
@@ -69,6 +71,7 @@ export async function POST(
       productId,
       percentBps,
       flatAmountCents,
+      tiers,
       effectiveFrom,
       effectiveTo,
       notes,
@@ -77,12 +80,15 @@ export async function POST(
     if (!sourceType || !VALID_SOURCES.has(String(sourceType))) {
       return NextResponse.json({ error: "sourceType inválido" }, { status: 400 });
     }
+    const parsedTiers = parseTiers(tiers);
+    const isTiered = parsedTiers.length > 0;
     if (
+      !isTiered &&
       (percentBps == null || percentBps <= 0) &&
       (flatAmountCents == null || flatAmountCents <= 0)
     ) {
       return NextResponse.json(
-        { error: "Define un porcentaje o monto fijo" },
+        { error: "Define un porcentaje, monto fijo o tramos por volumen" },
         { status: 400 },
       );
     }
@@ -122,8 +128,13 @@ export async function POST(
         sourceType,
         packageId: packageId || null,
         productId: productId || null,
-        percentBps: percentBps ? parseInt(String(percentBps), 10) : null,
-        flatAmountCents: flatAmountCents ? parseInt(String(flatAmountCents), 10) : null,
+        percentBps: isTiered ? null : percentBps ? parseInt(String(percentBps), 10) : null,
+        flatAmountCents: isTiered
+          ? null
+          : flatAmountCents
+            ? parseInt(String(flatAmountCents), 10)
+            : null,
+        tiers: isTiered ? (parsedTiers as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
         effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
         effectiveTo: effectiveTo ? new Date(effectiveTo) : null,
         notes: notes || null,

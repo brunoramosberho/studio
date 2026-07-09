@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { computeTieredCommissions } from "@/lib/staff/commissions";
 
 // All money in this module is cents (integer). The caller is responsible for
 // formatting via lib/currency.formatMoney.
@@ -58,6 +59,16 @@ export interface StaffPayrollLine {
     studioName: string | null;
     amountCents: number;
     count: number;
+  }>;
+  // Volume-tiered commission (Option A), computed from the period's total sales
+  // rather than accrued per-sale. Included in commissionTotalCents.
+  commissionTiers: Array<{
+    ruleId: string;
+    volumeCents: number;
+    percentBps: number;
+    tierIndex: number;
+    tierCount: number;
+    amountCents: number;
   }>;
   totalCents: number;
   currency: string;
@@ -203,6 +214,7 @@ export async function buildPayrollLines(
       monthlyFixedByStudio: [],
       commissionTotalCents: 0,
       commissionByStudio: [],
+      commissionTiers: [],
       totalCents: 0,
       currency: tenantCurrency,
     });
@@ -296,6 +308,29 @@ export async function buildPayrollLines(
       count: c.count,
     });
     line.commissionTotalCents += c.amountCents;
+  }
+
+  // 4b. Volume-tiered commissions — computed from the period's total sales
+  //     (Option A), not accrued per-sale, so fold them in on top of the
+  //     per-sale earnings summed above.
+  const tiered = await computeTieredCommissions({
+    tenantId,
+    userIds: resolvedIds,
+    from: period.from,
+    to: period.to,
+  });
+  for (const [userId, t] of tiered) {
+    const line = linesByUser.get(userId);
+    if (!line) continue;
+    line.commissionTiers = t.rules.map((r) => ({
+      ruleId: r.ruleId,
+      volumeCents: r.volumeCents,
+      percentBps: r.percentBps,
+      tierIndex: r.tierIndex,
+      tierCount: r.tierCount,
+      amountCents: r.amountCents,
+    }));
+    line.commissionTotalCents += t.totalCents;
   }
 
   // 5. Totals
