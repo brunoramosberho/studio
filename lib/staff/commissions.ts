@@ -332,9 +332,9 @@ export interface TieredCommissionResult {
 // the tier reached by each holder's total matching sales in the period sets the
 // rate applied to their whole matching volume). Tiered rules never accrue
 // per-sale earnings, so this is the single source of truth for their payout —
-// call it wherever monthly commission is read (staff list, payroll). Sales are
-// counted only inside each rule's own effective window ∩ the period, so an
-// effective-dated tier change doesn't retroactively re-rate earlier sales.
+// call it wherever monthly commission is read (staff list, payroll). Effective
+// dates are evaluated at period granularity (see below), so a rule created
+// mid-month still covers that whole month's sales.
 export async function computeTieredCommissions(args: {
   tenantId: string;
   userIds: string[];
@@ -355,16 +355,23 @@ export async function computeTieredCommissions(args: {
     },
   });
 
-  for (const rule of rules) {
+  // A tiered rule commissions the WHOLE period's matching sales (monthly
+  // volume), so its effective dates are evaluated at period granularity, not by
+  // sub-period timestamp: a rule created mid-month still covers that whole
+  // month's sales. Among tiered rules sharing the same (user, scope), the most
+  // recently effective one wins so a superseded ladder never double-counts.
+  const tieredRules = rules.filter((r) => parseTiers(r.tiers).length > 0);
+  const bestByScope = new Map<string, (typeof tieredRules)[number]>();
+  for (const r of tieredRules) {
+    const key = `${r.userId}|${r.sourceType}|${r.productId ?? ""}|${r.packageId ?? ""}|${r.studioId ?? ""}`;
+    const cur = bestByScope.get(key);
+    if (!cur || r.effectiveFrom > cur.effectiveFrom) bestByScope.set(key, r);
+  }
+
+  for (const rule of bestByScope.values()) {
     const tiers = parseTiers(rule.tiers);
-    if (tiers.length === 0) continue;
     const saleTypes = saleTypesForSource(rule.sourceType);
     if (saleTypes.length === 0) continue;
-
-    // Clamp the sales window to the rule's effective window ∩ the period.
-    const windowStart = rule.effectiveFrom > from ? rule.effectiveFrom : from;
-    const windowEnd = rule.effectiveTo && rule.effectiveTo < to ? rule.effectiveTo : to;
-    if (windowEnd <= windowStart) continue;
 
     const scope: { referenceId?: string } = {};
     if (rule.productId) scope.referenceId = rule.productId;
@@ -377,7 +384,7 @@ export async function computeTieredCommissions(args: {
           processedById: rule.userId,
           status: "completed",
           type: { in: saleTypes },
-          createdAt: { gte: windowStart, lt: windowEnd },
+          createdAt: { gte: from, lt: to },
           ...scope,
         },
         _sum: { amount: true },
@@ -388,7 +395,7 @@ export async function computeTieredCommissions(args: {
           soldByUserId: rule.userId,
           status: "succeeded",
           type: { in: saleTypes },
-          createdAt: { gte: windowStart, lt: windowEnd },
+          createdAt: { gte: from, lt: to },
           ...scope,
         },
         _sum: { amount: true },
