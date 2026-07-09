@@ -39,6 +39,7 @@ async function getStudioContext(tenantId: string) {
   return {
     studioName: tenant?.name ?? "Studio",
     plan: "Pro",
+    sparkContext: tenant?.sparkContext ?? null,
     studios: studios.map((s) => ({ name: s.name, rooms: s.rooms.map((r) => r.name) })),
     disciplines: classTypes.map((ct) => ct.name),
     packages: packages.map((p) => ({

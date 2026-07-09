@@ -27,6 +27,7 @@ interface TenantDetail {
   name: string;
   isActive: boolean;
   stripeSandboxMode: boolean;
+  sparkContext: string | null;
   applicationFeePercent: number;
   saasStripePriceIdOverride: string | null;
   saasCouponId: string | null;
@@ -185,6 +186,42 @@ export default function TenantDetailPage({
       setTimeout(() => setFeeResult(null), 2500);
     } finally {
       setSavingFee(false);
+    }
+  }
+
+  // Spark AI business context (stage, seasonality, goals) — fed into Spark's
+  // system prompt so Dashboard/Finance briefings read numbers with the right
+  // lens and stay encouraging-but-realistic instead of depressing.
+  const [sparkInput, setSparkInput] = useState("");
+  const [savingSpark, setSavingSpark] = useState(false);
+  const [sparkResult, setSparkResult] = useState<string | null>(null);
+  useEffect(() => {
+    if (tenant) setSparkInput(tenant.sparkContext ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant?.sparkContext]);
+
+  async function saveSparkContext() {
+    if (!tenant) return;
+    setSavingSpark(true);
+    setSparkResult(null);
+    try {
+      const res = await fetch(`/api/super-admin/tenants/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sparkContext: sparkInput.trim() || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSparkResult(`Error: ${data.error ?? "no se pudo guardar"}`);
+        return;
+      }
+      setTenant((prev) =>
+        prev ? { ...prev, sparkContext: data.sparkContext ?? null } : prev,
+      );
+      setSparkResult("✓ Contexto guardado");
+      setTimeout(() => setSparkResult(null), 2500);
+    } finally {
+      setSavingSpark(false);
     }
   }
 
@@ -438,6 +475,45 @@ export default function TenantDetailPage({
           </Card>
         ))}
       </div>
+
+      <Card className="border border-gray-100">
+        <CardHeader>
+          <CardTitle className="text-base">Contexto para Spark (IA)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-gray-500">
+            Contexto de negocio que Spark lee para interpretar los números con el
+            lente correcto — etapa (nuevo / consolidado), estacionalidad, metas,
+            fechas clave. Hace que los resúmenes del Dashboard y Finanzas sean
+            realistas pero alentadores en vez de deprimentes. Escríbelo en lenguaje
+            natural.
+          </p>
+          <textarea
+            value={sparkInput}
+            onChange={(e) => setSparkInput(e.target.value)}
+            rows={6}
+            placeholder="Ej: Estudio nuevo, primeras clases (gratis) el 26–28 de junio 2026. Verano en Madrid es temporada baja; el objetivo es aprender y preparar un repunte fuerte en septiembre (vuelta de vacaciones + F1 en Madrid). Prioriza retención de las primeras alumnas y llenar las clases insignia."
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300"
+          />
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={saveSparkContext}
+              disabled={savingSpark}
+            >
+              {savingSpark ? "Guardando…" : "Guardar contexto"}
+            </Button>
+            {sparkResult && (
+              <span
+                className={`text-xs ${sparkResult.startsWith("Error") ? "text-red-600" : "text-emerald-600"}`}
+              >
+                {sparkResult}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border border-gray-100">
         <CardHeader>

@@ -87,6 +87,7 @@ export async function PUT(req: Request, { params }: Params) {
       saasCouponId,
       saasTrialDays,
       stripeSandboxMode,
+      sparkContext,
     } = body;
 
     if (slug !== undefined && !SLUG_REGEX.test(slug)) {
@@ -115,6 +116,11 @@ export async function PUT(req: Request, { params }: Params) {
     if (tagline !== undefined) data.tagline = tagline;
     if (slogan !== undefined) data.slogan = slogan;
     if (metaDescription !== undefined) data.metaDescription = metaDescription;
+    if (sparkContext !== undefined)
+      data.sparkContext =
+        sparkContext === null || String(sparkContext).trim() === ""
+          ? null
+          : String(sparkContext);
     if (logoUrl !== undefined) data.logoUrl = logoUrl;
     if (appIconUrl !== undefined) data.appIconUrl = appIconUrl;
     if (fontPairing !== undefined) data.fontPairing = fontPairing;

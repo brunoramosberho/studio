@@ -45,6 +45,12 @@ model Tenant {
   tagline           String  @default("Pilates & Wellness")
   slogan            String  @default("Muévete. Respira. Floréce.")
   metaDescription   String  @default("Tu espacio de Pilates y bienestar.")
+  // Free-text business context the Spark AI reads to interpret the studio's
+  // numbers with the right lens — stage (new studio, established), seasonality,
+  // goals, key dates. Keeps briefings realistic but encouraging instead of
+  // reading low early-stage/off-season numbers as failure. Curated per tenant
+  // from super-admin.
+  sparkContext      String? @db.Text
   logoUrl           String?
   appIconUrl        String?
   fontPairing       String  @default("jakarta-dmsans")
