@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Star, Trash2, MessageSquare, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,17 +20,22 @@ interface RatingRow {
   coach: { id: string; name: string; photoUrl: string | null };
 }
 
-interface RatingsReport {
+// The summary + breakdowns are present only on the first page (offset=0);
+// subsequent pages carry just the paginated ratings list.
+interface RatingsPage {
   days: number;
-  summary: {
+  offset: number;
+  total: number;
+  hasMore: boolean;
+  ratings: RatingRow[];
+  summary?: {
     total: number;
     average: number;
     distribution: Record<string, number>;
   };
-  byCoach: { coachId: string; name: string; average: number; count: number }[];
-  byDiscipline: { disciplineId: string; name: string; color: string; average: number; count: number }[];
-  topReasons: { reason: string; count: number }[];
-  ratings: RatingRow[];
+  byCoach?: { coachId: string; name: string; average: number; count: number }[];
+  byDiscipline?: { disciplineId: string; name: string; color: string; average: number; count: number }[];
+  topReasons?: { reason: string; count: number }[];
 }
 
 const RANGES: { key: RangeKey; label: string }[] = [
@@ -67,14 +72,18 @@ export default function RatingsPage() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery<RatingsReport>({
-    queryKey: ["admin-ratings", range],
-    queryFn: async () => {
-      const res = await fetch(`/api/admin/ratings?days=${range}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
-  });
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: ["admin-ratings", range],
+      queryFn: async ({ pageParam }) => {
+        const res = await fetch(`/api/admin/ratings?days=${range}&offset=${pageParam}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<RatingsPage>;
+      },
+      initialPageParam: 0,
+      getNextPageParam: (last) =>
+        last.hasMore ? last.offset + last.ratings.length : undefined,
+    });
 
   const del = useMutation({
     mutationFn: async (id: string) => {
@@ -87,7 +96,12 @@ export default function RatingsPage() {
     },
   });
 
-  const dist = data?.summary.distribution ?? {};
+  const first = data?.pages[0];
+  const summary = first?.summary;
+  const byCoach = first?.byCoach ?? [];
+  const ratings = data?.pages.flatMap((p) => p.ratings) ?? [];
+  const total = first?.total ?? 0;
+  const dist = summary?.distribution ?? {};
   const maxDist = Math.max(1, ...Object.values(dist));
 
   return (
@@ -125,16 +139,16 @@ export default function RatingsPage() {
           ) : (
             <div className="mt-1.5 flex items-center gap-2">
               <span className="text-2xl font-semibold tabular-nums">
-                {data?.summary.total ? data.summary.average.toFixed(1) : "—"}
+                {summary?.total ? summary.average.toFixed(1) : "—"}
               </span>
-              {!!data?.summary.total && <Stars n={Math.round(data.summary.average)} size={16} />}
+              {!!summary?.total && <Stars n={Math.round(summary.average)} size={16} />}
             </div>
           )}
         </div>
         <div className="rounded-sm border border-border/60 bg-card p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Total valoraciones</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">
-            {isLoading ? <Skeleton className="inline-block h-7 w-14" /> : data?.summary.total ?? 0}
+            {isLoading ? <Skeleton className="inline-block h-7 w-14" /> : total}
           </p>
         </div>
         <div className="rounded-sm border border-border/60 bg-card p-4">
@@ -167,7 +181,7 @@ export default function RatingsPage() {
         </div>
         {isLoading ? (
           <Skeleton className="h-24 w-full" />
-        ) : (data?.byCoach ?? []).length === 0 ? (
+        ) : byCoach.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted">Sin valoraciones en este rango.</p>
         ) : (
           <table className="w-full text-sm">
@@ -179,7 +193,7 @@ export default function RatingsPage() {
               </tr>
             </thead>
             <tbody>
-              {(data?.byCoach ?? []).map((c) => (
+              {byCoach.map((c) => (
                 <tr key={c.coachId} className="border-t border-border/50">
                   <td className="py-2 font-medium">{c.name}</td>
                   <td className="py-2 text-right tabular-nums">{c.count}</td>
@@ -200,8 +214,8 @@ export default function RatingsPage() {
       <div className="rounded-sm border border-border/60 bg-card p-4">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
           <MessageSquare className="h-4 w-4" /> Detalle
-          {!!data?.ratings.length && (
-            <span className="text-xs font-normal text-muted">({data.ratings.length})</span>
+          {!!total && (
+            <span className="text-xs font-normal text-muted">({total})</span>
           )}
         </div>
         {isLoading ? (
@@ -210,11 +224,12 @@ export default function RatingsPage() {
               <Skeleton key={i} className="h-16 w-full" />
             ))}
           </div>
-        ) : (data?.ratings ?? []).length === 0 ? (
+        ) : ratings.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted">Sin valoraciones en este rango.</p>
         ) : (
+          <>
           <ul className="divide-y divide-border/50">
-            {(data?.ratings ?? []).map((r) => (
+            {ratings.map((r) => (
               <li key={r.id} className="flex gap-3 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -282,6 +297,20 @@ export default function RatingsPage() {
               </li>
             ))}
           </ul>
+          {hasNextPage && (
+            <div className="pt-3">
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="w-full rounded-md border border-border/60 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground disabled:opacity-50"
+              >
+                {isFetchingNextPage
+                  ? "Cargando…"
+                  : `Cargar más · ${total - ratings.length} restantes`}
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
     </div>

@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/tenant";
 
-// GET /api/admin/ratings?days=90
-// Class ratings for the tenant: overall average + star distribution, breakdown
-// by instructor and by discipline, and the full list of individual ratings
-// (class, instructor, member, stars, reasons, comment, source, date) so admins
-// can review and delete ones that don't make sense. days=0 (or absent) = all time.
+const PAGE_SIZE = 50;
+
+// GET /api/admin/ratings?days=90&offset=0
+// Class ratings for the tenant. The summary + breakdowns (by instructor /
+// discipline / reason) are computed over the WHOLE range and returned only on
+// the first page (offset=0); the detail list is paginated (PAGE_SIZE per page)
+// so a studio with thousands of ratings doesn't ship them all at once.
+// days=0 (or absent) = all time.
 export async function GET(request: NextRequest) {
   try {
     const ctx = await requirePermission("ratings");
@@ -14,25 +17,74 @@ export async function GET(request: NextRequest) {
 
     const daysParam = Number(request.nextUrl.searchParams.get("days") ?? "90");
     const days = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 0;
+    const offsetParam = Number(request.nextUrl.searchParams.get("offset") ?? "0");
+    const offset = Number.isFinite(offsetParam) && offsetParam > 0 ? Math.floor(offsetParam) : 0;
+
     const where: { tenantId: string; createdAt?: { gte: Date } } = { tenantId };
     if (days > 0) {
       where.createdAt = { gte: new Date(Date.now() - days * 86_400_000) };
     }
 
-    const rows = await prisma.classRating.findMany({
+    // Detail page (always) + total count (always, cheap). The heavy aggregation
+    // scan only runs on the first page.
+    const [total, pageRows] = await Promise.all([
+      prisma.classRating.count({ where }),
+      prisma.classRating.findMany({
+        where,
+        include: {
+          user: { select: { id: true, name: true, image: true } },
+          class: {
+            select: {
+              id: true,
+              startsAt: true,
+              classType: { select: { name: true, color: true } },
+              coach: { select: { id: true, name: true, photoUrl: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: offset,
+        take: PAGE_SIZE,
+      }),
+    ]);
+
+    const ratings = pageRows.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      reasons: r.reasons,
+      comment: r.comment,
+      source: r.source,
+      createdAt: r.createdAt.toISOString(),
+      member: { id: r.user.id, name: r.user.name, image: r.user.image },
+      class: {
+        id: r.class.id,
+        startsAt: r.class.startsAt.toISOString(),
+        discipline: r.class.classType.name,
+        color: r.class.classType.color,
+      },
+      coach: { id: r.class.coach.id, name: r.class.coach.name, photoUrl: r.class.coach.photoUrl },
+    }));
+
+    const hasMore = offset + ratings.length < total;
+
+    // Subsequent pages: just the list.
+    if (offset > 0) {
+      return NextResponse.json({ days, offset, total, ratings, hasMore });
+    }
+
+    // First page: also compute the summary + breakdowns over the whole range.
+    const aggRows = await prisma.classRating.findMany({
       where,
-      include: {
-        user: { select: { id: true, name: true, image: true } },
+      select: {
+        rating: true,
+        reasons: true,
         class: {
           select: {
-            id: true,
-            startsAt: true,
             classType: { select: { id: true, name: true, color: true } },
-            coach: { select: { id: true, name: true, photoUrl: true } },
+            coach: { select: { id: true, name: true } },
           },
         },
       },
-      orderBy: { createdAt: "desc" },
     });
 
     const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -41,7 +93,7 @@ export async function GET(request: NextRequest) {
     const reasonTally = new Map<string, number>();
     let sum = 0;
 
-    for (const r of rows) {
+    for (const r of aggRows) {
       distribution[r.rating] = (distribution[r.rating] ?? 0) + 1;
       sum += r.rating;
       const coach = r.class.coach;
@@ -61,9 +113,12 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       days,
+      offset,
+      total,
+      hasMore,
       summary: {
-        total: rows.length,
-        average: rows.length ? Math.round((sum / rows.length) * 10) / 10 : 0,
+        total,
+        average: total ? Math.round((sum / total) * 10) / 10 : 0,
         distribution,
       },
       byCoach: [...byCoach.entries()]
@@ -75,22 +130,7 @@ export async function GET(request: NextRequest) {
       topReasons: [...reasonTally.entries()]
         .map(([reason, count]) => ({ reason, count }))
         .sort((a, b) => b.count - a.count),
-      ratings: rows.map((r) => ({
-        id: r.id,
-        rating: r.rating,
-        reasons: r.reasons,
-        comment: r.comment,
-        source: r.source,
-        createdAt: r.createdAt.toISOString(),
-        member: { id: r.user.id, name: r.user.name, image: r.user.image },
-        class: {
-          id: r.class.id,
-          startsAt: r.class.startsAt.toISOString(),
-          discipline: r.class.classType.name,
-          color: r.class.classType.color,
-        },
-        coach: { id: r.class.coach.id, name: r.class.coach.name, photoUrl: r.class.coach.photoUrl },
-      })),
+      ratings,
     });
   } catch (error) {
     if (error instanceof Error) {
