@@ -284,10 +284,16 @@ export default function AdminFeedPage() {
     queryKey: ["upcoming-classes-picker", classPickerOpen],
     enabled: classPickerOpen,
     queryFn: async () => {
-      const from = new Date().toISOString();
+      // /api/classes expects a YYYY-MM-DD wall-clock date, not a full ISO
+      // timestamp (a full ISO one builds an Invalid Date server-side → 500).
+      const from = new Date().toISOString().slice(0, 10);
       const res = await fetch(`/api/classes?from=${encodeURIComponent(from)}`);
       if (!res.ok) return [];
-      return res.json();
+      const all: LinkedClassOption[] = await res.json();
+      // The API widens the range by a day for tz bucketing; keep only genuinely
+      // upcoming classes so this "clases próximas" picker never lists past ones.
+      const now = Date.now();
+      return all.filter((c) => new Date(c.startsAt).getTime() >= now);
     },
   });
 

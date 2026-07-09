@@ -22,20 +22,22 @@ export async function GET(request: NextRequest) {
     };
 
     if (from || to) {
-      // `from` / `to` arrive as YYYY-MM-DD wall-clock dates. `new Date(str)`
-      // parses them as UTC midnight, so the upper bound clips off everything
-      // after 00:00 UTC on the last day — which is morning on the same day
-      // for studios west of UTC and the *prior* afternoon for studios east of
-      // UTC. Widen by ±1 day; the caller re-buckets by studio wall-clock so
-      // extras are filtered client-side.
+      // `from` / `to` are meant to be YYYY-MM-DD wall-clock dates, but some
+      // callers pass a full ISO timestamp — take just the date part so
+      // `new Date(`${date}T00:00:00Z`)` never becomes an Invalid Date (which
+      // would throw when Prisma serializes it and 500 the whole request).
+      // `new Date(str)` parses as UTC midnight, so the upper bound clips off
+      // everything after 00:00 UTC on the last day — morning on the same day
+      // for studios west of UTC and the *prior* afternoon east of UTC. Widen
+      // by ±1 day; the caller re-buckets by studio wall-clock, filtering extras.
       const startsAtRange: { gte?: Date; lt?: Date } = {};
       if (from) {
-        const d = new Date(`${from}T00:00:00Z`);
+        const d = new Date(`${from.slice(0, 10)}T00:00:00Z`);
         d.setUTCDate(d.getUTCDate() - 1);
         startsAtRange.gte = d;
       }
       if (to) {
-        const d = new Date(`${to}T00:00:00Z`);
+        const d = new Date(`${to.slice(0, 10)}T00:00:00Z`);
         d.setUTCDate(d.getUTCDate() + 2);
         startsAtRange.lt = d;
       }
