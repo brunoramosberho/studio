@@ -593,7 +593,9 @@ function ProductRow({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-foreground">{product.name}</p>
             {product.description && (
-              <p className="truncate text-xs text-muted">{product.description}</p>
+              <p className="whitespace-pre-line text-xs leading-relaxed text-muted">
+                {product.description}
+              </p>
             )}
             <p className="mt-0.5 text-sm font-bold text-accent">
               {product.price === 0
