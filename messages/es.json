@@ -1087,6 +1087,8 @@
     "systemLabel": "Sistema",
     "reassignSeller": "Reasignar vendedor",
     "sellerNone": "Sin vendedor (sistema)",
+    "filterTypeAll": "Todos los tipos",
+    "filterSellerAll": "Todo el personal",
     "sellerUpdated": "Vendedor actualizado",
     "sellerUpdateError": "No se pudo reasignar el vendedor",
     "todayDate": "Hoy",

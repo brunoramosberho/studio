@@ -69,6 +69,8 @@ export async function GET(request: NextRequest) {
     const range = (params.get("range") ?? "month") as Range;
     const month = params.get("month") ?? undefined;
     const method = params.get("method") ?? "all";
+    const typeFilter = params.get("type") ?? "all";
+    const processedByFilter = params.get("processedBy") ?? "all";
     const search = params.get("search") ?? "";
     const page = Math.max(1, parseInt(params.get("page") ?? "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(params.get("limit") ?? "25", 10)));
@@ -378,14 +380,27 @@ export async function GET(request: NextRequest) {
     unified.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     let filtered = unified;
+    if (typeFilter !== "all") {
+      filtered = filtered.filter((t) => t.conceptType === typeFilter);
+    }
+    if (processedByFilter !== "all") {
+      filtered = filtered.filter((t) =>
+        processedByFilter === "system"
+          ? t.processedByType === "system" || !t.processedBy
+          : t.processedBy?.id === processedByFilter,
+      );
+    }
     if (search) {
       const q = search.toLowerCase();
-      filtered = unified.filter(
+      filtered = filtered.filter(
         (t) =>
           t.memberName.toLowerCase().includes(q) ||
           t.memberEmail.toLowerCase().includes(q) ||
           t.source.toLowerCase().includes(q) ||
           (t.concept ?? "").toLowerCase().includes(q) ||
+          (t.conceptSub ?? "").toLowerCase().includes(q) ||
+          t.conceptType.toLowerCase().includes(q) ||
+          (t.processedBy?.name ?? "").toLowerCase().includes(q) ||
           t.grossAmount.toString().includes(q),
       );
     }

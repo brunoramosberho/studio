@@ -1213,6 +1213,8 @@
     "systemLabel": "System",
     "reassignSeller": "Reassign seller",
     "sellerNone": "No seller (system)",
+    "filterTypeAll": "All types",
+    "filterSellerAll": "All staff",
     "sellerUpdated": "Seller updated",
     "sellerUpdateError": "Couldn't reassign the seller",
     "todayDate": "Today",

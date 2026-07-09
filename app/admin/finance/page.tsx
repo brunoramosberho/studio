@@ -36,6 +36,7 @@ import {
   SelectItem,
   SelectSeparator,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 
 // ── Types ──
@@ -243,6 +244,8 @@ export default function FinancePage() {
     return opts;
   })();
   const [method, setMethod] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [processedByFilter, setProcessedByFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [hideAbandoned, setHideAbandoned] = useState(true);
@@ -258,10 +261,12 @@ export default function FinancePage() {
   });
 
   const { data: txData, isLoading: txLd } = useQuery<TransactionsResponse>({
-    queryKey: ["admin-finance-tx", range, month, method, search, page],
+    queryKey: ["admin-finance-tx", range, month, method, typeFilter, processedByFilter, search, page],
     queryFn: async () => {
       const params = new URLSearchParams({ range, method, search, page: String(page), limit: "25" });
       if (month) params.set("month", month);
+      if (typeFilter !== "all") params.set("type", typeFilter);
+      if (processedByFilter !== "all") params.set("processedBy", processedByFilter);
       const res = await fetch(`/api/admin/finance/transactions?${params}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
@@ -586,6 +591,47 @@ export default function FinancePage() {
                   {t(f.labelKey)}
                 </button>
               ))}
+              <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
+                <SelectTrigger
+                  aria-label={t("typeLabel")}
+                  className={cn(
+                    "h-7 w-auto shrink-0 gap-1 rounded-lg border-stone-200 bg-white px-2.5 py-1 text-xs font-medium",
+                    typeFilter !== "all" ? "text-stone-900" : "text-stone-500",
+                  )}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("filterTypeAll")}</SelectItem>
+                  <SelectItem value="package">{t("packageLabel")}</SelectItem>
+                  <SelectItem value="product">{t("productLabel")}</SelectItem>
+                  <SelectItem value="subscription">{t("subscription")}</SelectItem>
+                  <SelectItem value="penalty">{t("penalty")}</SelectItem>
+                </SelectContent>
+              </Select>
+              {staff && staff.length > 0 && (
+                <Select value={processedByFilter} onValueChange={(v) => { setProcessedByFilter(v); setPage(1); }}>
+                  <SelectTrigger
+                    aria-label={t("processedByColumn")}
+                    className={cn(
+                      "h-7 w-auto max-w-[160px] shrink-0 gap-1 rounded-lg border-stone-200 bg-white px-2.5 py-1 text-xs font-medium",
+                      processedByFilter !== "all" ? "text-stone-900" : "text-stone-500",
+                    )}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("filterSellerAll")}</SelectItem>
+                    {staff.map((s) => (
+                      <SelectItem key={s.userId} value={s.userId}>
+                        {s.user?.name?.trim() || s.user?.email || "—"}
+                      </SelectItem>
+                    ))}
+                    <SelectSeparator />
+                    <SelectItem value="system">{t("sellerNone")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
               <label className="ml-1 sm:ml-2 flex shrink-0 items-center gap-1.5 text-xs text-stone-400 cursor-pointer select-none">
                 <input
                   type="checkbox"
