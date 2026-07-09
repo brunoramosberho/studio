@@ -729,7 +729,7 @@ function ClassPromoBlock({ payload }: { payload: Record<string, unknown> }) {
     : "";
 
   return (
-    <div className="mx-4 mb-3">
+    <div className="mx-4 mb-3 mt-3">
       <div
         className="overflow-hidden rounded-2xl border"
         style={{ borderColor: `${classTypeColor}25`, backgroundColor: `${classTypeColor}06` }}

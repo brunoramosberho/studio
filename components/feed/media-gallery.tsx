@@ -429,7 +429,7 @@ export function MediaGallery({ media, className, eventId, currentUserId, coachUs
                   poster={item.thumbnailUrl}
                   className={cn(
                     "h-full w-full object-cover",
-                    media.length === 1 && "aspect-[4/3]",
+                    media.length === 1 && "aspect-[4/5]",
                     media.length === 2 && "aspect-square",
                     media.length >= 3 && !tall && "aspect-square",
                     tall && "h-full",
@@ -443,7 +443,7 @@ export function MediaGallery({ media, className, eventId, currentUserId, coachUs
                   loading="lazy"
                   className={cn(
                     "w-full object-cover",
-                    media.length === 1 && "aspect-[4/3]",
+                    media.length === 1 && "aspect-[4/5]",
                     media.length === 2 && "aspect-square",
                     media.length >= 3 && !tall && "aspect-square",
                     tall && "h-full",
