@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Camera, Loader2, X, Send } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { captureVideoPoster, uploadVideoPosterToStorage, compressImage } from "@/lib/media-utils";
 
-const MAX_VIDEO_SIZE = 30 * 1024 * 1024;
-const MAX_VIDEO_SIZE_LABEL = "30";
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
+const MAX_VIDEO_SIZE_LABEL = "50";
 const MAX_VIDEO_DURATION = 60;
 const ACCEPTED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 
@@ -75,6 +76,21 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // A rejected-file message (wrong format / too big / too long) is set BEFORE
+  // the preview overlay opens, so the in-overlay banner alone would be invisible
+  // and the upload would appear to fail silently. Toast it too so the reason is
+  // always shown.
+  const rejectFile = (msg: string) => {
+    setValidationError(msg);
+    toast.error(msg);
+  };
+  // An upload-time failure. The overlay is open here, but toast as well so it's
+  // never missed.
+  const fail = (msg: string) => {
+    setError(msg);
+    toast.error(msg);
+  };
+
   useEffect(() => {
     return () => {
       pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -91,14 +107,12 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
       const isVid = file.type.startsWith("video/");
 
       if (isVid && !ACCEPTED_VIDEO_TYPES.includes(file.type)) {
-        setValidationError(
-          "Formato de video no soportado. Usa MP4 o WebM.",
-        );
+        rejectFile("Formato de video no soportado. Usa MP4 o WebM.");
         return;
       }
 
       if (isVid && file.size > MAX_VIDEO_SIZE) {
-        setValidationError(
+        rejectFile(
           `Video demasiado pesado (${(file.size / 1024 / 1024).toFixed(0)} MB). Máximo: ${MAX_VIDEO_SIZE_LABEL} MB.`,
         );
         return;
@@ -121,7 +135,7 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             (d) => d !== Infinity && d > MAX_VIDEO_DURATION,
           );
           if (tooLong !== undefined) {
-            setValidationError(
+            rejectFile(
               `El video dura ${Math.ceil(tooLong)}s. Máximo: ${MAX_VIDEO_DURATION}s.`,
             );
           }
@@ -161,7 +175,7 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
 
           if (!urlRes.ok) {
             const data = await urlRes.json().catch(() => ({}));
-            setError(data.error || "Error al preparar subida");
+            fail(data.error || "Error al preparar la subida");
             continue;
           }
 
@@ -198,10 +212,15 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             succeeded++;
           } else {
             const data = await regRes.json().catch(() => ({}));
-            setError(data.error || "Error al registrar video");
+            fail(data.error || "Error al registrar el video");
           }
-        } catch {
-          setError("Error al subir el video. Intenta de nuevo.");
+        } catch (err) {
+          const m = err instanceof Error ? err.message : "";
+          fail(
+            /\b413\b/.test(m)
+              ? "El video es muy pesado para el servidor. Intenta uno más corto o de menor calidad."
+              : "No se pudo subir el video. Revisa tu conexión e intenta de nuevo.",
+          );
         }
       } else {
         // Image: existing multipart flow (small after compression)
@@ -221,10 +240,10 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             succeeded++;
           } else {
             const data = await res.json().catch(() => ({}));
-            setError(data.error || `Error ${res.status}`);
+            fail(data.error || `No se pudo subir la foto (Error ${res.status})`);
           }
         } catch {
-          setError("No se pudo conectar al servidor");
+          fail("No se pudo conectar al servidor. Revisa tu conexión.");
         }
       }
     }
