@@ -6,8 +6,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { captureVideoPoster, uploadVideoPosterToStorage, compressImage } from "@/lib/media-utils";
 
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
-const MAX_VIDEO_SIZE_LABEL = "50";
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
+const MAX_VIDEO_SIZE_LABEL = "100";
 const MAX_VIDEO_DURATION = 60;
 const ACCEPTED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 
@@ -29,6 +29,15 @@ function getVideoDuration(file: File): Promise<number> {
 }
 
 
+class UploadError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "UploadError";
+    this.status = status;
+  }
+}
+
 function uploadWithProgress(
   url: string,
   file: File,
@@ -42,9 +51,9 @@ function uploadWithProgress(
     };
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`Upload failed: ${xhr.status}`));
+      else reject(new UploadError(xhr.status, `Upload failed: ${xhr.status}`));
     };
-    xhr.onerror = () => reject(new Error("Network error"));
+    xhr.onerror = () => reject(new UploadError(0, "Network error"));
     xhr.open("PUT", url);
     xhr.setRequestHeader("Content-Type", contentType);
     xhr.send(file);
@@ -165,8 +174,8 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
       if (item.isVideo) {
         // Upload the bytes to storage, retrying transient/network failures (a
         // dropped upload on flaky studio wifi is the common cause). Each retry
-        // gets a fresh single-use signed URL. 413 (too big) and prep failures
-        // (auth) are permanent — don't retry those.
+        // gets a fresh single-use signed URL. A 413 (too big for the storage
+        // backend) and prep failures (auth) are permanent — don't retry those.
         const MAX_TRIES = 3;
         let publicUrl: string | null = null;
         let permanent = false;
@@ -199,14 +208,16 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             );
             publicUrl = pub;
           } catch (err) {
-            const m = err instanceof Error ? err.message : "";
-            if (/\b413\b/.test(m)) {
+            // Storage backend rejected the file as too big (413) — permanent
+            // and actionable; don't retry.
+            if (err instanceof UploadError && err.status === 413) {
               fail(
-                "El video es muy pesado para el servidor. Intenta uno más corto o de menor calidad.",
+                "El video pesa demasiado para subirse. Intenta con uno más corto o de menor calidad.",
               );
               permanent = true;
               break;
             }
+            // Network drop (status 0) or a transient 5xx — back off and retry.
             if (tryN < MAX_TRIES) {
               setProgress(null);
               await new Promise((r) => setTimeout(r, tryN * 1000));
@@ -218,7 +229,7 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
 
         if (publicUrl === null) continue; // failed — already reported
 
-        // Bytes are stored. Poster is best-effort (never sink the upload for it).
+        // Bytes are stored. Poster is best-effort — never sink the upload for it.
         let thumbnailUrl: string | null = null;
         try {
           const poster = await captureVideoPoster(item.file);
