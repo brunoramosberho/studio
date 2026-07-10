@@ -177,10 +177,12 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
         // gets a fresh single-use signed URL. A 413 (too big for the storage
         // backend) and prep failures (auth) are permanent — don't retry those.
         const MAX_TRIES = 3;
+        const mb = Math.round(item.file.size / 1024 / 1024);
         let publicUrl: string | null = null;
         let permanent = false;
 
         for (let tryN = 1; tryN <= MAX_TRIES && publicUrl === null && !permanent; tryN++) {
+          let maxFraction = 0;
           try {
             const urlRes = await fetch(`/api/feed/${eventId}/photos/upload-url`, {
               method: "POST",
@@ -204,25 +206,34 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
               signedUrl,
               item.file,
               item.file.type,
-              (fraction) => setProgress(fraction * 0.9),
+              (fraction) => {
+                if (fraction > maxFraction) maxFraction = fraction;
+                setProgress(fraction * 0.9);
+              },
             );
             publicUrl = pub;
           } catch (err) {
-            // Storage backend rejected the file as too big (413) — permanent
-            // and actionable; don't retry.
-            if (err instanceof UploadError && err.status === 413) {
+            const status = err instanceof UploadError ? err.status : -1;
+            // Too-big-for-storage shows up two ways: a clean 413, or — when all
+            // bytes were sent and the backend drops the connection on the
+            // oversized file — a "network" error that only fires *after*
+            // progress already reached ~100%. Treat both as size: permanent,
+            // actionable, and don't waste data re-uploading the same file.
+            if (status === 413 || maxFraction >= 0.98) {
               fail(
-                "El video pesa demasiado para subirse. Intenta con uno más corto o de menor calidad.",
+                `El video (${mb} MB) es demasiado pesado para subirse. Intenta con uno más corto o de menor calidad.`,
               );
               permanent = true;
               break;
             }
-            // Network drop (status 0) or a transient 5xx — back off and retry.
+            // Genuine mid-upload drop — back off and retry with a fresh URL.
             if (tryN < MAX_TRIES) {
               setProgress(null);
               await new Promise((r) => setTimeout(r, tryN * 1000));
             } else {
-              fail("No se pudo subir el video (conexión inestable). Vuelve a intentar.");
+              fail(
+                `No se pudo subir el video (${mb} MB) por conexión inestable. Vuelve a intentar.`,
+              );
             }
           }
         }
