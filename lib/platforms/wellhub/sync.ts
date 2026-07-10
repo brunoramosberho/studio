@@ -148,34 +148,51 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
 
   try {
     // 1) Ensure the Wellhub `class` template exists for this ClassType.
-    const wellhubClassId = await ensureWellhubClassForClassType(gymId, ctx.classType, token);
+    const currentTemplate = await ensureWellhubClassForClassType(gymId, ctx.classType, token);
+
+    // A slot is permanently tied to the template it was CREATED under. If the
+    // class's discipline later changed, we keep the slot under its original
+    // template (wellhubClassIdSynced) so existing bookings survive, and surface
+    // the new discipline via the coach name.
+    const slotTemplate = ctx.cls.wellhubSlotId
+      ? (ctx.cls.wellhubClassIdSynced ?? currentTemplate)
+      : currentTemplate;
+    const disciplineChanged =
+      !!ctx.cls.wellhubSlotId && slotTemplate !== currentTemplate;
 
     // 2) Build the slot payload from live Magic state.
-    const slotPayload = classToWellhubSlotPayload(toMagicClassForSync(ctx), {
-      id: ctx.classType.id,
-      wellhubProductId: ctx.classType.wellhubProductId,
-    });
+    const slotPayload = classToWellhubSlotPayload(
+      toMagicClassForSync(ctx, disciplineChanged ? ctx.classType.name : null),
+      { id: ctx.classType.id, wellhubProductId: ctx.classType.wellhubProductId },
+    );
 
-    // 3) POST if new, PUT if we already have a wellhubSlotId on file. If the
-    // PUT 404s, our pointer is stale (the slot was deleted on Wellhub's side —
-    // e.g. a class edit or partner-side cleanup). Re-create it instead of
-    // erroring forever: otherwise every 15-min reconcile pass re-alerts on a
-    // class that can never heal itself.
+    // 3) POST if new, PUT if we already have a wellhubSlotId on file (under the
+    // slot's OWN template). If the PUT 404s, the slot was genuinely deleted on
+    // Wellhub's side — recreate under the CURRENT template rather than erroring
+    // forever (otherwise every 15-min reconcile pass re-alerts).
     let wellhubSlotId = ctx.cls.wellhubSlotId;
+    let syncedTemplate = slotTemplate;
     if (!wellhubSlotId) {
-      const slot = await createWellhubSlot(gymId, wellhubClassId, slotPayload, token);
+      const slot = await createWellhubSlot(gymId, currentTemplate, slotPayload, token);
       wellhubSlotId = slot.id;
+      syncedTemplate = currentTemplate;
     } else {
       try {
-        await updateWellhubSlot(gymId, wellhubClassId, wellhubSlotId, slotPayload, token);
+        await updateWellhubSlot(gymId, slotTemplate, wellhubSlotId, slotPayload, token);
       } catch (error) {
         if (error instanceof WellhubApiError && error.isNotFound) {
           console.warn("[wellhub-sync] stale slot pointer 404 — recreating", {
             classId,
             staleSlotId: wellhubSlotId,
           });
-          const slot = await createWellhubSlot(gymId, wellhubClassId, slotPayload, token);
+          // Recreated under the current template → drop the discipline suffix.
+          const freshPayload = classToWellhubSlotPayload(toMagicClassForSync(ctx), {
+            id: ctx.classType.id,
+            wellhubProductId: ctx.classType.wellhubProductId,
+          });
+          const slot = await createWellhubSlot(gymId, currentTemplate, freshPayload, token);
           wellhubSlotId = slot.id;
+          syncedTemplate = currentTemplate;
         } else {
           throw error;
         }
@@ -186,6 +203,7 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
       where: { id: classId },
       data: {
         wellhubSlotId,
+        wellhubClassIdSynced: syncedTemplate,
         wellhubSyncStatus: "synced",
         wellhubLastSyncAt: new Date(),
         wellhubLastError: null,
@@ -221,11 +239,13 @@ export async function unsyncClassFromWellhub(classId: string): Promise<WellhubSy
   }
 
   const token = await getWellhubTokenForTenant(ctx.tenantConfig.tenantId);
+  // Delete under the slot's OWN template (may differ from the current type).
+  const slotTemplate = ctx.cls.wellhubClassIdSynced ?? ctx.classType.wellhubClassId;
 
   try {
     await deleteWellhubSlot(
       ctx.tenantConfig.wellhubGymId,
-      ctx.classType.wellhubClassId,
+      slotTemplate,
       ctx.cls.wellhubSlotId,
       token,
     );
@@ -233,6 +253,7 @@ export async function unsyncClassFromWellhub(classId: string): Promise<WellhubSy
       where: { id: classId },
       data: {
         wellhubSlotId: null,
+        wellhubClassIdSynced: null,
         wellhubSyncStatus: "excluded",
         wellhubLastSyncAt: new Date(),
         wellhubLastError: null,
@@ -244,7 +265,7 @@ export async function unsyncClassFromWellhub(classId: string): Promise<WellhubSy
       // Already gone on their side — clear our local pointer.
       await prisma.class.update({
         where: { id: classId },
-        data: { wellhubSlotId: null, wellhubSyncStatus: "excluded", wellhubLastSyncAt: new Date() },
+        data: { wellhubSlotId: null, wellhubClassIdSynced: null, wellhubSyncStatus: "excluded", wellhubLastSyncAt: new Date() },
       });
       return { status: "excluded" };
     }
@@ -254,23 +275,35 @@ export async function unsyncClassFromWellhub(classId: string): Promise<WellhubSy
 }
 
 /**
- * A class's ClassType changed, so its existing Wellhub slot lives under the OLD
- * type's template (Wellhub slots belong to a class template). A plain re-sync
- * would PUT under the NEW template → 404 → and the recreate-on-404 heal would
- * leave the OLD slot orphaned & still bookable (two classes at one time — the
- * exact bug we hit). Delete the old slot under the old template and clear the
- * pointer, so the caller's syncClassToWellhub creates a clean slot under the
- * new template. Best-effort — never throws (the re-sync is what matters).
+ * A class's ClassType (discipline) changed. A Wellhub slot is permanently tied
+ * to the template it was created under, so we must decide what to do BEFORE the
+ * caller re-syncs:
+ *   - Slot has live Wellhub bookings → KEEP it (deleting would cancel members).
+ *     Do nothing here; syncClassToWellhub keeps it under its original template
+ *     (wellhubClassIdSynced) and appends the new discipline to the coach name.
+ *   - Slot has no bookings → delete it under its original template and clear
+ *     the pointer, so the re-sync creates a clean slot under the new template.
+ * Best-effort — never throws (the re-sync is what matters).
  */
-export async function deleteWellhubSlotForOldClassType(
+export async function reconcileWellhubOnDisciplineChange(
   classId: string,
   oldClassTypeId: string,
 ): Promise<void> {
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    select: { wellhubSlotId: true, tenantId: true },
+    select: { wellhubSlotId: true, wellhubClassIdSynced: true, tenantId: true },
   });
   if (!cls?.wellhubSlotId) return;
+
+  // Keep the slot if any live Wellhub booking sits on this class.
+  const liveBookings = await prisma.platformBooking.count({
+    where: {
+      classId,
+      platform: "wellhub",
+      status: { in: ["confirmed", "checked_in", "pending_confirmation"] },
+    },
+  });
+  if (liveBookings > 0) return; // keep — re-sync relabels the coach
 
   const [oldType, cfg] = await Promise.all([
     prisma.classType.findUnique({
@@ -282,19 +315,23 @@ export async function deleteWellhubSlotForOldClassType(
       select: { wellhubGymId: true },
     }),
   ]);
-  if (!oldType?.wellhubClassId || !cfg?.wellhubGymId) return;
+  const slotTemplate = cls.wellhubClassIdSynced ?? oldType?.wellhubClassId;
+  if (!slotTemplate || !cfg?.wellhubGymId) return;
 
   try {
     const token = await getWellhubTokenForTenant(cls.tenantId);
-    await deleteWellhubSlot(cfg.wellhubGymId, oldType.wellhubClassId, cls.wellhubSlotId, token);
+    await deleteWellhubSlot(cfg.wellhubGymId, slotTemplate, cls.wellhubSlotId, token);
   } catch (error) {
     // 404 = already gone; anything else we log but still clear our pointer so
     // the re-sync recreates cleanly rather than 404-looping on the old slot.
     if (!(error instanceof WellhubApiError && error.isNotFound)) {
-      console.error("[wellhub] delete old-type slot failed", { classId, error });
+      console.error("[wellhub] delete old-discipline slot failed", { classId, error });
     }
   }
-  await prisma.class.update({ where: { id: classId }, data: { wellhubSlotId: null } });
+  await prisma.class.update({
+    where: { id: classId },
+    data: { wellhubSlotId: null, wellhubClassIdSynced: null },
+  });
 }
 
 /**
@@ -395,11 +432,13 @@ export async function patchWellhubCapacityForClass(
   const effectiveCapacity = Math.min(quota, wellhubBookingsCount + physicalLeft);
 
   const token = await getWellhubTokenForTenant(ctx.tenantConfig.tenantId);
+  // Patch under the slot's OWN template (may differ after a discipline change).
+  const slotTemplate = ctx.cls.wellhubClassIdSynced ?? ctx.classType.wellhubClassId;
 
   try {
     await patchWellhubSlot(
       ctx.tenantConfig.wellhubGymId,
-      ctx.classType.wellhubClassId,
+      slotTemplate,
       ctx.cls.wellhubSlotId,
       capacityPatchPayload({
         totalCapacity: effectiveCapacity,
@@ -428,6 +467,8 @@ interface ClassContext {
     notes: string | null;
     status: "SCHEDULED" | "CANCELLED" | "COMPLETED";
     wellhubSlotId: number | null;
+    /** Template the current slot lives under (may differ from classType after a discipline change). */
+    wellhubClassIdSynced: number | null;
   };
   classType: {
     id: string;
@@ -469,6 +510,7 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
       status: true,
       tenantId: true,
       wellhubSlotId: true,
+      wellhubClassIdSynced: true,
       classType: {
         select: {
           id: true,
@@ -511,6 +553,7 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
       notes: cls.notes,
       status: cls.status,
       wellhubSlotId: cls.wellhubSlotId,
+      wellhubClassIdSynced: cls.wellhubClassIdSynced,
     },
     classType: cls.classType,
     room: cls.room ? { name: cls.room.name } : null,
@@ -600,11 +643,18 @@ function toMagicClassType(
   };
 }
 
-function toMagicClassForSync(ctx: ClassContext): MagicClassForSync {
+function toMagicClassForSync(
+  ctx: ClassContext,
+  // When the class's discipline changed but we kept the old slot (to preserve
+  // bookings), Wellhub still shows the OLD discipline as the class name. Surface
+  // the real discipline by appending it to the coach: "Camila Toro · BTM Tone".
+  disciplineSuffix?: string | null,
+): MagicClassForSync {
   const instructors: MagicInstructorForSync[] = [];
   if (ctx.coachName) {
     const isSubstitute = !!(ctx.originalCoachName && ctx.originalCoachName !== ctx.coachName);
-    instructors.push({ name: ctx.coachName, isSubstitute });
+    const name = disciplineSuffix ? `${ctx.coachName} · ${disciplineSuffix}` : ctx.coachName;
+    instructors.push({ name, isSubstitute });
   }
   return {
     id: ctx.cls.id,

@@ -405,13 +405,13 @@ export async function PUT(
       const {
         applyWellhubQuotaToClass,
         syncClassToWellhub,
-        deleteWellhubSlotForOldClassType,
+        reconcileWellhubOnDisciplineChange,
       } = await import("@/lib/platforms/wellhub");
-      // A class-type change moves the class to a different Wellhub template.
-      // Delete the slot under the OLD template first, or the re-sync leaves an
-      // orphaned, still-bookable slot (duplicate class at the same time).
+      // A discipline change moves the class to a different Wellhub template.
+      // Keep the slot if it has bookings (re-sync relabels the coach); delete +
+      // recreate only when empty. Either way avoids the orphaned duplicate.
       if (classTypeId && classTypeId !== existing.classTypeId) {
-        await deleteWellhubSlotForOldClassType(id, existing.classTypeId);
+        await reconcileWellhubOnDisciplineChange(id, existing.classTypeId);
       }
       if (wellhubQuota !== undefined) {
         await applyWellhubQuotaToClass(ctx.tenant.id, id, wellhubQuota === null ? null : Number(wellhubQuota));

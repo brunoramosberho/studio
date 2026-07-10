@@ -172,18 +172,19 @@ export async function PUT(
       }
       await applyQuotaAcrossScope();
 
-      // Re-slot type-changed classes: delete the old-template slot, then sync
-      // (which recreates cleanly under the new template + applies quota).
+      // Reconcile discipline-changed classes: keep the slot if it has bookings
+      // (re-sync relabels the coach), else delete + recreate under the new
+      // discipline. Then sync each.
       if (reslot.length > 0) {
         void (async () => {
-          const { deleteWellhubSlotForOldClassType, syncClassToWellhub } =
+          const { reconcileWellhubOnDisciplineChange, syncClassToWellhub } =
             await import("@/lib/platforms/wellhub");
           for (const c of reslot) {
             try {
-              await deleteWellhubSlotForOldClassType(c.id, c.oldTypeId);
+              await reconcileWellhubOnDisciplineChange(c.id, c.oldTypeId);
               await syncClassToWellhub(c.id);
             } catch (err) {
-              console.error("[wellhub] series type-change re-slot failed", { classId: c.id, err });
+              console.error("[wellhub] series discipline-change reconcile failed", { classId: c.id, err });
             }
           }
         })();

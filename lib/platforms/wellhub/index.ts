@@ -91,7 +91,7 @@ export type {
 export {
   syncClassToWellhub,
   unsyncClassFromWellhub,
-  deleteWellhubSlotForOldClassType,
+  reconcileWellhubOnDisciplineChange,
   hideClassTypeInWellhub,
   patchWellhubCapacityForClass,
   applyWellhubQuotaToClass,

@@ -818,6 +818,13 @@ model Class {
   // Wellhub Booking API mirror — wellhubSlotId is the Wellhub slot id for
   // this specific class occurrence. excluded = ClassType not mapped to Wellhub.
   wellhubSlotId     Int?              @unique
+  // The Wellhub class-template (discipline) the current slot was created under.
+  // A Wellhub slot is permanently tied to a template, so if the class's
+  // ClassType changes we keep syncing the slot under THIS template (not the new
+  // one) to avoid a 404/orphan — the discipline change is surfaced by appending
+  // the new discipline to the coach name instead. Null = same as the current
+  // ClassType's template (legacy rows / never re-disciplined).
+  wellhubClassIdSynced Int?
   wellhubSyncStatus WellhubSyncStatus @default(excluded)
   wellhubLastSyncAt DateTime?
   wellhubLastError  String?
