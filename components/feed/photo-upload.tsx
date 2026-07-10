@@ -163,39 +163,74 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
       const item = pending[idx];
 
       if (item.isVideo) {
-        try {
-          const urlRes = await fetch(`/api/feed/${eventId}/photos/upload-url`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              filename: item.file.name,
-              contentType: item.file.type,
-            }),
-          });
+        // Upload the bytes to storage, retrying transient/network failures (a
+        // dropped upload on flaky studio wifi is the common cause). Each retry
+        // gets a fresh single-use signed URL. 413 (too big) and prep failures
+        // (auth) are permanent — don't retry those.
+        const MAX_TRIES = 3;
+        let publicUrl: string | null = null;
+        let permanent = false;
 
-          if (!urlRes.ok) {
-            const data = await urlRes.json().catch(() => ({}));
-            fail(data.error || "Error al preparar la subida");
-            continue;
+        for (let tryN = 1; tryN <= MAX_TRIES && publicUrl === null && !permanent; tryN++) {
+          try {
+            const urlRes = await fetch(`/api/feed/${eventId}/photos/upload-url`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                filename: item.file.name,
+                contentType: item.file.type,
+              }),
+            });
+
+            if (!urlRes.ok) {
+              const data = await urlRes.json().catch(() => ({}));
+              fail(data.error || "Error al preparar la subida");
+              permanent = true;
+              break;
+            }
+
+            const { signedUrl, publicUrl: pub } = await urlRes.json();
+            setProgress(0);
+            await uploadWithProgress(
+              signedUrl,
+              item.file,
+              item.file.type,
+              (fraction) => setProgress(fraction * 0.9),
+            );
+            publicUrl = pub;
+          } catch (err) {
+            const m = err instanceof Error ? err.message : "";
+            if (/\b413\b/.test(m)) {
+              fail(
+                "El video es muy pesado para el servidor. Intenta uno más corto o de menor calidad.",
+              );
+              permanent = true;
+              break;
+            }
+            if (tryN < MAX_TRIES) {
+              setProgress(null);
+              await new Promise((r) => setTimeout(r, tryN * 1000));
+            } else {
+              fail("No se pudo subir el video (conexión inestable). Vuelve a intentar.");
+            }
           }
+        }
 
-          const { signedUrl, publicUrl } = await urlRes.json();
+        if (publicUrl === null) continue; // failed — already reported
 
-          setProgress(0);
-          await uploadWithProgress(
-            signedUrl,
-            item.file,
-            item.file.type,
-            (fraction) => setProgress(fraction * 0.9),
-          );
-
-          let thumbnailUrl: string | null = null;
+        // Bytes are stored. Poster is best-effort (never sink the upload for it).
+        let thumbnailUrl: string | null = null;
+        try {
           const poster = await captureVideoPoster(item.file);
           if (poster) {
             thumbnailUrl = await uploadVideoPosterToStorage(eventId, item.file.name, poster);
           }
-          setProgress(1);
+        } catch {
+          /* poster is optional */
+        }
+        setProgress(1);
 
+        try {
           const regRes = await fetch(`/api/feed/${eventId}/photos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -214,13 +249,8 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             const data = await regRes.json().catch(() => ({}));
             fail(data.error || "Error al registrar el video");
           }
-        } catch (err) {
-          const m = err instanceof Error ? err.message : "";
-          fail(
-            /\b413\b/.test(m)
-              ? "El video es muy pesado para el servidor. Intenta uno más corto o de menor calidad."
-              : "No se pudo subir el video. Revisa tu conexión e intenta de nuevo.",
-          );
+        } catch {
+          fail("Se subió el video pero no se pudo publicar. Intenta de nuevo.");
         }
       } else {
         // Image: existing multipart flow (small after compression)
