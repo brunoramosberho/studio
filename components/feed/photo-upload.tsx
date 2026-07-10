@@ -5,8 +5,8 @@ import { Camera, Loader2, X, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { captureVideoPoster, uploadVideoPosterToStorage, compressImage } from "@/lib/media-utils";
 
-const MAX_VIDEO_SIZE = 30 * 1024 * 1024;
-const MAX_VIDEO_SIZE_LABEL = "30";
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
+const MAX_VIDEO_SIZE_LABEL = "100";
 const MAX_VIDEO_DURATION = 60;
 const ACCEPTED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 
