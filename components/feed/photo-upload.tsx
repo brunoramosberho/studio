@@ -5,8 +5,8 @@ import { Camera, Loader2, X, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { captureVideoPoster, uploadVideoPosterToStorage, compressImage } from "@/lib/media-utils";
 
-const MAX_VIDEO_SIZE = 30 * 1024 * 1024;
-const MAX_VIDEO_SIZE_LABEL = "30";
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
+const MAX_VIDEO_SIZE_LABEL = "100";
 const MAX_VIDEO_DURATION = 60;
 const ACCEPTED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 
@@ -28,6 +28,15 @@ function getVideoDuration(file: File): Promise<number> {
 }
 
 
+class UploadError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "UploadError";
+    this.status = status;
+  }
+}
+
 function uploadWithProgress(
   url: string,
   file: File,
@@ -41,9 +50,9 @@ function uploadWithProgress(
     };
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`Upload failed: ${xhr.status}`));
+      else reject(new UploadError(xhr.status, `Upload failed: ${xhr.status}`));
     };
-    xhr.onerror = () => reject(new Error("Network error"));
+    xhr.onerror = () => reject(new UploadError(0, "Network error"));
     xhr.open("PUT", url);
     xhr.setRequestHeader("Content-Type", contentType);
     xhr.send(file);
@@ -200,8 +209,18 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             const data = await regRes.json().catch(() => ({}));
             setError(data.error || "Error al registrar video");
           }
-        } catch {
-          setError("Error al subir el video. Intenta de nuevo.");
+        } catch (err) {
+          // The client-side MAX_VIDEO_SIZE check passed, but the storage
+          // backend can still reject an oversized file (its own upload limit) —
+          // 413 Payload Too Large. Tell the member it's a size problem instead
+          // of a generic failure they can't act on.
+          if (err instanceof UploadError && err.status === 413) {
+            setError(
+              "El video pesa demasiado para subirse. Intenta con uno más corto o de menor calidad.",
+            );
+          } else {
+            setError("Error al subir el video. Intenta de nuevo.");
+          }
         }
       } else {
         // Image: existing multipart flow (small after compression)
