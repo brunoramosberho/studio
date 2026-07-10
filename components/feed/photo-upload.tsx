@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Camera, Loader2, X, Send } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { captureVideoPoster, uploadVideoPosterToStorage, compressImage } from "@/lib/media-utils";
 
@@ -84,6 +85,21 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // A rejected-file message (wrong format / too big / too long) is set BEFORE
+  // the preview overlay opens, so the in-overlay banner alone would be invisible
+  // and the upload would appear to fail silently. Toast it too so the reason is
+  // always shown.
+  const rejectFile = (msg: string) => {
+    setValidationError(msg);
+    toast.error(msg);
+  };
+  // An upload-time failure. The overlay is open here, but toast as well so it's
+  // never missed.
+  const fail = (msg: string) => {
+    setError(msg);
+    toast.error(msg);
+  };
+
   useEffect(() => {
     return () => {
       pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -100,14 +116,12 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
       const isVid = file.type.startsWith("video/");
 
       if (isVid && !ACCEPTED_VIDEO_TYPES.includes(file.type)) {
-        setValidationError(
-          "Formato de video no soportado. Usa MP4 o WebM.",
-        );
+        rejectFile("Formato de video no soportado. Usa MP4 o WebM.");
         return;
       }
 
       if (isVid && file.size > MAX_VIDEO_SIZE) {
-        setValidationError(
+        rejectFile(
           `Video demasiado pesado (${(file.size / 1024 / 1024).toFixed(0)} MB). Máximo: ${MAX_VIDEO_SIZE_LABEL} MB.`,
         );
         return;
@@ -130,7 +144,7 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             (d) => d !== Infinity && d > MAX_VIDEO_DURATION,
           );
           if (tooLong !== undefined) {
-            setValidationError(
+            rejectFile(
               `El video dura ${Math.ceil(tooLong)}s. Máximo: ${MAX_VIDEO_DURATION}s.`,
             );
           }
@@ -158,39 +172,76 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
       const item = pending[idx];
 
       if (item.isVideo) {
-        try {
-          const urlRes = await fetch(`/api/feed/${eventId}/photos/upload-url`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              filename: item.file.name,
-              contentType: item.file.type,
-            }),
-          });
+        // Upload the bytes to storage, retrying transient/network failures (a
+        // dropped upload on flaky studio wifi is the common cause). Each retry
+        // gets a fresh single-use signed URL. A 413 (too big for the storage
+        // backend) and prep failures (auth) are permanent — don't retry those.
+        const MAX_TRIES = 3;
+        let publicUrl: string | null = null;
+        let permanent = false;
 
-          if (!urlRes.ok) {
-            const data = await urlRes.json().catch(() => ({}));
-            setError(data.error || "Error al preparar subida");
-            continue;
+        for (let tryN = 1; tryN <= MAX_TRIES && publicUrl === null && !permanent; tryN++) {
+          try {
+            const urlRes = await fetch(`/api/feed/${eventId}/photos/upload-url`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                filename: item.file.name,
+                contentType: item.file.type,
+              }),
+            });
+
+            if (!urlRes.ok) {
+              const data = await urlRes.json().catch(() => ({}));
+              fail(data.error || "Error al preparar la subida");
+              permanent = true;
+              break;
+            }
+
+            const { signedUrl, publicUrl: pub } = await urlRes.json();
+            setProgress(0);
+            await uploadWithProgress(
+              signedUrl,
+              item.file,
+              item.file.type,
+              (fraction) => setProgress(fraction * 0.9),
+            );
+            publicUrl = pub;
+          } catch (err) {
+            // Storage backend rejected the file as too big (413) — permanent
+            // and actionable; don't retry.
+            if (err instanceof UploadError && err.status === 413) {
+              fail(
+                "El video pesa demasiado para subirse. Intenta con uno más corto o de menor calidad.",
+              );
+              permanent = true;
+              break;
+            }
+            // Network drop (status 0) or a transient 5xx — back off and retry.
+            if (tryN < MAX_TRIES) {
+              setProgress(null);
+              await new Promise((r) => setTimeout(r, tryN * 1000));
+            } else {
+              fail("No se pudo subir el video (conexión inestable). Vuelve a intentar.");
+            }
           }
+        }
 
-          const { signedUrl, publicUrl } = await urlRes.json();
+        if (publicUrl === null) continue; // failed — already reported
 
-          setProgress(0);
-          await uploadWithProgress(
-            signedUrl,
-            item.file,
-            item.file.type,
-            (fraction) => setProgress(fraction * 0.9),
-          );
-
-          let thumbnailUrl: string | null = null;
+        // Bytes are stored. Poster is best-effort — never sink the upload for it.
+        let thumbnailUrl: string | null = null;
+        try {
           const poster = await captureVideoPoster(item.file);
           if (poster) {
             thumbnailUrl = await uploadVideoPosterToStorage(eventId, item.file.name, poster);
           }
-          setProgress(1);
+        } catch {
+          /* poster is optional */
+        }
+        setProgress(1);
 
+        try {
           const regRes = await fetch(`/api/feed/${eventId}/photos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -207,20 +258,10 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             succeeded++;
           } else {
             const data = await regRes.json().catch(() => ({}));
-            setError(data.error || "Error al registrar video");
+            fail(data.error || "Error al registrar el video");
           }
-        } catch (err) {
-          // The client-side MAX_VIDEO_SIZE check passed, but the storage
-          // backend can still reject an oversized file (its own upload limit) —
-          // 413 Payload Too Large. Tell the member it's a size problem instead
-          // of a generic failure they can't act on.
-          if (err instanceof UploadError && err.status === 413) {
-            setError(
-              "El video pesa demasiado para subirse. Intenta con uno más corto o de menor calidad.",
-            );
-          } else {
-            setError("Error al subir el video. Intenta de nuevo.");
-          }
+        } catch {
+          fail("Se subió el video pero no se pudo publicar. Intenta de nuevo.");
         }
       } else {
         // Image: existing multipart flow (small after compression)
@@ -240,10 +281,10 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             succeeded++;
           } else {
             const data = await res.json().catch(() => ({}));
-            setError(data.error || `Error ${res.status}`);
+            fail(data.error || `No se pudo subir la foto (Error ${res.status})`);
           }
         } catch {
-          setError("No se pudo conectar al servidor");
+          fail("No se pudo conectar al servidor. Revisa tu conexión.");
         }
       }
     }
