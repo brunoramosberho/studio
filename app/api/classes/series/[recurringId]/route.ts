@@ -121,6 +121,10 @@ export async function PUT(
         await applyWellhubQuotaToClass(ctx.tenant.id, c.id, normalized);
       }
       // Fire-and-forget the re-sync so the admin's save returns immediately.
+      // Skip it when the class type is also changing — the re-slot loop below
+      // owns the sync then (after deleting the old-template slot), and syncing
+      // here first would 404 on the stale slot and orphan it.
+      if (classTypeId !== undefined) return;
       void (async () => {
         for (const c of scopeClasses) {
           try {
@@ -133,6 +137,26 @@ export async function PUT(
     }
 
     if (!isReschedule) {
+      // A class-type change moves each class to a different Wellhub template.
+      // Capture the OLD type BEFORE the update so we can delete the stale slot
+      // under its old template (otherwise the re-sync leaves an orphaned,
+      // still-bookable slot — the duplicate-class-at-one-time bug).
+      let reslot: { id: string; oldTypeId: string }[] = [];
+      if (classTypeId !== undefined) {
+        const before = await prisma.class.findMany({
+          where: {
+            recurringId,
+            tenantId: ctx.tenant.id,
+            status: "SCHEDULED",
+            startsAt: startsAtFilter,
+            wellhubSlotId: { not: null },
+            classTypeId: { not: classTypeId },
+          },
+          select: { id: true, classTypeId: true },
+        });
+        reslot = before.map((c) => ({ id: c.id, oldTypeId: c.classTypeId }));
+      }
+
       let count = 0;
       if (Object.keys(data).length > 0) {
         const result = await prisma.class.updateMany({
@@ -147,6 +171,23 @@ export async function PUT(
         count = result.count;
       }
       await applyQuotaAcrossScope();
+
+      // Re-slot type-changed classes: delete the old-template slot, then sync
+      // (which recreates cleanly under the new template + applies quota).
+      if (reslot.length > 0) {
+        void (async () => {
+          const { deleteWellhubSlotForOldClassType, syncClassToWellhub } =
+            await import("@/lib/platforms/wellhub");
+          for (const c of reslot) {
+            try {
+              await deleteWellhubSlotForOldClassType(c.id, c.oldTypeId);
+              await syncClassToWellhub(c.id);
+            } catch (err) {
+              console.error("[wellhub] series type-change re-slot failed", { classId: c.id, err });
+            }
+          }
+        })();
+      }
       return NextResponse.json({ count });
     }
 

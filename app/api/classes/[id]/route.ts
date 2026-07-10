@@ -402,7 +402,17 @@ export async function PUT(
     // Apply the per-class Wellhub quota choice (null=default, 0=closed, N=override)
     // then push the change to Wellhub. Errors land on Class.wellhubLastError.
     try {
-      const { applyWellhubQuotaToClass, syncClassToWellhub } = await import("@/lib/platforms/wellhub");
+      const {
+        applyWellhubQuotaToClass,
+        syncClassToWellhub,
+        deleteWellhubSlotForOldClassType,
+      } = await import("@/lib/platforms/wellhub");
+      // A class-type change moves the class to a different Wellhub template.
+      // Delete the slot under the OLD template first, or the re-sync leaves an
+      // orphaned, still-bookable slot (duplicate class at the same time).
+      if (classTypeId && classTypeId !== existing.classTypeId) {
+        await deleteWellhubSlotForOldClassType(id, existing.classTypeId);
+      }
       if (wellhubQuota !== undefined) {
         await applyWellhubQuotaToClass(ctx.tenant.id, id, wellhubQuota === null ? null : Number(wellhubQuota));
       }

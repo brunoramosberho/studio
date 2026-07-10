@@ -254,6 +254,50 @@ export async function unsyncClassFromWellhub(classId: string): Promise<WellhubSy
 }
 
 /**
+ * A class's ClassType changed, so its existing Wellhub slot lives under the OLD
+ * type's template (Wellhub slots belong to a class template). A plain re-sync
+ * would PUT under the NEW template → 404 → and the recreate-on-404 heal would
+ * leave the OLD slot orphaned & still bookable (two classes at one time — the
+ * exact bug we hit). Delete the old slot under the old template and clear the
+ * pointer, so the caller's syncClassToWellhub creates a clean slot under the
+ * new template. Best-effort — never throws (the re-sync is what matters).
+ */
+export async function deleteWellhubSlotForOldClassType(
+  classId: string,
+  oldClassTypeId: string,
+): Promise<void> {
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    select: { wellhubSlotId: true, tenantId: true },
+  });
+  if (!cls?.wellhubSlotId) return;
+
+  const [oldType, cfg] = await Promise.all([
+    prisma.classType.findUnique({
+      where: { id: oldClassTypeId },
+      select: { wellhubClassId: true },
+    }),
+    prisma.studioPlatformConfig.findFirst({
+      where: { tenantId: cls.tenantId, platform: "wellhub" },
+      select: { wellhubGymId: true },
+    }),
+  ]);
+  if (!oldType?.wellhubClassId || !cfg?.wellhubGymId) return;
+
+  try {
+    const token = await getWellhubTokenForTenant(cls.tenantId);
+    await deleteWellhubSlot(cfg.wellhubGymId, oldType.wellhubClassId, cls.wellhubSlotId, token);
+  } catch (error) {
+    // 404 = already gone; anything else we log but still clear our pointer so
+    // the re-sync recreates cleanly rather than 404-looping on the old slot.
+    if (!(error instanceof WellhubApiError && error.isNotFound)) {
+      console.error("[wellhub] delete old-type slot failed", { classId, error });
+    }
+  }
+  await prisma.class.update({ where: { id: classId }, data: { wellhubSlotId: null } });
+}
+
+/**
  * Hide a ClassType in Wellhub. Used when the admin turns the type off (no
  * DELETE class endpoint exists, so we PUT with visible=false).
  */
