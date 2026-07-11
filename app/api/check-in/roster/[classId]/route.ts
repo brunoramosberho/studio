@@ -457,18 +457,10 @@ export async function GET(
       };
     });
 
-    // ── Occupancy audit ─────────────────────────────────────────────────────
-    // Seats that count toward billable occupancy / revenue but aren't a physical
-    // attendance: no-shows and late-cancels, both direct and platform (Wellhub).
-    // Lets staff/coach see exactly why the occupancy % is what it is.
-    const platformConfigs = await prisma.studioPlatformConfig.findMany({
-      where: { tenantId: ctx.tenant.id, isActive: true },
-      select: { platform: true, noShowFee: true, lateCancelFee: true },
-    });
-    const whCfg = platformConfigs.find((c) => c.platform === "wellhub");
-    const whNoShowFee = whCfg?.noShowFee ?? 0;
-    const whLateCancelFee = whCfg?.lateCancelFee ?? 0;
-
+    // ── No-shows + late-cancels (direct & Wellhub) — reference list only. ─────
+    // No amounts / billable flags sent to the client (front desk sees this).
+    // Late-cancels are the fee-charged ones: direct with credit forfeited, and
+    // Wellhub's own late-cancel bucket (on-time cancels are excluded).
     const [directAudit, platformAudit] = await Promise.all([
       prisma.booking.findMany({
         where: {
@@ -476,61 +468,33 @@ export async function GET(
           platformBookingId: null,
           OR: [{ status: "NO_SHOW" }, { status: "CANCELLED", creditLost: true }],
         },
-        select: {
-          id: true,
-          status: true,
-          creditLost: true,
-          guestName: true,
-          user: { select: { name: true } },
-          pendingPenalty: { select: { status: true, chargeFee: true } },
-        },
+        select: { status: true, guestName: true, user: { select: { name: true } } },
       }),
       prisma.platformBooking.findMany({
         where: {
           classId,
           OR: [{ status: "absent" }, { status: "cancelled", notes: "wellhub_late_cancel" }],
         },
-        select: { id: true, platform: true, status: true, memberName: true },
+        select: { status: true, memberName: true },
       }),
     ]);
 
     const noShows = [
       ...directAudit
         .filter((b) => b.status === "NO_SHOW")
-        .map((b) => ({
-          name: b.user?.name ?? b.guestName ?? "Miembro",
-          channel: "direct" as const,
-          // Direct no-show earns the studio when credit was forfeited or a fee charged.
-          billable: b.creditLost || (b.pendingPenalty?.status === "confirmed" && !!b.pendingPenalty.chargeFee),
-          fee: null as number | null,
-        })),
+        .map((b) => ({ name: b.user?.name ?? b.guestName ?? "Miembro", channel: "direct" as const })),
       ...platformAudit
         .filter((b) => b.status === "absent")
-        .map((b) => ({
-          name: b.memberName ?? "Wellhub",
-          channel: "wellhub" as const,
-          billable: whNoShowFee > 0,
-          fee: whNoShowFee > 0 ? whNoShowFee : null,
-        })),
+        .map((b) => ({ name: b.memberName ?? "Wellhub", channel: "wellhub" as const })),
     ];
 
     const lateCancels = [
       ...directAudit
         .filter((b) => b.status === "CANCELLED")
-        .map((b) => ({
-          name: b.user?.name ?? b.guestName ?? "Miembro",
-          channel: "direct" as const,
-          billable: b.creditLost,
-          fee: null as number | null,
-        })),
+        .map((b) => ({ name: b.user?.name ?? b.guestName ?? "Miembro", channel: "direct" as const })),
       ...platformAudit
         .filter((b) => b.status === "cancelled")
-        .map((b) => ({
-          name: b.memberName ?? "Wellhub",
-          channel: "wellhub" as const,
-          billable: whLateCancelFee > 0,
-          fee: whLateCancelFee > 0 ? whLateCancelFee : null,
-        })),
+        .map((b) => ({ name: b.memberName ?? "Wellhub", channel: "wellhub" as const })),
     ];
 
     return NextResponse.json({

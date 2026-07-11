@@ -37,7 +37,6 @@ import {
 import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2, MoreVertical, UserX } from "lucide-react";
 import { createPortal } from "react-dom";
 import { CoachPenaltyButton } from "@/components/check-in/coach-penalty-button";
-import { useCurrency } from "@/components/tenant-provider";
 
 // ── Types ──
 
@@ -148,8 +147,6 @@ interface ClassRosterProps {
 type AuditEntry = {
   name: string;
   channel: "direct" | "wellhub";
-  billable: boolean;
-  fee: number | null;
 };
 
 type RosterData = {
@@ -1642,14 +1639,12 @@ function WellhubBookingsSection({
 
 // ── Waitlist Section ──
 
-// ── Occupancy audit — no-shows + late-cancels that counted toward occupancy ──
+// ── No-shows + late-cancels (direct & Wellhub) — visible for reference ──
 function OccupancyAuditSection({
   audit,
 }: {
   audit: { noShows: AuditEntry[]; lateCancels: AuditEntry[] };
 }) {
-  const currency = useCurrency();
-
   const Row = ({ e }: { e: AuditEntry }) => (
     <div className="flex items-center gap-2 py-1">
       <span
@@ -1664,13 +1659,6 @@ function OccupancyAuditSection({
       <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-muted">
         {e.channel === "wellhub" ? "Wellhub" : "Directo"}
       </span>
-      {e.billable ? (
-        <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-          {e.fee != null ? `+${currency.symbol}${e.fee.toFixed(2)}` : "cuenta"}
-        </span>
-      ) : (
-        <span className="text-[10px] text-stone-400 dark:text-muted">no cuenta</span>
-      )}
     </div>
   );
 
@@ -1688,14 +1676,8 @@ function OccupancyAuditSection({
 
   return (
     <div className="border-t border-stone-100 bg-stone-50 px-4 py-3 dark:border-border/60 dark:bg-surface/40">
-      <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-stone-400 dark:text-muted">
-        Ocupación · sin asistencia
-      </p>
       <Group title="No-shows" entries={audit.noShows} />
       <Group title="Late cancels" entries={audit.lateCancels} />
-      <p className="mt-1.5 text-[10px] text-stone-400 dark:text-muted">
-        Los que dicen &ldquo;cuenta&rdquo; suman a la ocupación de la instructora (generaron ingreso).
-      </p>
     </div>
   );
 }
