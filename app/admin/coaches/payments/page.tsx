@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Wallet,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,28 @@ interface ClassLine {
   isPast: boolean;
 }
 
+interface Penalty {
+  id: string;
+  type: "LATE_ARRIVAL" | "LATE_ENDING" | "OTHER";
+  note: string | null;
+  amountCents: number | null;
+  currency: string | null;
+  occurredAt: string;
+  createdByName: string | null;
+  class: {
+    id: string;
+    startsAt: string;
+    classTypeName: string | null;
+    studioName: string | null;
+  } | null;
+}
+
+const PENALTY_LABEL: Record<Penalty["type"], string> = {
+  LATE_ARRIVAL: "Llegó tarde",
+  LATE_ENDING: "Terminó tarde",
+  OTHER: "Otro",
+};
+
 interface CoachPay {
   coachId: string;
   name: string;
@@ -52,6 +75,7 @@ interface CoachPay {
   monthlyFixed: number;
   classesCount: number;
   classLines: ClassLine[];
+  penalties: Penalty[];
 }
 
 interface PaymentsResponse {
@@ -307,6 +331,11 @@ export default function CoachPaymentsPage() {
                       {t("classesCount", { count: c.lines.length })}
                       {c.fixed > 0 && ` · ${t("fixed", { amount: fmt(c.fixed) })}`}
                       {!c.hasRates && ` · ${t("noRate")}`}
+                      {c.penalties.length > 0 && (
+                        <span className="font-medium text-amber-600 dark:text-amber-300">
+                          {` · ${c.penalties.length} ${c.penalties.length === 1 ? "penalidad" : "penalidades"}`}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
@@ -382,6 +411,39 @@ export default function CoachPaymentsPage() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {open && c.penalties.length > 0 && (
+                  <div className="border-t border-border/40 bg-amber-50/40 px-4 py-3 dark:bg-amber-500/[0.06]">
+                    <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Penalidades ({c.penalties.length})
+                    </p>
+                    <ul className="space-y-1.5">
+                      {c.penalties.map((p) => (
+                        <li
+                          key={p.id}
+                          className="flex items-start justify-between gap-3 text-xs"
+                        >
+                          <div className="min-w-0">
+                            <span className="font-medium text-foreground">
+                              {PENALTY_LABEL[p.type]}
+                            </span>
+                            {p.note && <span className="text-muted"> — {p.note}</span>}
+                            <span className="text-muted">
+                              {` · ${format(new Date(p.occurredAt), "d MMM", { locale: dateLocale })}`}
+                              {p.class?.classTypeName ? ` · ${p.class.classTypeName}` : ""}
+                            </span>
+                          </div>
+                          {p.amountCents != null && (
+                            <span className="shrink-0 font-medium text-red-600 dark:text-red-300">
+                              −{fmt((p.amountCents ?? 0) / 100)}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </Card>

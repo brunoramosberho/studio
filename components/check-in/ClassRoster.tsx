@@ -36,6 +36,7 @@ import {
 } from "@/components/admin/booking-actions";
 import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2, MoreVertical, UserX } from "lucide-react";
 import { createPortal } from "react-dom";
+import { CoachPenaltyButton } from "@/components/check-in/coach-penalty-button";
 
 // ── Types ──
 
@@ -641,6 +642,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
                 {classInfo.coachName} · {classInfo.room}
               </p>
             </div>
+            <CoachPenaltyButton classId={classId} coachName={classInfo.coachName} />
             {/* Desktop search — inline, to the right of the class info */}
             <div className="relative hidden flex-1 max-w-[240px] lg:block">
               {searchInner}

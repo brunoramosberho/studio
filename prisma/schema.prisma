@@ -173,6 +173,7 @@ model Tenant {
   bookingProductOrders               BookingProductOrder[]
   songRequests                       ClassSongRequest[]
   coachPayRates                      CoachPayRate[]
+  coachPenalties                     CoachPenalty[]
   tenantHolidays                     TenantHoliday[]
   coachAvailabilityBlocks            CoachAvailabilityBlock[]
   coachAvailabilityStudioPreferences CoachAvailabilityStudioPreference[]
@@ -603,6 +604,7 @@ model User {
   staffCommissionRules    StaffCommissionRule[]    @relation("UserStaffCommissionRules")
   staffCommissionEarnings StaffCommissionEarning[] @relation("UserStaffCommissionEarnings")
   stripePaymentsSold      StripePayment[]          @relation("StripePaymentSoldBy")
+  coachPenaltiesCreated   CoachPenalty[]           @relation("UserCoachPenaltiesCreated")
 
   @@index([countryId])
   @@index([cityId])
@@ -645,6 +647,7 @@ model CoachProfile {
   classes                Class[]        @relation("ClassCurrentCoach")
   classesAsOriginalCoach Class[]        @relation("ClassOriginalCoach")
   payRates               CoachPayRate[]
+  penalties              CoachPenalty[]
 
   onDemandVideos OnDemandVideo[]
 
@@ -701,6 +704,41 @@ model CoachPayRate {
   @@index([tenantId])
   @@index([classTypeId])
   @@index([studioId])
+}
+
+enum CoachPenaltyType {
+  LATE_ARRIVAL
+  LATE_ENDING
+  OTHER
+}
+
+// A penalty logged against an instructor (e.g. arrived late, ended late), added
+// from the check-in screen. Primarily a record the admin reviews on the coach's
+// profile and alongside coach payments. `amountCents` is optional and purely
+// informational — it is NOT auto-deducted from pay (that would be a separate,
+// explicit feature). `note` carries the free-text reason, required when type is
+// OTHER. `classId` links it to the class it happened in (nullable so it survives
+// class deletion).
+model CoachPenalty {
+  id             String           @id @default(cuid())
+  tenantId       String
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  coachProfileId String
+  coachProfile   CoachProfile     @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  classId        String?
+  class          Class?           @relation(fields: [classId], references: [id], onDelete: SetNull)
+  type           CoachPenaltyType
+  note           String?
+  amountCents    Int?
+  currency       String?
+  occurredAt     DateTime         @default(now())
+  createdById    String?
+  createdBy      User?            @relation("UserCoachPenaltiesCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime         @default(now())
+
+  @@index([tenantId, coachProfileId])
+  @@index([tenantId, occurredAt])
+  @@index([classId])
 }
 
 // Custom / regional public holidays (festivos) for a tenant. National holidays
@@ -803,6 +841,7 @@ model Class {
   playlistTracks       ClassPlaylistTrack[]
   blockingNotes        String?
   checkIns             CheckIn[]
+  coachPenalties       CoachPenalty[]
   platformQuotas       SchedulePlatformQuota[]
   platformBookings     PlatformBooking[]
   ratings              ClassRating[]

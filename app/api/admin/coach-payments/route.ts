@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission, getTenantCurrency } from "@/lib/tenant";
 import { computeCoachPay } from "@/lib/coach/pay";
+import { penaltyInclude, serializePenalty, type SerializedPenalty } from "@/lib/coach/penalties";
 
 /** Resolve the [from, to] of a `YYYY-MM` month param (defaults to current). */
 function monthRange(month: string | null): { from: Date; to: Date; label: string } {
@@ -40,6 +41,23 @@ export async function GET(request: NextRequest) {
       orderBy: { name: "asc" },
     });
 
+    // Penalties logged against these coaches during the period, grouped by coach.
+    const penaltyRows = await prisma.coachPenalty.findMany({
+      where: {
+        tenantId,
+        coachProfileId: { in: coaches.map((c) => c.id) },
+        occurredAt: { gte: from, lte: to },
+      },
+      include: penaltyInclude,
+      orderBy: { occurredAt: "desc" },
+    });
+    const penaltiesByCoach = new Map<string, SerializedPenalty[]>();
+    for (const p of penaltyRows) {
+      const arr = penaltiesByCoach.get(p.coachProfileId) ?? [];
+      arr.push(serializePenalty(p));
+      penaltiesByCoach.set(p.coachProfileId, arr);
+    }
+
     const results = await Promise.all(
       coaches.map(async (coach) => {
         const pay = await computeCoachPay(coach.id, tenantId, from, to, currency);
@@ -76,6 +94,7 @@ export async function GET(request: NextRequest) {
             amount: l.amount,
             isPast: l.isPast,
           })),
+          penalties: penaltiesByCoach.get(coach.id) ?? [],
         };
       }),
     );

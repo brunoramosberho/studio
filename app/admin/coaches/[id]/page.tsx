@@ -45,6 +45,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AvatarCrop } from "@/components/shared/avatar-crop";
 import { cn, formatCurrency as formatCurrencyShared } from "@/lib/utils";
 import { useCurrency } from "@/components/tenant-provider";
+import { CoachPenaltiesSection } from "@/components/admin/coach-penalties-section";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -1375,6 +1376,9 @@ export default function CoachDetailPage() {
               </AnimatePresence>
             </CardContent>
           </Card>
+
+          {/* Penalties */}
+          <CoachPenaltiesSection coachId={id} />
 
           {/* Upcoming classes */}
           <Card>
