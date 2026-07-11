@@ -37,6 +37,7 @@ import {
 import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2, MoreVertical, UserX } from "lucide-react";
 import { createPortal } from "react-dom";
 import { CoachPenaltyButton } from "@/components/check-in/coach-penalty-button";
+import { useCurrency } from "@/components/tenant-provider";
 
 // ── Types ──
 
@@ -144,11 +145,19 @@ interface ClassRosterProps {
   classInfo: ClassInfo;
 }
 
+type AuditEntry = {
+  name: string;
+  channel: "direct" | "wellhub";
+  billable: boolean;
+  fee: number | null;
+};
+
 type RosterData = {
   roster: RosterMember[];
   waitlist: WaitlistMember[];
   notifyMe: NotifyMeMember[];
   wellhubBookings: WellhubBooking[];
+  occupancyAudit?: { noShows: AuditEntry[]; lateCancels: AuditEntry[] };
   blockCheckinWithoutWaiver: boolean;
   room: {
     id: string;
@@ -280,6 +289,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const waitlist = data?.waitlist ?? [];
   const notifyMe = data?.notifyMe ?? [];
   const wellhubBookings = data?.wellhubBookings ?? [];
+  const occupancyAudit = data?.occupancyAudit ?? { noShows: [], lateCancels: [] };
   const room = data?.room ?? null;
 
   // Room map (only when the room has a configured spot layout).
@@ -845,6 +855,12 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
 
         {/* Notify-me section — people who asked to be told when a spot opens */}
         {notifyMe.length > 0 && <NotifyMeSection notifyMe={notifyMe} />}
+
+        {/* Occupancy audit — no-shows + late-cancels (direct & Wellhub) so staff
+            can see exactly which seats counted toward occupancy / revenue. */}
+        {(occupancyAudit.noShows.length > 0 || occupancyAudit.lateCancels.length > 0) && (
+          <OccupancyAuditSection audit={occupancyAudit} />
+        )}
 
         {/* Walk-in button */}
         {canEdit && (
@@ -1625,6 +1641,64 @@ function WellhubBookingsSection({
 }
 
 // ── Waitlist Section ──
+
+// ── Occupancy audit — no-shows + late-cancels that counted toward occupancy ──
+function OccupancyAuditSection({
+  audit,
+}: {
+  audit: { noShows: AuditEntry[]; lateCancels: AuditEntry[] };
+}) {
+  const currency = useCurrency();
+
+  const Row = ({ e }: { e: AuditEntry }) => (
+    <div className="flex items-center gap-2 py-1">
+      <span
+        className={cn(
+          "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+          e.channel === "wellhub" ? "bg-[#E4572E]" : "bg-stone-300 dark:bg-muted",
+        )}
+      />
+      <span className="flex-1 min-w-0 truncate text-xs text-stone-700 dark:text-foreground">
+        {e.name}
+      </span>
+      <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-muted">
+        {e.channel === "wellhub" ? "Wellhub" : "Directo"}
+      </span>
+      {e.billable ? (
+        <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+          {e.fee != null ? `+${currency.symbol}${e.fee.toFixed(2)}` : "cuenta"}
+        </span>
+      ) : (
+        <span className="text-[10px] text-stone-400 dark:text-muted">no cuenta</span>
+      )}
+    </div>
+  );
+
+  const Group = ({ title, entries }: { title: string; entries: AuditEntry[] }) =>
+    entries.length === 0 ? null : (
+      <div className="mb-2 last:mb-0">
+        <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-stone-400 dark:text-muted">
+          {title} ({entries.length})
+        </p>
+        {entries.map((e, i) => (
+          <Row key={`${e.channel}-${e.name}-${i}`} e={e} />
+        ))}
+      </div>
+    );
+
+  return (
+    <div className="border-t border-stone-100 bg-stone-50 px-4 py-3 dark:border-border/60 dark:bg-surface/40">
+      <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-stone-400 dark:text-muted">
+        Ocupación · sin asistencia
+      </p>
+      <Group title="No-shows" entries={audit.noShows} />
+      <Group title="Late cancels" entries={audit.lateCancels} />
+      <p className="mt-1.5 text-[10px] text-stone-400 dark:text-muted">
+        Los que dicen &ldquo;cuenta&rdquo; suman a la ocupación de la instructora (generaron ingreso).
+      </p>
+    </div>
+  );
+}
 
 function NotifyMeSection({ notifyMe }: { notifyMe: NotifyMeMember[] }) {
   const t = useTranslations("checkin");
