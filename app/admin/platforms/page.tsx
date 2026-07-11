@@ -746,9 +746,6 @@ function ResumenTab({ demo }: { demo: boolean }) {
 function AlertList({ alerts, demo }: { alerts: PlatformAlert[]; demo?: boolean }) {
   const queryClient = useQueryClient();
   const [detailAlert, setDetailAlert] = useState<PlatformAlert | null>(null);
-  // Two-step resolve: first click arms the button ("¿Confirmar?"), second
-  // click resolves. Prevents losing an alert by tapping it out of curiosity.
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   const resolveMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -759,7 +756,6 @@ function AlertList({ alerts, demo }: { alerts: PlatformAlert[]; demo?: boolean }
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-alerts"] });
       toast.success("Alerta resuelta");
-      setConfirmingId(null);
       setDetailAlert(null);
     },
   });
@@ -768,16 +764,12 @@ function AlertList({ alerts, demo }: { alerts: PlatformAlert[]; demo?: boolean }
     <div className="space-y-1.5">
       {alerts.map((alert) => {
         const isWarning = alert.type === "class_full" || alert.type === "unmatched_booking";
-        const confirming = confirmingId === alert.id;
         return (
           <Card
             key={alert.id}
             role="button"
             tabIndex={0}
-            onClick={() => {
-              setConfirmingId(null);
-              setDetailAlert(alert);
-            }}
+            onClick={() => setDetailAlert(alert)}
             className={cn(
               "cursor-pointer border-l-4 transition-colors hover:bg-muted/40",
               isWarning ? "border-l-orange-400" : "border-l-blue-400",
@@ -798,28 +790,21 @@ function AlertList({ alerts, demo }: { alerts: PlatformAlert[]; demo?: boolean }
                   </span>
                 </div>
                 <p className="mt-0.5 text-sm text-foreground">{alert.message}</p>
-                <p className="mt-0.5 text-[11px] text-muted">Toca para ver el detalle</p>
+                <p className="mt-0.5 text-[11px] text-muted">Toca para ver el detalle y asignar</p>
               </div>
+              {/* Opens the detail — resolving only happens there, deliberately,
+                  so nobody dismisses an alert by mis-tapping this button. */}
               <Button
-                variant={confirming ? "destructive" : "ghost"}
+                variant="ghost"
                 size="sm"
                 className="shrink-0 gap-1 text-xs"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (demo) {
-                    toast.info("Modo demo — conecta una plataforma para gestionar alertas");
-                    return;
-                  }
-                  if (confirming) {
-                    resolveMutation.mutate(alert.id);
-                  } else {
-                    setConfirmingId(alert.id);
-                  }
+                  setDetailAlert(alert);
                 }}
-                disabled={resolveMutation.isPending}
               >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {confirming ? "¿Confirmar?" : "Resolver"}
+                Ver detalle
+                <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </CardContent>
           </Card>
