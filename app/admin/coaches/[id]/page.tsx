@@ -113,6 +113,7 @@ interface CoachDetail {
   payRates: PayRate[];
   stats: {
     classesThisMonth: number;
+    classesGivenThisMonth: number;
     classesThisYear: number;
     allTimeClasses: number;
     avgOccupancy: number;
@@ -121,6 +122,8 @@ interface CoachDetail {
     allTimeStudents: number;
     noShowRate: number;
     earningsThisMonth: {
+      earned: number;
+      projected: number;
       total: number;
       breakdown: { type: string; label: string; amount: number }[];
       currency: string;
@@ -1145,12 +1148,22 @@ export default function CoachDetailPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-semibold">Costo este mes</span>
+                  <span className="text-sm font-semibold">Costo · clases dadas</span>
                 </div>
               </div>
               <p className="mt-2 font-display text-3xl font-bold text-green-700">
-                {formatCurrency(earnings.total, earnings.currency)}
+                {formatCurrency(earnings.earned, earnings.currency)}
               </p>
+              {earnings.projected > 0 && (
+                <p className="mt-1 text-xs text-muted">
+                  + {formatCurrency(earnings.projected, earnings.currency)} estimado de clases futuras
+                  {" · "}
+                  <span className="font-medium">
+                    {formatCurrency(earnings.total, earnings.currency)}
+                  </span>{" "}
+                  estimado mes completo
+                </p>
+              )}
               {earnings.breakdown.length > 0 && (
                 <div className="mt-3 space-y-1.5">
                   {earnings.breakdown.map((b, i) => (
@@ -1161,7 +1174,7 @@ export default function CoachDetailPage() {
                   ))}
                 </div>
               )}
-              {earnings.breakdown.length === 0 && (
+              {earnings.breakdown.length === 0 && earnings.projected === 0 && (
                 <p className="mt-2 text-xs text-muted">
                   No hay tarifas configuradas. Agrega una para calcular costos.
                 </p>
@@ -1175,7 +1188,7 @@ export default function CoachDetailPage() {
               <CardContent className="p-5">
                 <div className="mb-3 flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-admin" />
-                  <span className="text-sm font-semibold">Desglose este mes</span>
+                  <span className="text-sm font-semibold">Desglose · clases dadas</span>
                 </div>
                 <div className="space-y-2.5">
                   {coach.typeBreakdown.map((tb) => {
@@ -1216,14 +1229,19 @@ export default function CoachDetailPage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
               label="Clases este mes"
-              value={s.classesThisMonth}
+              value={s.classesGivenThisMonth}
               icon={CalendarDays}
+              sub={
+                s.classesThisMonth > s.classesGivenThisMonth
+                  ? `de ${s.classesThisMonth} programadas`
+                  : undefined
+              }
             />
             <StatCard
-              label="Ocupación"
+              label="Ocupación · dadas"
               value={`${s.avgOccupancy}%`}
               icon={Target}
-              sub={`${s.totalStudentsMonth} alumnos total`}
+              sub={`${s.totalStudentsMonth} alumnos`}
             />
             <StatCard
               label="Alumnos únicos"

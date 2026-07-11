@@ -153,6 +153,11 @@ export async function GET(
     ]);
 
     const monthClassCount = classesThisMonth.length;
+    // Occupancy, students-per-class and the type breakdown must be computed from
+    // classes ALREADY GIVEN — a future class has few/no bookings yet, so
+    // including it drags the averages down and miscounts students/class.
+    const givenClassesThisMonth = classesThisMonth.filter((c) => c.startsAt < now);
+    const givenClassCount = givenClassesThisMonth.length;
     // Cap billable seats at room capacity — a forfeited seat that gets rebooked
     // would otherwise double-count and push occupancy past 100%.
     const billableOf = (cls: {
@@ -165,7 +170,7 @@ export async function GET(
     let totalOccupancy = 0;
     let classesWithCap = 0;
     let totalStudentsMonth = 0;
-    for (const cls of classesThisMonth) {
+    for (const cls of givenClassesThisMonth) {
       const billable = billableOf(cls);
       totalStudentsMonth += billable;
       if (cls.room.maxCapacity > 0) {
@@ -214,8 +219,10 @@ export async function GET(
     const totalBookingsMonth = attendedBookingsMonth + noShowCount;
     const noShowRate = totalBookingsMonth > 0 ? Math.round((noShowCount / totalBookingsMonth) * 100) : 0;
 
+    // Type breakdown — given classes only (see above), so "alumnos/clase" is
+    // the real average over classes that actually happened.
     const typeBreakdown = new Map<string, { name: string; color: string; count: number; students: number }>();
-    for (const cls of classesThisMonth) {
+    for (const cls of givenClassesThisMonth) {
       const key = cls.classType.id;
       const existing = typeBreakdown.get(key) ?? { name: cls.classType.name, color: cls.classType.color, count: 0, students: 0 };
       existing.count++;
@@ -224,10 +231,30 @@ export async function GET(
     }
 
     // Pay comes from the single source of truth (lib/coach/pay.ts) so this page
-    // matches admin payroll + the instructor's own view.
+    // matches admin payroll + the instructor's own view. Split into what's
+    // already earned (given classes + monthly fixed) vs an estimate for the
+    // still-to-come classes, and build a breakdown of only the earned part.
     const currency = (await getTenantCurrency()).code;
     const pay = await computeCoachPay(id, ctx.tenant.id, monthStart, monthEnd, currency, now);
-    const earnings = { total: pay.total, breakdown: pay.breakdown, currency: pay.currency };
+    const labelByType = new Map(pay.breakdown.map((b) => [b.type, b.label]));
+    const earnedByType = new Map<string, number>();
+    for (const l of pay.classLines) {
+      if (!l.isPast) continue;
+      earnedByType.set(l.rateType, (earnedByType.get(l.rateType) ?? 0) + l.amount);
+    }
+    if (pay.monthlyFixed > 0) {
+      earnedByType.set("MONTHLY_FIXED", (earnedByType.get("MONTHLY_FIXED") ?? 0) + pay.monthlyFixed);
+    }
+    const earnedBreakdown = [...earnedByType.entries()]
+      .filter(([, amount]) => amount > 0)
+      .map(([type, amount]) => ({ type, label: labelByType.get(type) ?? type, amount }));
+    const earnings = {
+      earned: pay.earnedSoFar,
+      projected: pay.projected,
+      total: pay.total,
+      breakdown: earnedBreakdown,
+      currency: pay.currency,
+    };
 
     const formatClass = (cls: any) => ({
       id: cls.id,
@@ -256,6 +283,7 @@ export async function GET(
       payRates: coach.payRates,
       stats: {
         classesThisMonth: monthClassCount,
+        classesGivenThisMonth: givenClassCount,
         classesThisYear,
         allTimeClasses,
         avgOccupancy,
