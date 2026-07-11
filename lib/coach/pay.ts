@@ -196,13 +196,26 @@ export async function computeCoachPay(
 
   // Billable seats split into their parts so admin + coach can see *why* a class
   // counts what it does. The studio earned from a seat — so it's billable — when:
-  //   • attended  — CONFIRMED / ATTENDED (booked or showed up).
+  //   • attended  — CONFIRMED / ATTENDED (booked or showed up; incl. platform
+  //                 companions, which are ATTENDED once checked in).
   //   • no-show   — the credit was forfeited (creditLost) or a fee was charged
   //                 (e.g. an unlimited member with no credit to lose).
   //   • late cancel — the credit was forfeited (an on-time cancel restores it, so
   //                 creditLost stays false and the freed seat earns nothing).
+  //   • platform no-show / late-cancel — Wellhub etc. pay a fee for these even
+  //                 though nobody showed, and the companion Booking carries no
+  //                 credit (or is deleted), so they'd otherwise be missed. Count
+  //                 them when the platform charges a fee (noShowFee/lateCancelFee).
   const classIds = classes.map((c) => c.id);
-  const [attendedRows, noShowRows, lateCancelRows] = await Promise.all([
+  const platformConfigs = await prisma.studioPlatformConfig.findMany({
+    where: { tenantId, isActive: true },
+    select: { platform: true, noShowFee: true, lateCancelFee: true },
+  });
+  const noShowFeePlatforms = platformConfigs.filter((c) => (c.noShowFee ?? 0) > 0).map((c) => c.platform);
+  const lateCancelFeePlatforms = platformConfigs.filter((c) => (c.lateCancelFee ?? 0) > 0).map((c) => c.platform);
+
+  const [attendedRows, noShowRows, lateCancelRows, platformNoShowRows, platformLateCancelRows] =
+    await Promise.all([
     prisma.booking.groupBy({
       by: ["classId"],
       where: { tenantId, classId: { in: classIds }, status: { in: ["CONFIRMED", "ATTENDED"] } },
@@ -223,10 +236,32 @@ export async function computeCoachPay(
       where: { tenantId, classId: { in: classIds }, status: "CANCELLED", creditLost: true },
       _count: true,
     }),
+    noShowFeePlatforms.length
+      ? prisma.platformBooking.groupBy({
+          by: ["classId"],
+          where: { tenantId, classId: { in: classIds }, status: "absent", platform: { in: noShowFeePlatforms } },
+          _count: true,
+        })
+      : Promise.resolve([]),
+    lateCancelFeePlatforms.length
+      ? prisma.platformBooking.groupBy({
+          by: ["classId"],
+          where: {
+            tenantId,
+            classId: { in: classIds },
+            status: "cancelled",
+            notes: "wellhub_late_cancel",
+            platform: { in: lateCancelFeePlatforms },
+          },
+          _count: true,
+        })
+      : Promise.resolve([]),
   ]);
   const attendedMap = new Map(attendedRows.map((r) => [r.classId, r._count]));
   const noShowMap = new Map(noShowRows.map((r) => [r.classId, r._count]));
   const lateCancelMap = new Map(lateCancelRows.map((r) => [r.classId, r._count]));
+  const platformNoShowMap = new Map(platformNoShowRows.map((r) => [r.classId, r._count]));
+  const platformLateCancelMap = new Map(platformLateCancelRows.map((r) => [r.classId, r._count]));
 
   const holidaySet = await getTenantHolidaySet(tenantId, from, to);
 
@@ -285,8 +320,11 @@ export async function computeCoachPay(
     const startsAt = new Date(cls.startsAt);
     const isPast = startsAt < now;
     const attended = attendedMap.get(cls.id) ?? 0;
-    const chargedNoShows = noShowMap.get(cls.id) ?? 0;
-    const chargedLateCancels = lateCancelMap.get(cls.id) ?? 0;
+    // Platform (Wellhub) fee-charged no-shows / late-cancels fold into the same
+    // buckets — the studio was paid for the seat, so the coach is credited too.
+    const chargedNoShows = (noShowMap.get(cls.id) ?? 0) + (platformNoShowMap.get(cls.id) ?? 0);
+    const chargedLateCancels =
+      (lateCancelMap.get(cls.id) ?? 0) + (platformLateCancelMap.get(cls.id) ?? 0);
     const rawBillable = attended + chargedNoShows + chargedLateCancels;
     // Billable seats can momentarily exceed capacity when a late-cancelled (and
     // forfeited) seat is rebooked — both the canceller and the new booking are
