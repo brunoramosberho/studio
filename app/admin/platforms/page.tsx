@@ -140,6 +140,7 @@ interface AssignCandidate {
   startsAt: string;
   startsAtLabel: string;
   distanceMinutes: number;
+  isNear?: boolean;
 }
 
 type LiquidationEntry = { className: string; date: string; bookingId: string };
@@ -888,9 +889,12 @@ function AlertDetailDialog({
 
   const meta = assignData?.metadata ?? alert?.metadata ?? null;
   const candidates = assignData?.candidates ?? [];
-  const closestId = candidates.length
-    ? [...candidates].sort((a, b) => a.distanceMinutes - b.distanceMinutes)[0].id
+  // Only flag "closest" when the nearest class is genuinely near the check-in
+  // (not a class 7h away on an odd-hour check-in).
+  const nearest = candidates.length
+    ? [...candidates].sort((a, b) => a.distanceMinutes - b.distanceMinutes)[0]
     : null;
+  const closestId = nearest?.isNear ? nearest.id : null;
 
   return (
     <Dialog open={!!alert} onOpenChange={(open) => !open && onClose()}>
@@ -921,14 +925,14 @@ function AlertDetailDialog({
             {isUnmatchedCheckin && !demo && (
               <div>
                 <p className="mb-1.5 text-xs font-medium text-muted">
-                  Asignar a una clase cercana:
+                  Asignar a una clase:
                 </p>
                 {loadingCandidates ? (
                   <Skeleton className="h-16 rounded-md" />
                 ) : candidates.length === 0 ? (
                   <p className="text-xs text-muted">
                     {meta
-                      ? "No hay clases cercanas al horario del check-in."
+                      ? "No hay clases de Wellhub ese día para asignar. Márcala como resuelta si fue un check-in de prueba o un error."
                       : "Esta alerta no tiene datos del check-in (es anterior a esta función). Márcala como resuelta."}
                   </p>
                 ) : (

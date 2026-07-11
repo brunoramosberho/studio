@@ -45,8 +45,13 @@ export async function GET(
     }
 
     const checkinAt = new Date(loaded.meta.checkinAt);
+    // Generous window: a bit before the check-in through the rest of that day
+    // (and early next day). An odd-hour check-in (e.g. 00:30) has no class
+    // within ±3h, but the member surely attended one later that day — the admin
+    // must still be able to pick it. Sorted closest-first; the UI only flags a
+    // truly-near class as "closest".
     const windowStart = new Date(checkinAt.getTime() - 3 * 60 * 60 * 1000);
-    const windowEnd = new Date(checkinAt.getTime() + 3 * 60 * 60 * 1000);
+    const windowEnd = new Date(checkinAt.getTime() + 21 * 60 * 60 * 1000);
 
     // Include COMPLETED too — unmatched check-ins are often assigned after the
     // class already ran (the whole point of the manual flow).
@@ -68,18 +73,23 @@ export async function GET(
     });
 
     const tz = await resolveScheduleTimezone(tenant);
-    const candidates = classes.map((c) => ({
-      id: c.id,
-      name: c.classType.name,
-      coachName: c.coach?.name ?? null,
-      roomName: c.room?.name ?? null,
-      startsAt: c.startsAt.toISOString(),
-      startsAtLabel: formatDateTimeInZone(c.startsAt, tz),
-      // Closest-first hint for the UI (list stays chronological).
-      distanceMinutes: Math.round(
+    const candidates = classes.map((c) => {
+      const distanceMinutes = Math.round(
         Math.abs(c.startsAt.getTime() - checkinAt.getTime()) / 60_000,
-      ),
-    }));
+      );
+      return {
+        id: c.id,
+        name: c.classType.name,
+        coachName: c.coach?.name ?? null,
+        roomName: c.room?.name ?? null,
+        startsAt: c.startsAt.toISOString(),
+        startsAtLabel: formatDateTimeInZone(c.startsAt, tz),
+        distanceMinutes,
+        // Only a genuinely-near class earns the "closest" hint — avoids
+        // flagging a class 7h away on an odd-hour check-in.
+        isNear: distanceMinutes <= 45,
+      };
+    });
 
     return NextResponse.json({
       metadata: {
