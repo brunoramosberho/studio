@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 
+// Turn a thrown error into a useful response: a clear 403/401 for permission
+// issues (so admins don't see an opaque "Failed to …"), and the real message
+// otherwise.
+function roomErrorResponse(error: unknown, logLabel: string, fallback: string) {
+  if (error instanceof Error) {
+    if (error.message === "Forbidden") {
+      return NextResponse.json(
+        { error: "Necesitas permiso de administrador para gestionar salas." },
+        { status: 403 },
+      );
+    }
+    if (error.message === "Unauthorized") {
+      return NextResponse.json(
+        { error: "Tu sesión expiró. Vuelve a iniciar sesión." },
+        { status: 401 },
+      );
+    }
+  }
+  console.error(`${logLabel} error:`, error);
+  const detail = error instanceof Error ? error.message : "Error desconocido";
+  return NextResponse.json({ error: `${fallback}: ${detail}` }, { status: 500 });
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -30,8 +53,7 @@ export async function PUT(
 
     return NextResponse.json(room);
   } catch (error) {
-    console.error("PUT /api/rooms/[id] error:", error);
-    return NextResponse.json({ error: "Failed to update room" }, { status: 500 });
+    return roomErrorResponse(error, "PUT /api/rooms/[id]", "No se pudo actualizar la sala");
   }
 }
 
@@ -55,7 +77,6 @@ export async function DELETE(
     await prisma.room.delete({ where: { id, tenantId: tenant.id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("DELETE /api/rooms/[id] error:", error);
-    return NextResponse.json({ error: "Failed to delete room" }, { status: 500 });
+    return roomErrorResponse(error, "DELETE /api/rooms/[id]", "No se pudo eliminar la sala");
   }
 }
