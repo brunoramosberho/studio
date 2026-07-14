@@ -105,6 +105,18 @@ async function resolveSession(): Promise<Session | null> {
   return adminAuth() as Promise<Session | null>;
 }
 
+// Admin-context session: prefer the admin-portal session. Admin-only API routes
+// under a top-level path (e.g. /api/rooms) aren't tagged `x-auth-portal=admin`
+// by middleware, so the plain resolveSession() would pick a stray client/coach
+// session logged into the same browser and fail every admin action with 403
+// ("session contamination"). Fall back to resolveSession() when there's no
+// admin session, so a pure client (no admin cookie) behaves exactly as before.
+async function resolveAdminFirstSession(): Promise<Session | null> {
+  const adminSession = (await adminAuth()) as (Session & { user?: { id?: string } }) | null;
+  if (adminSession?.user?.id) return adminSession as Session;
+  return resolveSession();
+}
+
 // ── Combined auth + tenant context ──
 
 export interface AuthContext {
@@ -206,8 +218,23 @@ export async function requireAuth(): Promise<AuthContext> {
   return { session: session as AuthContext["session"], tenant, membership };
 }
 
+// Like requireAuth but resolves the admin-portal session first (see
+// resolveAdminFirstSession). Used by the role/permission gates below, which are
+// always admin-context — so a client/coach session in the same browser can't
+// shadow the admin and 403 their actions.
+async function requireAdminAuth(): Promise<AuthContext> {
+  const session = await resolveAdminFirstSession();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const tenant = await requireTenant();
+  const membership = await ensureMembership(session.user.id, tenant.id);
+  touchLastSeen(membership);
+
+  return { session: session as AuthContext["session"], tenant, membership };
+}
+
 export async function requireRole(...roles: Role[]): Promise<AuthContext> {
-  const ctx = await requireAuth();
+  const ctx = await requireAdminAuth();
   const hasRole = roles.some((r) => roleAtLeast(ctx.membership.role, r));
   if (!hasRole) throw new Error("Forbidden");
   return ctx;
@@ -224,7 +251,7 @@ export async function requireRole(...roles: Role[]): Promise<AuthContext> {
 export async function requirePermission(
   ...permissions: AdminPermission[]
 ): Promise<AuthContext> {
-  const ctx = await requireAuth();
+  const ctx = await requireAdminAuth();
   const ok = permissions.some((p) => membershipHasPermission(ctx.membership, p));
   if (!ok) throw new Error("Forbidden");
   return ctx;
