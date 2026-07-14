@@ -129,6 +129,9 @@ export async function GET(request: NextRequest) {
         where: {
           tenantId,
           status: "active",
+          // A sub set to cancel at period end won't renew or charge — exclude it
+          // from "upcoming charges / renewals this week" so the amount is real.
+          cancelAtPeriodEnd: false,
           currentPeriodEnd: { gte: now, lte: sevenDaysFromNow },
         },
         include: {
