@@ -1245,7 +1245,11 @@ export default function ClientDetailPage() {
                             </div>
                             <p className="mt-0.5 text-xs text-muted">
                               {formatCurrency(sub.package.price, sub.package.currency)}/{sub.package.recurringInterval === "year" ? ta("yearInterval") : ta("monthInterval")}
-                              {" · "}{t("nextCharge")}: {periodEnd}
+                              {sub.status === "canceled"
+                                ? null
+                                : sub.cancelAtPeriodEnd
+                                  ? ` · ${t("noFurtherCharge")}`
+                                  : ` · ${t("nextCharge")}: ${periodEnd}`}
                             </p>
                             {sub.status === "paused" && sub.resumesAt && (
                               <p className="mt-0.5 text-[11px] text-amber-600">

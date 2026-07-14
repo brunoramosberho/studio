@@ -1461,6 +1461,7 @@
       "subIncomplete": "Incomplete",
       "cancelsOn": "Cancels {date}",
       "nextCharge": "Next charge",
+      "noFurtherCharge": "no further charge",
       "resumesOn": "Resumes {date}",
       "pauseSubscription": "Pause subscription",
       "pauseDays": "Pause days",
