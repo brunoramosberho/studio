@@ -153,6 +153,8 @@
     "ordersCardOverdue": "Atrasado {minutes} min",
     "ordersReadyToDeliver": "Listo para entregar",
     "ordersInMinutes": "en {minutes} min",
+    "ordersInDuration": "en {duration}",
+    "ordersOverdueDuration": "Atrasado {duration}",
     "ordersMarkReady": "Marcar lista",
     "ordersMarkDelivered": "Entregada",
     "ordersCancelConfirm": "¿Cancelar esta orden?",

@@ -153,6 +153,8 @@
     "ordersCardOverdue": "{minutes} min overdue",
     "ordersReadyToDeliver": "Ready to hand off",
     "ordersInMinutes": "in {minutes} min",
+    "ordersInDuration": "in {duration}",
+    "ordersOverdueDuration": "{duration} overdue",
     "ordersMarkReady": "Mark ready",
     "ordersMarkDelivered": "Hand off",
     "ordersCancelConfirm": "Cancel this order?",

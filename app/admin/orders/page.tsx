@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import {
   Coffee,
   Loader2,
@@ -59,6 +59,30 @@ function urgencyOf(pickupAt: string, nowMs: number): "overdue" | "urgent" | "soo
   if (minutes <= URGENT_MIN) return "urgent";
   if (minutes <= SOON_MIN) return "soon";
   return "later";
+}
+
+// Compact "how long" for the countdown — days/hours/minutes instead of a raw
+// minute count. Keeps at most the two most significant units. Units (d/h/min)
+// read the same in es/en.
+function formatDuration(totalMinutes: number): string {
+  const m = Math.max(0, Math.round(totalMinutes));
+  const days = Math.floor(m / 1440);
+  const hours = Math.floor((m % 1440) / 60);
+  const mins = m % 60;
+  if (days > 0) return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  if (hours > 0) return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+  return `${mins}min`;
+}
+
+// The class's day + time, so a bar order is easy to tie to its class — e.g.
+// "vie, 11 jul · 10:15 AM". Uses the viewer's locale + local timezone (matching
+// formatTime elsewhere on this screen).
+function formatClassWhen(iso: string, locale: string): string {
+  const datePart = new Date(iso).toLocaleDateString(
+    locale === "en" ? "en-US" : "es-ES",
+    { weekday: "short", day: "numeric", month: "short" },
+  );
+  return `${datePart} · ${formatTime(iso)}`;
 }
 
 export default function AdminOrdersPage() {
@@ -381,6 +405,7 @@ function OrderCard({
   busy: boolean;
 }) {
   const t = useTranslations("admin");
+  const locale = useLocale();
   const pickupAt = new Date(order.pickupAt);
   const minutesUntil = Math.round((pickupAt.getTime() - nowMs) / 60_000);
   const urgency = urgencyOf(order.pickupAt, nowMs);
@@ -428,7 +453,7 @@ function OrderCard({
                 {order.user.name ?? order.user.email}
               </p>
               <p className="text-[11px] text-muted">
-                {order.booking.class.classType.name} · {formatTime(order.booking.class.startsAt)}{" "}
+                {order.booking.class.classType.name} · {formatClassWhen(order.booking.class.startsAt, locale)}{" "}
                 · <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{order.studio.name}</span>
               </p>
             </div>
@@ -453,8 +478,8 @@ function OrderCard({
                     : isReady
                       ? t("ordersCardReady")
                       : minutesUntil <= 0
-                        ? t("ordersCardOverdue", { minutes: Math.abs(minutesUntil) })
-                        : t("ordersInMinutes", { minutes: minutesUntil })}
+                        ? t("ordersOverdueDuration", { duration: formatDuration(Math.abs(minutesUntil)) })
+                        : t("ordersInDuration", { duration: formatDuration(minutesUntil) })}
               </span>
               <p className="mt-0.5 font-mono text-[11px] text-muted">
                 {formatTime(order.pickupAt)}
