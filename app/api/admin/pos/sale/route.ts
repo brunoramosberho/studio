@@ -27,7 +27,8 @@ import {
 import { Prisma } from "@prisma/client";
 
 interface CartItem {
-  type: "package" | "product";
+  // "custom" = open charge (free amount + concept). No referenceId, no stock.
+  type: "package" | "product" | "custom";
   referenceId: string;
   name: string;
   price: number;
@@ -87,33 +88,36 @@ export async function POST(request: NextRequest) {
         typeof walkInNameRaw === "string" && walkInNameRaw.trim()
           ? walkInNameRaw.trim()
           : null;
-      const productItems = (items ?? []).filter(
-        (i) => i.type === "product" && i.price > 0,
+      // Walk-in (no account) can buy products and open charges — both are
+      // one-off and need no account to consume them. Packs/memberships/classes
+      // still require a customer.
+      const walkInItems = (items ?? []).filter(
+        (i) => (i.type === "product" || i.type === "custom") && i.price > 0,
       );
-      if ((items ?? []).some((i) => i.type !== "product")) {
+      if ((items ?? []).some((i) => i.type !== "product" && i.type !== "custom")) {
         return NextResponse.json(
-          { error: "Walk-in sales can only contain products" },
+          { error: "Walk-in sales can only contain products or open charges" },
           { status: 400 },
         );
       }
-      if (productItems.length === 0) {
+      if (walkInItems.length === 0) {
         return NextResponse.json(
-          { error: "Walk-in sales require at least one product" },
+          { error: "Walk-in sales require at least one product or open charge" },
           { status: 400 },
         );
       }
 
       const tenantCurrency = await getTenantCurrency();
       const currency = (
-        productItems[0].currency ?? tenantCurrency.code
+        walkInItems[0].currency ?? tenantCurrency.code
       ).toLowerCase();
-      const grossAmount = productItems.reduce(
+      const grossAmount = walkInItems.reduce(
         (sum, i) => sum + i.price * i.quantity,
         0,
       );
       // Whole-sale discount spread across the product lines.
       const lineNet = distributeDiscount(
-        productItems.map((i) => i.price * i.quantity),
+        walkInItems.map((i) => i.price * i.quantity),
         discount,
       );
       const totalAmount = posNetTotal(grossAmount, discount);
@@ -123,7 +127,7 @@ export async function POST(request: NextRequest) {
       // (no customer/email). A Shopify failure must not roll back the sale.
       let shopifyOrder: { id: number; name: string } | null = null;
       let shopifyOrderError: string | null = null;
-      const shopifyItems = productItems.filter((i) => i.shopifyVariantId);
+      const shopifyItems = walkInItems.filter((i) => i.shopifyVariantId);
       if (shopifyItems.length > 0) {
         const config = await prisma.shopifyConfig.findUnique({
           where: { tenantId },
@@ -168,7 +172,7 @@ export async function POST(request: NextRequest) {
       // (terminal) is recorded as an in-person card payment.
       const dbPaymentMethod = paymentMethod === "cash" ? "cash" : "card";
 
-      for (const [idx, item] of productItems.entries()) {
+      for (const [idx, item] of walkInItems.entries()) {
         const itemMetadata: Record<string, string | number | boolean> = {
           walkIn: true,
         };
@@ -194,12 +198,13 @@ export async function POST(request: NextRequest) {
             amount: lineNet[idx],
             currency,
             paymentMethod: dbPaymentMethod,
-            type: "product",
+            type: mapItemType(item.type),
             concept: item.name,
             conceptSub: notes ?? null,
             status: "completed",
             processedById: adminUserId,
-            referenceId: item.referenceId,
+            // Open charges have no catalog reference.
+            referenceId: item.referenceId || null,
             metadata: itemMetadata as Prisma.InputJsonObject,
           },
         });
@@ -674,6 +679,10 @@ function mapItemType(type: string): string {
   switch (type) {
     case "product":
       return "product";
+    // Open charge — a manual, catalog-less sale. "pos" is the taxonomy's
+    // in-person/manual bucket; the free-text concept carries the meaning.
+    case "custom":
+      return "pos";
     default:
       return "package";
   }

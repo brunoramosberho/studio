@@ -17,7 +17,10 @@ export interface PosCustomer {
 
 export interface PosCartItem {
   id: string;
-  type: "package" | "product";
+  // "custom" = open charge: a free amount + concept typed by staff for things
+  // outside the catalog (a penalty, a lost towel, a private class…). It has no
+  // referenceId and never touches Shopify/stock.
+  type: "package" | "product" | "custom";
   referenceId: string;
   name: string;
   price: number;

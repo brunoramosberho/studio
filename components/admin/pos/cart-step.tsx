@@ -17,8 +17,10 @@ import {
   Search,
   X,
   Tag,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ClassPicker } from "./class-picker";
 import { SpotPicker } from "./spot-picker";
 import { usePosStore, type PosSelectedClass } from "@/store/pos-store";
@@ -29,7 +31,7 @@ import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
-type CartCategory = "class" | "membership" | "package" | "product";
+type CartCategory = "class" | "membership" | "package" | "product" | "custom";
 
 interface PackageItem {
   id: string;
@@ -76,7 +78,7 @@ interface PosProductsResponse {
 
 type CategoryDef = {
   key: CartCategory;
-  labelKey: "classLabel" | "membership" | "package" | "product";
+  labelKey: "classLabel" | "membership" | "package" | "product" | "customCharge";
   icon: typeof CalendarDays;
 };
 
@@ -85,7 +87,12 @@ const CATEGORIES: CategoryDef[] = [
   { key: "membership", labelKey: "membership", icon: CalendarSync },
   { key: "package", labelKey: "package", icon: Package },
   { key: "product", labelKey: "product", icon: ShoppingBag },
+  { key: "custom", labelKey: "customCharge", icon: Receipt },
 ];
+
+// A walk-in (no account) can only buy things that need no account to consume:
+// products off the shelf and open charges.
+const WALK_IN_CATEGORIES: CartCategory[] = ["product", "custom"];
 
 export function CartStep() {
   const t = useTranslations("pos");
@@ -120,6 +127,36 @@ export function CartStep() {
   );
   const [productSearch, setProductSearch] = useState("");
   const [productCat, setProductCat] = useState<string>("all");
+  // Open-charge form
+  const [customAmount, setCustomAmount] = useState("");
+  const [customConcept, setCustomConcept] = useState("");
+
+  const visibleCategories = isWalkIn
+    ? CATEGORIES.filter((c) => WALK_IN_CATEGORIES.includes(c.key))
+    : CATEGORIES;
+
+  const addCustomCharge = () => {
+    const amount = parseFloat(customAmount);
+    const concept = customConcept.trim();
+    if (!concept) {
+      toast.error(t("customChargeNeedsConcept"));
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error(t("customChargeNeedsAmount"));
+      return;
+    }
+    addToCart({
+      type: "custom",
+      referenceId: "",
+      name: concept,
+      price: amount,
+      currency: tenantCurrency.code,
+      quantity: 1,
+    });
+    setCustomAmount("");
+    setCustomConcept("");
+  };
 
   const { data: packages = [], isLoading: packagesLoading } = useQuery<
     PackageItem[]
@@ -318,10 +355,9 @@ export function CartStep() {
       )}
 
       <div className="flex gap-4">
-        {/* Category sidebar — hidden for walk-ins (products only) */}
-        {!isWalkIn && (
+        {/* Category sidebar — a walk-in only gets products + open charges */}
         <div className="w-48 shrink-0 space-y-1">
-          {CATEGORIES.map((cat) => (
+          {visibleCategories.map((cat) => (
             <button
               key={cat.key}
               onClick={() => setActiveCategory(cat.key)}
@@ -342,7 +378,6 @@ export function CartStep() {
             </button>
           ))}
         </div>
-        )}
 
         {/* Category content */}
         <div className="flex-1 min-w-0">
@@ -592,6 +627,60 @@ export function CartStep() {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Open charge — free amount + concept, for anything not in the catalog */}
+          {activeCategory === "custom" && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold">{t("customCharge")}</h4>
+              <p className="text-xs text-muted">{t("customChargeHint")}</p>
+              <div className="space-y-2.5 rounded-lg border border-border/60 bg-surface/30 p-3">
+                <div>
+                  <label
+                    className="mb-1 block text-xs font-medium"
+                    htmlFor="pos-custom-concept"
+                  >
+                    {t("customChargeConcept")}
+                  </label>
+                  <Input
+                    id="pos-custom-concept"
+                    value={customConcept}
+                    onChange={(e) => setCustomConcept(e.target.value)}
+                    placeholder={t("customChargeConceptPlaceholder")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") addCustomCharge();
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="mb-1 block text-xs font-medium"
+                    htmlFor="pos-custom-amount"
+                  >
+                    {t("customChargeAmount")} ({tenantCurrency.symbol})
+                  </label>
+                  <Input
+                    id="pos-custom-amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={customAmount}
+                    onChange={(e) => setCustomAmount(e.target.value)}
+                    placeholder="0.00"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") addCustomCharge();
+                    }}
+                  />
+                </div>
+                <Button
+                  onClick={addCustomCharge}
+                  className="w-full bg-admin text-white hover:bg-admin/90"
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  {t("customChargeAdd")}
+                </Button>
+              </div>
             </div>
           )}
         </div>
