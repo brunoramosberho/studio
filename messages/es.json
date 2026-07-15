@@ -1432,6 +1432,7 @@
       "memberSince": "Miembro desde {date}",
       "activeSince": "Activo {timeAgo}",
       "appInstalled": "App instalada",
+      "wellhubLinked": "Cuenta de Wellhub ligada el",
       "appInstalledDate": "App instalada el {date}",
       "totalClasses": "Total clases",
       "thisMonth": "Este mes",

@@ -1,7 +1,6 @@
 import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { startOfWeek } from "date-fns";
-import { pushApplePassUpdate } from "@/lib/wallet/apns";
 
 /**
  * Recalcula estadísticas de gamificación desde reservas ATTENDED del tenant.
@@ -103,8 +102,13 @@ export async function syncMemberProgressFromBookings(
 
   // Best-effort: refresh the member's Apple Wallet pass after the response
   // (classes / level may have changed). Skipped outside a request context.
+  // Imported lazily: the APNs chain is `server-only`, and this module is also
+  // reached from scripts, where a static import throws on load.
   try {
-    after(() => pushApplePassUpdate(userId, tenantId).catch(() => {}));
+    after(async () => {
+      const { pushApplePassUpdate } = await import("@/lib/wallet/apns");
+      await pushApplePassUpdate(userId, tenantId).catch(() => {});
+    });
   } catch {}
 
   return {

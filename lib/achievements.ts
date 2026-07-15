@@ -9,13 +9,21 @@ import {
   detectComeback,
 } from "./gamification/progress";
 import { sendPushToUser } from "./push";
-import { sendAchievementUnlocked, sendLevelUp } from "./email";
 
 export { ACHIEVEMENT_DEFS };
 
 export interface GrantedAchievement {
   userId: string;
   achievementKey: string;
+}
+
+export interface AchievementCheckOptions {
+  /**
+   * Grant and level up without announcing it — no push, no email, no LEVEL_UP
+   * feed post. For backfills reconciling history that already happened, where
+   * announcing months-old news would read as spam. State still updates.
+   */
+  silent?: boolean;
 }
 
 async function getAchievementByKey(key: string) {
@@ -37,6 +45,7 @@ async function grantAchievement(
   tenantId: string,
   achievementKey: string,
   metadata?: Record<string, string | number>,
+  opts: AchievementCheckOptions = {},
 ) {
   const achievement = await getAchievementByKey(achievementKey);
   if (!achievement || !achievement.active) return null;
@@ -61,7 +70,9 @@ async function grantAchievement(
     },
   });
 
-  notifyAchievement(userId, tenantId, achievement).catch(() => {});
+  if (!opts.silent) {
+    notifyAchievement(userId, tenantId, achievement).catch(() => {});
+  }
 
   return achievementKey;
 }
@@ -83,6 +94,9 @@ async function notifyAchievement(
     select: { email: true, name: true },
   });
   if (user?.email) {
+    // Lazy: the mailer pulls in `server-only` branding, which throws on load in
+    // scripts. A silent backfill never reaches this path.
+    const { sendAchievementUnlocked } = await import("./email");
     sendAchievementUnlocked({
       to: user.email,
       name: user.name ?? "Miembro",
@@ -183,7 +197,11 @@ export async function createGroupedAchievementEvents(
   }
 }
 
-export async function checkAchievements(userId: string, tenantId: string) {
+export async function checkAchievements(
+  userId: string,
+  tenantId: string,
+  opts: AchievementCheckOptions = {},
+) {
   await syncMemberProgressFromBookings(userId, tenantId);
 
   const config = await prisma.tenantGamificationConfig.findUnique({
@@ -194,7 +212,7 @@ export async function checkAchievements(userId: string, tenantId: string) {
     const count = await prisma.booking.count({
       where: { userId, tenantId, status: "ATTENDED" },
     });
-    await checkLevelUp(userId, tenantId, count);
+    await checkLevelUp(userId, tenantId, count, opts);
     return [];
   }
 
@@ -230,7 +248,7 @@ export async function checkAchievements(userId: string, tenantId: string) {
     meta?: Record<string, string | number>,
   ) => {
     if (disabledKeys.has(key)) return;
-    const r = await grantAchievement(userId, tenantId, key, meta);
+    const r = await grantAchievement(userId, tenantId, key, meta, opts);
     if (r) granted.push({ userId, achievementKey: r });
   };
 
@@ -301,7 +319,7 @@ export async function checkAchievements(userId: string, tenantId: string) {
     if (attendedOnBirthday) await tryGrant("birthday_class");
   }
 
-  await checkLevelUp(userId, tenantId, totalAttended);
+  await checkLevelUp(userId, tenantId, totalAttended, opts);
 
   return granted;
 }
@@ -310,6 +328,7 @@ async function checkLevelUp(
   userId: string,
   tenantId: string,
   totalClassesAttended: number,
+  opts: AchievementCheckOptions = {},
 ) {
   const cfg = await prisma.tenantGamificationConfig.findUnique({
     where: { tenantId },
@@ -371,6 +390,10 @@ async function checkLevelUp(
     data: { currentLevelId: target.id },
   });
 
+  // A silent run still promotes them — it just doesn't announce a level they
+  // reached weeks ago to the whole studio's feed.
+  if (opts.silent) return;
+
   await prisma.feedEvent.create({
     data: {
       userId,
@@ -407,6 +430,7 @@ async function notifyLevelUp(
     select: { email: true, name: true },
   });
   if (user?.email) {
+    const { sendLevelUp } = await import("./email");
     sendLevelUp({
       to: user.email,
       name: user.name ?? "Miembro",

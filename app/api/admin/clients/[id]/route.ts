@@ -280,6 +280,7 @@ export async function GET(
                 room: { select: { name: true } },
               },
             },
+            platformBooking: { select: { platform: true } },
           },
           orderBy: { class: { startsAt: "asc" } },
           take: 10,
@@ -297,6 +298,8 @@ export async function GET(
                 coach: { select: { name: true, user: { select: { name: true } } } },
               },
             },
+            // Lets the desk see at a glance which visits came from a partner.
+            platformBooking: { select: { platform: true } },
           },
           orderBy: { class: { startsAt: "desc" } },
           take: 30,
@@ -387,9 +390,23 @@ export async function GET(
       console.error("Failed to load saved cards for client", userId, err);
     }
 
+    // A linked partner identity explains a profile that would otherwise look
+    // odd from the desk: classes attended with no package and no payments.
+    const wellhubLink = await prisma.wellhubUserLink.findFirst({
+      where: { tenantId, userId },
+      select: { email: true, userLinkedAt: true, linkedVia: true },
+    });
+
     return NextResponse.json({
       friends,
       savedCards,
+      wellhub: wellhubLink
+        ? {
+            email: wellhubLink.email,
+            linkedAt: wellhubLink.userLinkedAt?.toISOString() ?? null,
+            linkedVia: wellhubLink.linkedVia,
+          }
+        : null,
       id: user.id,
       name: user.name,
       email: user.email,
@@ -473,6 +490,7 @@ export async function GET(
         endsAt: b.class.endsAt.toISOString(),
         status: b.status,
         spotNumber: b.spotNumber,
+        platform: b.platformBooking?.platform ?? null,
       })),
 
       pastBookings: pastBookings.map((b) => ({
@@ -483,6 +501,7 @@ export async function GET(
         coachName: b.class.coach.name,
         startsAt: b.class.startsAt.toISOString(),
         status: b.status,
+        platform: b.platformBooking?.platform ?? null,
       })),
 
       subscriptions: memberSubscriptions.map((s) => ({

@@ -18,6 +18,7 @@ import {
   attributeWellhubBookingsToUser,
   tryLinkWellhubUserToMagic,
 } from "@/lib/platforms/wellhub/matching";
+import { checkAchievements } from "@/lib/achievements";
 
 type State =
   | "linked · nothing to do"
@@ -144,6 +145,33 @@ async function main() {
     console.table(alreadyFine);
   }
 
+  // Attribution rewrites their booking history underneath MemberProgress, which
+  // is a stored snapshot — nothing recomputes it until their next class
+  // completes, so totals, streak, level and achievements stay frozen at zero.
+  const linked = links.filter((l) => l.userId);
+  const stale: { who: string; storedTotal: number; realTotal: number; storedStreak: number }[] = [];
+  for (const l of linked) {
+    const [mp, attended] = await Promise.all([
+      prisma.memberProgress.findUnique({
+        where: { userId_tenantId: { userId: l.userId!, tenantId: l.tenantId } },
+        select: { totalClassesAttended: true, currentStreak: true },
+      }),
+      prisma.booking.count({
+        where: { userId: l.userId!, tenantId: l.tenantId, status: "ATTENDED" },
+      }),
+    ]);
+    if ((mp?.totalClassesAttended ?? 0) !== attended) {
+      stale.push({
+        who: l.email ?? l.fullName ?? l.wellhubUniqueToken.slice(-6),
+        storedTotal: mp?.totalClassesAttended ?? 0,
+        realTotal: attended,
+        storedStreak: mp?.currentStreak ?? 0,
+      });
+    }
+  }
+  console.log(`\nStale MemberProgress: ${stale.length} of ${linked.length} linked members`);
+  if (stale.length) console.table(stale);
+
   if (!apply) {
     console.log("\nDry-run only. Re-run with --apply to write.");
     return;
@@ -172,7 +200,28 @@ async function main() {
       }
     }
   }
-  console.log(`\nDone. Newly linked: ${linkedNow}. Bookings attributed: ${attributed}.`);
+
+  // silent: these classes happened weeks ago. Reconcile the state, don't
+  // announce it — no push, no email, no LEVEL_UP post.
+  let grantsTotal = 0;
+  for (const l of linked) {
+    const granted = await checkAchievements(l.userId!, l.tenantId, { silent: true });
+    const mp = await prisma.memberProgress.findUnique({
+      where: { userId_tenantId: { userId: l.userId!, tenantId: l.tenantId } },
+      select: { totalClassesAttended: true, currentStreak: true, longestStreak: true },
+    });
+    grantsTotal += granted.length;
+    console.log(
+      `  ${(l.email ?? l.fullName ?? "").padEnd(34)} total=${mp?.totalClassesAttended ?? 0}` +
+        ` streak=${mp?.currentStreak ?? 0}/${mp?.longestStreak ?? 0}` +
+        (granted.length ? `  +${granted.length} logros: ${granted.map((g) => g.achievementKey).join(", ")}` : ""),
+    );
+  }
+
+  console.log(
+    `\nDone. Newly linked: ${linkedNow}. Bookings attributed: ${attributed}. ` +
+      `Progress reconciled: ${linked.length}. Achievements granted: ${grantsTotal}.`,
+  );
 }
 
 main()

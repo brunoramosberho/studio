@@ -17,6 +17,7 @@ import {
   Clock,
   Eye,
   Smartphone,
+  Link2,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -52,6 +53,8 @@ import { useFormatMoney } from "@/components/tenant-provider";
 import { format } from "date-fns";
 import { usePosStore } from "@/store/pos-store";
 import { ShoppingBag, Users } from "lucide-react";
+import type { PlatformType } from "@prisma/client";
+import { partnerLabel } from "@/lib/platforms/labels";
 import { CardBrandIcon } from "@/components/payments/card-brand-icon";
 import { useTranslations, useLocale } from "next-intl";
 
@@ -68,6 +71,7 @@ interface ClientDetail {
   pwaInstalledAt: string | null;
   lastSeenAt: string | null;
   role: string;
+  wellhub: { email: string | null; linkedAt: string | null; linkedVia: string | null } | null;
   friends: { id: string; name: string | null; image: string | null }[];
   savedCards: {
     id: string;
@@ -134,6 +138,7 @@ interface ClientDetail {
     endsAt: string;
     status: string;
     spotNumber: number | null;
+    platform: PlatformType | null;
   }[];
   pastBookings: {
     id: string;
@@ -143,6 +148,7 @@ interface ClientDetail {
     coachName: string | null;
     startsAt: string;
     status: string;
+    platform: PlatformType | null;
   }[];
   subscriptions: {
     id: string;
@@ -749,6 +755,19 @@ export default function ClientDetailPage() {
                   {client.pwaInstalledAt && (
                     <Badge variant="secondary" className="gap-1 text-[10px]">
                       <Smartphone className="h-3 w-3" /> App
+                    </Badge>
+                  )}
+                  {client.wellhub && (
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 text-[10px]"
+                      title={
+                        client.wellhub.linkedAt
+                          ? `${t("wellhubLinked")} ${formatDate(client.wellhub.linkedAt, locale)}`
+                          : undefined
+                      }
+                    >
+                      <Link2 className="h-3 w-3" /> Wellhub
                     </Badge>
                   )}
                 </div>
@@ -1535,16 +1554,23 @@ export default function ClientDetailPage() {
                             )}
                           >
                             <td className="px-4 py-2.5">
-                              <Link
-                                href={`/admin/class/${b.classId}`}
-                                className="flex items-center gap-2 hover:underline"
-                              >
-                                <div
-                                  className="h-2 w-2 shrink-0 rounded-full"
-                                  style={{ backgroundColor: b.classColor || "#9ca3af" }}
-                                />
-                                <span className="font-medium">{b.className}</span>
-                              </Link>
+                              <div className="flex items-center gap-2">
+                                <Link
+                                  href={`/admin/class/${b.classId}`}
+                                  className="flex items-center gap-2 hover:underline"
+                                >
+                                  <div
+                                    className="h-2 w-2 shrink-0 rounded-full"
+                                    style={{ backgroundColor: b.classColor || "#9ca3af" }}
+                                  />
+                                  <span className="font-medium">{b.className}</span>
+                                </Link>
+                                {b.platform && (
+                                  <Badge variant="secondary" className="text-[9px]">
+                                    {partnerLabel(b.platform)}
+                                  </Badge>
+                                )}
+                              </div>
                             </td>
                             <td className="hidden px-4 py-2.5 text-muted sm:table-cell">
                               {b.coachName || "—"}
