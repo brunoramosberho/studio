@@ -242,7 +242,11 @@ export async function PUT(
         await restoreCredit(booking.packageUsed, booking.class.classTypeId);
       }
 
-      if (tenantConfig && hasAnyPenalty(decision)) {
+      // Platform bookings (Wellhub/ClassPass) settle their no-show with the
+      // partner on a fixed commercial rate — the member never paid us for the
+      // seat, so never raise a member penalty for one. The NO_SHOW status below
+      // still applies, so it stays visible in the history.
+      if (tenantConfig && hasAnyPenalty(decision) && !booking.platformBookingId) {
         await createPendingPenalty(prisma, {
           tenantId: tenant.id,
           bookingId: booking.id,
