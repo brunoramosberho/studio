@@ -1837,6 +1837,7 @@
     "friendGoing": "{name} va",
     "friendsGoing": "{count} amigos van",
     "cancel": "Cancelar",
+    "cancelInPartner": "Cancela en {partner}",
     "inWaitlist": "en espera",
     "leave": "Salir",
     "statusCompleted": "Completada",

@@ -1837,6 +1837,7 @@
     "friendGoing": "{name} is going",
     "friendsGoing": "{count} friends going",
     "cancel": "Cancel",
+    "cancelInPartner": "Cancel in {partner}",
     "inWaitlist": "in waitlist",
     "leave": "Leave",
     "statusCompleted": "Completed",

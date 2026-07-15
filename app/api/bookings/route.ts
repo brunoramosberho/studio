@@ -61,6 +61,10 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        // Present when the booking came from a partner (Wellhub/ClassPass) — the
+        // UI labels it so the member can tell it apart from one they made here,
+        // and knows to cancel it in the partner app.
+        platformBooking: { select: { platform: true } },
       },
       orderBy: { class: { startsAt: isUpcoming ? "asc" : "desc" } },
       take: 50,

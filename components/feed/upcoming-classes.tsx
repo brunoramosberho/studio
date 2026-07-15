@@ -13,6 +13,8 @@ import { es } from "date-fns/locale";
 import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils";
 import { usePolicies, getCancellationWindowMs } from "@/hooks/usePolicies";
 import { useTranslations } from "next-intl";
+import type { PlatformType } from "@prisma/client";
+import { PlatformBadge, partnerLabel } from "@/components/booking/platform-badge";
 
 interface FriendInfo {
   id: string;
@@ -26,6 +28,7 @@ interface UpcomingBooking {
   spotNumber: number | null;
   status: string;
   friendsGoing: FriendInfo[];
+  platformBooking?: { platform: PlatformType } | null;
   class: {
     startsAt: string;
     endsAt: string;
@@ -43,6 +46,7 @@ export function UpcomingClasses() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const t = useTranslations("feed");
+  const tMember = useTranslations("member");
   const policies = usePolicies();
   const cancellationWindowMs = getCancellationWindowMs(policies.cancellationWindowHours);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -155,6 +159,9 @@ export function UpcomingClasses() {
                             #{b.spotNumber}
                           </span>
                         )}
+                        {b.platformBooking && (
+                          <PlatformBadge platform={b.platformBooking.platform} />
+                        )}
                       </div>
                       <p className="truncate text-[13px] text-muted">
                         {b.class.coach.name ? (
@@ -202,12 +209,20 @@ export function UpcomingClasses() {
                         </>
                       )}
                     </div>
-                    <button
-                      onClick={(e) => { e.preventDefault(); setCancelTarget(b); }}
-                      className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
-                    >
-                      Cancelar
-                    </button>
+                    {b.platformBooking ? (
+                      <span className="text-[10px] font-medium text-muted">
+                        {tMember("cancelInPartner", {
+                          partner: partnerLabel(b.platformBooking.platform) ?? "",
+                        })}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.preventDefault(); setCancelTarget(b); }}
+                        className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
+                      >
+                        Cancelar
+                      </button>
+                    )}
                   </div>
                 </div>
               </Link>

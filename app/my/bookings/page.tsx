@@ -23,6 +23,7 @@ import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { BookingWithDetails } from "@/types";
 import { BiometricsCard } from "@/components/booking/biometrics-card";
+import { PlatformBadge, partnerLabel } from "@/components/booking/platform-badge";
 import { useTranslations } from "next-intl";
 import { usePolicies, getCancellationWindowMs } from "@/hooks/usePolicies";
 
@@ -312,9 +313,14 @@ export default function BookingsPage() {
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[15px] font-bold text-foreground">
-                              {booking.class.classType.name}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="truncate text-[15px] font-bold text-foreground">
+                                {booking.class.classType.name}
+                              </p>
+                              {booking.platformBooking && (
+                                <PlatformBadge platform={booking.platformBooking.platform} />
+                              )}
+                            </div>
                             <p className="truncate text-[13px] text-muted">
                               {booking.class.coach.name ? (
                                 <>
@@ -520,6 +526,7 @@ function BookingCard({
 }) {
   const t = useTranslations("member");
   const studioName = (booking.class as unknown as { room?: { studio?: { name?: string } } }).room?.studio?.name;
+  const partner = partnerLabel(booking.platformBooking?.platform);
 
   const startDate = new Date(booking.class.startsAt);
   const dayLabel = format(startDate, "EEE d 'de' MMM", { locale: es });
@@ -569,6 +576,9 @@ function BookingCard({
                   <span className="flex-shrink-0 rounded bg-surface px-1.5 py-0.5 text-[9px] font-semibold text-muted">
                     #{booking.spotNumber}
                   </span>
+                )}
+                {booking.platformBooking && (
+                  <PlatformBadge platform={booking.platformBooking.platform} />
                 )}
               </div>
               <p className="truncate text-[13px] text-muted">
@@ -625,14 +635,21 @@ function BookingCard({
                 </>
               )}
             </div>
-            {booking.status === "CONFIRMED" && (
-              <button
-                onClick={(e) => { e.preventDefault(); onCancel(booking); }}
-                className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
-              >
-                {t("cancel")}
-              </button>
-            )}
+            {booking.status === "CONFIRMED" &&
+              (partner ? (
+                // The partner owns this reservation — cancelling here would
+                // leave their side booked, so we point the member back to them.
+                <span className="text-[10px] font-medium text-muted">
+                  {t("cancelInPartner", { partner })}
+                </span>
+              ) : (
+                <button
+                  onClick={(e) => { e.preventDefault(); onCancel(booking); }}
+                  className="rounded-full bg-red-50 px-3 py-1 text-[10px] font-semibold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
+                >
+                  {t("cancel")}
+                </button>
+              ))}
           </div>
 
           {booking.productOrder && <PreOrderSummary order={booking.productOrder} />}

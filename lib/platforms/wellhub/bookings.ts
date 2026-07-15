@@ -243,11 +243,24 @@ async function reserveAndRecord(args: {
 
     if (decision.status === "RESERVED") {
       const spotNumber = await assignWalkinSpot(tx, args.classId);
+      // If this Wellhub identity is already bound to a Magic user, attribute the
+      // booking right away so it shows up in their app (upcoming class, history,
+      // streak, class photos). It keeps `platformBookingId`, so the penalty /
+      // credit / revenue paths still skip it and cancelling stays Wellhub's job.
+      const link = await tx.wellhubUserLink.findUnique({
+        where: {
+          tenantId_wellhubUniqueToken: {
+            tenantId: args.tenantId,
+            wellhubUniqueToken: args.uniqueToken,
+          },
+        },
+        select: { userId: true },
+      });
       await tx.booking.create({
         data: {
           tenantId: args.tenantId,
           classId: args.classId,
-          userId: null,
+          userId: link?.userId ?? null,
           guestName: args.memberName ?? `Wellhub ${args.uniqueToken.slice(-4)}`,
           guestEmail: args.guestEmail,
           spotNumber,

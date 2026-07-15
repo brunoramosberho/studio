@@ -11,6 +11,7 @@ import { formatTime, cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { BookingWithDetails } from "@/types";
+import { PlatformBadge } from "@/components/booking/platform-badge";
 
 const stagger = {
   hidden: {},
@@ -199,9 +200,14 @@ export default function HistoryPage() {
                               </span>
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="font-display text-sm font-bold text-foreground">
-                                {booking.class.classType.name}
-                              </p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="truncate font-display text-sm font-bold text-foreground">
+                                  {booking.class.classType.name}
+                                </p>
+                                {booking.platformBooking && (
+                                  <PlatformBadge platform={booking.platformBooking.platform} />
+                                )}
+                              </div>
                               <p className="mt-0.5 text-xs text-muted">
                                 {booking.class.coach.name} · {formatTime(booking.class.startsAt)}
                               </p>

@@ -64,6 +64,11 @@ export async function tryLinkWellhubUserToMagic(opts: {
         where: { id: link.id },
         data: { userId: user.id, userLinkedAt: new Date(), linkedVia: "email_match" },
       });
+      await attributeWellhubBookingsToUser({
+        tenantId: opts.tenantId,
+        userId: user.id,
+        wellhubUniqueToken: opts.wellhubUniqueToken,
+      });
       return { linked: true, via: "email_match", wellhubUserLinkId: link.id, userId: user.id };
     }
   }
@@ -83,6 +88,11 @@ export async function tryLinkWellhubUserToMagic(opts: {
       await prisma.wellhubUserLink.update({
         where: { id: link.id },
         data: { userId: candidates[0].id, userLinkedAt: new Date(), linkedVia: "phone_match" },
+      });
+      await attributeWellhubBookingsToUser({
+        tenantId: opts.tenantId,
+        userId: candidates[0].id,
+        wellhubUniqueToken: opts.wellhubUniqueToken,
       });
       return {
         linked: true,
@@ -118,12 +128,17 @@ export async function tryLinkMagicUserToWellhub(opts: {
         userId: null,
         email: { equals: user.email, mode: "insensitive" },
       },
-      select: { id: true },
+      select: { id: true, wellhubUniqueToken: true },
     });
     if (link) {
       await prisma.wellhubUserLink.update({
         where: { id: link.id },
         data: { userId: user.id, userLinkedAt: new Date(), linkedVia: "email_match" },
+      });
+      await attributeWellhubBookingsToUser({
+        tenantId: opts.tenantId,
+        userId: user.id,
+        wellhubUniqueToken: link.wellhubUniqueToken,
       });
       return { linked: true, via: "email_match", wellhubUserLinkId: link.id, userId: user.id };
     }
@@ -136,13 +151,18 @@ export async function tryLinkMagicUserToWellhub(opts: {
         userId: null,
         phone: user.phone,
       },
-      select: { id: true },
+      select: { id: true, wellhubUniqueToken: true },
       take: 2,
     });
     if (matches.length === 1) {
       await prisma.wellhubUserLink.update({
         where: { id: matches[0].id },
         data: { userId: user.id, userLinkedAt: new Date(), linkedVia: "phone_match" },
+      });
+      await attributeWellhubBookingsToUser({
+        tenantId: opts.tenantId,
+        userId: user.id,
+        wellhubUniqueToken: matches[0].wellhubUniqueToken,
       });
       return {
         linked: true,
@@ -154,4 +174,40 @@ export async function tryLinkMagicUserToWellhub(opts: {
   }
 
   return { linked: false };
+}
+
+/**
+ * Once a Wellhub identity is bound to a Magic User, attribute that identity's
+ * bookings — past and upcoming — to the user, so their Wellhub history, streak,
+ * gamification and class photos behave like any other member's. Idempotent: only
+ * touches rows still unattributed (`userId: null`).
+ *
+ * Money deliberately stays out of it. These Bookings keep their
+ * `platformBookingId`, which every penalty / credit / revenue path uses to skip
+ * them — Wellhub settles on its own rail. Cancelling also stays blocked: the
+ * booking is owned by Wellhub, not by us.
+ */
+export async function attributeWellhubBookingsToUser(opts: {
+  tenantId: string;
+  userId: string;
+  wellhubUniqueToken: string;
+}): Promise<number> {
+  const platformBookings = await prisma.platformBooking.findMany({
+    where: {
+      tenantId: opts.tenantId,
+      wellhubUserUniqueToken: opts.wellhubUniqueToken,
+    },
+    select: { id: true },
+  });
+  if (platformBookings.length === 0) return 0;
+
+  const res = await prisma.booking.updateMany({
+    where: {
+      tenantId: opts.tenantId,
+      userId: null,
+      platformBookingId: { in: platformBookings.map((p) => p.id) },
+    },
+    data: { userId: opts.userId },
+  });
+  return res.count;
 }

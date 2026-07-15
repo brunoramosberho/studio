@@ -15,6 +15,7 @@ import type {
   Studio,
   Country,
   City,
+  PlatformType,
   Prisma,
 } from "@prisma/client";
 
@@ -76,6 +77,8 @@ export interface BookingProductOrderSummary {
 export interface BookingWithDetails extends Booking {
   class: ClassWithDetails;
   productOrder?: BookingProductOrderSummary | null;
+  /** Set when the reservation came from a partner app (Wellhub, ClassPass…). */
+  platformBooking?: { platform: PlatformType } | null;
 }
 
 export interface CreditUsageDetail {

@@ -152,6 +152,20 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    // A partner booking (Wellhub/ClassPass) is owned by the partner: cancelling
+    // it here would leave their side holding a reservation we've already freed.
+    // Members cancel it in the partner app. Staff keep the override for the desk.
+    if (status === "CANCELLED" && booking.platformBookingId && !isStaff) {
+      return NextResponse.json(
+        {
+          error:
+            "Esta reserva la hiciste con Wellhub. Cancélala desde la app de Wellhub.",
+          platformBooking: true,
+        },
+        { status: 400 },
+      );
+    }
+
     let creditLost = false;
     if (status === "CANCELLED") {
       const windowMs = await getCancellationWindowMs(tenant.id);
@@ -405,6 +419,19 @@ export async function DELETE(
     const isAdmin = membership.role === "ADMIN";
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    // Partner reservations are owned by the partner. Cancelling here would free
+    // the seat on our side while Wellhub still holds it booked, so members are
+    // sent back to the partner app. Admins keep the override for the front desk.
+    if (booking.platformBookingId && !isAdmin) {
+      return NextResponse.json(
+        {
+          error: "Esta reserva la hiciste con Wellhub. Cancélala desde la app de Wellhub.",
+          platformBooking: true,
+        },
+        { status: 400 },
+      );
     }
 
     const windowMs = await getCancellationWindowMs(tenant.id);
