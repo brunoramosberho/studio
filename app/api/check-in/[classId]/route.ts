@@ -90,6 +90,16 @@ export async function POST(
         },
         include: { class: { select: { classTypeId: true } } },
       });
+      // A partner visit must not advance the funnel. The referral payout only
+      // fires on the first advance to the trigger stage, so counting a Wellhub
+      // check-in here would burn the referral for a member who later attends on
+      // their own — and the studio never sold them the class to reward.
+      if (!bk?.platformBookingId) {
+        updateLifecycle(memberId, ctx.tenant.id, "attended").catch(
+          (err) => console.error("Lifecycle update (attended) failed:", err),
+        );
+      }
+
       if (!bk) return;
       await prisma.booking.update({
         where: { id: bk.id },
@@ -120,10 +130,6 @@ export async function POST(
         classTypeId: bk.class.classTypeId,
       });
     })().catch((err) => console.error("Check-in booking sync failed:", err));
-
-    updateLifecycle(memberId, ctx.tenant.id, "attended").catch(
-      (err) => console.error("Lifecycle update (attended) failed:", err),
-    );
 
     // If this member came via Wellhub, mirror the check-in there so payment
     // triggers (Automated Trigger requirement). No-op for direct members.
