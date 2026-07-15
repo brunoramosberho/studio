@@ -201,12 +201,35 @@ export async function attributeWellhubBookingsToUser(opts: {
   });
   if (platformBookings.length === 0) return 0;
 
-  const res = await prisma.booking.updateMany({
+  const candidates = await prisma.booking.findMany({
     where: {
       tenantId: opts.tenantId,
       userId: null,
       platformBookingId: { in: platformBookings.map((p) => p.id) },
     },
+    select: { id: true, classId: true },
+  });
+  if (candidates.length === 0) return 0;
+
+  // Skip classes the member already holds a booking for. Taking two seats in
+  // one class is legitimate (a member paying for a friend books a second spot),
+  // but attributing the partner seat on top would show the class twice in their
+  // history, count twice towards progress, and make check-in's findFirst pick
+  // one at random.
+  const own = await prisma.booking.findMany({
+    where: {
+      tenantId: opts.tenantId,
+      userId: opts.userId,
+      classId: { in: candidates.map((c) => c.classId) },
+    },
+    select: { classId: true },
+  });
+  const taken = new Set(own.map((b) => b.classId));
+  const ids = candidates.filter((c) => !taken.has(c.classId)).map((c) => c.id);
+  if (ids.length === 0) return 0;
+
+  const res = await prisma.booking.updateMany({
+    where: { id: { in: ids } },
     data: { userId: opts.userId },
   });
   return res.count;

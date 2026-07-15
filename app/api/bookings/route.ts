@@ -10,6 +10,7 @@ import { removeSpotNotifyMe } from "@/lib/waitlist";
 import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeForBooking, classWithinPackageWindow, packageCoversClassType, ensureSubscriptionUserPackages } from "@/lib/credits";
 import { checkSubscriptionBookingLimits, type BookingLimitFailure } from "@/lib/booking/limits";
 import { userHasOpenDebt } from "@/lib/billing/debt";
+import { partnerLabel } from "@/lib/platforms/labels";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
@@ -345,10 +346,20 @@ export async function POST(request: NextRequest) {
           userId: effectiveUserId,
           status: "CONFIRMED",
         },
+        select: { id: true, platformBooking: { select: { platform: true } } },
       });
       if (existingBooking) {
+        // Name the partner when the seat came from one. Their reservation is
+        // now visible here, so this blocks a second booking — but "you already
+        // have a booking" reads as a bug unless we say where it came from.
+        const partner = partnerLabel(existingBooking.platformBooking?.platform);
         return NextResponse.json(
-          { error: "You already have a booking for this class" },
+          {
+            error: partner
+              ? `Ya tienes una reserva para esta clase con ${partner}. Si quieres traer a alguien, resérvale un lugar como invitado.`
+              : "You already have a booking for this class",
+            ...(partner ? { platformBooking: true } : {}),
+          },
           { status: 409 },
         );
       }

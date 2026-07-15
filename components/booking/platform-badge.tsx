@@ -1,4 +1,5 @@
 import type { PlatformType } from "@prisma/client";
+import { partnerLabel } from "@/lib/platforms/labels";
 import { cn } from "@/lib/utils";
 
 /**
@@ -7,17 +8,6 @@ import { cn } from "@/lib/utils";
  * needs to know which ones they booked here — and which they must cancel in
  * the partner's app, since we cannot cancel on their behalf.
  */
-const PARTNER_LABEL: Record<PlatformType, string> = {
-  wellhub: "Wellhub",
-  classpass: "ClassPass",
-  totalpass: "TotalPass",
-  fitpass: "Fitpass",
-};
-
-export function partnerLabel(platform: PlatformType | null | undefined): string | null {
-  return platform ? (PARTNER_LABEL[platform] ?? null) : null;
-}
-
 export function PlatformBadge({
   platform,
   className,
@@ -32,7 +22,7 @@ export function PlatformBadge({
         className,
       )}
     >
-      {PARTNER_LABEL[platform]}
+      {partnerLabel(platform)}
     </span>
   );
 }

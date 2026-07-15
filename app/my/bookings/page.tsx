@@ -23,7 +23,8 @@ import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { BookingWithDetails } from "@/types";
 import { BiometricsCard } from "@/components/booking/biometrics-card";
-import { PlatformBadge, partnerLabel } from "@/components/booking/platform-badge";
+import { PlatformBadge } from "@/components/booking/platform-badge";
+import { partnerLabel } from "@/lib/platforms/labels";
 import { useTranslations } from "next-intl";
 import { usePolicies, getCancellationWindowMs } from "@/hooks/usePolicies";
 
