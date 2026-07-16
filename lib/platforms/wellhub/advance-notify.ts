@@ -15,6 +15,8 @@ export async function notifySuperAdminsOfAdvance(args: {
   tenantSlug: string;
   /** Preformatted amount ("€3,685.71") — only for kind=draw. */
   amountLabel?: string;
+  /** Extra lines for the email body (amount breakdown, destination account…). */
+  details?: string[];
 }) {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "mgic.app";
   const url = `https://admin.${rootDomain}/tenants`;
@@ -38,7 +40,19 @@ export async function notifySuperAdminsOfAdvance(args: {
         subject: title,
         html: `<div style="font-family:Helvetica,Arial,sans-serif;max-width:440px;margin:0 auto;padding:24px;">
           <h2 style="font-size:18px;margin:0 0 12px;">${title}</h2>
-          <p style="font-size:14px;color:#444;line-height:1.5;margin:0 0 20px;">${body}</p>
+          <p style="font-size:14px;color:#444;line-height:1.5;margin:0 0 16px;">${body}</p>
+          ${
+            args.details?.length
+              ? `<div style="background:#f6f6f4;border-radius:12px;padding:14px 16px;margin:0 0 20px;">
+                  ${args.details
+                    .map(
+                      (d) =>
+                        `<p style="font-size:13px;color:#333;font-family:ui-monospace,Menlo,monospace;margin:0 0 6px;">${d}</p>`,
+                    )
+                    .join("")}
+                </div>`
+              : ""
+          }
           <a href="${url}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 18px;border-radius:10px;font-size:14px;">Abrir super-admin</a>
         </div>`,
       });

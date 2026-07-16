@@ -13,6 +13,12 @@ import {
   createAdvanceDraw,
   AdvanceError,
 } from "@/lib/platforms/wellhub/advance";
+import {
+  validatePayoutAccount,
+  normalizeAccount,
+  maskAccount,
+  type PayoutMethod,
+} from "@/lib/banking/validate";
 
 async function isWellhubApiActive(tenantId: string): Promise<boolean> {
   const cfg = await prisma.studioPlatformConfig.findFirst({
@@ -50,6 +56,15 @@ export async function GET() {
       eligible: true,
       access: config?.access ?? "disabled",
       requestedAt: config?.requestedAt ?? null,
+      // Masked — the tenant UI shows "ES91 •••• 1332" and only asks for the
+      // account when none is stored. Full value never leaves the server here.
+      payout: config?.payoutAccount
+        ? {
+            method: config.payoutMethod,
+            accountMasked: maskAccount(config.payoutAccount),
+            holder: config.payoutHolder,
+          }
+        : null,
       window: { open: w.open, period: w.period, localDay: w.localDay },
       available: availability
         ? {
@@ -91,12 +106,78 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const ctx = await requireRole("ADMIN");
 
     if (!(await isWellhubApiActive(ctx.tenant.id))) {
       return NextResponse.json({ error: "Wellhub no está activo" }, { status: 422 });
+    }
+
+    // Resolve the destination account: stored on the config, or provided in
+    // this request (validated + persisted for next time). Without one, the
+    // draw is refused — the transfer instruction must travel with the request.
+    const body = (await request.json().catch(() => ({}))) as {
+      payoutMethod?: string;
+      payoutAccount?: string;
+      payoutHolder?: string;
+    };
+    const config = await prisma.wellhubAdvanceConfig.findUnique({
+      where: { tenantId: ctx.tenant.id },
+      select: { payoutMethod: true, payoutAccount: true, payoutHolder: true },
+    });
+
+    let payout: { method: string; account: string; holder: string } | null = null;
+    if (body.payoutAccount && body.payoutMethod) {
+      const method = body.payoutMethod as PayoutMethod;
+      if (!["iban", "clabe"].includes(method)) {
+        return NextResponse.json({ error: "Método de cuenta inválido" }, { status: 400 });
+      }
+      const holder = (body.payoutHolder ?? "").trim();
+      if (holder.length < 3) {
+        return NextResponse.json(
+          { error: "Falta el nombre del titular de la cuenta", code: "payout_holder_required" },
+          { status: 422 },
+        );
+      }
+      const check = validatePayoutAccount(method, body.payoutAccount);
+      if (!check.valid) {
+        return NextResponse.json({ error: check.error, code: "payout_invalid" }, { status: 422 });
+      }
+      const account = normalizeAccount(body.payoutAccount);
+      await prisma.wellhubAdvanceConfig.upsert({
+        where: { tenantId: ctx.tenant.id },
+        create: {
+          tenantId: ctx.tenant.id,
+          payoutMethod: method,
+          payoutAccount: account,
+          payoutHolder: holder,
+          payoutUpdatedAt: new Date(),
+        },
+        update: {
+          payoutMethod: method,
+          payoutAccount: account,
+          payoutHolder: holder,
+          payoutUpdatedAt: new Date(),
+        },
+      });
+      payout = { method, account, holder };
+    } else if (config?.payoutAccount && config.payoutMethod) {
+      payout = {
+        method: config.payoutMethod,
+        account: config.payoutAccount,
+        holder: config.payoutHolder ?? "",
+      };
+    }
+
+    if (!payout) {
+      return NextResponse.json(
+        {
+          error: "Configura la cuenta bancaria (IBAN o CLABE) para recibir el adelanto",
+          code: "payout_required",
+        },
+        { status: 422 },
+      );
     }
 
     const tz = await resolveScheduleTimezone(ctx.tenant);
@@ -105,19 +186,29 @@ export async function POST() {
       tenantId: ctx.tenant.id,
       timeZone: tz,
       currency,
+      payout,
       requestedBy: ctx.session.user.id,
     });
 
-    // Alert the super-admins that money is waiting on their approval.
+    // Alert the super-admins that money is waiting on their approval — with
+    // the full transfer instruction (account + holder + amount breakdown).
     // Awaited (serverless can freeze after the response) but never throws.
     const { notifySuperAdminsOfAdvance } = await import("@/lib/platforms/wellhub/advance-notify");
+    const fmt = (cents: number) =>
+      new Intl.NumberFormat("es-ES", { style: "currency", currency }).format(cents / 100);
     await notifySuperAdminsOfAdvance({
       kind: "draw",
       tenantName: ctx.tenant.name,
       tenantSlug: ctx.tenant.slug,
-      amountLabel: new Intl.NumberFormat("es-ES", { style: "currency", currency }).format(
-        advance.netCents / 100,
-      ),
+      amountLabel: fmt(advance.netCents),
+      details: [
+        `Bruto: ${fmt(advance.grossCents)} (${advance.checkins} check-ins, ${advance.noShows} no-shows, ${advance.lateCancels} late-cancels)`,
+        `Comisión ${advance.feePercent}%: −${fmt(advance.feeCents)} · IVA ${advance.vatPercent}%: −${fmt(advance.vatCents)}`,
+        `Neto a transferir: ${fmt(advance.netCents)}`,
+        `${payout.method.toUpperCase()}: ${payout.account}`,
+        `Titular: ${payout.holder}`,
+        `Periodo: ${advance.period}`,
+      ],
     });
 
     return NextResponse.json({ ok: true, advance }, { status: 201 });

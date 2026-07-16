@@ -238,6 +238,8 @@ export async function createAdvanceDraw(args: {
   tenantId: string;
   timeZone: string;
   currency: string;
+  /** Destination account, checksum-validated by the caller. Snapshotted on the draw. */
+  payout: { method: string; account: string; holder: string };
   requestedBy?: string | null;
   now?: Date;
 }) {
@@ -281,6 +283,9 @@ export async function createAdvanceDraw(args: {
         feePercent: availability.feePercent,
         vatPercent: availability.vatPercent,
         currency: args.currency,
+        payoutMethod: args.payout.method,
+        payoutAccount: args.payout.account,
+        payoutHolder: args.payout.holder,
         requestedBy: args.requestedBy ?? null,
       },
     });

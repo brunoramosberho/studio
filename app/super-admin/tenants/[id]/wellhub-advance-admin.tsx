@@ -23,6 +23,9 @@ interface AdvanceRow {
   vatCents: number;
   netCents: number;
   currency: string;
+  payoutMethod: string | null;
+  payoutAccount: string | null;
+  payoutHolder: string | null;
   requestedAt: string;
 }
 
@@ -167,6 +170,12 @@ export function WellhubAdvanceAdmin({ tenantId }: { tenantId: string }) {
                     Periodo {a.period} · {a.checkins} check-ins, {a.noShows} no-shows, {a.lateCancels} late-cancels ·{" "}
                     {new Date(a.requestedAt).toLocaleString("es-ES")}
                   </p>
+                  {a.payoutAccount && (
+                    <p className="mt-0.5 font-mono text-xs text-gray-700">
+                      {(a.payoutMethod ?? "").toUpperCase()}: {a.payoutAccount}
+                      {a.payoutHolder ? ` · ${a.payoutHolder}` : ""}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Badge className={STATUS_BADGE[a.status]}>{a.status}</Badge>

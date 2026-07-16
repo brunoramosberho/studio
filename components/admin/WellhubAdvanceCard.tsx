@@ -22,10 +22,13 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { Input } from "@/components/ui/input";
+import { validatePayoutAccount } from "@/lib/banking/validate";
 
 interface AdvanceData {
   eligible: boolean;
   access?: "disabled" | "requested" | "enabled";
+  payout?: { method: string; accountMasked: string; holder: string | null } | null;
   window?: { open: boolean; period: string; localDay: number };
   available?: {
     counts: { checkins: number; noShows: number; lateCancels: number };
@@ -66,6 +69,12 @@ function money(cents: number, currency = "EUR") {
 export function WellhubAdvanceCard({ variant }: { variant: "full" | "compact" }) {
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Bank account entry — needed the first time (or when changing accounts).
+  const [editingPayout, setEditingPayout] = useState(false);
+  const [payoutMethod, setPayoutMethod] = useState<"iban" | "clabe">("iban");
+  const [payoutAccount, setPayoutAccount] = useState("");
+  const [payoutHolder, setPayoutHolder] = useState("");
+  const [payoutError, setPayoutError] = useState<string | null>(null);
 
   const { data } = useQuery<AdvanceData>({
     queryKey: ["wellhub-advance"],
@@ -92,16 +101,35 @@ export function WellhubAdvanceCard({ variant }: { variant: "full" | "compact" })
 
   const requestDraw = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/platforms/wellhub/advance", { method: "POST" });
+      // Client-side checksum first — instant feedback, no round-trip. The
+      // server re-validates regardless.
+      const needsAccount = !data?.payout || editingPayout;
+      let body: Record<string, string> | undefined;
+      if (needsAccount) {
+        const check = validatePayoutAccount(payoutMethod, payoutAccount);
+        if (!check.valid) throw new Error(check.error ?? "Cuenta inválida");
+        if (payoutHolder.trim().length < 3) throw new Error("Falta el nombre del titular");
+        body = { payoutMethod, payoutAccount, payoutHolder: payoutHolder.trim() };
+      }
+      const res = await fetch("/api/platforms/wellhub/advance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      });
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wellhub-advance"] });
       setConfirmOpen(false);
+      setEditingPayout(false);
+      setPayoutError(null);
       toast.success("Adelanto solicitado — recibirás la transferencia al aprobarse");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setPayoutError(e.message);
+      toast.error(e.message);
+    },
   });
 
   if (!data?.eligible) return null;
@@ -333,6 +361,66 @@ export function WellhubAdvanceCard({ variant }: { variant: "full" | "compact" })
                 <span className="font-mono text-green-700 dark:text-green-400">
                   {money(avail.netCents)}
                 </span>
+              </div>
+              {/* Destination account: stored (masked, with change option) or asked
+                  for the first time — checksum-validated before sending. */}
+              <div className="mt-2 border-t pt-3">
+                {data?.payout && !editingPayout ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-muted">
+                        Cuenta de depósito
+                      </p>
+                      <p className="font-mono text-xs">
+                        {data.payout.method.toUpperCase()} {data.payout.accountMasked}
+                        {data.payout.holder ? ` · ${data.payout.holder}` : ""}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-xs"
+                      onClick={() => setEditingPayout(true)}
+                    >
+                      Cambiar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase tracking-wide text-muted">
+                      Cuenta para recibir el adelanto
+                    </p>
+                    <div className="flex gap-1.5">
+                      {(["iban", "clabe"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => { setPayoutMethod(m); setPayoutError(null); }}
+                          className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+                            payoutMethod === m
+                              ? "border-admin bg-admin/10 text-admin"
+                              : "text-muted"
+                          }`}
+                        >
+                          {m === "iban" ? "IBAN (Europa)" : "CLABE (México)"}
+                        </button>
+                      ))}
+                    </div>
+                    <Input
+                      placeholder={payoutMethod === "iban" ? "ES91 2100 0418 45…" : "18 dígitos"}
+                      value={payoutAccount}
+                      onChange={(e) => { setPayoutAccount(e.target.value); setPayoutError(null); }}
+                      className="font-mono text-sm"
+                    />
+                    <Input
+                      placeholder="Titular de la cuenta"
+                      value={payoutHolder}
+                      onChange={(e) => { setPayoutHolder(e.target.value); setPayoutError(null); }}
+                      className="text-sm"
+                    />
+                    {payoutError && <p className="text-xs text-red-600">{payoutError}</p>}
+                  </div>
+                )}
               </div>
               <p className="pt-1 text-xs text-muted">
                 La transferencia se realiza al aprobarse la solicitud. Los eventos incluidos quedan

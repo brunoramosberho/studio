@@ -2191,6 +2191,12 @@ model WellhubAdvanceConfig {
   feePercent Float                @default(2.35)
   /// VAT applied on the fee, percent (e.g. 16 MX, 21 ES).
   vatPercent Float                @default(16)
+  // Where the studio receives the advance transfer. Checksum-validated
+  // (lib/banking/validate.ts) before storage; required to request a draw.
+  payoutMethod  String?   // "iban" | "clabe"
+  payoutAccount String?   // normalized (no spaces, uppercase)
+  payoutHolder  String?   // account holder name
+  payoutUpdatedAt DateTime?
   requestedAt DateTime?
   enabledAt   DateTime?
   createdAt   DateTime @default(now())
@@ -2222,6 +2228,12 @@ model WellhubAdvance {
   feePercent Float
   vatPercent Float
   currency   String @default("EUR")
+
+  // Destination account SNAPSHOT at request time — the transfer instruction
+  // travels with the draw even if the config changes later.
+  payoutMethod  String?
+  payoutAccount String?
+  payoutHolder  String?
 
   requestedAt DateTime  @default(now())
   requestedBy String?
