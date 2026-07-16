@@ -117,11 +117,19 @@ export async function GET(request: NextRequest) {
     const { start, end } = getDateRange(range, month);
     const now = new Date();
 
+    // Occupancy (fill rate, empty seats) is only meaningful for classes that
+    // have already started. A future class is still filling — and many aren't
+    // even open to book yet under the per-member visibility horizon — so its
+    // full capacity with near-zero bookings would crater the fill rate. When the
+    // selected period runs past today (e.g. the current month), cap the window
+    // at `now` so we report on classes actually held, not the whole month.
+    const occupancyEnd = end < now ? end : now;
+
     // Load classes within period that were not cancelled, with bookings + coach + room + type
     const classes = await prisma.class.findMany({
       where: {
         tenantId,
-        startsAt: { gte: start, lte: end },
+        startsAt: { gte: start, lte: occupancyEnd },
         status: { not: "CANCELLED" },
       },
       select: {
