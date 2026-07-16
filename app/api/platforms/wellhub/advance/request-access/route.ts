@@ -26,6 +26,14 @@ export async function POST() {
       update: { access: "requested", requestedAt: new Date() },
     });
 
+    // Tell the super-admins there's an access request to review.
+    const { notifySuperAdminsOfAdvance } = await import("@/lib/platforms/wellhub/advance-notify");
+    await notifySuperAdminsOfAdvance({
+      kind: "access_request",
+      tenantName: ctx.tenant.name,
+      tenantSlug: ctx.tenant.slug,
+    });
+
     return NextResponse.json({ ok: true, access: config.access });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Tenant not found"].includes(error.message)) {

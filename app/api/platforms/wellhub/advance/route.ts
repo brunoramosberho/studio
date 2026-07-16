@@ -108,6 +108,18 @@ export async function POST() {
       requestedBy: ctx.session.user.id,
     });
 
+    // Alert the super-admins that money is waiting on their approval.
+    // Awaited (serverless can freeze after the response) but never throws.
+    const { notifySuperAdminsOfAdvance } = await import("@/lib/platforms/wellhub/advance-notify");
+    await notifySuperAdminsOfAdvance({
+      kind: "draw",
+      tenantName: ctx.tenant.name,
+      tenantSlug: ctx.tenant.slug,
+      amountLabel: new Intl.NumberFormat("es-ES", { style: "currency", currency }).format(
+        advance.netCents / 100,
+      ),
+    });
+
     return NextResponse.json({ ok: true, advance }, { status: 201 });
   } catch (error) {
     if (error instanceof AdvanceError) {
