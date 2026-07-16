@@ -151,11 +151,17 @@ export async function getEstimatedEarnings(
   const currency = (dropInPkg?.currency ?? tenantCurrency.code).toLowerCase();
 
   // ── Member attendances this month ────────────────────────────────────────
+  // Exclude partner (Wellhub) bookings: they settle on their own rail and are
+  // counted below via getPlatformSettlementByClass. They consume no app package,
+  // so once attribution gave them a userId they'd otherwise fall through to
+  // "Sin fuente" and be double-counted at a drop-in price on top of the real
+  // platform settlement.
   const bookings = await prisma.booking.findMany({
     where: {
       tenantId,
       status: { in: ["ATTENDED", "CONFIRMED"] },
       userId: { not: null },
+      platformBookingId: null,
       class: { startsAt: { gte: start, lt: end } },
     },
     select: {
