@@ -28,6 +28,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { useTranslations } from "next-intl";
 import { FinanceBriefingCard } from "@/components/admin/MgicAI/FinanceBriefingCard";
+import { WellhubAdvanceCard } from "@/components/admin/WellhubAdvanceCard";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { FINANCE_TABS } from "@/components/admin/section-tab-configs";
 import {
@@ -387,6 +388,9 @@ export default function FinancePage() {
 
       {/* Spark CFO Briefing */}
       <FinanceBriefingCard range={range} month={month} />
+
+      {/* Wellhub payment advance (only renders for Wellhub API tenants) */}
+      <WellhubAdvanceCard variant="full" />
 
       {/* Summary Cards */}
       <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">

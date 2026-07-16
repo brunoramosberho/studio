@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WellhubAdvanceAdmin } from "./wellhub-advance-admin";
 import {
   ArrowLeft,
   ExternalLink,
@@ -826,6 +827,9 @@ export default function TenantDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Wellhub payment advance (factoring) */}
+      <WellhubAdvanceAdmin tenantId={id} />
 
       {/* Danger zone */}
       <Card className="border border-red-200 bg-red-50/30">

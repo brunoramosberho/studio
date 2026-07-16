@@ -15,6 +15,7 @@ import { useBranding } from "@/components/branding-provider";
 import { MgicAIBriefing } from "@/components/admin/MgicAI/BriefingCard";
 import { AdminActionItems } from "@/components/admin/action-items";
 import { QuotaSuggestions } from "@/components/admin/QuotaSuggestions";
+import { WellhubAdvanceCard } from "@/components/admin/WellhubAdvanceCard";
 import {
   OnboardingChecklistHero,
   useOnboardingChecklist,
@@ -145,6 +146,8 @@ export function AdminDashboard() {
           <AdminActionItems />
 
           <QuotaSuggestions />
+
+          <WellhubAdvanceCard variant="compact" />
 
           {/* Hero visualizations replacing the old KPI grid */}
           <motion.div

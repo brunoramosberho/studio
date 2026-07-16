@@ -188,7 +188,9 @@ model Tenant {
   platformBookings PlatformBooking[]
   platformAlerts   PlatformAlert[]
 
-  wellhubProducts  WellhubProduct[]
+  wellhubProducts       WellhubProduct[]
+  wellhubAdvanceConfig  WellhubAdvanceConfig?
+  wellhubAdvances       WellhubAdvance[]
   wellhubUserLinks WellhubUserLink[]
 
   waivers          Waiver[]
@@ -2144,10 +2146,95 @@ model PlatformBooking {
   // any other booked seat. Null for email-sourced rows that don't auto-seat.
   companionBooking Booking?
 
+  // Set when this billable event (check-in / no-show / late-cancel) was covered
+  // by a payment advance — the audit trail of exactly which events each draw
+  // covered, and the guard against advancing the same event twice.
+  advanceId String?
+  advance   WellhubAdvance? @relation(fields: [advanceId], references: [id])
+
   @@index([tenantId, classId])
   @@index([tenantId, platform])
   @@index([wellhubUserUniqueToken])
   @@index([status, confirmationDeadline])
+  @@index([advanceId])
+}
+
+// ── Wellhub payment advance (factoring) ─────────────────────────────────────
+// Studios with the Wellhub API integration can draw an advance on the month's
+// already-accrued billable events (check-ins, no-shows, late-cancels) between
+// the 20th and the 7th of the next month, before Wellhub's ~15th payout.
+// Magic withholds a fee (+VAT) on the advanced gross; the remainder of the
+// period is passed through when Wellhub pays. Money moves manually in v1 —
+// these tables are the ledger and source of truth for balances.
+
+enum WellhubAdvanceAccess {
+  disabled  // feature not granted (tenant sees "request access")
+  requested // tenant asked for access; super-admin decides
+  enabled   // tenant can draw advances
+}
+
+enum WellhubAdvanceStatus {
+  requested // tenant asked for this draw
+  approved  // super-admin approved; transfer pending
+  paid      // net amount transferred to the studio
+  settled   // period closed: Wellhub paid, remainder transferred
+  rejected  // super-admin declined the draw (events are released)
+  cancelled // tenant withdrew the request (events are released)
+}
+
+/// Singleton-per-tenant advance configuration (super-admin managed).
+model WellhubAdvanceConfig {
+  id         String               @id @default(cuid())
+  tenantId   String               @unique
+  access     WellhubAdvanceAccess @default(disabled)
+  /// Fee withheld on the advanced gross, percent (e.g. 2.35).
+  feePercent Float                @default(2.35)
+  /// VAT applied on the fee, percent (e.g. 16 MX, 21 ES).
+  vatPercent Float                @default(16)
+  requestedAt DateTime?
+  enabledAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+/// One advance draw. Amounts are integer cents, snapshotted at request time
+/// (fee/vat config changes never mutate history). gross = settlement value of
+/// the covered events; net = gross − fee − vat = what's transferred.
+model WellhubAdvance {
+  id       String               @id @default(cuid())
+  tenantId String
+  /// Settlement period the draw belongs to, "YYYY-MM" (studio-local month).
+  period   String
+  status   WellhubAdvanceStatus @default(requested)
+
+  // Covered events (also linked via PlatformBooking.advanceId).
+  checkins    Int @default(0)
+  noShows     Int @default(0)
+  lateCancels Int @default(0)
+
+  grossCents Int
+  feeCents   Int
+  vatCents   Int
+  netCents   Int
+  /// Snapshot of the percentages used (audit).
+  feePercent Float
+  vatPercent Float
+  currency   String @default("EUR")
+
+  requestedAt DateTime  @default(now())
+  requestedBy String?
+  approvedAt  DateTime?
+  paidAt      DateTime?
+  settledAt   DateTime?
+  notes       String?
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  coveredBookings  PlatformBooking[]
+
+  @@index([tenantId, period])
+  @@index([status])
 }
 
 model PlatformAlert {
