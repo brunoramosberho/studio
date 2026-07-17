@@ -61,7 +61,7 @@ export async function cancelClassWithRefunds(classId: string, tenantId: string):
     // Mark booking as cancelled with credit restored
     await prisma.booking.update({
       where: { id: booking.id },
-      data: { status: "CANCELLED", spotNumber: null, creditLost: false },
+      data: { status: "CANCELLED", spotNumber: null, creditLost: false, cancelledAt: new Date() },
     });
 
     // Send email

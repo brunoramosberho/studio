@@ -942,6 +942,10 @@ model Booking {
   creditLost     Boolean        @default(false)
   createdAt      DateTime       @default(now())
   reminderSentAt DateTime?
+  // When the booking was cancelled (any path). Null unless status = CANCELLED.
+  // Only captured going forward — rows cancelled before this field existed
+  // stay null. Surfaced in the check-in late-cancel list.
+  cancelledAt    DateTime?
 
   parentBookingId String?
   parentBooking   Booking?  @relation("BookingGuests", fields: [parentBookingId], references: [id], onDelete: SetNull)

@@ -67,7 +67,7 @@ async function cancelFutureBookingsForPackage(userPackageId: string): Promise<nu
   // unique-constraint level (`@@unique([classId, spotNumber])`).
   await prisma.booking.updateMany({
     where: { id: { in: futureBookings.map((b) => b.id) } },
-    data: { status: "CANCELLED", spotNumber: null },
+    data: { status: "CANCELLED", spotNumber: null, cancelledAt: new Date() },
   });
 
   return futureBookings.length;

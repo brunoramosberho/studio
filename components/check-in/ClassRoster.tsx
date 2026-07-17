@@ -154,6 +154,8 @@ interface ClassRosterProps {
 type AuditEntry = {
   name: string;
   channel: "direct" | "wellhub";
+  /** When it happened (ISO). Late-cancels carry it; null for rows predating the field. */
+  at?: string | null;
 };
 
 type RosterData = {
@@ -1694,14 +1696,19 @@ function OccupancyAuditSection({
     <div className="flex items-center gap-2 py-1">
       <span
         className={cn(
-          "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+          "mt-1 inline-block h-1.5 w-1.5 shrink-0 self-start rounded-full",
           e.channel === "wellhub" ? "bg-[#E4572E]" : "bg-stone-300 dark:bg-muted",
         )}
       />
-      <span className="flex-1 min-w-0 truncate text-xs text-stone-700 dark:text-foreground">
-        {e.name}
-      </span>
-      <span className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-muted">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs text-stone-700 dark:text-foreground">{e.name}</p>
+        {e.at && (
+          <p className="text-[10px] text-stone-400 dark:text-muted">
+            {format(new Date(e.at), "d MMM, HH:mm", { locale: es })}
+          </p>
+        )}
+      </div>
+      <span className="self-start text-[10px] uppercase tracking-wide text-stone-400 dark:text-muted">
         {e.channel === "wellhub" ? "Wellhub" : "Directo"}
       </span>
     </div>
@@ -1749,7 +1756,7 @@ function NotifyMeSection({ notifyMe }: { notifyMe: NotifyMeMember[] }) {
               {n.memberName}
             </p>
             <p className="text-[10px] text-stone-400 dark:text-muted">
-              {t("notifyMeSince")} {format(new Date(n.since), "HH:mm", { locale: es })}
+              {t("notifyMeSince")} {format(new Date(n.since), "d MMM, HH:mm", { locale: es })}
             </p>
           </div>
         </div>

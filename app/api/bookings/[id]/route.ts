@@ -206,7 +206,7 @@ export async function PUT(
         const gRestored = await applyRefund(gb);
         await prisma.booking.update({
           where: { id: gb.id },
-          data: { status: "CANCELLED", spotNumber: null, creditLost: !gRestored },
+          data: { status: "CANCELLED", spotNumber: null, creditLost: !gRestored, cancelledAt: new Date() },
         });
       }
     }
@@ -276,7 +276,7 @@ export async function PUT(
       where: { id, tenantId: tenant.id },
       data: {
         status,
-        ...(status === "CANCELLED" ? { spotNumber: null, creditLost } : {}),
+        ...(status === "CANCELLED" ? { spotNumber: null, creditLost, cancelledAt: new Date() } : {}),
         // No-show vacates the seat too: free the spot so the room map opens it
         // up for a walk-in / manual promotion (the row stays as a no-show
         // record, just without a physical spot).
@@ -448,13 +448,13 @@ export async function DELETE(
       }
       await prisma.booking.update({
         where: { id: gb.id },
-        data: { status: "CANCELLED", spotNumber: null, creditLost: !restored },
+        data: { status: "CANCELLED", spotNumber: null, creditLost: !restored, cancelledAt: new Date() },
       });
     }
 
     const cancelled = await prisma.booking.update({
       where: { id, tenantId: tenant.id },
-      data: { status: "CANCELLED", spotNumber: null, creditLost: !restored },
+      data: { status: "CANCELLED", spotNumber: null, creditLost: !restored, cancelledAt: new Date() },
     });
 
     if (booking.userId) {

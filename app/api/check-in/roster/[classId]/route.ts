@@ -491,14 +491,15 @@ export async function GET(
           platformBookingId: null,
           OR: [{ status: "NO_SHOW" }, { status: "CANCELLED", creditLost: true }],
         },
-        select: { status: true, guestName: true, user: { select: { name: true } } },
+        select: { status: true, guestName: true, cancelledAt: true, user: { select: { name: true } } },
       }),
       prisma.platformBooking.findMany({
         where: {
           classId,
           OR: [{ status: "absent" }, { status: "cancelled", notes: "wellhub_late_cancel" }],
         },
-        select: { status: true, memberName: true },
+        // updatedAt approximates when the late-cancel webhook landed.
+        select: { status: true, memberName: true, updatedAt: true },
       }),
     ]);
 
@@ -514,10 +515,18 @@ export async function GET(
     const lateCancels = [
       ...directAudit
         .filter((b) => b.status === "CANCELLED")
-        .map((b) => ({ name: b.user?.name ?? b.guestName ?? "Miembro", channel: "direct" as const })),
+        .map((b) => ({
+          name: b.user?.name ?? b.guestName ?? "Miembro",
+          channel: "direct" as const,
+          at: b.cancelledAt?.toISOString() ?? null,
+        })),
       ...platformAudit
         .filter((b) => b.status === "cancelled")
-        .map((b) => ({ name: b.memberName ?? "Wellhub", channel: "wellhub" as const })),
+        .map((b) => ({
+          name: b.memberName ?? "Wellhub",
+          channel: "wellhub" as const,
+          at: b.updatedAt.toISOString(),
+        })),
     ];
 
     return NextResponse.json({
