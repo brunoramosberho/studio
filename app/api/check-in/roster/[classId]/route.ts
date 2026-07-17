@@ -92,6 +92,14 @@ export async function GET(
         },
         // Host (the member who brought this guest), for the guest row label.
         parentBooking: { select: { user: { select: { name: true } } } },
+        // Post-class bar pre-order, so the desk/coach knows there's something to
+        // prepare or hand over when this member checks in.
+        productOrder: {
+          select: {
+            status: true,
+            items: { select: { nameSnapshot: true, quantity: true } },
+          },
+        },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -179,6 +187,19 @@ export async function GET(
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+    // A member's post-class bar pre-order, condensed for the roster row. A
+    // cancelled order is treated as no order.
+    const preOrderOf = (
+      po: { status: string; items: { nameSnapshot: string; quantity: number }[] } | null,
+    ) => {
+      if (!po || po.status === "CANCELLED") return null;
+      return {
+        status: po.status,
+        itemCount: po.items.reduce((s, it) => s + it.quantity, 0),
+        items: po.items.map((it) => ({ name: it.nameSnapshot, quantity: it.quantity })),
+      };
+    };
+
     const roster = bookings.map((b) => {
         // Guest booking: no User account → minimal row, attendance read from
         // the booking status (ATTENDED = checked in), since there is no
@@ -207,6 +228,7 @@ export async function GET(
             memberSince: b.createdAt.toISOString(),
             isGuest: true,
             hostName: b.parentBooking?.user?.name ?? null,
+            preOrder: preOrderOf(b.productOrder),
             checkIn:
               b.status === "ATTENDED"
                 ? { status: "present", method: "manual", createdAt: b.createdAt.toISOString() }
@@ -299,6 +321,7 @@ export async function GET(
           memberSince,
           isGuest: false,
           hostName: null,
+          preOrder: preOrderOf(b.productOrder),
           checkIn: ci
             ? { status: ci.status, method: ci.method, createdAt: ci.createdAt.toISOString() }
             : null,

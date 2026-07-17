@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   FileText,
   Mail,
+  CupSoda,
 } from "lucide-react";
 import { CircleCheckIcon, type CircleCheckIconHandle } from "lucide-animated";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,12 @@ interface RosterMember {
   memberSince: string;
   isGuest: boolean;
   hostName: string | null;
+  /** Post-class bar pre-order attached to this booking, if any (never cancelled). */
+  preOrder: {
+    status: "PENDING_PAYMENT" | "PAID" | "READY" | "PICKED_UP";
+    itemCount: number;
+    items: { name: string; quantity: number }[];
+  } | null;
   stats: AttendeeStats | null;
   checkIn: {
     status: "present" | "late" | "absent";
@@ -1249,6 +1256,32 @@ function RosterRow({
     packageLabel += ` · ${tc("expiresInDays", { num: member.membershipExpiresInDays })}`;
   }
 
+  // Bar pre-order badge: colour signals what the desk must do (unpaid → prepare
+  // → ready → handed over), the label lists what to make, the tooltip carries
+  // the full order.
+  const preOrder = member.preOrder;
+  const preOrderSummary = preOrder
+    ? preOrder.items.map((it) => `${it.quantity}× ${it.name}`).join(", ")
+    : "";
+  const preOrderStatusLabel = preOrder
+    ? tc(
+        {
+          PENDING_PAYMENT: "barOrderStatusPending",
+          PAID: "barOrderStatusPaid",
+          READY: "barOrderStatusReady",
+          PICKED_UP: "barOrderStatusPickedUp",
+        }[preOrder.status] as string,
+      )
+    : "";
+  const preOrderClass = preOrder
+    ? {
+        PENDING_PAYMENT: "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300",
+        PAID: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+        READY: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+        PICKED_UP: "bg-stone-100 text-stone-400 line-through dark:bg-surface dark:text-muted",
+      }[preOrder.status]
+    : "";
+
   return (
     <div
       data-member-id={member.memberId}
@@ -1358,6 +1391,18 @@ function RosterRow({
             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
               <FileText size={9} />
               Waiver
+            </span>
+          )}
+          {preOrder && (
+            <span
+              title={`${tc("barOrderTitle")} · ${preOrderStatusLabel}: ${preOrderSummary}`}
+              className={cn(
+                "inline-flex min-w-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                preOrderClass,
+              )}
+            >
+              <CupSoda size={9} className="shrink-0" />
+              <span className="truncate max-w-[10rem]">{preOrderSummary}</span>
             </span>
           )}
         </div>
