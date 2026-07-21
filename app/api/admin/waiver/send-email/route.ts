@@ -7,7 +7,10 @@ import { createWaiverToken } from "@/lib/waiver/token";
 
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await requireRole("ADMIN");
+    // Sending a waiver link during check-in is operational work, so front desk
+    // can do it too (they already hold the "checkIn" permission). The waiver
+    // *configuration* section remains ADMIN-only.
+    const ctx = await requireRole("ADMIN", "FRONT_DESK");
     const { memberId } = await request.json();
 
     if (!memberId) {
