@@ -654,6 +654,8 @@ export default function ClassRosterPage() {
       url: p.url,
       thumbnailUrl: p.thumbnailUrl,
       mimeType: p.mimeType ?? "image/jpeg",
+      userId: p.user?.id,
+      user: p.user ? { name: p.user.name, image: p.user.image } : null,
     })),
   ];
 

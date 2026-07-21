@@ -95,7 +95,14 @@ export async function GET(request: NextRequest) {
     const feedInclude = {
       user: { select: { id: true, name: true, image: true } },
       photos: {
-        select: { id: true, url: true, thumbnailUrl: true, mimeType: true, userId: true },
+        select: {
+          id: true,
+          url: true,
+          thumbnailUrl: true,
+          mimeType: true,
+          userId: true,
+          user: { select: { name: true, image: true } },
+        },
         orderBy: { createdAt: "asc" as const },
       },
       polls: {

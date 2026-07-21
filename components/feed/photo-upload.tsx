@@ -68,7 +68,13 @@ interface PendingFile {
 
 interface PhotoUploadProps {
   eventId: string;
-  onUploaded?: (photo: { id: string; url: string; mimeType: string; userId?: string }) => void;
+  onUploaded?: (photo: {
+    id: string;
+    url: string;
+    mimeType: string;
+    userId?: string;
+    user?: { name: string | null; image: string | null } | null;
+  }) => void;
   /**
    * When set, the trigger renders as a labeled CTA (icon + text, accent-tinted)
    * instead of a bare camera icon — so members realize they can add a photo.

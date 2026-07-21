@@ -123,6 +123,8 @@ interface FeedMediaItem {
   url: string;
   thumbnailUrl?: string | null;
   mimeType: string;
+  userId?: string;
+  user?: { name: string | null; image: string | null } | null;
 }
 
 interface PlaylistTrack {

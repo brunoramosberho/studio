@@ -38,6 +38,7 @@ interface MediaItem {
   thumbnailUrl?: string | null;
   mimeType: string;
   userId?: string;
+  user?: { name: string | null; image: string | null } | null;
 }
 
 interface FeedItem {
@@ -859,7 +860,7 @@ function StudioPostCard({ event }: FeedEventCardProps) {
       )}
 
       {event.photos.length > 0 && (
-        <MediaGallery media={event.photos} className="rounded-none" />
+        <MediaGallery media={event.photos} className="rounded-none" showUploader={false} />
       )}
 
       {event.polls && event.polls.length > 0 && (

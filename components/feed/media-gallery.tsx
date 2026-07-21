@@ -10,6 +10,8 @@ interface MediaItem {
   thumbnailUrl?: string | null;
   mimeType: string;
   userId?: string;
+  /** Who uploaded this photo — any attendee can add to a class post. */
+  user?: { name: string | null; image: string | null } | null;
 }
 
 interface MediaGalleryProps {
@@ -19,6 +21,12 @@ interface MediaGalleryProps {
   currentUserId?: string;
   coachUserId?: string;
   onPhotoDeleted?: (photoId: string) => void;
+  /**
+   * Show the uploader tag in the lightbox. On by default for collaborative
+   * class posts (any attendee can add a photo); off for studio posts, where the
+   * author is already the studio and the uploader is an internal admin.
+   */
+  showUploader?: boolean;
 }
 
 const isVideo = (mime: string) => mime.startsWith("video/");
@@ -108,6 +116,7 @@ function Lightbox({
   currentUserId,
   coachUserId,
   onDelete,
+  showUploader,
 }: {
   media: MediaItem[];
   initialIdx: number;
@@ -116,6 +125,7 @@ function Lightbox({
   currentUserId?: string;
   coachUserId?: string;
   onDelete?: (photoId: string) => void;
+  showUploader?: boolean;
 }) {
   const [idx, setIdx] = useState(initialIdx);
   const [dragX, setDragX] = useState(0);
@@ -372,6 +382,31 @@ function Lightbox({
         </div>
       </div>
 
+      {/* Uploader tag — story-style, so it's clear who posted this photo when
+          any attendee can add to a class post. Tracks the active photo. */}
+      {showUploader && media[idx]?.user?.name && (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-gradient-to-t from-black/55 via-black/15 to-transparent px-4 pb-[max(env(safe-area-inset-bottom),18px)] pt-16"
+          style={{ opacity: 1 - dismissProgress, transition: isDraggingDown ? "none" : "opacity 250ms" }}
+        >
+          {media[idx].user!.image ? (
+            <img
+              src={media[idx].user!.image!}
+              alt=""
+              className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/40"
+              draggable={false}
+            />
+          ) : (
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/25 text-[11px] font-semibold text-white ring-1 ring-white/40">
+              {media[idx].user!.name!.trim()[0]?.toUpperCase() ?? "?"}
+            </div>
+          )}
+          <span className="max-w-[52vw] truncate text-[13px] font-semibold text-white drop-shadow-sm">
+            {media[idx].user!.name}
+          </span>
+        </div>
+      )}
+
       {/* Bottom dots */}
       {media.length > 1 && media.length <= 10 && (
         <div
@@ -393,7 +428,7 @@ function Lightbox({
   );
 }
 
-export function MediaGallery({ media, className, eventId, currentUserId, coachUserId, onPhotoDeleted }: MediaGalleryProps) {
+export function MediaGallery({ media, className, eventId, currentUserId, coachUserId, onPhotoDeleted, showUploader = true }: MediaGalleryProps) {
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   if (media.length === 0) return null;
@@ -472,6 +507,7 @@ export function MediaGallery({ media, className, eventId, currentUserId, coachUs
           currentUserId={currentUserId}
           coachUserId={coachUserId}
           onDelete={onPhotoDeleted}
+          showUploader={showUploader}
         />
       )}
     </>
