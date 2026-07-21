@@ -60,21 +60,43 @@ export async function GET(
       if (key in conversionsByDay) conversionsByDay[key]++;
     }
 
-    const utmSources: Record<string, number> = {};
+    // Per-channel breakdown. A conversion is attributed to the utm_source of
+    // the click it was matched to — fetched by id so a click that predates the
+    // range still attributes correctly; truly unmatched ones are "(directo)".
+    const convClickIds = conversions
+      .map((c) => c.linkClickId)
+      .filter((id): id is string => !!id);
+    const convClicks = convClickIds.length
+      ? await prisma.linkClick.findMany({
+          where: { id: { in: convClickIds } },
+          select: { id: true, utmSource: true },
+        })
+      : [];
+    const clickSourceById = new Map(convClicks.map((c) => [c.id, c.utmSource || "(directo)"]));
+    const bySource = new Map<string, { clicks: number; conversions: number; revenue: number }>();
+    const bump = (src: string) => {
+      const e = bySource.get(src) ?? { clicks: 0, conversions: 0, revenue: 0 };
+      bySource.set(src, e);
+      return e;
+    };
     for (const c of clicks) {
-      const src = c.utmSource || "(directo)";
-      utmSources[src] = (utmSources[src] || 0) + 1;
+      bump(c.utmSource || "(directo)").clicks++;
     }
-
-    const topSources = Object.entries(utmSources)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([source, count]) => ({ source, count }));
+    for (const cv of conversions) {
+      const src = (cv.linkClickId && clickSourceById.get(cv.linkClickId)) || "(directo)";
+      const e = bump(src);
+      e.conversions++;
+      e.revenue += cv.revenue || 0;
+    }
+    const sources = [...bySource.entries()]
+      .map(([source, s]) => ({ source, ...s }))
+      .sort((a, b) => b.clicks - a.clicks || b.conversions - a.conversions)
+      .slice(0, 12);
 
     return NextResponse.json({
       clicksByDay,
       conversionsByDay,
-      topSources,
+      sources,
       totalClicks: clicks.length,
       totalConversions: conversions.length,
       totalRevenue: conversions.reduce((s, c) => s + (c.revenue || 0), 0),

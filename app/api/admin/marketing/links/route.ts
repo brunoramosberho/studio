@@ -115,7 +115,9 @@ export async function GET() {
         slug: slugify(ct.name),
         url,
         totalClasses: ct._count.classes,
-        ...stats("class", ct.id),
+        // Clicks are recorded by the UtmTracker under the ?discipline= value —
+        // the lowercased name — not the ClassType id.
+        ...stats("class", ct.name.toLowerCase()),
       };
     });
 
@@ -125,7 +127,8 @@ export async function GET() {
       name: "Horario completo",
       slug: "schedule",
       url: getEntityUrl(tenantSlug, "schedule", ""),
-      ...stats("schedule", "__schedule__"),
+      // The tracker records plain /schedule landings under entityId "schedule".
+      ...stats("schedule", "schedule"),
     };
 
     const fallbackTz = await resolveScheduleTimezone(ctx.tenant);

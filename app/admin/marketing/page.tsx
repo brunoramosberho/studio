@@ -340,16 +340,184 @@ function QRModal({
   );
 }
 
+// ─── Link performance drill-down ────────────────────────
+
+interface LinkStatsData {
+  clicksByDay: Record<string, number>;
+  conversionsByDay: Record<string, number>;
+  sources: { source: string; clicks: number; conversions: number; revenue: number }[];
+  totalClicks: number;
+  totalConversions: number;
+  totalRevenue: number;
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  whatsapp: "WhatsApp",
+  tiktok: "TikTok",
+  google: "Google",
+  email: "Email",
+  newsletter: "Newsletter",
+  qr: "QR físico",
+  "(directo)": "Directo / sin UTM",
+};
+
+function LinkStatsDialog({
+  target,
+  onClose,
+}: {
+  target: { entityType: string; entityId: string; name: string } | null;
+  onClose: () => void;
+}) {
+  const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
+  const tenantCurrency = useCurrency();
+  const { data, isLoading } = useQuery<LinkStatsData>({
+    queryKey: ["link-stats", target?.entityType, target?.entityId, range],
+    queryFn: () =>
+      fetch(
+        `/api/admin/marketing/links/${target!.entityType}/${encodeURIComponent(target!.entityId)}/stats?range=${range}`,
+      ).then((r) => r.json()),
+    enabled: !!target,
+  });
+
+  const days = Object.entries(data?.clicksByDay ?? {});
+  const maxDay = Math.max(1, ...days.map(([, v]) => v));
+  const maxSourceClicks = Math.max(1, ...(data?.sources ?? []).map((s) => s.clicks));
+
+  return (
+    <Dialog open={!!target} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-[#3730B8]" />
+            {target?.name}
+          </DialogTitle>
+          <DialogDescription>
+            Rendimiento del link — clicks, reservas y de qué canal vienen.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Range */}
+        <div className="flex gap-1">
+          {(["7d", "30d", "90d"] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={cn(
+                "rounded-lg px-3 py-1 text-xs font-medium transition-colors",
+                range === r
+                  ? "bg-stone-900 text-white"
+                  : "bg-stone-100 text-stone-600 hover:bg-stone-200",
+              )}
+            >
+              {r === "7d" ? "7 días" : r === "30d" ? "30 días" : "90 días"}
+            </button>
+          ))}
+        </div>
+
+        {isLoading || !data ? (
+          <div className="space-y-3">
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-24 rounded-xl" />
+          </div>
+        ) : (
+          <>
+            {/* Totals */}
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { label: "Clicks", value: data.totalClicks.toLocaleString() },
+                { label: "Reservas", value: data.totalConversions.toLocaleString() },
+                {
+                  label: "Tasa",
+                  value:
+                    data.totalClicks > 0
+                      ? `${Math.round((data.totalConversions / data.totalClicks) * 100)}%`
+                      : "—",
+                },
+                { label: "Revenue", value: formatMoney(data.totalRevenue, tenantCurrency) },
+              ].map((s) => (
+                <div key={s.label} className="rounded-xl bg-stone-50 px-2 py-2 text-center">
+                  <p className="text-sm font-bold text-stone-900">{s.value}</p>
+                  <p className="text-[10px] text-stone-400">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {data.totalClicks === 0 ? (
+              <p className="py-4 text-center text-xs text-stone-400">
+                Sin clicks en este periodo. Comparte el link con UTM y aparecerán aquí.
+              </p>
+            ) : (
+              <>
+                {/* Clicks per day */}
+                <div>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                    Clicks por día
+                  </p>
+                  <div className="flex h-12 items-end gap-px">
+                    {days.map(([day, v]) => (
+                      <div
+                        key={day}
+                        title={`${day}: ${v} clicks`}
+                        className="flex-1 rounded-t-sm bg-[#3730B8]/70"
+                        style={{ height: `${Math.max(v > 0 ? 8 : 2, (v / maxDay) * 100)}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* By channel */}
+                <div>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                    Por canal
+                  </p>
+                  <div className="space-y-1.5">
+                    {data.sources.map((s) => (
+                      <div key={s.source} className="flex items-center gap-2">
+                        <span className="w-28 shrink-0 truncate text-xs font-medium text-stone-700">
+                          {SOURCE_LABELS[s.source] ?? s.source}
+                        </span>
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-stone-100">
+                          <div
+                            className="h-full rounded-full bg-[#3730B8]/70"
+                            style={{ width: `${(s.clicks / maxSourceClicks) * 100}%` }}
+                          />
+                        </div>
+                        <span className="w-28 shrink-0 text-right text-[11px] tabular-nums text-stone-500">
+                          {s.clicks} clicks · {s.conversions} conv.
+                          {s.revenue > 0 && (
+                            <span className="text-emerald-600">
+                              {" "}
+                              · {formatMoney(s.revenue, tenantCurrency)}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Tab 1: Links ───────────────────────────────────────
 
 function LinkRow({
   item,
   onQR,
   onUTM,
+  onStats,
 }: {
   item: LinkItem & { _type: string; subtitle?: string; color?: string };
   onQR: (url: string, name: string) => void;
   onUTM?: (url: string) => void;
+  onStats?: () => void;
 }) {
   return (
     <div className="flex items-center gap-3 border-b border-stone-100 px-4 py-2.5 transition-colors last:border-b-0 hover:bg-stone-50">
@@ -365,12 +533,31 @@ function LinkRow({
         </p>
         <p className="truncate font-mono text-xs text-stone-400">{item.url}</p>
       </div>
-      <span className="hidden whitespace-nowrap text-xs text-stone-500 sm:inline">
-        {item.clicks} clicks · {item.conversions} conv.
-      </span>
+      {onStats ? (
+        <button
+          onClick={onStats}
+          title="Ver desglose por canal"
+          className="hidden whitespace-nowrap rounded-lg px-1.5 py-1 text-xs text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800 sm:inline"
+        >
+          {item.clicks} clicks · {item.conversions} conv.
+        </button>
+      ) : (
+        <span className="hidden whitespace-nowrap text-xs text-stone-500 sm:inline">
+          {item.clicks} clicks · {item.conversions} conv.
+        </span>
+      )}
       <ConversionBadge
         rate={item.clicks > 0 ? item.conversions / item.clicks : NaN}
       />
+      {onStats && (
+        <button
+          onClick={onStats}
+          title="Ver desglose por canal"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 text-stone-500 transition-colors hover:bg-stone-50"
+        >
+          <BarChart3 className="h-3.5 w-3.5" />
+        </button>
+      )}
       <CopyButton text={item.url} />
       {onUTM && (
         <button
@@ -415,6 +602,28 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
     name: string;
   } | null>(null);
   const [showAllClasses, setShowAllClasses] = useState(false);
+  const [statsTarget, setStatsTarget] = useState<{
+    entityType: string;
+    entityId: string;
+    name: string;
+  } | null>(null);
+
+  // Keys must match what the UtmTracker RECORDS on landing, not our internal
+  // ids: disciplines land as ?discipline=<lowercased name>, the schedule as
+  // plain "schedule".
+  const openStats = (type: string, item: { id: string; name: string }) => {
+    const key =
+      type === "schedule"
+        ? { entityType: "schedule", entityId: "schedule" }
+        : type === "discipline"
+          ? { entityType: "class", entityId: item.name.toLowerCase() }
+          : type === "class-instance"
+            ? { entityType: "class-instance", entityId: item.id }
+            : type === "membership"
+              ? { entityType: "membership", entityId: item.id }
+              : { entityType: "product", entityId: item.id };
+    setStatsTarget({ ...key, name: item.name });
+  };
 
   if (isLoading) {
     return (
@@ -576,6 +785,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                     item={{ ...data.schedule, _type: "schedule" }}
                     onQR={openQR}
                     onUTM={onGoToUTM}
+                    onStats={() => openStats("schedule", data.schedule)}
                   />
                 )}
                 {disciplines.filter(matchQ).map((d) => (
@@ -588,6 +798,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                     }}
                     onQR={openQR}
                     onUTM={onGoToUTM}
+                    onStats={() => openStats("discipline", d)}
                   />
                 ))}
               </>
@@ -611,6 +822,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                     }}
                     onQR={openQR}
                     onUTM={onGoToUTM}
+                    onStats={() => openStats("class-instance", c)}
                   />
                 ))}
                 {classInstances.filter(matchQ).length > 5 && (
@@ -642,6 +854,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                     }}
                     onQR={openQR}
                     onUTM={onGoToUTM}
+                    onStats={() => openStats("membership", m)}
                   />
                 ))}
               </>
@@ -663,6 +876,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                     }}
                     onQR={openQR}
                     onUTM={onGoToUTM}
+                    onStats={() => openStats("product", p)}
                   />
                 ))}
               </>
@@ -670,6 +884,8 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
           </>
         )}
       </div>
+
+      <LinkStatsDialog target={statsTarget} onClose={() => setStatsTarget(null)} />
 
       {qrModal && (
         <QRModal
