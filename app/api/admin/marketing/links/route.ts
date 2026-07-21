@@ -2,19 +2,22 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/tenant";
 import { getEntityUrl, slugify } from "@/lib/marketing/links";
+import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
 
-const DAY_NAMES: Record<number, string> = {
-  0: "Domingo",
-  1: "Lunes",
-  2: "Martes",
-  3: "Miércoles",
-  4: "Jueves",
-  5: "Viernes",
-  6: "Sábado",
-};
+// Labels are rendered in the studio's timezone, not the server's (UTC on
+// Vercel) — an 08:00 Madrid class must not read "06:00" in the picker.
+function fmtTime(d: Date, tz: string) {
+  return new Intl.DateTimeFormat("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: tz,
+  }).format(d);
+}
 
-function fmtTime(d: Date) {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+function fmtDayName(d: Date, tz: string) {
+  const name = new Intl.DateTimeFormat("es-ES", { weekday: "long", timeZone: tz }).format(d);
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 export async function GET() {
@@ -45,7 +48,13 @@ export async function GET() {
           include: {
             classType: { select: { name: true, color: true } },
             coach: { include: { user: { select: { name: true } } } },
-            room: { select: { name: true, maxCapacity: true } },
+            room: {
+              select: {
+                name: true,
+                maxCapacity: true,
+                studio: { select: { city: { select: { timezone: true } } } },
+              },
+            },
             _count: {
               select: {
                 bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } },
@@ -119,14 +128,18 @@ export async function GET() {
       ...stats("schedule", "__schedule__"),
     };
 
+    const fallbackTz = await resolveScheduleTimezone(ctx.tenant);
+
     // Upcoming individual classes
     const classInstanceLinks = upcomingClasses.map((c) => {
-      const day = DAY_NAMES[c.startsAt.getDay()] || "";
-      const time = fmtTime(c.startsAt);
-      const dateStr = c.startsAt.toLocaleDateString("es-ES", {
+      const tz = c.room.studio?.city?.timezone ?? fallbackTz;
+      const day = fmtDayName(c.startsAt, tz);
+      const time = fmtTime(c.startsAt, tz);
+      const dateStr = new Intl.DateTimeFormat("es-ES", {
         day: "numeric",
         month: "short",
-      });
+        timeZone: tz,
+      }).format(c.startsAt);
       const url = getEntityUrl(tenantSlug, "class-instance", c.id);
 
       return {
