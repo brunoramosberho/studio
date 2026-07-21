@@ -12,6 +12,8 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatRelativeDay, formatTime, formatTimeRange, cn } from "@/lib/utils";
 import { usePolicies, getCancellationWindowMs } from "@/hooks/usePolicies";
+import { useCurrency } from "@/components/tenant-provider";
+import { formatMoney } from "@/lib/currency";
 import { useTranslations } from "next-intl";
 import type { PlatformType } from "@prisma/client";
 import { PlatformBadge } from "@/components/booking/platform-badge";
@@ -30,6 +32,11 @@ interface UpcomingBooking {
   status: string;
   friendsGoing: FriendInfo[];
   platformBooking?: { platform: PlatformType } | null;
+  cancellationPolicy?: {
+    windowHours: number;
+    lateCancelFeeCents: number;
+    isUnlimited: boolean;
+  } | null;
   class: {
     startsAt: string;
     endsAt: string;
@@ -49,12 +56,22 @@ export function UpcomingClasses() {
   const t = useTranslations("feed");
   const tMember = useTranslations("member");
   const policies = usePolicies();
-  const cancellationWindowMs = getCancellationWindowMs(policies.cancellationWindowHours);
+  const currency = useCurrency();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<UpcomingBooking | null>(null);
 
-  function canCancelFreely(startsAt: string | Date) {
-    return new Date(startsAt).getTime() - Date.now() > cancellationWindowMs;
+  // Per-booking: the funding package may override the tenant window.
+  function windowHoursFor(b: UpcomingBooking): number {
+    return b.cancellationPolicy?.windowHours ?? policies.cancellationWindowHours;
+  }
+  function canCancelFreely(b: UpcomingBooking) {
+    return (
+      new Date(b.class.startsAt).getTime() - Date.now() >
+      getCancellationWindowMs(windowHoursFor(b))
+    );
+  }
+  function lateCancelFeeCents(b: UpcomingBooking): number {
+    return !canCancelFreely(b) ? (b.cancellationPolicy?.lateCancelFeeCents ?? 0) : 0;
   }
 
   const { data: bookings = [] } = useQuery<UpcomingBooking[]>({
@@ -257,13 +274,13 @@ export function UpcomingClasses() {
                 <div
                   className={cn(
                     "mx-auto flex h-14 w-14 items-center justify-center rounded-full",
-                    canCancelFreely(cancelTarget.class.startsAt) ? "bg-orange-50" : "bg-red-50",
+                    canCancelFreely(cancelTarget) ? "bg-orange-50" : "bg-red-50",
                   )}
                 >
                   <AlertTriangle
                     className={cn(
                       "h-6 w-6",
-                      canCancelFreely(cancelTarget.class.startsAt) ? "text-orange-500" : "text-red-500",
+                      canCancelFreely(cancelTarget) ? "text-orange-500" : "text-red-500",
                     )}
                   />
                 </div>
@@ -273,17 +290,26 @@ export function UpcomingClasses() {
                 <p className="mt-1 text-sm text-muted">
                   {cancelTarget.class.classType.name} · {formatRelativeDay(cancelTarget.class.startsAt)}
                 </p>
-                {canCancelFreely(cancelTarget.class.startsAt) ? (
+                {canCancelFreely(cancelTarget) ? (
                   <div className="mt-4 rounded-xl bg-green-50 px-4 py-3">
-                    <p className="text-[13px] font-medium text-green-700">Tu crédito será devuelto</p>
-                    <p className="mt-0.5 text-[12px] text-green-600">Faltan más de {policies.cancellationWindowHours}h para la clase</p>
+                    <p className="text-[13px] font-medium text-green-700">
+                      {cancelTarget.cancellationPolicy?.isUnlimited
+                        ? tMember("freeCancellation")
+                        : tMember("creditWillBeReturned")}
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-green-600">Faltan más de {windowHoursFor(cancelTarget)}h para la clase</p>
                   </div>
                 ) : (
                   <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
-                    <p className="text-[13px] font-medium text-red-700">Tu crédito NO será devuelto</p>
+                    <p className="text-[13px] font-medium text-red-700">
+                      {lateCancelFeeCents(cancelTarget) > 0
+                        ? tMember("lateCancelFeeWarning", {
+                            fee: formatMoney(lateCancelFeeCents(cancelTarget) / 100, currency),
+                          })
+                        : tMember("creditWillNotBeReturned")}
+                    </p>
                     <p className="mt-0.5 text-[12px] text-red-600">
-                      Faltan {hoursUntilClass(cancelTarget.class.startsAt)}h — la ventana de cancelación es {policies.cancellationWindowHours}h.
-                      Las cancelaciones tardías no reembolsan créditos.
+                      Faltan {hoursUntilClass(cancelTarget.class.startsAt)}h — la ventana de cancelación es {windowHoursFor(cancelTarget)}h.
                     </p>
                   </div>
                 )}
@@ -295,7 +321,7 @@ export function UpcomingClasses() {
                     disabled={cancelMutation.isPending}
                   >
                     {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {canCancelFreely(cancelTarget.class.startsAt) ? "Cancelar reserva" : "Cancelar sin reembolso"}
+                    {canCancelFreely(cancelTarget) ? "Cancelar reserva" : "Cancelar sin reembolso"}
                   </Button>
                   <Button
                     variant="ghost"

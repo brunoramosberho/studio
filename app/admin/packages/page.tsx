@@ -71,6 +71,9 @@ interface PackageData {
   maxPurchasesPerCustomer: number | null;
   minCommitmentMonths: number | null;
   scheduleVisibilityDaysAhead: number | null;
+  cancellationWindowHours: number | null;
+  lateCancelFeeCents: number | null;
+  noShowFeeCents: number | null;
 }
 
 type PackageKind = PackageData["type"];
@@ -153,6 +156,9 @@ interface FormState {
   maxPurchasesPerCustomer: string;
   minCommitmentMonths: string;
   scheduleVisibilityDaysAhead: string;
+  cancellationWindowHours: string;
+  lateCancelFee: string; // in currency units (€), converted to cents on save
+  noShowFee: string;
 }
 
 function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
@@ -180,6 +186,9 @@ function emptyForm(forType: PackageKind, defaultCurrency = "EUR"): FormState {
     maxPurchasesPerCustomer: "",
     minCommitmentMonths: "",
     scheduleVisibilityDaysAhead: "",
+    cancellationWindowHours: "",
+    lateCancelFee: "",
+    noShowFee: "",
   };
 }
 
@@ -223,6 +232,11 @@ function formFromPackage(pkg: PackageData, defaultCurrency = "EUR"): FormState {
       pkg.scheduleVisibilityDaysAhead == null
         ? ""
         : String(pkg.scheduleVisibilityDaysAhead),
+    cancellationWindowHours:
+      pkg.cancellationWindowHours == null ? "" : String(pkg.cancellationWindowHours),
+    lateCancelFee:
+      pkg.lateCancelFeeCents == null ? "" : String(pkg.lateCancelFeeCents / 100),
+    noShowFee: pkg.noShowFeeCents == null ? "" : String(pkg.noShowFeeCents / 100),
   };
 }
 
@@ -304,6 +318,20 @@ function buildPayload(form: FormState) {
       form.type !== "ON_DEMAND_SUBSCRIPTION" &&
       form.scheduleVisibilityDaysAhead.trim() !== ""
         ? parseInt(form.scheduleVisibilityDaysAhead, 10)
+        : null,
+    // Cancellation policy overrides — unlimited subscriptions have no credit to
+    // forfeit, so late-cancel/no-show discipline needs a fee. Blank = tenant.
+    cancellationWindowHours:
+      form.type === "SUBSCRIPTION" && form.cancellationWindowHours.trim() !== ""
+        ? parseInt(form.cancellationWindowHours, 10)
+        : null,
+    lateCancelFeeCents:
+      form.type === "SUBSCRIPTION" && form.lateCancelFee.trim() !== ""
+        ? Math.round(parseFloat(form.lateCancelFee) * 100)
+        : null,
+    noShowFeeCents:
+      form.type === "SUBSCRIPTION" && form.noShowFee.trim() !== ""
+        ? Math.round(parseFloat(form.noShowFee) * 100)
         : null,
   };
 }
@@ -1076,6 +1104,63 @@ export default function AdminPackagesPage() {
                     Ej: 21 = 3 semanas. Un cliente con varios planes toma el más
                     generoso.
                   </p>
+                </div>
+              </div>
+            ) : null}
+
+            {form.type === "SUBSCRIPTION" ? (
+              <div className="space-y-3 rounded-xl border border-input-border/60 bg-surface/50 p-3">
+                <p className="text-sm font-medium">Cancelación y penalizaciones</p>
+                <p className="text-xs text-muted">
+                  Opcional. Los ilimitados no pierden crédito al cancelar tarde o no
+                  presentarse — aquí defines la penalización de este plan. La
+                  penalización entra a la cola de no-shows (con periodo de gracia) y
+                  se puede condonar. Vacío = política del estudio.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium" htmlFor="pkg-cancel-window">
+                      Ventana de cancelación (h)
+                    </label>
+                    <Input
+                      id="pkg-cancel-window"
+                      type="number"
+                      min={0}
+                      value={form.cancellationWindowHours}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, cancellationWindowHours: e.target.value }))
+                      }
+                      placeholder="Default del estudio"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium" htmlFor="pkg-late-cancel-fee">
+                      Fee por cancelación tardía ({form.currency})
+                    </label>
+                    <Input
+                      id="pkg-late-cancel-fee"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={form.lateCancelFee}
+                      onChange={(e) => setForm((f) => ({ ...f, lateCancelFee: e.target.value }))}
+                      placeholder="Sin fee"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium" htmlFor="pkg-no-show-fee">
+                      Fee por no-show ({form.currency})
+                    </label>
+                    <Input
+                      id="pkg-no-show-fee"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={form.noShowFee}
+                      onChange={(e) => setForm((f) => ({ ...f, noShowFee: e.target.value }))}
+                      placeholder="Default del estudio"
+                    />
+                  </div>
                 </div>
               </div>
             ) : null}

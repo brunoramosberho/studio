@@ -157,6 +157,18 @@ export async function PUT(
       }
     }
 
+    // Cancellation policy overrides (null/"" clears back to tenant policy)
+    for (const key of ["cancellationWindowHours", "lateCancelFeeCents", "noShowFeeCents"] as const) {
+      if (body[key] !== undefined) {
+        if (body[key] === null || body[key] === "") {
+          data[key] = null;
+        } else {
+          const n = Number(body[key]);
+          data[key] = Number.isNaN(n) || n < 0 ? null : Math.round(n);
+        }
+      }
+    }
+
     function readOptionalPositiveInt(
       value: unknown,
       label: string,

@@ -1007,6 +1007,7 @@ model PendingPenalty {
   chargeFee      Boolean @default(false) // Snapshot: should we charge a fee?
   feeAmountCents Int     @default(0) // Snapshot of fee amount at creation time
   isUnlimited    Boolean @default(false) // Was the booking on an unlimited package?
+  reason         String  @default("no_show") // "no_show" | "late_cancel"
 
   status PendingPenaltyStatus @default(pending)
 
@@ -1118,6 +1119,13 @@ model Package {
   allowGuests         Boolean @default(false)
   maxGuestsPerBooking Int?
   monthlyGuestPasses  Int?
+
+  // Per-package cancellation policy overrides (null = inherit tenant policy).
+  // Configured in the package editor — mainly for unlimited subscriptions,
+  // where there is no credit to forfeit so late-cancel/no-show need a fee.
+  cancellationWindowHours Int?
+  lateCancelFeeCents      Int? // Fee when cancelling inside the window. Null/0 = no fee.
+  noShowFeeCents          Int? // Overrides tenant noShowFeeAmountUnlimited for this package.
 
   // Booking-rate limits for subscriptions. Both are null = unlimited.
   // maxBookingsPerDay caps how many class slots a member can hold for the same

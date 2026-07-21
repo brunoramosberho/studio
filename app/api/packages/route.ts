@@ -249,6 +249,10 @@ export async function POST(request: NextRequest) {
         allowGuests: Boolean(body.allowGuests),
         maxGuestsPerBooking: body.maxGuestsPerBooking != null && !Number.isNaN(Number(body.maxGuestsPerBooking)) ? Number(body.maxGuestsPerBooking) : null,
         monthlyGuestPasses: body.monthlyGuestPasses != null && !Number.isNaN(Number(body.monthlyGuestPasses)) ? Number(body.monthlyGuestPasses) : null,
+        // Cancellation policy overrides (null = inherit tenant policy)
+        cancellationWindowHours: body.cancellationWindowHours != null && !Number.isNaN(Number(body.cancellationWindowHours)) ? Math.round(Number(body.cancellationWindowHours)) : null,
+        lateCancelFeeCents: body.lateCancelFeeCents != null && !Number.isNaN(Number(body.lateCancelFeeCents)) ? Math.round(Number(body.lateCancelFeeCents)) : null,
+        noShowFeeCents: body.noShowFeeCents != null && !Number.isNaN(Number(body.noShowFeeCents)) ? Math.round(Number(body.noShowFeeCents)) : null,
         includesOnDemand:
           pkgType === PackageType.SUBSCRIPTION ? Boolean(body.includesOnDemand) : false,
         maxBookingsPerDay: isSubscription ? dayLimit.v : null,

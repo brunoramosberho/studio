@@ -78,6 +78,41 @@ export async function GET(request: NextRequest) {
       return { ...b, class: { ...b.class, coach: redactedCoach(b.class.coach) } };
     };
 
+    // Per-booking cancellation policy, so dialogs show the window and fee that
+    // actually apply — the funding package (or the member's active subscription)
+    // may override the tenant defaults.
+    const tenantWindow = tenant.cancellationWindowHours ?? 12;
+    const pkgIds = [...new Set(bookings.map((b) => b.packageUsed).filter(Boolean))] as string[];
+    const userPkgs = pkgIds.length
+      ? await prisma.userPackage.findMany({
+          where: { id: { in: pkgIds } },
+          select: {
+            id: true,
+            creditsTotal: true,
+            package: {
+              select: { cancellationWindowHours: true, lateCancelFeeCents: true },
+            },
+          },
+        })
+      : [];
+    const upById = new Map(userPkgs.map((u) => [u.id, u]));
+    const activeSub = await prisma.memberSubscription.findFirst({
+      where: { tenantId: tenant.id, userId: session.user.id, status: { in: ["active", "trialing"] } },
+      select: {
+        package: { select: { cancellationWindowHours: true, lateCancelFeeCents: true } },
+      },
+    });
+    const policyFor = (b: { packageUsed: string | null }) => {
+      const up = b.packageUsed ? upById.get(b.packageUsed) : undefined;
+      const pkg = up?.package ?? activeSub?.package ?? null;
+      const isUnlimited = up ? up.creditsTotal === null : !!activeSub;
+      return {
+        windowHours: pkg?.cancellationWindowHours ?? tenantWindow,
+        lateCancelFeeCents: isUnlimited ? (pkg?.lateCancelFeeCents ?? 0) : 0,
+        isUnlimited,
+      };
+    };
+
     // Attach friends going to the same classes (only for upcoming)
     if (isUpcoming && bookings.length > 0) {
       const friendships = await prisma.friendship.findMany({
@@ -117,13 +152,18 @@ export async function GET(request: NextRequest) {
         const enriched = bookings.map((b) => ({
           ...redactCoachInBooking(b),
           friendsGoing: friendsByClass.get(b.classId) ?? [],
+          cancellationPolicy: policyFor(b),
         }));
         return NextResponse.json(enriched);
       }
     }
 
     return NextResponse.json(
-      bookings.map((b) => ({ ...redactCoachInBooking(b), friendsGoing: [] })),
+      bookings.map((b) => ({
+        ...redactCoachInBooking(b),
+        friendsGoing: [],
+        cancellationPolicy: policyFor(b),
+      })),
     );
   } catch (error) {
     console.error("GET /api/bookings error:", error);

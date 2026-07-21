@@ -31,15 +31,22 @@ export interface PenaltyDecision {
   isUnlimited: boolean;
 }
 
+export type PenaltyReason = "no_show" | "late_cancel";
+
 /**
  * Compute the penalty that should apply to a booking based on tenant policy
  * and whether the booking was funded by an unlimited package. Returns a
  * decision with all flags — callers filter out no-op decisions (both flags
  * false) before persisting.
+ *
+ * `unlimitedFeeCentsOverride` is the funding package's own no-show fee
+ * (Package.noShowFeeCents) — when set it wins over the tenant-level amounts
+ * for unlimited bookings, so a studio can price the penalty per subscription.
  */
 export function resolveNoShowPenalty(
   policy: TenantPenaltyPolicy,
   isUnlimited: boolean,
+  unlimitedFeeCentsOverride?: number | null,
 ): PenaltyDecision {
   if (!policy.noShowPenaltyEnabled) {
     // Legacy default: pack bookings forfeit their credit on no-show (the
@@ -55,6 +62,15 @@ export function resolveNoShowPenalty(
 
   const loseCredit = policy.noShowLoseCredit && !isUnlimited;
 
+  if (isUnlimited && unlimitedFeeCentsOverride != null) {
+    return {
+      loseCredit,
+      chargeFee: unlimitedFeeCentsOverride > 0,
+      feeAmountCents: Math.max(0, unlimitedFeeCentsOverride),
+      isUnlimited,
+    };
+  }
+
   let chargeFee = false;
   let feeAmount: number | null = null;
   if (policy.noShowChargeFee) {
@@ -69,6 +85,78 @@ export function resolveNoShowPenalty(
     chargeFee,
     feeAmountCents: chargeFee && feeAmount ? toStripeAmount(feeAmount) : 0,
     isUnlimited,
+  };
+}
+
+/**
+ * The booking-level cancellation policy: the tenant defaults, overridden by the
+ * package that funded the booking (packageUsed → UserPackage → Package), or —
+ * when the booking carries no package link — by the member's active
+ * subscription. This is what makes per-package windows and fees work.
+ */
+export async function resolveCancellationPolicy(opts: {
+  tenantId: string;
+  userId: string | null;
+  packageUsed: string | null;
+}): Promise<{
+  windowHours: number;
+  windowMs: number;
+  isUnlimited: boolean;
+  lateCancelFeeCents: number;
+  noShowFeeCentsOverride: number | null;
+}> {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: opts.tenantId },
+    select: { cancellationWindowHours: true },
+  });
+
+  let pkg: {
+    cancellationWindowHours: number | null;
+    lateCancelFeeCents: number | null;
+    noShowFeeCents: number | null;
+  } | null = null;
+  let isUnlimited = false;
+
+  if (opts.packageUsed) {
+    const up = await prisma.userPackage.findUnique({
+      where: { id: opts.packageUsed },
+      select: {
+        creditsTotal: true,
+        package: {
+          select: {
+            cancellationWindowHours: true,
+            lateCancelFeeCents: true,
+            noShowFeeCents: true,
+          },
+        },
+      },
+    });
+    pkg = up?.package ?? null;
+    isUnlimited = up?.creditsTotal === null;
+  } else if (opts.userId) {
+    const sub = await prisma.memberSubscription.findFirst({
+      where: { tenantId: opts.tenantId, userId: opts.userId, status: { in: ["active", "trialing"] } },
+      select: {
+        package: {
+          select: {
+            cancellationWindowHours: true,
+            lateCancelFeeCents: true,
+            noShowFeeCents: true,
+          },
+        },
+      },
+    });
+    pkg = sub?.package ?? null;
+    isUnlimited = !!sub;
+  }
+
+  const windowHours = pkg?.cancellationWindowHours ?? tenant?.cancellationWindowHours ?? 12;
+  return {
+    windowHours,
+    windowMs: windowHours * 60 * 60 * 1000,
+    isUnlimited,
+    lateCancelFeeCents: pkg?.lateCancelFeeCents ?? 0,
+    noShowFeeCentsOverride: pkg?.noShowFeeCents ?? null,
   };
 }
 
@@ -96,6 +184,7 @@ export async function createPendingPenalty(
     decision: PenaltyDecision;
     graceHours: number;
     now?: Date;
+    reason?: PenaltyReason;
   },
 ) {
   const now = params.now ?? new Date();
@@ -116,6 +205,7 @@ export async function createPendingPenalty(
       chargeFee: params.decision.chargeFee,
       feeAmountCents: params.decision.feeAmountCents,
       isUnlimited: params.decision.isUnlimited,
+      reason: params.reason ?? "no_show",
       status: "pending",
       createdAt: now,
       autoConfirmAt,
@@ -228,6 +318,13 @@ export async function revertPendingPenalty(params: {
       resolutionNote: params.note ?? null,
     },
   });
+
+  // A late-cancel penalty is attached to a booking the member actually
+  // cancelled — reverting forgives the fee but must NOT resurrect the booking
+  // as ATTENDED (that's the no-show-was-a-mistake path only).
+  if (pending.reason === "late_cancel") {
+    return prisma.pendingPenalty.findUnique({ where: { id: pending.id } });
+  }
 
   if (pending.loseCredit && booking.packageUsed && booking.creditLost) {
     await restoreCredit(booking.packageUsed, booking.class.classTypeId);

@@ -15,6 +15,7 @@ import {
   createPendingPenalty,
   hasAnyPenalty,
   resolveNoShowPenalty,
+  resolveCancellationPolicy,
   type TenantPenaltyPolicy,
 } from "@/lib/no-show-penalty";
 import { restoreCredit } from "@/lib/credits";
@@ -265,19 +266,16 @@ export async function GET(request: NextRequest) {
       const confirmedBookings = cls.bookings.filter((b) => b.status === "CONFIRMED");
 
       for (const b of confirmedBookings) {
-        let isUnlimited = false;
-        if (b.packageUsed) {
-          const pkg = await prisma.userPackage.findUnique({
-            where: { id: b.packageUsed },
-            select: { creditsTotal: true },
-          });
-          isUnlimited = pkg?.creditsTotal === null;
-        } else {
-          isUnlimited = true;
-        }
+        const cancelPolicy = await resolveCancellationPolicy({
+          tenantId: tenant.id,
+          userId: b.userId,
+          packageUsed: b.packageUsed,
+        });
+        // No package — treat as "no credit to lose", fee rules still apply.
+        const isUnlimited = b.packageUsed ? cancelPolicy.isUnlimited : true;
 
         const decision = tenantPolicy
-          ? resolveNoShowPenalty(tenantPolicy, isUnlimited)
+          ? resolveNoShowPenalty(tenantPolicy, isUnlimited, cancelPolicy.noShowFeeCentsOverride)
           : { loseCredit: !isUnlimited, chargeFee: false, feeAmountCents: 0, isUnlimited };
 
         if (!decision.loseCredit && !isUnlimited && b.packageUsed) {

@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
         chargeFee: r.chargeFee,
         feeAmountCents: r.feeAmountCents,
         isUnlimited: r.isUnlimited,
+        reason: r.reason,
         user: r.user
           ? { id: r.user.id, name: r.user.name, email: r.user.email, image: r.user.image }
           : r.booking.guestName

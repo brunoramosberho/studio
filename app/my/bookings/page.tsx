@@ -27,6 +27,8 @@ import { PlatformBadge } from "@/components/booking/platform-badge";
 import { partnerLabel } from "@/lib/platforms/labels";
 import { useTranslations } from "next-intl";
 import { usePolicies, getCancellationWindowMs } from "@/hooks/usePolicies";
+import { useCurrency } from "@/components/tenant-provider";
+import { formatMoney } from "@/lib/currency";
 
 interface FriendInfo {
   id: string;
@@ -82,15 +84,22 @@ export default function BookingsPage() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const policies = usePolicies();
-  const cancellationWindowMs = getCancellationWindowMs(policies.cancellationWindowHours);
+  const currency = useCurrency();
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [cancelTarget, setCancelTarget] = useState<EnrichedBooking | null>(null);
   const [waitlistLeaveTarget, setWaitlistLeaveTarget] = useState<WaitlistEntry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  function canCancelFreely(classStartsAt: string | Date): boolean {
-    const timeUntil = new Date(classStartsAt).getTime() - Date.now();
-    return timeUntil > cancellationWindowMs;
+  // Per-booking: the funding package may override the tenant window.
+  function windowHoursFor(b: EnrichedBooking): number {
+    return b.cancellationPolicy?.windowHours ?? policies.cancellationWindowHours;
+  }
+  function canCancelFreely(b: EnrichedBooking): boolean {
+    const timeUntil = new Date(b.class.startsAt).getTime() - Date.now();
+    return timeUntil > getCancellationWindowMs(windowHoursFor(b));
+  }
+  function lateCancelFeeCents(b: EnrichedBooking): number {
+    return !canCancelFreely(b) ? (b.cancellationPolicy?.lateCancelFeeCents ?? 0) : 0;
   }
 
   const { data: upcoming = [], isLoading: loadingUpcoming } = useQuery({
@@ -377,13 +386,13 @@ export default function BookingsPage() {
                   <div
                     className={cn(
                       "mx-auto flex h-14 w-14 items-center justify-center rounded-full",
-                      canCancelFreely(cancelTarget.class.startsAt) ? "bg-orange-50" : "bg-red-50",
+                      canCancelFreely(cancelTarget) ? "bg-orange-50" : "bg-red-50",
                     )}
                   >
                     <AlertTriangle
                       className={cn(
                         "h-6 w-6",
-                        canCancelFreely(cancelTarget.class.startsAt) ? "text-orange-500" : "text-red-500",
+                        canCancelFreely(cancelTarget) ? "text-orange-500" : "text-red-500",
                       )}
                     />
                   </div>
@@ -396,22 +405,28 @@ export default function BookingsPage() {
                     {cancelTarget.class.classType.name} · {formatRelativeDay(cancelTarget.class.startsAt)}
                   </p>
 
-                  {canCancelFreely(cancelTarget.class.startsAt) ? (
+                  {canCancelFreely(cancelTarget) ? (
                     <div className="mt-4 rounded-xl bg-green-50 px-4 py-3">
                       <p className="text-[13px] font-medium text-green-700">
-                        {t("creditWillBeReturned")}
+                        {cancelTarget.cancellationPolicy?.isUnlimited
+                          ? t("freeCancellation")
+                          : t("creditWillBeReturned")}
                       </p>
                       <p className="mt-0.5 text-[12px] text-green-600">
-                        Faltan más de {policies.cancellationWindowHours}h para la clase
+                        Faltan más de {windowHoursFor(cancelTarget)}h para la clase
                       </p>
                     </div>
                   ) : (
                     <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
                       <p className="text-[13px] font-medium text-red-700">
-                        {t("creditWillNotBeReturned")}
+                        {lateCancelFeeCents(cancelTarget) > 0
+                          ? t("lateCancelFeeWarning", {
+                              fee: formatMoney(lateCancelFeeCents(cancelTarget) / 100, currency),
+                            })
+                          : t("creditWillNotBeReturned")}
                       </p>
                       <p className="mt-0.5 text-[12px] text-red-600">
-                        Faltan {hoursUntilClass(cancelTarget.class.startsAt)}h — la ventana de cancelación es {policies.cancellationWindowHours}h
+                        Faltan {hoursUntilClass(cancelTarget.class.startsAt)}h — la ventana de cancelación es {windowHoursFor(cancelTarget)}h
                       </p>
                     </div>
                   )}
@@ -424,7 +439,7 @@ export default function BookingsPage() {
                       disabled={cancelMutation.isPending}
                     >
                       {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {canCancelFreely(cancelTarget.class.startsAt) ? t("cancelBooking") : t("cancelNoRefund")}
+                      {canCancelFreely(cancelTarget) ? t("cancelBooking") : t("cancelNoRefund")}
                     </Button>
                     <Button
                       variant="ghost"

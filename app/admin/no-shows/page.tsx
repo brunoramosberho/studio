@@ -33,6 +33,7 @@ interface PendingItem {
   chargeFee: boolean;
   feeAmountCents: number;
   isUnlimited: boolean;
+  reason?: "no_show" | "late_cancel";
   user: { id: string | null; name: string | null; email: string | null; image: string | null } | null;
   booking: { id: string; status: string };
   class: {
@@ -240,6 +241,11 @@ function NoShowRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium truncate">{displayName}</span>
+          {item.reason === "late_cancel" && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+              {t("lateCancelChip")}
+            </span>
+          )}
           {item.isUnlimited && (
             <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
               {t("unlimited")}

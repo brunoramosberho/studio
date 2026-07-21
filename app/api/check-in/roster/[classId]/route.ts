@@ -489,7 +489,13 @@ export async function GET(
         where: {
           classId,
           platformBookingId: null,
-          OR: [{ status: "NO_SHOW" }, { status: "CANCELLED", creditLost: true }],
+          OR: [
+            { status: "NO_SHOW" },
+            { status: "CANCELLED", creditLost: true },
+            // Unlimited late-cancels forfeit no credit — their penalty is the
+            // fee queued as a PendingPenalty, so surface those too.
+            { status: "CANCELLED", pendingPenalty: { is: { reason: "late_cancel" } } },
+          ],
         },
         select: { status: true, guestName: true, cancelledAt: true, user: { select: { name: true } } },
       }),

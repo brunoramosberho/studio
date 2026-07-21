@@ -79,6 +79,12 @@ export interface BookingWithDetails extends Booking {
   productOrder?: BookingProductOrderSummary | null;
   /** Set when the reservation came from a partner app (Wellhub, ClassPass…). */
   platformBooking?: { platform: PlatformType } | null;
+  /** Effective cancel policy for THIS booking (package may override tenant). */
+  cancellationPolicy?: {
+    windowHours: number;
+    lateCancelFeeCents: number;
+    isUnlimited: boolean;
+  } | null;
 }
 
 export interface CreditUsageDetail {

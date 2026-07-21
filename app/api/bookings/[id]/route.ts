@@ -7,18 +7,11 @@ import {
   createPendingPenalty,
   hasAnyPenalty,
   resolveNoShowPenalty,
+  resolveCancellationPolicy,
 } from "@/lib/no-show-penalty";
 import { buildClassAttendees } from "@/lib/feed/attendees";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-
-async function getCancellationWindowMs(tenantId: string): Promise<number> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { cancellationWindowHours: true },
-  });
-  return (tenant?.cancellationWindowHours ?? 12) * 60 * 60 * 1000;
-}
 
 async function syncCompletedClassFeedEvent(classId: string, tenantId: string) {
   const cls = await prisma.class.findFirst({
@@ -168,7 +161,14 @@ export async function PUT(
 
     let creditLost = false;
     if (status === "CANCELLED") {
-      const windowMs = await getCancellationWindowMs(tenant.id);
+      // Per-booking window: the funding package may override the tenant's.
+      const windowMs = (
+        await resolveCancellationPolicy({
+          tenantId: tenant.id,
+          userId: booking.userId,
+          packageUsed: booking.packageUsed,
+        })
+      ).windowMs;
 
       // Staff (coach/front-desk/admin) can override the cancellation policy:
       // force a credit refund (bypassing the cancellation window) or force
@@ -230,20 +230,16 @@ export async function PUT(
         },
       });
 
-      let isUnlimited = false;
-      if (booking.packageUsed) {
-        const userPkg = await prisma.userPackage.findUnique({
-          where: { id: booking.packageUsed },
-          select: { creditsTotal: true },
-        });
-        isUnlimited = userPkg?.creditsTotal === null;
-      } else {
-        // No package — treat as "no credit to lose", fee rules still apply
-        isUnlimited = true;
-      }
+      const cancelPolicy = await resolveCancellationPolicy({
+        tenantId: tenant.id,
+        userId: booking.userId,
+        packageUsed: booking.packageUsed,
+      });
+      // No package — treat as "no credit to lose", fee rules still apply.
+      const isUnlimited = booking.packageUsed ? cancelPolicy.isUnlimited : true;
 
       const decision = tenantConfig
-        ? resolveNoShowPenalty(tenantConfig, isUnlimited)
+        ? resolveNoShowPenalty(tenantConfig, isUnlimited, cancelPolicy.noShowFeeCentsOverride)
         : { loseCredit: !isUnlimited, chargeFee: false, feeAmountCents: 0, isUnlimited };
 
       creditLost = decision.loseCredit;
@@ -434,7 +430,16 @@ export async function DELETE(
       );
     }
 
-    const windowMs = await getCancellationWindowMs(tenant.id);
+    // Per-booking policy: window and late-cancel fee may be overridden by the
+    // package that funds this booking (or the member's active subscription).
+    const cancelPolicy = await resolveCancellationPolicy({
+      tenantId: tenant.id,
+      userId: booking.userId,
+      packageUsed: booking.packageUsed,
+    });
+    const windowMs = cancelPolicy.windowMs;
+    const isLate =
+      new Date(booking.class.startsAt).getTime() - Date.now() <= windowMs;
     const restored = await restoreCreditIfEligible(booking, windowMs);
 
     // Cancel guest bookings and restore their credits
@@ -456,6 +461,39 @@ export async function DELETE(
       where: { id, tenantId: tenant.id },
       data: { status: "CANCELLED", spotNumber: null, creditLost: !restored, cancelledAt: new Date() },
     });
+
+    // Unlimited members forfeit nothing on a late cancel — packs lose the
+    // credit above, but an unlimited seat walks away free. When their package
+    // prices a late-cancel fee, queue it through the same pending flow as
+    // no-shows (grace window, admin review, waivable). Member self-cancels
+    // only: a desk-initiated cancel is a business decision, not a penalty.
+    if (
+      isLate &&
+      isOwner &&
+      cancelPolicy.isUnlimited &&
+      cancelPolicy.lateCancelFeeCents > 0 &&
+      booking.userId &&
+      !booking.platformBookingId
+    ) {
+      const graceCfg = await prisma.tenant.findUnique({
+        where: { id: tenant.id },
+        select: { noShowPenaltyGraceHours: true },
+      });
+      await createPendingPenalty(prisma, {
+        tenantId: tenant.id,
+        bookingId: booking.id,
+        classId: booking.classId,
+        userId: booking.userId,
+        decision: {
+          loseCredit: false,
+          chargeFee: true,
+          feeAmountCents: cancelPolicy.lateCancelFeeCents,
+          isUnlimited: true,
+        },
+        graceHours: graceCfg?.noShowPenaltyGraceHours ?? 24,
+        reason: "late_cancel",
+      }).catch((err) => console.error("Late-cancel penalty failed:", err));
+    }
 
     if (booking.userId) {
       prisma.feedEvent
