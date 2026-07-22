@@ -140,12 +140,69 @@ function Lightbox({
     tracking: boolean;
   }>({ startX: 0, startY: 0, startTime: 0, direction: null, tracking: false });
 
+  // ── Zoom (photos only) ────────────────────────────────────────────────
+  // Pinch to zoom (anchored at the pinch point), one-finger pan while zoomed,
+  // double-tap / double-click to toggle. While zoomed, swipe-to-navigate and
+  // drag-to-dismiss are suspended — back at 1x they take over again.
+  const [zoom, setZoom] = useState({ scale: 1, tx: 0, ty: 0 });
+  const [zoomAnimating, setZoomAnimating] = useState(false);
+  const pinchRef = useRef<{
+    dist: number;
+    midX: number;
+    midY: number;
+    scale: number;
+    tx: number;
+    ty: number;
+  } | null>(null);
+  const panRef = useRef<{ offX: number; offY: number; moved: boolean } | null>(null);
+  const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null);
+  const isZoomed = zoom.scale > 1.001;
+  const activeIsImage = !isVideo(media[idx]?.mimeType ?? "");
+
+  const MAX_SCALE = 4;
+  const clampZoom = (scale: number, tx: number, ty: number) => {
+    const s = Math.min(MAX_SCALE, Math.max(1, scale));
+    // Cheap viewport-based bounds: enough travel to reach the corners, without
+    // letting the photo fly off-screen.
+    const maxX = ((s - 1) * window.innerWidth) / 2;
+    const maxY = ((s - 1) * window.innerHeight) / 2;
+    return {
+      scale: s,
+      tx: Math.min(maxX, Math.max(-maxX, tx)),
+      ty: Math.min(maxY, Math.max(-maxY, ty)),
+    };
+  };
+
+  const resetZoom = useCallback((animate = true) => {
+    if (animate) setZoomAnimating(true);
+    setZoom({ scale: 1, tx: 0, ty: 0 });
+    pinchRef.current = null;
+    panRef.current = null;
+  }, []);
+
+  /** Zoom towards a screen point, keeping that point visually fixed. */
+  const zoomAtPoint = (pX: number, pY: number, targetScale: number) => {
+    const cX = window.innerWidth / 2;
+    const cY = window.innerHeight / 2;
+    const uX = (pX - cX - zoom.tx) / zoom.scale;
+    const uY = (pY - cY - zoom.ty) / zoom.scale;
+    setZoomAnimating(true);
+    setZoom(clampZoom(targetScale, pX - cX - uX * targetScale, pY - cY - uY * targetScale));
+  };
+
+  const toggleZoomAt = (pX: number, pY: number) => {
+    if (isZoomed) resetZoom();
+    else zoomAtPoint(pX, pY, 2.5);
+  };
+
   const clampIdx = (i: number) => Math.max(0, Math.min(media.length - 1, i));
 
   const goTo = useCallback(
     (target: number) => {
       const clamped = clampIdx(target);
       if (clamped === idx && dragX === 0) return;
+      // Changing photo always lands unzoomed.
+      resetZoom(false);
       setAnimating(true);
       setDragX(0);
       setIdx(clamped);
@@ -172,11 +229,65 @@ function Lightbox({
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (animating || dismissing) return;
+
+    // Second finger lands on a photo → pinch. Cancel any in-flight swipe/drag.
+    if (e.touches.length === 2 && activeIsImage) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      pinchRef.current = {
+        dist: Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY),
+        midX: (a.clientX + b.clientX) / 2,
+        midY: (a.clientY + b.clientY) / 2,
+        ...zoom,
+      };
+      touchRef.current.tracking = false;
+      panRef.current = null;
+      if (dragX !== 0) {
+        setAnimating(true);
+        setDragX(0);
+      }
+      if (dragY !== 0) setDragY(0);
+      return;
+    }
+
     const t = e.touches[0];
+    if (isZoomed) {
+      panRef.current = { offX: t.clientX - zoom.tx, offY: t.clientY - zoom.ty, moved: false };
+      return;
+    }
     touchRef.current = { startX: t.clientX, startY: t.clientY, startTime: Date.now(), direction: null, tracking: true };
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    // Pinch in progress: scale anchored at the midpoint (which may travel —
+    // that's two-finger pan for free).
+    if (pinchRef.current && e.touches.length >= 2) {
+      const start = pinchRef.current;
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      const midX = (a.clientX + b.clientX) / 2;
+      const midY = (a.clientY + b.clientY) / 2;
+      const s = start.scale * (dist / Math.max(start.dist, 1));
+      const cX = window.innerWidth / 2;
+      const cY = window.innerHeight / 2;
+      const uX = (start.midX - cX - start.tx) / start.scale;
+      const uY = (start.midY - cY - start.ty) / start.scale;
+      setZoomAnimating(false);
+      setZoom(clampZoom(s, midX - cX - uX * s, midY - cY - uY * s));
+      return;
+    }
+
+    // One-finger pan while zoomed.
+    if (panRef.current && e.touches.length === 1) {
+      const t = e.touches[0];
+      const p = panRef.current;
+      const tx = t.clientX - p.offX;
+      const ty = t.clientY - p.offY;
+      if (Math.abs(tx - zoom.tx) > 2 || Math.abs(ty - zoom.ty) > 2) p.moved = true;
+      setZoomAnimating(false);
+      setZoom((z) => clampZoom(z.scale, tx, ty));
+      return;
+    }
+
     const ref = touchRef.current;
     if (!ref.tracking) return;
     const t = e.touches[0];
@@ -203,10 +314,58 @@ function Lightbox({
     setDragX(dampened);
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // Pinch released (or downgraded to one finger): snap back if ~1x.
+    if (pinchRef.current) {
+      if (e.touches.length >= 2) return;
+      pinchRef.current = null;
+      if (zoom.scale < 1.05) resetZoom();
+      else if (e.touches.length === 1) {
+        // One finger stayed down — hand off to panning.
+        const t = e.touches[0];
+        panRef.current = { offX: t.clientX - zoom.tx, offY: t.clientY - zoom.ty, moved: false };
+      }
+      return;
+    }
+
+    // Pan released; a motionless pan tap can be half of a double-tap-out.
+    if (panRef.current) {
+      const wasStationary = !panRef.current.moved;
+      if (e.touches.length > 0) return;
+      panRef.current = null;
+      if (wasStationary) {
+        const t = e.changedTouches[0];
+        const now = Date.now();
+        const last = lastTapRef.current;
+        if (t && last && now - last.t < 300 && Math.hypot(t.clientX - last.x, t.clientY - last.y) < 40) {
+          lastTapRef.current = null;
+          resetZoom();
+        } else if (t) {
+          lastTapRef.current = { t: now, x: t.clientX, y: t.clientY };
+        }
+      }
+      return;
+    }
+
     const ref = touchRef.current;
     if (!ref.tracking) return;
     ref.tracking = false;
+
+    // Tap (no direction ever resolved) → double-tap zooms in on the photo.
+    if (!ref.direction && activeIsImage) {
+      const elapsed = Date.now() - ref.startTime;
+      if (elapsed < 300) {
+        const now = Date.now();
+        const last = lastTapRef.current;
+        if (last && now - last.t < 300 && Math.hypot(ref.startX - last.x, ref.startY - last.y) < 40) {
+          lastTapRef.current = null;
+          toggleZoomAt(ref.startX, ref.startY);
+        } else {
+          lastTapRef.current = { t: now, x: ref.startX, y: ref.startY };
+        }
+      }
+      return;
+    }
 
     if (ref.direction === "v") {
       const elapsed = Date.now() - ref.startTime;
@@ -259,6 +418,7 @@ function Lightbox({
         if (media.length <= 1) {
           onClose();
         } else if (idx >= media.length - 1) {
+          resetZoom(false);
           setIdx(idx - 1);
         }
       }
@@ -330,9 +490,11 @@ function Lightbox({
         </>
       )}
 
-      {/* Swipeable media strip */}
+      {/* Swipeable media strip. touch-action:none — every gesture (swipe,
+          dismiss, pinch, pan, double-tap) is handled here, and it keeps the
+          browser's own page-pinch from fighting ours. */}
       <div
-        className="absolute inset-0 overflow-hidden"
+        className="absolute inset-0 touch-none overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -373,6 +535,19 @@ function Lightbox({
                       alt=""
                       className="max-h-dvh w-full object-contain sm:max-h-[90dvh] sm:max-w-[90vw] sm:rounded-lg"
                       draggable={false}
+                      onDoubleClick={(e) => {
+                        if (i === idx) toggleZoomAt(e.clientX, e.clientY);
+                      }}
+                      style={
+                        i === idx && (isZoomed || zoomAnimating)
+                          ? {
+                              transform: `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.scale})`,
+                              transition: zoomAnimating ? "transform 220ms cubic-bezier(.25,.46,.45,.94)" : "none",
+                              cursor: isZoomed ? "grab" : undefined,
+                            }
+                          : undefined
+                      }
+                      onTransitionEnd={() => setZoomAnimating(false)}
                     />
                   )
                 ) : null}
