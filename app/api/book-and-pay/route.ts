@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { attributeShareConversion, getShareCookieCode } from "@/lib/growth/share-links";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant";
@@ -229,6 +230,7 @@ export async function POST(request: NextRequest) {
           stripePaymentId,
           status: initialStatus,
           purchasedAt,
+          shareRefCode: await getShareCookieCode(),
         },
       });
 
@@ -265,6 +267,20 @@ export async function POST(request: NextRequest) {
 
       return { userPackage: up, booking: bk };
     });
+
+    // No Stripe / free package → the purchase is final right now; paid ones
+    // convert when the webhook activates them (via shareRefCode).
+    if (!needsPayment) {
+      await attributeShareConversion({
+        tenantId: tenant.id,
+        code: await getShareCookieCode(),
+        kind: "purchase",
+        amount: pkg.price,
+        refType: "package",
+        refId: userPackage.id,
+        buyerUserId: finalUserId,
+      });
+    }
 
     await recognizeBookingSafe({
       userPackageId: userPackage.id,

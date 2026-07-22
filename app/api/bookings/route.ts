@@ -11,6 +11,7 @@ import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeFor
 import { checkSubscriptionBookingLimits, type BookingLimitFailure } from "@/lib/booking/limits";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { partnerLabel } from "@/lib/platforms/labels";
+import { attributeShareConversion, getShareCookieCode } from "@/lib/growth/share-links";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
@@ -696,6 +697,20 @@ export async function POST(request: NextRequest) {
 
     if (session?.user?.id) {
       removeSpotNotifyMe(classId, session.user.id);
+    }
+
+    // Share-link attribution: a booking is engagement even when no money moved
+    // (revenue attributes on the purchase itself). Fire-and-forget.
+    if (booking.userId) {
+      attributeShareConversion({
+        tenantId: tenant.id,
+        code: await getShareCookieCode(),
+        kind: "booking",
+        amount: 0,
+        refType: "booking",
+        refId: booking.id,
+        buyerUserId: booking.userId,
+      }).catch(() => {});
     }
 
     if (packageUsedId) {

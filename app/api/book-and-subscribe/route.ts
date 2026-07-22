@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant";
 import { createMemberSubscription } from "@/lib/stripe/subscriptions";
+import { attributeShareConversion, getShareCookieCode } from "@/lib/growth/share-links";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
 
@@ -105,13 +106,28 @@ export async function POST(request: NextRequest) {
       await prisma.memberSubscription.delete({ where: { id: existingSub.id } });
     }
 
+    const shareRefCode = await getShareCookieCode();
     const subscription = await createMemberSubscription({
       tenantId: tenant.id,
       userId: finalUserId,
       packageId,
+      shareRefCode,
     });
 
-    // No payment needed (e.g. a free/trial plan) — it's already active.
+    // Charged synchronously → the sale is real now; async/3DS cases convert
+    // in the webhook via the stashed shareRefCode.
+    if (subscription.status === "active") {
+      await attributeShareConversion({
+        tenantId: tenant.id,
+        code: shareRefCode,
+        kind: "purchase",
+        amount: pkg.price,
+        refType: "subscription",
+        refId: subscription.id,
+        buyerUserId: finalUserId,
+      });
+    }
+
     if (subscription.status === "active") {
       return NextResponse.json({ status: "active", subscriptionId: subscription.id });
     }

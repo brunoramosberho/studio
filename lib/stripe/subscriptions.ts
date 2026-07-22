@@ -57,11 +57,15 @@ export async function createMemberSubscription({
   userId,
   packageId,
   paymentMethodId,
+  shareRefCode,
 }: {
   tenantId: string;
   userId: string;
   packageId: string;
   paymentMethodId?: string;
+  /** Sharer's code from the buyer's cookie — only the CLIENT flow passes it
+   * (an admin-initiated sale would otherwise attribute the staff's cookie). */
+  shareRefCode?: string | null;
 }): Promise<Stripe.Subscription> {
   const tenant = await prisma.tenant.findUniqueOrThrow({
     where: { id: tenantId },
@@ -140,6 +144,7 @@ export async function createMemberSubscription({
       currentPeriodStart: new Date(periodStart * 1000),
       currentPeriodEnd: new Date(periodEnd * 1000),
       commitmentEndsAt,
+      shareRefCode: shareRefCode ?? null,
     },
   });
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { attributeShareConversion, getShareCookieCode } from "@/lib/growth/share-links";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireTenant } from "@/lib/tenant";
 import { createMemberPayment } from "@/lib/stripe/payments";
@@ -259,6 +260,9 @@ export async function POST(request: NextRequest) {
             stripePaymentId: "pending_stripe",
             status: "PENDING_PAYMENT",
             purchasedAt,
+            // Stash only — the conversion is credited when the webhook flips
+            // this ACTIVE, so an abandoned checkout never counts.
+            shareRefCode: await getShareCookieCode(),
           },
         });
 
@@ -369,6 +373,16 @@ export async function POST(request: NextRequest) {
     if (hasAllocations) {
       await createCreditUsagesForPackage(simPkg.id, pkg.id);
     }
+
+    await attributeShareConversion({
+      tenantId: tenant.id,
+      code: await getShareCookieCode(),
+      kind: "purchase",
+      amount: effectivePrice,
+      refType: "package",
+      refId: simPkg.id,
+      buyerUserId: finalUserId,
+    });
 
     // Record discount redemption for free/simulated path
     if (discountResult?.discountId) {

@@ -30,6 +30,7 @@ import {
   CalendarRange,
   Lightbulb,
   BarChart3,
+  Users,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -337,6 +338,206 @@ function QRModal({
         </button>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Ambassadors (member share links) ───────────────────
+
+interface AmbassadorRow {
+  membershipId: string;
+  userId: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  link: string | null;
+  clicks: number;
+  bookings: number;
+  purchases: number;
+  revenue: number;
+}
+
+interface AmbassadorsData {
+  rows: AmbassadorRow[];
+  totals: {
+    sharers: number;
+    clicks: number;
+    bookings: number;
+    purchases: number;
+    revenue: number;
+  };
+}
+
+function AmbassadorsTab() {
+  const tenantCurrency = useCurrency();
+  const { data, isLoading } = useQuery<AmbassadorsData>({
+    queryKey: ["ambassador-links"],
+    queryFn: () => fetch("/api/admin/growth/share-links").then((r) => r.json()),
+  });
+
+  // Lookup: get any client's link (even with zero activity yet).
+  const [lookupQ, setLookupQ] = useState("");
+  const [lookupResult, setLookupResult] = useState<{ name: string | null; link: string } | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const { data: searchResults = [] } = useQuery<
+    { id: string; name: string | null; email: string }[]
+  >({
+    queryKey: ["ambassador-search", lookupQ],
+    queryFn: () =>
+      fetch(`/api/admin/clients/search?q=${encodeURIComponent(lookupQ)}`).then((r) => r.json()),
+    enabled: lookupQ.trim().length >= 2,
+  });
+
+  async function fetchLinkFor(userId: string) {
+    setLookupLoading(true);
+    try {
+      const res = await fetch("/api/admin/growth/share-links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setLookupResult({ name: d.name, link: d.link });
+        setLookupQ("");
+      }
+    } finally {
+      setLookupLoading(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        {[...Array(5)].map((_, i) => (
+          <Skeleton key={i} className="h-14 rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
+  const rows = data?.rows ?? [];
+  const totals = data?.totals;
+
+  return (
+    <div className="space-y-5">
+      {/* Explainer */}
+      <div className="rounded-2xl border border-stone-200 bg-card p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#3730B8]/10">
+            <Users className="h-4.5 w-4.5 text-[#3730B8]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-stone-900">
+              Links de clientes
+            </h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
+              Cada cliente tiene un link personal para compartir el estudio (en
+              stories, con amigas, donde sea). Aquí ves quién lo mueve: clicks,
+              reservas y sobre todo compras atribuidas — los últimos 30 días de
+              cookie deciden a quién se le acredita cada compra.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Totals */}
+      {totals && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard label="Embajadores activos" value={totals.sharers} icon={Users} hint="Clientes cuyo link registró actividad" />
+          <StatCard label="Clicks" value={totals.clicks.toLocaleString()} icon={MousePointerClick} hint="Visitas que llegaron por links de clientes" />
+          <StatCard label="Compras" value={totals.purchases.toLocaleString()} icon={ShoppingBag} hint="Paquetes y suscripciones atribuidas" />
+          <StatCard label="Revenue" value={formatMoney(totals.revenue, tenantCurrency)} icon={DollarSign} hint="Ingresos generados por links de clientes" />
+        </div>
+      )}
+
+      {/* Get any client's link */}
+      <div className="rounded-2xl border border-stone-200 bg-card p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-400">
+          Obtener el link de un cliente
+        </p>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+          <input
+            value={lookupQ}
+            onChange={(e) => setLookupQ(e.target.value)}
+            placeholder="Buscar cliente por nombre o email..."
+            className="w-full rounded-xl border border-stone-200 bg-card py-2 pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400 focus:ring-1 focus:ring-stone-300"
+          />
+          {lookupQ.trim().length >= 2 && searchResults.length > 0 && (
+            <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-stone-200 bg-card shadow-lg">
+              {searchResults.slice(0, 8).map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => fetchLinkFor(r.id)}
+                  disabled={lookupLoading}
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-stone-50"
+                >
+                  <span className="truncate font-medium text-stone-800">{r.name ?? r.email}</span>
+                  <span className="ml-2 truncate text-xs text-stone-400">{r.email}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {lookupResult && (
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-stone-50 px-3 py-2">
+            <p className="min-w-0 flex-1">
+              <span className="block text-xs font-medium text-stone-700">{lookupResult.name}</span>
+              <span className="block truncate font-mono text-xs text-stone-400">{lookupResult.link}</span>
+            </p>
+            <CopyButton text={lookupResult.link} />
+          </div>
+        )}
+      </div>
+
+      {/* Leaderboard */}
+      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-card">
+        <SectionHeader label={`Ranking (${rows.length})`} />
+        {rows.length === 0 ? (
+          <div className="px-4 py-12 text-center">
+            <Users className="mx-auto mb-2 h-8 w-8 text-stone-300" />
+            <p className="text-sm font-medium text-stone-500">Aún no hay actividad</p>
+            <p className="mt-1 text-xs text-stone-400">
+              Comparte el link de un cliente (búscalo arriba) y cuando alguien
+              le dé click aparecerá aquí.
+            </p>
+          </div>
+        ) : (
+          rows.map((r, i) => (
+            <div
+              key={r.membershipId}
+              className="flex items-center gap-3 border-b border-stone-100 px-4 py-2.5 last:border-b-0"
+            >
+              <span className="w-5 shrink-0 text-right text-xs font-semibold tabular-nums text-stone-400">
+                {i + 1}
+              </span>
+              {r.image ? (
+                <img src={r.image} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-500">
+                  {(r.name ?? r.email)[0]?.toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-stone-900">{r.name ?? r.email}</p>
+                <p className="truncate text-xs text-stone-400">
+                  {r.clicks} clicks · {r.bookings} reservas · {r.purchases} compras
+                </p>
+              </div>
+              <span className="shrink-0 text-sm font-bold tabular-nums text-emerald-600">
+                {r.revenue > 0 ? formatMoney(r.revenue, tenantCurrency) : "—"}
+              </span>
+              {r.link && <CopyButton text={r.link} />}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1686,6 +1887,10 @@ export default function MarketingPage() {
             <MousePointerClick className="mr-1.5 h-3.5 w-3.5" />
             {t("utmGenerator")}
           </TabsTrigger>
+          <TabsTrigger value="ambassadors">
+            <Users className="mr-1.5 h-3.5 w-3.5" />
+            Embajadores
+          </TabsTrigger>
           <TabsTrigger value="pixels">
             <TrendingUp className="mr-1.5 h-3.5 w-3.5" />
             Pixels
@@ -1697,6 +1902,9 @@ export default function MarketingPage() {
         </TabsContent>
         <TabsContent value="utm">
           <UtmGeneratorTab initialDestination={utmDestination} />
+        </TabsContent>
+        <TabsContent value="ambassadors">
+          <AmbassadorsTab />
         </TabsContent>
         <TabsContent value="pixels">
           <PixelsTab />

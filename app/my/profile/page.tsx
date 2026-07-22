@@ -24,6 +24,8 @@ import {
   Users,
   X,
   Globe,
+  Link2,
+  Share,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -653,6 +655,11 @@ export default function ProfilePage() {
             </motion.div>
           );
         })()}
+
+        {/* Personal share link */}
+        <motion.div custom={3.2} variants={fadeUp} initial="hidden" animate="show">
+          <ShareLinkCard studioName={brand.studioName} accent={brand.colorAccent} />
+        </motion.div>
 
         {/* Quick actions */}
         <motion.div
@@ -1284,5 +1291,89 @@ function ReferralSheet({
         </>
       )}
     </AnimatePresence>
+  );
+}
+
+
+// ─── Personal share link ────────────────────────────────
+// Every member gets a tracked link (their referral code on /schedule). Shares
+// count clicks; purchases made by visitors carrying the link attribute to
+// them — the groundwork for rewards later.
+function ShareLinkCard({ studioName, accent }: { studioName: string; accent: string }) {
+  const t = useTranslations("member");
+  const [data, setData] = useState<{
+    link: string;
+    stats: { clicks: number; bookings: number; purchases: number };
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/me/share-link")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setData)
+      .catch(() => {});
+  }, []);
+
+  if (!data) return null;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(data.link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: studioName, url: data.link });
+        return;
+      } catch {}
+    }
+    handleCopy();
+  };
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card p-4">
+      <div className="flex items-center gap-2">
+        <div
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          style={{ background: `${accent}15` }}
+        >
+          <Link2 className="h-4 w-4" style={{ color: accent }} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-medium text-foreground">{t("shareLinkTitle")}</p>
+          <p className="truncate font-mono text-[11px] text-muted">{data.link}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={handleShare}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[0.98]"
+          style={{ backgroundColor: accent }}
+        >
+          <Share className="h-3.5 w-3.5" />
+          {t("shareLinkShare")}
+        </button>
+        <button
+          onClick={handleCopy}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-border/60 text-muted transition-colors active:bg-surface"
+          aria-label={t("shareLinkCopy")}
+        >
+          {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+        </button>
+      </div>
+      {(data.stats.clicks > 0 || data.stats.bookings > 0 || data.stats.purchases > 0) && (
+        <p className="mt-2.5 text-center text-[11px] text-muted">
+          {t("shareLinkStats", {
+            clicks: data.stats.clicks,
+            bookings: data.stats.bookings,
+            purchases: data.stats.purchases,
+          })}
+        </p>
+      )}
+    </div>
   );
 }

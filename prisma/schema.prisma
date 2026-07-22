@@ -125,11 +125,11 @@ model Tenant {
   // remains visible because it isn't tied to a specific class.
   hideCoachUntilClassEnds Boolean @default(false)
 
-  notifyEmailOnRequest    Boolean @default(true)
-  notifyPushOnRequest     Boolean @default(true)
-  notifyGapDetected       Boolean @default(true)
-  notifyWeeklySummary     Boolean @default(false)
-  notifyAutoRejectTimeout Boolean @default(false)
+  notifyEmailOnRequest     Boolean @default(true)
+  notifyPushOnRequest      Boolean @default(true)
+  notifyGapDetected        Boolean @default(true)
+  notifyWeeklySummary      Boolean @default(false)
+  notifyAutoRejectTimeout  Boolean @default(false)
   // When true, instructors get a reminder (email + push) for each class they
   // teach — one a day before and one an hour before. Dedupe lives on Class
   // (coachReminderDaySentAt / coachReminderHourSentAt).
@@ -188,17 +188,19 @@ model Tenant {
   platformBookings PlatformBooking[]
   platformAlerts   PlatformAlert[]
 
-  wellhubProducts       WellhubProduct[]
-  wellhubAdvanceConfig  WellhubAdvanceConfig?
-  wellhubAdvances       WellhubAdvance[]
-  wellhubUserLinks WellhubUserLink[]
+  wellhubProducts      WellhubProduct[]
+  wellhubAdvanceConfig WellhubAdvanceConfig?
+  wellhubAdvances      WellhubAdvance[]
+  wellhubUserLinks     WellhubUserLink[]
 
   waivers          Waiver[]
   waiverSignatures WaiverSignature[]
 
-  analyticsConfig TenantAnalyticsConfig?
-  linkClicks      LinkClick[]
-  linkConversions LinkConversion[]
+  analyticsConfig        TenantAnalyticsConfig?
+  linkClicks             LinkClick[]
+  linkConversions        LinkConversion[]
+  memberShareClicks      MemberShareClick[]
+  memberShareConversions MemberShareConversion[]
 
   referralConfig  ReferralConfig?
   referralRewards ReferralReward[]
@@ -280,9 +282,9 @@ model Tenant {
 /// with role=CLIENT). Eventually converted to a User when they pay or sign in;
 /// `convertedUserId` stamps the link so analytics can attribute the conversion.
 model Lead {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
   email           String
   name            String?
   phone           String?
@@ -296,8 +298,8 @@ model Lead {
   /// conversion.
   convertedUserId String?
   convertedAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @default(now()) @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -336,35 +338,35 @@ model ShopifyConfig {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // e.g. "mystore.myshopify.com" (no scheme, no trailing slash).
-  shopDomain String
+  shopDomain            String
   // Storefront API access token, encrypted before persisting.
-  storefrontAccessToken String @db.Text
+  storefrontAccessToken String  @db.Text
   // Shopify Dev Dashboard app credentials for the Admin API (client-credentials
   // grant). The POS exchanges these for a short-lived access token to read
   // per-location inventory and create orders. Optional — only set when the
   // studio wires up the in-studio POS. App scopes needed: read_products,
   // read_inventory, read_locations, write_orders, read_orders. The app must be
   // installed on this shop. (clientSecret is encrypted at rest.)
-  adminClientId     String?
-  adminClientSecret String? @db.Text
+  adminClientId         String?
+  adminClientSecret     String? @db.Text
   // The ".myshopify.com" domain the POS/Admin integration targets. Required for
   // the client-credentials token exchange and order creation, which only work
   // on the myshopify domain (shopDomain may be a vanity domain like a custom
   // store URL — accepted by the Storefront API but not by the Admin OAuth).
   // Falls back to shopDomain when null.
-  adminShopDomain   String?
+  adminShopDomain       String?
   // Reserved (legacy): an earlier design stored a static Admin API token here.
   // Superseded by the client-credentials flow above; kept nullable for safety.
-  adminAccessToken String? @db.Text
+  adminAccessToken      String? @db.Text
   // The Shopify location (GID, e.g. "gid://shopify/Location/123") whose
   // inventory the in-studio POS reads from and decrements on sale — the
   // "physical store" location. Null = POS Shopify integration not configured.
-  posLocationId   String?
+  posLocationId         String?
   // Human-readable name of the location above, for display in the admin UI.
-  posLocationName String?
+  posLocationName       String?
   // When false the connection is kept but the public shop falls back to the
   // native catalog (lets the studio pause Shopify without losing credentials).
-  isActive Boolean @default(true)
+  isActive              Boolean @default(true)
 
   // Diagnostics from the most recent live fetch / connection test.
   lastSyncedAt DateTime?
@@ -419,6 +421,9 @@ model Membership {
   referrals              Membership[] @relation("MemberReferrals")
 
   referralRewards ReferralReward[] @relation("MemberReferralRewards")
+
+  shareClicks      MemberShareClick[]
+  shareConversions MemberShareConversion[]
 
   staffShifts StaffShift[]
 
@@ -680,7 +685,7 @@ model CoachPayRate {
   currency        String           @default("MXN")
   classTypeId     String?
   classType       ClassType?       @relation(fields: [classTypeId], references: [id])
-  studioId        String?          // null = applies to any studio
+  studioId        String? // null = applies to any studio
   studio          Studio?          @relation(fields: [studioId], references: [id])
   occupancyTiers  Json?
   // How OCCUPANCY_TIER tiers match a class: "occupancy" compares the room fill
@@ -808,57 +813,57 @@ enum Level {
 }
 
 model Class {
-  id                   String                  @id @default(cuid())
-  classTypeId          String
-  classType            ClassType               @relation(fields: [classTypeId], references: [id])
-  coachId              String
-  coach                CoachProfile            @relation("ClassCurrentCoach", fields: [coachId], references: [id])
-  originalCoachId      String?
-  originalCoach        CoachProfile?           @relation("ClassOriginalCoach", fields: [originalCoachId], references: [id])
-  roomId               String
-  room                 Room                    @relation(fields: [roomId], references: [id])
-  tenantId             String
-  tenant               Tenant                  @relation(fields: [tenantId], references: [id])
-  startsAt             DateTime
-  endsAt               DateTime
-  status               ClassStatus             @default(SCHEDULED)
-  isRecurring          Boolean                 @default(false)
-  recurringId          String?
-  notes                String?
-  tag                  String?
+  id                      String                  @id @default(cuid())
+  classTypeId             String
+  classType               ClassType               @relation(fields: [classTypeId], references: [id])
+  coachId                 String
+  coach                   CoachProfile            @relation("ClassCurrentCoach", fields: [coachId], references: [id])
+  originalCoachId         String?
+  originalCoach           CoachProfile?           @relation("ClassOriginalCoach", fields: [originalCoachId], references: [id])
+  roomId                  String
+  room                    Room                    @relation(fields: [roomId], references: [id])
+  tenantId                String
+  tenant                  Tenant                  @relation(fields: [tenantId], references: [id])
+  startsAt                DateTime
+  endsAt                  DateTime
+  status                  ClassStatus             @default(SCHEDULED)
+  isRecurring             Boolean                 @default(false)
+  recurringId             String?
+  notes                   String?
+  tag                     String?
   // Snapshot of who was still on the waitlist when the class started (the live
   // entries are refunded + cleared at that point). Lets the check-in roster
   // show "was on the waitlist" for past classes. Shape: [{ userId, name, image }].
-  waitlistSnapshot     Json?
-  bookings             Booking[]
-  waitlist             Waitlist[]
-  spotNotifyMe         ClassNotifyMe[]
-  blockedSpots         BlockedSpot[]
-  songRequests         ClassSongRequest[]
-  songRequestsEnabled  Boolean                 @default(true)
+  waitlistSnapshot        Json?
+  bookings                Booking[]
+  waitlist                Waitlist[]
+  spotNotifyMe            ClassNotifyMe[]
+  blockedSpots            BlockedSpot[]
+  songRequests            ClassSongRequest[]
+  songRequestsEnabled     Boolean                 @default(true)
   // OR-list of rules describing who may suggest a song. Stored as JSON so
   // rules can carry payloads (level id, package ids) instead of being a flat
   // enum string. Shape: see `SongRequestRule` in `lib/song-rules.ts`.
-  songRequestRules     Json                    @default("[{\"type\":\"ALL\"}]")
-  playlistTracks       ClassPlaylistTrack[]
-  blockingNotes        String?
-  checkIns             CheckIn[]
-  coachPenalties       CoachPenalty[]
-  platformQuotas       SchedulePlatformQuota[]
-  platformBookings     PlatformBooking[]
-  ratings              ClassRating[]
-  ratingEmailSent      Boolean                 @default(false)
+  songRequestRules        Json                    @default("[{\"type\":\"ALL\"}]")
+  playlistTracks          ClassPlaylistTrack[]
+  blockingNotes           String?
+  checkIns                CheckIn[]
+  coachPenalties          CoachPenalty[]
+  platformQuotas          SchedulePlatformQuota[]
+  platformBookings        PlatformBooking[]
+  ratings                 ClassRating[]
+  ratingEmailSent         Boolean                 @default(false)
   // Dedupe for the instructor class reminders (see Tenant.notifyCoachClassReminder).
   coachReminderDaySentAt  DateTime?
   coachReminderHourSentAt DateTime?
-  entitlements         Entitlement[]
-  revenueEvents        RevenueEvent[]
-  substitutionRequests SubstitutionRequest[]   @relation("SubstitutionClass")
-  swapRequests         SubstitutionRequest[]   @relation("SubstitutionSwapWithClass")
+  entitlements            Entitlement[]
+  revenueEvents           RevenueEvent[]
+  substitutionRequests    SubstitutionRequest[]   @relation("SubstitutionClass")
+  swapRequests            SubstitutionRequest[]   @relation("SubstitutionSwapWithClass")
 
   // Wellhub Booking API mirror — wellhubSlotId is the Wellhub slot id for
   // this specific class occurrence. excluded = ClassType not mapped to Wellhub.
-  wellhubSlotId     Int?              @unique
+  wellhubSlotId        Int?              @unique
   // The Wellhub class-template (discipline) the current slot was created under.
   // A Wellhub slot is permanently tied to a template, so if the class's
   // ClassType changes we keep syncing the slot under THIS template (not the new
@@ -866,9 +871,9 @@ model Class {
   // the new discipline to the coach name instead. Null = same as the current
   // ClassType's template (legacy rows / never re-disciplined).
   wellhubClassIdSynced Int?
-  wellhubSyncStatus WellhubSyncStatus @default(excluded)
-  wellhubLastSyncAt DateTime?
-  wellhubLastError  String?
+  wellhubSyncStatus    WellhubSyncStatus @default(excluded)
+  wellhubLastSyncAt    DateTime?
+  wellhubLastError     String?
 
   @@index([startsAt])
   @@index([classTypeId])
@@ -1093,28 +1098,28 @@ enum PackageType {
 }
 
 model Package {
-  id                String      @id @default(cuid())
-  name              String
-  description       String?
-  type              PackageType @default(PACK)
-  credits           Int?
-  validDays         Int
-  price             Float
-  currency          String      @default("MXN")
-  isPromo           Boolean     @default(false)
-  isActive          Boolean     @default(true)
-  stripePriceId     String?
-  tenantId          String
-  tenant            Tenant      @relation(fields: [tenantId], references: [id])
-  countryId         String?
-  country           Country?    @relation(fields: [countryId], references: [id])
-  classTypes        ClassType[] @relation("PackageClassTypes")
-  recurringInterval String?
+  id                  String      @id @default(cuid())
+  name                String
+  description         String?
+  type                PackageType @default(PACK)
+  credits             Int?
+  validDays           Int
+  price               Float
+  currency            String      @default("MXN")
+  isPromo             Boolean     @default(false)
+  isActive            Boolean     @default(true)
+  stripePriceId       String?
+  tenantId            String
+  tenant              Tenant      @relation(fields: [tenantId], references: [id])
+  countryId           String?
+  country             Country?    @relation(fields: [countryId], references: [id])
+  classTypes          ClassType[] @relation("PackageClassTypes")
+  recurringInterval   String?
   // Minimum commitment for subscription packages: the member can't end the
   // subscription before this many months have elapsed (a requested cancellation
   // is scheduled to take effect at the commitment end instead). Null/0 = none.
   minCommitmentMonths Int?
-  sortOrder         Int         @default(0)
+  sortOrder           Int         @default(0)
 
   allowGuests         Boolean @default(false)
   maxGuestsPerBooking Int?
@@ -1202,6 +1207,8 @@ model MemberSubscription {
   pausedAt             DateTime?
   resumesAt            DateTime?
   canceledAt           DateTime?
+  // Sharer's referralCode captured at subscribe time; converted on first paid invoice.
+  shareRefCode         String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -1216,27 +1223,31 @@ model MemberSubscription {
 }
 
 model UserPackage {
-  id              String                   @id @default(cuid())
-  userId          String
-  user            User                     @relation(fields: [userId], references: [id])
-  packageId       String
-  package         Package                  @relation(fields: [packageId], references: [id])
-  tenantId        String
-  tenant          Tenant                   @relation(fields: [tenantId], references: [id])
-  creditsTotal    Int?
-  creditsUsed     Int                      @default(0)
-  expiresAt       DateTime
+  id                   String                   @id @default(cuid())
+  userId               String
+  user                 User                     @relation(fields: [userId], references: [id])
+  packageId            String
+  package              Package                  @relation(fields: [packageId], references: [id])
+  tenantId             String
+  tenant               Tenant                   @relation(fields: [tenantId], references: [id])
+  creditsTotal         Int?
+  creditsUsed          Int                      @default(0)
+  expiresAt            DateTime
   // Optional eligible-class date window stamped at purchase (e.g. from a promo
   // code). Credits can only book classes whose start falls within [from,until].
   eligibleClassesFrom  DateTime?
   eligibleClassesUntil DateTime?
-  stripePaymentId String?
-  status          UserPackageStatus        @default(ACTIVE)
-  revokedAt       DateTime?
-  revokedReason   String? // "payment_failed" | "chargeback" | "refund" | "manual"
-  purchasedAt     DateTime                 @default(now())
-  creditUsages    UserPackageCreditUsage[]
-  debts           Debt[]
+  stripePaymentId      String?
+  // Member share-link attribution: the sharer's referralCode captured from the
+  // visitor's cookie at purchase time. The conversion is recorded when the
+  // payment actually completes (webhook), so abandoned checkouts never count.
+  shareRefCode         String?
+  status               UserPackageStatus        @default(ACTIVE)
+  revokedAt            DateTime?
+  revokedReason        String? // "payment_failed" | "chargeback" | "refund" | "manual"
+  purchasedAt          DateTime                 @default(now())
+  creditUsages         UserPackageCreditUsage[]
+  debts                Debt[]
 
   @@index([userId])
   @@index([expiresAt])
@@ -1478,18 +1489,18 @@ model Like {
 }
 
 model Comment {
-  id          String    @id @default(cuid())
+  id          String        @id @default(cuid())
   userId      String
-  user        User      @relation("UserComments", fields: [userId], references: [id])
+  user        User          @relation("UserComments", fields: [userId], references: [id])
   feedEventId String
-  feedEvent   FeedEvent @relation(fields: [feedEventId], references: [id], onDelete: Cascade)
+  feedEvent   FeedEvent     @relation(fields: [feedEventId], references: [id], onDelete: Cascade)
   parentId    String? // null = root comment; set = reply (one level deep)
-  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies     Comment[] @relation("CommentReplies")
-  asStudio    Boolean   @default(false) // admin commented on behalf of the studio
+  parent      Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[]     @relation("CommentReplies")
+  asStudio    Boolean       @default(false) // admin commented on behalf of the studio
   body        String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
   likes       CommentLike[]
 
   @@index([feedEventId])
@@ -2180,39 +2191,39 @@ model PlatformBooking {
 // these tables are the ledger and source of truth for balances.
 
 enum WellhubAdvanceAccess {
-  disabled  // feature not granted (tenant sees "request access")
+  disabled // feature not granted (tenant sees "request access")
   requested // tenant asked for access; super-admin decides
-  enabled   // tenant can draw advances
+  enabled // tenant can draw advances
 }
 
 enum WellhubAdvanceStatus {
   requested // tenant asked for this draw
-  approved  // super-admin approved; transfer pending
-  paid      // net amount transferred to the studio
-  settled   // period closed: Wellhub paid, remainder transferred
-  rejected  // super-admin declined the draw (events are released)
+  approved // super-admin approved; transfer pending
+  paid // net amount transferred to the studio
+  settled // period closed: Wellhub paid, remainder transferred
+  rejected // super-admin declined the draw (events are released)
   cancelled // tenant withdrew the request (events are released)
 }
 
 /// Singleton-per-tenant advance configuration (super-admin managed).
 model WellhubAdvanceConfig {
-  id         String               @id @default(cuid())
-  tenantId   String               @unique
-  access     WellhubAdvanceAccess @default(disabled)
+  id              String               @id @default(cuid())
+  tenantId        String               @unique
+  access          WellhubAdvanceAccess @default(disabled)
   /// Fee withheld on the advanced gross, percent (e.g. 2.35).
-  feePercent Float                @default(2.35)
+  feePercent      Float                @default(2.35)
   /// VAT applied on the fee, percent (e.g. 16 MX, 21 ES).
-  vatPercent Float                @default(16)
+  vatPercent      Float                @default(16)
   // Where the studio receives the advance transfer. Checksum-validated
   // (lib/banking/validate.ts) before storage; required to request a draw.
-  payoutMethod  String?   // "iban" | "clabe"
-  payoutAccount String?   // normalized (no spaces, uppercase)
-  payoutHolder  String?   // account holder name
+  payoutMethod    String? // "iban" | "clabe"
+  payoutAccount   String? // normalized (no spaces, uppercase)
+  payoutHolder    String? // account holder name
   payoutUpdatedAt DateTime?
-  requestedAt DateTime?
-  enabledAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  requestedAt     DateTime?
+  enabledAt       DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 }
@@ -2254,8 +2265,8 @@ model WellhubAdvance {
   settledAt   DateTime?
   notes       String?
 
-  tenant           Tenant            @relation(fields: [tenantId], references: [id])
-  coveredBookings  PlatformBooking[]
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  coveredBookings PlatformBooking[]
 
   @@index([tenantId, period])
   @@index([status])
@@ -2588,6 +2599,41 @@ model LinkConversion {
   @@index([tenantId, createdAt])
 }
 
+// ── Member share links (growth): every client can share a personal tracked
+// link (their referralCode on any public URL). Clicks land here; purchases and
+// bookings made by visitors carrying the share cookie attribute to the sharer.
+
+model MemberShareClick {
+  id           String     @id @default(cuid())
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  path         String?
+  createdAt    DateTime   @default(now())
+
+  @@index([tenantId, membershipId])
+  @@index([tenantId, createdAt])
+}
+
+model MemberShareConversion {
+  id           String     @id @default(cuid())
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membershipId String // the sharer being credited
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  kind         String // "purchase" | "booking"
+  amount       Float      @default(0) // currency units, matches Package.price
+  refType      String? // "package" | "subscription" | "booking"
+  refId        String? // UserPackage / MemberSubscription / Booking id — idempotency key
+  buyerUserId  String?
+  createdAt    DateTime   @default(now())
+
+  @@index([tenantId, membershipId])
+  @@index([tenantId, createdAt])
+  @@index([refType, refId])
+}
+
 // ── Stripe Payments (Connect: student → studio) ──
 
 model StripePayment {
@@ -2795,29 +2841,29 @@ enum DiscountType {
 }
 
 model DiscountCode {
-  id             String       @id @default(cuid())
-  tenantId       String
-  code           String // e.g. "WELCOME20"
-  description    String?
-  type           DiscountType @default(PERCENTAGE)
-  value          Float // percentage (0-100) or fixed amount
-  currency       String? // required when type = FIXED_AMOUNT
-  maxUses        Int? // null = unlimited
-  usedCount      Int          @default(0)
-  maxUsesPerUser Int? // null = unlimited per user
-  minPurchase    Float? // minimum cart amount to apply
-  validFrom      DateTime     @default(now())
-  validUntil     DateTime? // null = no expiry
-  isActive       Boolean      @default(true)
-  packageIds     String[]     @default([]) // empty = applies to all packages
+  id                   String       @id @default(cuid())
+  tenantId             String
+  code                 String // e.g. "WELCOME20"
+  description          String?
+  type                 DiscountType @default(PERCENTAGE)
+  value                Float // percentage (0-100) or fixed amount
+  currency             String? // required when type = FIXED_AMOUNT
+  maxUses              Int? // null = unlimited
+  usedCount            Int          @default(0)
+  maxUsesPerUser       Int? // null = unlimited per user
+  minPurchase          Float? // minimum cart amount to apply
+  validFrom            DateTime     @default(now())
+  validUntil           DateTime? // null = no expiry
+  isActive             Boolean      @default(true)
+  packageIds           String[]     @default([]) // empty = applies to all packages
   // Optional eligible-class date window applied to the credit obtained with this
   // code: the resulting UserPackage is stamped with [from,until] so it can only
   // book classes in that range (e.g. a free class valid only one weekend).
   eligibleClassesFrom  DateTime?
   eligibleClassesUntil DateTime?
-  stripeCouponId String? // Stripe coupon id for syncing
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  stripeCouponId       String? // Stripe coupon id for syncing
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
   tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   redemptions DiscountRedemption[]

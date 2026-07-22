@@ -4,6 +4,7 @@ import { pushApplePassUpdate } from "@/lib/wallet/apns";
 import { currencySymbolFor } from "@/lib/currency";
 import { prisma } from "@/lib/db";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
+import { attributeShareConversion } from "@/lib/growth/share-links";
 import { createCreditUsagesForPackage, restoreCredit } from "@/lib/credits";
 import { computeDebtAmount } from "@/lib/billing/debt";
 import { getSubscriptionPeriod } from "@/lib/stripe/helpers";
@@ -234,6 +235,25 @@ export async function POST(request: NextRequest) {
           updateLifecycle(payment.memberId, payment.tenantId, "purchased").catch(
             (err) => console.error("Lifecycle update (purchased) failed:", err),
           );
+        }
+        // Member share-link attribution: the purchase route stashed the
+        // sharer's code on the package; now that the payment is real, credit it.
+        if (payment?.referenceId && (payment.type === "membership" || payment.type === "class")) {
+          const up = await prisma.userPackage.findUnique({
+            where: { id: payment.referenceId },
+            select: { id: true, userId: true, tenantId: true, shareRefCode: true },
+          });
+          if (up?.shareRefCode) {
+            await attributeShareConversion({
+              tenantId: up.tenantId,
+              code: up.shareRefCode,
+              kind: "purchase",
+              amount: payment.amount,
+              refType: "package",
+              refId: up.id,
+              buyerUserId: up.userId,
+            });
+          }
         }
         if (payment?.id) {
           import("@/lib/staff")
@@ -589,6 +609,20 @@ export async function POST(request: NextRequest) {
         updateLifecycle(memberSub.userId, memberSub.tenantId, "member").catch(
           (err) => console.error("Lifecycle update (member) failed:", err),
         );
+
+        // Share-link attribution: credit the sharer once, on the first paid
+        // invoice — renewals hit the idempotency guard and are no-ops.
+        if (memberSub.shareRefCode) {
+          await attributeShareConversion({
+            tenantId: memberSub.tenantId,
+            code: memberSub.shareRefCode,
+            kind: "purchase",
+            amount: memberSub.package.price,
+            refType: "subscription",
+            refId: memberSub.stripeSubscriptionId,
+            buyerUserId: memberSub.userId,
+          });
+        }
         break;
       }
 

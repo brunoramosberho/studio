@@ -62,5 +62,29 @@ export function UtmTracker() {
     }).catch(() => {});
   }, [pathname, searchParams]);
 
+  // Member share link (?ref=CODE): record the click server-side (which also
+  // sets the 30-day attribution cookie) and mirror the code to localStorage so
+  // the existing signup-referral flow works from ANY page, not just /install.
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (!ref) return;
+
+    try {
+      const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
+      localStorage.setItem("referral_code", ref);
+      localStorage.setItem("referral_expiry", expiry.toString());
+    } catch {}
+
+    const dedupeKey = `_mgic_share_${ref}`;
+    if (sessionStorage.getItem(dedupeKey)) return;
+    sessionStorage.setItem(dedupeKey, "1");
+
+    fetch("/api/share/click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: ref, path: pathname }),
+    }).catch(() => {});
+  }, [pathname, searchParams]);
+
   return null;
 }
