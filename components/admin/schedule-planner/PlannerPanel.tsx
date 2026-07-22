@@ -19,7 +19,7 @@ import { useSchedulePlanner, type PlannerMessage } from "@/hooks/useSchedulePlan
 import { MessageList } from "@/components/admin/MgicAI/MessageList";
 import { InputBar } from "@/components/admin/MgicAI/InputBar";
 import { ProposalReviewDialog } from "./ProposalReviewDialog";
-import { useMgicAI, type AiMessage } from "@/components/admin/MgicAI";
+import { type AiMessage } from "@/components/admin/MgicAI";
 
 interface Props {
   open: boolean;
@@ -46,7 +46,6 @@ const HEADER_HEIGHT = "calc(3.5rem + 4px)";
 export function PlannerPanel({ open, onOpenChange, seedMessage, onSeedConsumed }: Props) {
   const planner = useSchedulePlanner();
   const { studioName, colorAdmin } = useBranding();
-  const { setSuppressFab } = useMgicAI();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -102,13 +101,6 @@ export function PlannerPanel({ open, onOpenChange, seedMessage, onSeedConsumed }
   useEffect(() => {
     if (!open) setShowHistory(false);
   }, [open]);
-
-  // Hide the global Spark FAB while the planner is open — it sits at
-  // bottom-right and would overlap the planner's input bar.
-  useEffect(() => {
-    setSuppressFab(open);
-    return () => setSuppressFab(false);
-  }, [open, setSuppressFab]);
 
   // Auto-start a new conversation when opening with none active.
   // When a seed message is provided (Spark chat hand-off), start fresh and
