@@ -10,6 +10,7 @@ import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { shouldHideCoach } from "@/lib/coach";
 import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
 import { getPackagePurchaseLimitError } from "@/lib/packages/purchase-limit";
+import { findCrossStudioConflict, crossStudioConflictMessage } from "@/lib/booking-conflicts";
 
 export async function POST(request: NextRequest) {
   try {
@@ -164,6 +165,22 @@ export async function POST(request: NextRequest) {
         { error: "Ya tienes una reserva para esta clase" },
         { status: 409 },
       );
+    }
+
+    if (finalUserId) {
+      const crossStudio = await findCrossStudioConflict({
+        tenantId: tenant.id,
+        userId: finalUserId,
+        studioId: classData.room.studioId,
+        startsAt: classData.startsAt,
+        endsAt: classData.endsAt,
+      });
+      if (crossStudio) {
+        return NextResponse.json(
+          { error: crossStudioConflictMessage(crossStudio), crossStudioConflict: true },
+          { status: 409 },
+        );
+      }
     }
 
     if (finalUserId && (await userHasOpenDebt(finalUserId, tenant.id))) {

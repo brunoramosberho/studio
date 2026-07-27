@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/tenant";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
 import { findPackageForClass, deductCredit, userPackageIncludeForBooking, ensureSubscriptionUserPackages, annotateCancellingSubscriptions } from "@/lib/credits";
 import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
+import { findCrossStudioConflict, crossStudioConflictMessage } from "@/lib/booking-conflicts";
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,6 +81,23 @@ export async function POST(request: NextRequest) {
     if (existingEntry) {
       return NextResponse.json(
         { error: "Already on the waitlist for this class" },
+        { status: 409 },
+      );
+    }
+
+    // Joining a waitlist can auto-book on promotion, so the cross-studio
+    // travel-buffer rule applies here too — otherwise a promotion would
+    // create exactly the double booking the rule prevents.
+    const crossStudio = await findCrossStudioConflict({
+      tenantId: tenant.id,
+      userId: session.user.id,
+      studioId: classData.room.studioId,
+      startsAt: classData.startsAt,
+      endsAt: classData.endsAt,
+    });
+    if (crossStudio) {
+      return NextResponse.json(
+        { error: crossStudioConflictMessage(crossStudio), crossStudioConflict: true },
         { status: 409 },
       );
     }

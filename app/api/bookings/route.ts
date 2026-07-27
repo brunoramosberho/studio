@@ -15,6 +15,7 @@ import { attributeShareConversion, getShareCookieCode } from "@/lib/growth/share
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
+import { findCrossStudioConflict, crossStudioConflictMessage } from "@/lib/booking-conflicts";
 
 export async function GET(request: NextRequest) {
   try {
@@ -401,6 +402,20 @@ export async function POST(request: NextRequest) {
               : "You already have a booking for this class",
             ...(partner ? { platformBooking: true } : {}),
           },
+          { status: 409 },
+        );
+      }
+
+      const crossStudio = await findCrossStudioConflict({
+        tenantId: tenant.id,
+        userId: effectiveUserId,
+        studioId: classData.room.studioId,
+        startsAt: classData.startsAt,
+        endsAt: classData.endsAt,
+      });
+      if (crossStudio) {
+        return NextResponse.json(
+          { error: crossStudioConflictMessage(crossStudio), crossStudioConflict: true },
           { status: 409 },
         );
       }
