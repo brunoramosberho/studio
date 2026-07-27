@@ -449,7 +449,7 @@ function OccupancyList({
         {title}
       </p>
       <div className="space-y-2">
-        {rows.slice(0, 6).map((r) => (
+        {rows.slice(0, 10).map((r) => (
           <div key={r.name} className="flex items-center gap-2.5">
             <span className="w-28 shrink-0 truncate text-xs font-medium text-foreground/80">
               {r.name}

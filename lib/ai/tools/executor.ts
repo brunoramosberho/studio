@@ -157,15 +157,17 @@ async function getStudioOverview(
     wellhub,
     wellhubPrev,
   ] = await Promise.all([
+    // Fill metrics use FINISHED classes only — a future class is still filling
+    // (often not even open to book), so counting it fakes emptiness.
     prisma.class.findMany({
-      where: { tenantId, startsAt: { gte: since }, status: { not: "CANCELLED" } },
+      where: { tenantId, startsAt: { gte: since }, endsAt: { lte: now }, status: { not: "CANCELLED" } },
       include: {
         room: { select: { maxCapacity: true } },
         _count: { select: { bookings: { where: { status: confirmedOrAttended } } } },
       },
     }),
     prisma.class.findMany({
-      where: { tenantId, startsAt: { gte: prevSince, lt: since }, status: { not: "CANCELLED" } },
+      where: { tenantId, startsAt: { gte: prevSince, lt: since }, endsAt: { lte: now }, status: { not: "CANCELLED" } },
       include: {
         room: { select: { maxCapacity: true } },
         _count: { select: { bookings: { where: { status: confirmedOrAttended } } } },
@@ -242,6 +244,10 @@ async function getClassStats(
   const where: Record<string, unknown> = {
     tenantId,
     startsAt: { gte: since },
+    // Finished classes only: future ones are still filling and would drag
+    // every fill-rate down. Cancelled ones stay IN the result set (they feed
+    // the cancellations metric) but OUT of the fill math below.
+    endsAt: { lte: new Date() },
   };
   if (input.coach_id) where.coachId = input.coach_id;
 
@@ -298,11 +304,14 @@ async function getClassStats(
       cancellations: 0,
       total_waitlist: 0,
     };
-    existing.class_count++;
-    existing.total_bookings += c._count.bookings;
-    existing.total_capacity += c.room.maxCapacity;
-    if (c.status === "CANCELLED") existing.cancellations++;
-    existing.total_waitlist += c._count.waitlist;
+    if (c.status === "CANCELLED") {
+      existing.cancellations++;
+    } else {
+      existing.class_count++;
+      existing.total_bookings += c._count.bookings;
+      existing.total_capacity += c.room.maxCapacity;
+      existing.total_waitlist += c._count.waitlist;
+    }
     groups.set(key, existing);
   }
 
@@ -334,7 +343,8 @@ async function getCoachPerformance(
     include: {
       user: { select: { name: true, image: true } },
       classes: {
-        where: { startsAt: { gte: since } },
+        // Finished classes only — same rule as the dashboard occupancy KPI.
+        where: { startsAt: { gte: since }, endsAt: { lte: new Date() } },
         include: {
           room: { select: { maxCapacity: true } },
           _count: {
