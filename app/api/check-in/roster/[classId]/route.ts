@@ -81,8 +81,12 @@ export async function GET(
             birthday: true,
             createdAt: true,
             packages: {
+              // Only ACTIVE packs are usable — a PENDING_PAYMENT (abandoned
+              // checkout), REVOKED, PAYMENT_FAILED or DISPUTED pack must never
+              // surface as the member's package on the roster.
               where: {
                 tenantId: ctx.tenant.id,
+                status: "ACTIVE",
                 expiresAt: { gte: new Date() },
               },
               include: { package: { select: { name: true, type: true, credits: true } } },
@@ -109,6 +113,27 @@ export async function GET(
       select: { memberId: true, status: true, method: true, createdAt: true },
     });
     const checkInMap = new Map(checkIns.map((ci) => [ci.memberId, ci]));
+
+    // The package each booking actually consumed (Booking.packageUsed is a plain
+    // UserPackage id, no relation). We prefer THIS over "best active package" so
+    // the roster shows the pack the member reserved the class with — not just
+    // whichever of their packs has the most credits left.
+    const usedPkgIds = [
+      ...new Set(bookings.map((b) => b.packageUsed).filter((x): x is string => !!x)),
+    ];
+    const usedPackages = usedPkgIds.length > 0
+      ? await prisma.userPackage.findMany({
+          where: { id: { in: usedPkgIds }, tenantId: ctx.tenant.id },
+          select: {
+            id: true,
+            creditsUsed: true,
+            expiresAt: true,
+            status: true,
+            package: { select: { name: true, type: true, credits: true } },
+          },
+        })
+      : [];
+    const usedPkgMap = new Map(usedPackages.map((p) => [p.id, p]));
 
     // Compute attendee stats (same logic as /api/classes/[id])
     const userIds = bookings.filter((b) => b.user).map((b) => b.user!.id);
@@ -240,8 +265,13 @@ export async function GET(
         const user = b.user!;
         const ci = checkInMap.get(user.id) ?? null;
 
-        // Pick best package: unlimited first, then most remaining credits
-        const activePackage = pickBestPackage(user.packages);
+        // The package this class was reserved with wins — that's what the front
+        // desk cares about. Fall back to the member's best ACTIVE package only
+        // when the booking didn't record one (e.g. unlimited subs or legacy
+        // bookings). pickBestPackage now only sees ACTIVE packs, so a pending/
+        // abandoned pack can never be shown here.
+        const bookedWith = b.packageUsed ? usedPkgMap.get(b.packageUsed) : null;
+        const activePackage = bookedWith ?? pickBestPackage(user.packages);
 
         const nameParts = (user.name ?? "").trim().split(/\s+/);
         const initials = nameParts.length >= 2
