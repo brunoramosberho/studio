@@ -295,12 +295,14 @@ function buildPayload(form: FormState) {
     maxGuestsPerBooking: maxGuestsPerBooking != null && !Number.isNaN(maxGuestsPerBooking) ? maxGuestsPerBooking : null,
     monthlyGuestPasses: monthlyGuestPasses != null && !Number.isNaN(monthlyGuestPasses) ? monthlyGuestPasses : null,
     includesOnDemand: form.type === "SUBSCRIPTION" ? form.includesOnDemand : false,
+    // Usage limits apply to any bookable package (not just subscriptions);
+    // on-demand subs can't book classes, so limits are meaningless there.
     maxBookingsPerDay:
-      form.type === "SUBSCRIPTION" && form.maxBookingsPerDay.trim() !== ""
+      form.type !== "ON_DEMAND_SUBSCRIPTION" && form.maxBookingsPerDay.trim() !== ""
         ? parseInt(form.maxBookingsPerDay, 10)
         : null,
     maxConcurrentUpcomingBookings:
-      form.type === "SUBSCRIPTION" && form.maxConcurrentUpcomingBookings.trim() !== ""
+      form.type !== "ON_DEMAND_SUBSCRIPTION" && form.maxConcurrentUpcomingBookings.trim() !== ""
         ? parseInt(form.maxConcurrentUpcomingBookings, 10)
         : null,
     maxPurchasesPerCustomer:
@@ -1017,11 +1019,13 @@ export default function AdminPackagesPage() {
               </div>
             ) : null}
 
-            {form.type === "SUBSCRIPTION" ? (
+            {form.type !== "ON_DEMAND_SUBSCRIPTION" ? (
               <div className="space-y-3 rounded-xl border border-input-border/60 bg-surface/50 p-3">
                 <p className="text-sm font-medium">Límites de uso</p>
                 <p className="text-xs text-muted">
-                  Opcionales. Útiles en planes ilimitados para evitar uso excesivo sin perder el gancho de &quot;ilimitado&quot;.
+                  Opcionales. Aplican a las reservas hechas con este{" "}
+                  {form.type === "SUBSCRIPTION" ? "plan" : "paquete"} — evitan uso
+                  excesivo o acaparar lugares.
                 </p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>

@@ -215,9 +215,9 @@ export async function POST(request: NextRequest) {
     if (!visibilityDays.ok) {
       return NextResponse.json({ error: `scheduleVisibilityDaysAhead ${visibilityDays.error}` }, { status: 400 });
     }
-    // Limits only make sense for SUBSCRIPTION packages — strip them on other types
-    // so the form doesn't accidentally persist leftover values.
-    const isSubscription = pkgType === PackageType.SUBSCRIPTION;
+    // Usage limits apply to any bookable package type; only on-demand subs
+    // (streaming-only, can't book classes) strip them.
+    const isBookable = pkgType !== PackageType.ON_DEMAND_SUBSCRIPTION;
     // Minimum commitment applies to both recurring subscription kinds.
     const isRecurringSub =
       pkgType === PackageType.SUBSCRIPTION ||
@@ -255,8 +255,8 @@ export async function POST(request: NextRequest) {
         noShowFeeCents: body.noShowFeeCents != null && !Number.isNaN(Number(body.noShowFeeCents)) ? Math.round(Number(body.noShowFeeCents)) : null,
         includesOnDemand:
           pkgType === PackageType.SUBSCRIPTION ? Boolean(body.includesOnDemand) : false,
-        maxBookingsPerDay: isSubscription ? dayLimit.v : null,
-        maxConcurrentUpcomingBookings: isSubscription ? concurrentLimit.v : null,
+        maxBookingsPerDay: isBookable ? dayLimit.v : null,
+        maxConcurrentUpcomingBookings: isBookable ? concurrentLimit.v : null,
         maxPurchasesPerCustomer: perCustomerLimit.v,
         minCommitmentMonths: isRecurringSub ? commitmentMonths.v : null,
         scheduleVisibilityDaysAhead:
