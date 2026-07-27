@@ -24,11 +24,23 @@ import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
  * A coach is "eligible" to substitute on a class when:
  *  - They are not the requesting coach
  *  - They have a linked User (so we can notify them)
- *  - Their specialties include the class's discipline (ClassType name)
  *  - The slot status at the class's studio is preferred/ok_if_needed
  *    (or the coach has no availability defined yet, treated as available)
  *  - They don't already teach an overlapping class
+ *
+ * Specialties are advisory, never a hard gate: an empty list means "no
+ * restriction declared" (the coach can cover anything), and a declared list
+ * that lacks the class's discipline is surfaced as a flag + lower sort so the
+ * requesting coach and the approving admin can judge — mirroring the swap flow.
  */
+
+/** Empty specialties = no restriction declared → covers any discipline. */
+function coversDiscipline(specialties: string[], discipline: string): boolean {
+  return (
+    specialties.length === 0 ||
+    specialties.some((s) => s.toLowerCase() === discipline.toLowerCase())
+  );
+}
 export interface EligibleCoach {
   coachProfileId: string;
   userId: string;
@@ -151,9 +163,7 @@ export async function getEligibleCoaches(
     const available = hasAnyAvailability
       ? slotStatus === "preferred" || slotStatus === "ok_if_needed"
       : slotStatus !== "time_off";
-    const hasDiscipline = p.specialties.some(
-      (s) => s.toLowerCase() === discipline,
-    );
+    const hasDiscipline = coversDiscipline(p.specialties, discipline);
     const hasConflict = conflictByCoach.has(p.id);
 
     return {
@@ -192,18 +202,20 @@ export async function getEligibleCoaches(
 }
 
 /**
- * Coaches that should be notified when an OPEN request is created. Filters
- * out coaches with hard conflicts (they can't physically take it) and those
- * without the discipline (they're not allowed to take it per requirement #3).
+ * Coaches that should be notified when an OPEN request is created. Only hard
+ * conflicts (already teaching at that time) are excluded — discipline is
+ * advisory, so everyone else hears about it and can step up.
  */
 export function pickNotifiableCandidates(
   candidates: EligibleCoach[],
 ): EligibleCoach[] {
-  return candidates.filter((c) => !c.hasConflict && c.hasDiscipline);
+  return candidates.filter((c) => !c.hasConflict);
 }
 
 /**
- * Verify a coach can take a class — used at accept-time as the gate.
+ * Verify a coach can take a class — used at accept-time as the gate. Only
+ * physical impossibilities block (missing class/coach, overlapping class);
+ * specialties are advisory and never prevent accepting.
  * Returns null if eligible, otherwise a human-readable reason.
  */
 export async function checkCoachCanTakeClass(
@@ -213,7 +225,6 @@ export async function checkCoachCanTakeClass(
 ): Promise<string | null> {
   const cls = await prisma.class.findFirst({
     where: { id: classId, tenantId },
-    include: { classType: { select: { name: true } } },
   });
   if (!cls) return "La clase no existe.";
   if (cls.coachId === coachProfileId)
@@ -223,13 +234,6 @@ export async function checkCoachCanTakeClass(
     where: { id: coachProfileId, tenantId },
   });
   if (!profile) return "Instructor no encontrado.";
-
-  const discipline = cls.classType.name.toLowerCase();
-  const hasDiscipline = profile.specialties.some(
-    (s) => s.toLowerCase() === discipline,
-  );
-  if (!hasDiscipline)
-    return `No tienes "${cls.classType.name}" entre tus especialidades.`;
 
   const conflict = await prisma.class.findFirst({
     where: {
@@ -681,11 +685,13 @@ export async function getSwapCandidates(
     if (sourceConflictAtCandidate) continue;
 
     // Discipline checks both ways — surfaced as flags, not filters.
-    const theyCanTeachYours = b.coach.specialties.some(
-      (s) => s.toLowerCase() === sourceDiscipline,
+    const theyCanTeachYours = coversDiscipline(
+      b.coach.specialties,
+      sourceDiscipline,
     );
-    const youCanTeachTheirs = cls.coach.specialties.some(
-      (s) => s.toLowerCase() === b.classType.name.toLowerCase(),
+    const youCanTeachTheirs = coversDiscipline(
+      cls.coach.specialties,
+      b.classType.name,
     );
 
     // The other coach's availability at A's slot.

@@ -453,9 +453,10 @@ export async function getSubstituteSuggestions(
     const treatAsAvailable = hasAnyAvailabilityBlock
       ? slotStatus === "preferred" || slotStatus === "ok_if_needed"
       : slotStatus !== "time_off";
-    const hasDiscipline = p.specialties.some(
-      (s) => s.toLowerCase() === discipline,
-    );
+    // Empty specialties = no restriction declared → can cover any discipline.
+    const hasDiscipline =
+      p.specialties.length === 0 ||
+      p.specialties.some((s) => s.toLowerCase() === discipline);
     const weekLoad = classCountByProfile[p.id] || 0;
 
     return {

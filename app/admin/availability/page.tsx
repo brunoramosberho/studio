@@ -1561,9 +1561,12 @@ function HourlyTab() {
   const searchResult = useMemo(() => {
     if (!data || filterDiscipline === null || filterHour === null) return null;
     const matching = data.coaches.filter((c) => {
-      const hasDiscipline = c.disciplines.some(
-        (s) => s.toLowerCase() === filterDiscipline!.toLowerCase(),
-      );
+      // Empty specialties = no restriction declared → matches any discipline.
+      const hasDiscipline =
+        c.disciplines.length === 0 ||
+        c.disciplines.some(
+          (s) => s.toLowerCase() === filterDiscipline!.toLowerCase(),
+        );
       if (!hasDiscipline) return false;
       const slot = c.slots.find((s) => s.hour === filterHour);
       return slot && slot.status === "available";
