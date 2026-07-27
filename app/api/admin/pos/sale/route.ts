@@ -8,6 +8,7 @@ import {
   createCreditUsagesForPackage,
   userPackageIncludeForBooking,
   ensureSubscriptionUserPackages,
+  annotateCancellingSubscriptions,
 } from "@/lib/credits";
 import { sendPosReceiptEmail, getTenantBaseUrl } from "@/lib/email";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
@@ -292,6 +293,7 @@ export async function POST(request: NextRequest) {
           orderBy: { expiresAt: "asc" },
         });
 
+        await annotateCancellingSubscriptions(tenantId, customerId, userPackages);
         const userPackage = findPackageForClass(
           userPackages,
           classData.classTypeId,

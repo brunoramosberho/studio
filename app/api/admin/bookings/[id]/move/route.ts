@@ -6,6 +6,7 @@ import {
   restoreCredit,
   findPackageForClass,
   userPackageIncludeForBooking,
+  annotateCancellingSubscriptions,
 } from "@/lib/credits";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { sendBookingMoved } from "@/lib/email";
@@ -220,6 +221,7 @@ export async function POST(
         include: userPackageIncludeForBooking,
         orderBy: { expiresAt: "asc" },
       });
+      await annotateCancellingSubscriptions(ctx.tenant.id, booking.userId, userPackages);
       const pkg = findPackageForClass(
         userPackages,
         target.classTypeId,

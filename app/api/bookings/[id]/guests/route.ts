@@ -8,6 +8,7 @@ import {
   restoreCredit,
   userPackageIncludeForBooking,
   ensureSubscriptionUserPackages,
+  annotateCancellingSubscriptions,
 } from "@/lib/credits";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
 import { shouldHideCoach } from "@/lib/coach";
@@ -187,6 +188,8 @@ export async function POST(
       },
       orderBy: { expiresAt: "asc" },
     });
+
+    await annotateCancellingSubscriptions(tenant.id, session.user.id, userPackages);
 
     const classTypeId = classData.classTypeId;
     const userPackage = findPackageForClass(

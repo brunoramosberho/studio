@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/tenant";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
-import { findPackageForClass, deductCredit, userPackageIncludeForBooking, ensureSubscriptionUserPackages } from "@/lib/credits";
+import { findPackageForClass, deductCredit, userPackageIncludeForBooking, ensureSubscriptionUserPackages, annotateCancellingSubscriptions } from "@/lib/credits";
 import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
 
 export async function POST(request: NextRequest) {
@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
     });
 
     const classTypeId = classData.classTypeId;
+    await annotateCancellingSubscriptions(tenant.id, session.user.id, userPackages);
     const userPackage = findPackageForClass(userPackages, classTypeId, packageId, classData.startsAt);
 
     if (!userPackage) {

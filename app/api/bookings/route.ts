@@ -7,7 +7,7 @@ import { sendBookingConfirmation, getTenantBaseUrl } from "@/lib/email";
 import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { removeSpotNotifyMe } from "@/lib/waitlist";
-import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeForBooking, classWithinPackageWindow, packageCoversClassType, ensureSubscriptionUserPackages } from "@/lib/credits";
+import { findPackageForClass, deductCredit, restoreCredit, userPackageIncludeForBooking, classWithinPackageWindow, packageCoversClassType, ensureSubscriptionUserPackages, annotateCancellingSubscriptions } from "@/lib/credits";
 import { checkSubscriptionBookingLimits, type BookingLimitFailure } from "@/lib/booking/limits";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { partnerLabel } from "@/lib/platforms/labels";
@@ -513,27 +513,62 @@ export async function POST(request: NextRequest) {
         orderBy: { expiresAt: "asc" },
       });
 
+      const bookablePackages = await annotateCancellingSubscriptions(
+        tenant.id,
+        session.user.id,
+        userPackages,
+      );
+
       const classTypeId = classData.classTypeId;
-      const userPackage = findPackageForClass(userPackages, classTypeId, packageId, classData.startsAt);
+      const userPackage = findPackageForClass(bookablePackages, classTypeId, packageId, classData.startsAt);
 
       if (!userPackage) {
         // A credit may exist but be limited to a specific class-date window
         // (e.g. a free-class promo). Surface that clearly instead of a generic
         // "no credits" message.
-        const restricted = userPackages.find(
+        const restricted = bookablePackages.find(
           (p) =>
             packageCoversClassType(p, classTypeId) &&
             !classWithinPackageWindow(p, classData.startsAt),
         );
         if (restricted) {
-          const from = restricted.eligibleClassesFrom ?? restricted.package.eligibleClassesFrom;
-          const until = restricted.eligibleClassesUntil ?? restricted.package.eligibleClassesUntil;
-          const fmt = (d: Date) =>
+          const fmtDate = (d: Date) =>
             new Intl.DateTimeFormat("es-ES", {
               day: "numeric",
               month: "long",
               timeZone: studioTimezone,
             }).format(d);
+
+          // A cancelled/cancelling subscription doesn't renew — no seats in
+          // classes dated after its final day.
+          if (
+            restricted.subscriptionCancelsAt &&
+            classData.startsAt > restricted.subscriptionCancelsAt
+          ) {
+            return NextResponse.json(
+              {
+                error: `Tu membresía termina el ${fmtDate(restricted.subscriptionCancelsAt)} y esta clase es el ${fmtDate(classData.startsAt)}. Reactívala para poder reservarla.`,
+                packageExpiresBeforeClass: true,
+              },
+              { status: 402 },
+            );
+          }
+
+          // The pack expires before the class date — the credit exists but the
+          // membership won't cover a class that far out.
+          if (classData.startsAt > restricted.expiresAt) {
+            return NextResponse.json(
+              {
+                error: `Tus créditos expiran el ${fmtDate(restricted.expiresAt)} y esta clase es el ${fmtDate(classData.startsAt)}. Renueva tu paquete para poder reservarla.`,
+                packageExpiresBeforeClass: true,
+              },
+              { status: 402 },
+            );
+          }
+
+          const from = restricted.eligibleClassesFrom ?? restricted.package.eligibleClassesFrom;
+          const until = restricted.eligibleClassesUntil ?? restricted.package.eligibleClassesUntil;
+          const fmt = fmtDate;
           const range =
             from && until
               ? `del ${fmt(from)} al ${fmt(until)}`

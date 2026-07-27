@@ -11,7 +11,14 @@ export interface UserPackageForBooking {
   expiresAt: Date;
   eligibleClassesFrom: Date | null;
   eligibleClassesUntil: Date | null;
+  /**
+   * Set by annotateCancellingSubscriptions: the date this pack's subscription
+   * actually ends because it will NOT renew (cancelled / cancel requested).
+   * Null/undefined = renewing normally.
+   */
+  subscriptionCancelsAt?: Date | null;
   package: {
+    type: string;
     classTypes: { id: string }[];
     creditAllocations: { classTypeId: string }[];
     maxBookingsPerDay: number | null;
@@ -68,6 +75,20 @@ export function classWithinPackageWindow(
   pkg: UserPackageForBooking,
   classStartsAt: Date,
 ): boolean {
+  // Credit packs can't book classes dated past their own expiry — otherwise a
+  // credit consumed while valid books a class the membership no longer covers
+  // (booked the 21st, pack dies the 23rd, class on the 25th). Subscription
+  // period-packages are exempt: they renew every cycle, and blocking would stop
+  // an unlimited member from booking beyond the current billing period.
+  const isSubscription = pkg.package.type.includes("SUBSCRIPTION");
+  if (!isSubscription && classStartsAt > pkg.expiresAt) {
+    return false;
+  }
+  // …but a subscription that is set to END (cancelled / cancel requested) does
+  // NOT renew, so it loses the exemption: no booking past its final day.
+  if (isSubscription && pkg.subscriptionCancelsAt && classStartsAt > pkg.subscriptionCancelsAt) {
+    return false;
+  }
   // Window stamped on the credit itself (e.g. from a promo-code redemption).
   if (pkg.eligibleClassesFrom && classStartsAt < pkg.eligibleClassesFrom) return false;
   if (pkg.eligibleClassesUntil && classStartsAt > pkg.eligibleClassesUntil) return false;
@@ -111,6 +132,52 @@ function packageCanBook(
  * (sorted by expiresAt asc — caller should pre-sort). When `classStartsAt` is
  * passed, packages whose eligible-class window excludes that date are skipped.
  */
+/**
+ * Mark subscription-backed packs whose subscription will NOT renew with the
+ * date it actually ends, so the booking window check can refuse classes dated
+ * past that day. A member on a cancelling All-In shouldn't hold seats in
+ * classes their membership won't cover.
+ */
+export async function annotateCancellingSubscriptions<
+  T extends UserPackageForBooking & { packageId: string },
+>(
+  tenantId: string,
+  userId: string,
+  packs: T[],
+): Promise<(T & { subscriptionCancelsAt?: Date | null })[]> {
+  const subPacks = packs.filter((p) => p.package.type.includes("SUBSCRIPTION"));
+  if (subPacks.length === 0) return packs;
+
+  const subs = await prisma.memberSubscription.findMany({
+    where: { tenantId, userId, packageId: { in: subPacks.map((p) => p.packageId) } },
+    select: {
+      packageId: true,
+      status: true,
+      cancelAtPeriodEnd: true,
+      cancelRequested: true,
+      commitmentEndsAt: true,
+      currentPeriodEnd: true,
+    },
+  });
+
+  const endByPackage = new Map<string, Date>();
+  for (const s of subs) {
+    const ending =
+      s.status === "canceled" || s.cancelAtPeriodEnd || s.cancelRequested;
+    if (!ending) continue;
+    const end =
+      s.cancelRequested && s.commitmentEndsAt ? s.commitmentEndsAt : s.currentPeriodEnd;
+    endByPackage.set(s.packageId, end);
+  }
+  if (endByPackage.size === 0) return packs;
+
+  for (const p of subPacks) {
+    const end = endByPackage.get(p.packageId);
+    if (end) p.subscriptionCancelsAt = end;
+  }
+  return packs;
+}
+
 export function findPackageForClass(
   userPackages: UserPackageForBooking[],
   classTypeId: string,
