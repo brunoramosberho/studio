@@ -260,6 +260,10 @@ export async function processCheckinWebhook(
   const checkinAt = new Date(data.timestamp * 1000);
   const resolution = await resolveCheckinToClass({
     tenantId: tenant.tenantId,
+    // Multi-location: the gym id names a specific studio — only match classes
+    // at THAT location (a check-in at Interlomas must never resolve to a
+    // Santa Fe class). Null for single-location tenants → tenant-wide.
+    studioId: tenant.studioId,
     uniqueToken: data.user.unique_token,
     gymId: data.gym.id,
     productId: data.gym.product?.id ?? null,
@@ -289,6 +293,8 @@ export async function processCheckinWebhook(
  */
 async function resolveCheckinToClass(args: {
   tenantId: string;
+  /** Scope matching to one location (multi-gym tenants); null = tenant-wide. */
+  studioId: string | null;
   uniqueToken: string;
   gymId: number;
   productId: number | null;
@@ -297,6 +303,9 @@ async function resolveCheckinToClass(args: {
   const { pickClosestClass } = await import("./checkin-match");
   const { syncCompanionStatus } = await import("./bookings");
 
+  // Location filter applied to every class lookup below.
+  const studioScope = args.studioId ? { room: { studioId: args.studioId } } : {};
+
   // ── Path 1: existing reservation ────────────────────────────────────────
   const reservations = await prisma.platformBooking.findMany({
     where: {
@@ -304,6 +313,7 @@ async function resolveCheckinToClass(args: {
       platform: "wellhub",
       wellhubUserUniqueToken: args.uniqueToken,
       status: { in: ["confirmed", "pending_confirmation"] },
+      ...(args.studioId ? { class: { room: { studioId: args.studioId } } } : {}),
     },
     select: { id: true, class: { select: { id: true, startsAt: true, endsAt: true } } },
   });
@@ -336,6 +346,7 @@ async function resolveCheckinToClass(args: {
       tenantId: args.tenantId,
       status: "SCHEDULED",
       startsAt: { gte: windowStart, lte: windowEnd },
+      ...studioScope,
       ...(args.productId
         ? { classType: { wellhubProductId: args.productId } }
         : { classType: { wellhubProductId: { not: null } } }),
@@ -357,6 +368,7 @@ async function resolveCheckinToClass(args: {
         tenantId: args.tenantId,
         status: "SCHEDULED",
         startsAt: { gte: windowStart, lte: windowEnd },
+        ...studioScope,
         classType: { wellhubProductId: { not: null } },
       },
       select: { id: true, startsAt: true, endsAt: true },

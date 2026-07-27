@@ -97,8 +97,14 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
   if (!ctx.tenantConfig || ctx.tenantConfig.wellhubMode !== "api") {
     return await markStatus(classId, "excluded", "wellhub_disabled_for_tenant");
   }
-  if (!ctx.tenantConfig.wellhubGymId) {
-    return await markStatus(classId, "excluded", "tenant_missing_gym_id");
+  if (!ctx.gymId) {
+    // Either the tenant has no gym configured at all, or it runs per-studio
+    // gyms and this class's studio isn't mapped — don't sync to a wrong gym.
+    return await markStatus(
+      classId,
+      "excluded",
+      ctx.tenantConfig.wellhubGymId ? "studio_not_on_wellhub" : "tenant_missing_gym_id",
+    );
   }
   if (!ctx.classType.wellhubProductId) {
     return await markStatus(classId, "excluded", "classtype_missing_product");
@@ -143,12 +149,18 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
     return await markStatus(classId, "excluded", "no_quota_for_wellhub");
   }
 
-  const gymId = ctx.tenantConfig.wellhubGymId;
+  const gymId = ctx.gymId;
   const token = await getWellhubTokenForTenant(ctx.tenantConfig.tenantId);
 
   try {
-    // 1) Ensure the Wellhub `class` template exists for this ClassType.
-    const currentTemplate = await ensureWellhubClassForClassType(gymId, ctx.classType, token);
+    // 1) Ensure the Wellhub `class` template exists for this ClassType UNDER
+    //    THIS GYM (templates live inside a gym — each location has its own).
+    const currentTemplate = await ensureWellhubClassForClassType(
+      gymId,
+      ctx.classType,
+      token,
+      ctx.tenantConfig.wellhubGymId,
+    );
 
     // A slot is permanently tied to the template it was CREATED under. If the
     // class's discipline later changed, we keep the slot under its original
@@ -235,21 +247,16 @@ export async function unsyncClassFromWellhub(classId: string): Promise<WellhubSy
   if (!ctx?.cls.wellhubSlotId) {
     return { status: "skipped", reason: "no_wellhub_slot" };
   }
-  if (!ctx.tenantConfig?.wellhubGymId || !ctx.classType.wellhubClassId) {
+  const slotTemplate = ctx.cls.wellhubClassIdSynced ?? ctx.classType.wellhubClassId;
+  if (!ctx.gymId || !slotTemplate || !ctx.tenantConfig) {
     return { status: "skipped", reason: "missing_wellhub_ids" };
   }
 
   const token = await getWellhubTokenForTenant(ctx.tenantConfig.tenantId);
-  // Delete under the slot's OWN template (may differ from the current type).
-  const slotTemplate = ctx.cls.wellhubClassIdSynced ?? ctx.classType.wellhubClassId;
 
   try {
-    await deleteWellhubSlot(
-      ctx.tenantConfig.wellhubGymId,
-      slotTemplate,
-      ctx.cls.wellhubSlotId,
-      token,
-    );
+    // Delete under the slot's OWN template (may differ from the current type).
+    await deleteWellhubSlot(ctx.gymId, slotTemplate, ctx.cls.wellhubSlotId, token);
     await prisma.class.update({
       where: { id: classId },
       data: {
@@ -293,7 +300,12 @@ export async function reconcileWellhubOnDisciplineChange(
 ): Promise<void> {
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    select: { wellhubSlotId: true, wellhubClassIdSynced: true, tenantId: true },
+    select: {
+      wellhubSlotId: true,
+      wellhubClassIdSynced: true,
+      tenantId: true,
+      room: { select: { studio: { select: { wellhubGymId: true } } } },
+    },
   });
   if (!cls?.wellhubSlotId) return;
 
@@ -318,11 +330,13 @@ export async function reconcileWellhubOnDisciplineChange(
     }),
   ]);
   const slotTemplate = cls.wellhubClassIdSynced ?? oldType?.wellhubClassId;
-  if (!slotTemplate || !cfg?.wellhubGymId) return;
+  // Studio-first gym resolution (same rule as loadClassContext).
+  const gymId = cls.room?.studio?.wellhubGymId ?? cfg?.wellhubGymId;
+  if (!slotTemplate || !gymId) return;
 
   try {
     const token = await getWellhubTokenForTenant(cls.tenantId);
-    await deleteWellhubSlot(cfg.wellhubGymId, slotTemplate, cls.wellhubSlotId, token);
+    await deleteWellhubSlot(gymId, slotTemplate, cls.wellhubSlotId, token);
   } catch (error) {
     // 404 = already gone; anything else we log but still clear our pointer so
     // the re-sync recreates cleanly rather than 404-looping on the old slot.
@@ -354,23 +368,41 @@ export async function hideClassTypeInWellhub(classTypeId: string): Promise<Wellh
       tenantId: true,
     },
   });
-  if (!classType?.wellhubClassId) return { status: "skipped", reason: "no_wellhub_class_id" };
+  if (!classType) return { status: "skipped", reason: "no_wellhub_class_id" };
 
-  const config = await prisma.studioPlatformConfig.findFirst({
-    where: { tenantId: classType.tenantId, platform: "wellhub" },
-    select: { wellhubGymId: true },
-  });
-  if (!config?.wellhubGymId) return { status: "skipped", reason: "tenant_missing_gym_id" };
+  const [config, extraTemplates] = await Promise.all([
+    prisma.studioPlatformConfig.findFirst({
+      where: { tenantId: classType.tenantId, platform: "wellhub" },
+      select: { wellhubGymId: true },
+    }),
+    // Multi-location tenants: the same discipline has a template per gym.
+    prisma.wellhubClassTemplate.findMany({
+      where: { classTypeId: classType.id },
+      select: { wellhubGymId: true, wellhubClassId: true },
+    }),
+  ]);
+
+  // (gym, template) pairs to hide: primary-gym template + per-studio ones.
+  const targets: { gymId: number; templateId: number }[] = [];
+  if (config?.wellhubGymId && classType.wellhubClassId) {
+    targets.push({ gymId: config.wellhubGymId, templateId: classType.wellhubClassId });
+  }
+  for (const t of extraTemplates) {
+    targets.push({ gymId: t.wellhubGymId, templateId: t.wellhubClassId });
+  }
+  if (targets.length === 0) return { status: "skipped", reason: "no_wellhub_class_id" };
 
   const token = await getWellhubTokenForTenant(classType.tenantId);
 
   try {
-    await hideWellhubClass(
-      config.wellhubGymId,
-      classType.wellhubClassId,
-      classTypeToWellhubUpdatePayload(toMagicClassType(classType), { visible: false }),
-      token,
-    );
+    for (const { gymId, templateId } of targets) {
+      await hideWellhubClass(
+        gymId,
+        templateId,
+        classTypeToWellhubUpdatePayload(toMagicClassType(classType), { visible: false }),
+        token,
+      );
+    }
     return { status: "excluded" };
   } catch (error) {
     await handleSyncError(undefined, classType.tenantId, error);
@@ -398,10 +430,10 @@ export async function patchWellhubCapacityForClass(
 ): Promise<WellhubSyncResult> {
   const ctx = await loadClassContext(classId);
   if (!ctx) return { status: "skipped", reason: "class_not_found" };
-  if (!ctx.cls.wellhubSlotId || !ctx.classType.wellhubClassId) {
+  if (!ctx.cls.wellhubSlotId) {
     return { status: "skipped", reason: "not_synced" };
   }
-  if (!ctx.tenantConfig?.wellhubGymId) {
+  if (!ctx.gymId || !ctx.tenantConfig) {
     return { status: "skipped", reason: "tenant_missing_gym_id" };
   }
 
@@ -436,10 +468,11 @@ export async function patchWellhubCapacityForClass(
   const token = await getWellhubTokenForTenant(ctx.tenantConfig.tenantId);
   // Patch under the slot's OWN template (may differ after a discipline change).
   const slotTemplate = ctx.cls.wellhubClassIdSynced ?? ctx.classType.wellhubClassId;
+  if (!slotTemplate) return { status: "skipped", reason: "not_synced" };
 
   try {
     await patchWellhubSlot(
-      ctx.tenantConfig.wellhubGymId,
+      ctx.gymId,
       slotTemplate,
       ctx.cls.wellhubSlotId,
       capacityPatchPayload({
@@ -500,6 +533,15 @@ interface ClassContext {
     wellhubMode: "disabled" | "legacy_email" | "api";
     defaultQuota: number | null;
   } | null;
+  /**
+   * The Wellhub gym this class belongs to, resolved studio-first:
+   *   studio.wellhubGymId ?? tenant-level config gym.
+   * Null when the tenant runs per-studio gyms (any sibling studio mapped) and
+   * THIS studio isn't mapped — such classes must never sync to the wrong
+   * location, so callers skip them. Single-location tenants (no studio
+   * mapping, e.g. Betoro) always resolve to the tenant-level gym as before.
+   */
+  gymId: number | null;
 }
 
 async function loadClassContext(classId: string): Promise<ClassContext | null> {
@@ -528,7 +570,13 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
       },
       coach: { select: { name: true } },
       originalCoach: { select: { name: true } },
-      room: { select: { name: true, maxCapacity: true } },
+      room: {
+        select: {
+          name: true,
+          maxCapacity: true,
+          studio: { select: { id: true, wellhubGymId: true } },
+        },
+      },
       platformQuotas: {
         where: { platform: "wellhub" },
         select: { quotaSpots: true, isClosedManually: true },
@@ -537,7 +585,7 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
   });
   if (!cls) return null;
 
-  const [tenantConfig, tenant] = await Promise.all([
+  const [tenantConfig, tenant, mappedStudios] = await Promise.all([
     prisma.studioPlatformConfig.findFirst({
       where: { tenantId: cls.tenantId, platform: "wellhub" },
       select: { tenantId: true, wellhubGymId: true, wellhubMode: true, wellhubDefaultQuota: true },
@@ -546,7 +594,18 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
       where: { id: cls.tenantId },
       select: { cancellationWindowHours: true },
     }),
+    // Does this tenant run per-studio gyms? (any studio with its own gym id)
+    prisma.studio.count({
+      where: { tenantId: cls.tenantId, wellhubGymId: { not: null } },
+    }),
   ]);
+
+  // Studio-first gym resolution. When the tenant maps studios to gyms, an
+  // unmapped studio resolves to null (skip — never push to the wrong gym);
+  // otherwise everything falls back to the tenant-level gym (Betoro path).
+  const studioGymId = cls.room?.studio?.wellhubGymId ?? null;
+  const gymId =
+    studioGymId ?? (mappedStudios > 0 ? null : (tenantConfig?.wellhubGymId ?? null));
 
   return {
     cls: {
@@ -575,6 +634,7 @@ async function loadClassContext(classId: string): Promise<ClassContext | null> {
           defaultQuota: tenantConfig.wellhubDefaultQuota,
         }
       : null,
+    gymId,
   };
 }
 
@@ -606,30 +666,63 @@ async function isClassClientVisible(ctx: ClassContext): Promise<boolean> {
   return ctx.cls.startsAt >= now && ctx.cls.startsAt <= visibleUntil;
 }
 
+/**
+ * Ensure the ClassType has a Wellhub template under `gymId` and return its id.
+ * Templates live INSIDE a gym, so multi-location tenants need one per gym:
+ *   - primary gym (tenant-level config id) → stored on ClassType.wellhubClassId
+ *     (the pre-multi-gym behavior; Betoro's data keeps working untouched).
+ *   - any other gym → WellhubClassTemplate row, created lazily on first sync.
+ */
 async function ensureWellhubClassForClassType(
   gymId: number,
   classType: ClassContext["classType"],
   token: string,
+  primaryGymId: number | null,
 ): Promise<number> {
-  if (classType.wellhubClassId) {
+  const isPrimary = primaryGymId != null && gymId === primaryGymId;
+
+  const existing = isPrimary
+    ? classType.wellhubClassId
+    : (
+        await prisma.wellhubClassTemplate.findUnique({
+          where: { classTypeId_wellhubGymId: { classTypeId: classType.id, wellhubGymId: gymId } },
+          select: { wellhubClassId: true },
+        })
+      )?.wellhubClassId ?? null;
+
+  if (existing) {
     // PUT is idempotent — keep Wellhub in sync with renames / category edits.
     await updateWellhubClass(
       gymId,
-      classType.wellhubClassId,
+      existing,
       classTypeToWellhubUpdatePayload(toMagicClassType(classType)),
       token,
     );
-    return classType.wellhubClassId;
+    return existing;
   }
+
   const created = await createWellhubClass(
     gymId,
     classTypeToWellhubCreatePayload(toMagicClassType(classType)),
     token,
   );
-  await prisma.classType.update({
-    where: { id: classType.id },
-    data: { wellhubClassId: created.id },
-  });
+  if (isPrimary) {
+    await prisma.classType.update({
+      where: { id: classType.id },
+      data: { wellhubClassId: created.id },
+    });
+  } else {
+    await prisma.wellhubClassTemplate.upsert({
+      where: { classTypeId_wellhubGymId: { classTypeId: classType.id, wellhubGymId: gymId } },
+      create: {
+        tenantId: classType.tenantId,
+        classTypeId: classType.id,
+        wellhubGymId: gymId,
+        wellhubClassId: created.id,
+      },
+      update: { wellhubClassId: created.id },
+    });
+  }
   return created.id;
 }
 

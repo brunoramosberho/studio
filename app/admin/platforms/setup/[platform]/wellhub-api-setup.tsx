@@ -36,6 +36,8 @@ interface WellhubConfig {
   wellhubDefaultQuota: number | null;
   portalUrl: string | null;
   isActive: boolean;
+  /** Tenant locations — multi-location tenants map one Wellhub gym per studio. */
+  studios?: { id: string; name: string; wellhubGymId: number | null }[];
 }
 
 interface WellhubProduct {
@@ -90,6 +92,8 @@ export function WellhubApiSetup() {
   const [localeDraft, setLocaleDraft] = useState<string>("es");
   const [tokenDraft, setTokenDraft] = useState<string>("");
   const [freshSecret, setFreshSecret] = useState<string | null>(null);
+  // Per-studio gym-id drafts (multi-location tenants), keyed by studioId.
+  const [studioGymDrafts, setStudioGymDrafts] = useState<Record<string, string>>({});
 
   // Commercial conditions draft (strings for inputs; fees in € as entered).
   const [ccDraft, setCcDraft] = useState({
@@ -301,6 +305,58 @@ export function WellhubApiSetup() {
               </Button>
             </div>
           </div>
+
+          {/* Per-location gym ids — Wellhub models each unit as its own gym.
+              Only shown for multi-location tenants; single-location studios
+              (e.g. Betoro) keep using the tenant-level Gym ID above. */}
+          {(config?.studios?.length ?? 0) > 1 && (
+            <div className="space-y-1.5 rounded-lg border p-3">
+              <label className="text-xs font-medium">Gym ID por ubicación</label>
+              <p className="text-xs text-muted-foreground">
+                Wellhub asigna un ID distinto a cada unidad. Mapea cada
+                ubicación con su ID (te los da tu account manager). Las clases
+                de cada ubicación se publican en su gym; una ubicación sin ID
+                no se sincroniza a Wellhub.
+              </p>
+              <div className="space-y-2">
+                {config!.studios!.map((s) => (
+                  <div key={s.id} className="flex items-center gap-2">
+                    <span className="w-56 truncate text-sm">{s.name}</span>
+                    <Input
+                      type="number"
+                      className="w-40"
+                      placeholder="— sin Wellhub —"
+                      value={studioGymDrafts[s.id] ?? (s.wellhubGymId ?? "")}
+                      onChange={(e) =>
+                        setStudioGymDrafts((d) => ({ ...d, [s.id]: e.target.value }))
+                      }
+                    />
+                    {s.wellhubGymId && (
+                      <Badge variant="outline" className="bg-green-50 text-[10px]">
+                        #{s.wellhubGymId}
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <Button
+                size="sm"
+                className="mt-1"
+                disabled={saveConfig.isPending || Object.keys(studioGymDrafts).length === 0}
+                onClick={() => {
+                  const map: Record<string, number | null> = {};
+                  for (const [studioId, raw] of Object.entries(studioGymDrafts)) {
+                    const trimmed = raw.trim();
+                    map[studioId] = trimmed === "" ? null : Number(trimmed);
+                  }
+                  saveConfig.mutate({ studioGymIds: map });
+                  setStudioGymDrafts({});
+                }}
+              >
+                Guardar IDs de ubicaciones
+              </Button>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium">Auth Token (Bearer)</label>

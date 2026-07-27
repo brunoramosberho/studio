@@ -22,10 +22,19 @@ function strip(config: Awaited<ReturnType<typeof prisma.studioPlatformConfig.fin
 export async function GET() {
   try {
     const { tenant } = await requireRole("ADMIN");
-    const config = await prisma.studioPlatformConfig.findUnique({
-      where: { tenantId_platform: { tenantId: tenant.id, platform: "wellhub" } },
-    });
-    return NextResponse.json(strip(config));
+    const [config, studios] = await Promise.all([
+      prisma.studioPlatformConfig.findUnique({
+        where: { tenantId_platform: { tenantId: tenant.id, platform: "wellhub" } },
+      }),
+      // Locations, for the per-studio gym-id mapping (multi-location tenants:
+      // Wellhub models each unit as its own gym with its own id).
+      prisma.studio.findMany({
+        where: { tenantId: tenant.id, isActive: true },
+        select: { id: true, name: true, wellhubGymId: true },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+    return NextResponse.json({ ...strip(config), studios });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
@@ -67,7 +76,10 @@ export async function PATCH(request: NextRequest) {
       wellhubDefaultQuota?: number | null;
       portalUrl?: string | null;
       isActive?: boolean;
+      /** Per-studio gym ids (multi-location tenants): { [studioId]: gymId|null }. */
+      studioGymIds?: Record<string, number | null>;
     };
+    const { studioGymIds } = body as { studioGymIds?: Record<string, number | null> };
 
     if (wellhubMode && !["disabled", "legacy_email", "api"].includes(wellhubMode)) {
       return NextResponse.json({ error: "Invalid wellhubMode" }, { status: 400 });
@@ -100,6 +112,30 @@ export async function PATCH(request: NextRequest) {
       data.wellhubAuthToken = wellhubAuthToken
         ? encrypt(wellhubAuthToken.trim())
         : null;
+    }
+
+    // Per-studio gym ids: validate ownership, then write each mapping. A gym id
+    // must be globally unique (it identifies one physical location on Wellhub).
+    if (studioGymIds && typeof studioGymIds === "object") {
+      const ownStudios = await prisma.studio.findMany({
+        where: { tenantId: tenant.id, id: { in: Object.keys(studioGymIds) } },
+        select: { id: true },
+      });
+      const ownIds = new Set(ownStudios.map((s) => s.id));
+      for (const [studioId, gymId] of Object.entries(studioGymIds)) {
+        if (!ownIds.has(studioId)) continue; // never touch another tenant's studio
+        try {
+          await prisma.studio.update({
+            where: { id: studioId },
+            data: { wellhubGymId: gymId == null ? null : Math.floor(gymId) },
+          });
+        } catch {
+          return NextResponse.json(
+            { error: `El gym_id ${gymId} ya está asignado a otra ubicación` },
+            { status: 409 },
+          );
+        }
+      }
     }
 
     const inboundEmail = `wellhub.${tenant.slug}@in.mgic.app`;

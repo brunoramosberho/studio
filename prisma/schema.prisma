@@ -188,9 +188,10 @@ model Tenant {
   platformBookings PlatformBooking[]
   platformAlerts   PlatformAlert[]
 
-  wellhubProducts      WellhubProduct[]
-  wellhubAdvanceConfig WellhubAdvanceConfig?
-  wellhubAdvances      WellhubAdvance[]
+  wellhubProducts       WellhubProduct[]
+  wellhubClassTemplates WellhubClassTemplate[]
+  wellhubAdvanceConfig  WellhubAdvanceConfig?
+  wellhubAdvances       WellhubAdvance[]
   wellhubUserLinks     WellhubUserLink[]
 
   waivers          Waiver[]
@@ -795,13 +796,37 @@ model ClassType {
   onDemandVideos           OnDemandVideo[]
 
   // Wellhub mapping — populated when this ClassType is exposed in Wellhub.
-  // wellhubClassId is the Wellhub "class" id (template). wellhubProductId is
+  // wellhubClassId is the Wellhub "class" id (template) under the tenant's
+  // PRIMARY gym (StudioPlatformConfig.wellhubGymId). wellhubProductId is
   // the Wellhub product (yoga / swimming / virtual etc.) chosen for this type.
+  // Multi-location tenants get per-gym templates via WellhubClassTemplate.
   wellhubClassId     Int?
   wellhubProductId   Int?
   wellhubCategoryIds Int[] @default([])
 
+  wellhubTemplates WellhubClassTemplate[]
+
   @@unique([tenantId, wellhubClassId])
+  @@index([tenantId])
+}
+
+/// Wellhub class template per (ClassType, gym). Wellhub templates live INSIDE
+/// a gym, so a multi-location tenant needs one template per location for the
+/// same discipline. `ClassType.wellhubClassId` stays the primary-gym template
+/// (single-location tenants never touch this table); rows here are created
+/// lazily the first time a class syncs under a non-primary gym.
+model WellhubClassTemplate {
+  id             String   @id @default(cuid())
+  tenantId       String
+  classTypeId    String
+  wellhubGymId   Int
+  wellhubClassId Int
+  createdAt      DateTime @default(now())
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  classType ClassType @relation(fields: [classTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([classTypeId, wellhubGymId])
   @@index([tenantId])
 }
 
@@ -1349,6 +1374,15 @@ model Studio {
   // studio at clock-in time. Defaults to a sensible value; tenants can tighten
   // or loosen per-location depending on how rural / dense the area is.
   geofenceRadiusMeters Int @default(150)
+
+  // Wellhub gym id for THIS location. Wellhub models each physical location as
+  // its own gym (own id, own class templates, own webhooks), so multi-location
+  // tenants (FDV: 4 units, 4 gym ids) map each studio here. Resolution is
+  // studio-first: a class syncs to its studio's gym; when null, single-location
+  // tenants fall back to StudioPlatformConfig.wellhubGymId (Betoro's setup,
+  // unchanged). If ANY sibling studio has a gym id, an unmapped studio's
+  // classes are NOT synced (never silently pushed to the wrong location).
+  wellhubGymId Int? @unique
 
   staffShifts             StaffShift[]
   staffPayRates           StaffPayRate[]
