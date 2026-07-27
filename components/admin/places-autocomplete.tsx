@@ -69,12 +69,13 @@ export function PlacesAutocomplete({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const sessionTokenRef = useRef<any>(null);
 
   useEffect(() => {
     if (!API_KEY) return;
-    loadGoogleMaps().then(() => setReady(true)).catch(() => {});
+    loadGoogleMaps().then(() => setReady(true)).catch(() => setSearchFailed(true));
   }, []);
 
   useEffect(() => {
@@ -126,9 +127,14 @@ export function PlacesAutocomplete({
 
         setSuggestions(mapped);
         setOpen(mapped.length > 0);
+        setSearchFailed(false);
       } catch (err) {
+        // Surface the failure — a silent empty dropdown reads as "no results"
+        // when the real cause is usually the Google key (billing off, Places
+        // API (New) not enabled, or referrer restrictions).
         console.error("Places autocomplete error:", err);
         setSuggestions([]);
+        setSearchFailed(true);
       }
       setLoading(false);
     },
@@ -223,6 +229,14 @@ export function PlacesAutocomplete({
           </button>
         )}
       </div>
+
+      {searchFailed && (
+        <p className="mt-1 text-[10px] font-medium text-red-500">
+          No se pudieron cargar sugerencias de Google. Revisa que el proyecto de
+          la API key tenga facturación activa y &quot;Places API (New)&quot;
+          habilitada.
+        </p>
+      )}
 
       {open && suggestions.length > 0 && (
         <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-border/50 bg-card shadow-lg">
