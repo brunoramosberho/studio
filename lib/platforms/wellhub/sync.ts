@@ -209,6 +209,7 @@ export async function syncClassToWellhub(classId: string): Promise<WellhubSyncRe
         wellhubLastError: null,
       },
     });
+    await resolveSyncErrorAlerts(ctx.tenantConfig.tenantId, classId);
 
     // Immediately reconcile effective capacity so a class that's already
     // partly/fully booked by Magic members shows the correct availability in
@@ -259,6 +260,7 @@ export async function unsyncClassFromWellhub(classId: string): Promise<WellhubSy
         wellhubLastError: null,
       },
     });
+    await resolveSyncErrorAlerts(ctx.tenantConfig.tenantId, classId);
     return { status: "excluded" };
   } catch (error) {
     if (error instanceof WellhubApiError && error.isNotFound) {
@@ -450,6 +452,7 @@ export async function patchWellhubCapacityForClass(
       where: { id: classId },
       data: { wellhubLastSyncAt: new Date(), wellhubLastError: null },
     });
+    await resolveSyncErrorAlerts(ctx.tenantConfig.tenantId, classId);
     return { status: "synced", wellhubSlotId: ctx.cls.wellhubSlotId };
   } catch (error) {
     await handleSyncError(classId, ctx.tenantConfig.tenantId, error);
@@ -682,6 +685,25 @@ async function markStatus(
     },
   });
   return { status: status === "pending" ? "skipped" : status, reason };
+}
+
+/**
+ * Clear any open sync-error alert for a class once it recovers — a later
+ * successful sync/unsync/capacity-patch, or a cancellation. Without this a
+ * transient Wellhub failure (e.g. an API blip that hits several classes in the
+ * same cron pass) leaves a phantom alert that never goes away even though the
+ * class is healthy again. Best-effort; never throws into the caller.
+ */
+export async function resolveSyncErrorAlerts(
+  tenantId: string,
+  classId: string,
+): Promise<void> {
+  await prisma.platformAlert
+    .updateMany({
+      where: { tenantId, classId, type: "wellhub_sync_error", isResolved: false },
+      data: { isResolved: true, resolvedAt: new Date(), resolvedBy: "auto:recovered" },
+    })
+    .catch(() => undefined);
 }
 
 async function handleSyncError(

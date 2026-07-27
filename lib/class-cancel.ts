@@ -95,6 +95,13 @@ export async function cancelClassWithRefunds(classId: string, tenantId: string, 
     data: { status: "cancelled", notes: "class_cancelled" },
   });
 
+  // A cancelled class can't sync — clear any open Wellhub sync-error alert so it
+  // doesn't linger as a phantom on a class that no longer happens.
+  await prisma.platformAlert.updateMany({
+    where: { tenantId, classId, type: "wellhub_sync_error", isResolved: false },
+    data: { isResolved: true, resolvedAt: new Date(), resolvedBy: "auto:class_cancelled" },
+  });
+
   // 4. Refund waitlist
   refundAndClearWaitlist(classId, tenantId).catch((err) =>
     console.error(`Waitlist refund for class ${classId} failed:`, err),
