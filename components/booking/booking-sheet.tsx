@@ -210,6 +210,16 @@ export function BookingSheet({
     return true;
   });
 
+  // A package can be un-buyable for two reasons: the signed-in member already
+  // reached its per-customer cap (/api/packages flags purchaseLimitReached),
+  // or the typed guest email did (check-email returns maxedPackageIds).
+  const maxedIds = new Set<string>([
+    ...(emailCheck?.maxedPackageIds ?? []),
+    ...packages
+      .filter((p) => (p as { purchaseLimitReached?: boolean }).purchaseLimitReached)
+      .map((p) => p.id),
+  ]);
+
   // Curated decoy display: pick the audience (never-purchased vs returning) and
   // split the list into the hand-picked set + the rest (behind "see more").
   const curationAudience: CurationAudience =
@@ -219,12 +229,14 @@ export function BookingSheet({
     curated: curatedPackages,
     rest: restPackages,
     recommendedId: curatedRecommendedId,
-  } = splitCuratedPackages(
-    packages,
-    curation,
-    curationAudience,
-    new Set(emailCheck?.maxedPackageIds ?? []),
-  );
+  } = splitCuratedPackages(packages, curation, curationAudience, maxedIds);
+
+  // Buyable options first; maxed-out ones sink to the bottom as disabled cards
+  // instead of occupying the prime slots.
+  const maxedLast = (list: Package[]) => [
+    ...list.filter((p) => !maxedIds.has(p.id)),
+    ...list.filter((p) => maxedIds.has(p.id)),
+  ];
 
   const checkEmail = useCallback(async (email: string) => {
     if (!email || !email.includes("@")) {
@@ -450,7 +462,7 @@ export function BookingSheet({
     : recommendedPkgId;
 
   const renderPackageCard = (pkg: Package) => {
-    const maxed = emailCheck?.maxedPackageIds?.includes(pkg.id) ?? false;
+    const maxed = maxedIds.has(pkg.id);
     const isRecommended = !maxed && pkg.id === effectiveRecommendedId;
     const showPromo = !maxed && !isRecommended && pkg.isPromo;
     return (
@@ -534,7 +546,7 @@ export function BookingSheet({
         animate={{ y: 0 }}
         exit={{ y: "-100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 top-0 z-50 max-h-[90dvh] overflow-y-auto rounded-b-3xl bg-card pt-safe shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[90vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="fixed inset-x-0 top-0 z-50 max-h-[90dvh] overflow-y-auto rounded-b-3xl bg-card safe-top shadow-warm-lg sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[90vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
       >
         {/* Header */}
         <div className="px-6 pb-2 pt-4">
@@ -757,7 +769,7 @@ export function BookingSheet({
                   <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface/60 px-3 py-2">
                     <div className="min-w-0">
                       <p className="text-[10px] uppercase tracking-wider text-muted">
-                        Reservando como
+                        {t("bookingAs")}
                       </p>
                       <p className="truncate text-sm font-medium text-foreground">
                         {session.user.email}
@@ -770,7 +782,7 @@ export function BookingSheet({
                       }
                       className="flex-shrink-0 text-xs font-semibold text-accent hover:underline"
                     >
-                      Cambiar
+                      {t("changeAccount")}
                     </button>
                   </div>
                 )}
@@ -784,14 +796,14 @@ export function BookingSheet({
                         onClick={() => router.push("/packages")}
                         className="mt-3 rounded-full bg-red-700 px-4 py-2 text-xs font-semibold text-white"
                       >
-                        Ir a comprar paquete
+                        {t("goBuyPackage")}
                       </button>
                     )}
                   </div>
                 )}
 
                 <div className="space-y-2.5">
-                  {(isCurated ? curatedPackages : packages).map(renderPackageCard)}
+                  {maxedLast(isCurated ? curatedPackages : packages).map(renderPackageCard)}
                   {isCurated && restPackages.length > 0 && !showMorePackages && (
                     <button
                       type="button"
@@ -802,7 +814,7 @@ export function BookingSheet({
                       <ChevronDown className="h-4 w-4" />
                     </button>
                   )}
-                  {isCurated && showMorePackages && restPackages.map(renderPackageCard)}
+                  {isCurated && showMorePackages && maxedLast(restPackages).map(renderPackageCard)}
                 </div>
 
                 {!isLoggedIn && (

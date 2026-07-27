@@ -2551,7 +2551,10 @@
     "securePayment": "Secure payment · Credits activate instantly",
     "bookingInProgress": "Booking your spot...",
     "spotReserved": "Spot reserved!",
-    "viewMyBookings": "View my bookings"
+    "viewMyBookings": "View my bookings",
+    "bookingAs": "Booking as",
+    "changeAccount": "Change",
+    "goBuyPackage": "Buy a package"
   },
   "pos": {
     "title": "Point of Sale",

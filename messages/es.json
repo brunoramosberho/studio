@@ -2551,7 +2551,10 @@
     "securePayment": "Pago seguro · Los creditos se activan al instante",
     "bookingInProgress": "Reservando tu lugar...",
     "spotReserved": "Lugar reservado!",
-    "viewMyBookings": "Ver mis reservas"
+    "viewMyBookings": "Ver mis reservas",
+    "bookingAs": "Reservando como",
+    "changeAccount": "Cambiar",
+    "goBuyPackage": "Ir a comprar paquete"
   },
   "pos": {
     "title": "Punto de venta",
