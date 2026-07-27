@@ -234,7 +234,8 @@
       "language": "Idioma",
       "embed": "Incrustar",
       "platforms": "Plataformas",
-      "studios": "Sedes"
+      "studios": "Sedes",
+      "insights": "Insights"
     },
     "commandPalette": {
       "trigger": "Buscar…",
@@ -1637,6 +1638,118 @@
       "conversionHint": "{members} de {clients} clientes nuevos hicieron su primera compra",
       "conversionLink": "Ver conversión completa",
       "noData": "Sin visitas en este periodo."
+    },
+    "reportsPage": {
+      "title": "Reportes",
+      "subtitle": "Tablas exportables sobre clases, membresías, ventas y clientes.",
+      "searchPlaceholder": "Buscar reporte...",
+      "favorites": "Favoritos",
+      "back": "Volver",
+      "rowCount": "{count} filas",
+      "empty": "Sin datos en este periodo.",
+      "snapshotBadge": "actual",
+      "snapshotNote": "estado actual (ignora el rango de fechas)",
+      "range7d": "Últimos 7 días",
+      "range30d": "Últimos 30 días",
+      "rangeMonth": "Este mes",
+      "rangeLastMonth": "Mes pasado",
+      "range90d": "Últimos 90 días",
+      "rangeYear": "Este año",
+      "cat": {
+        "classes": "Clases",
+        "memberships": "Membresías",
+        "sales": "Ventas",
+        "customers": "Clientes"
+      },
+      "catDesc": {
+        "classes": "Ocupación, no-shows y cancelaciones tardías",
+        "memberships": "Ventas, renovaciones, expiraciones y créditos sin usar",
+        "sales": "Todo el dinero: cobros, productos, reembolsos y deudas",
+        "customers": "Tu base de clientes con visitas y valor de vida"
+      },
+      "col": {
+        "date": "Fecha",
+        "classDate": "Fecha de clase",
+        "class": "Clase",
+        "instructor": "Instructor",
+        "room": "Sala",
+        "bookings": "Reservas",
+        "capacity": "Capacidad",
+        "occupancy": "Ocupación",
+        "member": "Miembro",
+        "email": "Email",
+        "cancelledAt": "Canceló el",
+        "cancelledBy": "Canceló",
+        "package": "Paquete",
+        "type": "Tipo",
+        "price": "Precio",
+        "status": "Estado",
+        "renewsAt": "Renueva el",
+        "creditsLeft": "Créditos restantes",
+        "expiresAt": "Expira el",
+        "customer": "Cliente",
+        "concept": "Concepto",
+        "method": "Método",
+        "amount": "Monto",
+        "product": "Producto",
+        "source": "Origen",
+        "phone": "Teléfono",
+        "joined": "Se unió",
+        "visits": "Visitas",
+        "lastVisit": "Última visita",
+        "ltv": "Valor total (LTV)",
+        "firstPurchase": "Primera compra"
+      },
+      "r": {
+        "class-occupancy": {
+          "title": "Ocupación por clase",
+          "desc": "Cada clase terminada con sus reservas, capacidad y % de llenado."
+        },
+        "no-shows": {
+          "title": "No-shows",
+          "desc": "Quién reservó y no llegó, por clase y fecha."
+        },
+        "late-cancels": {
+          "title": "Cancelaciones tardías",
+          "desc": "Cancelaciones dentro de la ventana: cuándo y quién canceló."
+        },
+        "membership-sales": {
+          "title": "Ventas de paquetes",
+          "desc": "Historial de compras de paquetes y suscripciones."
+        },
+        "upcoming-renewals": {
+          "title": "Renovaciones",
+          "desc": "Suscripciones que renuevan (o cancelan) en el rango elegido."
+        },
+        "expirations": {
+          "title": "Expiraciones de paquetes",
+          "desc": "Paquetes que expiran en el rango, con créditos restantes."
+        },
+        "outstanding-credits": {
+          "title": "Créditos sin usar",
+          "desc": "Miembros con créditos vigentes pendientes de usar, hoy."
+        },
+        "sales": {
+          "title": "Todas las ventas",
+          "desc": "Cada cobro exitoso: Stripe, TPV y efectivo."
+        },
+        "product-sales": {
+          "title": "Ventas de productos",
+          "desc": "Productos vendidos por POS y pedidos del bar."
+        },
+        "refunds-debts": {
+          "title": "Reembolsos y deudas",
+          "desc": "Pagos fallidos, reembolsos, disputas y deudas registradas."
+        },
+        "customer-list": {
+          "title": "Lista de clientes",
+          "desc": "Todos tus clientes con visitas, última visita y valor total."
+        },
+        "new-members": {
+          "title": "Miembros nuevos",
+          "desc": "Clientes que hicieron su primera compra en el rango."
+        }
+      }
     }
   },
   "coach": {

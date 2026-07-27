@@ -45,8 +45,8 @@ export const PRICING_CATALOG_TABS: SectionTab[] = [
 ];
 
 export const INSIGHTS_TABS: SectionTab[] = [
+  { href: "/admin/analytics", labelKey: "tabs.insights", icon: Activity },
   { href: "/admin/reports", labelKey: "tabs.reports", icon: BarChart3 },
-  { href: "/admin/analytics", labelKey: "tabs.performance", icon: Activity },
   { href: "/admin/conversion", labelKey: "tabs.conversion", icon: ArrowRightLeft },
 ];
 

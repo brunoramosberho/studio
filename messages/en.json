@@ -234,7 +234,8 @@
       "language": "Language",
       "embed": "Embed",
       "platforms": "Platforms",
-      "studios": "Locations"
+      "studios": "Locations",
+      "insights": "Insights"
     },
     "commandPalette": {
       "trigger": "Search…",
@@ -1637,6 +1638,118 @@
       "conversionHint": "{members} of {clients} new clients made their first purchase",
       "conversionLink": "View full conversion",
       "noData": "No visits in this period."
+    },
+    "reportsPage": {
+      "title": "Reports",
+      "subtitle": "Exportable tables across classes, memberships, sales and customers.",
+      "searchPlaceholder": "Search reports...",
+      "favorites": "Favorites",
+      "back": "Back",
+      "rowCount": "{count} rows",
+      "empty": "No data in this period.",
+      "snapshotBadge": "current",
+      "snapshotNote": "current state (ignores the date range)",
+      "range7d": "Last 7 days",
+      "range30d": "Last 30 days",
+      "rangeMonth": "This month",
+      "rangeLastMonth": "Last month",
+      "range90d": "Last 90 days",
+      "rangeYear": "This year",
+      "cat": {
+        "classes": "Classes",
+        "memberships": "Memberships",
+        "sales": "Sales",
+        "customers": "Customers"
+      },
+      "catDesc": {
+        "classes": "Occupancy, no-shows and late cancellations",
+        "memberships": "Sales, renewals, expirations and unused credits",
+        "sales": "All the money: charges, products, refunds and debts",
+        "customers": "Your customer base with visits and lifetime value"
+      },
+      "col": {
+        "date": "Date",
+        "classDate": "Class date",
+        "class": "Class",
+        "instructor": "Instructor",
+        "room": "Room",
+        "bookings": "Bookings",
+        "capacity": "Capacity",
+        "occupancy": "Occupancy",
+        "member": "Member",
+        "email": "Email",
+        "cancelledAt": "Cancelled at",
+        "cancelledBy": "Cancelled by",
+        "package": "Package",
+        "type": "Type",
+        "price": "Price",
+        "status": "Status",
+        "renewsAt": "Renews on",
+        "creditsLeft": "Credits left",
+        "expiresAt": "Expires on",
+        "customer": "Customer",
+        "concept": "Concept",
+        "method": "Method",
+        "amount": "Amount",
+        "product": "Product",
+        "source": "Source",
+        "phone": "Phone",
+        "joined": "Joined",
+        "visits": "Visits",
+        "lastVisit": "Last visit",
+        "ltv": "Lifetime value (LTV)",
+        "firstPurchase": "First purchase"
+      },
+      "r": {
+        "class-occupancy": {
+          "title": "Class occupancy",
+          "desc": "Every finished class with bookings, capacity and fill %."
+        },
+        "no-shows": {
+          "title": "No-shows",
+          "desc": "Who booked and didn't show, by class and date."
+        },
+        "late-cancels": {
+          "title": "Late cancellations",
+          "desc": "Cancellations inside the window: when and who cancelled."
+        },
+        "membership-sales": {
+          "title": "Package sales",
+          "desc": "Purchase history of packs and subscriptions."
+        },
+        "upcoming-renewals": {
+          "title": "Renewals",
+          "desc": "Subscriptions renewing (or cancelling) in the chosen range."
+        },
+        "expirations": {
+          "title": "Package expirations",
+          "desc": "Packages expiring in the range, with credits left."
+        },
+        "outstanding-credits": {
+          "title": "Outstanding credits",
+          "desc": "Members holding valid unused credits, as of today."
+        },
+        "sales": {
+          "title": "All sales",
+          "desc": "Every successful charge: Stripe, card reader and cash."
+        },
+        "product-sales": {
+          "title": "Product sales",
+          "desc": "Products sold via POS and bar orders."
+        },
+        "refunds-debts": {
+          "title": "Refunds & debts",
+          "desc": "Failed payments, refunds, disputes and recorded debts."
+        },
+        "customer-list": {
+          "title": "Customer list",
+          "desc": "All customers with visits, last visit and lifetime value."
+        },
+        "new-members": {
+          "title": "New members",
+          "desc": "Clients who made their first purchase in the range."
+        }
+      }
     }
   },
   "coach": {
