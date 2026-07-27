@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, Clock, UserCog, GitCompareArrows } from "lucide-react";
+import { ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import {
   Select,
   SelectContent,
@@ -11,234 +14,512 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useAnalytics } from "@/lib/analytics/use-analytics";
-import type { Period } from "@/lib/analytics/types";
-
-import { AnalyticsKpis } from "@/components/analytics/analytics-kpis";
-import { ScheduleHeatmap } from "@/components/analytics/schedule-heatmap";
-import { InstructorTab } from "@/components/analytics/instructor-tab";
-import { CrossAnalysisTab } from "@/components/analytics/cross-analysis-tab";
+import { useCurrency } from "@/components/tenant-provider";
+import { formatMoney } from "@/lib/currency";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { INSIGHTS_TABS } from "@/components/admin/section-tab-configs";
 
-function usePeriodLabels() {
-  const t = useTranslations("admin");
-  return [
-    { value: "week" as Period, label: t("periodWeek") },
-    { value: "month" as Period, label: t("periodMonth") },
-    { value: "quarter" as Period, label: t("periodQuarter") },
-  ];
+// ─── Types (mirror /api/admin/insights) ─────────────────
+
+interface Point {
+  d: string;
+  v: number;
 }
 
-export default function AnalyticsPage() {
-  const t = useTranslations("admin");
-  const tc = useTranslations("common");
-  const PERIODS = usePeriodLabels();
-  const [disciplineId, setDisciplineId] = useState<string | undefined>(
-    undefined,
-  );
-  const [period, setPeriod] = useState<Period>("month");
-  const disciplineSelectRef = useRef<HTMLButtonElement>(null);
+interface Metric {
+  total: number;
+  prevTotal: number | null;
+  points: Point[];
+}
 
-  const { data, isLoading } = useAnalytics({ disciplineId, period });
+interface InsightsData {
+  range: {
+    from: string;
+    to: string;
+    prevFrom: string | null;
+    prevTo: string | null;
+    agg: "day" | "week";
+  };
+  metrics: {
+    revenue: Metric;
+    bookings: Metric;
+    visits: Metric;
+    occupancy: Metric;
+    classes: Metric;
+    cancellations: Metric;
+    noShows: Metric;
+    newClients: Metric;
+    newMembers: Metric;
+    activeSubscriptions: Metric;
+  };
+  retention: { repeat: number; new: number };
+  glance: {
+    visits: number;
+    uniqueCustomers: number;
+    avgVisitsPerCustomer: number;
+    classes: number;
+    cancellations: number;
+    noShows: number;
+    capacityFilled: number;
+    conversionToMembership: number | null;
+  };
+}
 
-  const selectedDiscipline = data?.disciplines.find(
-    (d) => d.id === disciplineId,
-  );
+// ─── Date range presets ─────────────────────────────────
 
-  function handleDisciplineChange(value: string) {
-    setDisciplineId(value === "all" ? undefined : value);
+type Preset = "7d" | "30d" | "month" | "lastMonth" | "90d" | "year" | "custom";
+
+function presetRange(preset: Preset): { from: string; to: string } {
+  const now = new Date();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 86400_000);
+  switch (preset) {
+    case "7d":
+      return { from: iso(daysAgo(6)), to: iso(now) };
+    case "30d":
+      return { from: iso(daysAgo(29)), to: iso(now) };
+    case "month":
+      return {
+        from: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))),
+        to: iso(now),
+      };
+    case "lastMonth": {
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0));
+      return { from: iso(start), to: iso(end) };
+    }
+    case "90d":
+      return { from: iso(daysAgo(89)), to: iso(now) };
+    case "year":
+      return { from: iso(new Date(Date.UTC(now.getUTCFullYear(), 0, 1))), to: iso(now) };
+    default:
+      return { from: iso(daysAgo(29)), to: iso(now) };
   }
+}
 
-  function openDisciplineFilter() {
-    disciplineSelectRef.current?.click();
+// ─── Delta badge ────────────────────────────────────────
+
+function DeltaBadge({
+  total,
+  prevTotal,
+  unit,
+  invert,
+}: {
+  total: number;
+  prevTotal: number | null;
+  /** "pct-points" for occupancy; otherwise relative % change. */
+  unit?: "pct-points";
+  /** For metrics where DOWN is good (cancellations, no-shows). */
+  invert?: boolean;
+}) {
+  if (prevTotal === null || prevTotal === undefined) return null;
+  let delta: number;
+  let label: string;
+  if (unit === "pct-points") {
+    delta = total - prevTotal;
+    label = `${delta > 0 ? "+" : ""}${Math.round(delta)} pt`;
+  } else {
+    if (prevTotal === 0) return null;
+    delta = ((total - prevTotal) / prevTotal) * 100;
+    label = `${delta > 0 ? "+" : ""}${Math.round(delta)}%`;
   }
+  if (Math.round(Math.abs(delta)) === 0) return null;
+  const good = invert ? delta < 0 : delta > 0;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+        good
+          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+          : "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300",
+      )}
+    >
+      {delta > 0 ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+      {label}
+    </span>
+  );
+}
+
+// ─── Metric card ────────────────────────────────────────
+
+function MetricCard({
+  title,
+  metric,
+  format,
+  big,
+  suffix,
+  invert,
+  pctPoints,
+  prevLabel,
+  chartColor = "#6366f1",
+}: {
+  title: string;
+  metric: Metric | undefined;
+  format?: (v: number) => string;
+  big?: boolean;
+  suffix?: string;
+  invert?: boolean;
+  pctPoints?: boolean;
+  prevLabel: string;
+  chartColor?: string;
+}) {
+  const gradientId = useMemo(() => `g-${title.replace(/\W/g, "")}`, [title]);
+  if (!metric) return <Skeleton className={cn("rounded-2xl", big ? "h-48" : "h-36")} />;
+
+  const fmt = format ?? ((v: number) => v.toLocaleString());
+  const data = metric.points.map((p) => ({ d: p.d.slice(5), v: p.v }));
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <div className="mx-auto max-w-6xl space-y-8">
-        <SectionTabs tabs={INSIGHTS_TABS} ariaLabel="Insights sections" />
-        {/* Sticky header with filters */}
-        <div className="sticky top-[calc(3.5rem+4px)] z-20 -mx-4 bg-background/80 px-4 py-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-3"
-            >
-              <h1 className="font-display text-2xl font-bold sm:text-3xl">
-                {t("performance")}
-              </h1>
-              {selectedDiscipline && (
-                <Badge
-                  className="text-xs"
-                  style={{
-                    backgroundColor: `${selectedDiscipline.color}15`,
-                    color: selectedDiscipline.color,
-                  }}
-                >
-                  {selectedDiscipline.name}
-                </Badge>
-              )}
-            </motion.div>
+    <div className="rounded-2xl border border-border/60 bg-card p-4">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">{title}</p>
+        <DeltaBadge
+          total={metric.total}
+          prevTotal={metric.prevTotal}
+          invert={invert}
+          unit={pctPoints ? "pct-points" : undefined}
+        />
+      </div>
+      <p className={cn("mt-1 font-display font-bold text-foreground", big ? "text-3xl" : "text-xl")}>
+        {fmt(metric.total)}
+        {suffix}
+      </p>
+      {metric.prevTotal !== null && (
+        <p className="text-[10px] text-muted/60">
+          {fmt(metric.prevTotal)}
+          {suffix} {prevLabel}
+        </p>
+      )}
+      <div className={cn("mt-2", big ? "h-28" : "h-14")}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={chartColor} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={chartColor} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            {big && (
+              <XAxis
+                dataKey="d"
+                tick={{ fontSize: 9 }}
+                tickLine={false}
+                axisLine={false}
+                interval="preserveStartEnd"
+              />
+            )}
+            <Tooltip
+              contentStyle={{
+                fontSize: 11,
+                borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.06)",
+                padding: "4px 8px",
+              }}
+              labelStyle={{ fontSize: 10 }}
+              formatter={(value) => [fmt(Number(value ?? 0)) + (suffix ?? ""), title]}
+            />
+            <Area
+              type="monotone"
+              dataKey="v"
+              stroke={chartColor}
+              strokeWidth={1.8}
+              fill={`url(#${gradientId})`}
+              dot={false}
+              activeDot={{ r: 3 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
 
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="flex items-center gap-2 sm:gap-3"
-            >
-              {/* Discipline selector */}
-              <Select
-                value={disciplineId ?? "all"}
-                onValueChange={handleDisciplineChange}
+// ─── Page ───────────────────────────────────────────────
+
+export default function InsightsPage() {
+  const t = useTranslations("admin.insightsPage");
+  const currency = useCurrency();
+
+  const [preset, setPreset] = useState<Preset>("30d");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [agg, setAgg] = useState<"day" | "week">("day");
+  const [compare, setCompare] = useState(true);
+
+  const range =
+    preset === "custom" && customFrom && customTo
+      ? { from: customFrom, to: customTo }
+      : presetRange(preset);
+
+  const { data, isLoading } = useQuery<InsightsData>({
+    queryKey: ["admin-insights", range.from, range.to, agg, compare],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        from: range.from,
+        to: range.to,
+        agg,
+        compare: compare ? "prev" : "none",
+      });
+      const res = await fetch(`/api/admin/insights?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch insights");
+      return res.json();
+    },
+  });
+
+  const m = data?.metrics;
+  const money = (v: number) => formatMoney(v, currency);
+  const prevLabel = t("prevPeriod");
+  const retentionTotal = (data?.retention.new ?? 0) + (data?.retention.repeat ?? 0);
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6">
+      <SectionTabs tabs={INSIGHTS_TABS} ariaLabel="Insights sections" />
+
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("title")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("subtitle")}</p>
+      </motion.div>
+
+      {/* Filters */}
+      <div className="sticky top-[calc(3.5rem+4px)] z-20 -mx-4 bg-background/80 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={preset} onValueChange={(v) => setPreset(v as Preset)}>
+            <SelectTrigger className="h-9 w-[170px] text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">{t("range7d")}</SelectItem>
+              <SelectItem value="30d">{t("range30d")}</SelectItem>
+              <SelectItem value="month">{t("rangeMonth")}</SelectItem>
+              <SelectItem value="lastMonth">{t("rangeLastMonth")}</SelectItem>
+              <SelectItem value="90d">{t("range90d")}</SelectItem>
+              <SelectItem value="year">{t("rangeYear")}</SelectItem>
+              <SelectItem value="custom">{t("rangeCustom")}</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {preset === "custom" && (
+            <>
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="h-9 rounded-lg border border-input-border bg-card px-2 text-sm"
+              />
+              <span className="text-xs text-muted">–</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="h-9 rounded-lg border border-input-border bg-card px-2 text-sm"
+              />
+            </>
+          )}
+
+          <div className="flex overflow-hidden rounded-lg border border-border">
+            {(["day", "week"] as const).map((a) => (
+              <button
+                key={a}
+                onClick={() => setAgg(a)}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium transition-colors",
+                  agg === a
+                    ? "bg-foreground text-background"
+                    : "bg-card text-muted hover:text-foreground",
+                )}
               >
-                <SelectTrigger ref={disciplineSelectRef} className="h-9 w-[calc(50%-0.25rem)] min-w-0 text-xs sm:w-48">
-                  <SelectValue placeholder={t("allDisciplines")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("allDisciplines")}</SelectItem>
-                  {data?.disciplines.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="inline-block h-2 w-2 rounded-full"
-                          style={{ backgroundColor: d.color }}
-                        />
-                        {d.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Period segmented control */}
-              <div className="inline-flex items-center gap-0.5 rounded-full bg-surface p-1">
-                {PERIODS.map((p) => (
-                  <button
-                    key={p.value}
-                    onClick={() => setPeriod(p.value)}
-                    className={cn(
-                      "rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap",
-                      period === p.value
-                        ? "bg-card text-foreground shadow-[var(--shadow-warm-sm)]"
-                        : "text-muted hover:text-foreground",
-                    )}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* KPIs */}
-        {isLoading || !data ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-2xl" />
+                {a === "day" ? t("aggDay") : t("aggWeek")}
+              </button>
             ))}
           </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+
+          <button
+            onClick={() => setCompare((c) => !c)}
+            className={cn(
+              "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+              compare
+                ? "border-foreground/20 bg-foreground text-background"
+                : "border-border bg-card text-muted hover:text-foreground",
+            )}
           >
-            <AnalyticsKpis data={data.kpis} />
-          </motion.div>
-        )}
-
-        {/* Tabs */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-        >
-          <Tabs defaultValue="schedule">
-            <TabsList>
-              <TabsTrigger value="schedule" className="gap-1.5">
-                <Clock className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("bySchedule")}</span>
-              </TabsTrigger>
-              <TabsTrigger value="instructors" className="gap-1.5">
-                <UserCog className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("byInstructor")}</span>
-              </TabsTrigger>
-              <TabsTrigger value="cross" className="gap-1.5">
-                <GitCompareArrows className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("crossAnalysis")}</span>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="schedule">
-              {isLoading || !data ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-64 rounded-2xl" />
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Skeleton className="h-48 rounded-2xl" />
-                    <Skeleton className="h-48 rounded-2xl" />
-                  </div>
-                </div>
-              ) : (
-                <ScheduleHeatmap
-                  grid={data.occupancy_grid}
-                  slots={data.schedule_slots}
-                />
-              )}
-            </TabsContent>
-
-            <TabsContent value="instructors">
-              {isLoading || !data ? (
-                <div className="flex flex-col gap-6 lg:flex-row">
-                  <div className="w-full space-y-3 lg:w-[40%]">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} className="h-28 rounded-2xl" />
-                    ))}
-                  </div>
-                  <div className="flex-1">
-                    <Skeleton className="h-96 rounded-2xl" />
-                  </div>
-                </div>
-              ) : (
-                <InstructorTab
-                  coaches={data.coaches}
-                  metrics={data.coach_metrics}
-                />
-              )}
-            </TabsContent>
-
-            <TabsContent value="cross">
-              {isLoading || !data ? (
-                <div className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} className="h-32 rounded-2xl" />
-                    ))}
-                  </div>
-                  <Skeleton className="h-72 rounded-2xl" />
-                </div>
-              ) : (
-                <CrossAnalysisTab
-                  disciplineId={disciplineId}
-                  disciplines={data.disciplines}
-                  coaches={data.coaches}
-                  coachMetrics={data.coach_metrics}
-                  combinations={data.cross_combinations}
-                  slots={data.schedule_slots}
-                  onOpenDisciplineFilter={openDisciplineFilter}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
-        </motion.div>
+            {t("compare")}
+          </button>
+        </div>
       </div>
-    </TooltipProvider>
+
+      {isLoading && !data ? (
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Skeleton className="h-48 rounded-2xl" />
+            <Skeleton className="h-48 rounded-2xl" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[...Array(8)].map((_, i) => (
+              <Skeleton key={i} className="h-36 rounded-2xl" />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Headline metrics */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <MetricCard
+              title={t("revenue")}
+              metric={m?.revenue}
+              format={money}
+              big
+              prevLabel={prevLabel}
+            />
+            <MetricCard
+              title={t("occupancy")}
+              metric={m?.occupancy}
+              suffix="%"
+              big
+              pctPoints
+              chartColor="#10b981"
+              prevLabel={prevLabel}
+            />
+          </div>
+
+          {/* Secondary metrics */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard title={t("bookings")} metric={m?.bookings} prevLabel={prevLabel} />
+            <MetricCard title={t("visits")} metric={m?.visits} prevLabel={prevLabel} />
+            <MetricCard title={t("classes")} metric={m?.classes} prevLabel={prevLabel} />
+            <MetricCard
+              title={t("activeSubscriptions")}
+              metric={m?.activeSubscriptions}
+              prevLabel={prevLabel}
+            />
+            <MetricCard
+              title={t("newClients")}
+              metric={m?.newClients}
+              chartColor="#8b5cf6"
+              prevLabel={prevLabel}
+            />
+            <MetricCard
+              title={t("newMembers")}
+              metric={m?.newMembers}
+              chartColor="#8b5cf6"
+              prevLabel={prevLabel}
+            />
+            <MetricCard
+              title={t("cancellations")}
+              metric={m?.cancellations}
+              invert
+              chartColor="#f59e0b"
+              prevLabel={prevLabel}
+            />
+            <MetricCard
+              title={t("noShows")}
+              metric={m?.noShows}
+              invert
+              chartColor="#ef4444"
+              prevLabel={prevLabel}
+            />
+          </div>
+
+          {/* Retention + glance + conversion */}
+          <div className="grid gap-4 lg:grid-cols-3">
+            {/* Retention new vs repeat */}
+            <div className="rounded-2xl border border-border/60 bg-card p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+                {t("retentionTitle")}
+              </p>
+              <p className="mt-1 text-[11px] text-muted">{t("retentionHint")}</p>
+              {retentionTotal > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {(
+                    [
+                      {
+                        label: t("retentionRepeat"),
+                        value: data?.retention.repeat ?? 0,
+                        color: "bg-emerald-500",
+                      },
+                      {
+                        label: t("retentionNew"),
+                        value: data?.retention.new ?? 0,
+                        color: "bg-admin",
+                      },
+                    ] as const
+                  ).map((row) => (
+                    <div key={row.label}>
+                      <div className="mb-1 flex items-baseline justify-between">
+                        <span className="text-xs font-medium text-foreground/80">{row.label}</span>
+                        <span className="text-xs font-semibold tabular-nums">
+                          {row.value} · {Math.round((row.value / retentionTotal) * 100)}%
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-surface">
+                        <div
+                          className={cn("h-full rounded-full", row.color)}
+                          style={{ width: `${(row.value / retentionTotal) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-xs text-muted">{t("noData")}</p>
+              )}
+            </div>
+
+            {/* Business at a glance */}
+            <div className="rounded-2xl border border-border/60 bg-card p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+                {t("glanceTitle")}
+              </p>
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+                {(
+                  [
+                    [t("glanceVisits"), data?.glance.visits.toLocaleString()],
+                    [t("glanceUnique"), data?.glance.uniqueCustomers.toLocaleString()],
+                    [t("glanceAvgVisits"), data?.glance.avgVisitsPerCustomer],
+                    [t("glanceClasses"), data?.glance.classes.toLocaleString()],
+                    [t("glanceCancellations"), data?.glance.cancellations.toLocaleString()],
+                    [t("glanceNoShows"), data?.glance.noShows.toLocaleString()],
+                    [t("glanceCapacity"), `${data?.glance.capacityFilled ?? 0}%`],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div key={label as string}>
+                    <dt className="text-[10px] text-muted">{label}</dt>
+                    <dd className="text-sm font-semibold text-foreground">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+
+            {/* Conversion to membership — the page's door to /admin/conversion */}
+            <div className="flex flex-col rounded-2xl border border-border/60 bg-card p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+                {t("conversionTitle")}
+              </p>
+              <div className="mt-1 flex-1">
+                <p className="font-display text-3xl font-bold text-foreground">
+                  {data?.glance.conversionToMembership != null
+                    ? `${data.glance.conversionToMembership}%`
+                    : "—"}
+                </p>
+                <p className="mt-1 text-[11px] text-muted">
+                  {t("conversionHint", {
+                    members: m?.newMembers.total ?? 0,
+                    clients: m?.newClients.total ?? 0,
+                  })}
+                </p>
+              </div>
+              <Link
+                href="/admin/conversion"
+                className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-admin hover:underline"
+              >
+                {t("conversionLink")}
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
