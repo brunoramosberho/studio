@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { CheckCircle2, Gift, Package, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, cn } from "@/lib/utils";
+import { formatValidDays } from "@/lib/valid-days";
 
 interface ClassTypeRef {
   id: string;
@@ -64,14 +65,7 @@ export default function AdminCatalogPage() {
   });
 
   function validDaysShort(days: number): string {
-    if (days <= 7) return `${days} ${t("daysUnit")}`;
-    if (days <= 31) return `${Math.round(days / 7)} ${t("weeksUnit")}`;
-    if (days <= 365) {
-      const m = Math.round(days / 30);
-      return `${m} ${m === 1 ? t("monthUnit") : t("monthsUnit")}`;
-    }
-    const y = Math.round(days / 365);
-    return `${y} ${y > 1 ? t("yearsUnit") : t("yearUnit")}`;
+    return formatValidDays(days, t);
   }
 
   function buildFeatures(pkg: PackageData): string[] {

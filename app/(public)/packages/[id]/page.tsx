@@ -29,6 +29,7 @@ import { PurchaseSheet } from "@/components/booking/purchase-sheet";
 import { SubscribeSheet } from "@/components/checkout/SubscribeSheet";
 import { useBranding } from "@/components/branding-provider";
 import { formatCurrency } from "@/lib/utils";
+import { formatValidDays, type ValidDaysUnitKey } from "@/lib/valid-days";
 
 interface ClassTypeRef {
   id: string;
@@ -83,15 +84,17 @@ const TYPE_META: Record<
   ON_DEMAND_SUBSCRIPTION: { label: "Suscripción On-Demand", icon: Video },
 };
 
+const VALID_DAYS_UNITS_ES: Record<ValidDaysUnitKey, string> = {
+  daysUnit: "días",
+  weeksUnit: "semanas",
+  monthUnit: "mes",
+  monthsUnit: "meses",
+  yearUnit: "año",
+  yearsUnit: "años",
+};
+
 function validDaysLabel(days: number): string {
-  if (days <= 7) return `${days} días`;
-  if (days <= 31) return `${Math.round(days / 7)} semana${Math.round(days / 7) > 1 ? "s" : ""}`;
-  if (days <= 365) {
-    const months = Math.round(days / 30);
-    return `${months} ${months === 1 ? "mes" : "meses"}`;
-  }
-  const years = Math.round(days / 365);
-  return `${years} año${years > 1 ? "s" : ""}`;
+  return formatValidDays(days, (k) => VALID_DAYS_UNITS_ES[k]);
 }
 
 export default function PackageDetailPage() {

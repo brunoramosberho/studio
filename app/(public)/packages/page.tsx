@@ -31,6 +31,7 @@ import {
   type CurationAudience,
 } from "@/lib/packages/curation";
 import { useTranslations } from "next-intl";
+import { formatValidDays } from "@/lib/valid-days";
 
 interface ClassTypeRef {
   id: string;
@@ -112,17 +113,7 @@ export default function PackagesPage() {
   ];
 
   function validDaysShort(days: number): string {
-    if (days <= 7) return `${days} ${t("daysUnit")}`;
-    if (days <= 31) {
-      const w = Math.round(days / 7);
-      return `${w} ${t("weeksUnit")}`;
-    }
-    if (days <= 365) {
-      const m = Math.round(days / 30);
-      return `${m} ${m === 1 ? t("monthUnit") : t("monthsUnit")}`;
-    }
-    const y = Math.round(days / 365);
-    return `${y} ${y > 1 ? t("yearsUnit") : t("yearUnit")}`;
+    return formatValidDays(days, t);
   }
 
   function buildFeatures(pkg: PackageData): string[] {
