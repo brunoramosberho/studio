@@ -1750,7 +1750,10 @@
           "desc": "Clientes que hicieron su primera compra en el rango."
         }
       }
-    }
+    },
+    "pinSet": "Ubicación exacta fijada — mapa y geofence activos",
+    "pinMissing": "Elige una sugerencia de Google al escribir la dirección para fijar el pin del mapa y el geofence",
+    "pinStale": "Editaste la dirección a mano — si la ubicación cambió, elige una sugerencia de Google para mover el pin"
   },
   "coach": {
     "portal": "Portal del Instructor",

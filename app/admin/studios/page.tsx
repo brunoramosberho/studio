@@ -114,6 +114,11 @@ export default function AdminStudiosPage() {
     productsEnabled: false,
     geofenceRadiusMeters: 150,
   });
+  // True once the admin hand-edits the address text after the pin was set
+  // (e.g. appending "Piso 3"). Coords are kept — interior details are the
+  // norm — but we surface a reminder to re-pick a suggestion if the actual
+  // location changed. Reset when the dialog (re)opens or a suggestion is picked.
+  const [addressTouched, setAddressTouched] = useState(false);
 
   const [cityDialogOpen, setCityDialogOpen] = useState(false);
   const [cityForm, setCityForm] = useState({ countryId: "", name: "" });
@@ -361,6 +366,7 @@ export default function AdminStudiosPage() {
   function openCreateStudio() {
     setEditingStudio(null);
     setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false, geofenceRadiusMeters: 150 });
+    setAddressTouched(false);
     setStudioDialogOpen(true);
   }
 
@@ -372,6 +378,7 @@ export default function AdminStudiosPage() {
       productsEnabled: studio.productsEnabled ?? false,
       geofenceRadiusMeters: studio.geofenceRadiusMeters ?? 150,
     });
+    setAddressTouched(false);
     setStudioDialogOpen(true);
   }
 
@@ -705,25 +712,40 @@ export default function AdminStudiosPage() {
               <label className="text-xs font-medium text-muted">{t("addressOptional")}</label>
               <PlacesAutocomplete
                 value={studioForm.address}
-                onChange={(val) => setStudioForm((f) => ({ ...f, address: val }))}
-                onSelect={(r: PlaceResult) =>
+                onChange={(val) => {
+                  setAddressTouched(true);
+                  setStudioForm((f) => ({ ...f, address: val }));
+                }}
+                onSelect={(r: PlaceResult) => {
+                  setAddressTouched(false);
                   setStudioForm((f) => ({
                     ...f,
                     address: r.address,
                     latitude: r.latitude,
                     longitude: r.longitude,
-                  }))
-                }
-                onClear={() =>
-                  setStudioForm((f) => ({ ...f, address: "", latitude: null, longitude: null }))
-                }
+                  }));
+                }}
+                onClear={() => {
+                  setAddressTouched(false);
+                  setStudioForm((f) => ({ ...f, address: "", latitude: null, longitude: null }));
+                }}
                 placeholder={t("searchAddress")}
               />
-              {studioForm.latitude != null && (
-                <p className="text-[10px] text-muted/60">
-                  {studioForm.latitude.toFixed(5)}, {studioForm.longitude?.toFixed(5)}
+              {studioForm.latitude != null ? (
+                addressTouched ? (
+                  <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                    {t("pinStale")}
+                  </p>
+                ) : (
+                  <p className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                    {t("pinSet")} · {studioForm.latitude.toFixed(5)}, {studioForm.longitude?.toFixed(5)}
+                  </p>
+                )
+              ) : studioForm.address.trim() ? (
+                <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                  {t("pinMissing")}
                 </p>
-              )}
+              ) : null}
             </div>
 
             <div className="flex items-center gap-3 rounded-xl border border-border p-3">

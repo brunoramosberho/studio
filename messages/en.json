@@ -1750,7 +1750,10 @@
           "desc": "Clients who made their first purchase in the range."
         }
       }
-    }
+    },
+    "pinSet": "Exact location set — map and geofence active",
+    "pinMissing": "Pick a Google suggestion while typing the address to set the map pin and geofence",
+    "pinStale": "You edited the address by hand — if the location changed, pick a Google suggestion to move the pin"
   },
   "coach": {
     "portal": "Instructor Portal",
