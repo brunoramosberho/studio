@@ -14,13 +14,12 @@ import {
   ArrowRight,
   Sparkles,
   Check,
-  Clock,
   ShoppingCart,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn, formatCurrency, formatTime } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface ProductOption {
   id: string;
@@ -75,7 +74,6 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
   const [confirmedItems, setConfirmedItems] = useState<
     { product: ProductOption; quantity: number }[]
   >([]);
-  const [pickupAt, setPickupAt] = useState<Date | null>(null);
 
   const { data, isLoading } = useQuery<AvailableResponse>({
     queryKey: ["booking-products", bookingId],
@@ -180,7 +178,6 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
         throw new Error(body.error ?? t("paymentFailed"));
       }
       setConfirmedItems(cartItems);
-      if (data?.classEndsAt) setPickupAt(new Date(data.classEndsAt));
       setPhase("success");
     } catch (e) {
       setError(e instanceof Error ? e.message : t("paymentFailed"));
@@ -253,7 +250,6 @@ export function ProductPickStep({ bookingId, onComplete, onSkip }: ProductPickSt
               currency={currency}
               isFree={isFree}
               studioName={placeName}
-              pickupAt={pickupAt}
               onContinue={handleContinueAfterSuccess}
             />
           ) : (
@@ -661,7 +657,6 @@ function SuccessScreen({
   currency,
   isFree,
   studioName,
-  pickupAt,
   onContinue,
 }: {
   items: { product: ProductOption; quantity: number }[];
@@ -669,7 +664,6 @@ function SuccessScreen({
   currency: string;
   isFree: boolean;
   studioName: string;
-  pickupAt: Date | null;
   onContinue: () => void;
 }) {
   const t = useTranslations("booking.preOrder");
@@ -765,21 +759,6 @@ function SuccessScreen({
             ),
           })}
         </motion.p>
-
-        {pickupAt && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.85 }}
-            className="mt-6 flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/5 px-4 py-2.5"
-          >
-            <Clock className="h-4 w-4 text-accent" />
-            <span className="text-xs font-medium text-muted">{t("readyAt")}</span>
-            <span className="font-mono text-sm font-bold text-accent">
-              {formatTime(pickupAt)}
-            </span>
-          </motion.div>
-        )}
 
         <motion.div
           initial={{ opacity: 0, y: 12 }}
