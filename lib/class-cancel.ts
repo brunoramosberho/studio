@@ -13,7 +13,7 @@ import { shouldHideCoach } from "@/lib/coach";
  *
  * Returns the number of bookings that were refunded.
  */
-export async function cancelClassWithRefunds(classId: string, tenantId: string): Promise<number> {
+export async function cancelClassWithRefunds(classId: string, tenantId: string, actorId?: string): Promise<number> {
   const cls = await prisma.class.findFirst({
     where: { id: classId, tenantId },
     include: {
@@ -61,7 +61,7 @@ export async function cancelClassWithRefunds(classId: string, tenantId: string):
     // Mark booking as cancelled with credit restored
     await prisma.booking.update({
       where: { id: booking.id },
-      data: { status: "CANCELLED", spotNumber: null, creditLost: false, cancelledAt: new Date() },
+      data: { status: "CANCELLED", spotNumber: null, creditLost: false, cancelledAt: new Date(), cancelledBy: actorId ?? null },
     });
 
     // Send email

@@ -398,7 +398,7 @@ export async function DELETE(
     // Cancel each class with full refund + email flow
     let totalRefunded = 0;
     for (const cls of classesToCancel) {
-      const refunded = await cancelClassWithRefunds(cls.id, ctx.tenant.id);
+      const refunded = await cancelClassWithRefunds(cls.id, ctx.tenant.id, ctx.session.user.id);
       totalRefunded += refunded;
     }
 

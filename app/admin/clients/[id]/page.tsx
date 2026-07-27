@@ -149,6 +149,7 @@ interface ClientDetail {
     startsAt: string;
     status: string;
     platform: PlatformType | null;
+    cancelled: { at: string | null; by: string | null } | null;
   }[];
   subscriptions: {
     id: string;
@@ -1577,6 +1578,14 @@ export default function ClientDetailPage() {
                             </td>
                             <td className="px-4 py-2.5 text-muted">
                               {format(new Date(b.startsAt), "d MMM yyyy", { locale: dateLocale })}
+                              {b.cancelled && (b.cancelled.by || b.cancelled.at) && (
+                                <span className="block text-[10px] text-muted/70">
+                                  {t("cancelledBy")}{" "}
+                                  {b.cancelled.by ?? "—"}
+                                  {b.cancelled.at &&
+                                    ` · ${format(new Date(b.cancelled.at), "d MMM, HH:mm", { locale: dateLocale })}`}
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-2.5">
                               <div className="flex items-center justify-end gap-1">

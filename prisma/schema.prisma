@@ -951,6 +951,10 @@ model Booking {
   // Only captured going forward — rows cancelled before this field existed
   // stay null. Surfaced in the check-in late-cancel list.
   cancelledAt    DateTime?
+  // Who executed the cancellation: a User id (the member themselves or a staff
+  // member), or "system" for automated paths (chargeback revoke). Settles the
+  // "yo no cancelé" dispute with data instead of deduction.
+  cancelledBy    String?
 
   parentBookingId String?
   parentBooking   Booking?  @relation("BookingGuests", fields: [parentBookingId], references: [id], onDelete: SetNull)

@@ -403,9 +403,12 @@ export async function POST(request: NextRequest) {
               creditsTotal: hasAllocations ? null : pkg.credits,
               creditsUsed: 0,
               expiresAt,
+              // The real PaymentIntent id, so a refund/chargeback on this payment
+              // can find and revoke the pack (the dispute flow looks packs up
+              // by stripePaymentId when the payment has no referenceId).
               stripePaymentId:
                 paymentMethod === "saved_card"
-                  ? "pending_stripe"
+                  ? stripePaymentIntentId ?? "pending_stripe"
                   : `pos_${paymentMethod}_${Date.now()}`,
               purchasedAt,
             },
@@ -434,6 +437,18 @@ export async function POST(request: NextRequest) {
           status: "sold",
         });
       }
+    }
+
+    // Link the card payment to the pack it bought (single-package sales — the
+    // common case). referenceId is what webhook revocation reads first.
+    if (stripePaymentIntentId && packageRefMap.size === 1) {
+      const [onlyUserPackageId] = [...packageRefMap.values()];
+      await prisma.stripePayment
+        .updateMany({
+          where: { stripePaymentIntentId, tenantId },
+          data: { referenceId: onlyUserPackageId },
+        })
+        .catch((err) => console.error("POS payment→package link failed:", err));
     }
 
     // 4. Book the class after package purchase (no credits before, now has them)

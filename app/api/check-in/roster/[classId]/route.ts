@@ -497,7 +497,14 @@ export async function GET(
             { status: "CANCELLED", pendingPenalty: { is: { reason: "late_cancel" } } },
           ],
         },
-        select: { status: true, guestName: true, cancelledAt: true, user: { select: { name: true } } },
+        select: {
+          status: true,
+          guestName: true,
+          cancelledAt: true,
+          cancelledBy: true,
+          userId: true,
+          user: { select: { name: true } },
+        },
       }),
       prisma.platformBooking.findMany({
         where: {
@@ -518,6 +525,19 @@ export async function GET(
         .map((b) => ({ name: b.memberName ?? "Wellhub", channel: "wellhub" as const })),
     ];
 
+    // Resolve staff cancellers so the audit says WHO freed the seat.
+    const cancellerIds = [
+      ...new Set(
+        directAudit
+          .filter((b) => b.status === "CANCELLED" && b.cancelledBy && b.cancelledBy !== "system" && b.cancelledBy !== b.userId)
+          .map((b) => b.cancelledBy as string),
+      ),
+    ];
+    const cancellers = cancellerIds.length
+      ? await prisma.user.findMany({ where: { id: { in: cancellerIds } }, select: { id: true, name: true } })
+      : [];
+    const cancellerName = new Map(cancellers.map((c) => [c.id, c.name]));
+
     const lateCancels = [
       ...directAudit
         .filter((b) => b.status === "CANCELLED")
@@ -525,6 +545,14 @@ export async function GET(
           name: b.user?.name ?? b.guestName ?? "Miembro",
           channel: "direct" as const,
           at: b.cancelledAt?.toISOString() ?? null,
+          by:
+            b.cancelledBy == null
+              ? null
+              : b.cancelledBy === "system"
+                ? "sistema"
+                : b.cancelledBy === b.userId
+                  ? "el socio"
+                  : (cancellerName.get(b.cancelledBy) ?? "staff"),
         })),
       ...platformAudit
         .filter((b) => b.status === "cancelled")
@@ -532,6 +560,7 @@ export async function GET(
           name: b.memberName ?? "Wellhub",
           channel: "wellhub" as const,
           at: b.updatedAt.toISOString(),
+          by: null,
         })),
     ];
 

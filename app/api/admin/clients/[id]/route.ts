@@ -390,6 +390,35 @@ export async function GET(
       console.error("Failed to load saved cards for client", userId, err);
     }
 
+    // Resolve who cancelled each cancelled booking, so the profile answers
+    // "yo no cancelé" with a name instead of a guess.
+    const cancellerIds = [
+      ...new Set(
+        pastBookings
+          .map((b) => b.cancelledBy)
+          .filter((v): v is string => !!v && v !== "system" && v !== userId),
+      ),
+    ];
+    const cancellers = cancellerIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: cancellerIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const cancellerName = new Map(cancellers.map((c) => [c.id, c.name]));
+    const cancelledByLabel = (b: { cancelledBy: string | null; cancelledAt: Date | null }) => {
+      if (!b.cancelledAt && !b.cancelledBy) return null;
+      const who =
+        b.cancelledBy === null
+          ? null
+          : b.cancelledBy === "system"
+            ? "sistema"
+            : b.cancelledBy === userId
+              ? "el socio"
+              : (cancellerName.get(b.cancelledBy) ?? "staff");
+      return { at: b.cancelledAt?.toISOString() ?? null, by: who };
+    };
+
     // A linked partner identity explains a profile that would otherwise look
     // odd from the desk: classes attended with no package and no payments.
     const wellhubLink = await prisma.wellhubUserLink.findFirst({
@@ -502,6 +531,7 @@ export async function GET(
         startsAt: b.class.startsAt.toISOString(),
         status: b.status,
         platform: b.platformBooking?.platform ?? null,
+        cancelled: b.status === "CANCELLED" ? cancelledByLabel(b) : null,
       })),
 
       subscriptions: memberSubscriptions.map((s) => ({

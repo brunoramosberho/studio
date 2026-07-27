@@ -156,6 +156,8 @@ type AuditEntry = {
   channel: "direct" | "wellhub";
   /** When it happened (ISO). Late-cancels carry it; null for rows predating the field. */
   at?: string | null;
+  /** Who executed it: "el socio", a staff name, or "sistema". */
+  by?: string | null;
 };
 
 type RosterData = {
@@ -1702,9 +1704,10 @@ function OccupancyAuditSection({
       />
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs text-stone-700 dark:text-foreground">{e.name}</p>
-        {e.at && (
+        {(e.at || e.by) && (
           <p className="text-[10px] text-stone-400 dark:text-muted">
-            {format(new Date(e.at), "d MMM, HH:mm", { locale: es })}
+            {e.at && format(new Date(e.at), "d MMM, HH:mm", { locale: es })}
+            {e.by && ` · ${e.by}`}
           </p>
         )}
       </div>

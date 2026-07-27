@@ -365,7 +365,7 @@ export async function PUT(
 
     // If cancelling via PUT, use the full cancel flow (refund + email)
     if (status === "CANCELLED" && existing.status !== "CANCELLED") {
-      const refundedCount = await cancelClassWithRefunds(id, ctx.tenant.id);
+      const refundedCount = await cancelClassWithRefunds(id, ctx.tenant.id, ctx.session.user.id);
       try {
         const { unsyncClassFromWellhub } = await import("@/lib/platforms/wellhub");
         await unsyncClassFromWellhub(id);
@@ -453,7 +453,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    const refundedCount = await cancelClassWithRefunds(id, ctx.tenant.id);
+    const refundedCount = await cancelClassWithRefunds(id, ctx.tenant.id, ctx.session.user.id);
 
     try {
       const { unsyncClassFromWellhub } = await import("@/lib/platforms/wellhub");
