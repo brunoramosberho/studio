@@ -44,6 +44,9 @@ interface DashboardData {
   bookingsThisWeek: number;
   revenueThisWeek: number;
   avgOccupancy: number;
+  occupancyClassesCount: number;
+  occupancyByCoach: { name: string; classes: number; occupancy: number }[];
+  occupancyByDiscipline: { name: string; classes: number; occupancy: number }[];
   newClientsThisWeek: number;
   popularClassType: string;
   bookingsTodayChange: number;
@@ -195,6 +198,9 @@ export function AdminDashboard() {
                     />
                   </motion.div>
                 </div>
+                <motion.div variants={fadeUp}>
+                  <OccupancyCard data={data} />
+                </motion.div>
               </>
             )}
           </motion.div>
@@ -417,6 +423,91 @@ function WeeklySection({
         </Link>
       </div>
       <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
+
+// ─── Occupancy KPI: month average + by instructor / discipline ──────────
+// Finished classes only — a future class is still filling, so it would fake
+// emptiness. The bars read as a ranking: who fills the room, which discipline
+// carries the studio.
+const occupancyBarColor = (pct: number) =>
+  pct >= 60 ? "bg-emerald-500" : pct >= 35 ? "bg-amber-500" : "bg-red-400";
+
+function OccupancyList({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: { name: string; classes: number; occupancy: number }[];
+}) {
+  const t = useTranslations("admin");
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+        {title}
+      </p>
+      <div className="space-y-2">
+        {rows.slice(0, 6).map((r) => (
+          <div key={r.name} className="flex items-center gap-2.5">
+            <span className="w-28 shrink-0 truncate text-xs font-medium text-foreground/80">
+              {r.name}
+            </span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
+              <div
+                className={`h-full rounded-full ${occupancyBarColor(r.occupancy)}`}
+                style={{ width: `${Math.min(100, r.occupancy)}%` }}
+              />
+            </div>
+            <span className="w-10 shrink-0 text-right text-xs font-semibold tabular-nums text-foreground">
+              {r.occupancy}%
+            </span>
+            <span className="w-14 shrink-0 text-right text-[10px] tabular-nums text-muted">
+              {t("occupancyClassCount", { count: r.classes })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OccupancyCard({ data }: { data: DashboardData | undefined }) {
+  const t = useTranslations("admin");
+  if (!data || data.occupancyClassesCount === 0) return null;
+
+  const change = data.occupancyChange;
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+            {t("occupancyTitle")}
+          </h2>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-display text-3xl font-bold text-foreground">
+              {data.avgOccupancy}%
+            </span>
+            {Number.isFinite(change) && change !== 0 && (
+              <span
+                className={`text-xs font-semibold ${change > 0 ? "text-emerald-600" : "text-red-500"}`}
+              >
+                {change > 0 ? "+" : ""}
+                {Math.round(change)}% {t("occupancyVsLastMonth")}
+              </span>
+            )}
+          </div>
+        </div>
+        <span className="text-[11px] text-muted">
+          {t("occupancyFinishedClasses", { count: data.occupancyClassesCount })}
+        </span>
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2">
+        <OccupancyList title={t("occupancyByCoach")} rows={data.occupancyByCoach} />
+        <OccupancyList title={t("occupancyByDiscipline")} rows={data.occupancyByDiscipline} />
+      </div>
     </div>
   );
 }

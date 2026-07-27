@@ -167,14 +167,20 @@ export async function GET() {
           role: "CLIENT",
         },
       }),
+      // Occupancy KPI: this calendar month, FINISHED classes only — a future
+      // class is still filling (often not even open to book yet), so counting
+      // it would drag the average down with fake emptiness.
       prisma.class.findMany({
         where: {
           tenantId,
-          startsAt: { gte: thirtyDaysAgo },
+          startsAt: { gte: monthStart },
+          endsAt: { lte: now },
           status: { in: ["SCHEDULED", "COMPLETED"] },
         },
         include: {
           room: { select: { maxCapacity: true } },
+          classType: { select: { name: true } },
+          coach: { select: { name: true } },
           _count: {
             select: {
               bookings: { where: { status: confirmedOrAttended } },
@@ -185,14 +191,14 @@ export async function GET() {
       prisma.class.findMany({
         where: {
           tenantId,
-          startsAt: {
-            gte: new Date(thirtyDaysAgo.getTime() - 30 * 86400000),
-            lt: thirtyDaysAgo,
-          },
+          startsAt: { gte: prevMonthStart, lt: monthStart },
+          endsAt: { lte: now },
           status: { in: ["SCHEDULED", "COMPLETED"] },
         },
         include: {
           room: { select: { maxCapacity: true } },
+          classType: { select: { name: true } },
+          coach: { select: { name: true } },
           _count: {
             select: {
               bookings: { where: { status: confirmedOrAttended } },
@@ -438,6 +444,33 @@ export async function GET() {
     const avgOccupancy = computeOccupancy(classesLast30d);
     const prevOccupancy = computeOccupancy(prevMonthClasses);
 
+    // Occupancy by instructor and by discipline — same finished-month window,
+    // sorted by fill so the dashboard reads as a ranking.
+    const occupancyBreakdown = (
+      classes: typeof classesLast30d,
+      keyOf: (c: (typeof classesLast30d)[number]) => string,
+    ) => {
+      const agg = new Map<string, { classes: number; ratioSum: number }>();
+      for (const c of classes) {
+        const cap = c.room.maxCapacity;
+        if (cap === 0) continue;
+        const key = keyOf(c);
+        const e = agg.get(key) ?? { classes: 0, ratioSum: 0 };
+        e.classes += 1;
+        e.ratioSum += c._count.bookings / cap;
+        agg.set(key, e);
+      }
+      return [...agg.entries()]
+        .map(([name, e]) => ({
+          name,
+          classes: e.classes,
+          occupancy: Math.round((e.ratioSum / e.classes) * 100),
+        }))
+        .sort((a, b) => b.occupancy - a.occupancy || b.classes - a.classes);
+    };
+    const occupancyByCoach = occupancyBreakdown(classesLast30d, (c) => c.coach.name);
+    const occupancyByDiscipline = occupancyBreakdown(classesLast30d, (c) => c.classType.name);
+
     let popularClassType = "N/A";
     if (popularType.length > 0) {
       const topClass = await prisma.class.findFirst({
@@ -555,6 +588,9 @@ export async function GET() {
       bookingsThisWeek,
       revenueThisWeek,
       avgOccupancy,
+      occupancyClassesCount: classesLast30d.length,
+      occupancyByCoach,
+      occupancyByDiscipline,
       newClientsThisWeek,
       popularClassType,
 
