@@ -69,15 +69,18 @@ export function getDateLocale(locale?: string) {
 export function formatCurrency(amount: number, currency: string = "EUR", locale?: string): string {
   const code = currency.toUpperCase();
   const intlLocale = resolveLegacyIntlLocale(code, locale);
+  // Whole amounts stay clean ("22 €"); fractional ones must show their cents
+  // — rounding displayed a 2.50 € product as "3 €".
+  const digits = Math.round(amount * 100) % 100 !== 0 ? 2 : 0;
   try {
     return new Intl.NumberFormat(intlLocale, {
       style: "currency",
       currency: code,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
     }).format(amount);
   } catch {
-    return `${code} ${Math.round(amount).toLocaleString()}`;
+    return `${code} ${digits > 0 ? amount.toFixed(2) : Math.round(amount).toLocaleString()}`;
   }
 }
 

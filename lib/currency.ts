@@ -65,7 +65,10 @@ export function formatMoney(
 ): string {
   const code = (overrideCode ?? config.code).toUpperCase();
   const locale = code === config.code ? config.intlLocale : defaultLocaleForCurrency(code);
-  const fractionDigits = options?.fractionDigits ?? 0;
+  // Whole amounts stay clean ("22 €") but fractional ones must show their
+  // cents — defaulting to 0 digits displayed a 2.50 € product as "3 €".
+  const hasCents = Math.round(amount * 100) % 100 !== 0;
+  const fractionDigits = options?.fractionDigits ?? (hasCents ? 2 : 0);
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency",

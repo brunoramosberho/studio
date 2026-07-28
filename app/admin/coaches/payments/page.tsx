@@ -120,8 +120,16 @@ export default function CoachPaymentsPage() {
 
   const fmt = useMemo(() => {
     const code = data?.currency ?? "EUR";
-    return (n: number) =>
-      new Intl.NumberFormat(locale, { style: "currency", currency: code, maximumFractionDigits: 0 }).format(n);
+    return (n: number) => {
+      // Whole amounts stay clean; fractional rates/totals keep their cents.
+      const digits = Math.round(n * 100) % 100 !== 0 ? 2 : 0;
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: code,
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      }).format(n);
+    };
   }, [data?.currency, locale]);
 
   const rateLabel = (rt: string) =>
