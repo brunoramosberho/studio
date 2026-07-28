@@ -1,4 +1,4 @@
-import type Stripe from "stripe";
+import Stripe from "stripe";
 import { prisma } from "@/lib/db";
 
 /**
@@ -125,4 +125,32 @@ async function createRowSafely(
     if (winner) return winner;
     throw new Error("Failed to persist StripeCustomer");
   }
+}
+
+/**
+ * True when a Stripe call failed because the referenced customer no longer
+ * exists (deleted on the dashboard, or created in the other live/test mode
+ * before the studio flipped). Our StripeCustomer row is then stale.
+ */
+export function isMissingCustomerError(err: unknown): boolean {
+  return (
+    err instanceof Stripe.errors.StripeInvalidRequestError &&
+    err.code === "resource_missing" &&
+    (err.param === "customer" || /no such customer/i.test(err.message))
+  );
+}
+
+/**
+ * Drop the stale row and resolve again (adopt-or-create). Used as a one-shot
+ * retry when Stripe reports the stored customer doesn't exist — self-heals
+ * rows left behind by dashboard cleanups or a sandbox→live flip.
+ */
+export async function refreshStaleStripeCustomer(
+  memberId: string,
+  tenantId: string,
+  stripeAccountId: string,
+  stripe: Stripe,
+) {
+  await prisma.stripeCustomer.deleteMany({ where: { tenantId, memberId } });
+  return getOrCreateStripeCustomer(memberId, tenantId, stripeAccountId, stripe);
 }

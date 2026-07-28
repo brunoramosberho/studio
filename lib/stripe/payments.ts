@@ -2,7 +2,12 @@ import type Stripe from "stripe";
 import { toStripeAmount, fromStripeAmount, calculateFee } from "./helpers";
 import { prisma } from "@/lib/db";
 import { getTenantStripeContext } from "./tenant-stripe";
-import { getOrCreateStripeCustomer, getOrAdoptStripeCustomer } from "./customers";
+import {
+  getOrCreateStripeCustomer,
+  getOrAdoptStripeCustomer,
+  isMissingCustomerError,
+  refreshStaleStripeCustomer,
+} from "./customers";
 
 export interface CreateMemberPaymentParams {
   tenantId: string;
@@ -51,7 +56,7 @@ export async function createMemberPayment({
   const { stripe, currency: tenantCurrency } = await getTenantStripeContext(tenantId);
   const chargeCurrency = (currency ?? tenantCurrency).toLowerCase();
 
-  const stripeCustomer = await getOrCreateStripeCustomer(
+  let stripeCustomer = await getOrCreateStripeCustomer(
     memberId,
     tenantId,
     tenant.stripeAccountId,
@@ -72,29 +77,47 @@ export async function createMemberPayment({
     tenant.applicationFeePercent,
   );
 
-  const paymentIntent = await stripe.paymentIntents.create(
-    {
-      amount: toStripeAmount(amountInCurrency),
-      currency: chargeCurrency,
-      customer: stripeCustomer.stripeCustomerId,
-      description,
-      application_fee_amount: feeAmount > 0 ? feeAmount : undefined,
-      setup_future_usage: "off_session",
-      receipt_email: member?.email ?? undefined,
-      metadata: {
-        tenantId,
-        memberId,
-        type,
-        referenceId: referenceId ?? "",
-      },
-      payment_method_types: ["card"],
-      ...(paymentMethodId && {
-        payment_method: paymentMethodId,
-        confirm: true,
-      }),
+  const buildPiParams = (): Stripe.PaymentIntentCreateParams => ({
+    amount: toStripeAmount(amountInCurrency),
+    currency: chargeCurrency,
+    customer: stripeCustomer.stripeCustomerId,
+    description,
+    application_fee_amount: feeAmount > 0 ? feeAmount : undefined,
+    setup_future_usage: "off_session",
+    receipt_email: member?.email ?? undefined,
+    metadata: {
+      tenantId,
+      memberId,
+      type,
+      referenceId: referenceId ?? "",
     },
-    { stripeAccount: tenant.stripeAccountId },
-  );
+    payment_method_types: ["card"],
+    ...(paymentMethodId && {
+      payment_method: paymentMethodId,
+      confirm: true,
+    }),
+  });
+
+  let paymentIntent: Stripe.PaymentIntent;
+  try {
+    paymentIntent = await stripe.paymentIntents.create(buildPiParams(), {
+      stripeAccount: tenant.stripeAccountId,
+    });
+  } catch (err) {
+    // Self-heal: the stored customer may have been deleted on the studio's
+    // dashboard or created before a sandbox→live flip. Re-resolve (adoption
+    // included) and retry exactly once.
+    if (!isMissingCustomerError(err)) throw err;
+    stripeCustomer = await refreshStaleStripeCustomer(
+      memberId,
+      tenantId,
+      tenant.stripeAccountId,
+      stripe,
+    );
+    paymentIntent = await stripe.paymentIntents.create(buildPiParams(), {
+      stripeAccount: tenant.stripeAccountId,
+    });
+  }
 
   await prisma.stripePayment.create({
     data: {
@@ -145,17 +168,32 @@ export async function listSavedPaymentMethods(
   // Adopt-aware: a member migrated from the studio's previous platform may
   // already have a customer (with cards) on this same Stripe account — the
   // first look at their saved methods links it by verified email.
-  const stripeCustomer = await getOrAdoptStripeCustomer(
+  let stripeCustomer = await getOrAdoptStripeCustomer(
     memberId,
     tenantId,
     tenant.stripeAccountId,
     stripe,
   );
   if (!stripeCustomer) return [];
-  const methods = await stripe.paymentMethods.list(
-    { customer: stripeCustomer.stripeCustomerId, type: "card" },
-    { stripeAccount: tenant.stripeAccountId },
-  );
+  let methods: Stripe.ApiList<Stripe.PaymentMethod>;
+  try {
+    methods = await stripe.paymentMethods.list(
+      { customer: stripeCustomer.stripeCustomerId, type: "card" },
+      { stripeAccount: tenant.stripeAccountId },
+    );
+  } catch (err) {
+    if (!isMissingCustomerError(err)) throw err;
+    stripeCustomer = await refreshStaleStripeCustomer(
+      memberId,
+      tenantId,
+      tenant.stripeAccountId,
+      stripe,
+    );
+    methods = await stripe.paymentMethods.list(
+      { customer: stripeCustomer.stripeCustomerId, type: "card" },
+      { stripeAccount: tenant.stripeAccountId },
+    );
+  }
 
   // Surface the last-used card first so checkouts auto-select it. If the
   // stored default was detached we silently fall back to Stripe's order.
@@ -220,20 +258,38 @@ export async function createSetupIntent(
 
   const { stripe } = await getTenantStripeContext(tenantId);
 
-  const stripeCustomer = await getOrCreateStripeCustomer(
+  let stripeCustomer = await getOrCreateStripeCustomer(
     memberId,
     tenantId,
     tenant.stripeAccountId,
     stripe,
   );
 
-  const setupIntent = await stripe.setupIntents.create(
-    {
-      customer: stripeCustomer.stripeCustomerId,
-      payment_method_types: ["card"],
-    },
-    { stripeAccount: tenant.stripeAccountId },
-  );
+  let setupIntent: Stripe.SetupIntent;
+  try {
+    setupIntent = await stripe.setupIntents.create(
+      {
+        customer: stripeCustomer.stripeCustomerId,
+        payment_method_types: ["card"],
+      },
+      { stripeAccount: tenant.stripeAccountId },
+    );
+  } catch (err) {
+    if (!isMissingCustomerError(err)) throw err;
+    stripeCustomer = await refreshStaleStripeCustomer(
+      memberId,
+      tenantId,
+      tenant.stripeAccountId,
+      stripe,
+    );
+    setupIntent = await stripe.setupIntents.create(
+      {
+        customer: stripeCustomer.stripeCustomerId,
+        payment_method_types: ["card"],
+      },
+      { stripeAccount: tenant.stripeAccountId },
+    );
+  }
 
   return {
     clientSecret: setupIntent.client_secret!,

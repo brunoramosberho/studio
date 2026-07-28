@@ -3,7 +3,11 @@ import { addMonths } from "date-fns";
 import { getSubscriptionPeriod, toStripeAmount } from "./helpers";
 import { prisma } from "@/lib/db";
 import { getStripeClientForTenantId } from "./tenant-stripe";
-import { getOrCreateStripeCustomer } from "./customers";
+import {
+  getOrCreateStripeCustomer,
+  isMissingCustomerError,
+  refreshStaleStripeCustomer,
+} from "./customers";
 
 /**
  * Create a recurring Stripe Price on the connected account.
@@ -77,7 +81,7 @@ export async function createMemberSubscription({
 
   const stripe = await getStripeClientForTenantId(tenantId);
 
-  const stripeCustomer = await getOrCreateStripeCustomer(
+  let stripeCustomer = await getOrCreateStripeCustomer(
     userId,
     tenantId,
     tenant.stripeAccountId,
@@ -107,9 +111,26 @@ export async function createMemberSubscription({
     subParams.payment_behavior = "error_if_incomplete";
   }
 
-  const subscription = await stripe.subscriptions.create(subParams, {
-    stripeAccount: tenant.stripeAccountId,
-  });
+  let subscription: Stripe.Subscription;
+  try {
+    subscription = await stripe.subscriptions.create(subParams, {
+      stripeAccount: tenant.stripeAccountId,
+    });
+  } catch (err) {
+    // Self-heal a stale stored customer (dashboard cleanup / sandbox→live
+    // flip): re-resolve once and retry with the fresh customer.
+    if (!isMissingCustomerError(err)) throw err;
+    stripeCustomer = await refreshStaleStripeCustomer(
+      userId,
+      tenantId,
+      tenant.stripeAccountId,
+      stripe,
+    );
+    subParams.customer = stripeCustomer.stripeCustomerId;
+    subscription = await stripe.subscriptions.create(subParams, {
+      stripeAccount: tenant.stripeAccountId,
+    });
+  }
 
   const pkg = await prisma.package.findUniqueOrThrow({
     where: { id: packageId },
