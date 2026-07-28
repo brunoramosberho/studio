@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { toStripeAmount, fromStripeAmount, calculateFee } from "./helpers";
 import { prisma } from "@/lib/db";
 import { getTenantStripeContext } from "./tenant-stripe";
+import { getOrCreateStripeCustomer, getOrAdoptStripeCustomer } from "./customers";
 
 export interface CreateMemberPaymentParams {
   tenantId: string;
@@ -134,17 +135,23 @@ export async function listSavedPaymentMethods(
   memberId: string,
   tenantId: string,
 ) {
-  const stripeCustomer = await prisma.stripeCustomer.findUnique({
-    where: { tenantId_memberId: { tenantId, memberId } },
-  });
-  if (!stripeCustomer) return [];
-
   const tenant = await prisma.tenant.findUniqueOrThrow({
     where: { id: tenantId },
   });
   if (!tenant.stripeAccountId) return [];
 
   const { stripe } = await getTenantStripeContext(tenantId);
+
+  // Adopt-aware: a member migrated from the studio's previous platform may
+  // already have a customer (with cards) on this same Stripe account — the
+  // first look at their saved methods links it by verified email.
+  const stripeCustomer = await getOrAdoptStripeCustomer(
+    memberId,
+    tenantId,
+    tenant.stripeAccountId,
+    stripe,
+  );
+  if (!stripeCustomer) return [];
   const methods = await stripe.paymentMethods.list(
     { customer: stripeCustomer.stripeCustomerId, type: "card" },
     { stripeAccount: tenant.stripeAccountId },
@@ -234,36 +241,4 @@ export async function createSetupIntent(
   };
 }
 
-async function getOrCreateStripeCustomer(
-  memberId: string,
-  tenantId: string,
-  stripeAccountId: string,
-  stripe: Stripe,
-) {
-  const existing = await prisma.stripeCustomer.findUnique({
-    where: { tenantId_memberId: { tenantId, memberId } },
-  });
 
-  if (existing) return existing;
-
-  const member = await prisma.user.findUniqueOrThrow({
-    where: { id: memberId },
-  });
-
-  const customer = await stripe.customers.create(
-    {
-      email: member.email,
-      name: member.name ?? undefined,
-      metadata: { memberId, tenantId },
-    },
-    { stripeAccount: stripeAccountId },
-  );
-
-  return prisma.stripeCustomer.create({
-    data: {
-      tenantId,
-      memberId,
-      stripeCustomerId: customer.id,
-    },
-  });
-}

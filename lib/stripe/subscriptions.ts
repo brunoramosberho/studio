@@ -3,6 +3,7 @@ import { addMonths } from "date-fns";
 import { getSubscriptionPeriod, toStripeAmount } from "./helpers";
 import { prisma } from "@/lib/db";
 import { getStripeClientForTenantId } from "./tenant-stripe";
+import { getOrCreateStripeCustomer } from "./customers";
 
 /**
  * Create a recurring Stripe Price on the connected account.
@@ -80,6 +81,7 @@ export async function createMemberSubscription({
     userId,
     tenantId,
     tenant.stripeAccountId,
+    stripe,
   );
 
   const stripePriceId = await ensureStripePrice(
@@ -358,35 +360,4 @@ export async function resumeSubscription(subscriptionId: string) {
   });
 }
 
-async function getOrCreateStripeCustomer(
-  userId: string,
-  tenantId: string,
-  stripeAccountId: string,
-) {
-  const existing = await prisma.stripeCustomer.findUnique({
-    where: { tenantId_memberId: { tenantId, memberId: userId } },
-  });
-  if (existing) return existing;
 
-  const user = await prisma.user.findUniqueOrThrow({
-    where: { id: userId },
-  });
-
-  const stripe = await getStripeClientForTenantId(tenantId);
-  const customer = await stripe.customers.create(
-    {
-      email: user.email,
-      name: user.name ?? undefined,
-      metadata: { memberId: userId, tenantId },
-    },
-    { stripeAccount: stripeAccountId },
-  );
-
-  return prisma.stripeCustomer.create({
-    data: {
-      tenantId,
-      memberId: userId,
-      stripeCustomerId: customer.id,
-    },
-  });
-}
