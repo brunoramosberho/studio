@@ -173,7 +173,7 @@ export async function GET(
         room: {
           select: {
             maxCapacity: true,
-            studio: { select: { name: true } },
+            studio: { select: { name: true, city: { select: { timezone: true } } } },
           },
         },
         _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
@@ -209,6 +209,7 @@ export async function GET(
       startsAt: c.startsAt,
       endsAt: c.endsAt,
       studioName: c.room.studio.name,
+      timezone: c.room.studio.city?.timezone ?? null,
       spotsLeft: c.room.maxCapacity - c._count.bookings - (platformByClass.get(c.id) ?? 0),
       currentUserBooked: myBookedSet.has(c.id),
     }));
@@ -263,7 +264,7 @@ export async function GET(
           room: {
             select: {
               maxCapacity: true,
-              studio: { select: { name: true } },
+              studio: { select: { name: true, city: { select: { timezone: true } } } },
             },
           },
           _count: { select: { bookings: { where: { status: "CONFIRMED" } } } },
@@ -331,6 +332,7 @@ export async function GET(
       startsAt: b.class.startsAt,
       endsAt: b.class.endsAt,
       studioName: b.class.room.studio.name,
+      timezone: b.class.room.studio.city?.timezone ?? null,
       spotsLeft: b.class.room.maxCapacity - b.class._count.bookings - (upcomingPlatformByClass.get(b.classId) ?? 0),
       currentUserBooked: myUpcomingSet.has(b.classId),
       feedEventId: fe?.id ?? null,

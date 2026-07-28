@@ -31,6 +31,7 @@ interface UpcomingClass {
   icon?: string | null;
   duration: number;
   coachName?: string;
+  timezone?: string | null;
   startsAt: string;
   endsAt: string;
   studioName: string;
@@ -111,14 +112,24 @@ function formatMemberSince(dateStr: string) {
   return d.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
 }
 
-function formatClassDate(dateStr: string) {
+function formatClassDate(dateStr: string, timeZone?: string | null) {
   const d = new Date(dateStr);
-  return d.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" });
+  return d.toLocaleDateString("es-ES", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    ...(timeZone ? { timeZone } : {}),
+  });
 }
 
-function formatClassTime(dateStr: string) {
+function formatClassTime(dateStr: string, timeZone?: string | null) {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true });
+  return d.toLocaleTimeString("es-ES", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    ...(timeZone ? { timeZone } : {}),
+  });
 }
 
 function timeAgo(dateStr: string) {
@@ -154,7 +165,7 @@ function ClassCard({ cls, showCoach = true }: { cls: UpcomingClass; showCoach?: 
           <p className="truncate text-[14px] font-semibold text-foreground">{cls.className}</p>
           <p className="text-[12px] text-muted">
             {showCoach && cls.coachName ? `${cls.coachName} · ` : ""}
-            {formatClassDate(cls.startsAt)} · {formatClassTime(cls.startsAt)}
+            {formatClassDate(cls.startsAt, cls.timezone)} · {formatClassTime(cls.startsAt, cls.timezone)}
           </p>
           <p className="text-[11px] text-muted/70">{cls.studioName}</p>
         </div>
@@ -358,7 +369,7 @@ export default function UserProfilePage({
           <h2 className="mt-3 font-display text-xl font-bold text-foreground">{profile.name}</h2>
           {profile.isCoach && (
             <span className="mt-1 rounded-full bg-accent/10 px-3 py-0.5 text-[12px] font-semibold text-accent">
-              Coach
+              Instructor
             </span>
           )}
           {profile.loyaltyLevel && !profile.isCoach && (
