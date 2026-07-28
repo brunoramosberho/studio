@@ -37,19 +37,19 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { TimeRangePicker, formatMinutes } from "./_components/time-range-picker";
+import { TimeRangePicker, formatMinutes } from "@/components/availability/time-range-picker";
 import {
   StudioPreferenceChips,
   type StudioPrefValue,
-} from "./_components/studio-preference-chips";
+} from "@/components/availability/studio-preference-chips";
 import {
   WeeklyGridEditor,
   type GridRange,
-} from "./_components/weekly-grid-editor";
+} from "@/components/availability/weekly-grid-editor";
 import {
   TimeOffCalendar,
   type CalendarBlock,
-} from "./_components/time-off-calendar";
+} from "@/components/availability/time-off-calendar";
 
 // ── Types matching /api/coaches/availability ──
 

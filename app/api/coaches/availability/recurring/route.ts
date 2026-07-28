@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { parseHhmm, SLOT_MINUTES } from "@/lib/availability";
+import { resolveTargetCoachUserId } from "@/lib/coach-availability-target";
 
 interface RangePayload {
   dayOfWeek: number;
@@ -12,6 +13,8 @@ interface RangePayload {
 interface ReplaceBody {
   ranges: RangePayload[];
   studioPreferences: { studioId: string; preference: "preferred" | "ok_if_needed" }[];
+  /** ADMIN only: replace another coach's recurring availability. */
+  coachUserId?: string;
 }
 
 /**
@@ -29,8 +32,18 @@ interface ReplaceBody {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const { session, tenant } = await requireRole("COACH");
+    const { session, tenant, membership } = await requireRole("COACH");
     const body = (await request.json()) as ReplaceBody;
+
+    const target = await resolveTargetCoachUserId({
+      sessionUserId: session.user.id,
+      role: membership.role,
+      tenantId: tenant.id,
+      requested: body.coachUserId,
+    });
+    if (!target.ok) {
+      return NextResponse.json({ error: target.error }, { status: target.status });
+    }
 
     if (!Array.isArray(body.ranges)) {
       return NextResponse.json({ error: "ranges debe ser un arreglo" }, { status: 400 });
@@ -129,7 +142,7 @@ export async function PUT(request: NextRequest) {
       await tx.coachAvailabilityBlock.deleteMany({
         where: {
           tenantId: tenant.id,
-          coachId: session.user.id,
+          coachId: target.coachUserId,
           kind: "availability",
           type: "recurring",
         },
@@ -139,7 +152,7 @@ export async function PUT(request: NextRequest) {
         await tx.coachAvailabilityBlock.create({
           data: {
             tenantId: tenant.id,
-            coachId: session.user.id,
+            coachId: target.coachUserId,
             kind: "availability",
             type: "recurring",
             dayOfWeek: [r.dayOfWeek],

@@ -1,17 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/tenant";
+import { requireRole, roleAtLeast } from "@/lib/tenant";
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { session, tenant } = await requireRole("COACH");
+    const { session, tenant, membership } = await requireRole("COACH");
     const { id } = await params;
 
+    // Coaches delete their own blocks; admins can delete any coach's (the
+    // per-coach admin view manages calendars on the team's behalf).
+    const isAdmin = roleAtLeast(membership.role, "ADMIN");
     const block = await prisma.coachAvailabilityBlock.findFirst({
-      where: { id, tenantId: tenant.id, coachId: session.user.id },
+      where: {
+        id,
+        tenantId: tenant.id,
+        ...(isAdmin ? {} : { coachId: session.user.id }),
+      },
     });
 
     if (!block) {

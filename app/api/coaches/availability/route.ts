@@ -4,14 +4,26 @@ import { requireRole } from "@/lib/tenant";
 import { getZone, getStatusForZone } from "@/lib/availability";
 import { validateBlockPayload } from "@/lib/availability-validation";
 import { notifyAdminsOfAvailabilityRequest } from "@/lib/availability-notifications";
+import { resolveTargetCoachUserId } from "@/lib/coach-availability-target";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { session, tenant } = await requireRole("COACH");
+    const { session, tenant, membership } = await requireRole("COACH");
+
+    // Admins can inspect another coach's calendar (per-coach admin view).
+    const target = await resolveTargetCoachUserId({
+      sessionUserId: session.user.id,
+      role: membership.role,
+      tenantId: tenant.id,
+      requested: request.nextUrl.searchParams.get("coachUserId"),
+    });
+    if (!target.ok) {
+      return NextResponse.json({ error: target.error }, { status: target.status });
+    }
 
     const [blocks, studios] = await Promise.all([
       prisma.coachAvailabilityBlock.findMany({
-        where: { tenantId: tenant.id, coachId: session.user.id },
+        where: { tenantId: tenant.id, coachId: target.coachUserId },
         orderBy: { createdAt: "desc" },
         include: {
           studioPreferences: { select: { studioId: true, preference: true } },

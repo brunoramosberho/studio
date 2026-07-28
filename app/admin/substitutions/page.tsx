@@ -39,6 +39,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { TEAM_TABS } from "@/components/admin/section-tab-configs";
+import { CoachPickerItem, type PickerCoach } from "@/components/admin/coach-picker-item";
 
 type Status =
   | "PENDING"
@@ -70,6 +71,8 @@ interface CoachSummary {
 interface RowClass {
   id: string;
   startsAt: string;
+  endsAt: string;
+  roomId: string | null;
   classType: { id: string; name: string; color: string | null };
   room: { name: string; studio: { name: string } } | null;
 }
@@ -674,6 +677,7 @@ function SubstitutionCard({ req }: { req: SubstitutionRow }) {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         requestId={req.id}
+        cls={req.class}
         onSuccess={refetch}
       />
     </div>
@@ -730,25 +734,39 @@ function AssignDialog({
   open,
   onOpenChange,
   requestId,
+  cls,
   onSuccess,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   requestId: string;
+  cls: RowClass;
   onSuccess: () => void;
 }) {
   const [coachProfileId, setCoachProfileId] = useState("");
 
-  const { data: coaches } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ["admin-coaches-simple"],
+  // Same enriched picker the Schedule class form uses: availability pill,
+  // conflicts, adjacent classes and day/week load per coach for THIS slot.
+  const durationMin = Math.max(
+    1,
+    Math.round((new Date(cls.endsAt).getTime() - new Date(cls.startsAt).getTime()) / 60_000),
+  );
+  const { data: pickerData } = useQuery<{ coaches: PickerCoach[] }>({
+    queryKey: ["assign-coach-picker", cls.id],
     queryFn: async () => {
-      const res = await fetch("/api/coaches");
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name }));
+      const params = new URLSearchParams({
+        startsAt: cls.startsAt,
+        duration: String(durationMin),
+        excludeClassId: cls.id,
+      });
+      if (cls.roomId) params.set("roomId", cls.roomId);
+      const res = await fetch(`/api/admin/coaches/picker?${params.toString()}`);
+      if (!res.ok) return { coaches: [] };
+      return res.json();
     },
     enabled: open,
   });
+  const coaches = pickerData?.coaches ?? [];
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -785,8 +803,8 @@ function AssignDialog({
               <SelectValue placeholder="Selecciona un instructor" />
             </SelectTrigger>
             <SelectContent>
-              {(coaches ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              {coaches.map((c) => (
+                <CoachPickerItem key={c.id} coach={c} />
               ))}
             </SelectContent>
           </Select>

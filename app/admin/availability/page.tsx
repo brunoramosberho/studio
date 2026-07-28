@@ -11,6 +11,8 @@ import {
   X as XIcon,
   ExternalLink,
   Plus,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import {
   format,
@@ -26,6 +28,8 @@ import {
 import { es } from "date-fns/locale";
 import { cn, parseDateOnly } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +44,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { WeeklyGridEditor, type GridRange } from "@/components/availability/weekly-grid-editor";
+import {
+  StudioPreferenceChips,
+  type StudioPrefValue,
+} from "@/components/availability/studio-preference-chips";
+import { TimeOffCalendar, type CalendarBlock } from "@/components/availability/time-off-calendar";
+import { formatMinutes as fmtMin } from "@/components/availability/time-range-picker";
+import { parseHhmm } from "@/lib/availability";
 import Link from "next/link";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { TEAM_TABS } from "@/components/admin/section-tab-configs";
@@ -148,7 +160,7 @@ interface AvailabilitySettings {
   };
 }
 
-type TabId = "requests" | "coverage" | "hourly" | "settings";
+type TabId = "requests" | "coverage" | "hourly" | "coach" | "settings";
 
 function useReasonLabels() {
   const t = useTranslations("admin");
@@ -272,6 +284,9 @@ export default function AdminAvailabilityPage() {
             >
               {t("settings")}
             </TabButton>
+            <TabButton active={tab === "coach"} onClick={() => setTab("coach")}>
+              Por instructor
+            </TabButton>
           </div>
         </div>
 
@@ -280,6 +295,7 @@ export default function AdminAvailabilityPage() {
           <CoverageTab onGoToRequests={() => setTab("requests")} />
         )}
         {tab === "hourly" && <HourlyTab />}
+        {tab === "coach" && <CoachDetailTab />}
         {tab === "settings" && <SettingsTab />}
       </div>
     </div>
@@ -1074,6 +1090,403 @@ const DAY_LABELS_SHORT = ["L", "M", "M", "J", "V", "S", "D"];
 // `active` block and pushes a notification to the coach). Two open modes:
 // - "open": empty form, admin picks coach + type + dates
 // - "prefilled": coach + a single day baked in from a CoverageTab cell tap
+
+// ── Por instructor: mirror of the coach's own availability view ───────
+// Same building blocks the coach portal uses (weekly grid, studio prefs,
+// time-off month calendar), operating on any coach via the ADMIN override
+// on the coach availability APIs — for teams where coaches don't fill in
+// their own calendar.
+
+interface CoachBlockRow {
+  id: string;
+  kind: "availability" | "time_off";
+  type: "recurring" | "one_time";
+  status: "active" | "pending_approval" | "rejected";
+  dayOfWeek: number[];
+  startTime: string | null;
+  endTime: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  isAllDay: boolean;
+  reasonType: "vacation" | "personal" | "training" | "other" | null;
+  reasonNote: string | null;
+  studioPreferences: { studioId: string; preference: "preferred" | "ok_if_needed" }[];
+}
+
+interface CoachAvailabilityPayload {
+  blocks: CoachBlockRow[];
+  studios: { id: string; name: string }[];
+  studioOpenTime: string;
+  studioCloseTime: string;
+  operatingDays: number[];
+}
+
+function localDateStr(d: Date): string {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function CoachDetailTab() {
+  const queryClient = useQueryClient();
+  const reasonLabels = useReasonLabels();
+  const [coachUserId, setCoachUserId] = useState("");
+  const [createBlock, setCreateBlock] = useState<CreateBlockOpen | null>(null);
+
+  const { data: coachOptions = [] } = useQuery<
+    { id: string; name: string; userId: string | null; photoUrl: string | null }[]
+  >({
+    queryKey: ["admin-coaches-availability-list"],
+    queryFn: async () => {
+      const res = await fetch("/api/coaches");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+  const selectable = coachOptions.filter((c) => c.userId);
+  const selected = selectable.find((c) => c.userId === coachUserId) ?? null;
+
+  const { data, isLoading } = useQuery<CoachAvailabilityPayload>({
+    queryKey: ["admin-coach-availability", coachUserId],
+    queryFn: async () => {
+      const res = await fetch(`/api/coaches/availability?coachUserId=${coachUserId}`);
+      if (!res.ok) throw new Error("No se pudo cargar la disponibilidad");
+      return res.json();
+    },
+    enabled: !!coachUserId,
+  });
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["admin-coach-availability", coachUserId] });
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/coaches/availability/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "No se pudo eliminar");
+      }
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Bloqueo eliminado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const blocks = useMemo(() => data?.blocks ?? [], [data]);
+
+  const initialRanges = useMemo<GridRange[]>(() => {
+    const out: GridRange[] = [];
+    for (const b of blocks) {
+      if (b.kind !== "availability" || b.type !== "recurring" || b.status !== "active") continue;
+      const sm = parseHhmm(b.startTime);
+      const em = parseHhmm(b.endTime);
+      if (sm == null || em == null) continue;
+      for (const d of b.dayOfWeek) out.push({ dayOfWeek: d, startMin: sm, endMin: em });
+    }
+    return out;
+  }, [blocks]);
+
+  const initialPrefs = useMemo<Record<string, StudioPrefValue>>(() => {
+    const first = blocks.find(
+      (b) => b.kind === "availability" && b.type === "recurring" && b.status === "active",
+    );
+    const obj: Record<string, StudioPrefValue> = {};
+    for (const st of data?.studios ?? []) {
+      obj[st.id] =
+        first?.studioPreferences.find((pp) => pp.studioId === st.id)?.preference ?? "preferred";
+    }
+    return obj;
+  }, [blocks, data]);
+
+  const timeOff = useMemo(
+    () =>
+      blocks
+        .filter((b) => b.kind === "time_off" && b.status !== "rejected")
+        .sort((a, b) => (a.startDate ?? "").localeCompare(b.startDate ?? "")),
+    [blocks],
+  );
+
+  const calendarBlocks: CalendarBlock[] = timeOff
+    .filter((b) => b.startDate && b.endDate)
+    .map((b) => ({
+      id: b.id,
+      startDate: b.startDate!,
+      endDate: b.endDate!,
+      isAllDay: b.isAllDay,
+      startTime: b.startTime,
+      endTime: b.endTime,
+      reasonType: b.reasonType,
+      reasonNote: b.reasonNote,
+      status: b.status,
+    }));
+
+  const openMin = parseHhmm(data?.studioOpenTime ?? "07:00") ?? 7 * 60;
+  const closeMin = parseHhmm(data?.studioCloseTime ?? "21:00") ?? 21 * 60;
+
+  const openCreateFor = (date: Date) => {
+    if (!selected) return;
+    setCreateBlock({
+      kind: "prefilled",
+      coachUserId: selected.userId!,
+      coachName: selected.name,
+      date: localDateStr(date),
+    });
+  };
+
+  const fmtBlockDate = (iso: string) =>
+    new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString("es-ES", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-64">
+          <Select value={coachUserId} onValueChange={setCoachUserId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecciona un instructor" />
+            </SelectTrigger>
+            <SelectContent>
+              {selectable.map((c) => (
+                <SelectItem key={c.userId!} value={c.userId!}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {selected && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setCreateBlock({
+                kind: "prefilled",
+                coachUserId: selected.userId!,
+                coachName: selected.name,
+                date: localDateStr(new Date()),
+              })
+            }
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            Añadir bloqueo
+          </Button>
+        )}
+      </div>
+
+      {!coachUserId ? (
+        <div className="rounded-2xl border border-dashed border-stone-200 bg-card p-10 text-center text-sm text-stone-500">
+          Elige un instructor para ver y editar su disponibilidad — el mismo
+          horario semanal y calendario de vacaciones que ellos ven en su portal.
+        </div>
+      ) : isLoading || !data ? (
+        <div className="flex h-40 items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-stone-400" />
+        </div>
+      ) : (
+        <>
+          <CoachRecurringEditor
+            key={`${coachUserId}:${JSON.stringify(initialRanges)}:${JSON.stringify(initialPrefs)}`}
+            coachUserId={coachUserId}
+            studios={data.studios}
+            operatingDays={data.operatingDays}
+            openMin={openMin}
+            closeMin={closeMin}
+            studioOpenTime={data.studioOpenTime}
+            studioCloseTime={data.studioCloseTime}
+            initialRanges={initialRanges}
+            initialPrefs={initialPrefs}
+            onSaved={invalidate}
+          />
+
+          <div className="rounded-2xl border border-stone-200 bg-card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-stone-900">
+                Vacaciones y tiempo libre
+              </h3>
+              <span className="text-xs text-stone-400">
+                Toca un día del calendario para añadir
+              </span>
+            </div>
+            <TimeOffCalendar
+              blocks={calendarBlocks}
+              onAddForDate={({ startDate }) => openCreateFor(startDate)}
+              onEditBlock={() => {}}
+              studioOpenMin={openMin}
+              studioCloseMin={closeMin}
+            />
+            {timeOff.length > 0 && (
+              <ul className="mt-4 divide-y divide-stone-100">
+                {timeOff.map((b) => (
+                  <li key={b.id} className="flex items-center gap-3 py-2 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-stone-800">
+                        {b.startDate ? fmtBlockDate(b.startDate) : "—"}
+                        {b.endDate && b.endDate.slice(0, 10) !== b.startDate?.slice(0, 10)
+                          ? ` – ${fmtBlockDate(b.endDate)}`
+                          : ""}
+                        {!b.isAllDay && b.startTime && b.endTime
+                          ? ` · ${b.startTime}–${b.endTime}`
+                          : ""}
+                      </p>
+                      <p className="text-xs text-stone-500">
+                        {b.reasonType ? reasonLabels[b.reasonType] : "Sin motivo"}
+                        {b.reasonNote ? ` · ${b.reasonNote}` : ""}
+                      </p>
+                    </div>
+                    {b.status === "pending_approval" && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                        Pendiente
+                      </span>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (window.confirm("¿Eliminar este bloqueo?")) deleteMut.mutate(b.id);
+                      }}
+                      className="rounded-md p-1.5 text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                      aria-label="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <CreateBlockDialog
+            state={createBlock}
+            coaches={selectable.map((c) => ({
+              id: c.id,
+              userId: c.userId!,
+              name: c.name,
+              image: c.photoUrl,
+              color: "#1C2340",
+              initials: c.name
+                .split(" ")
+                .map((w) => w[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase(),
+              days: [],
+            }))}
+            onClose={() => {
+              setCreateBlock(null);
+              invalidate();
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function CoachRecurringEditor({
+  coachUserId,
+  studios,
+  operatingDays,
+  openMin,
+  closeMin,
+  studioOpenTime,
+  studioCloseTime,
+  initialRanges,
+  initialPrefs,
+  onSaved,
+}: {
+  coachUserId: string;
+  studios: { id: string; name: string }[];
+  operatingDays: number[];
+  openMin: number;
+  closeMin: number;
+  studioOpenTime: string;
+  studioCloseTime: string;
+  initialRanges: GridRange[];
+  initialPrefs: Record<string, StudioPrefValue>;
+  onSaved: () => void;
+}) {
+  const [ranges, setRanges] = useState<GridRange[]>(initialRanges);
+  const [prefs, setPrefs] = useState<Record<string, StudioPrefValue>>(initialPrefs);
+
+  const dirty =
+    JSON.stringify(ranges) !== JSON.stringify(initialRanges) ||
+    JSON.stringify(prefs) !== JSON.stringify(initialPrefs);
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      const studioPreferences = studios
+        .map((st) => ({ studioId: st.id, preference: prefs[st.id] ?? "preferred" }))
+        .filter((pp) => pp.preference !== "unavailable") as {
+        studioId: string;
+        preference: "preferred" | "ok_if_needed";
+      }[];
+      const res = await fetch("/api/coaches/availability/recurring", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          coachUserId,
+          ranges: ranges.map((r) => ({
+            dayOfWeek: r.dayOfWeek,
+            startTime: fmtMin(r.startMin),
+            endTime: fmtMin(r.endMin),
+          })),
+          studioPreferences,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "No se pudo guardar");
+      }
+    },
+    onSuccess: () => {
+      toast.success("Disponibilidad guardada");
+      onSaved();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-stone-900">Horario semanal</h3>
+        <span className="text-xs tabular-nums text-stone-400">
+          {studioOpenTime} – {studioCloseTime}
+        </span>
+      </div>
+      <WeeklyGridEditor
+        minMin={openMin}
+        maxMin={closeMin}
+        operatingDays={operatingDays}
+        initialRanges={initialRanges}
+        onChange={setRanges}
+        disabled={saveMut.isPending}
+      />
+      {studios.length > 1 && (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-medium text-stone-500">
+            Preferencia por estudio
+          </p>
+          <StudioPreferenceChips
+            studios={studios}
+            value={prefs}
+            onChange={setPrefs}
+            disabled={saveMut.isPending}
+          />
+        </div>
+      )}
+      <div className="mt-3 flex justify-end">
+        <Button onClick={() => saveMut.mutate()} disabled={!dirty || saveMut.isPending} size="sm">
+          {saveMut.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+          {dirty ? "Guardar cambios" : "Sin cambios"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function CreateBlockDialog({
   state,
   coaches,
