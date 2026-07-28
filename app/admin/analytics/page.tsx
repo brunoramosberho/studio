@@ -549,6 +549,15 @@ function LeadTimesCard({
   leadTimes: InsightsData["leadTimes"];
 }) {
   const t = useTranslations("admin.insightsPage");
+  // "111 h" is hard to translate mentally — from a day up, read it as days + hours.
+  const fmtLead = (hours: number): string => {
+    if (hours < 24) return t("leadHours", { h: Math.round(hours) });
+    const d = Math.floor(hours / 24);
+    const rem = Math.round(hours % 24);
+    return rem === 0
+      ? t("leadDaysOnly", { d })
+      : t("leadDaysHours", { d, h: rem });
+  };
   const hasWellhub = leadTimes.totals.wellhub > 0;
 
   const distData = leadTimes.distribution.map((d) => ({
@@ -642,7 +651,7 @@ function LeadTimesCard({
                 contentStyle={LEAD_TOOLTIP_STYLE}
                 labelStyle={{ fontSize: 10 }}
                 formatter={(value, name) => [
-                  t("leadHours", { h: value as number }),
+                  fmtLead(value as number),
                   name === "app" ? t("leadApp") : t("leadWellhub"),
                 ]}
               />

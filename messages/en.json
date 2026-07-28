@@ -1654,7 +1654,9 @@
       "leadBucket_6h": "6–12h",
       "leadBucket_3h": "3–6h",
       "leadBucket_1h": "1–3h",
-      "leadBucket_0h": "<1h"
+      "leadBucket_0h": "<1h",
+      "leadDaysHours": "{d} d {h} h ahead",
+      "leadDaysOnly": "{d} d ahead"
     },
     "reportsPage": {
       "title": "Reports",
