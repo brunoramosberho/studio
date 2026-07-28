@@ -810,6 +810,25 @@ model ClassType {
   @@index([tenantId])
 }
 
+/// A gym that selected Magic as its CMS via Wellhub's Integration Setup API
+/// (system-integration-requested webhook). Global — the gym has no tenant yet;
+/// the super-admin maps it to a tenant/studio afterwards. Wellhub configures
+/// the per-gym event webhooks itself (our URLs are static), so receiving +
+/// mapping is all that's needed to onboard.
+model WellhubOnboardRequest {
+  id           String    @id @default(cuid())
+  wellhubGymId Int       @unique
+  gymName      String
+  partnerId    String?
+  customFields Json?
+  status       String    @default("pending") // pending | linked | dismissed
+  /// Soft pointers, set when the super-admin maps the gym.
+  tenantId     String?
+  studioId     String?
+  receivedAt   DateTime  @default(now())
+  linkedAt     DateTime?
+}
+
 /// Wellhub class template per (ClassType, gym). Wellhub templates live INSIDE
 /// a gym, so a multi-location tenant needs one template per location for the
 /// same discipline. `ClassType.wellhubClassId` stays the primary-gym template
