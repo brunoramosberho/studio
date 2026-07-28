@@ -205,7 +205,8 @@
       "sales": "Venta",
       "finance": "Finanzas",
       "growth": "Crecimiento",
-      "config": "Configuración"
+      "config": "Configuración",
+      "analytics": "Analytics"
     },
     "tabs": {
       "calendar": "Calendario",
@@ -288,7 +289,8 @@
       "embed": "iframe widget",
       "language": "locale i18n traduccion",
       "createClient": "nuevo cliente agregar miembro",
-      "classesList": "lista clases proximas pasadas calendario"
+      "classesList": "lista clases proximas pasadas calendario",
+      "reports": "reportes exportar csv ocupación ventas clientes"
     },
     "mgicAI": "Spark",
     "clientView": "Vista de cliente",

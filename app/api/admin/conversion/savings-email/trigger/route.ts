@@ -1,13 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getConversionConfig } from "@/lib/conversion/nudge-engine";
 import { sendSavingsNudgeEmail, getTenantBaseUrl } from "@/lib/email";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-    const authHeader =
-      process.env.CRON_SECRET &&
-      `Bearer ${process.env.CRON_SECRET}`;
+    // Cron-wide trigger (iterates every tenant): CRON_SECRET is the gate.
+    // The header was previously computed but never compared, leaving the
+    // mass-email trigger effectively unauthenticated.
+    const authHeader = request.headers.get("authorization");
+    if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const tenants = await prisma.tenant.findMany({
       where: { isActive: true },

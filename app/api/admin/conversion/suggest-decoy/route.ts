@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLocale } from "next-intl/server";
-import { requireRole, getTenantCurrency } from "@/lib/tenant";
+import { requirePermission, getTenantCurrency } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { suggestDecoyWithAI } from "@/lib/ai/suggest-decoy";
 import type { DecoyPackage } from "@/lib/packages/decoy";
@@ -8,7 +8,7 @@ import type { DecoyPackage } from "@/lib/packages/decoy";
 /** Spark-powered decoy suggestion for the curated-packages admin section. */
 export async function POST(request: NextRequest) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requirePermission("analytics");
     const body = await request.json().catch(() => ({}));
     const audience = body.audience === "returning" ? "returning" : "firstTimer";
 

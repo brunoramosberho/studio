@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ reportId: string }> },
 ) {
   try {
-    const ctx = await requirePermission("reports");
+    const ctx = await requirePermission("analytics");
     const { reportId } = await params;
 
     const report = getReport(reportId);

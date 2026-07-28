@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/tenant";
+import { requirePermission } from "@/lib/tenant";
 import { getConversionConfig } from "@/lib/conversion/nudge-engine";
 import { prisma } from "@/lib/db";
 
 export async function GET() {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requirePermission("analytics");
     const config = await getConversionConfig(tenant.id);
     return NextResponse.json(config);
   } catch (error: unknown) {
@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { tenant } = await requireRole("ADMIN");
+    const { tenant } = await requirePermission("analytics");
     const body = await request.json();
 
     const allowedFields = [

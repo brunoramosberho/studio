@@ -47,7 +47,7 @@ function pctChange(current: number, previous: number): number {
 
 export async function GET() {
   try {
-    const ctx = await requirePermission("dashboard", "reports");
+    const ctx = await requirePermission("dashboard", "analytics");
     const tenantId = ctx.tenant.id;
 
     const now = new Date();

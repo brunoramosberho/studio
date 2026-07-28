@@ -30,10 +30,9 @@ export type AdminPermission =
   | "shop"
   | "platforms"
   | "onDemand"
-  // Metrics
-  | "reports"
+  // Metrics — "analytics" is the whole Analytics section (Insights,
+  // Reports, Conversión a membresía): one switch, all-or-nothing.
   | "analytics"
-  | "conversion"
   | "ratings"
   // Marketing
   | "marketing"
@@ -58,7 +57,7 @@ export const ALL_PERMISSIONS: AdminPermission[] = [
   "feed", "achievements", "pos", "waitlist", "orders", "pricingView",
   "coaches", "availability", "disciplines",
   "finance", "packages", "subscriptions", "shop", "platforms", "onDemand",
-  "reports", "analytics", "conversion", "ratings",
+  "analytics", "ratings",
   "marketing", "highlights", "referrals",
   "billing", "policies", "waiver", "branding", "team", "studios", "language", "embed",
   "staffManagement",
