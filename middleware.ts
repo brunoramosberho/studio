@@ -68,10 +68,29 @@ function isTenantOnlyPath(pathname: string): boolean {
   );
 }
 
+// Renamed tenant slugs (old → new). Page loads on the old subdomain get a
+// permanent redirect keeping path + query, so old QR codes, bio links,
+// bookmarks and pending magic links keep working. API calls are NOT
+// redirected — a 308 would break webhook/PWA POST bodies and installed PWAs
+// stay pinned to the old subdomain — they're served in place as the NEW slug.
+const RENAMED_SLUGS: Record<string, string> = {
+  "fdv-sculpt-method": "fdvsculptmethod",
+};
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const host = req.headers.get("host") || ROOT_DOMAIN;
-  const subdomain = getSubdomain(host);
+  let subdomain = getSubdomain(host);
+
+  const renamedTo = subdomain ? RENAMED_SLUGS[subdomain] : undefined;
+  if (renamedTo) {
+    if (!pathname.startsWith("/api/")) {
+      const url = req.nextUrl.clone();
+      url.hostname = url.hostname.replace(`${subdomain}.`, `${renamedTo}.`);
+      return NextResponse.redirect(url, 308);
+    }
+    subdomain = renamedTo;
+  }
 
   // Super admin: admin.mgic.app → rewrite page routes to /super-admin/*
   if (subdomain === "admin") {
