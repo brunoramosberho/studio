@@ -1753,7 +1753,10 @@
     },
     "pinSet": "Exact location set — map and geofence active",
     "pinMissing": "Pick a Google suggestion while typing the address to set the map pin and geofence",
-    "pinStale": "You edited the address by hand — if the location changed, pick a Google suggestion to move the pin"
+    "pinStale": "You edited the address by hand — if the location changed, pick a Google suggestion to move the pin",
+    "addressDetailsLabel": "Interior / wayfinding (optional)",
+    "addressDetailsPlaceholder": "3rd floor · Building G25 · Unit PJ-5",
+    "addressDetailsHint": "Shown to clients next to the map. Doesn't affect the pin or geofence."
   },
   "coach": {
     "portal": "Instructor Portal",

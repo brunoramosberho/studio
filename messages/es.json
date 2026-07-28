@@ -1753,7 +1753,10 @@
     },
     "pinSet": "Ubicación exacta fijada — mapa y geofence activos",
     "pinMissing": "Elige una sugerencia de Google al escribir la dirección para fijar el pin del mapa y el geofence",
-    "pinStale": "Editaste la dirección a mano — si la ubicación cambió, elige una sugerencia de Google para mover el pin"
+    "pinStale": "Editaste la dirección a mano — si la ubicación cambió, elige una sugerencia de Google para mover el pin",
+    "addressDetailsLabel": "Interior / referencias (opcional)",
+    "addressDetailsPlaceholder": "Piso 3 · Edificio G25 · Local PJ-5",
+    "addressDetailsHint": "Se muestra a los clientes junto al mapa. No afecta el pin ni el geofence."
   },
   "coach": {
     "portal": "Portal del Instructor",

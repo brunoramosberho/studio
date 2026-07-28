@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const { tenant } = await requireRole("ADMIN");
 
     const body = await request.json();
-    const { name, address, cityId, latitude, longitude, productsEnabled, geofenceRadiusMeters } = body;
+    const { name, address, addressDetails, cityId, latitude, longitude, productsEnabled, geofenceRadiusMeters } = body;
 
     if (!name || !cityId) {
       return NextResponse.json({ error: "Name and city are required" }, { status: 400 });
@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
     const studio = await prisma.studio.create({
       data: {
         name, address: address || null,
+        addressDetails: typeof addressDetails === "string" && addressDetails.trim() ? addressDetails.trim() : null,
         city: { connect: { id: cityId } },
         tenant: { connect: { id: tenant.id } },
         latitude: latitude ?? null, longitude: longitude ?? null,

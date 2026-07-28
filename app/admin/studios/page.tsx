@@ -66,6 +66,7 @@ interface StudioData {
   id: string;
   name: string;
   address: string | null;
+  addressDetails: string | null;
   latitude: number | null;
   longitude: number | null;
   cityId: string;
@@ -109,7 +110,7 @@ export default function AdminStudiosPage() {
   const [studioDialogOpen, setStudioDialogOpen] = useState(false);
   const [editingStudio, setEditingStudio] = useState<StudioData | null>(null);
   const [studioForm, setStudioForm] = useState({
-    name: "", address: "", cityId: "",
+    name: "", address: "", addressDetails: "", cityId: "",
     latitude: null as number | null, longitude: null as number | null,
     productsEnabled: false,
     geofenceRadiusMeters: 150,
@@ -203,7 +204,7 @@ export default function AdminStudiosPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setStudioDialogOpen(false);
-      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false, geofenceRadiusMeters: 150 });
+      setStudioForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null, productsEnabled: false, geofenceRadiusMeters: 150 });
       toast.success(t("studioCreated"));
     },
     onError: (err: Error) => toast.error(err.message || t("studioCreateError")),
@@ -227,7 +228,7 @@ export default function AdminStudiosPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-studios"] });
       setStudioDialogOpen(false);
       setEditingStudio(null);
-      setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false, geofenceRadiusMeters: 150 });
+      setStudioForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null, productsEnabled: false, geofenceRadiusMeters: 150 });
       toast.success(t("studioUpdated"));
     },
     onError: (err: Error) => toast.error(err.message || t("studioUpdateError")),
@@ -365,7 +366,7 @@ export default function AdminStudiosPage() {
 
   function openCreateStudio() {
     setEditingStudio(null);
-    setStudioForm({ name: "", address: "", cityId: "", latitude: null, longitude: null, productsEnabled: false, geofenceRadiusMeters: 150 });
+    setStudioForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null, productsEnabled: false, geofenceRadiusMeters: 150 });
     setAddressTouched(false);
     setStudioDialogOpen(true);
   }
@@ -373,7 +374,7 @@ export default function AdminStudiosPage() {
   function openEditStudio(studio: StudioData) {
     setEditingStudio(studio);
     setStudioForm({
-      name: studio.name, address: studio.address ?? "", cityId: studio.cityId,
+      name: studio.name, address: studio.address ?? "", addressDetails: studio.addressDetails ?? "", cityId: studio.cityId,
       latitude: studio.latitude ?? null, longitude: studio.longitude ?? null,
       productsEnabled: studio.productsEnabled ?? false,
       geofenceRadiusMeters: studio.geofenceRadiusMeters ?? 150,
@@ -746,6 +747,18 @@ export default function AdminStudiosPage() {
                   {t("pinMissing")}
                 </p>
               ) : null}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted">{t("addressDetailsLabel")}</label>
+              <Input
+                value={studioForm.addressDetails}
+                onChange={(e) =>
+                  setStudioForm((f) => ({ ...f, addressDetails: e.target.value }))
+                }
+                placeholder={t("addressDetailsPlaceholder")}
+              />
+              <p className="text-[10px] text-muted/60">{t("addressDetailsHint")}</p>
             </div>
 
             <div className="flex items-center gap-3 rounded-xl border border-border p-3">

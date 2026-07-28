@@ -1351,6 +1351,10 @@ model Studio {
   id              String  @id @default(cuid())
   name            String
   address         String?
+  // Interior / wayfinding details ("Piso 3, Edificio G25, Local PJ-5") kept
+  // separate from `address` so that field stays exactly what the admin picked
+  // from Google Places and the map pin never drifts from the text.
+  addressDetails  String?
   latitude        Float?
   longitude       Float?
   cityId          String

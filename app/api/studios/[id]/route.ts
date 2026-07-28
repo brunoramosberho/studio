@@ -11,13 +11,17 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, address, cityId, latitude, longitude, productsEnabled, geofenceRadiusMeters, isActive } = body;
+    const { name, address, addressDetails, cityId, latitude, longitude, productsEnabled, geofenceRadiusMeters, isActive } = body;
 
     const studio = await prisma.studio.update({
       where: { id, tenantId: tenant.id },
       data: {
         ...(name !== undefined && { name }),
         ...(address !== undefined && { address: address || null }),
+        ...(addressDetails !== undefined && {
+          addressDetails:
+            typeof addressDetails === "string" && addressDetails.trim() ? addressDetails.trim() : null,
+        }),
         ...(cityId !== undefined && { city: { connect: { id: cityId } } }),
         ...(latitude !== undefined && { latitude: latitude ?? null }),
         ...(longitude !== undefined && { longitude: longitude ?? null }),

@@ -82,7 +82,7 @@ interface ClassData {
     name: string;
     maxCapacity: number;
     layout: RoomLayoutData | null;
-    studio: { id: string; name: string; address: string | null; latitude: number | null; longitude: number | null };
+    studio: { id: string; name: string; address: string | null; addressDetails: string | null; latitude: number | null; longitude: number | null };
   };
   coach: {
     id: string;
@@ -587,7 +587,7 @@ export default function ClassDetailPage() {
     const title = cls.coach.name
       ? `${cls.classType.name} con ${cls.coach.name}`
       : cls.classType.name;
-    const location = [cls.room.studio.name, cls.room.studio.address].filter(Boolean).join(", ");
+    const location = [cls.room.studio.name, cls.room.studio.address, cls.room.studio.addressDetails].filter(Boolean).join(", ");
     const details = `${cls.room.name} · ${cls.classType.duration} min`;
 
     const google = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${fmt(start)}/${fmt(end)}&location=${encodeURIComponent(location)}&details=${encodeURIComponent(details)}`;
@@ -1785,6 +1785,7 @@ export default function ClassDetailPage() {
             <StudioLocationMap
               name={cls.room.studio.name}
               address={cls.room.studio.address}
+              addressDetails={cls.room.studio.addressDetails}
               latitude={cls.room.studio.latitude}
               longitude={cls.room.studio.longitude}
             />

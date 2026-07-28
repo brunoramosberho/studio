@@ -7,6 +7,8 @@ import { useTheme } from "@/components/theme-provider";
 interface StudioLocationMapProps {
   name: string;
   address: string;
+  /** Interior / wayfinding info ("Piso 3, Local PJ-5") shown under the address. */
+  addressDetails?: string | null;
   latitude: number;
   longitude: number;
 }
@@ -35,6 +37,7 @@ function getDirectionsUrl(lat: number, lng: number) {
 export function StudioLocationMap({
   name,
   address,
+  addressDetails,
   latitude,
   longitude,
 }: StudioLocationMapProps) {
@@ -71,6 +74,11 @@ export function StudioLocationMap({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-foreground">{name}</p>
           <p className="truncate text-xs text-muted">{address}</p>
+          {addressDetails && (
+            <p className="truncate text-xs font-medium text-foreground/80">
+              {addressDetails}
+            </p>
+          )}
         </div>
         <a
           href={directionsUrl}
