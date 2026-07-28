@@ -79,6 +79,9 @@ export async function GET() {
         where: {
           userId: { in: userIds },
           status: { in: ["ATTENDED", "CONFIRMED"] },
+          // Total classes in THIS studio, finished only — without these
+          // filters the count leaked other tenants and future bookings.
+          class: { tenantId: tenant.id, endsAt: { lte: new Date() }, status: { not: "CANCELLED" } },
         },
         _count: true,
       }),

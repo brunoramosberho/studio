@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
     const [bookings, waitlists] = await Promise.all([
       prisma.booking.findMany({
         where: {
+          tenantId: ctx.tenant.id,
           classId,
           userId: { in: members.map((m) => m.id) },
           status: { in: ["CONFIRMED", "ATTENDED", "NO_SHOW"] },
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.waitlist.findMany({
         where: {
+          tenantId: ctx.tenant.id,
           classId,
           userId: { in: members.map((m) => m.id) },
         },

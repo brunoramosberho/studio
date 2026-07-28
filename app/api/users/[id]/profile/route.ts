@@ -78,14 +78,16 @@ export async function GET(
   const isSelf = targetId === currentUserId;
 
   // Shared classes (classes both users attended/booked)
+  // Tenant-scoped: without it the intersection counted classes shared at
+  // OTHER studios too (class ids are globally unique).
   const myClassIds = await prisma.booking.findMany({
-    where: { userId: currentUserId, status: { in: ["CONFIRMED", "ATTENDED"] } },
+    where: { tenantId, userId: currentUserId, status: { in: ["CONFIRMED", "ATTENDED"] } },
     select: { classId: true },
   });
   const myClassIdSet = new Set(myClassIds.map((b) => b.classId));
 
   const theirBookings = await prisma.booking.findMany({
-    where: { userId: targetId, status: { in: ["CONFIRMED", "ATTENDED"] } },
+    where: { tenantId, userId: targetId, status: { in: ["CONFIRMED", "ATTENDED"] } },
     select: { classId: true },
   });
   const sharedClassCount = theirBookings.filter((b) => myClassIdSet.has(b.classId)).length;
