@@ -913,50 +913,53 @@ export function ScheduleClient({
           </div>
         )}
 
-        {/* Day headers */}
-        <div
-          className={cn("mb-3 grid gap-2", visibleDays > 7 && "overflow-x-auto")}
-          style={{
-            gridTemplateColumns:
-              visibleDays <= 7
-                ? `repeat(${visibleDays}, minmax(0, 1fr))`
-                : `repeat(${visibleDays}, minmax(140px, 1fr))`,
-          }}
-        >
-          {days.map((day) => {
-            const today = isToday(day);
-            return (
-              <div key={day.toISOString()} className="text-center">
-                <span
-                  className={cn(
-                    "text-[11px] font-semibold uppercase tracking-wider",
-                    today ? "text-foreground" : "text-muted",
-                  )}
-                >
-                  {today && "● "}
-                  {format(day, "EEE", { locale: dateFnsLocale })} {format(day, "d")}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        {/* Day headers + class columns share ONE horizontal scroller so the
+            dates stay glued to their columns when the visible window spans
+            more than a week. Identical grid templates keep them aligned. */}
+        <div className={cn(visibleDays > 7 && "overflow-x-auto pb-2")}>
+          <div
+            className="mb-3 grid gap-2"
+            style={{
+              gridTemplateColumns:
+                visibleDays <= 7
+                  ? `repeat(${visibleDays}, minmax(0, 1fr))`
+                  : `repeat(${visibleDays}, minmax(140px, 1fr))`,
+            }}
+          >
+            {days.map((day) => {
+              const today = isToday(day);
+              return (
+                <div key={day.toISOString()} className="text-center">
+                  <span
+                    className={cn(
+                      "text-[11px] font-semibold uppercase tracking-wider",
+                      today ? "text-foreground" : "text-muted",
+                    )}
+                  >
+                    {today && "● "}
+                    {format(day, "EEE", { locale: dateFnsLocale })} {format(day, "d")}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
 
-        {/* Class columns */}
-        <div
-          className={cn("grid items-start gap-2", visibleDays > 7 && "overflow-x-auto")}
-          style={{
-            gridTemplateColumns:
-              visibleDays <= 7
-                ? `repeat(${visibleDays}, minmax(0, 1fr))`
-                : `repeat(${visibleDays}, minmax(140px, 1fr))`,
-          }}
-        >
-          {days.map((day) => {
-            const dayClasses = getClassesForDay(day);
-            return (
-              <DesktopDayColumn key={day.toISOString()} classes={dayClasses} classLinkPrefix={classLinkPrefix} onCancel={handleCancelBooking} cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null} onTapDiscipline={openDiscipline} notifyMeSet={notifyMeMap} onToggleNotifyMe={session?.user ? handleToggleNotifyMe : undefined} />
-            );
-          })}
+          <div
+            className="grid items-start gap-2"
+            style={{
+              gridTemplateColumns:
+                visibleDays <= 7
+                  ? `repeat(${visibleDays}, minmax(0, 1fr))`
+                  : `repeat(${visibleDays}, minmax(140px, 1fr))`,
+            }}
+          >
+            {days.map((day) => {
+              const dayClasses = getClassesForDay(day);
+              return (
+                <DesktopDayColumn key={day.toISOString()} classes={dayClasses} classLinkPrefix={classLinkPrefix} onCancel={handleCancelBooking} cancellingId={cancelMutation.isPending && cancelTarget?.myBookingId ? cancelTarget.myBookingId : null} onTapDiscipline={openDiscipline} notifyMeSet={notifyMeMap} onToggleNotifyMe={session?.user ? handleToggleNotifyMe : undefined} />
+              );
+            })}
+          </div>
         </div>
       </div>
 

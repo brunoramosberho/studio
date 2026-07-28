@@ -490,43 +490,63 @@ export function EmbedScheduleClient({
         {/* Coach avatar strip */}
         {coachStrip && <div className="mb-5">{coachStrip}</div>}
 
-        {/* Day headers */}
-        <div className="mb-3 grid grid-cols-7 gap-2">
-          {days.map((day) => {
-            const todayMarker = isToday(day);
-            return (
-              <div key={day.toISOString()} className="text-center">
-                <span
-                  className={cn(
-                    "text-[11px] font-semibold uppercase tracking-wider",
-                    todayMarker ? "text-foreground" : "text-muted",
-                  )}
-                >
-                  {todayMarker && "● "}
-                  {format(day, "EEE", { locale: dateFnsLocale })}{" "}
-                  {format(day, "d")}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        {/* Day headers + class columns share ONE horizontal scroller so the
+            dates stay glued to their columns when the visible window spans
+            more than a week (grid-cols-7 used to wrap extra days to a second
+            misaligned row). Identical grid templates keep them aligned. */}
+        <div className={cn(days.length > 7 && "overflow-x-auto pb-2")}>
+          <div
+            className="mb-3 grid gap-2"
+            style={{
+              gridTemplateColumns:
+                days.length <= 7
+                  ? `repeat(${days.length}, minmax(0, 1fr))`
+                  : `repeat(${days.length}, minmax(140px, 1fr))`,
+            }}
+          >
+            {days.map((day) => {
+              const todayMarker = isToday(day);
+              return (
+                <div key={day.toISOString()} className="text-center">
+                  <span
+                    className={cn(
+                      "text-[11px] font-semibold uppercase tracking-wider",
+                      todayMarker ? "text-foreground" : "text-muted",
+                    )}
+                  >
+                    {todayMarker && "● "}
+                    {format(day, "EEE", { locale: dateFnsLocale })}{" "}
+                    {format(day, "d")}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
 
-        {/* Class columns */}
-        {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-5 w-5 animate-spin text-muted" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-7 items-start gap-2">
-            {days.map((day) => (
-              <DesktopDayColumn
-                key={day.toISOString()}
-                classes={getClassesForDay(day)}
-                onOpen={(cls) => openInParent(`/class/${cls.id}`)}
-              />
-            ))}
-          </div>
-        )}
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-muted" />
+            </div>
+          ) : (
+            <div
+              className="grid items-start gap-2"
+              style={{
+                gridTemplateColumns:
+                  days.length <= 7
+                    ? `repeat(${days.length}, minmax(0, 1fr))`
+                    : `repeat(${days.length}, minmax(140px, 1fr))`,
+              }}
+            >
+              {days.map((day) => (
+                <DesktopDayColumn
+                  key={day.toISOString()}
+                  classes={getClassesForDay(day)}
+                  onOpen={(cls) => openInParent(`/class/${cls.id}`)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Powered by — keeps us visible on every tenant embed */}
