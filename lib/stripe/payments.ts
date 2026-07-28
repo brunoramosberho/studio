@@ -101,6 +101,9 @@ export async function createMemberPayment({
       memberId,
       stripePaymentIntentId: paymentIntent.id,
       amount: amountInCurrency,
+      // Mirror the actual charge currency — omitting it fell back to the
+      // schema default "eur", mislabeling every MXN tenant's payments.
+      currency: chargeCurrency,
       applicationFee: feeAmount > 0 ? fromStripeAmount(feeAmount) : null,
       status: paymentMethodId && paymentIntent.status === "succeeded"
         ? "succeeded"
