@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
+import { getAttendeeStats, cancelRateFor } from "@/lib/attendee-stats";
 
 // Minimum lifetime bookings before we surface a member's cancellation rate.
 // With a tiny history a single cancellation reads as a scary % (cancel your
 // first booking, attend the next → "50% cancela"), which unfairly flags new
 // members. Require a large enough sample for the rate to mean something.
 // Keep in sync with /api/classes/[id].
-const MIN_BOOKINGS_FOR_CANCEL_RATE = 10;
 
 type UserPackageRow = {
   creditsUsed: number;
@@ -138,35 +138,13 @@ export async function GET(
     // Compute attendee stats (same logic as /api/classes/[id])
     const userIds = bookings.filter((b) => b.user).map((b) => b.user!.id);
 
-    const [totalCounts, coachCounts, cancelCounts, allBookingCounts] = userIds.length > 0
-      ? await Promise.all([
-          prisma.booking.groupBy({
-            by: ["userId"],
-            where: { userId: { in: userIds }, status: { in: ["ATTENDED", "CONFIRMED"] } },
-            _count: true,
-          }),
-          prisma.booking.groupBy({
-            by: ["userId"],
-            where: { userId: { in: userIds }, status: { in: ["ATTENDED", "CONFIRMED"] }, class: { coachId: cls.coachId } },
-            _count: true,
-          }),
-          prisma.booking.groupBy({
-            by: ["userId"],
-            where: { userId: { in: userIds }, status: { in: ["CANCELLED", "NO_SHOW"] } },
-            _count: true,
-          }),
-          prisma.booking.groupBy({
-            by: ["userId"],
-            where: { userId: { in: userIds } },
-            _count: true,
-          }),
-        ])
-      : [[], [], [], []];
-
-    const totalMap = new Map(totalCounts.map((r) => [r.userId, r._count]));
-    const coachMap = new Map(coachCounts.map((r) => [r.userId, r._count]));
-    const cancelMap = new Map(cancelCounts.map((r) => [r.userId, r._count]));
-    const allMap = new Map(allBookingCounts.map((r) => [r.userId, r._count]));
+    // Shared finished-classes-only stats (tenant-scoped, excludes this class).
+    const attendeeStats = await getAttendeeStats({
+      tenantId: ctx.tenant.id,
+      userIds,
+      coachId: cls.coachId,
+      excludeClassId: cls.id,
+    });
 
     // Subscriptions pending cancellation — so front desk can spot a member
     // about to lose their membership and try to retain them.
@@ -294,19 +272,14 @@ export async function GET(
             : null;
         const membershipCancelAt = cancelingSubMap.get(user.id) ?? null;
 
-        // Stats
-        const uid = user.id;
-        const totalClasses = totalMap.get(uid) ?? 0;
-        const classesWithCoach = coachMap.get(uid) ?? 0;
-        const cancelled = cancelMap.get(uid) ?? 0;
-        const allBookings = allMap.get(uid) ?? 0;
-        const cancelRate =
-          allBookings >= MIN_BOOKINGS_FOR_CANCEL_RATE
-            ? Math.round((cancelled / allBookings) * 100)
-            : null;
+        // Stats — finished classes actually taken; zero past = first time.
+        const counts = attendeeStats.get(user.id) ?? { taken: 0, takenWithCoach: 0, cancelled: 0 };
+        const totalClasses = counts.taken;
+        const classesWithCoach = counts.takenWithCoach;
+        const cancelRate = cancelRateFor(counts);
         const isNewMember = user.createdAt >= thirtyDaysAgo;
-        const isFirstEver = totalClasses <= 1;
-        const isFirstWithCoach = classesWithCoach <= 1;
+        const isFirstEver = totalClasses === 0;
+        const isFirstWithCoach = classesWithCoach === 0;
         const isTopClient = totalClasses >= 10;
 
         let birthdayLabel: string | null = null;

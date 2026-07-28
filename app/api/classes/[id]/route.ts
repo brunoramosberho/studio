@@ -6,13 +6,13 @@ import { BookingStatus } from "@prisma/client";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 import { normalizeRules } from "@/lib/song-rules";
 import { platformBookedNoCompanionWhere } from "@/lib/booking/availability";
+import { getAttendeeStats, cancelRateFor } from "@/lib/attendee-stats";
 
 // Minimum lifetime bookings before we surface a member's cancellation rate.
 // With a tiny history a single cancellation reads as a scary % (cancel your
 // first booking, attend the next → "50% cancela"), which unfairly flags new
 // members. Require a large enough sample for the rate to mean something.
 // Keep in sync with /api/check-in/roster/[classId].
-const MIN_BOOKINGS_FOR_CANCEL_RATE = 10;
 
 export async function GET(
   _request: NextRequest,
@@ -150,36 +150,12 @@ export async function GET(
     if (isCoachOrAdmin && classData.bookings.length > 0) {
       const userIds = classData.bookings.filter((b) => b.user).map((b) => b.user!.id);
 
-      const [totalCounts, coachCounts, cancelCounts, allBookingCounts, lastClassData] = await Promise.all([
-        prisma.booking.groupBy({
-          by: ["userId"],
-          where: {
-            userId: { in: userIds },
-            status: { in: ["ATTENDED", "CONFIRMED"] },
-          },
-          _count: true,
-        }),
-        prisma.booking.groupBy({
-          by: ["userId"],
-          where: {
-            userId: { in: userIds },
-            status: { in: ["ATTENDED", "CONFIRMED"] },
-            class: { coachId: classData.coachId },
-          },
-          _count: true,
-        }),
-        prisma.booking.groupBy({
-          by: ["userId"],
-          where: {
-            userId: { in: userIds },
-            status: { in: ["CANCELLED", "NO_SHOW"] },
-          },
-          _count: true,
-        }),
-        prisma.booking.groupBy({
-          by: ["userId"],
-          where: { userId: { in: userIds } },
-          _count: true,
+      const [attendeeStats, lastClassData] = await Promise.all([
+        getAttendeeStats({
+          tenantId: tenant.id,
+          userIds,
+          coachId: classData.coachId,
+          excludeClassId: classData.id,
         }),
         // The coach's previous (most recent past) class of the SAME discipline
         // (class type) — its attendees power the "was in your last class" repeat
@@ -213,10 +189,6 @@ export async function GET(
         }),
       ]);
 
-      const totalMap = new Map(totalCounts.map((r) => [r.userId, r._count]));
-      const coachMap = new Map(coachCounts.map((r) => [r.userId, r._count]));
-      const cancelMap = new Map(cancelCounts.map((r) => [r.userId, r._count]));
-      const allMap = new Map(allBookingCounts.map((r) => [r.userId, r._count]));
       // Identity that survives across classes: members by id, guests by email,
       // Wellhub members by their stable unique token (name as a fallback). Lets
       // the repeat indicator catch guests + platform members, not just logged-in.
@@ -256,20 +228,18 @@ export async function GET(
 
       bookings = classData.bookings.map((b) => {
         const uid = b.user?.id ?? "";
-        const totalClasses = totalMap.get(uid) ?? 0;
-        const classesWithCoach = coachMap.get(uid) ?? 0;
-        const cancelled = cancelMap.get(uid) ?? 0;
-        const allBookings = allMap.get(uid) ?? 0;
-        const cancelRate =
-          allBookings >= MIN_BOOKINGS_FOR_CANCEL_RATE
-            ? Math.round((cancelled / allBookings) * 100)
-            : null;
+        const counts = attendeeStats.get(uid) ?? { taken: 0, takenWithCoach: 0, cancelled: 0 };
+        // Finished classes actually taken (tenant-scoped, excluding this one).
+        const totalClasses = counts.taken;
+        const classesWithCoach = counts.takenWithCoach;
+        const cancelRate = cancelRateFor(counts);
         const hasUser = !!b.user?.id;
         const isNewMember = b.user ? b.user.createdAt >= thirtyDaysAgo : false;
         // History tags only make sense for logged-in members — a guest/platform
         // booking has no userId to count past visits by, so don't imply "first".
-        const isFirstEver = hasUser && totalClasses <= 1;
-        const isFirstWithCoach = hasUser && classesWithCoach <= 1;
+        // Zero PAST classes = this booking is their first.
+        const isFirstEver = hasUser && totalClasses === 0;
+        const isFirstWithCoach = hasUser && classesWithCoach === 0;
         const isTopClient = totalClasses >= 10;
         const repeatKey = identityKey(b);
 
