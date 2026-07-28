@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   Select,
   SelectContent,
@@ -55,6 +55,11 @@ interface InsightsData {
     activeSubscriptions: Metric;
   };
   retention: { repeat: number; new: number };
+  leadTimes: {
+    distribution: { bucket: string; app: number; wellhub: number }[];
+    byHour: { hour: number; app: number | null; wellhub: number | null }[];
+    totals: { app: number; wellhub: number };
+  };
   glance: {
     visits: number;
     uniqueCustomers: number;
@@ -518,8 +523,149 @@ export default function InsightsPage() {
               </Link>
             </div>
           </div>
+
+          {/* Booking lead times: how far in advance people reserve */}
+          {data && data.leadTimes.totals.app + data.leadTimes.totals.wellhub > 0 && (
+            <LeadTimesCard leadTimes={data.leadTimes} />
+          )}
         </>
       )}
+    </div>
+  );
+}
+
+const LEAD_COLOR_APP = "#6366f1";
+const LEAD_COLOR_WELLHUB = "#10b981";
+const LEAD_TOOLTIP_STYLE = {
+  fontSize: 11,
+  borderRadius: 10,
+  border: "1px solid rgba(0,0,0,0.06)",
+  padding: "4px 8px",
+} as const;
+
+function LeadTimesCard({
+  leadTimes,
+}: {
+  leadTimes: InsightsData["leadTimes"];
+}) {
+  const t = useTranslations("admin.insightsPage");
+  const hasWellhub = leadTimes.totals.wellhub > 0;
+
+  const distData = leadTimes.distribution.map((d) => ({
+    ...d,
+    label: t(`leadBucket_${d.bucket}`),
+  }));
+  const hourData = leadTimes.byHour.map((h) => ({
+    ...h,
+    label: `${h.hour}:00`,
+  }));
+
+  const legend = (
+    <span className="flex items-center gap-3 text-[11px] text-muted">
+      <span className="flex items-center gap-1">
+        <span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: LEAD_COLOR_APP }} />
+        {t("leadApp")}
+      </span>
+      {hasWellhub && (
+        <span className="flex items-center gap-1">
+          <span
+            className="h-2.5 w-2.5 rounded-[3px]"
+            style={{ backgroundColor: LEAD_COLOR_WELLHUB }}
+          />
+          {t("leadWellhub")}
+        </span>
+      )}
+    </span>
+  );
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div className="rounded-2xl border border-border/60 bg-card p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+              {t("leadTitle")}
+            </p>
+            <p className="mt-1 text-[11px] text-muted">{t("leadHint")}</p>
+          </div>
+          {legend}
+        </div>
+        <div className="mt-3 h-[200px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={distData} barGap={2} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                interval={0}
+              />
+              <YAxis hide />
+              <Tooltip
+                contentStyle={LEAD_TOOLTIP_STYLE}
+                labelStyle={{ fontSize: 10 }}
+                formatter={(value, name) => [
+                  `${value}%`,
+                  name === "app" ? t("leadApp") : t("leadWellhub"),
+                ]}
+              />
+              <Bar dataKey="app" fill={LEAD_COLOR_APP} radius={[3, 3, 0, 0]} />
+              {hasWellhub && (
+                <Bar dataKey="wellhub" fill={LEAD_COLOR_WELLHUB} radius={[3, 3, 0, 0]} />
+              )}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border/60 bg-card p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+              {t("leadByHourTitle")}
+            </p>
+            <p className="mt-1 text-[11px] text-muted">{t("leadByHourHint")}</p>
+          </div>
+          {legend}
+        </div>
+        <div className="mt-3 h-[200px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={hourData} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis hide />
+              <Tooltip
+                contentStyle={LEAD_TOOLTIP_STYLE}
+                labelStyle={{ fontSize: 10 }}
+                formatter={(value, name) => [
+                  t("leadHours", { h: value as number }),
+                  name === "app" ? t("leadApp") : t("leadWellhub"),
+                ]}
+              />
+              <Line
+                dataKey="app"
+                stroke={LEAD_COLOR_APP}
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: LEAD_COLOR_APP }}
+                connectNulls
+              />
+              {hasWellhub && (
+                <Line
+                  dataKey="wellhub"
+                  stroke={LEAD_COLOR_WELLHUB}
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: LEAD_COLOR_WELLHUB }}
+                  connectNulls
+                />
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   );
 }

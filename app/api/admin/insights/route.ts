@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/tenant";
+import { getWallClockInZone } from "@/lib/utils";
 
 // Insights explorer: every metric as a time series over an arbitrary range,
 // with an optional same-length previous period to compare against. One request
@@ -303,6 +304,102 @@ export async function GET(req: NextRequest) {
     const totalClients = metric("clients");
     const totalMembers = metric("members");
 
+    // ── Booking lead times (anticipación) ────────────────────────────
+    // How far in advance bookings are made, app vs Wellhub. Finished
+    // classes only — future classes are still accumulating bookings and
+    // would skew the distribution toward "long in advance".
+    const leadBookings = await prisma.booking.findMany({
+      where: {
+        tenantId,
+        status: { in: ["CONFIRMED", "ATTENDED"] },
+        class: {
+          startsAt: { gte: from, lte: to },
+          endsAt: { lte: now },
+          status: { not: "CANCELLED" },
+        },
+      },
+      select: {
+        createdAt: true,
+        platformBookingId: true,
+        class: {
+          select: {
+            startsAt: true,
+            room: {
+              select: {
+                studio: { select: { city: { select: { timezone: true } } } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Far → near, matching the chart's left-to-right reading.
+    const LEAD_BUCKETS = [
+      { key: "7d", minHours: 168 },
+      { key: "3d", minHours: 72 },
+      { key: "1d", minHours: 24 },
+      { key: "12h", minHours: 12 },
+      { key: "6h", minHours: 6 },
+      { key: "3h", minHours: 3 },
+      { key: "1h", minHours: 1 },
+      { key: "0h", minHours: 0 },
+    ];
+    const distCounts = {
+      app: LEAD_BUCKETS.map(() => 0),
+      wellhub: LEAD_BUCKETS.map(() => 0),
+    };
+    const byHourLeads = new Map<number, { app: number[]; wellhub: number[] }>();
+    let leadAppTotal = 0;
+    let leadWellhubTotal = 0;
+    for (const b of leadBookings) {
+      // Desk bookings made after start clamp to 0 — they ARE last-minute.
+      const leadH = Math.max(
+        0,
+        (b.class.startsAt.getTime() - b.createdAt.getTime()) / 3_600_000,
+      );
+      const src = b.platformBookingId ? "wellhub" : "app";
+      if (src === "app") leadAppTotal++;
+      else leadWellhubTotal++;
+      const bi = LEAD_BUCKETS.findIndex((bk) => leadH >= bk.minHours);
+      distCounts[src][bi === -1 ? LEAD_BUCKETS.length - 1 : bi]++;
+      const tz = b.class.room?.studio?.city?.timezone ?? "Europe/Madrid";
+      const hour = getWallClockInZone(b.class.startsAt, tz).hour;
+      const entry = byHourLeads.get(hour) ?? { app: [], wellhub: [] };
+      entry[src].push(leadH);
+      byHourLeads.set(hour, entry);
+    }
+    // Median over at least 5 bookings — fewer is noise, the chart skips it.
+    const median = (arr: number[]): number | null => {
+      if (arr.length < 5) return null;
+      const sorted = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    };
+    const leadTimes = {
+      distribution: LEAD_BUCKETS.map((bk, i) => ({
+        bucket: bk.key,
+        app: leadAppTotal > 0 ? Math.round((distCounts.app[i] / leadAppTotal) * 100) : 0,
+        wellhub:
+          leadWellhubTotal > 0
+            ? Math.round((distCounts.wellhub[i] / leadWellhubTotal) * 100)
+            : 0,
+      })),
+      byHour: [...byHourLeads.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([hour, leads]) => {
+          const a = median(leads.app);
+          const w = median(leads.wellhub);
+          return {
+            hour,
+            app: a != null ? Math.round(a * 10) / 10 : null,
+            wellhub: w != null ? Math.round(w * 10) / 10 : null,
+          };
+        })
+        .filter((r) => r.app != null || r.wellhub != null),
+      totals: { app: leadAppTotal, wellhub: leadWellhubTotal },
+    };
+
     return NextResponse.json({
       range: {
         from: from.toISOString().slice(0, 10),
@@ -324,6 +421,7 @@ export async function GET(req: NextRequest) {
         activeSubscriptions: metric("activeSubsPoints", "last"),
       },
       retention: { repeat: repeatCount, new: newVisitorCount },
+      leadTimes,
       glance: {
         visits: cur.visitCount,
         uniqueCustomers: cur.visitors.size,

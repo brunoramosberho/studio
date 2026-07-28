@@ -1639,7 +1639,22 @@
       "conversionTitle": "Conversión a membresía",
       "conversionHint": "{members} de {clients} clientes nuevos hicieron su primera compra",
       "conversionLink": "Ver conversión completa",
-      "noData": "Sin visitas en este periodo."
+      "noData": "Sin visitas en este periodo.",
+      "leadTitle": "Anticipación de reserva",
+      "leadHint": "Con cuánto tiempo se reserva · solo clases terminadas del rango",
+      "leadByHourTitle": "Según la hora de la clase",
+      "leadByHourHint": "Mediana de horas de anticipación por horario",
+      "leadApp": "App",
+      "leadWellhub": "Wellhub",
+      "leadHours": "{h} h antes",
+      "leadBucket_7d": "+7d",
+      "leadBucket_3d": "3–7d",
+      "leadBucket_1d": "1–3d",
+      "leadBucket_12h": "12–24h",
+      "leadBucket_6h": "6–12h",
+      "leadBucket_3h": "3–6h",
+      "leadBucket_1h": "1–3h",
+      "leadBucket_0h": "<1h"
     },
     "reportsPage": {
       "title": "Reportes",
