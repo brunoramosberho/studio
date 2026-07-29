@@ -67,6 +67,10 @@ export interface ByTimeSlot {
   hourOfDay: number;
   attributions: number;
   revenueCents: number;
+  /** Finished (non-cancelled, already ended) classes held in this slot. */
+  classCount: number;
+  /** Per-class average fill for those classes; null when no class was held. */
+  avgOccupancyPct: number | null;
 }
 
 export interface HeatmapCell {
@@ -271,7 +275,7 @@ export async function getMonthlyRevenueReport(
   const tenantCurrency = await resolveTenantCurrency(tenantId);
   const currency = (firstPkg?.currency ?? tenantCurrency.code).toLowerCase();
 
-  const [attributedAgg, breakageRows, attributed, wellhub] = await Promise.all([
+  const [attributedAgg, breakageRows, attributed, wellhub, slotClasses] = await Promise.all([
     prisma.revenueEvent.aggregate({
       where: {
         tenantId,
@@ -293,6 +297,26 @@ export async function getMonthlyRevenueReport(
     // Estimated platform (Wellhub) revenue per class — a separate estimate
     // layer, never folded into the ASC 606 recognized totals below.
     getPlatformSettlementByClass(tenantId, start, exclusiveEnd),
+    prisma.class.findMany({
+      where: {
+        tenantId,
+        startsAt: { gte: start, lte: end },
+        endsAt: { lte: new Date() },
+        status: { not: "CANCELLED" },
+      },
+      select: {
+        startsAt: true,
+        room: {
+          select: {
+            maxCapacity: true,
+            studio: { select: { city: { select: { timezone: true } } } },
+          },
+        },
+        _count: {
+          select: { bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } } },
+        },
+      },
+    }),
   ]);
 
   // Map the per-class Wellhub estimate to discipline + coach.
@@ -428,6 +452,8 @@ export async function getMonthlyRevenueReport(
         hourOfDay: hour,
         attributions: 0,
         revenueCents: 0,
+        classCount: 0,
+        avgOccupancyPct: null,
       };
       entry.attributions++;
       entry.revenueCents += row.amountCents;
@@ -550,6 +576,36 @@ export async function getMonthlyRevenueReport(
       };
     })
     .sort((a, b) => b.revenueCents - a.revenueCents);
+
+  // Merge per-slot class supply + fill (finished classes only — the same
+  // occupancy convention as the dashboard/insights) so the day×hour view can
+  // answer "which slots earn AND fill", not just where money was attributed.
+  const slotOcc = new Map<string, { classes: number; occSum: number }>();
+  for (const c of slotClasses) {
+    const tz = c.room?.studio?.city?.timezone ?? null;
+    const { dow, hour } = localDayHour(c.startsAt, tz);
+    const cap = c.room?.maxCapacity ?? 0;
+    const occ = cap > 0 ? Math.min(100, (c._count.bookings / cap) * 100) : 0;
+    const key = `${dow}-${hour}`;
+    const e = slotOcc.get(key) ?? { classes: 0, occSum: 0 };
+    e.classes++;
+    e.occSum += occ;
+    slotOcc.set(key, e);
+  }
+  for (const [key, v] of slotOcc) {
+    const [dow, hour] = key.split("-").map(Number);
+    const entry = byTimeslotMap.get(key) ?? {
+      dayOfWeek: dow,
+      hourOfDay: hour,
+      attributions: 0,
+      revenueCents: 0,
+      classCount: 0,
+      avgOccupancyPct: null,
+    };
+    entry.classCount = v.classes;
+    entry.avgOccupancyPct = Math.round(v.occSum / v.classes);
+    byTimeslotMap.set(key, entry);
+  }
 
   const byTimeslot = Array.from(byTimeslotMap.values()).sort(
     (a, b) => b.revenueCents - a.revenueCents,

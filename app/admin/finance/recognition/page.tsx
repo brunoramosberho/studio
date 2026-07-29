@@ -68,6 +68,8 @@ interface RevenueReport {
     hourOfDay: number;
     attributions: number;
     revenueCents: number;
+    classCount: number;
+    avgOccupancyPct: number | null;
   }[];
   heatmap: {
     coachId: string;
@@ -534,20 +536,43 @@ function TimeslotHeatmap({
     return <p className="py-6 text-center text-sm text-muted">Sin datos para este mes.</p>;
   }
 
-  const byDay = new Map<number, Map<number, { attributions: number; revenue: number }>>();
-  let maxRevenue = 0;
-  for (const c of cells) {
-    if (!byDay.has(c.dayOfWeek)) byDay.set(c.dayOfWeek, new Map());
-    byDay.get(c.dayOfWeek)!.set(c.hourOfDay, {
-      attributions: c.attributions,
-      revenue: c.revenueCents,
-    });
-    if (c.revenueCents > maxRevenue) maxRevenue = c.revenueCents;
+  const byKey = new Map(cells.map((c) => [`${c.dayOfWeek}-${c.hourOfDay}`, c]));
+  const hours = Array.from(new Set(cells.map((c) => c.hourOfDay))).sort((a, b) => a - b);
+  // Schedule-style: days as columns, Monday first; skip days with nothing.
+  const days = [1, 2, 3, 4, 5, 6, 0].filter((d) => cells.some((c) => c.dayOfWeek === d));
+  const maxRevenue = Math.max(...cells.map((c) => c.revenueCents));
+
+  interface SlotAgg {
+    revenue: number;
+    classes: number;
+    occWeighted: number; // sum(avgOcc × classes) for a class-weighted average
+    occClasses: number;
   }
-  const hours = Array.from(
-    new Set(cells.map((c) => c.hourOfDay)),
-  ).sort((a, b) => a - b);
-  const days = [0, 1, 2, 3, 4, 5, 6];
+  const emptyAgg = (): SlotAgg => ({ revenue: 0, classes: 0, occWeighted: 0, occClasses: 0 });
+  const addCell = (agg: SlotAgg, c: (typeof cells)[number]) => {
+    agg.revenue += c.revenueCents;
+    agg.classes += c.classCount ?? 0;
+    if (c.avgOccupancyPct != null && c.classCount) {
+      agg.occWeighted += c.avgOccupancyPct * c.classCount;
+      agg.occClasses += c.classCount;
+    }
+  };
+  const dayTotals = new Map<number, SlotAgg>(days.map((d) => [d, emptyAgg()]));
+  const hourTotals = new Map<number, SlotAgg>(hours.map((h) => [h, emptyAgg()]));
+  const grand = emptyAgg();
+  for (const c of cells) {
+    if (!days.includes(c.dayOfWeek)) continue;
+    addCell(dayTotals.get(c.dayOfWeek)!, c);
+    addCell(hourTotals.get(c.hourOfDay)!, c);
+    addCell(grand, c);
+  }
+  const aggOcc = (a: SlotAgg) =>
+    a.occClasses > 0 ? Math.round(a.occWeighted / a.occClasses) : null;
+  const aggAvgPerClass = (a: SlotAgg) =>
+    a.classes > 0 ? Math.round(a.revenue / a.classes) : null;
+
+  const subline = (occ: number | null, classes: number) =>
+    classes > 0 ? `${occ != null ? `${occ}%` : "—"} · ${classes}c` : null;
 
   return (
     <div className="overflow-x-auto">
@@ -555,34 +580,43 @@ function TimeslotHeatmap({
         <thead>
           <tr>
             <th className="sticky left-0 bg-card px-2 py-1 text-left font-medium text-muted">
-              Día
+              Hora
             </th>
-            {hours.map((h) => (
-              <th key={h} className="px-1 py-1 text-center font-medium text-muted">
-                {h}:00
+            {days.map((d) => (
+              <th key={d} className="px-1 py-1 text-center font-medium text-muted">
+                {DOW_LABELS[d]}
               </th>
             ))}
+            <th className="border-l border-border/60 px-2 py-1 text-center font-semibold text-muted">
+              Total
+            </th>
           </tr>
         </thead>
         <tbody>
-          {days.map((d) => {
-            const row = byDay.get(d);
-            if (!row) return null;
+          {hours.map((h) => {
+            const ht = hourTotals.get(h)!;
             return (
-              <tr key={d}>
+              <tr key={h}>
                 <td className="sticky left-0 bg-card px-2 py-1 font-medium text-foreground">
-                  {DOW_LABELS[d]}
+                  {h}:00
                 </td>
-                {hours.map((h) => {
-                  const cell = row.get(h);
-                  if (!cell) {
-                    return <td key={h} className="px-1 py-1 text-center text-muted/40">·</td>;
+                {days.map((d) => {
+                  const cell = byKey.get(`${d}-${h}`);
+                  if (!cell || (cell.revenueCents === 0 && !cell.classCount)) {
+                    return (
+                      <td key={d} className="px-1 py-1 text-center text-muted/40">
+                        ·
+                      </td>
+                    );
                   }
                   const intensity =
-                    maxRevenue > 0 ? Math.round((cell.revenue / maxRevenue) * 100) : 0;
+                    maxRevenue > 0 ? Math.round((cell.revenueCents / maxRevenue) * 100) : 0;
+                  const avgPerClass = cell.classCount
+                    ? Math.round(cell.revenueCents / cell.classCount)
+                    : null;
                   return (
                     <td
-                      key={h}
+                      key={d}
                       className={cn(
                         "px-1 py-1 text-center tabular-nums",
                         intensity > 75
@@ -591,17 +625,89 @@ function TimeslotHeatmap({
                             ? "bg-admin/15 text-foreground"
                             : "bg-admin/5 text-foreground/70",
                       )}
-                      title={`${DOW_LABELS[d]} ${h}:00 · ${cell.attributions} atrib.`}
+                      title={`${DOW_LABELS[d]} ${h}:00 · ${cell.classCount} clase(s) · ${
+                        avgPerClass != null
+                          ? `media ${formatCurrency(fromCents(avgPerClass), currency)}/clase · `
+                          : ""
+                      }${
+                        cell.avgOccupancyPct != null
+                          ? `ocupación ${cell.avgOccupancyPct}% · `
+                          : ""
+                      }${cell.attributions} atrib.`}
                     >
-                      {formatCurrency(fromCents(cell.revenue), currency)}
+                      <div className="font-medium">
+                        {formatCurrency(fromCents(cell.revenueCents), currency)}
+                      </div>
+                      {subline(cell.avgOccupancyPct, cell.classCount) && (
+                        <div className="text-[10px] text-muted">
+                          {subline(cell.avgOccupancyPct, cell.classCount)}
+                        </div>
+                      )}
                     </td>
                   );
                 })}
+                <td
+                  className="border-l border-border/60 bg-surface/60 px-2 py-1 text-center tabular-nums"
+                  title={
+                    aggAvgPerClass(ht) != null
+                      ? `media ${formatCurrency(fromCents(aggAvgPerClass(ht)!), currency)}/clase`
+                      : undefined
+                  }
+                >
+                  <div className="font-semibold">
+                    {formatCurrency(fromCents(ht.revenue), currency)}
+                  </div>
+                  {subline(aggOcc(ht), ht.classes) && (
+                    <div className="text-[10px] text-muted">{subline(aggOcc(ht), ht.classes)}</div>
+                  )}
+                </td>
               </tr>
             );
           })}
         </tbody>
+        <tfoot>
+          <tr className="border-t border-border/60">
+            <td className="sticky left-0 bg-card px-2 py-1 font-semibold text-foreground">
+              Total
+            </td>
+            {days.map((d) => {
+              const dt = dayTotals.get(d)!;
+              return (
+                <td
+                  key={d}
+                  className="bg-surface/60 px-1 py-1 text-center tabular-nums"
+                  title={
+                    aggAvgPerClass(dt) != null
+                      ? `media ${formatCurrency(fromCents(aggAvgPerClass(dt)!), currency)}/clase`
+                      : undefined
+                  }
+                >
+                  <div className="font-semibold">
+                    {formatCurrency(fromCents(dt.revenue), currency)}
+                  </div>
+                  {subline(aggOcc(dt), dt.classes) && (
+                    <div className="text-[10px] text-muted">{subline(aggOcc(dt), dt.classes)}</div>
+                  )}
+                </td>
+              );
+            })}
+            <td className="border-l border-border/60 bg-surface px-2 py-1 text-center tabular-nums">
+              <div className="font-semibold">
+                {formatCurrency(fromCents(grand.revenue), currency)}
+              </div>
+              {subline(aggOcc(grand), grand.classes) && (
+                <div className="text-[10px] text-muted">
+                  {subline(aggOcc(grand), grand.classes)}
+                </div>
+              )}
+            </td>
+          </tr>
+        </tfoot>
       </table>
+      <p className="mt-2 text-[11px] text-muted/70">
+        Cada celda: ingresos atribuidos · ocupación media y clases impartidas (solo clases
+        terminadas). Pasa el cursor para ver la media por clase.
+      </p>
     </div>
   );
 }
