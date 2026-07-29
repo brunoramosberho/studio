@@ -191,18 +191,28 @@ export async function GET(req: NextRequest) {
       const occRatio = new Series(buckets);
       const occCount = new Series(buckets);
       const classes = new Series(buckets);
+      // Supply vs demand in absolute seats: capacity offered and seats taken.
+      // Occupancy alone can't tell "90% of few classes" from "50% of many".
+      const capacity = new Series(buckets);
+      const seats = new Series(buckets);
       let ratioSum = 0;
       let classCount = 0;
+      let capacityTotal = 0;
+      let seatsTotal = 0;
       for (const c of finishedClasses) {
         if (!inWin(c.startsAt)) continue;
         classes.add(c.startsAt, 1, agg);
+        classCount++;
         const cap = c.room?.maxCapacity ?? 0;
+        capacity.add(c.startsAt, cap, agg);
+        seats.add(c.startsAt, c._count.bookings, agg);
+        capacityTotal += cap;
+        seatsTotal += c._count.bookings;
         if (cap === 0) continue;
         const r = c._count.bookings / cap;
         occRatio.add(c.startsAt, r, agg);
         occCount.add(c.startsAt, 1, agg);
         ratioSum += r;
-        classCount++;
       }
       const occPoints = occRatio.points().map((p, i) => {
         const n = occCount.points()[i].v;
@@ -244,9 +254,15 @@ export async function GET(req: NextRequest) {
         visitCount,
         visitors,
         occPoints,
-        occTotal: classCount > 0 ? Math.round((ratioSum / classCount) * 100) : 0,
+        // Per-class average over classes that actually have capacity.
+        occTotal:
+          occCount.total() > 0 ? Math.round((ratioSum / occCount.total()) * 100) : 0,
         classes,
         classCount,
+        capacity,
+        seats,
+        capacityTotal,
+        seatsTotal,
         cancellations,
         noShows,
         clients,
@@ -422,6 +438,7 @@ export async function GET(req: NextRequest) {
       },
       retention: { repeat: repeatCount, new: newVisitorCount },
       leadTimes,
+      supply: buildSupply(cur, prev),
       glance: {
         visits: cur.visitCount,
         uniqueCustomers: cur.visitors.size,
@@ -446,4 +463,72 @@ export async function GET(req: NextRequest) {
     console.error("GET /api/admin/insights error:", error);
     return NextResponse.json({ error: "Failed to load insights" }, { status: 500 });
   }
+}
+
+
+// ── Supply vs demand ──────────────────────────────────────────────────
+// Occupancy is a ratio, so it hides which side moved: opening more classes
+// and filling each one less can leave the percentage flat. These figures
+// keep both sides visible in absolute seats, and split the change in seats
+// taken into "more classes" vs "better filling" using the exact identity
+//   seats = classes × seats-per-class
+// so the two effects always add up to the total change.
+type WindowStats = {
+  capacity: { points: () => Point[] };
+  seats: { points: () => Point[] };
+  capacityTotal: number;
+  seatsTotal: number;
+  classCount: number;
+};
+
+function buildSupply(cur: WindowStats, prev: WindowStats | null) {
+  const capPoints = cur.capacity.points();
+  const seatPoints = cur.seats.points();
+  const points = capPoints.map((p, i) => ({
+    d: p.d,
+    capacity: p.v,
+    seats: seatPoints[i]?.v ?? 0,
+  }));
+
+  const seatsPerClass = cur.classCount > 0 ? cur.seatsTotal / cur.classCount : 0;
+  const prevSeatsPerClass =
+    prev && prev.classCount > 0 ? prev.seatsTotal / prev.classCount : null;
+
+  // The absolute split only means something when both windows describe a
+  // comparable operation. A ramp-up (17 classes → 110) produces spectacular
+  // but meaningless numbers, so we flag it and let the UI show only the
+  // normalized seats-per-class change, which survives any baseline.
+  const MIN_CLASSES = 5;
+  const MAX_RATIO = 3;
+  let split: { fromClasses: number; fromFilling: number } | null = null;
+  let comparable = false;
+  if (prev && prev.classCount >= MIN_CLASSES && cur.classCount >= MIN_CLASSES) {
+    const ratio = cur.classCount / prev.classCount;
+    comparable = ratio <= MAX_RATIO && ratio >= 1 / MAX_RATIO;
+    if (comparable && prevSeatsPerClass !== null) {
+      split = {
+        fromClasses: Math.round((cur.classCount - prev.classCount) * seatsPerClass),
+        fromFilling: Math.round((seatsPerClass - prevSeatsPerClass) * prev.classCount),
+      };
+    }
+  }
+
+  return {
+    points,
+    capacity: cur.capacityTotal,
+    seats: cur.seatsTotal,
+    empty: Math.max(0, cur.capacityTotal - cur.seatsTotal),
+    classes: cur.classCount,
+    seatsPerClass: Math.round(seatsPerClass * 10) / 10,
+    prev: prev
+      ? {
+          seats: prev.seatsTotal,
+          classes: prev.classCount,
+          seatsPerClass:
+            prevSeatsPerClass !== null ? Math.round(prevSeatsPerClass * 10) / 10 : null,
+        }
+      : null,
+    comparable,
+    split,
+  };
 }

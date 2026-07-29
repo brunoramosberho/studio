@@ -1666,7 +1666,20 @@
       "slotsAllCoaches": "All instructors",
       "slotsHour": "Hour",
       "slotsTooltip": "{classes} class(es) · occupancy {occ}%",
-      "slotsFootnote": "Finished classes only. Revenue = attributed booking value (same criterion as Recognition). Occupancy = per-class average."
+      "slotsFootnote": "Finished classes only. Revenue = attributed booking value (same criterion as Recognition). Occupancy = per-class average.",
+      "occupancyScale": "{classes} classes · {perClass} people per class",
+      "supplyTitle": "Supply vs demand",
+      "supplyHint": "Height = seats offered · fill = seats taken. Finished classes only.",
+      "supplyClasses": "Classes",
+      "supplyOffered": "Seats offered",
+      "supplyTaken": "Taken",
+      "supplyEmpty": "Empty",
+      "supplySplitTitle": "Where the change came from",
+      "supplyPerClassLine": "Each class went from {prev} to {now} people.",
+      "supplyFromClasses": "More classes",
+      "supplyFromFilling": "Fill per class",
+      "supplySplitTotal": "They add up to {total} seats taken vs the previous period.",
+      "supplyNotComparable": "The previous period isn't comparable (the class count changed too much), so we only show the per-class change."
     },
     "reportsPage": {
       "title": "Reports",

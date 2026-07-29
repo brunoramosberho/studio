@@ -56,6 +56,17 @@ interface InsightsData {
     activeSubscriptions: Metric;
   };
   retention: { repeat: number; new: number };
+  supply: {
+    points: { d: string; capacity: number; seats: number }[];
+    capacity: number;
+    seats: number;
+    empty: number;
+    classes: number;
+    seatsPerClass: number;
+    prev: { seats: number; classes: number; seatsPerClass: number | null } | null;
+    comparable: boolean;
+    split: { fromClasses: number; fromFilling: number } | null;
+  };
   leadTimes: {
     distribution: { bucket: string; app: number; wellhub: number }[];
     byHour: { hour: number; app: number | null; wellhub: number | null }[];
@@ -160,6 +171,7 @@ function MetricCard({
   pctPoints,
   prevLabel,
   chartColor = "#6366f1",
+  note,
 }: {
   title: string;
   metric: Metric | undefined;
@@ -170,6 +182,8 @@ function MetricCard({
   pctPoints?: boolean;
   prevLabel: string;
   chartColor?: string;
+  /** Scale behind the number — keeps a ratio like occupancy from reading alone. */
+  note?: string;
 }) {
   const gradientId = useMemo(() => `g-${title.replace(/\W/g, "")}`, [title]);
   if (!metric) return <Skeleton className={cn("rounded-2xl", big ? "h-48" : "h-36")} />;
@@ -192,11 +206,23 @@ function MetricCard({
         {fmt(metric.total)}
         {suffix}
       </p>
-      {metric.prevTotal !== null && (
+      {note ? (
         <p className="text-[10px] text-muted/60">
-          {fmt(metric.prevTotal)}
-          {suffix} {prevLabel}
+          {note}
+          {metric.prevTotal !== null && (
+            <span className="ml-1">
+              · {fmt(metric.prevTotal)}
+              {suffix} {prevLabel}
+            </span>
+          )}
         </p>
+      ) : (
+        metric.prevTotal !== null && (
+          <p className="text-[10px] text-muted/60">
+            {fmt(metric.prevTotal)}
+            {suffix} {prevLabel}
+          </p>
+        )
       )}
       <div className={cn("mt-2", big ? "h-28" : "h-14")}>
         <ResponsiveContainer width="100%" height="100%">
@@ -386,8 +412,19 @@ export default function InsightsPage() {
               pctPoints
               chartColor="#10b981"
               prevLabel={prevLabel}
+              note={
+                data
+                  ? t("occupancyScale", {
+                      classes: data.supply.classes,
+                      perClass: data.supply.seatsPerClass,
+                    })
+                  : undefined
+              }
             />
           </div>
+
+          {/* Supply vs demand — the scale behind the occupancy ratio */}
+          {data && data.supply.classes > 0 && <SupplyDemandCard supply={data.supply} />}
 
           {/* Secondary metrics */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -533,6 +570,157 @@ export default function InsightsPage() {
           {/* Day×hour slot explorer: best time slots by metric/discipline/coach */}
           <InsightsSlotMatrix from={range.from} to={range.to} />
         </>
+      )}
+    </div>
+  );
+}
+
+const SUPPLY_SEATS_COLOR = "#6366f1";
+
+function SupplyDemandCard({ supply }: { supply: InsightsData["supply"] }) {
+  const t = useTranslations("admin.insightsPage");
+  const data = supply.points.map((p) => ({
+    d: p.d.slice(5),
+    seats: p.seats,
+    empty: Math.max(0, p.capacity - p.seats),
+  }));
+
+  const perClassDelta =
+    supply.prev?.seatsPerClass != null
+      ? Math.round((supply.seatsPerClass - supply.prev.seatsPerClass) * 10) / 10
+      : null;
+  const split = supply.split;
+  const seatsDelta = supply.prev ? supply.seats - supply.prev.seats : null;
+  // Bars are sized against the larger effect so the smaller one stays visible.
+  const splitMax = split
+    ? Math.max(Math.abs(split.fromClasses), Math.abs(split.fromFilling), 1)
+    : 1;
+
+  const stats: { label: string; value: string }[] = [
+    { label: t("supplyClasses"), value: supply.classes.toLocaleString() },
+    { label: t("supplyOffered"), value: supply.capacity.toLocaleString() },
+    { label: t("supplyTaken"), value: supply.seats.toLocaleString() },
+    { label: t("supplyEmpty"), value: supply.empty.toLocaleString() },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+            {t("supplyTitle")}
+          </p>
+          <p className="mt-1 text-[11px] text-muted">{t("supplyHint")}</p>
+        </div>
+        <span className="flex items-center gap-3 text-[11px] text-muted">
+          <span className="flex items-center gap-1">
+            <span
+              className="h-2.5 w-2.5 rounded-[3px]"
+              style={{ backgroundColor: SUPPLY_SEATS_COLOR }}
+            />
+            {t("supplyTaken")}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-[3px] border border-border bg-surface" />
+            {t("supplyEmpty")}
+          </span>
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-xl bg-surface/60 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wider text-muted/60">{s.label}</p>
+            <p className="mt-0.5 font-display text-lg font-bold tabular-nums text-foreground">
+              {s.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 h-[180px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+            <XAxis
+              dataKey="d"
+              tick={{ fontSize: 9 }}
+              tickLine={false}
+              axisLine={false}
+              interval="preserveStartEnd"
+            />
+            <YAxis hide />
+            <Tooltip
+              contentStyle={LEAD_TOOLTIP_STYLE}
+              labelStyle={{ fontSize: 10 }}
+              formatter={(value, name) => [
+                Number(value ?? 0).toLocaleString(),
+                name === "seats" ? t("supplyTaken") : t("supplyEmpty"),
+              ]}
+            />
+            <Bar dataKey="seats" stackId="s" fill={SUPPLY_SEATS_COLOR} radius={[0, 0, 3, 3]} />
+            <Bar
+              dataKey="empty"
+              stackId="s"
+              fill="currentColor"
+              className="text-border/50"
+              radius={[3, 3, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {perClassDelta !== null && supply.prev?.seatsPerClass != null && (
+        <div className="mt-4 border-t border-border/50 pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted/60">
+            {t("supplySplitTitle")}
+          </p>
+          <p className="mt-1 text-sm text-foreground">
+            {t("supplyPerClassLine", {
+              prev: supply.prev.seatsPerClass,
+              now: supply.seatsPerClass,
+            })}
+          </p>
+
+          {split ? (
+            <div className="mt-3 space-y-2">
+              {(
+                [
+                  { key: "classes", label: t("supplyFromClasses"), value: split.fromClasses },
+                  { key: "filling", label: t("supplyFromFilling"), value: split.fromFilling },
+                ] as const
+              ).map((row) => (
+                <div key={row.key} className="flex items-center gap-3">
+                  <span className="w-32 shrink-0 text-xs text-muted">{row.label}</span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
+                    <div
+                      className={cn(
+                        "h-full rounded-full",
+                        row.value >= 0 ? "bg-emerald-500" : "bg-rose-500",
+                      )}
+                      style={{ width: `${(Math.abs(row.value) / splitMax) * 100}%` }}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      "w-16 shrink-0 text-right text-xs font-semibold tabular-nums",
+                      row.value >= 0 ? "text-emerald-600" : "text-rose-600",
+                    )}
+                  >
+                    {row.value >= 0 ? "+" : ""}
+                    {row.value.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+              {seatsDelta !== null && (
+                <p className="pt-1 text-[11px] text-muted">
+                  {t("supplySplitTotal", { total: seatsDelta })}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="mt-2 text-[11px] text-muted">{t("supplyNotComparable")}</p>
+          )}
+        </div>
       )}
     </div>
   );

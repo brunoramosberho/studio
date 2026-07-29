@@ -1666,7 +1666,20 @@
       "slotsAllCoaches": "Todos los instructores",
       "slotsHour": "Hora",
       "slotsTooltip": "{classes} clase(s) · ocupación {occ}%",
-      "slotsFootnote": "Solo clases terminadas. Ingresos = valor atribuido de las reservas (mismo criterio que Reconocimiento). Ocupación = promedio por clase."
+      "slotsFootnote": "Solo clases terminadas. Ingresos = valor atribuido de las reservas (mismo criterio que Reconocimiento). Ocupación = promedio por clase.",
+      "occupancyScale": "{classes} clases · {perClass} personas por clase",
+      "supplyTitle": "Oferta vs demanda",
+      "supplyHint": "Altura = lugares ofertados · relleno = ocupados. Solo clases terminadas.",
+      "supplyClasses": "Clases",
+      "supplyOffered": "Lugares ofertados",
+      "supplyTaken": "Ocupados",
+      "supplyEmpty": "Vacíos",
+      "supplySplitTitle": "De dónde vino el cambio",
+      "supplyPerClassLine": "Cada clase pasó de {prev} a {now} personas.",
+      "supplyFromClasses": "Más clases",
+      "supplyFromFilling": "Llenado por clase",
+      "supplySplitTotal": "Suman {total} lugares ocupados vs el periodo anterior.",
+      "supplyNotComparable": "El periodo anterior no es comparable (cambió demasiado el número de clases), así que solo mostramos el cambio por clase."
     },
     "reportsPage": {
       "title": "Reportes",
