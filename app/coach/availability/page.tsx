@@ -203,7 +203,11 @@ export default function CoachAvailabilityPage() {
     const obj: Record<string, StudioPrefValue> = {};
     for (const s of data?.studios ?? []) {
       const pref = firstAvail?.studioPreferences.find((p) => p.studioId === s.id);
-      obj[s.id] = pref?.preference ?? "preferred";
+      // "Not available" is stored as the ABSENCE of a preference row, so when
+      // a block exists a missing row must read back as unavailable — falling
+      // back to "preferred" made the chip revert after every save. Only when
+      // no block exists yet (setup not done) do we default to preferred.
+      obj[s.id] = pref?.preference ?? (firstAvail ? "unavailable" : "preferred");
     }
     return obj;
   }, [blocks, data]);

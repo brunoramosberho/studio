@@ -1194,8 +1194,11 @@ function CoachDetailTab() {
     );
     const obj: Record<string, StudioPrefValue> = {};
     for (const st of data?.studios ?? []) {
+      // Missing preference row on an existing block = "not available" (that's
+      // how the API stores it); defaulting to preferred made the chip revert.
       obj[st.id] =
-        first?.studioPreferences.find((pp) => pp.studioId === st.id)?.preference ?? "preferred";
+        first?.studioPreferences.find((pp) => pp.studioId === st.id)?.preference ??
+        (first ? "unavailable" : "preferred");
     }
     return obj;
   }, [blocks, data]);
