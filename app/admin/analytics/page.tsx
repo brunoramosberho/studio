@@ -20,6 +20,7 @@ import { useCurrency } from "@/components/tenant-provider";
 import { formatMoney } from "@/lib/currency";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { INSIGHTS_TABS } from "@/components/admin/section-tab-configs";
+import { InsightsSlotMatrix } from "@/components/admin/insights-slot-matrix";
 
 // ─── Types (mirror /api/admin/insights) ─────────────────
 
@@ -528,6 +529,9 @@ export default function InsightsPage() {
           {data && data.leadTimes.totals.app + data.leadTimes.totals.wellhub > 0 && (
             <LeadTimesCard leadTimes={data.leadTimes} />
           )}
+
+          {/* Day×hour slot explorer: best time slots by metric/discipline/coach */}
+          <InsightsSlotMatrix from={range.from} to={range.to} />
         </>
       )}
     </div>

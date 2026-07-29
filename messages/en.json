@@ -1656,7 +1656,17 @@
       "leadBucket_1h": "1–3h",
       "leadBucket_0h": "<1h",
       "leadDaysHours": "{d} d {h} h ahead",
-      "leadDaysOnly": "{d} d ahead"
+      "leadDaysOnly": "{d} d ahead",
+      "slotsTitle": "Best time slots",
+      "slotsHint": "Day × hour for the selected range — switch metric and filter by discipline or instructor",
+      "slotMetricRevenue": "Total revenue",
+      "slotMetricAvg": "Avg per class",
+      "slotMetricOcc": "Occupancy",
+      "slotsAllDisciplines": "All disciplines",
+      "slotsAllCoaches": "All instructors",
+      "slotsHour": "Hour",
+      "slotsTooltip": "{classes} class(es) · occupancy {occ}%",
+      "slotsFootnote": "Finished classes only. Revenue = attributed booking value (same criterion as Recognition). Occupancy = per-class average."
     },
     "reportsPage": {
       "title": "Reports",

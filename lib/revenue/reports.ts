@@ -634,6 +634,114 @@ export async function getMonthlyRevenueReport(
   };
 }
 
+
+// ── Slot matrix (Insights "best time slots" explorer) ─────────────────
+// Per-(weekday, hour, discipline, coach) aggregates over an arbitrary range,
+// small enough to ship whole to the client so metric/filter switches are
+// instant. Revenue is ATTRIBUTED consumption (same layer as byTimeslot);
+// occupancy follows the finished-classes-only convention.
+
+export interface SlotMatrixCell {
+  dayOfWeek: number; // 0 = Sunday
+  hourOfDay: number;
+  classTypeId: string;
+  coachId: string;
+  /** Finished classes held by this exact combo in the slot. */
+  classes: number;
+  /** Sum of per-class fill percentages — divide by `classes` for the average. */
+  occSum: number;
+  revenueCents: number;
+}
+
+export interface SlotMatrix {
+  cells: SlotMatrixCell[];
+  classTypes: { id: string; name: string }[];
+  coaches: { id: string; name: string }[];
+}
+
+export async function buildSlotMatrix(
+  tenantId: string,
+  start: Date,
+  end: Date,
+): Promise<SlotMatrix> {
+  const [attributed, classes] = await Promise.all([
+    loadAttributedRows(tenantId, start, end),
+    prisma.class.findMany({
+      where: {
+        tenantId,
+        startsAt: { gte: start, lte: end },
+        endsAt: { lte: new Date() },
+        status: { not: "CANCELLED" },
+      },
+      select: {
+        startsAt: true,
+        classTypeId: true,
+        coachId: true,
+        classType: { select: { name: true } },
+        coach: { select: { name: true } },
+        room: {
+          select: {
+            maxCapacity: true,
+            studio: { select: { city: { select: { timezone: true } } } },
+          },
+        },
+        _count: {
+          select: { bookings: { where: { status: { in: ["CONFIRMED", "ATTENDED"] } } } },
+        },
+      },
+    }),
+  ]);
+
+  const cellMap = new Map<string, SlotMatrixCell>();
+  const classTypeNames = new Map<string, string>();
+  const coachNames = new Map<string, string>();
+  const cellFor = (dow: number, hour: number, ctId: string, coachId: string) => {
+    const key = `${dow}|${hour}|${ctId}|${coachId}`;
+    let cell = cellMap.get(key);
+    if (!cell) {
+      cell = {
+        dayOfWeek: dow,
+        hourOfDay: hour,
+        classTypeId: ctId,
+        coachId,
+        classes: 0,
+        occSum: 0,
+        revenueCents: 0,
+      };
+      cellMap.set(key, cell);
+    }
+    return cell;
+  };
+
+  for (const c of classes) {
+    const tz = c.room?.studio?.city?.timezone ?? null;
+    const { dow, hour } = localDayHour(c.startsAt, tz);
+    const cap = c.room?.maxCapacity ?? 0;
+    const occ = cap > 0 ? Math.min(100, (c._count.bookings / cap) * 100) : 0;
+    const cell = cellFor(dow, hour, c.classTypeId, c.coachId);
+    cell.classes++;
+    cell.occSum += occ;
+    classTypeNames.set(c.classTypeId, c.classType.name);
+    coachNames.set(c.coachId, c.coach.name);
+  }
+
+  for (const row of attributed) {
+    if (!row.scheduledAt || !row.classTypeId || !row.coachId) continue;
+    const { dow, hour } = localDayHour(row.scheduledAt, row.timezone);
+    const cell = cellFor(dow, hour, row.classTypeId, row.coachId);
+    cell.revenueCents += row.amountCents;
+    if (row.classTypeName) classTypeNames.set(row.classTypeId, row.classTypeName);
+    if (row.coachName) coachNames.set(row.coachId, row.coachName);
+  }
+
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+  return {
+    cells: Array.from(cellMap.values()),
+    classTypes: Array.from(classTypeNames, ([id, name]) => ({ id, name })).sort(byName),
+    coaches: Array.from(coachNames, ([id, name]) => ({ id, name })).sort(byName),
+  };
+}
+
 function monthBoundsInternal(month: string): { start: Date; end: Date } {
   const [y, m] = month.split("-").map(Number);
   const start = new Date(y, m - 1, 1, 0, 0, 0, 0);

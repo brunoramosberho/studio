@@ -1656,7 +1656,17 @@
       "leadBucket_1h": "1–3h",
       "leadBucket_0h": "<1h",
       "leadDaysHours": "{d} d {h} h antes",
-      "leadDaysOnly": "{d} d antes"
+      "leadDaysOnly": "{d} d antes",
+      "slotsTitle": "Mejores horarios",
+      "slotsHint": "Día × hora del rango elegido — cambia métrica y filtra por disciplina o instructor",
+      "slotMetricRevenue": "Ingresos totales",
+      "slotMetricAvg": "Media por clase",
+      "slotMetricOcc": "Ocupación",
+      "slotsAllDisciplines": "Todas las disciplinas",
+      "slotsAllCoaches": "Todos los instructores",
+      "slotsHour": "Hora",
+      "slotsTooltip": "{classes} clase(s) · ocupación {occ}%",
+      "slotsFootnote": "Solo clases terminadas. Ingresos = valor atribuido de las reservas (mismo criterio que Reconocimiento). Ocupación = promedio por clase."
     },
     "reportsPage": {
       "title": "Reportes",
