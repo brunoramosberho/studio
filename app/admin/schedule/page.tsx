@@ -528,12 +528,16 @@ export default function AdminSchedulePage() {
                               }}
                               className={cn(
                                 "mb-0.5 cursor-pointer rounded-md px-1.5 py-1 text-white transition-opacity hover:opacity-90",
+                                // Transparent border on every card so the
+                                // dashed one below doesn't shift its content.
+                                "border-2 border-transparent",
                                 past && !isCancelled && "opacity-50",
                                 isCancelled && "opacity-30 line-through",
-                                // Keep the discipline color (that's how the
-                                // grid is read at a glance); the dashed edge
-                                // and fade carry "not published yet".
-                                unpublished && "border-2 border-dashed border-white/70 opacity-60",
+                                // Not published yet: full color at full
+                                // strength — it's the most actionable class on
+                                // the grid, so it must not read as disabled.
+                                // The dashed edge + eye-off icon carry it.
+                                unpublished && "border-dashed border-white/70",
                               )}
                               style={{ backgroundColor: getColor(cls) }}
                             >
