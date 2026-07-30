@@ -50,6 +50,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn, formatTime, getWallClockInZone } from "@/lib/utils";
+import { needsDarkText, readableTextColor, withAlpha } from "@/lib/color";
 import { ClassFormDialog } from "@/components/admin/class-form-dialog";
 import { ClassDetailDialog } from "@/components/admin/class-detail-dialog";
 import { SectionTabs } from "@/components/admin/section-tabs";
@@ -575,6 +576,11 @@ export default function AdminSchedulePage() {
                           const unpublished =
                             !past && !isCancelled && cls.visibleToClients === false;
                           const warning = !past && !isCancelled ? cls.availabilityWarning : null;
+                          // Studios pick their own colors, so white text isn't
+                          // always legible — compute it from the background.
+                          const bg = getColor(cls);
+                          const fg = readableTextColor(bg);
+                          const darkText = needsDarkText(bg);
 
                           const card = (
                             <div
@@ -584,7 +590,7 @@ export default function AdminSchedulePage() {
                                 handleClassClick(cls);
                               }}
                               className={cn(
-                                "mb-0.5 cursor-pointer rounded-md px-1.5 py-1 text-white transition-opacity hover:opacity-90",
+                                "mb-0.5 cursor-pointer rounded-md px-1.5 py-1 transition-opacity hover:opacity-90",
                                 // Transparent border on every card so the
                                 // dashed one below doesn't shift its content.
                                 "border-2 border-transparent",
@@ -594,13 +600,22 @@ export default function AdminSchedulePage() {
                                 // strength — it's the most actionable class on
                                 // the grid, so it must not read as disabled.
                                 // The dashed edge + eye-off icon carry it.
-                                unpublished && "border-dashed border-white/70",
+                                unpublished && "border-dashed",
                               )}
-                              style={{ backgroundColor: getColor(cls) }}
+                              style={{
+                                backgroundColor: bg,
+                                color: fg,
+                                ...(unpublished ? { borderColor: withAlpha(fg, 0.7) } : {}),
+                              }}
                             >
                               <p className="flex items-center gap-1 truncate text-[10px] font-semibold leading-tight">
                                 {warning && (
-                                  <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-400" />
+                                  <AlertTriangle
+                                    className={cn(
+                                      "h-2.5 w-2.5 shrink-0",
+                                      darkText ? "text-amber-700" : "text-amber-300",
+                                    )}
+                                  />
                                 )}
                                 {unpublished && <EyeOff className="h-2.5 w-2.5 shrink-0 opacity-70" />}
                                 <span className="truncate">{cls.classType.name}</span>
