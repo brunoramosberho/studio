@@ -35,6 +35,23 @@ export const plannerTools: Anthropic.Tool[] = [
     },
   },
   {
+    name: "get_existing_schedule",
+    description:
+      "Devuelve las clases YA programadas en el rango pedido, con disciplina, instructor, día, hora, duración, estudio, sala, capacidad y reservas. Úsalo SIEMPRE antes de proponer: (1) para no duplicar clases que ya existen en el periodo destino, y (2) para COPIAR una semana anterior — si el admin dice 'haz lo mismo que la semana pasada' o 'igual pero cambiando la disciplina', lee esa semana con este tool y replica día/hora/instructor/estudio ajustando solo lo que te pidan. Las fechas vienen en la zona horaria del estudio.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        start_date: { type: "string", description: "YYYY-MM-DD (inclusive)" },
+        end_date: { type: "string", description: "YYYY-MM-DD (inclusive)" },
+        studio_id: {
+          type: "string",
+          description: "Opcional: limitar a un estudio concreto",
+        },
+      },
+      required: ["start_date", "end_date"],
+    },
+  },
+  {
     name: "propose_schedule_plan",
     description:
       "Genera y guarda una propuesta de horario completa basada en las restricciones recolectadas. El objeto constraints debe contener TODAS las preferencias del admin (no solo lo nuevo). El tool guarda la propuesta en la conversación y la muestra en una tabla revisable al admin. NO crea las clases.",

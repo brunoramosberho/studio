@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 
 export async function buildPlannerContext(tenantId: string) {
-  const [studios, classTypes, coachProfiles, recentClasses] = await Promise.all([
+  const [studios, classTypes, coachProfiles, recentClasses, tenant] = await Promise.all([
     prisma.studio.findMany({
       where: { tenantId },
       include: {
@@ -24,6 +24,10 @@ export async function buildPlannerContext(tenantId: string) {
       },
       select: { coachId: true, classTypeId: true },
     }),
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { schedulePlannerRules: true, scheduleSlotTimes: true },
+    }),
   ]);
 
   const coachDisciplines = new Map<string, Set<string>>();
@@ -43,6 +47,8 @@ export async function buildPlannerContext(tenantId: string) {
       rooms: s.rooms,
     })),
     classTypes,
+    plannerRules: tenant?.schedulePlannerRules?.trim() || null,
+    slotTimes: tenant?.scheduleSlotTimes ?? [],
     coaches: coachProfiles.map((c) => ({
       id: c.id,
       name: c.name,

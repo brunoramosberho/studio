@@ -14,6 +14,7 @@ export async function GET() {
       studioCloseTime: tenant.studioCloseTime,
       operatingDays: tenant.operatingDays,
       scheduleSlotTimes: tenant.scheduleSlotTimes,
+      schedulePlannerRules: tenant.schedulePlannerRules,
       notifications: {
         emailOnRequest: tenant.notifyEmailOnRequest,
         pushOnRequest: tenant.notifyPushOnRequest,
@@ -60,6 +61,23 @@ export async function PATCH(request: NextRequest) {
     if (body.studioOpenTime !== undefined) data.studioOpenTime = body.studioOpenTime;
     if (body.studioCloseTime !== undefined) data.studioCloseTime = body.studioCloseTime;
     if (body.operatingDays !== undefined) data.operatingDays = body.operatingDays;
+    if (body.schedulePlannerRules !== undefined) {
+      const raw = body.schedulePlannerRules;
+      if (raw !== null && typeof raw !== "string") {
+        return NextResponse.json(
+          { error: "schedulePlannerRules must be a string or null" },
+          { status: 400 },
+        );
+      }
+      const trimmed = typeof raw === "string" ? raw.trim() : "";
+      if (trimmed.length > 4000) {
+        return NextResponse.json(
+          { error: "schedulePlannerRules must be 4000 characters or fewer" },
+          { status: 400 },
+        );
+      }
+      data.schedulePlannerRules = trimmed.length > 0 ? trimmed : null;
+    }
     if (body.scheduleSlotTimes !== undefined) {
       // [] is meaningful: it resets the grid to one row per hour.
       const slots = normalizeSlotTimes(body.scheduleSlotTimes);
@@ -94,6 +112,7 @@ export async function PATCH(request: NextRequest) {
       studioCloseTime: updated.studioCloseTime,
       operatingDays: updated.operatingDays,
       scheduleSlotTimes: updated.scheduleSlotTimes,
+      schedulePlannerRules: updated.schedulePlannerRules,
       notifications: {
         emailOnRequest: updated.notifyEmailOnRequest,
         pushOnRequest: updated.notifyPushOnRequest,

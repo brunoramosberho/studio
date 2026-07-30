@@ -6,6 +6,7 @@ import {
   X,
   Plus,
   History,
+  SlidersHorizontal,
   ArrowLeft,
   Trash2,
   Eye,
@@ -19,6 +20,7 @@ import { useSchedulePlanner, type PlannerMessage } from "@/hooks/useSchedulePlan
 import { MessageList } from "@/components/admin/MgicAI/MessageList";
 import { InputBar } from "@/components/admin/MgicAI/InputBar";
 import { ProposalReviewDialog } from "./ProposalReviewDialog";
+import { PlannerRulesDialog } from "./PlannerRulesDialog";
 import { type AiMessage } from "@/components/admin/MgicAI";
 
 interface Props {
@@ -48,6 +50,7 @@ export function PlannerPanel({ open, onOpenChange, seedMessage, onSeedConsumed }
   const { studioName, colorAdmin } = useBranding();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const lastOpenedProposalAt = useRef<string | null>(null);
   const [mode, setModeState] = useState<PanelMode>("sidebar");
@@ -211,6 +214,13 @@ export function PlannerPanel({ open, onOpenChange, seedMessage, onSeedConsumed }
                     <Plus className="h-3.5 w-3.5" />
                   </button>
                   <button
+                    onClick={() => setRulesOpen(true)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                    title="Reglas para planear"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                  </button>
+                  <button
                     onClick={() => setShowHistory((v) => !v)}
                     className={cn(
                       "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
@@ -299,6 +309,8 @@ export function PlannerPanel({ open, onOpenChange, seedMessage, onSeedConsumed }
           </>
         )}
       </AnimatePresence>
+
+      <PlannerRulesDialog open={rulesOpen} onOpenChange={setRulesOpen} />
 
       <ProposalReviewDialog
         open={reviewOpen}

@@ -84,6 +84,8 @@ export async function POST(
       studios: plannerCtx.studios,
       classTypes: plannerCtx.classTypes,
       coaches: plannerCtx.coaches,
+      plannerRules: plannerCtx.plannerRules,
+      slotTimes: plannerCtx.slotTimes,
       currentConstraints: (conv.contextJson ?? null) as PlannerConstraints | null,
       currentProposal: (conv.proposalJson ?? null) as ScheduleProposal | null,
       todayIso: new Date().toISOString().slice(0, 10),

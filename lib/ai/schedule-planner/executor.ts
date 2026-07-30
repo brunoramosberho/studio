@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { getWallClockInZone } from "@/lib/utils";
 import type {
   PlannerConstraints,
   ProposedClass,
@@ -25,6 +26,8 @@ export async function executePlannerTool(
       return getPlannerResources(input, args.tenantId);
     case "get_coach_availability_window":
       return getCoachAvailabilityWindow(input, args.tenantId);
+    case "get_existing_schedule":
+      return getExistingSchedule(input, args.tenantId);
     case "propose_schedule_plan":
       return proposeSchedulePlan(input, args);
     default:
@@ -481,4 +484,76 @@ function groupCount<T>(arr: T[], keyFn: (item: T) => string): Record<string, num
     out[k] = (out[k] ?? 0) + 1;
   }
   return out;
+}
+
+/**
+ * Classes already on the calendar for a range. This is what lets the planner
+ * replicate a previous week ("igual que la semana pasada, pero cambiando la
+ * disciplina") and avoid double-booking a period that's partly planned.
+ * Times are rendered in each studio's timezone, never the server's.
+ */
+async function getExistingSchedule(
+  input: { start_date: string; end_date: string; studio_id?: string },
+  tenantId: string,
+) {
+  const start = new Date(`${input.start_date}T00:00:00.000Z`);
+  const end = new Date(`${input.end_date}T23:59:59.999Z`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return { error: "start_date/end_date inválidos (usa YYYY-MM-DD)" };
+  }
+
+  const classes = await prisma.class.findMany({
+    where: {
+      tenantId,
+      startsAt: { gte: start, lte: end },
+      status: { not: "CANCELLED" },
+      ...(input.studio_id ? { room: { studioId: input.studio_id } } : {}),
+    },
+    select: {
+      id: true,
+      startsAt: true,
+      endsAt: true,
+      classType: { select: { id: true, name: true } },
+      coach: { select: { id: true, name: true } },
+      room: {
+        select: {
+          id: true,
+          name: true,
+          maxCapacity: true,
+          studioId: true,
+          studio: {
+            select: { name: true, city: { select: { timezone: true } } },
+          },
+        },
+      },
+      _count: { select: { bookings: { where: { status: { in: [...CONFIRMED_OR_ATTENDED] } } } } },
+    },
+    orderBy: { startsAt: "asc" },
+  });
+
+  return {
+    range: { start_date: input.start_date, end_date: input.end_date },
+    total: classes.length,
+    classes: classes.map((c) => {
+      const tz = c.room?.studio?.city?.timezone ?? "Europe/Madrid";
+      const wall = getWallClockInZone(c.startsAt, tz);
+      const duration = Math.round((c.endsAt.getTime() - c.startsAt.getTime()) / 60000);
+      return {
+        date: `${wall.year}-${String(wall.month).padStart(2, "0")}-${String(wall.day).padStart(2, "0")}`,
+        weekday: format(c.startsAt, "EEEE", { locale: es }),
+        time: `${String(wall.hour).padStart(2, "0")}:${String(wall.minute).padStart(2, "0")}`,
+        duration_minutes: duration,
+        class_type_id: c.classType.id,
+        class_type_name: c.classType.name,
+        coach_id: c.coach.id,
+        coach_name: c.coach.name,
+        studio_id: c.room?.studioId ?? null,
+        studio_name: c.room?.studio?.name ?? null,
+        room_id: c.room?.id ?? null,
+        room_name: c.room?.name ?? null,
+        capacity: c.room?.maxCapacity ?? 0,
+        bookings: c._count.bookings,
+      };
+    }),
+  };
 }

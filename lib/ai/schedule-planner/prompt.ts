@@ -6,6 +6,8 @@ interface PlannerSystemContext {
   studios: { id: string; name: string; rooms: { id: string; name: string; maxCapacity: number }[] }[];
   classTypes: { id: string; name: string; duration: number }[];
   coaches: { id: string; name: string; disciplines: string[] }[];
+  plannerRules: string | null;
+  slotTimes: string[];
   currentConstraints: PlannerConstraints | null;
   currentProposal: ScheduleProposal | null;
   todayIso: string;
@@ -21,6 +23,14 @@ export function buildSchedulePlannerPrompt(ctx: PlannerSystemContext): string {
   const coachList = ctx.coaches
     .map((c) => `  - ${c.name} (id: ${c.id}, disciplinas: ${c.disciplines.join(", ") || "sin asignar"})`)
     .join("\n");
+
+  // House rules outrank Spark's own judgement — they're the studio's policy.
+  const rulesBlock = ctx.plannerRules
+    ? `\nREGLAS DE LA CASA (definidas por el studio — cúmplelas SIEMPRE, salvo que ${ctx.adminFirstName} te pida explícitamente lo contrario en esta conversación):\n${ctx.plannerRules}\n`
+    : "";
+  const slotBlock = ctx.slotTimes.length
+    ? `\nFRANJAS HORARIAS DEL STUDIO: las clases de este studio empiezan a las ${ctx.slotTimes.join(", ")}. Propón horas SOLO de esa lista salvo que te pidan otra cosa.\n`
+    : "";
 
   const constraintsBlock = ctx.currentConstraints
     ? `\nCONTEXTO YA RECOLECTADO:\n${JSON.stringify(ctx.currentConstraints, null, 2)}\n`
@@ -49,6 +59,7 @@ PERSONALIDAD:
 - Conciso. No hagas párrafos largos: una pregunta a la vez, máximo dos.
 
 FLUJO ESPERADO:
+0. **Mira lo que ya existe**: antes de proponer, llama \`get_existing_schedule\` para el periodo destino (para no duplicar clases ya programadas). Si ${ctx.adminFirstName} quiere repetir una semana ("igual que la semana pasada", "copia el horario de la semana del 20"), léela con ese mismo tool y replica día/hora/instructor/estudio, cambiando solo lo que te pida.
 1. **Recolectar contexto**: pregunta de forma conversacional (1-2 cosas por turno, no formulario gigante). Necesitas saber:
    - **Estudios**: ¿todos los del studio o alguno específico? (puedes mencionar los que existen)
    - **Horizonte**: ¿cuántos días planear? (sugiere "las próximas 2 semanas" o "el próximo mes")
@@ -94,7 +105,7 @@ ${classTypeList || "  (no hay disciplinas registradas)"}
 
 Coaches:
 ${coachList || "  (no hay coaches registrados)"}
-${constraintsBlock}${proposalBlock}
+${rulesBlock}${slotBlock}${constraintsBlock}${proposalBlock}
 Cuando recolectes una nueva pieza de información estructurable, actualiza tu modelo mental de las restricciones. Cuando llames a propose_schedule_plan, pasa el OBJETO COMPLETO de restricciones (lo que ya tenías + lo nuevo), no solo el delta.`;
 }
 

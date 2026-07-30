@@ -107,6 +107,12 @@ model Tenant {
   // prefills the real class time instead of the top of the hour.
   scheduleSlotTimes String[] @default([])
 
+  // House rules the schedule planner (Spark) must follow every time, so the
+  // admin doesn't retype them in each conversation: "nunca dos clases
+  // seguidas a la misma instructora", "los sábados solo hasta la 1pm"…
+  // Free text, injected into the planner's system prompt.
+  schedulePlannerRules String?
+
   // How clients see the upcoming schedule:
   //  - ROLLING_DAYS: a sliding window of the next `visibleScheduleDays` days.
   //  - WEEKLY_RELEASE: a weekly drop. Every (scheduleReleaseDayOfWeek,
