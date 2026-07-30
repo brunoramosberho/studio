@@ -55,6 +55,8 @@ import { PlannerPanel } from "@/components/admin/schedule-planner/PlannerPanel";
 import { ScheduleVisibilityDialog } from "@/components/admin/schedule-visibility-dialog";
 import type { ClassWithDetails } from "@/types";
 
+const ALL_STUDIOS = "__all__";
+
 type ColorMode = "coach" | "classType";
 
 interface WeekSlotsResponse {
@@ -113,9 +115,22 @@ export default function AdminSchedulePage() {
   useEffect(() => {
     const list = tenantStudios?.studios ?? [];
     if (list.length === 0) return;
+    if (filterStudio === ALL_STUDIOS) return;
     if (filterStudio && list.some((s) => s.id === filterStudio)) return;
     setFilterStudio(list[0].id);
   }, [tenantStudios, filterStudio]);
+
+  // Picking an instructor switches to all studios: their week is what you
+  // want to see, and they may teach across locations.
+  function handleCoachFilter(value: string) {
+    setFilterCoach(value);
+    if (value !== "all") setFilterStudio(ALL_STUDIOS);
+  }
+
+  // Studio name goes on the card only when several studios share the grid —
+  // otherwise it's noise.
+  const showStudioOnCard =
+    (tenantStudios?.studios.length ?? 0) > 1 && filterStudio === ALL_STUDIOS;
 
   const [selectedClass, setSelectedClass] = useState<ClassWithDetails | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -205,7 +220,8 @@ export default function AdminSchedulePage() {
     return (classes ?? []).filter((c) => {
       // Hide cancelled classes unless they had bookings (so admin sees them)
       if (c.status === "CANCELLED" && (c._count?.bookings ?? 0) === 0) return false;
-      if (filterStudio && c.room?.studio?.id !== filterStudio) return false;
+      if (filterStudio && filterStudio !== ALL_STUDIOS && c.room?.studio?.id !== filterStudio)
+        return false;
       if (filterCoach !== "all" && c.coach.id !== filterCoach) return false;
       if (filterType !== "all" && c.classType.id !== filterType) return false;
       return true;
@@ -348,6 +364,7 @@ export default function AdminSchedulePage() {
               <SelectValue placeholder={t("studio")} />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={ALL_STUDIOS}>{t("allStudios")}</SelectItem>
               {(tenantStudios?.studios ?? []).map((s) => (
                 <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
               ))}
@@ -355,7 +372,7 @@ export default function AdminSchedulePage() {
           </Select>
         )}
 
-        <Select value={filterCoach} onValueChange={setFilterCoach}>
+        <Select value={filterCoach} onValueChange={handleCoachFilter}>
           <SelectTrigger className="h-8 w-[160px] text-xs">
             <SelectValue placeholder={t("coachLabel")} />
           </SelectTrigger>
@@ -513,14 +530,12 @@ export default function AdminSchedulePage() {
                                 "mb-0.5 cursor-pointer rounded-md px-1.5 py-1 text-white transition-opacity hover:opacity-90",
                                 past && !isCancelled && "opacity-50",
                                 isCancelled && "opacity-30 line-through",
-                                unpublished &&
-                                  "border-2 border-dashed bg-transparent text-foreground",
+                                // Keep the discipline color (that's how the
+                                // grid is read at a glance); the dashed edge
+                                // and fade carry "not published yet".
+                                unpublished && "border-2 border-dashed border-white/70 opacity-60",
                               )}
-                              style={
-                                unpublished
-                                  ? { borderColor: getColor(cls) }
-                                  : { backgroundColor: getColor(cls) }
-                              }
+                              style={{ backgroundColor: getColor(cls) }}
                             >
                               <p className="flex items-center gap-1 truncate text-[10px] font-semibold leading-tight">
                                 {warning && (
@@ -532,8 +547,11 @@ export default function AdminSchedulePage() {
                               <p className="truncate text-[9px] opacity-80">
                                 {cls.coach.name} · {formatTime(cls.startsAt, cls.room?.studio?.city?.timezone ?? undefined)}
                               </p>
-                              <p className="text-[8px] opacity-60">
+                              <p className="truncate text-[8px] opacity-60">
                                 {booked}/{maxCap}
+                                {showStudioOnCard && cls.room?.studio?.name
+                                  ? ` · ${cls.room.studio.name}`
+                                  : ""}
                                 {isCancelled && ` · ${t("cancelled")}`}
                               </p>
                             </div>
