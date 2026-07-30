@@ -70,7 +70,6 @@ import { toast } from "sonner";
 import type { ClassWithDetails } from "@/types";
 import {
   formatSlotTime,
-  generateSlotTimes,
   normalizeSlotTimes,
   parseSlotTime,
   resolveSlotStarts,
@@ -525,21 +524,26 @@ export default function AdminSchedulePage() {
                   </div>
                   {days.map((day) => {
                     const dayClasses = filtered.filter((c) => {
-                      // Bucket classes by the studio's wall-clock day+hour, not
-                      // the admin's browser tz, so a Madrid class at 08:15
-                      // always lands in the 08:00 row for Monday regardless of
-                      // where the admin is viewing from.
+                      // Bucket by the studio's wall-clock day + SLOT (not the
+                      // admin's browser tz, and not the raw hour — two slots
+                      // can share an hour, e.g. 07:00 and 07:45).
                       const tz = c.room?.studio?.city?.timezone ?? undefined;
                       if (!tz) {
                         const start = new Date(c.startsAt);
-                        return isSameDay(start, day) && start.getHours() === hour;
+                        return (
+                          isSameDay(start, day) &&
+                          slotIndexFor(
+                            slotStarts,
+                            start.getHours() * 60 + start.getMinutes(),
+                          ) === rowIndex
+                        );
                       }
                       const wc = getWallClockInZone(c.startsAt, tz);
                       return (
                         wc.year === day.getFullYear() &&
                         wc.month === day.getMonth() + 1 &&
                         wc.day === day.getDate() &&
-                        wc.hour === hour
+                        slotIndexFor(slotStarts, wc.hour * 60 + wc.minute) === rowIndex
                       );
                     });
                     const slotKey = `${format(day, "yyyy-MM-dd")}-${hour}`;
@@ -557,7 +561,7 @@ export default function AdminSchedulePage() {
                       <div
                         key={day.toISOString()}
                         onClick={() =>
-                          canEdit && dayClasses.length === 0 && handleCellClick(day, hour)
+                          canEdit && dayClasses.length === 0 && handleCellClick(day, slotStart)
                         }
                         className={cn(
                           "relative min-h-[52px] border-l p-0.5 transition-colors",
@@ -758,8 +762,10 @@ export default function AdminSchedulePage() {
           defaultTime={defaultTime}
           // Scope room options to the studio currently selected in the
           // schedule filter — saves the admin from picking a room in the
-          // wrong studio.
-          defaultStudioId={filterStudio}
+          // wrong studio. With "all studios" there's nothing to scope to:
+          // passing the sentinel matched no studio and left the room list
+          // empty, so offer every room (each option names its studio).
+          defaultStudioId={filterStudio === ALL_STUDIOS ? undefined : filterStudio}
         />
       )}
 
@@ -803,12 +809,10 @@ function SlotTimesDialog({
   closeHour: number;
 }) {
   const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
   const [times, setTimes] = useState<string[]>(current);
   const [seeded, setSeeded] = useState(false);
-  const [firstTime, setFirstTime] = useState(formatSlotTime(openHour * 60));
-  const [interval, setIntervalMin] = useState("70");
-  const [count, setCount] = useState("8");
   const [newTime, setNewTime] = useState("");
 
   // Re-seed from the server value each time the dialog opens.
@@ -855,65 +859,6 @@ function SlotTimesDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-xl border border-border/60 bg-surface/40 p-3">
-            <p className="mb-2 text-xs font-medium text-foreground">
-              {t("slotEditorGenerate")}
-            </p>
-            <div className="flex flex-wrap items-end gap-2">
-              <div>
-                <label className="mb-1 block text-[10px] text-muted">
-                  {t("slotEditorFirst")}
-                </label>
-                <Input
-                  type="time"
-                  value={firstTime}
-                  onChange={(e) => setFirstTime(e.target.value)}
-                  className="h-8 w-[110px] text-xs"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] text-muted">
-                  {t("slotEditorInterval")}
-                </label>
-                <Input
-                  type="number"
-                  min={5}
-                  value={interval}
-                  onChange={(e) => setIntervalMin(e.target.value)}
-                  className="h-8 w-[80px] text-xs"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] text-muted">
-                  {t("slotEditorCount")}
-                </label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={count}
-                  onChange={(e) => setCount(e.target.value)}
-                  className="h-8 w-[70px] text-xs"
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() =>
-                  setTimes(
-                    generateSlotTimes(
-                      firstTime,
-                      parseInt(interval, 10) || 60,
-                      parseInt(count, 10) || 1,
-                    ),
-                  )
-                }
-              >
-                {t("slotEditorApply")}
-              </Button>
-            </div>
-          </div>
-
           <div>
             <p className="mb-2 text-xs font-medium text-foreground">
               {times.length > 0
@@ -971,11 +916,11 @@ function SlotTimesDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            {t("cancel")}
+            {tc("cancel")}
           </Button>
           <Button onClick={() => save.mutate(times)} disabled={save.isPending}>
             {save.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
-            {t("save")}
+            {tc("save")}
           </Button>
         </DialogFooter>
       </DialogContent>
