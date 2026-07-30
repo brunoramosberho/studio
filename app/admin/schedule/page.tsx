@@ -486,7 +486,7 @@ export default function AdminSchedulePage() {
           <CardContent className="overflow-x-auto p-0">
             <div className="min-w-[700px]">
               {/* Day headers */}
-              <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b">
+              <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b">
                 <div className="p-2" />
                 {days.map((day) => (
                   <div
@@ -515,7 +515,7 @@ export default function AdminSchedulePage() {
                 return (
                 <div
                   key={slotStart}
-                  className="grid grid-cols-[60px_repeat(7,1fr)] border-b last:border-b-0"
+                  className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b last:border-b-0"
                 >
                   <div className="flex items-start justify-end p-1 pr-2">
                     <span className="font-mono text-[10px] text-muted">
