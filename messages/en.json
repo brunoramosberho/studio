@@ -580,7 +580,9 @@
       "dayThuFull": "Thursday",
       "dayFriFull": "Friday",
       "daySatFull": "Saturday",
-      "daySunFull": "Sunday"
+      "daySunFull": "Sunday",
+      "studio": "Studio",
+      "selectStudio": "Select a studio"
     },
     "policiesPage": {
       "title": "Booking policies",

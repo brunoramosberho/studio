@@ -113,6 +113,10 @@ export function ClassFormDialog({
   const [formData, setFormData] = useState<ClassFormData>(emptyForm);
   const [mode, setMode] = useState<ScheduleMode>("single");
   const [editScope, setEditScope] = useState<EditScope | null>(null);
+  // Studio pick when the schedule isn't already scoped to one. Rooms live
+  // under studios, so choosing the studio first is the natural order — and
+  // with several studios the room list alone was ambiguous.
+  const [studioPick, setStudioPick] = useState<string>("");
   // When the admin picks a coach with a soft-warning status (didn't mark
   // themselves available, or is on time-off), we stage it here and prompt
   // for explicit confirmation before applying to formData.
@@ -283,8 +287,10 @@ export function ClassFormDialog({
         songRequestsEnabled: editingClass.songRequestsEnabled ?? false,
         songRequestRules: normalizeRules(editingClass.songRequestRules),
       });
+      setStudioPick(editingClass.room?.studio?.id ?? "");
     } else {
       setMode("single");
+      setStudioPick("");
       setFormData({
         ...emptyForm,
         date: defaultDate ?? "",
@@ -310,11 +316,18 @@ export function ClassFormDialog({
     }
   }, [open, editingClass, wellhubQuotaData]);
 
+  // The studio in play: the schedule's scoping wins; otherwise whatever the
+  // admin picked in this dialog.
+  const activeStudioId = defaultStudioId ?? studioPick;
+  const lockedStudio = defaultStudioId
+    ? studios?.find((s) => s.id === defaultStudioId) ?? null
+    : null;
+  const multiStudio = (studios?.length ?? 0) > 1;
+
   const availableRooms = studios?.flatMap((s) =>
-    // Honour the schedule's studio scoping (if any): the picker shouldn't
-    // surface rooms from other studios when the admin is clearly working
-    // in one specific studio's calendar.
-    defaultStudioId && s.id !== defaultStudioId
+    // Honour the studio in play: the picker shouldn't surface rooms from
+    // other studios once one is chosen (or imposed by the calendar).
+    activeStudioId && s.id !== activeStudioId
       ? []
       : s.rooms
           .filter((r) => !formData.classTypeId || r.classTypes.some((ct) => ct.id === formData.classTypeId))
@@ -773,6 +786,40 @@ export function ClassFormDialog({
             </div>
           </div>
 
+          {/* Studio — a picker when the calendar isn't scoped, a note when it is */}
+          {multiStudio && (
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted">
+                {t("studio")}
+              </label>
+              {lockedStudio ? (
+                <p className="rounded-md border border-border/60 bg-surface/50 px-3 py-2 text-sm text-foreground">
+                  {lockedStudio.name}
+                </p>
+              ) : (
+                <Select
+                  value={studioPick}
+                  onValueChange={(v) => {
+                    setStudioPick(v);
+                    // The previous room belongs to the previous studio.
+                    setFormData((f) => ({ ...f, roomId: "" }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectStudio")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(studios ?? []).map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
           {/* Room */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted">{t("room")}</label>
@@ -786,7 +833,8 @@ export function ClassFormDialog({
               <SelectContent>
                 {availableRooms.map((r) => (
                   <SelectItem key={r.id} value={r.id}>
-                    {r.studioName} — {r.name} ({r.maxCapacity} {t("spots")})
+                    {activeStudioId ? "" : `${r.studioName} — `}
+                    {r.name} ({r.maxCapacity} {t("spots")})
                   </SelectItem>
                 ))}
               </SelectContent>
