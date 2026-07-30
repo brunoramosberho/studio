@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
+import { normalizeSlotTimes } from "@/lib/schedule/slots";
 
 export async function GET() {
   try {
@@ -12,6 +13,7 @@ export async function GET() {
       studioOpenTime: tenant.studioOpenTime,
       studioCloseTime: tenant.studioCloseTime,
       operatingDays: tenant.operatingDays,
+      scheduleSlotTimes: tenant.scheduleSlotTimes,
       notifications: {
         emailOnRequest: tenant.notifyEmailOnRequest,
         pushOnRequest: tenant.notifyPushOnRequest,
@@ -58,6 +60,17 @@ export async function PATCH(request: NextRequest) {
     if (body.studioOpenTime !== undefined) data.studioOpenTime = body.studioOpenTime;
     if (body.studioCloseTime !== undefined) data.studioCloseTime = body.studioCloseTime;
     if (body.operatingDays !== undefined) data.operatingDays = body.operatingDays;
+    if (body.scheduleSlotTimes !== undefined) {
+      // [] is meaningful: it resets the grid to one row per hour.
+      const slots = normalizeSlotTimes(body.scheduleSlotTimes);
+      if (slots === null) {
+        return NextResponse.json(
+          { error: "scheduleSlotTimes must be unique HH:MM values (max 48)" },
+          { status: 400 },
+        );
+      }
+      data.scheduleSlotTimes = slots;
+    }
 
     if (body.notifications) {
       const n = body.notifications;
@@ -80,6 +93,7 @@ export async function PATCH(request: NextRequest) {
       studioOpenTime: updated.studioOpenTime,
       studioCloseTime: updated.studioCloseTime,
       operatingDays: updated.operatingDays,
+      scheduleSlotTimes: updated.scheduleSlotTimes,
       notifications: {
         emailOnRequest: updated.notifyEmailOnRequest,
         pushOnRequest: updated.notifyPushOnRequest,

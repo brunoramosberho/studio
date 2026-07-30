@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -17,6 +17,9 @@ import {
   Sparkles,
   AlertTriangle,
   EyeOff,
+  Clock,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import {
   format,
@@ -53,7 +56,25 @@ import { SectionTabs } from "@/components/admin/section-tabs";
 import { SCHEDULE_TABS } from "@/components/admin/section-tab-configs";
 import { PlannerPanel } from "@/components/admin/schedule-planner/PlannerPanel";
 import { ScheduleVisibilityDialog } from "@/components/admin/schedule-visibility-dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 import type { ClassWithDetails } from "@/types";
+import {
+  formatSlotTime,
+  generateSlotTimes,
+  normalizeSlotTimes,
+  parseSlotTime,
+  resolveSlotStarts,
+  slotIndexFor,
+} from "@/lib/schedule/slots";
 
 const ALL_STUDIOS = "__all__";
 
@@ -106,6 +127,7 @@ export default function AdminSchedulePage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const [slotEditorOpen, setSlotEditorOpen] = useState(false);
   const [filterStudio, setFilterStudio] = useState<string>("");
   const [filterCoach, setFilterCoach] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
@@ -197,7 +219,29 @@ export default function AdminSchedulePage() {
   }, [weekSlots]);
 
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
-  const hours = Array.from({ length: 16 }, (_, i) => i + 6);
+  // Grid rows: hourly by default, or the studio's configured class times.
+  const { data: gridConfig } = useQuery<{
+    scheduleSlotTimes: string[];
+    openHour: number;
+    closeHour: number;
+  }>({
+    queryKey: ["admin-schedule-grid-config"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/schedule/grid-config");
+      if (!res.ok) return { scheduleSlotTimes: [], openHour: 6, closeHour: 22 };
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const slotStarts = useMemo(
+    () =>
+      resolveSlotStarts(
+        gridConfig?.scheduleSlotTimes,
+        gridConfig?.openHour ?? 6,
+        gridConfig?.closeHour ?? 22,
+      ),
+    [gridConfig],
+  );
 
   // Derive filter options from loaded classes
   const filterOptions = useMemo(() => {
@@ -262,10 +306,10 @@ export default function AdminSchedulePage() {
     setDetailOpen(true);
   }
 
-  function handleCellClick(day: Date, hour: number) {
+  function handleCellClick(day: Date, startMinutes: number) {
     setEditingClass(null);
     setDefaultDate(format(day, "yyyy-MM-dd"));
-    setDefaultTime(`${String(hour).padStart(2, "0")}:00`);
+    setDefaultTime(formatSlotTime(startMinutes));
     setFormOpen(true);
   }
 
@@ -356,6 +400,17 @@ export default function AdminSchedulePage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <Filter className="h-4 w-4 text-muted" />
+        {canEdit && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setSlotEditorOpen(true)}
+          >
+            <Clock className="h-3.5 w-3.5" />
+            {t("slotEditorButton")}
+          </Button>
+        )}
         {/* Studio is single-select (calendar can't overlay multiple
             cleanly). Hidden when the tenant only has one studio. */}
         {(tenantStudios?.studios.length ?? 0) > 1 && (
@@ -454,15 +509,17 @@ export default function AdminSchedulePage() {
                 ))}
               </div>
 
-              {/* Hour rows */}
-              {hours.map((hour) => (
+              {/* Slot rows — hourly by default, or the studio's class times */}
+              {slotStarts.map((slotStart, rowIndex) => {
+                const hour = Math.floor(slotStart / 60);
+                return (
                 <div
-                  key={hour}
+                  key={slotStart}
                   className="grid grid-cols-[60px_repeat(7,1fr)] border-b last:border-b-0"
                 >
                   <div className="flex items-start justify-end p-1 pr-2">
                     <span className="font-mono text-[10px] text-muted">
-                      {String(hour).padStart(2, "0")}:00
+                      {formatSlotTime(slotStart)}
                     </span>
                   </div>
                   {days.map((day) => {
@@ -652,11 +709,20 @@ export default function AdminSchedulePage() {
                     );
                   })}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
       )}
+
+      <SlotTimesDialog
+        open={slotEditorOpen}
+        onOpenChange={setSlotEditorOpen}
+        current={gridConfig?.scheduleSlotTimes ?? []}
+        openHour={gridConfig?.openHour ?? 6}
+        closeHour={gridConfig?.closeHour ?? 22}
+      />
 
       {/* Class detail dialog */}
       <ClassDetailDialog
@@ -699,5 +765,205 @@ export default function AdminSchedulePage() {
       )}
     </div>
     </TooltipProvider>
+  );
+}
+
+
+// ── Slot times editor ─────────────────────────────────────────────────
+// Studios whose classes don't start on the hour (07:00, 08:10, 09:20…)
+// set the exact starts here, so clicking an empty cell prefills the real
+// class time. Empty list = one row per hour, the default.
+
+function SlotTimesDialog({
+  open,
+  onOpenChange,
+  current,
+  openHour,
+  closeHour,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  current: string[];
+  openHour: number;
+  closeHour: number;
+}) {
+  const t = useTranslations("admin");
+  const queryClient = useQueryClient();
+  const [times, setTimes] = useState<string[]>(current);
+  const [seeded, setSeeded] = useState(false);
+  const [firstTime, setFirstTime] = useState(formatSlotTime(openHour * 60));
+  const [interval, setIntervalMin] = useState("70");
+  const [count, setCount] = useState("8");
+  const [newTime, setNewTime] = useState("");
+
+  // Re-seed from the server value each time the dialog opens.
+  if (open && !seeded) {
+    setTimes(current);
+    setSeeded(true);
+  }
+  if (!open && seeded) setSeeded(false);
+
+  const save = useMutation({
+    mutationFn: async (value: string[]) => {
+      const res = await fetch("/api/admin/settings/availability", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduleSlotTimes: value }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-schedule-grid-config"] });
+      toast.success(t("slotEditorSaved"));
+      onOpenChange(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const addTime = () => {
+    const parsed = parseSlotTime(newTime);
+    if (parsed === null) return;
+    const next = normalizeSlotTimes([...times, formatSlotTime(parsed)]);
+    if (next) setTimes(next);
+    setNewTime("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t("slotEditorTitle")}</DialogTitle>
+          <DialogDescription>{t("slotEditorDesc")}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="rounded-xl border border-border/60 bg-surface/40 p-3">
+            <p className="mb-2 text-xs font-medium text-foreground">
+              {t("slotEditorGenerate")}
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <div>
+                <label className="mb-1 block text-[10px] text-muted">
+                  {t("slotEditorFirst")}
+                </label>
+                <Input
+                  type="time"
+                  value={firstTime}
+                  onChange={(e) => setFirstTime(e.target.value)}
+                  className="h-8 w-[110px] text-xs"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] text-muted">
+                  {t("slotEditorInterval")}
+                </label>
+                <Input
+                  type="number"
+                  min={5}
+                  value={interval}
+                  onChange={(e) => setIntervalMin(e.target.value)}
+                  className="h-8 w-[80px] text-xs"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] text-muted">
+                  {t("slotEditorCount")}
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={count}
+                  onChange={(e) => setCount(e.target.value)}
+                  className="h-8 w-[70px] text-xs"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() =>
+                  setTimes(
+                    generateSlotTimes(
+                      firstTime,
+                      parseInt(interval, 10) || 60,
+                      parseInt(count, 10) || 1,
+                    ),
+                  )
+                }
+              >
+                {t("slotEditorApply")}
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-medium text-foreground">
+              {times.length > 0
+                ? t("slotEditorList", { count: times.length })
+                : t("slotEditorHourly")}
+            </p>
+            {times.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {times.map((time) => (
+                  <span
+                    key={time}
+                    className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 font-mono text-xs text-foreground"
+                  >
+                    {time}
+                    <button
+                      onClick={() => setTimes(times.filter((x) => x !== time))}
+                      className="text-muted transition-colors hover:text-rose-600"
+                      aria-label={t("delete")}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Input
+                type="time"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                className="h-8 w-[110px] text-xs"
+              />
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={addTime}>
+                {t("slotEditorAdd")}
+              </Button>
+              {times.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-muted"
+                  onClick={() => setTimes([])}
+                >
+                  {t("slotEditorReset")}
+                </Button>
+              )}
+            </div>
+            <p className="mt-2 text-[11px] text-muted">
+              {t("slotEditorWindow", {
+                open: formatSlotTime(openHour * 60),
+                close: formatSlotTime(closeHour * 60),
+              })}
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            {t("cancel")}
+          </Button>
+          <Button onClick={() => save.mutate(times)} disabled={save.isPending}>
+            {save.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+            {t("save")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

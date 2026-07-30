@@ -1801,7 +1801,21 @@
     "addressDetailsHint": "Shown to clients next to the map. Doesn't affect the pin or geofence.",
     "notPublishedYet": "Not visible to clients yet — it publishes per the schedule visibility setting.",
     "warnCoachTimeOff": "{name} marked time off (vacation or personal) for this slot.",
-    "warnCoachOutsideHours": "{name} didn't mark availability for this slot."
+    "warnCoachOutsideHours": "{name} didn't mark availability for this slot.",
+    "slotEditorButton": "Time slots",
+    "slotEditorTitle": "Schedule time slots",
+    "slotEditorDesc": "Set the times your classes start. Tapping an empty cell creates the class at that exact time. With no slots configured the grid runs hour by hour.",
+    "slotEditorGenerate": "Generate a series",
+    "slotEditorFirst": "First class",
+    "slotEditorInterval": "Every (min)",
+    "slotEditorCount": "Slots",
+    "slotEditorApply": "Generate",
+    "slotEditorList": "{count} slots configured",
+    "slotEditorHourly": "No slots: the grid runs hour by hour.",
+    "slotEditorAdd": "Add",
+    "slotEditorReset": "Back to hourly",
+    "slotEditorWindow": "The studio opens {open} to {close}.",
+    "slotEditorSaved": "Time slots saved"
   },
   "coach": {
     "portal": "Instructor Portal",
