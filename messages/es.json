@@ -1798,7 +1798,10 @@
     "pinStale": "Editaste la dirección a mano — si la ubicación cambió, elige una sugerencia de Google para mover el pin",
     "addressDetailsLabel": "Interior / referencias (opcional)",
     "addressDetailsPlaceholder": "Piso 3 · Edificio G25 · Local PJ-5",
-    "addressDetailsHint": "Se muestra a los clientes junto al mapa. No afecta el pin ni el geofence."
+    "addressDetailsHint": "Se muestra a los clientes junto al mapa. No afecta el pin ni el geofence.",
+    "notPublishedYet": "Todavía no visible para clientes — se publica según la visibilidad del horario.",
+    "warnCoachTimeOff": "{name} marcó ausencia (vacaciones o tiempo libre) en este horario.",
+    "warnCoachOutsideHours": "{name} no marcó disponibilidad en este horario."
   },
   "coach": {
     "portal": "Portal del Instructor",

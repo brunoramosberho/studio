@@ -15,6 +15,8 @@ import {
   Filter,
   CalendarOff,
   Sparkles,
+  AlertTriangle,
+  EyeOff,
 } from "lucide-react";
 import {
   format,
@@ -493,8 +495,14 @@ export default function AdminSchedulePage() {
                           const isCancelled = cls.status === "CANCELLED";
                           const booked = cls._count?.bookings ?? 0;
                           const maxCap = cls.room?.maxCapacity ?? 0;
+                          // Not yet released to the public schedule: dashed
+                          // outline instead of the solid card, so a glance
+                          // separates "programada" from "ya publicada".
+                          const unpublished =
+                            !past && !isCancelled && cls.visibleToClients === false;
+                          const warning = !past && !isCancelled ? cls.availabilityWarning : null;
 
-                          return (
+                          const card = (
                             <div
                               key={cls.id}
                               onClick={(e) => {
@@ -505,20 +513,51 @@ export default function AdminSchedulePage() {
                                 "mb-0.5 cursor-pointer rounded-md px-1.5 py-1 text-white transition-opacity hover:opacity-90",
                                 past && !isCancelled && "opacity-50",
                                 isCancelled && "opacity-30 line-through",
+                                unpublished &&
+                                  "border-2 border-dashed bg-transparent text-foreground",
                               )}
-                              style={{ backgroundColor: getColor(cls) }}
+                              style={
+                                unpublished
+                                  ? { borderColor: getColor(cls) }
+                                  : { backgroundColor: getColor(cls) }
+                              }
                             >
-                              <p className="truncate text-[10px] font-semibold leading-tight">
-                                {cls.classType.name}
+                              <p className="flex items-center gap-1 truncate text-[10px] font-semibold leading-tight">
+                                {warning && (
+                                  <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-400" />
+                                )}
+                                {unpublished && <EyeOff className="h-2.5 w-2.5 shrink-0 opacity-70" />}
+                                <span className="truncate">{cls.classType.name}</span>
                               </p>
                               <p className="truncate text-[9px] opacity-80">
-                                {cls.coach.name?.split(" ")[0]} · {formatTime(cls.startsAt, cls.room?.studio?.city?.timezone ?? undefined)}
+                                {cls.coach.name} · {formatTime(cls.startsAt, cls.room?.studio?.city?.timezone ?? undefined)}
                               </p>
                               <p className="text-[8px] opacity-60">
                                 {booked}/{maxCap}
                                 {isCancelled && ` · ${t("cancelled")}`}
                               </p>
                             </div>
+                          );
+
+                          if (!warning && !unpublished) return card;
+                          return (
+                            <Tooltip key={cls.id}>
+                              <TooltipTrigger asChild>
+                                <div>{card}</div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[220px] px-2 py-1">
+                                <p className="text-[11px]">
+                                  {warning
+                                    ? t(
+                                        warning === "time_off"
+                                          ? "warnCoachTimeOff"
+                                          : "warnCoachOutsideHours",
+                                        { name: cls.coach.name ?? "" },
+                                      )
+                                    : t("notPublishedYet")}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
                           );
                         })}
                         {showAvailability && availableOthers.length > 0 && (

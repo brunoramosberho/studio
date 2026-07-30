@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant, requireRole, getAuthContext, roleAtLeast } from "@/lib/tenant";
+import {
+  type AvailabilityBlockLite,
+  getCoachStatusForSlot,
+} from "@/lib/availability";
+import { computeVisibleUntil, resolveScheduleTimezone } from "@/lib/schedule/visibility";
+import { getWallClockInZone } from "@/lib/utils";
 import { redactedCoach, shouldHideCoach } from "@/lib/coach";
 import { normalizeRules } from "@/lib/song-rules";
 
@@ -157,6 +163,68 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date();
+
+    // Staff-only planning aids for /admin/schedule: is the class already
+    // visible on the public schedule, and is its coach actually available
+    // for that slot. Computed only for staff (no cost or leak for clients)
+    // and only for classes that haven't ended — a warning on a past class
+    // is noise.
+    const visibleToClients = new Map<string, boolean>();
+    const availabilityWarning = new Map<string, "time_off" | "outside_hours">();
+    if (isStaff && classes.length > 0) {
+      const tz = await resolveScheduleTimezone(tenant);
+      const visibleUntil = computeVisibleUntil(now, tenant, tz);
+      for (const c of classes) {
+        visibleToClients.set(c.id, c.startsAt.getTime() <= visibleUntil.getTime());
+      }
+
+      const upcoming = classes.filter((c) => c.endsAt.getTime() > now.getTime());
+      const coachUserIds = [
+        ...new Set(upcoming.map((c) => c.coach.userId).filter((id): id is string => !!id)),
+      ];
+      if (coachUserIds.length > 0) {
+        const blocks = await prisma.coachAvailabilityBlock.findMany({
+          where: {
+            tenantId: tenant.id,
+            coachId: { in: coachUserIds },
+            status: { in: ["active", "pending_approval"] },
+          },
+          include: { studioPreferences: { select: { studioId: true, preference: true } } },
+        });
+        const blocksByUser = new Map<string, AvailabilityBlockLite[]>();
+        for (const b of blocks) {
+          const arr = blocksByUser.get(b.coachId) ?? [];
+          arr.push(b as unknown as AvailabilityBlockLite);
+          blocksByUser.set(b.coachId, arr);
+        }
+        for (const c of upcoming) {
+          const userId = c.coach.userId;
+          if (!userId) continue;
+          const coachBlocks = blocksByUser.get(userId) ?? [];
+          // No calendar set up at all = no opinion, so no warning.
+          if (coachBlocks.length === 0) continue;
+          const classTz = c.room?.studio?.city?.timezone ?? "Europe/Madrid";
+          const startWall = getWallClockInZone(c.startsAt, classTz);
+          const endWall = getWallClockInZone(c.endsAt, classTz);
+          const status = getCoachStatusForSlot({
+            blocks: coachBlocks,
+            date: new Date(startWall.year, startWall.month - 1, startWall.day),
+            startMin: startWall.hour * 60 + startWall.minute,
+            endMin: endWall.hour * 60 + endWall.minute,
+            studioId: c.room?.studioId ?? "",
+          });
+          if (status === "time_off") {
+            availabilityWarning.set(c.id, "time_off");
+          } else if (
+            status === "unavailable" &&
+            coachBlocks.some((b) => b.kind === "availability")
+          ) {
+            availabilityWarning.set(c.id, "outside_hours");
+          }
+        }
+      }
+    }
+
     const result = classes.map((c) => {
       const baseCoach = { ...c.coach, name: c.coach.name || c.coach.user?.name || null };
       const hideCoach =
@@ -167,6 +235,12 @@ export async function GET(request: NextRequest) {
         friendsGoing: friendBookings.get(c.id) ?? [],
         isBooked: myBookingMap.has(c.id),
         myBookingId: myBookingMap.get(c.id) ?? null,
+        ...(isStaff
+          ? {
+              visibleToClients: visibleToClients.get(c.id) ?? true,
+              availabilityWarning: availabilityWarning.get(c.id) ?? null,
+            }
+          : {}),
       };
     });
 

@@ -54,6 +54,9 @@ export interface ClassWithDetails extends Class {
   myBookingId?: string | null;
   songRequestsEnabled: boolean;
   songRequestRules: Prisma.JsonValue;
+  /** Staff-only planning aids (see GET /api/classes). */
+  visibleToClients?: boolean;
+  availabilityWarning?: "time_off" | "outside_hours" | null;
 }
 
 export interface BookingProductOrderItemSummary {
