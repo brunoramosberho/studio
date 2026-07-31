@@ -47,6 +47,8 @@ interface DiscountData {
   maxUses: number | null;
   usedCount: number;
   maxUsesPerUser: number | null;
+  maxUsesPerPeriod: number | null;
+  usagePeriod: string | null;
   minPurchase: number | null;
   validFrom: string;
   validUntil: string | null;
@@ -86,6 +88,8 @@ interface FormState {
   currency: string;
   maxUses: string;
   maxUsesPerUser: string;
+  maxUsesPerPeriod: string;
+  usagePeriod: "" | "week" | "month";
   minPurchase: string;
   validFrom: string;
   validUntil: string;
@@ -101,6 +105,8 @@ function emptyForm(defaultCurrency = "EUR"): FormState {
     currency: defaultCurrency,
     maxUses: "",
     maxUsesPerUser: "",
+    maxUsesPerPeriod: "",
+    usagePeriod: "",
     minPurchase: "",
     validFrom: "",
     validUntil: "",
@@ -117,6 +123,8 @@ function formFromDiscount(d: DiscountData, defaultCurrency = "EUR"): FormState {
     currency: d.currency || defaultCurrency,
     maxUses: d.maxUses !== null ? String(d.maxUses) : "",
     maxUsesPerUser: d.maxUsesPerUser !== null ? String(d.maxUsesPerUser) : "",
+    maxUsesPerPeriod: d.maxUsesPerPeriod !== null ? String(d.maxUsesPerPeriod) : "",
+    usagePeriod: d.usagePeriod === "week" || d.usagePeriod === "month" ? d.usagePeriod : "",
     minPurchase: d.minPurchase !== null ? String(d.minPurchase) : "",
     validFrom: d.validFrom ? d.validFrom.slice(0, 16) : "",
     validUntil: d.validUntil ? d.validUntil.slice(0, 16) : "",
@@ -236,6 +244,11 @@ export default function DiscountsPage() {
       maxUsesPerUser: form.maxUsesPerUser
         ? parseInt(form.maxUsesPerUser, 10)
         : null,
+      maxUsesPerPeriod:
+        form.usagePeriod && form.maxUsesPerPeriod
+          ? parseInt(form.maxUsesPerPeriod, 10)
+          : null,
+      usagePeriod: form.usagePeriod || null,
       minPurchase: form.minPurchase ? parseFloat(form.minPurchase) : null,
       validFrom: form.validFrom || null,
       validUntil: form.validUntil || null,
@@ -624,6 +637,48 @@ export default function DiscountsPage() {
                 />
               </div>
             </div>
+
+            {/* Period cap — resets every calendar week/month */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  {t("maxUsesPerPeriodLabel")}
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={form.maxUsesPerPeriod}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, maxUsesPerPeriod: e.target.value }))
+                  }
+                  placeholder={t("unlimited")}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  {t("usagePeriodLabel")}
+                </label>
+                <select
+                  value={form.usagePeriod}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      usagePeriod: e.target.value as FormState["usagePeriod"],
+                    }))
+                  }
+                  className="h-9 w-full rounded-md border border-border bg-transparent px-3 text-sm"
+                >
+                  <option value="">{t("usagePeriodNone")}</option>
+                  <option value="week">{t("usagePeriodWeek")}</option>
+                  <option value="month">{t("usagePeriodMonth")}</option>
+                </select>
+              </div>
+            </div>
+            {form.maxUsesPerPeriod && !form.usagePeriod && (
+              <p className="-mt-2 text-xs text-amber-600 dark:text-amber-400">
+                {t("usagePeriodRequired")}
+              </p>
+            )}
 
             {/* Min purchase */}
             <div>

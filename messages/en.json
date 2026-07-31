@@ -2401,7 +2401,9 @@
     "searchByNameOrEmail": "Search by name or email...",
     "noResults": "No results",
     "alreadyEnrolled": "Already enrolled",
-    "inWaitlist": "On waitlist"
+    "inWaitlist": "On waitlist",
+    "blockedSpotsList": "{count, plural, one {Blocked spot} other {Blocked spots}}: {spots}",
+    "blockedSpotsCount": "{count, plural, one {# blocked spot} other {# blocked spots}}"
   },
   "rating": {
     "thanks": "Thank you!",
@@ -3150,7 +3152,13 @@
     "packageRestrictionsHint": "Leave empty to apply to all packages",
     "cancel": "Cancel",
     "save": "Save",
-    "stripeSync": "Synced with Stripe"
+    "stripeSync": "Synced with Stripe",
+    "maxUsesPerPeriodLabel": "Max uses per period",
+    "usagePeriodLabel": "Period",
+    "usagePeriodNone": "No period",
+    "usagePeriodWeek": "Per week",
+    "usagePeriodMonth": "Per month",
+    "usagePeriodRequired": "Pick a period for the limit to apply."
   },
   "gifts": {
     "title": "Gifted Packages",

@@ -35,7 +35,7 @@ import {
   CancelBookingDialog,
   MoveBookingDialog,
 } from "@/components/admin/booking-actions";
-import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2, MoreVertical, UserX } from "lucide-react";
+import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2, MoreVertical, UserX, Ban } from "lucide-react";
 import { createPortal } from "react-dom";
 import { CoachPenaltyButton } from "@/components/check-in/coach-penalty-button";
 
@@ -167,6 +167,7 @@ type RosterData = {
   wellhubBookings: WellhubBooking[];
   occupancyAudit?: { noShows: AuditEntry[]; lateCancels: AuditEntry[] };
   blockCheckinWithoutWaiver: boolean;
+  blocked?: { spots: number[]; unnumbered: number; notes: string | null };
   room: {
     id: string;
     name: string;
@@ -718,6 +719,33 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
           {lateRegistration ? t("classFinishedLate") : t("classFinished")}
         </div>
       )}
+
+      {/* Blocked spots — front desk must know a seat is out of service, and why */}
+      {(() => {
+        const blocked = data?.blocked;
+        const count = (blocked?.spots.length ?? 0) + (blocked?.unnumbered ?? 0);
+        if (!blocked || (count === 0 && !blocked.notes)) return null;
+        return (
+          <div className="shrink-0 border-b border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+            <div className="flex items-start gap-2">
+              <Ban className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <div className="min-w-0">
+                {count > 0 && (
+                  <p className="font-medium">
+                    {blocked.spots.length > 0
+                      ? t("blockedSpotsList", {
+                          count: blocked.spots.length,
+                          spots: blocked.spots.join(", "),
+                        })
+                      : t("blockedSpotsCount", { count })}
+                  </p>
+                )}
+                {blocked.notes && <p className="mt-0.5 opacity-90">{blocked.notes}</p>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Room map (when the room has a spot layout) */}
       {hasRoomMap && (

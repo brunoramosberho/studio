@@ -2401,7 +2401,9 @@
     "searchByNameOrEmail": "Buscar por nombre o email...",
     "noResults": "Sin resultados",
     "alreadyEnrolled": "Ya inscrito",
-    "inWaitlist": "En espera"
+    "inWaitlist": "En espera",
+    "blockedSpotsList": "{count, plural, one {Lugar bloqueado} other {Lugares bloqueados}}: {spots}",
+    "blockedSpotsCount": "{count, plural, one {# lugar bloqueado} other {# lugares bloqueados}}"
   },
   "rating": {
     "thanks": "Gracias!",
@@ -3150,7 +3152,13 @@
     "packageRestrictionsHint": "Deja vacio para aplicar a todos los paquetes",
     "cancel": "Cancelar",
     "save": "Guardar",
-    "stripeSync": "Sincronizado con Stripe"
+    "stripeSync": "Sincronizado con Stripe",
+    "maxUsesPerPeriodLabel": "Máx. usos por periodo",
+    "usagePeriodLabel": "Periodo",
+    "usagePeriodNone": "Sin periodo",
+    "usagePeriodWeek": "Por semana",
+    "usagePeriodMonth": "Por mes",
+    "usagePeriodRequired": "Elige un periodo para que el límite aplique."
   },
   "gifts": {
     "title": "Paquetes Regalados",

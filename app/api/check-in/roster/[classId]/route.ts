@@ -54,6 +54,13 @@ export async function GET(
         endsAt: true,
         coachId: true,
         waitlistSnapshot: true,
+        // Front desk needs to know which spots are out of service (and why)
+        // before seating anyone.
+        blockingNotes: true,
+        blockedSpots: {
+          select: { spotNumber: true },
+          orderBy: { spotNumber: "asc" },
+        },
         room: {
           select: { id: true, name: true, maxCapacity: true, layout: true },
         },
@@ -574,6 +581,14 @@ export async function GET(
       wellhubBookings: wellhubRoster,
       occupancyAudit: { noShows, lateCancels },
       blockCheckinWithoutWaiver: activeWaiver?.blockCheckinWithoutSignature ?? false,
+      blocked: {
+        // spotNumber null = a whole-class block with no specific seat.
+        spots: cls.blockedSpots
+          .map((b) => b.spotNumber)
+          .filter((n): n is number => n != null),
+        unnumbered: cls.blockedSpots.filter((b) => b.spotNumber == null).length,
+        notes: cls.blockingNotes,
+      },
       room: cls.room
         ? {
             id: cls.room.id,

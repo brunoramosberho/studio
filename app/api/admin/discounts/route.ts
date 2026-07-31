@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole, getTenantCurrency } from "@/lib/tenant";
+import { isUsagePeriod } from "@/lib/discounts/period";
 
 // GET /api/admin/discounts — list all discount codes for tenant
 export async function GET() {
@@ -38,6 +39,8 @@ export async function POST(request: NextRequest) {
       currency,
       maxUses,
       maxUsesPerUser,
+      maxUsesPerPeriod,
+      usagePeriod,
       minPurchase,
       validFrom,
       validUntil,
@@ -134,6 +137,9 @@ export async function POST(request: NextRequest) {
         currency: currency || null,
         maxUses: maxUses || null,
         maxUsesPerUser: maxUsesPerUser || null,
+        // Period cap only exists as a pair; either both or neither.
+        maxUsesPerPeriod: isUsagePeriod(usagePeriod) && maxUsesPerPeriod ? maxUsesPerPeriod : null,
+        usagePeriod: isUsagePeriod(usagePeriod) && maxUsesPerPeriod ? usagePeriod : null,
         minPurchase: minPurchase || null,
         validFrom: validFrom ? new Date(validFrom) : new Date(),
         validUntil: validUntil ? new Date(validUntil) : null,

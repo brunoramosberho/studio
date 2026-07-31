@@ -6,6 +6,8 @@ import { createMemberPayment } from "@/lib/stripe/payments";
 import { createCreditUsagesForPackage } from "@/lib/credits";
 import { userHasOpenDebt } from "@/lib/billing/debt";
 import { getPackagePurchaseLimitError } from "@/lib/packages/purchase-limit";
+import { periodUsageCount, periodLabel } from "@/lib/discounts/period";
+import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
 
 async function validateAndApplyDiscount(
   discountCode: string,
@@ -43,6 +45,19 @@ async function validateAndApplyDiscount(
   }
   if (discount.maxUses !== null && discount.usedCount >= discount.maxUses) {
     return { valid: false, error: "Este código ha alcanzado su límite de usos" };
+  }
+
+  const tenantForTz = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  const periodUsage = await periodUsageCount(
+    discount,
+    now,
+    tenantForTz ? await resolveScheduleTimezone(tenantForTz) : "Europe/Madrid",
+  );
+  if (periodUsage && periodUsage.used >= periodUsage.max) {
+    return {
+      valid: false,
+      error: `Este código alcanzó su límite de ${periodUsage.max} usos ${periodLabel(periodUsage.period)}`,
+    };
   }
 
   if (userId && discount.maxUsesPerUser !== null) {

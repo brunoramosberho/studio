@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
+import { isUsagePeriod } from "@/lib/discounts/period";
 
 // PUT /api/admin/discounts/[id] — update a discount code
 export async function PUT(
@@ -30,6 +31,8 @@ export async function PUT(
       currency,
       maxUses,
       maxUsesPerUser,
+      maxUsesPerPeriod,
+      usagePeriod,
       minPurchase,
       validFrom,
       validUntil,
@@ -46,6 +49,13 @@ export async function PUT(
         ...(currency !== undefined && { currency }),
         ...(maxUses !== undefined && { maxUses }),
         ...(maxUsesPerUser !== undefined && { maxUsesPerUser }),
+        ...(maxUsesPerPeriod !== undefined || usagePeriod !== undefined
+          ? {
+              maxUsesPerPeriod:
+                isUsagePeriod(usagePeriod) && maxUsesPerPeriod ? maxUsesPerPeriod : null,
+              usagePeriod: isUsagePeriod(usagePeriod) && maxUsesPerPeriod ? usagePeriod : null,
+            }
+          : {}),
         ...(minPurchase !== undefined && { minPurchase }),
         ...(validFrom !== undefined && { validFrom: new Date(validFrom) }),
         ...(validUntil !== undefined && {

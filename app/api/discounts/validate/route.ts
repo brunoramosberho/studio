@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
+import { periodUsageCount, periodLabel } from "@/lib/discounts/period";
+import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
 
 // POST /api/discounts/validate — validate a discount code for a package purchase
 export async function POST(request: NextRequest) {
@@ -52,6 +54,22 @@ export async function POST(request: NextRequest) {
     if (discount.maxUses !== null && discount.usedCount >= discount.maxUses) {
       return NextResponse.json(
         { valid: false, error: "Este código ha alcanzado su límite de usos" },
+        { status: 200 },
+      );
+    }
+
+    // Period cap (e.g. 10 uses a month, renewing on the 1st)
+    const periodUsage = await periodUsageCount(
+      discount,
+      new Date(),
+      await resolveScheduleTimezone(tenant),
+    );
+    if (periodUsage && periodUsage.used >= periodUsage.max) {
+      return NextResponse.json(
+        {
+          valid: false,
+          error: `Este código alcanzó su límite de ${periodUsage.max} usos ${periodLabel(periodUsage.period)}`,
+        },
         { status: 200 },
       );
     }

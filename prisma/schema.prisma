@@ -2925,6 +2925,12 @@ model DiscountCode {
   maxUses              Int? // null = unlimited
   usedCount            Int          @default(0)
   maxUsesPerUser       Int? // null = unlimited per user
+  // Rolling cap that resets every calendar period: e.g. 10 uses per month,
+  // renewed on the 1st. `usagePeriod` is "week" (ISO, Monday-start) or
+  // "month"; both are null when there's no period cap. Evaluated in the
+  // tenant's schedule timezone so the reset lands at local midnight.
+  maxUsesPerPeriod     Int?
+  usagePeriod          String?
   minPurchase          Float? // minimum cart amount to apply
   validFrom            DateTime     @default(now())
   validUntil           DateTime? // null = no expiry
