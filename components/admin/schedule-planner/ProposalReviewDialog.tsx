@@ -59,8 +59,14 @@ export function ProposalReviewDialog({
   const { data: studios } = useQuery<
     {
       id: string;
+      name: string;
       city?: { timezone: string } | null;
-      rooms: { id: string; classTypes: { id: string }[] }[];
+      rooms: {
+        id: string;
+        name: string;
+        maxCapacity: number;
+        classTypes: { id: string }[];
+      }[];
     }[]
   >({
     queryKey: ["planner-studios"],
@@ -100,6 +106,41 @@ export function ProposalReviewDialog({
   }, [studios]);
 
   const tzOf = (c: EditableClass) => tzByStudio.get(c.studioId) ?? "Europe/Madrid";
+
+  // Every room across studios: swapping the room is how you unlock a
+  // discipline the originally assigned room can't host.
+  const allRooms = useMemo(
+    () =>
+      (studios ?? []).flatMap((s) =>
+        (s.rooms ?? []).map((r) => ({
+          roomId: r.id,
+          roomName: r.name,
+          studioId: s.id,
+          studioName: s.name,
+          maxCapacity: r.maxCapacity,
+        })),
+      ),
+    [studios],
+  );
+
+  /** Move the class to another room (and studio, when they differ). */
+  function patchRoom(uid: string, roomId: string) {
+    const room = allRooms.find((r) => r.roomId === roomId);
+    if (!room) return;
+    setItems((prev) =>
+      prev.map((p) =>
+        p.uid === uid
+          ? {
+              ...p,
+              roomId: room.roomId,
+              roomName: room.roomName,
+              studioId: room.studioId,
+              studioName: room.studioName,
+            }
+          : p,
+      ),
+    );
+  }
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -279,6 +320,8 @@ export function ProposalReviewDialog({
                   onRemove={toggleRemove}
                   onPatchTime={patchTime}
                   onPatchClassType={patchClassType}
+                  onPatchRoom={patchRoom}
+                  rooms={allRooms}
                   classTypes={classTypes ?? []}
                   typesByRoom={typesByRoom}
                   tzOf={tzOf}
@@ -331,6 +374,8 @@ function DayRows({
   onRemove,
   onPatchTime,
   onPatchClassType,
+  onPatchRoom,
+  rooms,
   classTypes,
   typesByRoom,
   tzOf,
@@ -340,6 +385,14 @@ function DayRows({
   onRemove: (uid: string) => void;
   onPatchTime: (uid: string, value: string) => void;
   onPatchClassType: (uid: string, classTypeId: string) => void;
+  onPatchRoom: (uid: string, roomId: string) => void;
+  rooms: {
+    roomId: string;
+    roomName: string;
+    studioId: string;
+    studioName: string;
+    maxCapacity: number;
+  }[];
   classTypes: { id: string; name: string; duration: number }[];
   typesByRoom: Map<string, Set<string>>;
   tzOf: (c: EditableClass) => string;
@@ -362,6 +415,8 @@ function DayRows({
         const options = classTypes.filter(
           (ct) => !allowed || allowed.size === 0 || allowed.has(ct.id) || ct.id === c.classTypeId,
         );
+        // After a room swap the discipline may not be one this room hosts.
+        const mismatch = !!allowed && allowed.size > 0 && !allowed.has(c.classTypeId);
         return (
           <tr
             key={c.uid}
@@ -400,10 +455,36 @@ function DayRows({
               ) : (
                 <Badge variant="outline" className="text-[11px]">{c.classTypeName}</Badge>
               )}
+              {mismatch && (
+                <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
+                  Esta sala no tiene esta disciplina
+                </p>
+              )}
             </td>
             <td className="px-3 py-2 text-foreground">{c.coachName}</td>
             <td className="px-3 py-2 text-muted">
-              {c.studioName} · {c.roomName}
+              {rooms.length > 1 ? (
+                <Select
+                  value={c.roomId}
+                  onValueChange={(v) => onPatchRoom(c.uid, v)}
+                  disabled={c.removed}
+                >
+                  <SelectTrigger className="h-8 w-[210px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rooms.map((r) => (
+                      <SelectItem key={r.roomId} value={r.roomId}>
+                        {r.studioName} · {r.roomName} ({r.maxCapacity})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <>
+                  {c.studioName} · {c.roomName}
+                </>
+              )}
             </td>
             <td className="px-3 py-2 text-right">
               <button
