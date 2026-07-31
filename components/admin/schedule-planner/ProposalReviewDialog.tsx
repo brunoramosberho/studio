@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Trash2, AlertCircle } from "lucide-react";
 import {
@@ -17,7 +17,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, getWallClockInZone, zonedWallTimeToUtc } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   ProposedClass,
   ScheduleProposal,
@@ -45,6 +52,54 @@ export function ProposalReviewDialog({
 }: Props) {
   const [items, setItems] = useState<EditableClass[]>([]);
   const [applying, setApplying] = useState(false);
+
+  // Proposal times are UTC instants; they must be read and edited in the
+  // STUDIO's timezone. Rendering them in the admin's browser tz showed a
+  // 19:15 CDMX class as "03:15 a.m." and filed it under the next day.
+  const { data: studios } = useQuery<
+    {
+      id: string;
+      city?: { timezone: string } | null;
+      rooms: { id: string; classTypes: { id: string }[] }[];
+    }[]
+  >({
+    queryKey: ["planner-studios"],
+    queryFn: async () => {
+      const res = await fetch("/api/studios");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: open,
+  });
+  const { data: classTypes } = useQuery<
+    { id: string; name: string; duration: number }[]
+  >({
+    queryKey: ["planner-class-types"],
+    queryFn: async () => {
+      const res = await fetch("/api/class-types");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const tzByStudio = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of studios ?? []) map.set(s.id, s.city?.timezone ?? "Europe/Madrid");
+    return map;
+  }, [studios]);
+  // Rooms restrict which disciplines they can host — only offer valid swaps.
+  const typesByRoom = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const s of studios ?? []) {
+      for (const r of s.rooms ?? []) {
+        map.set(r.id, new Set(r.classTypes.map((ct) => ct.id)));
+      }
+    }
+    return map;
+  }, [studios]);
+
+  const tzOf = (c: EditableClass) => tzByStudio.get(c.studioId) ?? "Europe/Madrid";
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -65,7 +120,9 @@ export function ProposalReviewDialog({
   const grouped = useMemo(() => {
     const byDay = new Map<string, EditableClass[]>();
     for (const c of items) {
-      const day = c.startsAt.slice(0, 10);
+      const tz = tzByStudio.get(c.studioId) ?? "Europe/Madrid";
+      const w = getWallClockInZone(new Date(c.startsAt), tz);
+      const day = `${w.year}-${String(w.month).padStart(2, "0")}-${String(w.day).padStart(2, "0")}`;
       if (!byDay.has(day)) byDay.set(day, []);
       byDay.get(day)!.push(c);
     }
@@ -75,7 +132,7 @@ export function ProposalReviewDialog({
         day,
         list: list.sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
       }));
-  }, [items]);
+  }, [items, tzByStudio]);
 
   const activeCount = items.filter((i) => !i.removed).length;
   const removedCount = items.length - activeCount;
@@ -87,21 +144,39 @@ export function ProposalReviewDialog({
   }
 
   function patchTime(uid: string, value: string) {
-    // Accept "HH:mm" and patch the time portion while preserving the date.
+    // "HH:mm" is the STUDIO's wall time — rebuild the instant in its zone so
+    // the class lands at the hour the admin typed, not the browser's.
+    setItems((prev) =>
+      prev.map((p) => {
+        if (p.uid !== uid) return p;
+        const [hh, mm] = value.split(":").map((x) => parseInt(x, 10));
+        if (Number.isNaN(hh) || Number.isNaN(mm)) return p;
+        const tz = tzByStudio.get(p.studioId) ?? "Europe/Madrid";
+        const duration = new Date(p.endsAt).getTime() - new Date(p.startsAt).getTime();
+        const w = getWallClockInZone(new Date(p.startsAt), tz);
+        const start = zonedWallTimeToUtc(w.year, w.month - 1, w.day, hh, mm, tz);
+        return {
+          ...p,
+          startsAt: start.toISOString(),
+          endsAt: new Date(start.getTime() + duration).toISOString(),
+        };
+      }),
+    );
+  }
+
+  /** Swap the discipline, re-deriving the end time from the new duration. */
+  function patchClassType(uid: string, classTypeId: string) {
+    const picked = (classTypes ?? []).find((ct) => ct.id === classTypeId);
+    if (!picked) return;
     setItems((prev) =>
       prev.map((p) => {
         if (p.uid !== uid) return p;
         const start = new Date(p.startsAt);
-        const end = new Date(p.endsAt);
-        const duration = end.getTime() - start.getTime();
-        const [hh, mm] = value.split(":").map((x) => parseInt(x, 10));
-        if (Number.isNaN(hh) || Number.isNaN(mm)) return p;
-        start.setHours(hh, mm, 0, 0);
-        const newEnd = new Date(start.getTime() + duration);
         return {
           ...p,
-          startsAt: start.toISOString(),
-          endsAt: newEnd.toISOString(),
+          classTypeId: picked.id,
+          classTypeName: picked.name,
+          endsAt: new Date(start.getTime() + picked.duration * 60_000).toISOString(),
         };
       }),
     );
@@ -203,6 +278,10 @@ export function ProposalReviewDialog({
                   list={list}
                   onRemove={toggleRemove}
                   onPatchTime={patchTime}
+                  onPatchClassType={patchClassType}
+                  classTypes={classTypes ?? []}
+                  typesByRoom={typesByRoom}
+                  tzOf={tzOf}
                 />
               ))}
             </tbody>
@@ -251,11 +330,19 @@ function DayRows({
   list,
   onRemove,
   onPatchTime,
+  onPatchClassType,
+  classTypes,
+  typesByRoom,
+  tzOf,
 }: {
   day: string;
   list: EditableClass[];
   onRemove: (uid: string) => void;
   onPatchTime: (uid: string, value: string) => void;
+  onPatchClassType: (uid: string, classTypeId: string) => void;
+  classTypes: { id: string; name: string; duration: number }[];
+  typesByRoom: Map<string, Set<string>>;
+  tzOf: (c: EditableClass) => string;
 }) {
   const date = parseISO(day);
   const dayLabel = format(date, "EEEE d MMM", { locale: es });
@@ -268,8 +355,13 @@ function DayRows({
         </td>
       </tr>
       {list.map((c) => {
-        const start = new Date(c.startsAt);
-        const timeValue = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
+        const w = getWallClockInZone(new Date(c.startsAt), tzOf(c));
+        const timeValue = `${String(w.hour).padStart(2, "0")}:${String(w.minute).padStart(2, "0")}`;
+        // Only disciplines the assigned room can actually host.
+        const allowed = typesByRoom.get(c.roomId);
+        const options = classTypes.filter(
+          (ct) => !allowed || allowed.size === 0 || allowed.has(ct.id) || ct.id === c.classTypeId,
+        );
         return (
           <tr
             key={c.uid}
@@ -288,7 +380,26 @@ function DayRows({
               />
             </td>
             <td className="px-3 py-2">
-              <Badge variant="outline" className="text-[11px]">{c.classTypeName}</Badge>
+              {options.length > 1 ? (
+                <Select
+                  value={c.classTypeId}
+                  onValueChange={(v) => onPatchClassType(c.uid, v)}
+                  disabled={c.removed}
+                >
+                  <SelectTrigger className="h-8 w-[170px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {options.map((ct) => (
+                      <SelectItem key={ct.id} value={ct.id}>
+                        {ct.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Badge variant="outline" className="text-[11px]">{c.classTypeName}</Badge>
+              )}
             </td>
             <td className="px-3 py-2 text-foreground">{c.coachName}</td>
             <td className="px-3 py-2 text-muted">
