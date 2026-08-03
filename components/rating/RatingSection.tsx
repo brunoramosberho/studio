@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { RATING_FEEDBACK_THRESHOLD } from "@/lib/ratings/constants";
 
 interface RatingReason {
   id: string;
@@ -62,11 +63,11 @@ export function RatingSection({
 
     setSubmitting(false);
 
-    if (r <= 3) {
+    if (r <= RATING_FEEDBACK_THRESHOLD) {
       await fetchReasons();
       setShowReasons(true);
       setSubmitted(false);
-    } else if (prevRating <= 3 && showReasons) {
+    } else if (prevRating <= RATING_FEEDBACK_THRESHOLD && showReasons) {
       setShowReasons(false);
       setSubmitted(true);
     } else {
@@ -85,7 +86,8 @@ export function RatingSection({
   };
 
   const submitReasons = async () => {
-    if (selectedReasons.size === 0) return;
+    // A written comment is feedback too — don't force a chip.
+    if (selectedReasons.size === 0 && !comment.trim()) return;
     setSubmitting(true);
     await fetch("/api/ratings/reasons", {
       method: "POST",
@@ -190,7 +192,7 @@ export function RatingSection({
           />
           <button
             onClick={submitReasons}
-            disabled={selectedReasons.size === 0 || submitting}
+            disabled={(selectedReasons.size === 0 && !comment.trim()) || submitting}
             className="w-full rounded-[14px] bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
             {submitting ? "Enviando..." : "Enviar"}

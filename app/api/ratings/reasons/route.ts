@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext, requireTenant } from "@/lib/tenant";
+import { DEFAULT_RATING_REASONS } from "@/lib/ratings/constants";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,6 +20,23 @@ export async function GET(request: NextRequest) {
         where: { tenantId: tenant.id, classTypeId: null, active: true },
         orderBy: { order: "asc" },
       });
+    }
+
+    // A studio that never configured any chips would otherwise get an empty
+    // list and no way to say what went wrong. Serve the starter set instead;
+    // the texts are what matters (submissions store text, not id).
+    if (reasons.length === 0) {
+      return NextResponse.json(
+        DEFAULT_RATING_REASONS.map((d, i) => ({
+          id: `default-${i}`,
+          text: d.text,
+          emoji: d.emoji,
+          order: i,
+          active: true,
+          classTypeId: null,
+          tenantId: tenant.id,
+        })),
+      );
     }
 
     return NextResponse.json(reasons);

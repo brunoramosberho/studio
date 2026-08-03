@@ -5,6 +5,7 @@ import { getAuthContext, requireTenant } from "@/lib/tenant";
 import { RatingReasonsPage } from "./rating-reasons-page";
 import { RatingThankYouPage } from "./rating-thank-you-page";
 import { TokenExpiredPage } from "./token-expired-page";
+import { RATING_FEEDBACK_THRESHOLD } from "@/lib/ratings/constants";
 
 export default async function RatePage({
   searchParams,
@@ -39,7 +40,7 @@ export default async function RatePage({
   const ctx = await getAuthContext();
   const isLoggedIn = !!ctx?.session?.user?.id;
 
-  if (rating <= 3) {
+  if (rating <= RATING_FEEDBACK_THRESHOLD) {
     return (
       <RatingReasonsPage
         classId={classId}

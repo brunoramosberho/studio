@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { formatTime } from "@/lib/utils";
+import { RATING_FEEDBACK_THRESHOLD } from "@/lib/ratings/constants";
 
 interface PendingClass {
   classId: string;
@@ -100,10 +101,10 @@ export function RatingSheet() {
 
     setSubmitting(false);
 
-    if (r <= 3) {
+    if (r <= RATING_FEEDBACK_THRESHOLD) {
       await prefetchReasons();
       setShowReasons(true);
-    } else if (prevRating <= 3 && showReasons) {
+    } else if (prevRating <= RATING_FEEDBACK_THRESHOLD && showReasons) {
       // Changed from low to high — leave reasons view, go to thank you
       setShowReasons(false);
       setSubmitted(true);
@@ -122,7 +123,8 @@ export function RatingSheet() {
   };
 
   const submitReasons = async () => {
-    if (!pending || selectedReasons.size === 0) return;
+    // A written comment is feedback too — don't force a chip.
+    if (!pending || (selectedReasons.size === 0 && !comment.trim())) return;
     setSubmitting(true);
     await fetch("/api/ratings/reasons", {
       method: "POST",
@@ -258,7 +260,7 @@ export function RatingSheet() {
               />
               <button
                 onClick={submitReasons}
-                disabled={selectedReasons.size === 0 || submitting}
+                disabled={(selectedReasons.size === 0 && !comment.trim()) || submitting}
                 className="w-full rounded-[14px] bg-accent py-3 text-sm font-semibold text-white disabled:opacity-50 mb-3"
               >
                 {submitting ? t("sending") : t("send")}

@@ -5,6 +5,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-q
 import { Star, Trash2, MessageSquare, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RatingReasonsManager } from "@/components/admin/rating-reasons-manager";
 
 type RangeKey = "30" | "90" | "365" | "0";
 
@@ -129,6 +130,9 @@ export default function RatingsPage() {
           ))}
         </div>
       </header>
+
+      {/* Reason chips config — what members can pick when they rate low */}
+      <RatingReasonsManager />
 
       {/* Summary */}
       <section className="grid gap-4 md:grid-cols-3">
