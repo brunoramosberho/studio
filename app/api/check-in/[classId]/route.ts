@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/tenant";
 import { updateLifecycle } from "@/lib/referrals/lifecycle";
 import { getMemberWaiverStatus } from "@/lib/waiver/status";
 import { reconcileCreditOnLateAttendance } from "@/lib/credits";
+import { syncPointsForBooking } from "@/lib/challenges/engine";
 
 export async function POST(
   request: NextRequest,
@@ -105,6 +106,7 @@ export async function POST(
         where: { id: bk.id },
         data: { status: "ATTENDED" },
       });
+      await syncPointsForBooking(bk.id);
       if (bk.status !== "NO_SHOW") return;
       // Waive the pending FEE (they came, so no penalty)...
       const pending = await prisma.pendingPenalty.findUnique({
@@ -202,16 +204,17 @@ export async function DELETE(
       return NextResponse.json({ error: "Check-in not found" }, { status: 404 });
     }
 
-    // Sync: revert booking back to CONFIRMED
-    prisma.booking.updateMany({
-      where: {
-        classId,
-        userId: memberId,
-        tenantId: ctx.tenant.id,
-        status: "ATTENDED",
-      },
-      data: { status: "CONFIRMED" },
-    }).catch((err) => console.error("Undo check-in booking sync failed:", err));
+    // Sync: revert booking back to CONFIRMED, and take back any challenge
+    // points it earned (the member didn't actually attend).
+    (async () => {
+      const bk = await prisma.booking.findFirst({
+        where: { classId, userId: memberId, tenantId: ctx.tenant.id, status: "ATTENDED" },
+        select: { id: true },
+      });
+      if (!bk) return;
+      await prisma.booking.update({ where: { id: bk.id }, data: { status: "CONFIRMED" } });
+      await syncPointsForBooking(bk.id);
+    })().catch((err) => console.error("Undo check-in booking sync failed:", err));
 
     return NextResponse.json({ success: true });
   } catch (error) {

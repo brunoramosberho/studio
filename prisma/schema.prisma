@@ -2988,6 +2988,9 @@ model ChallengePointEntry {
   createdAt DateTime @default(now())
 
   @@unique([challengeId, bookingId, kind])
+  // revokeForBooking looks up by bookingId alone; the unique index above
+  // leads with challengeId, so it can't serve that.
+  @@index([bookingId])
   @@index([participantId, earnedOn])
   @@index([tenantId])
 }

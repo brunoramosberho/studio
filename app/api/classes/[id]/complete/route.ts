@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { syncPointsForBooking } from "@/lib/challenges/engine";
 import { requireRole } from "@/lib/tenant";
 import {
   checkAchievements,
@@ -63,6 +64,11 @@ export async function POST(
       attendedUserIds ??
       cls.bookings.filter((b) => b.userId && b.status === "ATTENDED").map((b) => b.userId!);
 
+    // Everyone whose challenge points may change: those ending up present, plus
+    // anyone flipped to no-show who could be carrying points from an earlier
+    // completion of this same class.
+    const pointsToSettle: string[] = [];
+
     for (const booking of cls.bookings) {
       if (!booking.userId) continue;
       const attended = idsToMark.includes(booking.userId);
@@ -73,6 +79,7 @@ export async function POST(
           data: { status: newStatus },
         });
       }
+      if (attended || booking.status !== newStatus) pointsToSettle.push(booking.id);
     }
 
     if (cls.status !== "COMPLETED") {
@@ -80,6 +87,12 @@ export async function POST(
         where: { id },
         data: { status: "COMPLETED" },
       });
+    }
+
+    // Only now — points key off the class being COMPLETED, so this has to run
+    // after the update above, not inside the loop.
+    for (const bookingId of pointsToSettle) {
+      await syncPointsForBooking(bookingId);
     }
 
     // Members who attended + guest/platform (Wellhub, Gympass) bookings that

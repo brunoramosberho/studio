@@ -9,6 +9,7 @@ import {
 } from "@/lib/credits";
 import { checkSubscriptionBookingLimits } from "@/lib/booking/limits";
 import { recognizeBookingSafe } from "@/lib/revenue/hooks";
+import { syncPointsForBooking } from "@/lib/challenges/engine";
 import { notifyAdminsOfNewBooking } from "@/lib/booking-notifications";
 
 export async function POST(request: NextRequest) {
@@ -166,6 +167,8 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      await syncPointsForBooking(booking.id);
+
       await recognizeBookingSafe({
         userPackageId: matchingPackage.id,
         bookingId: booking.id,
@@ -231,6 +234,8 @@ export async function POST(request: NextRequest) {
         spotNumber: spotNumber ?? null,
       },
     });
+
+    await syncPointsForBooking(booking.id);
 
     const now = new Date();
     const checkIn = await prisma.checkIn.create({

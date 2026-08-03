@@ -29,6 +29,7 @@ export type AwardOutcome =
   | "no_challenge"
   | "not_enrolled"
   | "not_attended"
+  | "not_completed"
   | "other_studio"
   | "outside_window"
   | "capped";
@@ -116,9 +117,13 @@ export async function awardForBooking(bookingId: string): Promise<AwardResult> {
   // Guests and platform bookings without a linked user can't hold points.
   const klass = booking?.class;
   if (!booking?.userId || !klass) return nothing("not_enrolled");
-  if (booking.status !== "ATTENDED" || klass.status === "CANCELLED") {
-    return nothing("not_attended");
-  }
+  if (booking.status !== "ATTENDED") return nothing("not_attended");
+  // Check-in is provisional — the front desk marks, unmarks and corrects it all
+  // through the hour, and Wellhub members check in from their own app without
+  // ever reaching the studio. Completing the class is what settles who actually
+  // attended, so that is when points are paid. Everything before it is a no-op,
+  // and the completion pass picks up whoever ended up present.
+  if (klass.status !== "COMPLETED") return nothing("not_completed");
 
   const challenge = await getActiveChallenge(booking.tenantId);
   if (!challenge) return nothing("no_challenge");
@@ -182,6 +187,35 @@ export async function awardForBooking(bookingId: string): Promise<AwardResult> {
     points: awards.reduce((sum, a) => sum + a.points, 0),
     activated: window.activated,
   };
+}
+
+/**
+ * Reconcile a booking's points with its CURRENT status. Call this from every
+ * path that touches attendance — check-in, undo, walk-in, no-show, completion,
+ * cron — and it works out the direction itself, so no call site can wire the
+ * wrong one.
+ *
+ * This is a reconcile, not an award: before the class is COMPLETED it can only
+ * ever take points away, never grant them. That's what makes it safe to call
+ * from check-in, where nothing should be paid out yet, while still settling a
+ * walk-in added after the roll was already taken.
+ *
+ * Never throws — points must not be able to break a check-in.
+ */
+export async function syncPointsForBooking(bookingId: string): Promise<AwardResult> {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { status: true },
+    });
+    if (!booking) return { outcome: "not_enrolled", points: 0, activated: false };
+    if (booking.status === "ATTENDED") return awardForBooking(bookingId);
+    await revokeForBooking(bookingId);
+    return { outcome: "not_attended", points: 0, activated: false };
+  } catch (err) {
+    console.error("Challenge points sync failed:", err);
+    return { outcome: "not_enrolled", points: 0, activated: false };
+  }
 }
 
 /**

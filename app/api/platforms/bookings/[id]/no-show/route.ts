@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { syncPointsForBooking } from "@/lib/challenges/engine";
 import { requireRole } from "@/lib/tenant";
 import { PLATFORM_CONSUMING_STATUSES } from "@/lib/booking/availability";
 
@@ -64,6 +65,8 @@ export async function POST(
         });
       });
 
+      await syncPointsForBooking(pb.companionBooking.id);
+
       // A seat opened → promote waitlist, notify watchers, re-sync availability.
       const { cascadeFreedSeat } = await import("@/lib/platforms/wellhub");
       cascadeFreedSeat(pb.classId, tenant.id).catch((err) =>
@@ -113,6 +116,8 @@ export async function POST(
         data: { notes: null },
       });
     });
+
+    await syncPointsForBooking(pb.companionBooking.id);
 
     const { patchWellhubCapacityForClass } = await import("@/lib/platforms/wellhub");
     patchWellhubCapacityForClass(pb.classId).catch((err) =>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { syncPointsForBooking } from "@/lib/challenges/engine";
 import { sendPushToUser, sendPushToMany } from "@/lib/push";
 import { sendWaiverReminder, sendCoachClassReminder } from "@/lib/email";
 import { tenantToBranding } from "@/lib/branding";
@@ -319,6 +320,12 @@ export async function GET(request: NextRequest) {
       // filtering on ATTENDED excludes them. buildClassAttendees adds the
       // guest/platform people the old member-only filter used to drop.
       const presentBookings = cls.bookings.filter((b) => b.status === "ATTENDED");
+
+      // The class is now COMPLETED, which is what settles challenge points.
+      for (const b of presentBookings) {
+        await syncPointsForBooking(b.id);
+      }
+
       const attendees = await buildClassAttendees(presentBookings, tenant.id);
 
       if (attendees.length > 0 && cls.coach.userId) {
