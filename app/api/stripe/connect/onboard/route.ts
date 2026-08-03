@@ -23,8 +23,25 @@ export async function POST() {
         );
       }
 
+      // Stripe-controlled pricing: the studio pays Stripe's processing fees
+      // directly, so the platform is billed nothing for Connect — no per-active
+      // -account fee, no 0.25% of volume, no per-payout fee. We still take our
+      // application fee on every charge; that's independent of who pays Stripe.
+      //
+      // This forces the full Stripe dashboard: Stripe rejects the Express
+      // dashboard unless the platform both collects the fees AND carries the
+      // losses. Handing the fees over means handing the chargeback and
+      // negative-balance liability over too, which is the trade we want.
+      //
+      // `controller` is immutable — it cannot be changed after creation, so an
+      // account onboarded under the old Express setup has to be re-onboarded
+      // from scratch to move to this model.
       const account = await stripe.accounts.create({
-        type: "express",
+        controller: {
+          fees: { payer: "account" },
+          losses: { payments: "stripe" },
+          stripe_dashboard: { type: "full" },
+        },
         country: countryCode,
         capabilities: {
           card_payments: { requested: true },
