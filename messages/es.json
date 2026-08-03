@@ -2389,7 +2389,9 @@
     "validFor": "Válido por",
     "anyDiscipline": "Cualquier disciplina",
     "invitesToJoin": "te invita a unirte a {studio}",
-    "welcomeGift": "Regalo de bienvenida"
+    "welcomeGift": "Regalo de bienvenida",
+    "locationsTitle": "Dónde estamos",
+    "openInMaps": "Ver en el mapa"
   },
   "booking": {
     "confirmed": "Reserva confirmada!",

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { contrastRatio, hexToRgb, needsDarkText, relativeLuminance } from "@/lib/color";
 import { useBranding } from "@/components/branding-provider";
 import {
   ArrowRight,
@@ -12,6 +13,7 @@ import {
   CheckCircle2,
   CalendarCheck,
   Zap,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,12 +55,12 @@ interface PackageData {
   sortOrder: number;
 }
 
-function isLightColor(hex: string): boolean {
-  const c = hex.replace("#", "");
-  const r = parseInt(c.substring(0, 2), 16);
-  const g = parseInt(c.substring(2, 4), 16);
-  const b = parseInt(c.substring(4, 6), 16);
-  return (r * 299 + g * 587 + b * 114) / 1000 > 150;
+interface StudioData {
+  id: string;
+  name: string;
+  address: string | null;
+  addressDetails: string | null;
+  city?: { name: string | null } | null;
 }
 
 const fadeUp = {
@@ -104,13 +106,30 @@ export default function LandingPage() {
   const [coaches, setCoaches] = useState<CoachData[]>([]);
   const [packages, setPackages] = useState<PackageData[]>([]);
   const [classTypes, setClassTypes] = useState<ClassTypeData[]>([]);
+  const [studios, setStudios] = useState<StudioData[]>([]);
   const branding = useBranding();
 
-  const heroLight = isLightColor(branding.colorHeroBg || "#1C1917");
+  // Which text reads on the studio's hero colour. The old YIQ formula got this
+  // backwards on mid-tone brand colours: on FDV's olive (#8B9971) it chose
+  // white, which lands at 3.05:1 — under the readable minimum — where dark text
+  // reaches 5.74:1. Same story on any sand or sage palette. readableTextColor
+  // uses the WCAG relative-luminance formula and picks whichever actually
+  // contrasts more, so the dark-hero studios are unaffected.
+  const heroBg = branding.colorHeroBg || "#1C1917";
+  const heroLight = needsDarkText(heroBg);
   const heroText = heroLight ? branding.colorFg : "#FFFFFF";
   const heroTextMuted = heroLight ? `${branding.colorFg}99` : "rgba(255,255,255,0.6)";
   const heroTextSubtle = heroLight ? `${branding.colorFg}50` : "rgba(255,255,255,0.3)";
   const heroBorder = heroLight ? `${branding.colorFg}20` : "rgba(255,255,255,0.2)";
+  // The last word of the slogan is painted in the accent colour. Studios are
+  // free to pick the same colour for their accent and their hero — FDV set both
+  // to #8B9971 — and the result was an invisible headline: olive on olive. Fall
+  // back to the plain hero text when the accent can't be seen against it. 3:1
+  // is the WCAG threshold for large text, which a display headline is.
+  const accentReadable =
+    contrastRatio(relativeLuminance(hexToRgb(branding.colorAccent) ?? [0, 0, 0]),
+                  relativeLuminance(hexToRgb(heroBg) ?? [0, 0, 0])) >= 3;
+  const heroAccent = accentReadable ? branding.colorAccent : heroText;
 
   useEffect(() => {
     fetch("/api/coaches")
@@ -124,6 +143,10 @@ export default function LandingPage() {
     fetch("/api/class-types")
       .then((r) => r.json())
       .then((data) => setClassTypes(Array.isArray(data) ? data : []))
+      .catch(() => {});
+    fetch("/api/studios")
+      .then((r) => r.json())
+      .then((data) => setStudios(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
 
@@ -174,8 +197,11 @@ export default function LandingPage() {
                   <span
                     key={i}
                     style={{
-                      color: branding.colorAccent,
-                      textShadow: heroLight ? "none" : `0 0 40px ${branding.colorAccent}88, 0 0 80px ${branding.colorAccent}44`,
+                      color: heroAccent,
+                      textShadow:
+                        heroLight || !accentReadable
+                          ? "none"
+                          : `0 0 40px ${branding.colorAccent}88, 0 0 80px ${branding.colorAccent}44`,
                     }}
                   >
                     {part.trim()}.
@@ -593,6 +619,61 @@ export default function LandingPage() {
       </section>
         );
       })()}
+
+      {/* ── Locations ──────────────────────────────────────────
+          Only shown when the studio has filled in an address — an empty
+          "find us" block is worse than no block at all. */}
+      {studios.some((st) => st.address) && (
+        <section className="bg-surface px-4 py-24">
+          <div className="mx-auto max-w-5xl">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center text-3xl font-bold sm:text-4xl"
+            >
+              {t("locationsTitle")}
+            </motion.h2>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {studios
+                .filter((st) => st.address)
+                .map((st, i) => (
+                  <motion.a
+                    key={st.id}
+                    href={`https://maps.google.com/?q=${encodeURIComponent(
+                      `${st.name} ${st.address ?? ""}`,
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    custom={i}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    variants={fadeUp}
+                    className="group rounded-2xl border border-border/60 bg-background p-5 transition hover:border-border"
+                  >
+                    <div className="flex items-start gap-3">
+                      <MapPin
+                        className="mt-0.5 h-4 w-4 shrink-0"
+                        style={{ color: branding.colorAccent }}
+                      />
+                      <div className="min-w-0">
+                        <p className="font-semibold">{st.name}</p>
+                        <p className="mt-1 text-sm text-muted">{st.address}</p>
+                        {st.addressDetails && (
+                          <p className="mt-0.5 text-xs text-muted/70">{st.addressDetails}</p>
+                        )}
+                        <span className="mt-2 inline-block text-xs font-medium underline-offset-4 group-hover:underline">
+                          {t("openInMaps")}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.a>
+                ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── CTA Banner ─────────────────────────────────────────── */}
       <section className="px-4 py-24" style={{ backgroundColor: branding.colorHeroBg }}>
