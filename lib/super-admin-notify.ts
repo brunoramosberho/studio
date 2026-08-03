@@ -21,7 +21,10 @@ export async function notifySuperAdmins(args: {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "mgic.app";
   const url = args.url ?? `https://admin.${rootDomain}`;
 
-  const adminEmail = process.env.ADMIN_EMAIL;
+  // Where operational notifications land. ADMIN_EMAIL doubles as the
+  // super-admin LOGIN credential and may not be a real mailbox — set
+  // SUPER_ADMIN_NOTIFY_EMAIL to a monitored inbox without touching the login.
+  const adminEmail = process.env.SUPER_ADMIN_NOTIFY_EMAIL || process.env.ADMIN_EMAIL;
   if (adminEmail && process.env.RESEND_API_KEY) {
     try {
       await new Resend(process.env.RESEND_API_KEY).emails.send({
