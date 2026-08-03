@@ -86,6 +86,13 @@ export default function LandingPage() {
     INTERMEDIATE: t("intermediate"),
     ADVANCED: t("advanced"),
   };
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [coaches, setCoaches] = useState<CoachData[]>([]);
+  const [packages, setPackages] = useState<PackageData[]>([]);
+  const [classTypes, setClassTypes] = useState<ClassTypeData[]>([]);
+  const [studios, setStudios] = useState<StudioData[]>([]);
+  const branding = useBranding();
+
   // Section headings the studio may have rewritten. `c()` is `t()` with the
   // studio's own wording taking precedence — so the shared copy stays the
   // default rather than the only option.
@@ -108,12 +115,6 @@ export default function LandingPage() {
       description: c("step3Desc"),
     },
   ];
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [coaches, setCoaches] = useState<CoachData[]>([]);
-  const [packages, setPackages] = useState<PackageData[]>([]);
-  const [classTypes, setClassTypes] = useState<ClassTypeData[]>([]);
-  const [studios, setStudios] = useState<StudioData[]>([]);
-  const branding = useBranding();
 
   // Which text reads on the studio's hero colour. The old YIQ formula got this
   // backwards on mid-tone brand colours: on FDV's olive (#8B9971) it chose
