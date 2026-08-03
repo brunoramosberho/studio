@@ -12,6 +12,7 @@ import { SocialFeed } from "@/components/feed/social-feed";
 import { UpcomingClasses } from "@/components/feed/upcoming-classes";
 import { FriendsClasses } from "@/components/feed/friends-classes";
 import { FeedHighlights } from "@/components/feed/feed-highlights";
+import { ChallengeCard } from "@/components/challenges/challenge-card";
 import { BirthdayGreeting } from "@/components/shared/birthday-greeting";
 import { useQuery } from "@tanstack/react-query";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
@@ -161,6 +162,10 @@ export default function DashboardPage() {
         {/* Upcoming booked classes — or friends' classes as fallback */}
         <UpcomingClasses />
         {upcomingBookings.length === 0 && <FriendsClasses />}
+
+        {/* Active challenge — above the banners: it's the one thing with a
+            deadline attached. */}
+        <ChallengeCard />
 
         {/* Highlighted banners from admin */}
         <FeedHighlights />
