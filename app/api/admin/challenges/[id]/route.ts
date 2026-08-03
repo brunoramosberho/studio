@@ -8,6 +8,7 @@ import {
   ChallengeInputError,
   challengeEndsAt,
   parseChallengeInput,
+  parseImageUrl,
   toChallengeData,
   type Prize,
 } from "@/lib/challenges/input";
@@ -108,6 +109,9 @@ export async function PATCH(
               : typeof body.description === "string" && body.description.trim()
                 ? body.description.trim()
                 : null,
+          ...(body.imageUrl === undefined
+            ? {}
+            : { imageUrl: parseImageUrl(body.imageUrl) }),
           ...(prizes === undefined
             ? {}
             : { prizes: prizes as unknown as Prisma.InputJsonValue }),

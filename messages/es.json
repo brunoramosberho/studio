@@ -1890,7 +1890,14 @@
         "DRAFT": "Borrador",
         "ACTIVE": "Activo",
         "ENDED": "Terminado"
-      }
+      },
+      "image": "Imagen del reto (opcional)",
+      "imageAdd": "Subir imagen",
+      "imageReplace": "Cambiar imagen",
+      "imageRemove": "Quitar",
+      "imageHint": "Cuadrada se ve mejor. Sin imagen se usa el icono de trofeo.",
+      "imageTooLarge": "La imagen pesa más de 5 MB.",
+      "imageFailed": "No se pudo subir la imagen."
     },
     "challenges": "Retos"
   },

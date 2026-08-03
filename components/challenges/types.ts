@@ -25,6 +25,7 @@ export interface ActiveChallengeResponse {
     id: string;
     name: string;
     description: string | null;
+    imageUrl: string | null;
     durationDays: number;
     enrollOpensAt: string;
     enrollClosesAt: string;

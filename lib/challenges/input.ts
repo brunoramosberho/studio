@@ -15,6 +15,7 @@ export interface Prize {
 export interface ChallengeInput {
   name: string;
   description: string | null;
+  imageUrl: string | null;
   durationDays: number;
   enrollOpensAt: Date;
   enrollClosesAt: Date;
@@ -88,6 +89,7 @@ export function parseChallengeInput(
       typeof body.description === "string" && body.description.trim()
         ? body.description.trim()
         : null,
+    imageUrl: parseImageUrl(body.imageUrl),
     durationDays: int(body.durationDays ?? 30, "durationDays", { min: 1, max: MAX_DURATION_DAYS }),
     enrollOpensAt,
     enrollClosesAt,
@@ -107,6 +109,19 @@ export function parseChallengeInput(
     bonusSlots: parseBonusSlots(body.bonusSlots),
     prizes: parsePrizes(body.prizes),
   };
+}
+
+/**
+ * Only our own uploaded images. A challenge badge is rendered inside the
+ * member's feed, so an arbitrary URL here would be someone else's server
+ * deciding what our members see.
+ */
+export function parseImageUrl(raw: unknown): string | null {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  const url = raw.trim();
+  if (url.length > 500) fail("image URL is too long");
+  if (!/^https?:\/\//.test(url) && !url.startsWith("/")) fail("invalid image URL");
+  return url;
 }
 
 function parseBonusSlots(raw: unknown): BonusSlot[] {

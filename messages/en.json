@@ -1890,7 +1890,14 @@
         "DRAFT": "Draft",
         "ACTIVE": "Active",
         "ENDED": "Ended"
-      }
+      },
+      "image": "Challenge image (optional)",
+      "imageAdd": "Upload image",
+      "imageReplace": "Replace image",
+      "imageRemove": "Remove",
+      "imageHint": "Square works best. Without one, the trophy icon is used.",
+      "imageTooLarge": "That image is over 5 MB.",
+      "imageFailed": "Couldn't upload that image."
     },
     "challenges": "Challenges"
   },

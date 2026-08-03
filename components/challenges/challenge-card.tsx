@@ -66,9 +66,18 @@ export function ChallengeCard() {
       >
         <div className="p-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15">
-              <Trophy className="h-5 w-5 text-primary" />
-            </div>
+            {challenge.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={challenge.imageUrl}
+                alt=""
+                className="h-14 w-14 shrink-0 rounded-xl object-cover"
+              />
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+                <Trophy className="h-5 w-5 text-primary" />
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
                 {t("eyebrow")}

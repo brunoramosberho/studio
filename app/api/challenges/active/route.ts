@@ -110,6 +110,7 @@ export async function GET() {
         id: challenge.id,
         name: challenge.name,
         description: challenge.description,
+        imageUrl: challenge.imageUrl,
         durationDays: challenge.durationDays,
         enrollOpensAt: challenge.enrollOpensAt,
         enrollClosesAt: challenge.enrollClosesAt,

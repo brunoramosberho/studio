@@ -21,6 +21,7 @@ interface ChallengeRow {
   id: string;
   name: string;
   description: string | null;
+  imageUrl: string | null;
   status: "DRAFT" | "ACTIVE" | "ENDED";
   durationDays: number;
   enrollOpensAt: string;
@@ -139,6 +140,7 @@ export default function ChallengesPage() {
     id: c.id,
     name: c.name,
     description: c.description ?? "",
+    imageUrl: c.imageUrl,
     durationDays: c.durationDays,
     enrollOpensAt: c.enrollOpensAt.slice(0, 10),
     enrollClosesAt: c.enrollClosesAt.slice(0, 10),

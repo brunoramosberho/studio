@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Plus, Trash2, Loader2, Info } from "lucide-react";
+import { Plus, Trash2, Loader2, Info, ImagePlus, Trophy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,7 @@ export interface ChallengeDraft {
   id?: string;
   name: string;
   description: string;
+  imageUrl: string | null;
   durationDays: number;
   enrollOpensAt: string;
   enrollClosesAt: string;
@@ -43,6 +44,7 @@ export function emptyDraft(today: string, inTwoWeeks: string): ChallengeDraft {
   return {
     name: "",
     description: "",
+    imageUrl: null,
     durationDays: 30,
     enrollOpensAt: today,
     enrollClosesAt: inTwoWeeks,
@@ -127,6 +129,11 @@ export function ChallengeEditor({
         )}
 
         <div className="space-y-5">
+          <BadgePicker
+            value={draft.imageUrl}
+            onChange={(url) => set("imageUrl", url)}
+          />
+
           <div className="space-y-2">
             <Label htmlFor="ch-name">{t("name")}</Label>
             <Input
@@ -480,6 +487,90 @@ function NumberField({
       <p className="text-[11px] text-muted/70">
         {value === 0 && zeroLabel ? zeroLabel : hint}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Optional badge, like the ones Strava puts on its challenges. Nothing
+ * downstream requires it — the member card falls back to the trophy icon —
+ * so this stays a one-tap affair with an obvious way back out.
+ */
+function BadgePicker({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (url: string | null) => void;
+}) {
+  const t = useTranslations("admin.challengesPage");
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const upload = async (file: File) => {
+    setError(null);
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/challenges/upload", { method: "POST", body });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "failed");
+      onChange(json.url);
+    } catch (e) {
+      setError(e instanceof Error && e.message === "too_large" ? t("imageTooLarge") : t("imageFailed"));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>{t("image")}</Label>
+      <div className="flex items-center gap-3">
+        <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted/10">
+          {value ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={value} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <Trophy className="h-6 w-6 text-muted/50" />
+          )}
+          {uploading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-card/70">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium transition hover:bg-muted/10">
+              <ImagePlus className="h-3.5 w-3.5" />
+              {value ? t("imageReplace") : t("imageAdd")}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) upload(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {value && (
+              <button
+                type="button"
+                onClick={() => onChange(null)}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-muted hover:bg-muted/10"
+              >
+                <X className="h-3 w-3" />
+                {t("imageRemove")}
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted">{error ?? t("imageHint")}</p>
+        </div>
+      </div>
     </div>
   );
 }
