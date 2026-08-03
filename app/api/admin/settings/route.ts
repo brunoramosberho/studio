@@ -26,6 +26,21 @@ export async function POST(request: NextRequest) {
       "coachIconSvg", "landingUrl", "communityHeadline", "locale",
     ];
 
+    // Landing copy is a map, not a string, so it can't ride the allow-list
+    // above. Only known keys are stored and blanks are dropped, so clearing a
+    // field means "use the default wording" rather than "show nothing".
+    let landingCopy: Record<string, string> | undefined;
+    if (body.landingCopy && typeof body.landingCopy === "object") {
+      const { LANDING_COPY_KEYS } = await import("@/lib/landing-copy");
+      landingCopy = {};
+      for (const key of LANDING_COPY_KEYS) {
+        const value = (body.landingCopy as Record<string, unknown>)[key];
+        if (typeof value === "string" && value.trim()) {
+          landingCopy[key] = value.trim().slice(0, 300);
+        }
+      }
+    }
+
     const data: Record<string, string | null> = {};
     for (const field of allowedFields) {
       // Map studioName → name for backward compat with the admin UI
@@ -39,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     const tenant = await prisma.tenant.update({
       where: { id: ctx.tenant.id },
-      data,
+      data: { ...data, ...(landingCopy ? { landingCopy } : {}) },
     });
 
     return NextResponse.json(tenantToBranding(tenant));

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { contrastRatio, hexToRgb, needsDarkText, relativeLuminance } from "@/lib/color";
+import { LANDING_COPY_KEYS, landingText, type LandingCopyKey } from "@/lib/landing-copy";
 import { useBranding } from "@/components/branding-provider";
 import {
   ArrowRight,
@@ -85,21 +86,26 @@ export default function LandingPage() {
     INTERMEDIATE: t("intermediate"),
     ADVANCED: t("advanced"),
   };
+  // Section headings the studio may have rewritten. `c()` is `t()` with the
+  // studio's own wording taking precedence — so the shared copy stays the
+  // default rather than the only option.
+  const c = (key: LandingCopyKey) => landingText(branding.landingCopy, key, t(key));
+
   const steps = [
     {
       number: "01",
-      title: t("step1Title"),
-      description: t("step1Desc"),
+      title: c("step1Title"),
+      description: c("step1Desc"),
     },
     {
       number: "02",
-      title: t("step2Title"),
-      description: t("step2Desc"),
+      title: c("step2Title"),
+      description: c("step2Desc"),
     },
     {
       number: "03",
-      title: t("step3Title"),
-      description: t("step3Desc"),
+      title: c("step3Title"),
+      description: c("step3Desc"),
     },
   ];
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -278,7 +284,7 @@ export default function LandingPage() {
             className="mb-16 text-center"
           >
             <h2 className="font-display text-3xl font-bold text-foreground sm:text-5xl">
-              {t("findYourPractice")}
+              {c("findYourPractice")}
             </h2>
             <p className="mt-4 text-muted">
               {t("disciplinesGoal", { count: classTypes.length })}
@@ -346,10 +352,10 @@ export default function LandingPage() {
             className="mb-16 text-center"
           >
             <h2 className="font-display text-3xl font-bold text-foreground sm:text-5xl">
-              {t("howItWorks")}
+              {c("howItWorks")}
             </h2>
             <p className="mt-4 text-muted">
-              {t("howItWorksSubtitle")}
+              {c("howItWorksSubtitle")}
             </p>
           </motion.div>
 
@@ -391,10 +397,10 @@ export default function LandingPage() {
             className="mb-16 text-center"
           >
             <h2 className="font-display text-3xl font-bold sm:text-5xl" style={{ color: heroText }}>
-              {t("ourTeam")}
+              {c("ourTeam")}
             </h2>
             <p className="mt-4" style={{ color: heroTextMuted }}>
-              {t("coachesSubtitle")}
+              {c("coachesSubtitle")}
             </p>
           </motion.div>
 
@@ -502,10 +508,10 @@ export default function LandingPage() {
             className="mb-16 text-center"
           >
             <h2 className="font-display text-3xl font-bold text-foreground sm:text-5xl">
-              {t("packages")}
+              {c("packages")}
             </h2>
             <p className="mt-4 text-muted">
-              {t("packagesSubtitle")}
+              {c("packagesSubtitle")}
             </p>
           </motion.div>
 
@@ -632,7 +638,7 @@ export default function LandingPage() {
               viewport={{ once: true }}
               className="text-center text-3xl font-bold sm:text-4xl"
             >
-              {t("locationsTitle")}
+              {c("locationsTitle")}
             </motion.h2>
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {studios
@@ -686,10 +692,10 @@ export default function LandingPage() {
         >
           <Zap className="mx-auto mb-6 h-8 w-8 text-accent" />
           <h2 className="font-display text-4xl font-bold sm:text-5xl md:text-6xl" style={{ color: heroText }}>
-            {t("readyToStart")}
+            {c("readyToStart")}
           </h2>
           <p className="mx-auto mt-6 max-w-md text-lg" style={{ color: heroTextMuted }}>
-            {t("ctaSubtitle")}
+            {c("ctaSubtitle")}
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Button asChild size="lg" className="px-10 text-base">

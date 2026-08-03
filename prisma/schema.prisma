@@ -66,6 +66,12 @@ model Tenant {
   colorAdmin        String  @default("#1E40AF")
   coachIconSvg      String? @db.Text
   landingUrl        String?
+  // Per-studio overrides for the landing page copy. A JSON blob rather than a
+  // column per string: the landing has a dozen headings and they change with
+  // design, so this lets copy be added without a migration each time. Keys map
+  // to the shared translations (see LANDING_COPY_KEYS); anything missing falls
+  // back to the default wording for the studio's language.
+  landingCopy       Json    @default("{}")
   communityHeadline String  @default("Tu comunidad en movimiento")
 
   stripeCustomerId          String? // cus_xxx — Tenant as customer of Magic Payments (SaaS fee)

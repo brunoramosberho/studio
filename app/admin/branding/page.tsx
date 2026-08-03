@@ -25,6 +25,7 @@ import { useTranslations } from "next-intl";
 import { type StudioBranding, DEFAULTS, FONT_PAIRINGS, deriveAccentSoft, withDerivedColors } from "@/lib/branding";
 import { useBranding } from "@/components/branding-provider";
 import { SectionTabs } from "@/components/admin/section-tabs";
+import { LANDING_COPY_KEYS, type LandingCopyKey } from "@/lib/landing-copy";
 import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
 
 const colorFields: { key: keyof StudioBranding; labelKey: string; hintKey: string }[] = [
@@ -123,8 +124,21 @@ function BrandPreviewCard({
 export default function BrandingPage() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
+  // Placeholders show the wording members see today, so an admin can tell what
+  // they are overriding before they type anything.
+  const tPublic = useTranslations("public");
   const brandingCtx = useBranding();
   const [settings, setSettings] = useState<StudioBranding>(DEFAULTS);
+
+  // Landing copy is a map, so it can't use `update()`. Empty means "use the
+  // default wording", which is why blanks are stripped rather than stored.
+  const updateCopy = (key: LandingCopyKey, value: string) =>
+    setSettings((prev) => {
+      const next = { ...(prev.landingCopy ?? {}) };
+      if (value.trim()) next[key] = value;
+      else delete next[key];
+      return { ...prev, landingCopy: next };
+    });
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -339,6 +353,27 @@ export default function BrandingPage() {
                 <p className="mt-1.5 text-[11px] text-muted">
                   {t("landingPageDesc")}
                 </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <div className="mb-2 mt-2 border-t border-border/60 pt-5">
+                  <p className="text-sm font-semibold">{t("landingCopyTitle")}</p>
+                  <p className="mt-1 text-[11px] text-muted">{t("landingCopyDesc")}</p>
+                </div>
+                <div className="space-y-3">
+                  {LANDING_COPY_KEYS.map((key) => (
+                    <div key={key}>
+                      <label className="mb-1 block text-[11px] font-medium text-muted">
+                        {tPublic(key)}
+                      </label>
+                      <Input
+                        value={settings.landingCopy?.[key] ?? ""}
+                        onChange={(e) => updateCopy(key, e.target.value)}
+                        placeholder={tPublic(key)}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </CardContent>

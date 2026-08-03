@@ -1922,7 +1922,9 @@
       "blockedOk": "Cliente bloqueado",
       "unblockedOk": "Bloqueo retirado",
       "failed": "No se pudo completar la acción"
-    }
+    },
+    "landingCopyTitle": "Textos de la landing",
+    "landingCopyDesc": "Reescribe los títulos de tu página pública. Lo que dejes vacío usa el texto por defecto en el idioma del estudio."
   },
   "coach": {
     "portal": "Portal del Instructor",

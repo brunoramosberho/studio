@@ -21,6 +21,7 @@ export interface StudioBranding {
   coachIconSvg: string | null;
   landingUrl: string | null;
   communityHeadline: string;
+  landingCopy: Record<string, string>;
 }
 
 export const DEFAULTS: StudioBranding = {
@@ -44,6 +45,7 @@ export const DEFAULTS: StudioBranding = {
   coachIconSvg: null,
   landingUrl: null,
   communityHeadline: "Tu comunidad en movimiento",
+  landingCopy: {},
 };
 
 export interface FontPairing {
@@ -151,6 +153,10 @@ export function tenantToBranding(tenant: Tenant): StudioBranding {
     coachIconSvg: tenant.coachIconSvg,
     landingUrl: tenant.landingUrl,
     communityHeadline: tenant.communityHeadline,
+    landingCopy:
+      tenant.landingCopy && typeof tenant.landingCopy === "object" && !Array.isArray(tenant.landingCopy)
+        ? (tenant.landingCopy as Record<string, string>)
+        : {},
   };
 }
 

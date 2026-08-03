@@ -1922,7 +1922,9 @@
       "blockedOk": "Client blocked",
       "unblockedOk": "Block removed",
       "failed": "That didn't work"
-    }
+    },
+    "landingCopyTitle": "Landing page copy",
+    "landingCopyDesc": "Rewrite the headings on your public page. Anything you leave blank uses the default wording in the studio's language."
   },
   "coach": {
     "portal": "Instructor Portal",
