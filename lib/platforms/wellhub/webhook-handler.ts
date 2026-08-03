@@ -89,13 +89,17 @@ export async function verifyAndParseGymWebhook<E extends EventWithGymId>(
     return { ok: false, status: 404, reason: "tenant_not_found" };
   }
 
-  if (!tenant.config.wellhubWebhookSecret) {
+  // Wellhub signs per gym: prefer the studio's own secret (multi-location
+  // tenants where each gym got a different one), fall back to the tenant-level
+  // secret (single-location tenants, or one secret shared across gyms).
+  const encryptedSecret = tenant.studioWebhookSecret ?? tenant.config.wellhubWebhookSecret;
+  if (!encryptedSecret) {
     return { ok: false, status: 409, reason: "tenant_missing_secret" };
   }
 
   let secret: string;
   try {
-    secret = decrypt(tenant.config.wellhubWebhookSecret);
+    secret = decrypt(encryptedSecret);
   } catch {
     return { ok: false, status: 409, reason: "tenant_missing_secret" };
   }

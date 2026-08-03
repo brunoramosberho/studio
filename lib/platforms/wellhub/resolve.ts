@@ -13,6 +13,12 @@ export type ResolvedWellhubTenant = {
    * to that location. Null for tenant-level gym ids (single-location, Betoro).
    */
   studioId: string | null;
+  /**
+   * This gym's own webhook signing secret (encrypted), when the studio has one.
+   * Wellhub registers webhooks per gym, each potentially with its own secret;
+   * signature checks prefer this and fall back to the tenant-level secret.
+   */
+  studioWebhookSecret: string | null;
 };
 
 export async function resolveTenantByWellhubGymId(
@@ -22,21 +28,26 @@ export async function resolveTenantByWellhubGymId(
   // one, and tells us WHICH location the event belongs to.
   const studio = await prisma.studio.findUnique({
     where: { wellhubGymId: gymId },
-    select: { id: true, tenantId: true },
+    select: { id: true, tenantId: true, wellhubWebhookSecret: true },
   });
   if (studio) {
     const config = await prisma.studioPlatformConfig.findFirst({
       where: { tenantId: studio.tenantId, platform: "wellhub" },
     });
     if (!config) return null; // studio mapped but platform config missing
-    return { tenantId: studio.tenantId, config, studioId: studio.id };
+    return {
+      tenantId: studio.tenantId,
+      config,
+      studioId: studio.id,
+      studioWebhookSecret: studio.wellhubWebhookSecret,
+    };
   }
 
   const config = await prisma.studioPlatformConfig.findUnique({
     where: { wellhubGymId: gymId },
   });
   if (!config) return null;
-  return { tenantId: config.tenantId, config, studioId: null };
+  return { tenantId: config.tenantId, config, studioId: null, studioWebhookSecret: null };
 }
 
 /** Throws if no tenant matches — useful from webhook handlers that should 4xx. */

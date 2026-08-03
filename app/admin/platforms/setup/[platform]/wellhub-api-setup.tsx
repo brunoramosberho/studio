@@ -37,7 +37,12 @@ interface WellhubConfig {
   portalUrl: string | null;
   isActive: boolean;
   /** Tenant locations — multi-location tenants map one Wellhub gym per studio. */
-  studios?: { id: string; name: string; wellhubGymId: number | null }[];
+  studios?: {
+    id: string;
+    name: string;
+    wellhubGymId: number | null;
+    webhookSecretSet: boolean;
+  }[];
 }
 
 interface WellhubProduct {
@@ -92,8 +97,9 @@ export function WellhubApiSetup() {
   const [localeDraft, setLocaleDraft] = useState<string>("es");
   const [tokenDraft, setTokenDraft] = useState<string>("");
   const [freshSecret, setFreshSecret] = useState<string | null>(null);
-  // Per-studio gym-id drafts (multi-location tenants), keyed by studioId.
+  // Per-studio gym-id + webhook-secret drafts (multi-location), keyed by studioId.
   const [studioGymDrafts, setStudioGymDrafts] = useState<Record<string, string>>({});
+  const [studioSecretDrafts, setStudioSecretDrafts] = useState<Record<string, string>>({});
 
   // Commercial conditions draft (strings for inputs; fees in € as entered).
   const [ccDraft, setCcDraft] = useState({
@@ -320,7 +326,7 @@ export function WellhubApiSetup() {
               </p>
               <div className="space-y-2">
                 {config!.studios!.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2">
+                  <div key={s.id} className="flex flex-wrap items-center gap-2">
                     <span className="w-56 truncate text-sm">{s.name}</span>
                     <Input
                       type="number"
@@ -331,29 +337,63 @@ export function WellhubApiSetup() {
                         setStudioGymDrafts((d) => ({ ...d, [s.id]: e.target.value }))
                       }
                     />
+                    <Input
+                      type="password"
+                      className="w-48"
+                      autoComplete="off"
+                      placeholder={
+                        s.webhookSecretSet
+                          ? "secret ••• (vacío = conservar)"
+                          : "webhook secret (opcional)"
+                      }
+                      value={studioSecretDrafts[s.id] ?? ""}
+                      onChange={(e) =>
+                        setStudioSecretDrafts((d) => ({ ...d, [s.id]: e.target.value }))
+                      }
+                    />
                     {s.wellhubGymId && (
                       <Badge variant="outline" className="bg-green-50 text-[10px]">
                         #{s.wellhubGymId}
+                        {s.webhookSecretSet ? " · secret ✓" : ""}
                       </Badge>
                     )}
                   </div>
                 ))}
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                El secret por ubicación solo hace falta si Wellhub firma cada gym
+                con un secret distinto; si comparten uno, usa el secret general
+                del Paso 2 y deja estos vacíos.
+              </p>
               <Button
                 size="sm"
                 className="mt-1"
-                disabled={saveConfig.isPending || Object.keys(studioGymDrafts).length === 0}
+                disabled={
+                  saveConfig.isPending ||
+                  (Object.keys(studioGymDrafts).length === 0 &&
+                    Object.keys(studioSecretDrafts).length === 0)
+                }
                 onClick={() => {
-                  const map: Record<string, number | null> = {};
+                  const gyms: Record<string, number | null> = {};
                   for (const [studioId, raw] of Object.entries(studioGymDrafts)) {
                     const trimmed = raw.trim();
-                    map[studioId] = trimmed === "" ? null : Number(trimmed);
+                    gyms[studioId] = trimmed === "" ? null : Number(trimmed);
                   }
-                  saveConfig.mutate({ studioGymIds: map });
+                  // Only send secrets the user actually typed — an untouched
+                  // (empty) field keeps whatever is stored.
+                  const secrets: Record<string, string> = {};
+                  for (const [studioId, raw] of Object.entries(studioSecretDrafts)) {
+                    if (raw.trim() !== "") secrets[studioId] = raw.trim();
+                  }
+                  saveConfig.mutate({
+                    ...(Object.keys(gyms).length ? { studioGymIds: gyms } : {}),
+                    ...(Object.keys(secrets).length ? { studioWebhookSecrets: secrets } : {}),
+                  });
                   setStudioGymDrafts({});
+                  setStudioSecretDrafts({});
                 }}
               >
-                Guardar IDs de ubicaciones
+                Guardar ubicaciones
               </Button>
             </div>
           )}

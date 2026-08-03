@@ -1422,6 +1422,10 @@ model Studio {
   // unchanged). If ANY sibling studio has a gym id, an unmapped studio's
   // classes are NOT synced (never silently pushed to the wrong location).
   wellhubGymId Int? @unique
+  // Webhook signing secret for THIS gym (encrypted). Wellhub registers
+  // webhooks per gym, each with its own secret — set when it differs from the
+  // tenant-level StudioPlatformConfig.wellhubWebhookSecret (the fallback).
+  wellhubWebhookSecret String?
 
   staffShifts             StaffShift[]
   staffPayRates           StaffPayRate[]

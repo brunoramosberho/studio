@@ -30,11 +30,20 @@ export async function GET() {
       // Wellhub models each unit as its own gym with its own id).
       prisma.studio.findMany({
         where: { tenantId: tenant.id, isActive: true },
-        select: { id: true, name: true, wellhubGymId: true },
+        select: { id: true, name: true, wellhubGymId: true, wellhubWebhookSecret: true },
         orderBy: { name: "asc" },
       }),
     ]);
-    return NextResponse.json({ ...strip(config), studios });
+    return NextResponse.json({
+      ...strip(config),
+      studios: studios.map((s) => ({
+        id: s.id,
+        name: s.name,
+        wellhubGymId: s.wellhubGymId,
+        // Never expose the secret itself — only whether one is stored.
+        webhookSecretSet: !!s.wellhubWebhookSecret,
+      })),
+    });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });
@@ -78,8 +87,13 @@ export async function PATCH(request: NextRequest) {
       isActive?: boolean;
       /** Per-studio gym ids (multi-location tenants): { [studioId]: gymId|null }. */
       studioGymIds?: Record<string, number | null>;
+      /** Per-studio webhook secrets: { [studioId]: plaintext|null }. Encrypted at rest. */
+      studioWebhookSecrets?: Record<string, string | null>;
     };
-    const { studioGymIds } = body as { studioGymIds?: Record<string, number | null> };
+    const { studioGymIds, studioWebhookSecrets } = body as {
+      studioGymIds?: Record<string, number | null>;
+      studioWebhookSecrets?: Record<string, string | null>;
+    };
 
     if (wellhubMode && !["disabled", "legacy_email", "api"].includes(wellhubMode)) {
       return NextResponse.json({ error: "Invalid wellhubMode" }, { status: 400 });
@@ -114,15 +128,24 @@ export async function PATCH(request: NextRequest) {
         : null;
     }
 
-    // Per-studio gym ids: validate ownership, then write each mapping. A gym id
-    // must be globally unique (it identifies one physical location on Wellhub).
-    if (studioGymIds && typeof studioGymIds === "object") {
+    // Per-studio gym ids + webhook secrets: validate ownership, then write each
+    // mapping. A gym id must be globally unique (one physical location on
+    // Wellhub); secrets are encrypted at rest like the tenant-level one.
+    if (
+      (studioGymIds && typeof studioGymIds === "object") ||
+      (studioWebhookSecrets && typeof studioWebhookSecrets === "object")
+    ) {
+      const touchedIds = [
+        ...Object.keys(studioGymIds ?? {}),
+        ...Object.keys(studioWebhookSecrets ?? {}),
+      ];
       const ownStudios = await prisma.studio.findMany({
-        where: { tenantId: tenant.id, id: { in: Object.keys(studioGymIds) } },
+        where: { tenantId: tenant.id, id: { in: touchedIds } },
         select: { id: true },
       });
       const ownIds = new Set(ownStudios.map((s) => s.id));
-      for (const [studioId, gymId] of Object.entries(studioGymIds)) {
+
+      for (const [studioId, gymId] of Object.entries(studioGymIds ?? {})) {
         if (!ownIds.has(studioId)) continue; // never touch another tenant's studio
         try {
           await prisma.studio.update({
@@ -135,6 +158,14 @@ export async function PATCH(request: NextRequest) {
             { status: 409 },
           );
         }
+      }
+
+      for (const [studioId, secret] of Object.entries(studioWebhookSecrets ?? {})) {
+        if (!ownIds.has(studioId)) continue;
+        await prisma.studio.update({
+          where: { id: studioId },
+          data: { wellhubWebhookSecret: secret ? encrypt(secret.trim()) : null },
+        });
       }
     }
 
