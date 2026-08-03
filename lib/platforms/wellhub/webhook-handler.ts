@@ -89,22 +89,28 @@ export async function verifyAndParseGymWebhook<E extends EventWithGymId>(
     return { ok: false, status: 404, reason: "tenant_not_found" };
   }
 
-  // Wellhub signs per gym: prefer the studio's own secret (multi-location
-  // tenants where each gym got a different one), fall back to the tenant-level
-  // secret (single-location tenants, or one secret shared across gyms).
-  const encryptedSecret = tenant.studioWebhookSecret ?? tenant.config.wellhubWebhookSecret;
-  if (!encryptedSecret) {
+  // Wellhub signs per gym. Try every secret this gym could legitimately be
+  // signed with, most specific first: the studio's own (multi-location tenants
+  // with per-gym secrets) → the tenant-level one → the platform-wide secret
+  // (WELLHUB_PLATFORM_WEBHOOK_SECRET, the one in Wellhub's Mgic master config
+  // that signs newly onboarded gyms before any per-tenant secret exists).
+  const candidates: string[] = [];
+  for (const encrypted of [tenant.studioWebhookSecret, tenant.config.wellhubWebhookSecret]) {
+    if (!encrypted) continue;
+    try {
+      candidates.push(decrypt(encrypted));
+    } catch {
+      // Undecryptable stored secret — skip; other candidates may still match.
+    }
+  }
+  if (process.env.WELLHUB_PLATFORM_WEBHOOK_SECRET) {
+    candidates.push(process.env.WELLHUB_PLATFORM_WEBHOOK_SECRET);
+  }
+  if (candidates.length === 0) {
     return { ok: false, status: 409, reason: "tenant_missing_secret" };
   }
 
-  let secret: string;
-  try {
-    secret = decrypt(encryptedSecret);
-  } catch {
-    return { ok: false, status: 409, reason: "tenant_missing_secret" };
-  }
-
-  if (!verifySignature(rawBody, signatureHeader, secret)) {
+  if (!candidates.some((secret) => verifySignature(rawBody, signatureHeader, secret))) {
     return { ok: false, status: 401, reason: "invalid_signature" };
   }
 

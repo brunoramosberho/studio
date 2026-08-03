@@ -41,6 +41,11 @@ export async function getWellhubTokenForTenant(tenantId: string): Promise<string
     select: { wellhubAuthToken: true },
   });
   if (!config?.wellhubAuthToken) {
+    // The Wellhub token is CMS-scoped (verified live: one token operates every
+    // gym linked to Mgic), so tenants without their own token fall back to the
+    // platform token. A tenant-pasted token still wins when present.
+    const platformToken = process.env.WELLHUB_PLATFORM_TOKEN;
+    if (platformToken) return platformToken;
     throw new WellhubConfigError(
       "No Wellhub auth token configured for this tenant. The studio admin must paste their bearer token in /admin/platforms/setup/wellhub.",
     );

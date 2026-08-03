@@ -122,6 +122,58 @@ export function WellhubApiSetup() {
         config.freeVisitsPerMonth != null ? String(config.freeVisitsPerMonth) : "",
     });
   }, [config]);
+  // Live view of the gyms linked to Mgic + webhook health (Integration Setup API).
+  const { data: linkedGyms } = useQuery<{
+    available: boolean;
+    gyms: {
+      id: number;
+      enabled: boolean;
+      name: string | null;
+      state: "mine" | "taken" | "available";
+      mappedTo: string | null;
+    }[];
+  }>({
+    queryKey: ["wellhub-linked-gyms"],
+    queryFn: async () => (await fetch("/api/platforms/wellhub/linked-gyms")).json(),
+    staleTime: 60_000,
+  });
+  const { data: webhookStatus } = useQuery<{
+    gyms: {
+      gymId: number;
+      label: string;
+      ok: boolean;
+      error?: string;
+      webhooks: {
+        event: string;
+        optional?: boolean;
+        registered: boolean;
+        urlOk: boolean;
+        secretOk: boolean;
+      }[];
+    }[];
+  }>({
+    queryKey: ["wellhub-webhook-status"],
+    queryFn: async () => (await fetch("/api/platforms/wellhub/webhook-status")).json(),
+    staleTime: 60_000,
+  });
+  const registerWebhooks = useMutation({
+    mutationFn: async (gymId: number) => {
+      const res = await fetch("/api/platforms/wellhub/register-webhooks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gymId }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? "failed");
+      return body;
+    },
+    onSuccess: () => {
+      toast.success("Webhooks registrados en Wellhub");
+      qc.invalidateQueries({ queryKey: ["wellhub-webhook-status"] });
+    },
+    onError: (e: Error) => toast.error(`No se pudieron registrar: ${e.message}`),
+  });
+
   const [simSlotId, setSimSlotId] = useState<string>("");
   const [simClassId, setSimClassId] = useState<string>("");
   const [simUserId, setSimUserId] = useState<string>("1000000000002");
@@ -447,6 +499,150 @@ export function WellhubApiSetup() {
         </CardContent>
       </Card>
 
+      {/* Gyms linked to Mgic on Wellhub — live from the Integration Setup API */}
+      {linkedGyms?.available && (linkedGyms.gyms.length > 0 || (webhookStatus?.gyms.length ?? 0) > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between text-base">
+              <span>Gyms vinculados a Mgic</span>
+              <Badge variant="outline">{linkedGyms.gyms.length} en Wellhub</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Lista en vivo desde Wellhub de los gyms que eligieron Mgic como su
+              sistema. Un gym &quot;disponible&quot; aún no está asignado — pega su ID en
+              el Gym ID principal o en una ubicación (arriba) para reclamarlo.
+            </p>
+            <div className="space-y-1.5">
+              {linkedGyms.gyms.map((g) => (
+                <div
+                  key={g.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2.5 text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-medium">#{g.id}</span>
+                    <span className="text-muted-foreground">{g.name ?? "(sin nombre)"}</span>
+                    {!g.enabled && (
+                      <Badge variant="outline" className="text-[10px]">inactivo</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {g.state === "mine" && (
+                      <Badge variant="outline" className="bg-green-50 text-[10px]">
+                        Este estudio{g.mappedTo && g.mappedTo !== "principal" ? ` · ${g.mappedTo}` : ""}
+                      </Badge>
+                    )}
+                    {g.state === "taken" && (
+                      <Badge variant="outline" className="text-[10px]">En uso</Badge>
+                    )}
+                    {g.state === "available" && (
+                      <>
+                        <Badge variant="outline" className="bg-amber-50 text-[10px]">Disponible</Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => copyToClipboard(String(g.id), `gym_id ${g.id}`)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Webhook health per own gym, straight from Wellhub */}
+            {(webhookStatus?.gyms.length ?? 0) > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Estado de webhooks (en vivo)
+                </p>
+                {webhookStatus!.gyms.map((g) => (
+                  <div key={g.gymId} className="rounded-md border p-3">
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">
+                        {g.label} <span className="font-mono text-xs text-muted-foreground">#{g.gymId}</span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {g.ok ? (
+                          <Badge variant="outline" className="bg-green-50 text-[10px]">
+                            5/5 correctos
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-amber-50 text-[10px]">
+                            Requiere atención
+                          </Badge>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          disabled={registerWebhooks.isPending}
+                          onClick={() => {
+                            // Re-subscribing a live gym touches its Wellhub
+                            // config — make the admin confirm on purpose.
+                            if (
+                              window.confirm(
+                                `Esto (re)suscribe los webhooks del gym #${g.gymId} en Wellhub con las URLs y secret de Magic. En un gym ya operando normalmente no es necesario. ¿Continuar?`,
+                              )
+                            ) {
+                              registerWebhooks.mutate(g.gymId);
+                            }
+                          }}
+                        >
+                          {registerWebhooks.isPending && (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          )}
+                          {g.ok ? "Re-registrar" : "Registrar / Reparar"}
+                        </Button>
+                      </div>
+                    </div>
+                    {g.error ? (
+                      <p className="text-xs text-red-600">{g.error}</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {g.webhooks.map((w) => {
+                          const ok = w.registered && w.urlOk && w.secretOk;
+                          const optionalMissing = w.optional && !w.registered;
+                          return (
+                            <span
+                              key={w.event}
+                              title={
+                                optionalMissing
+                                  ? "Opcional — no registrado (el evento checkin lo cubre)"
+                                  : !w.registered
+                                    ? "No registrado"
+                                    : !w.urlOk
+                                      ? "URL no apunta a Magic"
+                                      : !w.secretOk
+                                        ? "Secret no coincide con el guardado"
+                                        : "OK"
+                              }
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                ok
+                                  ? "bg-green-50 text-green-700"
+                                  : optionalMissing
+                                    ? "bg-stone-100 text-stone-500"
+                                    : "bg-red-50 text-red-700"
+                              }`}
+                            >
+                              {w.event} {ok ? "✓" : optionalMissing ? "· opcional" : "✗"}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Step 2 — Webhooks (manual setup with Wellhub) */}
       <Card>
         <CardHeader>
@@ -461,14 +657,15 @@ export function WellhubApiSetup() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Wellhub no expone API para suscribir webhooks: tu account manager
-            los registra del lado de ellos. Las 5 URLs de abajo son las
-            mismas para todos los estudios (Magic enruta cada webhook al
-            tenant correcto usando el <code className="rounded bg-muted px-1">gym_id</code> del payload).
-            Si Wellhub ya las tiene registradas a nivel de CMS, sólo necesitas
-            mandar el secret para tu gym. El secret se valida por gym; cuando
-            lo rotes, las llamadas en vuelo firmadas con el anterior fallarán
-            hasta que Wellhub actualice.
+            Normalmente NO necesitas esto: usa &quot;Registrar / Reparar&quot; en la
+            tarjeta de gyms vinculados y Magic suscribe los webhooks
+            directamente vía el Integration Setup API. Esta sección queda como
+            referencia manual (URLs + secret) por si tu account manager los
+            configura del lado de Wellhub. Las 5 URLs son las mismas para
+            todos los estudios (Magic enruta cada webhook al tenant correcto
+            usando el <code className="rounded bg-muted px-1">gym_id</code> del payload).
+            El secret se valida por gym; si lo rotas, re-registra los webhooks
+            para que Wellhub firme con el nuevo.
           </p>
 
           <div className="space-y-1.5 rounded-md border bg-muted/30 p-3">
