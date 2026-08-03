@@ -43,6 +43,28 @@ if (process.env.RESEND_API_KEY) {
         // The admin instance signs callbacks through /api/auth-admin, which is
         // how we tell the two portals apart. On the client portal this check is
         // skipped entirely — signing up there is the whole point.
+        // Blocked members get no link either — otherwise "you're blocked"
+        // arrives only after they've clicked through and signed in.
+        {
+          const { getTenantSlug } = await import("./tenant");
+          const { prisma: db } = await import("./db");
+          const slug = await getTenantSlug();
+          if (slug) {
+            const blocked = await db.membership.findFirst({
+              where: {
+                tenant: { slug },
+                blockedAt: { not: null },
+                user: { email: { equals: email.trim().toLowerCase(), mode: "insensitive" } },
+              },
+              select: { id: true },
+            });
+            if (blocked) {
+              console.warn(`[auth] magic link refused for blocked member ${email} on ${slug}`);
+              return;
+            }
+          }
+        }
+
         if (url.includes("/api/auth-admin/")) {
           const { getTenantSlug } = await import("./tenant");
           const { isStaffEmail } = await import("./staff-access");

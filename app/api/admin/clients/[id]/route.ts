@@ -171,7 +171,14 @@ export async function GET(
 
     const membership = await prisma.membership.findUnique({
       where: { userId_tenantId: { userId, tenantId } },
-      select: { role: true, pwaInstalledAt: true, lastSeenAt: true, createdAt: true },
+      select: {
+        role: true,
+        pwaInstalledAt: true,
+        lastSeenAt: true,
+        createdAt: true,
+        blockedAt: true,
+        blockedReason: true,
+      },
     });
 
     if (!membership) {
@@ -495,6 +502,8 @@ export async function GET(
       pwaInstalledAt: membership.pwaInstalledAt?.toISOString() ?? null,
       lastSeenAt: membership.lastSeenAt?.toISOString() ?? null,
       role: membership.role,
+      blockedAt: membership.blockedAt?.toISOString() ?? null,
+      blockedReason: membership.blockedReason,
 
       stats: {
         totalClasses,

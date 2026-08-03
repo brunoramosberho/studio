@@ -45,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -55,7 +56,7 @@ import { cn, formatDate, timeAgo, getDateLocale } from "@/lib/utils";
 import { useFormatMoney } from "@/components/tenant-provider";
 import { format } from "date-fns";
 import { usePosStore } from "@/store/pos-store";
-import { ShoppingBag, Users } from "lucide-react";
+import { ShoppingBag, Users, Ban, ShieldCheck } from "lucide-react";
 import type { PlatformType } from "@prisma/client";
 import { partnerLabel } from "@/lib/platforms/labels";
 import { CardBrandIcon } from "@/components/payments/card-brand-icon";
@@ -74,6 +75,8 @@ interface ClientDetail {
   pwaInstalledAt: string | null;
   lastSeenAt: string | null;
   role: string;
+  blockedAt: string | null;
+  blockedReason: string | null;
   wellhub: { email: string | null; linkedAt: string | null; linkedVia: string | null } | null;
   friends: { id: string; name: string | null; image: string | null }[];
   waiver?: {
@@ -1158,6 +1161,15 @@ export default function ClientDetailPage() {
             <WaiverCard clientId={client.id} waiver={client.waiver} />
           )}
 
+          {/* Access — the last resort when someone has to stop being a client */}
+          {client.role === "CLIENT" && (
+            <BlockCard
+              clientId={client.id}
+              blockedAt={client.blockedAt}
+              blockedReason={client.blockedReason}
+            />
+          )}
+
           {/* Debts */}
           {client.debts && client.debts.length > 0 && (
             <Card>
@@ -1910,6 +1922,125 @@ function WaiverCard({
             </>
           )}
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+/**
+ * Blocking a client is the "something happened" button: harassment, a threat,
+ * a payment dispute that turned ugly. It is reversible and per-studio, and the
+ * reason is an internal note the member never sees — so it can say what
+ * actually happened.
+ */
+function BlockCard({
+  clientId,
+  blockedAt,
+  blockedReason,
+}: {
+  clientId: string;
+  blockedAt: string | null;
+  blockedReason: string | null;
+}) {
+  const t = useTranslations("admin.clientBlock");
+  const qc = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const mutate = useMutation({
+    mutationFn: async (blocked: boolean) => {
+      const res = await fetch(`/api/admin/clients/${clientId}/block`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blocked, reason }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? "failed");
+      return body;
+    },
+    onSuccess: (_d, blocked) => {
+      qc.invalidateQueries({ queryKey: ["admin-client", clientId] });
+      setConfirming(false);
+      setReason("");
+      toast.success(blocked ? t("blockedOk") : t("unblockedOk"));
+    },
+    onError: () => toast.error(t("failed")),
+  });
+
+  if (blockedAt) {
+    return (
+      <Card className="border-red-200 bg-red-50/40 dark:border-red-900/40 dark:bg-red-950/10">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-2">
+            <Ban className="h-4 w-4 text-red-500" />
+            <span className="text-sm font-semibold">{t("blockedTitle")}</span>
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            {t("blockedSince", { date: formatDate(blockedAt) })}
+          </p>
+          {blockedReason && (
+            <p className="mt-2 rounded-lg bg-card px-3 py-2 text-xs">{blockedReason}</p>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => mutate.mutate(false)}
+            disabled={mutate.isPending}
+          >
+            <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+            {t("unblock")}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-center gap-2">
+          <Ban className="h-4 w-4 text-muted" />
+          <span className="text-sm font-semibold">{t("title")}</span>
+        </div>
+        {!confirming ? (
+          <>
+            <p className="mt-2 text-xs text-muted">{t("hint")}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 text-red-600 hover:bg-red-50"
+              onClick={() => setConfirming(true)}
+            >
+              {t("block")}
+            </Button>
+          </>
+        ) : (
+          <div className="mt-3 space-y-3">
+            <p className="text-xs text-muted">{t("confirmBody")}</p>
+            <Textarea
+              rows={2}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={t("reasonPlaceholder")}
+            />
+            <p className="text-[11px] text-muted/70">{t("reasonHint")}</p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => mutate.mutate(true)}
+                disabled={mutate.isPending}
+              >
+                {t("confirmBlock")}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
+                {t("cancel")}
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

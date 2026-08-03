@@ -213,6 +213,10 @@ export async function requireAuth(): Promise<AuthContext> {
 
   const tenant = await requireTenant();
   const membership = await ensureMembership(session.user.id, tenant.id);
+  // A blocked member keeps their session and their data — they just can't act.
+  // "Forbidden" rather than a new message so every existing route handler maps
+  // it to a 403 instead of falling through to a 500.
+  if (membership.blockedAt) throw new Error("Forbidden");
   touchLastSeen(membership);
 
   return { session: session as AuthContext["session"], tenant, membership };

@@ -26,10 +26,15 @@ export default async function MyLayout({ children }: { children: React.ReactNode
     if (userId) {
       const membership = await prisma.membership.findUnique({
         where: { userId_tenantId: { userId, tenantId: tenant.id } },
-        select: { role: true },
+        select: { role: true, blockedAt: true },
       });
       if (membership?.role === "ADMIN" || membership?.role === "FRONT_DESK") {
         redirect("/admin");
+      }
+      // Blocked at this studio: say so once, rather than letting them wander a
+      // portal where every action fails.
+      if (membership?.blockedAt) {
+        redirect("/blocked");
       }
     }
   }

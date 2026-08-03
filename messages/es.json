@@ -1906,7 +1906,23 @@
       "imageTooLarge": "La imagen pesa más de 5 MB.",
       "imageFailed": "No se pudo subir la imagen."
     },
-    "challenges": "Retos"
+    "challenges": "Retos",
+    "clientBlock": {
+      "title": "Acceso al estudio",
+      "hint": "Bloquear impide que esta persona entre a la app, reserve o compre en este estudio. No afecta a otros estudios ni borra su historial.",
+      "block": "Bloquear cliente",
+      "confirmBody": "Va a perder el acceso de inmediato. Puedes revertirlo cuando quieras.",
+      "reasonPlaceholder": "Motivo (opcional)",
+      "reasonHint": "Solo lo ven ustedes. El cliente nunca ve este texto.",
+      "confirmBlock": "Sí, bloquear",
+      "cancel": "Cancelar",
+      "blockedTitle": "Cliente bloqueado",
+      "blockedSince": "Bloqueado el {date}",
+      "unblock": "Quitar el bloqueo",
+      "blockedOk": "Cliente bloqueado",
+      "unblockedOk": "Bloqueo retirado",
+      "failed": "No se pudo completar la acción"
+    }
   },
   "coach": {
     "portal": "Portal del Instructor",
@@ -2294,6 +2310,11 @@
       "prizes": "Premios",
       "disciplinesDone": "Disciplinas · {done} de {total}",
       "coachesDone": "Instructores · {done} de {total}"
+    },
+    "blocked": {
+      "title": "Tu acceso está suspendido",
+      "body": "Tu cuenta no puede usar la app de {studio} por ahora.",
+      "contact": "Si crees que es un error, habla directamente con el estudio."
     }
   },
   "public": {

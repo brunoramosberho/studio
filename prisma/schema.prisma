@@ -419,6 +419,14 @@ model Membership {
   lastSeenAt     DateTime?
   createdAt      DateTime  @default(now())
 
+  // Blocked from this tenant: kept per-membership rather than on User, because
+  // a person barred from one studio has no business being barred from another.
+  // Enforced in requireAuth (every client API), in the /my layout, and by
+  // refusing to send them a magic link for this tenant.
+  blockedAt     DateTime?
+  blockedReason String?
+  blockedById   String?
+
   // Per-admin opt-in: email this staff member on every new client booking.
   // Off by default so enabling it for one admin never spams the rest.
   notifyEmailOnBooking Boolean @default(false)
@@ -444,6 +452,7 @@ model Membership {
 
   @@unique([userId, tenantId])
   @@index([tenantId])
+  @@index([tenantId, blockedAt])
 }
 
 // ── Referrals ──

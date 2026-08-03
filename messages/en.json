@@ -1906,7 +1906,23 @@
       "imageTooLarge": "That image is over 5 MB.",
       "imageFailed": "Couldn't upload that image."
     },
-    "challenges": "Challenges"
+    "challenges": "Challenges",
+    "clientBlock": {
+      "title": "Studio access",
+      "hint": "Blocking stops this person from using the app, booking or buying at this studio. It doesn't affect other studios and doesn't delete their history.",
+      "block": "Block client",
+      "confirmBody": "They lose access immediately. You can undo this at any time.",
+      "reasonPlaceholder": "Reason (optional)",
+      "reasonHint": "Only your team sees this. The client never does.",
+      "confirmBlock": "Yes, block",
+      "cancel": "Cancel",
+      "blockedTitle": "Client blocked",
+      "blockedSince": "Blocked on {date}",
+      "unblock": "Remove block",
+      "blockedOk": "Client blocked",
+      "unblockedOk": "Block removed",
+      "failed": "That didn't work"
+    }
   },
   "coach": {
     "portal": "Instructor Portal",
@@ -2294,6 +2310,11 @@
       "prizes": "Prizes",
       "disciplinesDone": "Disciplines · {done} of {total}",
       "coachesDone": "Instructors · {done} of {total}"
+    },
+    "blocked": {
+      "title": "Your access is suspended",
+      "body": "Your account can't use the {studio} app right now.",
+      "contact": "If you think this is a mistake, please talk to the studio directly."
     }
   },
   "public": {
