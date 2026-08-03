@@ -289,6 +289,7 @@ model Tenant {
   staffCommissionRules    StaffCommissionRule[]
   staffCommissionEarnings StaffCommissionEarning[]
   leads                   Lead[]
+  challenges     Challenge[]
 }
 
 /// People who showed interest (filled their info in a guest checkout, requested
@@ -629,6 +630,7 @@ model User {
 
   @@index([countryId])
   @@index([cityId])
+  challengeParticipations ChallengeParticipant[] @relation("ChallengeParticipations")
 }
 
 model FavoriteSong {
@@ -1046,6 +1048,7 @@ model Booking {
   @@index([tenantId])
   @@index([parentBookingId])
   @@index([sourceEntitlementId])
+  challengePoints ChallengePointEntry[]
 }
 
 enum PendingPenaltyStatus {
@@ -2871,6 +2874,122 @@ model RatingReason {
   classType ClassType? @relation(fields: [classTypeId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, classTypeId])
+}
+
+// ── Challenges ────────────────────────────────────────────────────────
+// Time-boxed competitions that reward showing up, trying every discipline
+// and every instructor. Design notes that the code depends on:
+//
+//  - Each participant gets their OWN `durationDays` window, sealed by their
+//    FIRST attended class (not by enrolling), so nobody burns days waiting
+//    to come. Activation closes with enrollment, which bounds the whole
+//    challenge at enrollClosesAt + durationDays.
+//  - Points are a LEDGER, never a counter: one row per (booking, kind), so
+//    they can be explained, recomputed and reversed when a check-in is
+//    undone. Totals on the participant are a cache of that ledger.
+//  - One ACTIVE challenge per tenant (enforced in the API — Postgres can't
+//    express it as a partial unique index through Prisma).
+
+enum ChallengeStatus {
+  DRAFT
+  ACTIVE
+  ENDED
+}
+
+enum ChallengePointKind {
+  BASE
+  FIRST_DISCIPLINE
+  FIRST_COACH
+  OFF_PEAK
+}
+
+model Challenge {
+  id          String          @id @default(cuid())
+  tenantId    String
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  imageUrl    String?
+  status      ChallengeStatus @default(DRAFT)
+
+  durationDays   Int      @default(30)
+  enrollOpensAt  DateTime
+  // Also the deadline to ACTIVATE: no first class by this date, no challenge.
+  enrollClosesAt DateTime
+  // Empty = every studio counts.
+  studioIds      String[] @default([])
+
+  basePoints           Int  @default(10)
+  firstDisciplineBonus Int  @default(15)
+  firstCoachBonus      Int  @default(10)
+  // null = unlimited. Caps a single big day from outrunning consistency.
+  dailyPointsCap       Int?
+  // Slots the studio wants to fill, picked from the Insights matrix:
+  // [{ "dayOfWeek": 1, "hour": 10, "points": 5 }]
+  bonusSlots           Json @default("[]")
+  // [{ "fromRank": 1, "toRank": 1, "title": "Mes gratis" }]
+  prizes               Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ChallengeParticipant[]
+  pointEntries ChallengePointEntry[]
+
+  @@index([tenantId, status])
+}
+
+model ChallengeParticipant {
+  id          String    @id @default(cuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation("ChallengeParticipations", fields: [userId], references: [id], onDelete: Cascade)
+  tenantId    String
+
+  joinedAt DateTime  @default(now())
+  // Null until the first attended class seals the window.
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  totalPoints      Int       @default(0)
+  classesCount     Int       @default(0)
+  currentStreak    Int       @default(0)
+  longestStreak    Int       @default(0)
+  lastActivityDate DateTime? @db.Date
+
+  pointEntries ChallengePointEntry[]
+
+  @@unique([challengeId, userId])
+  @@index([tenantId])
+  @@index([challengeId, totalPoints])
+}
+
+model ChallengePointEntry {
+  id            String               @id @default(cuid())
+  challengeId   String
+  challenge     Challenge            @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  tenantId      String
+
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  classId   String
+  // Denormalised so "which disciplines/coaches have I tried" is one query.
+  classTypeId String
+  coachId     String
+
+  kind   ChallengePointKind
+  points Int
+  // Studio-local calendar date — streaks are counted in the studio's day.
+  earnedOn DateTime @db.Date
+
+  createdAt DateTime @default(now())
+
+  @@unique([challengeId, bookingId, kind])
+  @@index([participantId, earnedOn])
+  @@index([tenantId])
 }
 
 // ── Highlights (marketing banners on feed) ──
