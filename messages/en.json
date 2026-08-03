@@ -99,7 +99,14 @@
     "redirecting": "Redirecting...",
     "termsNotice": "By continuing, you accept our <terms>Terms</terms> and <privacy>Privacy Policy</privacy>.",
     "termsOfService": "terms of service",
-    "privacyPolicy": "privacy policy"
+    "privacyPolicy": "privacy policy",
+    "noAccess": {
+      "title": "You don't have access to this studio",
+      "bodyAdmin": "Your account isn't part of this studio's team. If it should be, ask an administrator to add you from the Team section.",
+      "bodyCoach": "Your account isn't registered as an instructor at this studio. If it should be, ask an administrator to add you.",
+      "goToMember": "Go to my member account",
+      "switchAccount": "Sign in with another account"
+    }
   },
   "nav": {
     "feed": "Feed",

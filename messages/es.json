@@ -99,7 +99,14 @@
     "redirecting": "Redirigiendo...",
     "termsNotice": "Al continuar, aceptas nuestros <terms>Términos</terms> y nuestro <privacy>Aviso de Privacidad</privacy>.",
     "termsOfService": "terminos de servicio",
-    "privacyPolicy": "politica de privacidad"
+    "privacyPolicy": "politica de privacidad",
+    "noAccess": {
+      "title": "No tienes acceso a este estudio",
+      "bodyAdmin": "Tu cuenta no forma parte del equipo de este estudio. Si deberías tener acceso, pídele a un administrador que te dé de alta desde Equipo.",
+      "bodyCoach": "Tu cuenta no está registrada como instructor de este estudio. Si deberías estarlo, pídele a un administrador que te dé de alta.",
+      "goToMember": "Ir a mi cuenta de cliente",
+      "switchAccount": "Entrar con otra cuenta"
+    }
   },
   "nav": {
     "feed": "Feed",

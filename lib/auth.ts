@@ -39,6 +39,26 @@ if (process.env.RESEND_API_KEY) {
         const host = h.get("host") || process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000";
         const protocol = host.includes("localhost") ? "http" : "https";
 
+        // Staff portal: only send a link to someone who is already staff here.
+        // The admin instance signs callbacks through /api/auth-admin, which is
+        // how we tell the two portals apart. On the client portal this check is
+        // skipped entirely — signing up there is the whole point.
+        if (url.includes("/api/auth-admin/")) {
+          const { getTenantSlug } = await import("./tenant");
+          const { isStaffEmail } = await import("./staff-access");
+          const { prisma: db } = await import("./db");
+          const slug = await getTenantSlug();
+          const tenantRow = slug
+            ? await db.tenant.findUnique({ where: { slug }, select: { id: true } })
+            : null;
+          if (!tenantRow || !(await isStaffEmail(email, tenantRow.id))) {
+            // Silently drop it. Saying "that email has no access here" would
+            // let anyone probe which addresses are staff at a studio.
+            console.warn(`[auth] admin magic link refused for ${email} on ${slug ?? "unknown"}`);
+            return;
+          }
+        }
+
         const fixedUrl = new URL(url);
         fixedUrl.protocol = protocol;
         fixedUrl.host = host;
