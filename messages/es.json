@@ -1525,7 +1525,19 @@
       "prizeError": "Error al otorgar premio",
       "clickToGrant": "Clic para otorgar premio",
       "maxLevel": "Nivel maximo",
-      "classesToNext": "{count} clases para {level}"
+      "classesToNext": "{count} clases para {level}",
+      "waiverTitle": "Waiver de responsabilidad",
+      "waiverSigned": "Firmado",
+      "waiverPending": "Sin firmar",
+      "waiverOutdated": "Versión antigua",
+      "waiverSignedBy": "Firmado por {name} el {date} (versión {version}).",
+      "waiverNeverSigned": "Este cliente todavía no ha firmado el waiver.",
+      "waiverDownload": "Descargar PDF",
+      "waiverSendEmail": "Enviar por correo",
+      "waiverEmailSent": "Correo enviado",
+      "waiverEmailError": "No se pudo enviar el correo",
+      "waiverSignHere": "Firmar en este dispositivo",
+      "waiverSignHereError": "No se pudo abrir el waiver"
     },
     "onDemand": {
       "title": "On-Demand",
@@ -2403,7 +2415,9 @@
     "alreadyEnrolled": "Ya inscrito",
     "inWaitlist": "En espera",
     "blockedSpotsList": "{count, plural, one {Lugar bloqueado} other {Lugares bloqueados}}: {spots}",
-    "blockedSpotsCount": "{count, plural, one {# lugar bloqueado} other {# lugares bloqueados}}"
+    "blockedSpotsCount": "{count, plural, one {# lugar bloqueado} other {# lugares bloqueados}}",
+    "waiverSignHere": "Firmar en este dispositivo",
+    "waiverSignHereError": "No se pudo abrir el waiver"
   },
   "rating": {
     "thanks": "Gracias!",

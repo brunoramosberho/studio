@@ -35,7 +35,7 @@ import {
   CancelBookingDialog,
   MoveBookingDialog,
 } from "@/components/admin/booking-actions";
-import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2, MoreVertical, UserX, Ban } from "lucide-react";
+import { ChevronDown, Map as MapIcon, ArrowRightLeft, Trash2, MoreVertical, UserX, Ban, PenLine } from "lucide-react";
 import { createPortal } from "react-dom";
 import { CoachPenaltyButton } from "@/components/check-in/coach-penalty-button";
 
@@ -1917,8 +1917,37 @@ function WaiverConfirmDialog({
 }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [opening, setOpening] = useState(false);
 
   const t = useTranslations("checkin");
+
+  // Sign on the studio's own device: fetch a tokenized link and open it, so
+  // the member signs on the iPad at the desk instead of waiting for email.
+  async function handleSignHere() {
+    setOpening(true);
+    // Open synchronously — Safari blocks window.open from an async callback.
+    const tab = window.open("", "_blank");
+    try {
+      const res = await fetch("/api/admin/waiver/sign-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        tab?.close();
+        toast.error(data.error ?? t("waiverSignHereError"));
+        return;
+      }
+      if (tab) tab.location.href = data.url;
+      else window.location.href = data.url;
+    } catch {
+      tab?.close();
+      toast.error(t("waiverSignHereError"));
+    } finally {
+      setOpening(false);
+    }
+  }
 
   async function handleSendEmail() {
     setSending(true);
@@ -1973,6 +2002,19 @@ function WaiverConfirmDialog({
                   <Mail size={13} />
                 )}
                 {sent ? t("emailSent") : t("sendEmailLink")}
+              </button>
+
+              <button
+                onClick={handleSignHere}
+                disabled={opening}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs rounded-lg transition-colors",
+                  "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                  opening && "opacity-70 cursor-not-allowed",
+                )}
+              >
+                {opening ? <Loader2 size={13} className="animate-spin" /> : <PenLine size={13} />}
+                {t("waiverSignHere")}
               </button>
 
               <div className="flex gap-2">

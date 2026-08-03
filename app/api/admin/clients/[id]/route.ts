@@ -426,9 +426,56 @@ export async function GET(
       select: { email: true, userLinkedAt: true, linkedVia: true },
     });
 
+    // Waiver status for this member: whether the studio requires one, and if
+    // the member signed the CURRENT version (an older signature needs a
+    // re-sign). Front desk uses this to chase it from the profile.
+    const activeWaiver = await prisma.waiver.findFirst({
+      where: { tenantId, status: "active" },
+      select: { id: true, version: true, title: true },
+    });
+    let waiver: {
+      required: boolean;
+      version: number | null;
+      signature: {
+        id: string;
+        signedAt: string;
+        version: number;
+        participantName: string;
+        hasPdf: boolean;
+        outdated: boolean;
+      } | null;
+    } = { required: false, version: null, signature: null };
+    if (activeWaiver) {
+      const sig = await prisma.waiverSignature.findUnique({
+        where: { waiverId_memberId: { waiverId: activeWaiver.id, memberId: userId } },
+        select: {
+          id: true,
+          signedAt: true,
+          waiverVersion: true,
+          participantName: true,
+          pdfStorageKey: true,
+        },
+      });
+      waiver = {
+        required: true,
+        version: activeWaiver.version,
+        signature: sig
+          ? {
+              id: sig.id,
+              signedAt: sig.signedAt.toISOString(),
+              version: sig.waiverVersion,
+              participantName: sig.participantName,
+              hasPdf: !!sig.pdfStorageKey,
+              outdated: sig.waiverVersion < activeWaiver.version,
+            }
+          : null,
+      };
+    }
+
     return NextResponse.json({
       friends,
       savedCards,
+      waiver,
       wellhub: wellhubLink
         ? {
             email: wellhubLink.email,

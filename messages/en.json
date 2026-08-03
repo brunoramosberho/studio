@@ -1525,7 +1525,19 @@
       "prizeError": "Error granting prize",
       "clickToGrant": "Click to grant prize",
       "maxLevel": "Max level",
-      "classesToNext": "{count} classes to {level}"
+      "classesToNext": "{count} classes to {level}",
+      "waiverTitle": "Liability waiver",
+      "waiverSigned": "Signed",
+      "waiverPending": "Not signed",
+      "waiverOutdated": "Old version",
+      "waiverSignedBy": "Signed by {name} on {date} (version {version}).",
+      "waiverNeverSigned": "This client hasn't signed the waiver yet.",
+      "waiverDownload": "Download PDF",
+      "waiverSendEmail": "Send by email",
+      "waiverEmailSent": "Email sent",
+      "waiverEmailError": "Couldn't send the email",
+      "waiverSignHere": "Sign on this device",
+      "waiverSignHereError": "Couldn't open the waiver"
     },
     "onDemand": {
       "title": "On-Demand",
@@ -2403,7 +2415,9 @@
     "alreadyEnrolled": "Already enrolled",
     "inWaitlist": "On waitlist",
     "blockedSpotsList": "{count, plural, one {Blocked spot} other {Blocked spots}}: {spots}",
-    "blockedSpotsCount": "{count, plural, one {# blocked spot} other {# blocked spots}}"
+    "blockedSpotsCount": "{count, plural, one {# blocked spot} other {# blocked spots}}",
+    "waiverSignHere": "Sign on this device",
+    "waiverSignHereError": "Couldn't open the waiver"
   },
   "rating": {
     "thanks": "Thank you!",

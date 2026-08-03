@@ -35,6 +35,9 @@ import {
   Receipt,
   Gift,
   Trophy,
+  FileText,
+  Download,
+  PenLine,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,6 +76,18 @@ interface ClientDetail {
   role: string;
   wellhub: { email: string | null; linkedAt: string | null; linkedVia: string | null } | null;
   friends: { id: string; name: string | null; image: string | null }[];
+  waiver?: {
+    required: boolean;
+    version: number | null;
+    signature: {
+      id: string;
+      signedAt: string;
+      version: number;
+      participantName: string;
+      hasPdf: boolean;
+      outdated: boolean;
+    } | null;
+  };
   savedCards: {
     id: string;
     brand: string;
@@ -1138,6 +1153,11 @@ export default function ClientDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Waiver — status plus the three ways to resolve it */}
+          {client.waiver?.required && (
+            <WaiverCard clientId={client.id} waiver={client.waiver} />
+          )}
+
           {/* Debts */}
           {client.debts && client.debts.length > 0 && (
             <Card>
@@ -1734,5 +1754,163 @@ export default function ClientDetailPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+
+// ── Waiver card ───────────────────────────────────────────────────────
+// Front desk chases the waiver from the profile too: see whether it's
+// signed (and against which version), download the signed PDF, email the
+// link, or hand over the studio's device to sign right now.
+
+function WaiverCard({
+  clientId,
+  waiver,
+}: {
+  clientId: string;
+  waiver: NonNullable<ClientDetail["waiver"]>;
+}) {
+  const t = useTranslations("admin.clientProfile");
+  const locale = useLocale();
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [opening, setOpening] = useState(false);
+
+  const sig = waiver.signature;
+  const pending = !sig || sig.outdated;
+
+  async function sendEmail() {
+    setSending(true);
+    try {
+      const res = await fetch("/api/admin/waiver/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId: clientId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) toast.error(data.error ?? t("waiverEmailError"));
+      else {
+        setSent(true);
+        toast.success(t("waiverEmailSent"));
+      }
+    } catch {
+      toast.error(t("waiverEmailError"));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function signHere() {
+    setOpening(true);
+    // Opened synchronously so Safari doesn't treat it as a popup.
+    const tab = window.open("", "_blank");
+    try {
+      const res = await fetch("/api/admin/waiver/sign-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId: clientId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        tab?.close();
+        toast.error(data.error ?? t("waiverSignHereError"));
+        return;
+      }
+      if (tab) tab.location.href = data.url;
+      else window.location.href = data.url;
+    } catch {
+      tab?.close();
+      toast.error(t("waiverSignHereError"));
+    } finally {
+      setOpening(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <FileText className="h-4 w-4 text-admin" />
+          <span className="text-sm font-semibold">{t("waiverTitle")}</span>
+          <Badge
+            className={cn(
+              "text-[10px]",
+              pending
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+            )}
+          >
+            {sig ? (sig.outdated ? t("waiverOutdated") : t("waiverSigned")) : t("waiverPending")}
+          </Badge>
+        </div>
+
+        {sig ? (
+          <p className="text-xs text-muted">
+            {t("waiverSignedBy", {
+              name: sig.participantName,
+              date: new Date(sig.signedAt).toLocaleDateString(locale, {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              }),
+              version: sig.version,
+            })}
+          </p>
+        ) : (
+          <p className="text-xs text-muted">{t("waiverNeverSigned")}</p>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {sig?.hasPdf && (
+            <a
+              href={`/api/admin/waiver/signatures/${sig.id}/pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-surface"
+            >
+              <Download className="h-3.5 w-3.5" />
+              {t("waiverDownload")}
+            </a>
+          )}
+          {pending && (
+            <>
+              <button
+                onClick={sendEmail}
+                disabled={sending || sent}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                  sent
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                    : "bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-300",
+                  (sending || sent) && "opacity-70",
+                )}
+              >
+                {sending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Mail className="h-3.5 w-3.5" />
+                )}
+                {sent ? t("waiverEmailSent") : t("waiverSendEmail")}
+              </button>
+              <button
+                onClick={signHere}
+                disabled={opening}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300",
+                  opening && "opacity-70",
+                )}
+              >
+                {opening ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <PenLine className="h-3.5 w-3.5" />
+                )}
+                {t("waiverSignHere")}
+              </button>
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
