@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/tenant";
 import { hasPermission } from "@/lib/permissions";
 import { signThumbnailUrl } from "@/lib/cloudflare-stream";
+import { reconcileStalledVideos } from "@/lib/on-demand/reconcile";
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,12 +40,22 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
+    // Cloudflare's webhook is the fast path, but it's a single delivery to a
+    // single URL — when it doesn't land, a video sits at "Processing…" with no
+    // way out. Ask Cloudflare about the stalled ones and merge the answers in
+    // before we build the response, so a newly-ready video also gets its
+    // thumbnail signed on this same request.
+    const reconciled = await reconcileStalledVideos(videos);
+    const merged = reconciled.size
+      ? videos.map((v) => ({ ...v, ...(reconciled.get(v.id) ?? {}) }))
+      : videos;
+
     // Mint a signed thumbnail URL per ready video. Cloudflare requires signed
     // URLs (we set requireSignedURLs=true at upload) so the raw thumbnail URL
     // would otherwise return 401. Custom thumbnailUrl (admin-uploaded poster)
     // is never served by Cloudflare so it stays as-is.
     const withSignedThumbs = await Promise.all(
-      videos.map(async (v) => {
+      merged.map(async (v) => {
         let signedThumb: string | null = null;
         if (
           v.status === "ready" &&
