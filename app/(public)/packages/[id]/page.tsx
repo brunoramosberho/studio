@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -76,28 +77,21 @@ function isSubscription(t: PackageData["type"]): boolean {
 
 const TYPE_META: Record<
   PackageData["type"],
-  { label: string; icon: typeof Gift }
+  { labelKey: string; icon: typeof Gift }
 > = {
-  OFFER: { label: "Oferta", icon: Gift },
-  PACK: { label: "Paquete de clases", icon: Layers },
-  SUBSCRIPTION: { label: "Suscripción", icon: CalendarSync },
-  ON_DEMAND_SUBSCRIPTION: { label: "Suscripción On-Demand", icon: Video },
+  OFFER: { labelKey: "typeOffer", icon: Gift },
+  PACK: { labelKey: "typePack", icon: Layers },
+  SUBSCRIPTION: { labelKey: "typeSubscription", icon: CalendarSync },
+  ON_DEMAND_SUBSCRIPTION: { labelKey: "typeOnDemand", icon: Video },
 };
 
-const VALID_DAYS_UNITS_ES: Record<ValidDaysUnitKey, string> = {
-  daysUnit: "días",
-  weeksUnit: "semanas",
-  monthUnit: "mes",
-  monthsUnit: "meses",
-  yearUnit: "año",
-  yearsUnit: "años",
-};
 
-function validDaysLabel(days: number): string {
-  return formatValidDays(days, (k) => VALID_DAYS_UNITS_ES[k]);
+function validDaysLabel(days: number, t: (k: ValidDaysUnitKey) => string): string {
+  return formatValidDays(days, t);
 }
 
 export default function PackageDetailPage() {
+  const t = useTranslations("packageDetail");
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
@@ -199,7 +193,7 @@ export default function PackageDetailPage() {
             transition={{ duration: 0.3 }}
           >
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-              {meta.label}
+              {t(meta.labelKey)}
             </p>
 
             {/* Name */}
@@ -219,14 +213,14 @@ export default function PackageDetailPage() {
               <Clock className="h-4 w-4 flex-shrink-0" />
               <span>
                 {isSubscription(pkg.type)
-                  ? `Renovación ${pkg.recurringInterval === "year" ? "anual" : "mensual"}`
-                  : `Caduca despues de ${validDaysLabel(pkg.validDays)}`}
+                  ? t(pkg.recurringInterval === "year" ? "renewsYearly" : "renewsMonthly")
+                  : t("expiresAfter", { period: validDaysLabel(pkg.validDays, t) })}
               </span>
             </div>
             {isSubscription(pkg.type) && (pkg.minCommitmentMonths ?? 0) > 0 && (
               <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 px-2.5 py-2 text-sm font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
                 <Lock className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <span>Permanencia mínima de {pkg.minCommitmentMonths} meses</span>
+                <span>{t("minCommitment", { months: pkg.minCommitmentMonths ?? 0 })}</span>
               </div>
             )}
             <div className="flex items-center gap-2.5 text-sm text-muted">
@@ -234,20 +228,20 @@ export default function PackageDetailPage() {
               <span>
                 {formatCurrency(pkg.price, pkg.currency)}
                 {isSubscription(pkg.type) && (
-                  <span> / {pkg.recurringInterval === "year" ? "año" : "mes"}</span>
+                  <span> / {t(pkg.recurringInterval === "year" ? "perYear" : "perMonth")}</span>
                 )}
               </span>
             </div>
             {pkg.type === "ON_DEMAND_SUBSCRIPTION" && (
               <div className="flex items-center gap-2.5 text-sm text-muted">
                 <Video className="h-4 w-4 flex-shrink-0" />
-                <span>Acceso ilimitado a videos on-demand</span>
+                <span>{t("onDemandUnlimited")}</span>
               </div>
             )}
             {pkg.type === "SUBSCRIPTION" && pkg.includesOnDemand && (
               <div className="flex items-center gap-2.5 text-sm text-muted">
                 <Video className="h-4 w-4 flex-shrink-0" />
-                <span>Incluye videos on-demand</span>
+                <span>{t("includesOnDemand")}</span>
               </div>
             )}
             {pkg.creditAllocations && pkg.creditAllocations.length > 0 ? (
@@ -255,7 +249,7 @@ export default function PackageDetailPage() {
                 <div key={alloc.classTypeId} className="flex items-center gap-2.5 text-sm text-muted">
                   <Ticket className="h-4 w-4 flex-shrink-0" />
                   <span>
-                    {alloc.credits} {alloc.credits === 1 ? "crédito" : "créditos"} de {alloc.classType.name}
+                    {t("creditsFor", { count: alloc.credits, discipline: alloc.classType.name })}
                   </span>
                 </div>
               ))
@@ -263,21 +257,20 @@ export default function PackageDetailPage() {
               <div className="flex items-center gap-2.5 text-sm text-muted">
                 <Ticket className="h-4 w-4 flex-shrink-0" />
                 <span>
-                  {pkg.credits} {pkg.credits === 1 ? "crédito de clase" : "créditos de clase"}
+                  {t("classCredits", { count: pkg.credits })}
                 </span>
               </div>
             ) : (
               <div className="flex items-center gap-2.5 text-sm text-muted">
                 <Ticket className="h-4 w-4 flex-shrink-0" />
-                <span>Clases ilimitadas</span>
+                <span>{t("unlimitedClasses")}</span>
               </div>
             )}
             {pkg.maxBookingsPerDay != null && (
               <div className="flex items-center gap-2.5 text-sm text-muted">
                 <Sunrise className="h-4 w-4 flex-shrink-0" />
                 <span>
-                  Máximo {pkg.maxBookingsPerDay}{" "}
-                  {pkg.maxBookingsPerDay === 1 ? "reserva" : "reservas"} por día
+                  {t("maxPerDay", { count: pkg.maxBookingsPerDay })}
                 </span>
               </div>
             )}
@@ -285,11 +278,7 @@ export default function PackageDetailPage() {
               <div className="flex items-center gap-2.5 text-sm text-muted">
                 <CalendarClock className="h-4 w-4 flex-shrink-0" />
                 <span>
-                  Hasta {pkg.maxConcurrentUpcomingBookings}{" "}
-                  {pkg.maxConcurrentUpcomingBookings === 1
-                    ? "reserva futura pendiente"
-                    : "reservas futuras pendientes"}{" "}
-                  a la vez
+                  {t("maxConcurrent", { count: pkg.maxConcurrentUpcomingBookings })}
                 </span>
               </div>
             )}
@@ -394,12 +383,15 @@ export default function PackageDetailPage() {
             disabled={pkg.purchaseLimitReached}
           >
             {pkg.purchaseLimitReached
-              ? "Ya la adquiriste"
+              ? t("alreadyOwned")
               : isSubscription(pkg.type)
-                ? `Suscribirme por ${formatCurrency(pkg.price, pkg.currency)}/${pkg.recurringInterval === "year" ? "año" : "mes"}`
+                ? t("subscribeFor", {
+                    price: formatCurrency(pkg.price, pkg.currency),
+                    period: t(pkg.recurringInterval === "year" ? "perYear" : "perMonth"),
+                  })
                 : pkg.isPromo
-                  ? "Probar ahora"
-                  : `Comprar por ${formatCurrency(pkg.price, pkg.currency)}`}
+                  ? t("tryNow")
+                  : t("buyFor", { price: formatCurrency(pkg.price, pkg.currency) })}
           </Button>
         </motion.div>
       </div>

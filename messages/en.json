@@ -3710,5 +3710,28 @@
     "groupSubscriptions": "Subscriptions",
     "groupOffers": "Offers",
     "groupPacks": "Class packs"
+  },
+  "packageDetail": {
+    "typeOffer": "Offer",
+    "typePack": "Class pack",
+    "typeSubscription": "Subscription",
+    "typeOnDemand": "On-Demand subscription",
+    "renewsYearly": "Renews yearly",
+    "renewsMonthly": "Renews monthly",
+    "expiresAfter": "Expires after {period}",
+    "minCommitment": "Minimum commitment of {months} months",
+    "perYear": "year",
+    "perMonth": "month",
+    "onDemandUnlimited": "Unlimited access to on-demand videos",
+    "includesOnDemand": "Includes on-demand videos",
+    "creditsFor": "{count, plural, one {1 credit} other {# credits}} for {discipline}",
+    "classCredits": "{count, plural, one {1 class credit} other {# class credits}}",
+    "unlimitedClasses": "Unlimited classes",
+    "maxPerDay": "Up to {count, plural, one {1 booking} other {# bookings}} per day",
+    "maxConcurrent": "Up to {count, plural, one {1 upcoming booking} other {# upcoming bookings}} at a time",
+    "alreadyOwned": "You already have it",
+    "tryNow": "Try it now",
+    "subscribeFor": "Subscribe for {price}/{period}",
+    "buyFor": "Buy for {price}"
   }
 }
