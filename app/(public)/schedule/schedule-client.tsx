@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo, useCallback, type MouseEvent, type ReactNode } from "react";
+import { shortCoachName } from "@/lib/coach-name";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -563,7 +564,7 @@ export function ScheduleClient({
               <div className="flex gap-4">
                 {coaches.map((c) => {
                   const active = filterCoaches.has(c.id);
-                  const firstName = c.name?.split(" ")[0] || "Coach";
+                  const shortName = shortCoachName(c.name) || "Coach";
                   return (
                     <button
                       key={c.id}
@@ -579,12 +580,12 @@ export function ScheduleClient({
                         {(c.photoUrl || c.user?.image) ? (
                           <img
                             src={c.photoUrl || c.user?.image!}
-                            alt={firstName}
+                            alt={shortName}
                             className="h-full w-full object-cover"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-accent/20 text-base font-bold text-accent">
-                            {firstName.charAt(0)}
+                            {shortName.charAt(0)}
                           </div>
                         )}
                       </div>
@@ -592,7 +593,7 @@ export function ScheduleClient({
                         "max-w-[56px] truncate text-[11px] font-medium",
                         active ? "text-foreground" : "text-muted",
                       )}>
-                        {firstName}
+                        {shortName}
                       </span>
                     </button>
                   );
@@ -630,7 +631,7 @@ export function ScheduleClient({
                       />
                     )}
                     <span className="flex-1 text-[13px] font-medium text-foreground">
-                      {selectedCoach.name?.split(" ")[0]}
+                      {shortCoachName(selectedCoach.name)}
                     </span>
                     <span className="text-[12px] font-medium text-accent">
                       {t("viewProfile")}
@@ -832,7 +833,7 @@ export function ScheduleClient({
             <div className="flex items-start gap-5 overflow-x-auto scrollbar-none">
               {coaches.map((c) => {
                 const active = filterCoaches.has(c.id);
-                const firstName = c.name?.split(" ")[0] || "Coach";
+                const shortName = shortCoachName(c.name) || "Coach";
                 return (
                   <button
                     key={c.id}
@@ -850,12 +851,12 @@ export function ScheduleClient({
                       {(c.photoUrl || c.user?.image) ? (
                         <img
                           src={c.photoUrl || c.user?.image!}
-                          alt={firstName}
+                          alt={shortName}
                           className="h-full w-full object-cover"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-accent/20 text-sm font-bold text-accent">
-                          {firstName.charAt(0)}
+                          {shortName.charAt(0)}
                         </div>
                       )}
                     </div>
@@ -863,7 +864,7 @@ export function ScheduleClient({
                       "max-w-[52px] truncate text-[11px] font-medium",
                       active ? "text-foreground" : "text-muted",
                     )}>
-                      {firstName}
+                      {shortName}
                     </span>
                   </button>
                 );
@@ -900,7 +901,7 @@ export function ScheduleClient({
                       />
                     )}
                     <span className="text-[13px] font-medium text-foreground">
-                      {selectedCoach.name?.split(" ")[0]}
+                      {shortCoachName(selectedCoach.name)}
                     </span>
                     <span className="text-[12px] font-medium text-accent">
                       {t("viewProfile")}
@@ -1312,7 +1313,7 @@ function MobileClassCard({
                 cls.room?.studio?.name
               ) : (
                 <>
-                  {t("with")} {cls.coach.name?.split(" ")[0]}
+                  {t("with")} {shortCoachName(cls.coach.name)}
                   {cls.room?.studio?.name && (
                     <span className="text-muted/50"> · {cls.room.studio.name}</span>
                   )}
@@ -1535,7 +1536,7 @@ function DesktopClassCard({ cls, classLinkPrefix = "/class", onCancel, cancellin
                   past ? "text-muted/40" : "text-muted",
                 )}
               >
-                {cls.coach.name?.split(" ")[0]}
+                {shortCoachName(cls.coach.name)}
               </p>
             </div>
           )}

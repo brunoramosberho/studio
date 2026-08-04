@@ -22,6 +22,7 @@ import { es, enUS } from "date-fns/locale";
 import { Asterisk, ChevronDown, Dumbbell, Loader2, Ticket } from "lucide-react";
 import { cn, formatTime } from "@/lib/utils";
 import { getIconComponent } from "@/components/admin/icon-picker";
+import { shortCoachName } from "@/lib/coach-name";
 
 interface EmbedClass {
   id: string;
@@ -298,7 +299,7 @@ export function EmbedScheduleClient({
         <div className="flex gap-4 lg:gap-5">
           {coaches.map((c) => {
             const active = filterCoaches.has(c.id);
-            const firstName = c.name?.split(" ")[0] || "Coach";
+            const shortName = shortCoachName(c.name) || "Coach";
             return (
               <button
                 key={c.id}
@@ -318,12 +319,12 @@ export function EmbedScheduleClient({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={c.photoUrl}
-                      alt={firstName}
+                      alt={shortName}
                       className="h-full w-full object-cover"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-accent/20 text-sm font-bold text-accent">
-                      {firstName.charAt(0)}
+                      {shortName.charAt(0)}
                     </div>
                   )}
                 </div>
@@ -333,7 +334,7 @@ export function EmbedScheduleClient({
                     active ? "text-foreground" : "text-muted",
                   )}
                 >
-                  {firstName}
+                  {shortName}
                 </span>
               </button>
             );
@@ -815,7 +816,7 @@ function EmbedClassCard({
             )}
           </div>
           <p className="truncate text-[13px] text-muted">
-            {t("with")} {cls.coach.name?.split(" ")[0]}
+            {t("with")} {shortCoachName(cls.coach.name)}
             {cls.room?.studio?.name && (
               <span className="text-muted/50"> · {cls.room.studio.name}</span>
             )}
@@ -937,7 +938,7 @@ function DesktopClassCard({
               past ? "text-muted/40" : "text-muted",
             )}
           >
-            {cls.coach.name?.split(" ")[0]}
+            {shortCoachName(cls.coach.name)}
           </p>
         </div>
         {cls.room?.studio?.name && (
