@@ -61,7 +61,16 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <div className={darkLanding ? "dark min-h-dvh bg-background" : undefined}>
+    <div
+      className={
+        // `text-foreground` matters as much as `dark` here: the inherited text
+        // colour is resolved on <body>, which sits outside this subtree, so
+        // anything that didn't set its own colour kept the light theme's near
+        // -black and vanished. Re-anchoring it inside the scope fixes the
+        // whole tree at once.
+        darkLanding ? "dark min-h-dvh bg-background text-foreground" : undefined
+      }
+    >
       {tracker}
       <Navbar />
       <main className="min-h-dvh">{children}</main>
