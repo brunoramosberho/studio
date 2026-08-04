@@ -1926,7 +1926,11 @@
     "landingCopyTitle": "Textos de la landing",
     "landingCopyDesc": "Reescribe los títulos de tu página pública. Lo que dejes vacío usa el texto por defecto en el idioma del estudio.",
     "instagramLabel": "Instagram del estudio",
-    "instagramDesc": "Aparece en el pie de la página pública. Déjalo vacío y el icono no se muestra."
+    "instagramDesc": "Aparece en el pie de la página pública. Déjalo vacío y el icono no se muestra.",
+    "landingThemeLabel": "Tema de la landing",
+    "landingThemeAuto": "Según el visitante",
+    "landingThemeDark": "Siempre oscuro",
+    "landingThemeDesc": "Solo afecta a tu página pública. La app del miembro sigue respetando el tema de su teléfono."
   },
   "coach": {
     "portal": "Portal del Instructor",

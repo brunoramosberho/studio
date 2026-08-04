@@ -357,6 +357,30 @@ export default function BrandingPage() {
 
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs font-medium text-muted">
+                  {t("landingThemeLabel")}
+                </label>
+                <div className="flex gap-2">
+                  {([null, "dark"] as const).map((mode) => (
+                    <button
+                      key={mode ?? "auto"}
+                      type="button"
+                      onClick={() => update("landingTheme", mode)}
+                      className={cn(
+                        "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+                        (settings.landingTheme ?? null) === mode
+                          ? "border-admin bg-admin/10 text-foreground"
+                          : "border-border/60 text-muted",
+                      )}
+                    >
+                      {mode === "dark" ? t("landingThemeDark") : t("landingThemeAuto")}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted">{t("landingThemeDesc")}</p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-muted">
                   {t("instagramLabel")}
                 </label>
                 <div className="flex items-center gap-2">

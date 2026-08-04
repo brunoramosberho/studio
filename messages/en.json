@@ -1926,7 +1926,11 @@
     "landingCopyTitle": "Landing page copy",
     "landingCopyDesc": "Rewrite the headings on your public page. Anything you leave blank uses the default wording in the studio's language.",
     "instagramLabel": "Studio Instagram",
-    "instagramDesc": "Shown in the footer of your public page. Leave it blank and the icon is hidden."
+    "instagramDesc": "Shown in the footer of your public page. Leave it blank and the icon is hidden.",
+    "landingThemeLabel": "Landing theme",
+    "landingThemeAuto": "Follow the visitor",
+    "landingThemeDark": "Always dark",
+    "landingThemeDesc": "Affects your public page only. The member app keeps following their phone's theme."
   },
   "coach": {
     "portal": "Instructor Portal",

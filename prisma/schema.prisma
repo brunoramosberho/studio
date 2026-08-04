@@ -70,6 +70,10 @@ model Tenant {
   // URL) so it can be rendered either way; unrelated to InstagramIntegration,
   // which holds the API token for importing posts into the feed.
   instagramHandle   String?
+  // "dark" pins the public landing to the dark palette regardless of the
+  // visitor's system preference. Null follows the visitor, as everywhere else.
+  // Scoped to the landing on purpose: the member app stays theirs to choose.
+  landingTheme      String?
   // Per-studio overrides for the landing page copy. A JSON blob rather than a
   // column per string: the landing has a dozen headings and they change with
   // design, so this lets copy be added without a migration each time. Keys map

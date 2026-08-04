@@ -8,6 +8,7 @@ import { Footer } from "@/components/shared/footer";
 import { DesktopSidebar } from "@/components/shared/desktop-sidebar";
 import { UtmTracker } from "@/components/shared/utm-tracker";
 import { FullNavFallback } from "@/components/shared/full-nav-fallback";
+import { useBranding } from "@/components/branding-provider";
 
 const sidebarPaths = [
   "/schedule",
@@ -25,6 +26,13 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
   const showSidebar =
     !!session?.user && sidebarPaths.some((p) => pathname.startsWith(p));
+
+  // A studio can pin its landing to the dark palette. Applied as a class on
+  // this subtree rather than on <html>: the theme provider strips a forced
+  // class off the document on hydration when the visitor prefers light, and
+  // the member app is theirs to set — this is only the shop window.
+  const { landingTheme } = useBranding();
+  const darkLanding = pathname === "/" && landingTheme === "dark";
 
   const tracker = (
     <>
@@ -53,11 +61,11 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <>
+    <div className={darkLanding ? "dark min-h-dvh bg-background" : undefined}>
       {tracker}
       <Navbar />
       <main className="min-h-dvh">{children}</main>
       <Footer />
-    </>
+    </div>
   );
 }

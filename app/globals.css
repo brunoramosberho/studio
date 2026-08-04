@@ -74,7 +74,12 @@
    accent-soft / accent-border / accent-text are defined via color-mix()
    in @theme above, so they auto-recompute against the dark background.
    ──────────────────────────────────────────────────────────────────── */
-html.dark {
+/* `html.dark` is the app-wide toggle; the bare `.dark` lets a single subtree
+   opt in — used by studios that want their public landing always dark without
+   forcing the theme on the member app. Tailwind's dark variant already targets
+   `.dark`, so utilities follow along. */
+html.dark,
+.dark {
   color-scheme: dark;
 
   --color-background: #0B0B0F;
