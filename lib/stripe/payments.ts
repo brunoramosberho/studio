@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getTenantStripeContext } from "./tenant-stripe";
 import {
   getOrCreateStripeCustomer,
+  isApplicationFeeUnsupportedError,
   getOrAdoptStripeCustomer,
   isMissingCustomerError,
   refreshStaleStripeCustomer,
@@ -77,12 +78,16 @@ export async function createMemberPayment({
     tenant.applicationFeePercent,
   );
 
-  const buildPiParams = (): Stripe.PaymentIntentCreateParams => ({
+  // `withFee: false` retries the charge without our cut — see the catch below.
+  const buildPiParams = (
+    opts: { withFee?: boolean } = {},
+  ): Stripe.PaymentIntentCreateParams => ({
     amount: toStripeAmount(amountInCurrency),
     currency: chargeCurrency,
     customer: stripeCustomer.stripeCustomerId,
     description,
-    application_fee_amount: feeAmount > 0 ? feeAmount : undefined,
+    application_fee_amount:
+      opts.withFee === false || feeAmount <= 0 ? undefined : feeAmount,
     setup_future_usage: "off_session",
     receipt_email: member?.email ?? undefined,
     metadata: {
@@ -98,15 +103,42 @@ export async function createMemberPayment({
     }),
   });
 
+  // Set when Stripe refused our cut and we charged without it, so the stored
+  // row reflects what was actually taken rather than what we asked for.
+  let feeWaived = false;
+
+  /**
+   * Create the intent, dropping our application fee if Stripe won't allow it
+   * for this platform/studio country pair — a Spanish platform with a Mexican
+   * studio is one it rejects outright. Charging without the fee costs us the
+   * commission; refusing costs the studio the sale and leaves the member
+   * looking at "we couldn't process your payment". Take the sale.
+   */
+  const createIntent = async (): Promise<Stripe.PaymentIntent> => {
+    try {
+      return await stripe.paymentIntents.create(buildPiParams(), {
+        stripeAccount: tenant.stripeAccountId!,
+      });
+    } catch (err) {
+      if (!isApplicationFeeUnsupportedError(err)) throw err;
+      console.warn(
+        `[stripe] application fee unsupported for tenant ${tenantId}; charging without it`,
+      );
+      feeWaived = true;
+      return stripe.paymentIntents.create(buildPiParams({ withFee: false }), {
+        stripeAccount: tenant.stripeAccountId!,
+      });
+    }
+  };
+
   let paymentIntent: Stripe.PaymentIntent;
   try {
-    paymentIntent = await stripe.paymentIntents.create(buildPiParams(), {
-      stripeAccount: tenant.stripeAccountId,
-    });
+    paymentIntent = await createIntent();
   } catch (err) {
     // Self-heal: the stored customer may have been deleted on the studio's
     // dashboard or created before a sandbox→live flip. Re-resolve (adoption
-    // included) and retry exactly once.
+    // included) and retry exactly once — through createIntent, so a stale
+    // customer and an unsupported fee can both be recovered in one attempt.
     if (!isMissingCustomerError(err)) throw err;
     stripeCustomer = await refreshStaleStripeCustomer(
       memberId,
@@ -114,9 +146,7 @@ export async function createMemberPayment({
       tenant.stripeAccountId,
       stripe,
     );
-    paymentIntent = await stripe.paymentIntents.create(buildPiParams(), {
-      stripeAccount: tenant.stripeAccountId,
-    });
+    paymentIntent = await createIntent();
   }
 
   await prisma.stripePayment.create({
@@ -128,7 +158,8 @@ export async function createMemberPayment({
       // Mirror the actual charge currency — omitting it fell back to the
       // schema default "eur", mislabeling every MXN tenant's payments.
       currency: chargeCurrency,
-      applicationFee: feeAmount > 0 ? fromStripeAmount(feeAmount) : null,
+      applicationFee:
+        feeWaived || feeAmount <= 0 ? null : fromStripeAmount(feeAmount),
       status: paymentMethodId && paymentIntent.status === "succeeded"
         ? "succeeded"
         : "pending",

@@ -1,4 +1,8 @@
 import Stripe from "stripe";
+export {
+  isApplicationFeeUnsupportedError,
+  isMissingCustomerError,
+} from "./errors";
 import { prisma } from "@/lib/db";
 
 /**
@@ -132,14 +136,6 @@ async function createRowSafely(
  * exists (deleted on the dashboard, or created in the other live/test mode
  * before the studio flipped). Our StripeCustomer row is then stale.
  */
-export function isMissingCustomerError(err: unknown): boolean {
-  return (
-    err instanceof Stripe.errors.StripeInvalidRequestError &&
-    err.code === "resource_missing" &&
-    (err.param === "customer" || /no such customer/i.test(err.message))
-  );
-}
-
 /**
  * Drop the stale row and resolve again (adopt-or-create). Used as a one-shot
  * retry when Stripe reports the stored customer doesn't exist — self-heals
