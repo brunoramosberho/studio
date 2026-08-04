@@ -544,7 +544,11 @@ export default function LandingPage() {
                   className={`relative h-full rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 ${
                     isHighlight
                       ? "shadow-lg"
-                      : "border border-border bg-white shadow-[var(--shadow-warm)]"
+                      : // bg-card, not bg-white: the card was pinned to white while its
+                        // text followed the theme, so on a dark landing it came out
+                        // white on white. The token flips with the theme; in light
+                        // mode it resolves to the same white as before.
+                        "border border-border bg-card shadow-[var(--shadow-warm)]"
                   } ${pkg.isPromo ? "border-2 border-dashed border-accent/40" : ""}`}
                   style={isHighlight ? { backgroundColor: branding.colorHeroBg, color: heroText } : undefined}
                 >
