@@ -42,14 +42,22 @@ interface PackageData {
 
 const isSub = (t: PackageData["type"]) => t === "SUBSCRIPTION" || t === "ON_DEMAND_SUBSCRIPTION";
 
-const GROUPS: { key: string; title: string; icon: typeof Package; match: (t: PackageData["type"]) => boolean }[] = [
-  { key: "SUB", title: "Suscripciones", icon: RefreshCw, match: isSub },
-  { key: "OFFER", title: "Ofertas", icon: Gift, match: (t) => t === "OFFER" },
-  { key: "PACK", title: "Paquetes", icon: Package, match: (t) => t === "PACK" },
+// Titles resolve through i18n at render — they were literals, so an
+// English-speaking studio got Spanish section headings.
+const GROUPS: {
+  key: string;
+  titleKey: string;
+  icon: typeof Package;
+  match: (t: PackageData["type"]) => boolean;
+}[] = [
+  { key: "SUB", titleKey: "groupSubscriptions", icon: RefreshCw, match: isSub },
+  { key: "OFFER", titleKey: "groupOffers", icon: Gift, match: (t) => t === "OFFER" },
+  { key: "PACK", titleKey: "groupPacks", icon: Package, match: (t) => t === "PACK" },
 ];
 
 export function ShopPackages() {
   const t = useTranslations("public");
+  const tShop = useTranslations("shop");
   const [selectedPkg, setSelectedPkg] = useState<PackageData | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -126,7 +134,7 @@ export function ShopPackages() {
               <div className="flex items-center gap-2">
                 <GroupIcon className="h-4 w-4 text-muted/70" />
                 <h2 className="text-[12px] font-semibold uppercase tracking-wider text-muted/60">
-                  {group.title}
+                  {tShop(group.titleKey)}
                 </h2>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

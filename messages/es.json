@@ -3700,5 +3700,15 @@
     "checkBetterValue": "{name} tiene mejor valor que tu preferido — el cliente podría elegirlo a él.",
     "checkLimitedTarget": "{name} es de compra limitada — un recurrente que ya lo compró verá la siguiente opción. Para recurrentes, lo ideal es un objetivo sin límite (p. ej. una suscripción).",
     "checkLimitedOthers": "{names} {count, plural, one {tiene} other {tienen}} límite de compra — quien ya lo compró verá la siguiente opción."
+  },
+  "shop": {
+    "title": "Tienda",
+    "subtitle": "Productos y paquetes de clases",
+    "products": "Productos",
+    "packages": "Paquetes",
+    "empty": "No hay productos disponibles aún",
+    "groupSubscriptions": "Suscripciones",
+    "groupOffers": "Ofertas",
+    "groupPacks": "Paquetes"
   }
 }

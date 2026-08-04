@@ -42,8 +42,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const baseWhere = { isActive: true, deletedAt: null, tenantId: tenant.id };
+
+    // The country filter narrows a multi-country catalogue to what's relevant
+    // for the buyer — but it must never empty the shop. A studio whose packages
+    // are all tagged Mexico showed a blank page to any signed-in account
+    // registered elsewhere: a visitor, someone who picked the wrong country at
+    // signup, anyone travelling. They couldn't buy at all, while signed-out
+    // visitors saw the full catalogue, so it looked like the page was broken.
+    // If the filter leaves nothing, the studio's whole catalogue is better than
+    // none of it.
+    let countryScopedWhere = { ...baseWhere, ...countryFilter };
+    if (Object.keys(countryFilter).length > 0) {
+      const matches = await prisma.package.count({ where: countryScopedWhere });
+      if (matches === 0) countryScopedWhere = baseWhere;
+    }
+
     const packages = await prisma.package.findMany({
-      where: { isActive: true, deletedAt: null, tenantId: tenant.id, ...countryFilter },
+      where: countryScopedWhere,
       orderBy: [{ sortOrder: "asc" }, { price: "asc" }],
       include: {
         classTypes: { select: { id: true, name: true } },

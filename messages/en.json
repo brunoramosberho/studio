@@ -3700,5 +3700,15 @@
     "checkBetterValue": "{name} is better value than your preferred — clients might pick it instead.",
     "checkLimitedTarget": "{name} has a purchase limit — a returning client who already bought it sees the next option. For returning clients, a limit-free target (e.g. a subscription) is ideal.",
     "checkLimitedOthers": "{names} {count, plural, one {has} other {have}} a purchase limit — clients who already bought it see the next option."
+  },
+  "shop": {
+    "title": "Shop",
+    "subtitle": "Products and class packs",
+    "products": "Products",
+    "packages": "Packs",
+    "empty": "No products available yet",
+    "groupSubscriptions": "Subscriptions",
+    "groupOffers": "Offers",
+    "groupPacks": "Class packs"
   }
 }

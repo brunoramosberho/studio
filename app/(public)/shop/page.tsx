@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingBag, ExternalLink } from "lucide-react";
@@ -26,6 +27,7 @@ interface ShopCategory {
 }
 
 export default function ShopPage() {
+  const t = useTranslations("shop");
   const { colorAccent } = useBranding();
   const [mode, setMode] = useState<"products" | "packages">("products");
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -59,16 +61,16 @@ export default function ShopPage() {
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         {/* Header */}
         <div className="mb-5">
-          <h1 className="font-display text-2xl font-bold text-foreground">Tienda</h1>
-          <p className="text-sm text-muted">Productos y paquetes de clases</p>
+          <h1 className="font-display text-2xl font-bold text-foreground">{t("title")}</h1>
+          <p className="text-sm text-muted">{t("subtitle")}</p>
         </div>
 
         {/* Productos | Paquetes toggle */}
         <div className="mb-6 inline-flex rounded-full bg-surface p-1">
           {(
             [
-              { key: "products", label: "Productos" },
-              { key: "packages", label: "Paquetes" },
+              { key: "products", label: t("products") },
+              { key: "packages", label: t("packages") },
             ] as const
           ).map((tab) => (
             <button
@@ -137,7 +139,7 @@ export default function ShopPage() {
         ) : displayProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <ShoppingBag className="mb-3 h-12 w-12 text-muted/30" />
-            <p className="text-sm text-muted">No hay productos disponibles aún</p>
+            <p className="text-sm text-muted">{t("empty")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
