@@ -356,6 +356,32 @@ export default function BrandingPage() {
               </div>
 
               <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-muted">
+                  {t("instagramLabel")}
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted">@</span>
+                  <Input
+                    value={settings.instagramHandle ?? ""}
+                    onChange={(e) =>
+                      // Paste-proof: accept a full URL or a leading @ and keep
+                      // just the handle, because that's what people copy.
+                      update(
+                        "instagramHandle",
+                        e.target.value
+                          .trim()
+                          .replace(/^https?:\/\/(www\.)?instagram\.com\//i, "")
+                          .replace(/^@/, "")
+                          .replace(/\/.*$/, "") || null,
+                      )
+                    }
+                    placeholder="fdvsculptmethod"
+                  />
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted">{t("instagramDesc")}</p>
+              </div>
+
+              <div className="sm:col-span-2">
                 <div className="mb-2 mt-2 border-t border-border/60 pt-5">
                   <p className="text-sm font-semibold">{t("landingCopyTitle")}</p>
                   <p className="mt-1 text-[11px] text-muted">{t("landingCopyDesc")}</p>

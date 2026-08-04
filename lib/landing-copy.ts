@@ -11,6 +11,16 @@
  * admin sees in the form is exactly what their members see today.
  */
 export const LANDING_COPY_KEYS = [
+  // Navigation. A studio's vocabulary is part of its brand: "trainers" not
+  // "instructors", "class packs" not "packages".
+  "navSchedule",
+  "navInstructors",
+  "navPackages",
+  "navBook",
+  "navAccount",
+  // Hero call-to-action buttons.
+  "bookYourClass",
+  "viewPackages",
   "howItWorks",
   "howItWorksSubtitle",
   "step1Title",

@@ -1924,7 +1924,9 @@
       "failed": "That didn't work"
     },
     "landingCopyTitle": "Landing page copy",
-    "landingCopyDesc": "Rewrite the headings on your public page. Anything you leave blank uses the default wording in the studio's language."
+    "landingCopyDesc": "Rewrite the headings on your public page. Anything you leave blank uses the default wording in the studio's language.",
+    "instagramLabel": "Studio Instagram",
+    "instagramDesc": "Shown in the footer of your public page. Leave it blank and the icon is hidden."
   },
   "coach": {
     "portal": "Instructor Portal",
@@ -2393,7 +2395,12 @@
     "invitesToJoin": "invites you to join {studio}",
     "welcomeGift": "Welcome gift",
     "locationsTitle": "Where to find us",
-    "openInMaps": "Open in Maps"
+    "openInMaps": "Open in Maps",
+    "navSchedule": "Schedule",
+    "navInstructors": "Instructors",
+    "navPackages": "Packages",
+    "navBook": "Book",
+    "navAccount": "Account"
   },
   "booking": {
     "confirmed": "Booking confirmed!",

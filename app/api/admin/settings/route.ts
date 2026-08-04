@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       "name", "tagline", "slogan", "metaDescription", "logoUrl", "appIconUrl",
       "fontPairing", "colorBg", "colorFg", "colorSurface", "colorAccent",
       "colorAccentSoft", "colorMuted", "colorBorder", "colorHeroBg", "colorCoach", "colorAdmin",
-      "coachIconSvg", "landingUrl", "communityHeadline", "locale",
+      "coachIconSvg", "landingUrl", "communityHeadline", "locale", "instagramHandle",
     ];
 
     // Landing copy is a map, not a string, so it can't ride the allow-list

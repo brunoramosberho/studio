@@ -20,6 +20,7 @@ export interface StudioBranding {
   colorAdmin: string;
   coachIconSvg: string | null;
   landingUrl: string | null;
+  instagramHandle: string | null;
   communityHeadline: string;
   landingCopy: Record<string, string>;
 }
@@ -44,6 +45,7 @@ export const DEFAULTS: StudioBranding = {
   colorAdmin: "#1E40AF",
   coachIconSvg: null,
   landingUrl: null,
+  instagramHandle: null,
   communityHeadline: "Tu comunidad en movimiento",
   landingCopy: {},
 };
@@ -152,6 +154,7 @@ export function tenantToBranding(tenant: Tenant): StudioBranding {
     colorAdmin: tenant.colorAdmin,
     coachIconSvg: tenant.coachIconSvg,
     landingUrl: tenant.landingUrl,
+    instagramHandle: tenant.instagramHandle,
     communityHeadline: tenant.communityHeadline,
     landingCopy:
       tenant.landingCopy && typeof tenant.landingCopy === "object" && !Array.isArray(tenant.landingCopy)

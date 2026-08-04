@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { contrastRatio, hexToRgb, needsDarkText, relativeLuminance } from "@/lib/color";
+import {
+  contrastRatio,
+  hexToRgb,
+  needsDarkText,
+  readableTextColor,
+  relativeLuminance,
+} from "@/lib/color";
 import { LANDING_COPY_KEYS, landingText, type LandingCopyKey } from "@/lib/landing-copy";
 import { useBranding } from "@/components/branding-provider";
 import {
@@ -234,7 +240,7 @@ export default function LandingPage() {
               className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
             >
               <Button asChild size="lg" className="px-10 text-base">
-                <Link href="/schedule">{t("bookYourClass")}</Link>
+                <Link href="/schedule">{c("bookYourClass")}</Link>
               </Button>
               <Button
                 asChild
@@ -243,7 +249,7 @@ export default function LandingPage() {
                 className="hover:border-accent hover:bg-accent hover:text-white"
                 style={{ borderColor: heroBorder, color: heroText }}
               >
-                <Link href="/packages">{t("viewPackages")}</Link>
+                <Link href="/packages">{c("viewPackages")}</Link>
               </Button>
             </motion.div>
           </motion.div>
@@ -544,13 +550,22 @@ export default function LandingPage() {
                 >
                   {isHighlight && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-accent text-white shadow-[var(--shadow-warm)]">
+                      <Badge
+                        className="shadow-[var(--shadow-warm)]"
+                        style={{
+                          backgroundColor: heroAccent,
+                          color: readableTextColor(heroAccent),
+                        }}
+                      >
                         <Star className="mr-1 h-3 w-3" /> {t("mostPopular")}
                       </Badge>
                     </div>
                   )}
                   {pkg.description && (
-                    <p className="text-xs font-medium uppercase tracking-wider text-accent">
+                    <p
+                      className="text-xs font-medium uppercase tracking-wider text-accent"
+                      style={isHighlight ? { color: heroAccent } : undefined}
+                    >
                       {pkg.description}
                     </p>
                   )}
@@ -564,9 +579,8 @@ export default function LandingPage() {
                   </h3>
                   <div className="mt-4">
                     <span
-                      className={`font-mono text-4xl font-bold ${
-                        isHighlight ? "text-accent" : "text-foreground"
-                      }`}
+                      className={`font-mono text-4xl font-bold ${isHighlight ? "" : "text-foreground"}`}
+                      style={isHighlight ? { color: heroAccent } : undefined}
                     >
                       {formatCurrency(pkg.price, pkg.currency)}
                     </span>
@@ -581,13 +595,19 @@ export default function LandingPage() {
                     style={isHighlight ? { color: heroTextMuted } : undefined}
                   >
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-accent" />
+                      <CheckCircle2
+                        className="h-4 w-4 text-accent"
+                        style={isHighlight ? { color: heroAccent } : undefined}
+                      />
                       {pkg.credits
                         ? `${pkg.credits} ${pkg.credits === 1 ? t("classUnit") : t("classesUnit")}`
                         : t("unlimitedClasses")}
                     </div>
                     <div className="flex items-center gap-2">
-                      <CalendarCheck className="h-4 w-4 text-accent" />
+                      <CalendarCheck
+                        className="h-4 w-4 text-accent"
+                        style={isHighlight ? { color: heroAccent } : undefined}
+                      />
                       {t("validity")}: {validity}
                     </div>
                   </div>
@@ -691,7 +711,7 @@ export default function LandingPage() {
           transition={{ duration: 0.6, ease: "easeOut" as const }}
           className="mx-auto max-w-3xl text-center"
         >
-          <Zap className="mx-auto mb-6 h-8 w-8 text-accent" />
+          <Zap className="mx-auto mb-6 h-8 w-8" style={{ color: heroAccent }} />
           <h2 className="font-display text-4xl font-bold sm:text-5xl md:text-6xl" style={{ color: heroText }}>
             {c("readyToStart")}
           </h2>
@@ -700,7 +720,7 @@ export default function LandingPage() {
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Button asChild size="lg" className="px-10 text-base">
-              <Link href="/schedule">{t("bookYourClass")}</Link>
+              <Link href="/schedule">{c("bookYourClass")}</Link>
             </Button>
             <Button
               asChild
@@ -710,7 +730,7 @@ export default function LandingPage() {
               style={{ borderColor: heroBorder, color: heroText }}
             >
               <Link href="/packages">
-                {t("viewPackages")} <ArrowRight className="ml-2 h-4 w-4" />
+                {c("viewPackages")} <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>

@@ -9,19 +9,29 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { useBranding } from "@/components/branding-provider";
+import { landingText, type LandingCopyKey } from "@/lib/landing-copy";
 
-const publicLinks = [
-  { href: "/schedule", label: "Horarios" },
-  { href: "/instructors", label: "Instructores" },
-  { href: "/packages", label: "Paquetes" },
+// Hrefs are fixed; the words are not. These were hardcoded Spanish strings,
+// so an English-speaking studio got "Horarios" in the middle of an English
+// page — and no studio could call its instructors "trainers" or its packs
+// anything but "packages".
+const publicLinks: { href: string; key: LandingCopyKey }[] = [
+  { href: "/schedule", key: "navSchedule" },
+  { href: "/instructors", key: "navInstructors" },
+  { href: "/packages", key: "navPackages" },
 ];
 
 export function Navbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { studioName, logoUrl, landingUrl } = useBranding();
+  const branding = useBranding();
+  const { studioName, logoUrl, landingUrl } = branding;
+  const tNav = useTranslations("public");
+  const label = (key: LandingCopyKey) =>
+    landingText(branding.landingCopy, key, tNav(key));
   const homeHref = landingUrl || "/";
 
   const isPortal =
@@ -83,7 +93,7 @@ export function Navbar() {
                 pathname === link.href ? "text-foreground" : "text-muted",
               )}
             >
-              {link.label}
+              {label(link.key)}
             </Link>
           ))}
         </div>
@@ -104,11 +114,11 @@ export function Navbar() {
               href="/login"
               className="text-[13px] font-medium text-muted transition-colors hover:text-foreground"
             >
-              Cuenta
+              {label("navAccount")}
             </Link>
           )}
           <Button asChild size="sm" className="h-9 rounded-lg bg-foreground px-4 text-xs font-semibold uppercase tracking-wider text-background hover:bg-foreground/90">
-            <Link href="/schedule">Reservar</Link>
+            <Link href="/schedule">{label("navBook")}</Link>
           </Button>
         </div>
       </nav>
@@ -136,7 +146,7 @@ export function Navbar() {
                       : "text-muted hover:text-foreground",
                   )}
                 >
-                  {link.label}
+                  {label(link.key)}
                 </Link>
               ))}
             </div>

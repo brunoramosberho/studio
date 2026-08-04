@@ -1924,7 +1924,9 @@
       "failed": "No se pudo completar la acción"
     },
     "landingCopyTitle": "Textos de la landing",
-    "landingCopyDesc": "Reescribe los títulos de tu página pública. Lo que dejes vacío usa el texto por defecto en el idioma del estudio."
+    "landingCopyDesc": "Reescribe los títulos de tu página pública. Lo que dejes vacío usa el texto por defecto en el idioma del estudio.",
+    "instagramLabel": "Instagram del estudio",
+    "instagramDesc": "Aparece en el pie de la página pública. Déjalo vacío y el icono no se muestra."
   },
   "coach": {
     "portal": "Portal del Instructor",
@@ -2393,7 +2395,12 @@
     "invitesToJoin": "te invita a unirte a {studio}",
     "welcomeGift": "Regalo de bienvenida",
     "locationsTitle": "Dónde estamos",
-    "openInMaps": "Ver en el mapa"
+    "openInMaps": "Ver en el mapa",
+    "navSchedule": "Horarios",
+    "navInstructors": "Instructores",
+    "navPackages": "Paquetes",
+    "navBook": "Reservar",
+    "navAccount": "Cuenta"
   },
   "booking": {
     "confirmed": "Reserva confirmada!",
