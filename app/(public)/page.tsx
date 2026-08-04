@@ -11,6 +11,7 @@ import {
   relativeLuminance,
 } from "@/lib/color";
 import { LANDING_COPY_KEYS, landingText, type LandingCopyKey } from "@/lib/landing-copy";
+import { formatValidDays } from "@/lib/valid-days";
 import { useBranding } from "@/components/branding-provider";
 import {
   ArrowRight,
@@ -525,11 +526,12 @@ export default function LandingPage() {
           <div className={`grid gap-6 ${cols}`}>
             {displayPkgs.map((pkg, i) => {
               const isHighlight = displayPkgs.length >= 3 ? i === 1 : false;
-              const validity = pkg.validDays >= 365
-                ? `${Math.round(pkg.validDays / 365)} año${Math.round(pkg.validDays / 365) > 1 ? "s" : ""}`
-                : pkg.validDays >= 30
-                  ? `${Math.round(pkg.validDays / 30)} mes${Math.round(pkg.validDays / 30) > 1 ? "es" : ""}`
-                  : `${pkg.validDays} días`;
+              // Was formatted inline with Spanish words baked in, so an English
+              // studio's cards read "Valid for: 1 mes". formatValidDays uses the
+              // translated units and only promotes days to months or years on an
+              // exact division — 45 days stays 45 days instead of rounding to
+              // "2 months" and overstating what the member bought.
+              const validity = formatValidDays(pkg.validDays, t);
 
               return (
               <motion.div
