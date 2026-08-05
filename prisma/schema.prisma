@@ -3375,6 +3375,17 @@ model OnDemandStreamSession {
 
   startedAt       DateTime                  @default(now())
   lastHeartbeatAt DateTime                  @default(now())
+
+  // Reported by the player, not inferred from wall-clock. The heartbeat is a
+  // plain interval that keeps ticking while paused or backgrounded, so
+  // lastHeartbeatAt - startedAt measures "time with the page open" and badly
+  // overstates engagement.
+  //   watchedSeconds  — time actually playing, the honest engagement number.
+  //   furthestSeconds — deepest point reached, what completion % is built from.
+  // Both only ever move forward, so a late or duplicated heartbeat can't
+  // reduce them.
+  watchedSeconds  Int                       @default(0)
+  furthestSeconds Int                       @default(0)
   endedAt         DateTime?
   endedReason     OnDemandSessionEndReason?
 

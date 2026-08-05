@@ -57,6 +57,10 @@ export async function heartbeatStreamSession(params: {
   sessionId: string;
   tenantId: string;
   userId: string;
+  /** Seconds actually played, as counted by the player. */
+  watchedSeconds?: number;
+  /** Furthest position reached in the video. */
+  furthestSeconds?: number;
 }): Promise<HeartbeatResult> {
   const session = await prisma.onDemandStreamSession.findUnique({
     where: { id: params.sessionId },
@@ -73,7 +77,19 @@ export async function heartbeatStreamSession(params: {
   }
   const updated = await prisma.onDemandStreamSession.update({
     where: { id: session.id },
-    data: { lastHeartbeatAt: new Date() },
+    data: {
+      lastHeartbeatAt: new Date(),
+      // Monotonic: a retried or out-of-order heartbeat must never walk the
+      // numbers backwards.
+      watchedSeconds: Math.max(
+        clampSeconds(session.watchedSeconds),
+        clampSeconds(params.watchedSeconds),
+      ),
+      furthestSeconds: Math.max(
+        clampSeconds(session.furthestSeconds),
+        clampSeconds(params.furthestSeconds),
+      ),
+    },
   });
   return { ok: true, session: updated };
 }
@@ -114,4 +130,14 @@ export async function cleanupStaleSessions(now: Date = new Date()): Promise<numb
     },
   });
   return result.count;
+}
+
+/**
+ * Player-reported seconds are untrusted input: clamp to a sane range so a
+ * broken client can't write a negative or absurd number into the metrics.
+ */
+function clampSeconds(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 0;
+  // 12 hours — far beyond any class video, tight enough to catch nonsense.
+  return Math.min(Math.round(value), 43_200);
 }

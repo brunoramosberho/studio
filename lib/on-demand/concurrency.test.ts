@@ -88,7 +88,71 @@ describe("heartbeatStreamSession", () => {
     expect(result.ok).toBe(true);
     expect(update).toHaveBeenCalledWith({
       where: { id: "s" },
-      data: { lastHeartbeatAt: expect.any(Date) },
+      data: {
+        lastHeartbeatAt: expect.any(Date),
+        watchedSeconds: 0,
+        furthestSeconds: 0,
+      },
+    });
+  });
+
+  it("never walks the watch metrics backwards", async () => {
+    // Heartbeats retry and can arrive out of order; a stale one must not undo
+    // progress already recorded.
+    findUnique.mockResolvedValue({
+      id: "s",
+      tenantId: "t",
+      userId: "u",
+      endedAt: null,
+      endedReason: null,
+      watchedSeconds: 120,
+      furthestSeconds: 200,
+    });
+
+    await heartbeatStreamSession({
+      sessionId: "s",
+      tenantId: "t",
+      userId: "u",
+      watchedSeconds: 30,
+      furthestSeconds: 40,
+    });
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "s" },
+      data: {
+        lastHeartbeatAt: expect.any(Date),
+        watchedSeconds: 120,
+        furthestSeconds: 200,
+      },
+    });
+  });
+
+  it("ignores nonsense reported by a broken client", async () => {
+    findUnique.mockResolvedValue({
+      id: "s",
+      tenantId: "t",
+      userId: "u",
+      endedAt: null,
+      endedReason: null,
+      watchedSeconds: 0,
+      furthestSeconds: 0,
+    });
+
+    await heartbeatStreamSession({
+      sessionId: "s",
+      tenantId: "t",
+      userId: "u",
+      watchedSeconds: -5,
+      furthestSeconds: Number.POSITIVE_INFINITY,
+    });
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "s" },
+      data: {
+        lastHeartbeatAt: expect.any(Date),
+        watchedSeconds: 0,
+        furthestSeconds: 0,
+      },
     });
   });
 

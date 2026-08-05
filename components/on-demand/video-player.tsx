@@ -20,6 +20,13 @@ interface OnDemandVideoPlayerProps {
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 
+/** The slice of Cloudflare's player API we use. */
+interface StreamPlayer {
+  currentTime: number;
+  addEventListener: (event: string, handler: () => void) => void;
+  removeEventListener: (event: string, handler: () => void) => void;
+}
+
 export function OnDemandVideoPlayer({
   videoId,
   title,
@@ -29,6 +36,10 @@ export function OnDemandVideoPlayer({
 }: OnDemandVideoPlayerProps) {
   const { colorAccent } = useBranding();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  // What the player reports, kept in refs so the heartbeat reads the latest
+  // values without re-subscribing on every tick.
+  const watchedRef = useRef(0);
+  const furthestRef = useRef(0);
   const [playback, setPlayback] = useState<PlaybackResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [supersededState, setSupersededState] = useState(false);
@@ -75,6 +86,70 @@ export function OnDemandVideoPlayer({
     };
   }, [videoId]);
 
+  // Measure real playback, not wall-clock. The heartbeat below is a plain
+  // interval that keeps firing while paused or backgrounded, so on its own it
+  // would report "time with the tab open" and overstate every video's
+  // engagement. Cloudflare's player SDK wraps the existing iframe and reports
+  // what actually happened.
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!playback?.sessionId || !iframe) return;
+
+    let detach: (() => void) | undefined;
+    let cancelled = false;
+
+    const attach = () => {
+      const Stream = (window as unknown as { Stream?: (el: HTMLIFrameElement) => StreamPlayer })
+        .Stream;
+      if (!Stream || cancelled) return;
+      const player = Stream(iframe);
+
+      let playingSince: number | null = null;
+      const accumulate = () => {
+        if (playingSince != null) {
+          watchedRef.current += (Date.now() - playingSince) / 1000;
+          playingSince = null;
+        }
+      };
+
+      const onPlay = () => { playingSince = Date.now(); };
+      const onPause = () => accumulate();
+      const onTimeUpdate = () => {
+        const t = player.currentTime;
+        if (typeof t === "number" && t > furthestRef.current) furthestRef.current = t;
+      };
+      const onEnded = () => accumulate();
+
+      player.addEventListener("play", onPlay);
+      player.addEventListener("pause", onPause);
+      player.addEventListener("timeupdate", onTimeUpdate);
+      player.addEventListener("ended", onEnded);
+
+      detach = () => {
+        accumulate();
+        player.removeEventListener("play", onPlay);
+        player.removeEventListener("pause", onPause);
+        player.removeEventListener("timeupdate", onTimeUpdate);
+        player.removeEventListener("ended", onEnded);
+      };
+    };
+
+    if ((window as unknown as { Stream?: unknown }).Stream) {
+      attach();
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://embed.cloudflarestream.com/embed/sdk.latest.js";
+      script.async = true;
+      script.onload = attach;
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      cancelled = true;
+      detach?.();
+    };
+  }, [playback?.sessionId]);
+
   useEffect(() => {
     if (!playback?.sessionId) return;
 
@@ -86,7 +161,11 @@ export function OnDemandVideoPlayer({
         const res = await fetch("/api/on-demand/heartbeat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId }),
+          body: JSON.stringify({
+            sessionId,
+            watchedSeconds: Math.round(watchedRef.current),
+            furthestSeconds: Math.round(furthestRef.current),
+          }),
         });
         if (res.status === 409) {
           if (!stopped) {
@@ -104,7 +183,14 @@ export function OnDemandVideoPlayer({
       navigator.sendBeacon?.(
         "/api/on-demand/heartbeat",
         new Blob(
-          [JSON.stringify({ sessionId, ended: true })],
+          [
+            JSON.stringify({
+              sessionId,
+              ended: true,
+              watchedSeconds: Math.round(watchedRef.current),
+              furthestSeconds: Math.round(furthestRef.current),
+            }),
+          ],
           { type: "application/json" },
         ),
       );

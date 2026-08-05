@@ -8,6 +8,8 @@ import {
 interface RequestBody {
   sessionId: string;
   ended?: boolean;
+  watchedSeconds?: number;
+  furthestSeconds?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -19,6 +21,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.ended) {
+      // Persist the final numbers before closing, so a session that ends on
+      // unload still reports what was watched.
+      await heartbeatStreamSession({
+        sessionId: body.sessionId,
+        tenantId: ctx.tenant.id,
+        userId: ctx.session.user.id,
+        watchedSeconds: body.watchedSeconds,
+        furthestSeconds: body.furthestSeconds,
+      });
       await endStreamSession({
         sessionId: body.sessionId,
         tenantId: ctx.tenant.id,
@@ -31,6 +42,8 @@ export async function POST(request: NextRequest) {
       sessionId: body.sessionId,
       tenantId: ctx.tenant.id,
       userId: ctx.session.user.id,
+      watchedSeconds: body.watchedSeconds,
+      furthestSeconds: body.furthestSeconds,
     });
 
     if (!result.ok) {
