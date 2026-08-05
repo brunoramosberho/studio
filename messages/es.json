@@ -1620,7 +1620,23 @@
       "howItWorksTitle": "¿Cómo funciona?",
       "howItWorks1": "Cada video se sube a Cloudflare Stream y se procesa en segundo plano.",
       "howItWorks2": "Las URLs son firmadas: caducan en 1 hora y están atadas al IP del miembro.",
-      "howItWorks3": "Sólo se permite una sesión activa por miembro al mismo tiempo."
+      "howItWorks3": "Sólo se permite una sesión activa por miembro al mismo tiempo.",
+      "metrics": {
+        "video": "Video",
+        "plays": "Reproducciones",
+        "viewers": "Espectadores",
+        "avgWatched": "Visto (prom.)",
+        "completion": "Completado",
+        "finished": "Terminaron",
+        "draft": "Borrador",
+        "whoWatched": "Quién lo vio",
+        "noViewers": "Nadie ha visto este video todavía.",
+        "notMeasured": "sin medir",
+        "noVideos": "Aún no hay videos en la biblioteca.",
+        "noDataYet": "Todavía no hay reproducciones medidas. La medición real empezó con la última actualización, así que las vistas anteriores no cuentan aquí.",
+        "footnote": "«Visto» es tiempo de reproducción real, no tiempo con el video abierto. «Completado» es el punto más lejano al que llegaron. Se cuenta como terminado a partir del 90%."
+      },
+      "tabMetrics": "Métricas"
     },
     "insightsPage": {
       "title": "Insights",

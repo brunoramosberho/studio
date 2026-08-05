@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Video, Settings as SettingsIcon, Tag } from "lucide-react";
+import { Video, Settings as SettingsIcon, Tag, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OnDemandLibraryTab } from "./tabs/library-tab";
 import { OnDemandConfigTab } from "./tabs/config-tab";
 import { OnDemandCategoriesTab } from "./tabs/categories-tab";
+import { OnDemandMetricsTab } from "./tabs/metrics-tab";
 
-type TabKey = "library" | "categories" | "config";
+type TabKey = "library" | "metrics" | "categories" | "config";
 
 export function OnDemandAdminClient() {
   const t = useTranslations("admin.onDemand");
@@ -33,6 +34,12 @@ export function OnDemandAdminClient() {
           label={t("tabLibrary")}
         />
         <TabButton
+          active={tab === "metrics"}
+          onClick={() => setTab("metrics")}
+          icon={<BarChart3 className="h-4 w-4" />}
+          label={t("tabMetrics")}
+        />
+        <TabButton
           active={tab === "categories"}
           onClick={() => setTab("categories")}
           icon={<Tag className="h-4 w-4" />}
@@ -47,6 +54,7 @@ export function OnDemandAdminClient() {
       </div>
 
       {tab === "library" && <OnDemandLibraryTab />}
+      {tab === "metrics" && <OnDemandMetricsTab />}
       {tab === "categories" && <OnDemandCategoriesTab />}
       {tab === "config" && <OnDemandConfigTab />}
     </div>

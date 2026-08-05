@@ -1620,7 +1620,23 @@
       "howItWorksTitle": "How it works",
       "howItWorks1": "Each video is uploaded to Cloudflare Stream and processed in the background.",
       "howItWorks2": "URLs are signed: they expire in 1 hour and are bound to the member's IP.",
-      "howItWorks3": "Only one active session per member at a time."
+      "howItWorks3": "Only one active session per member at a time.",
+      "metrics": {
+        "video": "Video",
+        "plays": "Plays",
+        "viewers": "Viewers",
+        "avgWatched": "Watched (avg)",
+        "completion": "Completion",
+        "finished": "Finished",
+        "draft": "Draft",
+        "whoWatched": "Who watched",
+        "noViewers": "Nobody has watched this video yet.",
+        "notMeasured": "not measured",
+        "noVideos": "No videos in the library yet.",
+        "noDataYet": "No measured plays yet. Real measurement started with the latest update, so earlier views aren't counted here.",
+        "footnote": "“Watched” is actual playback time, not time with the video open. “Completion” is the furthest point reached. Finished counts from 90%."
+      },
+      "tabMetrics": "Metrics"
     },
     "insightsPage": {
       "title": "Insights",
