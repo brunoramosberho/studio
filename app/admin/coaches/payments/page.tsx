@@ -17,6 +17,7 @@ import {
   Wallet,
   Loader2,
   AlertTriangle,
+  FileText,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -357,6 +358,24 @@ export default function CoachPaymentsPage() {
                     className={cn("h-4 w-4 shrink-0 text-muted transition-transform", open && "rotate-180")}
                   />
                 </button>
+
+                {/* Outside the header button on purpose: an <a> nested in a
+                    <button> is invalid markup, and clicking it would toggle
+                    the row instead of downloading. */}
+                <div className="flex items-center gap-2 border-t border-border/40 px-4 py-2">
+                  <a href={`${exportUrl}&coachId=${c.coachId}&format=pdf`} download>
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+                      <FileText className="h-3.5 w-3.5" />
+                      {t("downloadPdf")}
+                    </Button>
+                  </a>
+                  <a href={`${exportUrl}&coachId=${c.coachId}`} download>
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted">
+                      <Download className="h-3.5 w-3.5" />
+                      {t("downloadExcel")}
+                    </Button>
+                  </a>
+                </div>
 
                 {open && c.lines.length > 0 && (
                   <div className="overflow-x-auto border-t border-border/40">

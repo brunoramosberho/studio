@@ -2637,7 +2637,9 @@
     "seatAttended": "{n} attended",
     "seatNoShow": "{n} no-show",
     "seatLateCancel": "{n} late cancel",
-    "seatCapped": "room cap"
+    "seatCapped": "room cap",
+    "downloadPdf": "Breakdown PDF",
+    "downloadExcel": "Excel"
   },
   "install": {
     "close": "Close",

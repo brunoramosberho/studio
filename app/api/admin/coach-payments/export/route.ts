@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission, getTenantCurrency } from "@/lib/tenant";
+import { getBrandingForTenantId } from "@/lib/branding.server";
 import { computeCoachPay, type CoachPayClassLine } from "@/lib/coach/pay";
 
 function monthRange(month: string | null): { from: Date; to: Date; label: string } {
@@ -52,6 +53,10 @@ const LABELS = {
     PER_CLASS: "Por clase",
     PER_STUDENT: "Por alumno",
     OCCUPANCY_TIER: "Bono ocupación",
+    statementTitle: "Desglose de pago",
+    generated: "Generado el",
+    statementNote: "Documento informativo. No sustituye a una factura ni a un recibo.",
+    upcomingLegend: "Las líneas en gris son clases aún no impartidas.",
   },
   en: {
     file: "instructor-payments",
@@ -83,6 +88,10 @@ const LABELS = {
     PER_CLASS: "Per class",
     PER_STUDENT: "Per student",
     OCCUPANCY_TIER: "Occupancy bonus",
+    statementTitle: "Pay breakdown",
+    generated: "Generated on",
+    statementNote: "For information only. Not an invoice or a receipt.",
+    upcomingLegend: "Greyed lines are classes not taught yet.",
   },
 } as const;
 
@@ -118,6 +127,54 @@ export async function GET(request: NextRequest) {
       const includeFixed = !studioFilter && !typeFilter && statusFilter !== "upcoming";
       if (lines.length === 0 && (!includeFixed || pay.monthlyFixed === 0)) continue;
       rows.push({ coach: coach.name, lines, monthlyFixed: includeFixed ? pay.monthlyFixed : 0 });
+    }
+
+    // A PDF is one instructor's month, formatted to be forwarded to them as-is.
+    // The spreadsheet stays the payroll view: everyone, in columns you can sum.
+    if (sp.get("format") === "pdf") {
+      if (!coachIdParam) {
+        return NextResponse.json({ error: "coachId_required" }, { status: 400 });
+      }
+      const row = rows[0];
+      if (!row) return NextResponse.json({ error: "no_data" }, { status: 404 });
+
+      const { buildCoachStatementPdf } = await import("@/lib/coach/statement-pdf");
+      const branding = await getBrandingForTenantId(tenantId);
+      const bytes = await buildCoachStatementPdf({
+        studioName: branding.studioName,
+        coachName: row.coach,
+        monthLabel: label,
+        currency,
+        locale: sp.get("lang") === "en" ? "en" : "es",
+        lines: row.lines,
+        monthlyFixed: row.monthlyFixed,
+        accentHex: branding.colorAccent,
+        labels: {
+          title: L.statementTitle,
+          instructor: L.instructor,
+          date: L.date,
+          discipline: L.discipline,
+          studio: L.studio,
+          attendees: L.attendees,
+          rateDetail: L.rateDetail,
+          amount: L.amount,
+          fixed: L.fixed,
+          total: L.total,
+          classes: L.classes,
+          upcoming: L.upcoming,
+          upcomingLegend: L.upcomingLegend,
+          generated: L.generated,
+          note: L.statementNote,
+        },
+      });
+
+      const safeName = row.coach.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase();
+      return new NextResponse(Buffer.from(bytes), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="${L.file}-${safeName}-${sp.get("month") ?? ""}.pdf"`,
+        },
+      });
     }
 
     // Lazy-load exceljs (~22MB) so it's only pulled into this route's function

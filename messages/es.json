@@ -2637,7 +2637,9 @@
     "seatAttended": "{n} asistieron",
     "seatNoShow": "{n} no-show",
     "seatLateCancel": "{n} canc. tardía",
-    "seatCapped": "tope de sala"
+    "seatCapped": "tope de sala",
+    "downloadPdf": "PDF del desglose",
+    "downloadExcel": "Excel"
   },
   "install": {
     "close": "Cerrar",
