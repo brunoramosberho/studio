@@ -158,7 +158,7 @@ function Tip({ children }: { children: React.ReactNode }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wider text-stone-400 first:mt-0">
+    <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wider text-muted/70 first:mt-0">
       {children}
     </p>
   );
@@ -176,10 +176,10 @@ function StatCard({
   hint?: string;
 }) {
   return (
-    <div className="group relative rounded-xl bg-stone-100 p-3 text-center">
-      <Icon className="mx-auto mb-1 h-4 w-4 text-stone-400" />
-      <p className="text-lg font-bold text-stone-900">{value}</p>
-      <p className="text-[11px] text-stone-500">{label}</p>
+    <div className="group relative rounded-xl bg-muted/10 p-3 text-center">
+      <Icon className="mx-auto mb-1 h-4 w-4 text-muted/70" />
+      <p className="text-lg font-bold text-foreground">{value}</p>
+      <p className="text-[11px] text-muted">{label}</p>
       {hint && (
         <span className="absolute -top-7 left-1/2 z-10 hidden -translate-x-1/2 rounded-lg bg-stone-800 px-2.5 py-1 text-[10px] text-white whitespace-nowrap shadow-lg group-hover:block">
           {hint}
@@ -192,7 +192,7 @@ function StatCard({
 function ConversionBadge({ rate }: { rate: number }) {
   if (isNaN(rate)) {
     return (
-      <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-400">
+      <span className="rounded-md bg-muted/10 px-2 py-0.5 text-[10px] font-medium text-muted/70">
         Sin datos
       </span>
     );
@@ -211,7 +211,7 @@ function ConversionBadge({ rate }: { rate: number }) {
       </span>
     );
   return (
-    <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-400">
+    <span className="rounded-md bg-muted/10 px-2 py-0.5 text-[10px] font-medium text-muted/70">
       Baja
     </span>
   );
@@ -234,7 +234,7 @@ function CopyButton({ text }: { text: string }) {
         "flex h-8 w-8 items-center justify-center rounded-lg border transition-all",
         copied
           ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-          : "border-stone-200 text-stone-500 hover:bg-stone-50"
+          : "border-border/60 text-muted hover:bg-surface"
       )}
     >
       {copied ? (
@@ -254,7 +254,7 @@ function EntityIcon({ type, color }: { type: string; color?: string }) {
     membership: { icon: Package, bg: "bg-emerald-50 text-emerald-500" },
     product: { icon: ShoppingBag, bg: "bg-orange-50 text-orange-500" },
   };
-  const c = config[type] || { icon: Link2, bg: "bg-stone-100 text-stone-500" };
+  const c = config[type] || { icon: Link2, bg: "bg-muted/10 text-muted" };
   const Icon = c.icon;
   return (
     <div
@@ -322,10 +322,10 @@ function QRModal({
         <div ref={canvasRef} className="flex justify-center py-4">
           <QRCodeCanvas value={cleanUrl} size={180} level="M" />
         </div>
-        <p className="break-all text-center font-mono text-[11px] text-stone-400">
+        <p className="break-all text-center font-mono text-[11px] text-muted/70">
           {cleanUrl}
         </p>
-        <p className="text-center text-[11px] text-stone-400">
+        <p className="text-center text-[11px] text-muted/70">
           Imprime este QR en tu estudio, flyers o tarjetas para que tus clientes
           accedan directo.
         </p>
@@ -426,16 +426,16 @@ function AmbassadorsTab() {
   return (
     <div className="space-y-5">
       {/* Explainer */}
-      <div className="rounded-2xl border border-stone-200 bg-card p-5">
+      <div className="rounded-2xl border border-border/60 bg-card p-5">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#3730B8]/10">
             <Users className="h-4.5 w-4.5 text-[#3730B8]" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-stone-900">
+            <h3 className="text-sm font-semibold text-foreground">
               Links de clientes
             </h3>
-            <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
+            <p className="mt-0.5 text-xs leading-relaxed text-muted">
               Cada cliente tiene un link personal para compartir el estudio (en
               stories, con amigas, donde sea). Aquí ves quién lo mueve: clicks,
               reservas y sobre todo compras atribuidas — los últimos 30 días de
@@ -456,39 +456,39 @@ function AmbassadorsTab() {
       )}
 
       {/* Get any client's link */}
-      <div className="rounded-2xl border border-stone-200 bg-card p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-400">
+      <div className="rounded-2xl border border-border/60 bg-card p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted/70">
           Obtener el link de un cliente
         </p>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted/70" />
           <input
             value={lookupQ}
             onChange={(e) => setLookupQ(e.target.value)}
             placeholder="Buscar cliente por nombre o email..."
-            className="w-full rounded-xl border border-stone-200 bg-card py-2 pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400 focus:ring-1 focus:ring-stone-300"
+            className="w-full rounded-xl border border-border/60 bg-card py-2 pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-border focus:ring-1 focus:ring-stone-300"
           />
           {lookupQ.trim().length >= 2 && searchResults.length > 0 && (
-            <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-stone-200 bg-card shadow-lg">
+            <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-border/60 bg-card shadow-lg">
               {searchResults.slice(0, 8).map((r) => (
                 <button
                   key={r.id}
                   onClick={() => fetchLinkFor(r.id)}
                   disabled={lookupLoading}
-                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-stone-50"
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-surface"
                 >
-                  <span className="truncate font-medium text-stone-800">{r.name ?? r.email}</span>
-                  <span className="ml-2 truncate text-xs text-stone-400">{r.email}</span>
+                  <span className="truncate font-medium text-foreground">{r.name ?? r.email}</span>
+                  <span className="ml-2 truncate text-xs text-muted/70">{r.email}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
         {lookupResult && (
-          <div className="mt-3 flex items-center gap-2 rounded-xl bg-stone-50 px-3 py-2">
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-surface px-3 py-2">
             <p className="min-w-0 flex-1">
-              <span className="block text-xs font-medium text-stone-700">{lookupResult.name}</span>
-              <span className="block truncate font-mono text-xs text-stone-400">{lookupResult.link}</span>
+              <span className="block text-xs font-medium text-foreground/80">{lookupResult.name}</span>
+              <span className="block truncate font-mono text-xs text-muted/70">{lookupResult.link}</span>
             </p>
             <CopyButton text={lookupResult.link} />
           </div>
@@ -496,13 +496,13 @@ function AmbassadorsTab() {
       </div>
 
       {/* Leaderboard */}
-      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-card">
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
         <SectionHeader label={`Ranking (${rows.length})`} />
         {rows.length === 0 ? (
           <div className="px-4 py-12 text-center">
-            <Users className="mx-auto mb-2 h-8 w-8 text-stone-300" />
-            <p className="text-sm font-medium text-stone-500">Aún no hay actividad</p>
-            <p className="mt-1 text-xs text-stone-400">
+            <Users className="mx-auto mb-2 h-8 w-8 text-muted/50" />
+            <p className="text-sm font-medium text-muted">Aún no hay actividad</p>
+            <p className="mt-1 text-xs text-muted/70">
               Comparte el link de un cliente (búscalo arriba) y cuando alguien
               le dé click aparecerá aquí.
             </p>
@@ -511,21 +511,21 @@ function AmbassadorsTab() {
           rows.map((r, i) => (
             <div
               key={r.membershipId}
-              className="flex items-center gap-3 border-b border-stone-100 px-4 py-2.5 last:border-b-0"
+              className="flex items-center gap-3 border-b border-border/40 px-4 py-2.5 last:border-b-0"
             >
-              <span className="w-5 shrink-0 text-right text-xs font-semibold tabular-nums text-stone-400">
+              <span className="w-5 shrink-0 text-right text-xs font-semibold tabular-nums text-muted/70">
                 {i + 1}
               </span>
               {r.image ? (
                 <img src={r.image} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
               ) : (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-500">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/10 text-xs font-semibold text-muted">
                   {(r.name ?? r.email)[0]?.toUpperCase()}
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-stone-900">{r.name ?? r.email}</p>
-                <p className="truncate text-xs text-stone-400">
+                <p className="truncate text-sm font-medium text-foreground">{r.name ?? r.email}</p>
+                <p className="truncate text-xs text-muted/70">
                   {r.clicks} clicks · {r.bookings} reservas · {r.purchases} compras
                 </p>
               </div>
@@ -609,7 +609,7 @@ function LinkStatsDialog({
                 "rounded-lg px-3 py-1 text-xs font-medium transition-colors",
                 range === r
                   ? "bg-stone-900 text-white"
-                  : "bg-stone-100 text-stone-600 hover:bg-stone-200",
+                  : "bg-muted/10 text-muted hover:bg-muted/20",
               )}
             >
               {r === "7d" ? "7 días" : r === "30d" ? "30 días" : "90 días"}
@@ -638,22 +638,22 @@ function LinkStatsDialog({
                 },
                 { label: "Revenue", value: formatMoney(data.totalRevenue, tenantCurrency) },
               ].map((s) => (
-                <div key={s.label} className="rounded-xl bg-stone-50 px-2 py-2 text-center">
-                  <p className="text-sm font-bold text-stone-900">{s.value}</p>
-                  <p className="text-[10px] text-stone-400">{s.label}</p>
+                <div key={s.label} className="rounded-xl bg-surface px-2 py-2 text-center">
+                  <p className="text-sm font-bold text-foreground">{s.value}</p>
+                  <p className="text-[10px] text-muted/70">{s.label}</p>
                 </div>
               ))}
             </div>
 
             {data.totalClicks === 0 ? (
-              <p className="py-4 text-center text-xs text-stone-400">
+              <p className="py-4 text-center text-xs text-muted/70">
                 Sin clicks en este periodo. Comparte el link con UTM y aparecerán aquí.
               </p>
             ) : (
               <>
                 {/* Clicks per day */}
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted/70">
                     Clicks por día
                   </p>
                   <div className="flex h-12 items-end gap-px">
@@ -670,22 +670,22 @@ function LinkStatsDialog({
 
                 {/* By channel */}
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted/70">
                     Por canal
                   </p>
                   <div className="space-y-1.5">
                     {data.sources.map((s) => (
                       <div key={s.source} className="flex items-center gap-2">
-                        <span className="w-28 shrink-0 truncate text-xs font-medium text-stone-700">
+                        <span className="w-28 shrink-0 truncate text-xs font-medium text-foreground/80">
                           {SOURCE_LABELS[s.source] ?? s.source}
                         </span>
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-stone-100">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/10">
                           <div
                             className="h-full rounded-full bg-[#3730B8]/70"
                             style={{ width: `${(s.clicks / maxSourceClicks) * 100}%` }}
                           />
                         </div>
-                        <span className="w-28 shrink-0 text-right text-[11px] tabular-nums text-stone-500">
+                        <span className="w-28 shrink-0 text-right text-[11px] tabular-nums text-muted">
                           {s.clicks} clicks · {s.conversions} conv.
                           {s.revenue > 0 && (
                             <span className="text-emerald-600">
@@ -721,29 +721,29 @@ function LinkRow({
   onStats?: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-stone-100 px-4 py-2.5 transition-colors last:border-b-0 hover:bg-stone-50">
+    <div className="flex items-center gap-3 border-b border-border/40 px-4 py-2.5 transition-colors last:border-b-0 hover:bg-surface">
       <EntityIcon type={item._type} color={item.color} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-stone-900">
+        <p className="truncate text-sm font-medium text-foreground">
           {item.name}
           {item.subtitle && (
-            <span className="ml-1.5 text-xs font-normal text-stone-400">
+            <span className="ml-1.5 text-xs font-normal text-muted/70">
               {item.subtitle}
             </span>
           )}
         </p>
-        <p className="truncate font-mono text-xs text-stone-400">{item.url}</p>
+        <p className="truncate font-mono text-xs text-muted/70">{item.url}</p>
       </div>
       {onStats ? (
         <button
           onClick={onStats}
           title="Ver desglose por canal"
-          className="hidden whitespace-nowrap rounded-lg px-1.5 py-1 text-xs text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800 sm:inline"
+          className="hidden whitespace-nowrap rounded-lg px-1.5 py-1 text-xs text-muted transition-colors hover:bg-muted/10 hover:text-foreground sm:inline"
         >
           {item.clicks} clicks · {item.conversions} conv.
         </button>
       ) : (
-        <span className="hidden whitespace-nowrap text-xs text-stone-500 sm:inline">
+        <span className="hidden whitespace-nowrap text-xs text-muted sm:inline">
           {item.clicks} clicks · {item.conversions} conv.
         </span>
       )}
@@ -754,7 +754,7 @@ function LinkRow({
         <button
           onClick={onStats}
           title="Ver desglose por canal"
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 text-stone-500 transition-colors hover:bg-stone-50"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 text-muted transition-colors hover:bg-surface"
         >
           <BarChart3 className="h-3.5 w-3.5" />
         </button>
@@ -764,7 +764,7 @@ function LinkRow({
         <button
           onClick={() => onUTM(item.url)}
           title="Crear link con UTM"
-          className="flex h-8 items-center gap-1 rounded-lg border border-stone-200 px-2 text-[11px] font-medium text-stone-500 transition-colors hover:bg-stone-50"
+          className="flex h-8 items-center gap-1 rounded-lg border border-border/60 px-2 text-[11px] font-medium text-muted transition-colors hover:bg-surface"
         >
           <MousePointerClick className="h-3 w-3" />
           <span className="hidden sm:inline">UTM</span>
@@ -773,7 +773,7 @@ function LinkRow({
       <button
         onClick={() => onQR(item.url, item.name)}
         title="Generar QR"
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 text-stone-500 transition-colors hover:bg-stone-50"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 text-muted transition-colors hover:bg-surface"
       >
         <QrCode className="h-3.5 w-3.5" />
       </button>
@@ -783,8 +783,8 @@ function LinkRow({
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="border-b border-stone-100 bg-stone-50/50 px-4 py-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+    <div className="border-b border-border/40 bg-surface/50 px-4 py-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted/70">
         {label}
       </p>
     </div>
@@ -877,16 +877,16 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
   return (
     <div className="space-y-5">
       {/* Explainer */}
-      <div className="rounded-2xl border border-stone-200 bg-card p-5">
+      <div className="rounded-2xl border border-border/60 bg-card p-5">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#3730B8]/10">
             <Link2 className="h-4.5 w-4.5 text-[#3730B8]" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-stone-900">
+            <h3 className="text-sm font-semibold text-foreground">
               Tus links públicos
             </h3>
-            <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
+            <p className="mt-0.5 text-xs leading-relaxed text-muted">
               Cada disciplina, clase, paquete y producto tiene un link único que
               puedes compartir en redes sociales, WhatsApp, email o imprimir
               como QR. Copia el link, mándalo a tus clientes y mide cuántas
@@ -935,12 +935,12 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
       {hasAnyLinks && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted/70" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar clase, paquete o producto..."
-              className="w-full rounded-xl border border-stone-200 bg-card py-2 pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400 focus:ring-1 focus:ring-stone-300"
+              className="w-full rounded-xl border border-border/60 bg-card py-2 pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-border focus:ring-1 focus:ring-stone-300"
             />
           </div>
           <div className="flex gap-1">
@@ -952,7 +952,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                   "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
                   filter === f.key
                     ? "bg-stone-900 text-white"
-                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                    : "bg-muted/10 text-muted hover:bg-muted/20"
                 )}
               >
                 {f.label}
@@ -963,14 +963,14 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
       )}
 
       {/* Link List */}
-      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-card">
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
         {!hasAnyLinks ? (
           <div className="px-4 py-12 text-center">
-            <Link2 className="mx-auto mb-2 h-8 w-8 text-stone-300" />
-            <p className="text-sm font-medium text-stone-500">
+            <Link2 className="mx-auto mb-2 h-8 w-8 text-muted/50" />
+            <p className="text-sm font-medium text-muted">
               No se encontraron links
             </p>
-            <p className="mt-1 text-xs text-stone-400">
+            <p className="mt-1 text-xs text-muted/70">
               Crea disciplinas, paquetes o productos y aparecerán aquí
               automáticamente.
             </p>
@@ -1029,7 +1029,7 @@ function LinksTab({ onGoToUTM }: { onGoToUTM: (url: string) => void }) {
                 {classInstances.filter(matchQ).length > 5 && (
                   <button
                     onClick={() => setShowAllClasses(!showAllClasses)}
-                    className="flex w-full items-center justify-center gap-1 border-b border-stone-100 py-2.5 text-xs font-medium text-[#3730B8] transition-colors hover:bg-stone-50"
+                    className="flex w-full items-center justify-center gap-1 border-b border-border/40 py-2.5 text-xs font-medium text-[#3730B8] transition-colors hover:bg-surface"
                   >
                     {showAllClasses
                       ? "Mostrar menos"
@@ -1254,18 +1254,18 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
   return (
     <div className="space-y-5">
       {/* Explainer */}
-      <div className="rounded-2xl border border-stone-200 bg-card p-5">
+      <div className="rounded-2xl border border-border/60 bg-card p-5">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#3730B8]/10">
             <BarChart3 className="h-4.5 w-4.5 text-[#3730B8]" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-stone-900">
+            <h3 className="text-sm font-semibold text-foreground">
               ¿Qué son los parámetros UTM?
             </h3>
-            <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
+            <p className="mt-0.5 text-xs leading-relaxed text-muted">
               Son etiquetas que se añaden al final de un link (como{" "}
-              <code className="rounded bg-stone-100 px-1 py-0.5 font-mono text-[10px] text-[#3730B8]">
+              <code className="rounded bg-muted/10 px-1 py-0.5 font-mono text-[10px] text-[#3730B8]">
                 ?utm_source=instagram
               </code>
               ) para saber <strong>de dónde vienen tus visitas</strong>.
@@ -1280,9 +1280,9 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Form */}
         <div className="space-y-4 lg:col-span-3">
-          <div className="space-y-4 rounded-2xl border border-stone-200 bg-card p-5">
+          <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
             <div>
-              <label className="mb-1 block text-xs font-medium text-stone-600">
+              <label className="mb-1 block text-xs font-medium text-muted">
                 ¿A dónde quieres enviar a la gente?
               </label>
               <Select value={destination} onValueChange={setDestination}>
@@ -1340,7 +1340,7 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-stone-600">
+                <label className="mb-1 block text-xs font-medium text-muted">
                   ¿Dónde lo vas a publicar?
                 </label>
                 <Select value={source} onValueChange={setSource}>
@@ -1357,7 +1357,7 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
                 </Select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-stone-600">
+                <label className="mb-1 block text-xs font-medium text-muted">
                   ¿Cómo lo compartes?
                 </label>
                 <Select value={medium} onValueChange={setMedium}>
@@ -1376,23 +1376,23 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-stone-600">
+              <label className="mb-1 block text-xs font-medium text-muted">
                 Nombre de la campaña{" "}
-                <span className="text-stone-400">(identifica esta acción)</span>
+                <span className="text-muted/70">(identifica esta acción)</span>
               </label>
               <input
                 value={campaign}
                 onChange={(e) => setCampaign(e.target.value)}
                 placeholder="Ej: promo-verano, lanzamiento-yoga, blackfriday"
-                className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400"
+                className="w-full rounded-xl border border-border/60 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-border"
               />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-stone-600">
+                <label className="mb-1 block text-xs font-medium text-muted">
                   Contenido{" "}
-                  <span className="text-stone-400">
+                  <span className="text-muted/70">
                     opcional — diferencia variantes
                   </span>
                 </label>
@@ -1400,13 +1400,13 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Ej: banner-verde, cta-superior"
-                  className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400"
+                  className="w-full rounded-xl border border-border/60 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-border"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-stone-600">
+                <label className="mb-1 block text-xs font-medium text-muted">
                   Término{" "}
-                  <span className="text-stone-400">
+                  <span className="text-muted/70">
                     opcional — keyword de ads
                   </span>
                 </label>
@@ -1414,21 +1414,21 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
                   value={term}
                   onChange={(e) => setTerm(e.target.value)}
                   placeholder="Ej: pilates-madrid"
-                  className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-stone-400"
+                  className="w-full rounded-xl border border-border/60 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-border"
                 />
               </div>
             </div>
 
             {/* Preview */}
-            <div className="rounded-xl bg-stone-100 p-3">
-              <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-stone-400">
+            <div className="rounded-xl bg-muted/10 p-3">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted/70">
                 Tu link generado
               </p>
               <p className="break-all font-mono text-xs">
-                <span className="text-stone-500">{baseUrl}</span>
+                <span className="text-muted">{baseUrl}</span>
                 {utmString && (
                   <>
-                    <span className="text-stone-400">?</span>
+                    <span className="text-muted/70">?</span>
                     <span className="font-medium text-[#3730B8]">
                       {utmString}
                     </span>
@@ -1444,7 +1444,7 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
                 onClick={() =>
                   setQrModal({ url: fullUrl, name: selectedName })
                 }
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-stone-200 px-3 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50"
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-border/60 px-3 text-xs font-medium text-muted transition-colors hover:bg-surface"
               >
                 <QrCode className="h-3.5 w-3.5" />
                 QR
@@ -1453,7 +1453,7 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
                 href={fullUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-stone-200 px-3 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50"
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-border/60 px-3 text-xs font-medium text-muted transition-colors hover:bg-surface"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 Abrir
@@ -1464,11 +1464,11 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
 
         {/* Templates */}
         <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-stone-200 bg-card p-5">
-            <h3 className="text-sm font-semibold text-stone-900">
+          <div className="rounded-2xl border border-border/60 bg-card p-5">
+            <h3 className="text-sm font-semibold text-foreground">
               Atajos rápidos
             </h3>
-            <p className="mb-3 text-[11px] text-stone-400">
+            <p className="mb-3 text-[11px] text-muted/70">
               Haz click para preconfigurar los campos
             </p>
             <div className="space-y-1.5">
@@ -1480,17 +1480,17 @@ function UtmGeneratorTab({ initialDestination }: { initialDestination?: string }
                     "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
                     source === t.source && medium === t.medium
                       ? "bg-[#3730B8]/5 ring-1 ring-[#3730B8]/20"
-                      : "hover:bg-stone-50"
+                      : "hover:bg-surface"
                   )}
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-stone-100">
-                    <t.icon className="h-4 w-4 text-stone-500" />
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/10">
+                    <t.icon className="h-4 w-4 text-muted" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-stone-900">
+                    <p className="text-sm font-medium text-foreground">
                       {t.label}
                     </p>
-                    <p className="truncate text-[11px] text-stone-400">
+                    <p className="truncate text-[11px] text-muted/70">
                       {t.description}
                     </p>
                   </div>
@@ -1535,7 +1535,7 @@ function Toggle({
       onClick={() => onChange(!checked)}
       className={cn(
         "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-        checked ? "bg-[#3730B8]" : "bg-stone-300"
+        checked ? "bg-[#3730B8]" : "bg-muted/30"
       )}
     >
       <span
@@ -1597,15 +1597,15 @@ function PixelCard({
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border border-stone-200 bg-card p-5">
+    <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-5">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-100 text-sm font-bold text-stone-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/10 text-sm font-bold text-muted">
             {logo}
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-stone-900">{name}</h3>
-            <p className="text-xs text-stone-400">{description}</p>
+            <h3 className="text-sm font-semibold text-foreground">{name}</h3>
+            <p className="text-xs text-muted/70">{description}</p>
           </div>
         </div>
         <span
@@ -1613,7 +1613,7 @@ function PixelCard({
             "rounded-md px-2 py-0.5 text-[10px] font-medium",
             isConnected
               ? "bg-emerald-50 text-emerald-700"
-              : "bg-stone-100 text-stone-400"
+              : "bg-muted/10 text-muted/70"
           )}
         >
           {isConnected ? "Conectado" : "Sin configurar"}
@@ -1621,7 +1621,7 @@ function PixelCard({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-stone-600">
+        <label className="mb-1 block text-xs font-medium text-muted">
           {idLabel}
         </label>
         <div className="flex gap-2">
@@ -1629,7 +1629,7 @@ function PixelCard({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={idPlaceholder}
-            className="flex-1 rounded-lg border border-stone-200 px-3 py-2 font-mono text-xs outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
+            className="flex-1 rounded-lg border border-border/60 px-3 py-2 font-mono text-xs outline-none transition-colors placeholder:text-muted/50 focus:border-border"
           />
           <button
             onClick={handleSave}
@@ -1638,7 +1638,7 @@ function PixelCard({
               "rounded-lg px-3 py-2 text-xs font-medium transition-colors",
               saved
                 ? "bg-emerald-50 text-emerald-700"
-                : "bg-stone-900 text-white hover:bg-stone-800 disabled:bg-stone-200 disabled:text-stone-400"
+                : "bg-stone-900 text-white hover:bg-stone-800 disabled:bg-muted/20 disabled:text-muted/70"
             )}
           >
             {saved ? "Guardado" : "Guardar"}
@@ -1648,10 +1648,10 @@ function PixelCard({
 
       {secondaryIdLabel && (
         <div>
-          <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-stone-600">
+          <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted">
             {secondaryIdLabel}
             <span className="group relative">
-              <Info className="h-3 w-3 text-stone-400" />
+              <Info className="h-3 w-3 text-muted/70" />
               <span className="absolute -top-8 left-1/2 z-10 hidden -translate-x-1/2 rounded bg-stone-800 px-2.5 py-1 text-[10px] text-white whitespace-nowrap shadow-lg group-hover:block">
                 GA4 → Admin → Data Streams → API Secrets
               </span>
@@ -1661,14 +1661,14 @@ function PixelCard({
             value={secondaryValue}
             onChange={(e) => setSecondaryValue(e.target.value)}
             placeholder={secondaryIdPlaceholder}
-            className="w-full rounded-lg border border-stone-200 px-3 py-2 font-mono text-xs outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
+            className="w-full rounded-lg border border-border/60 px-3 py-2 font-mono text-xs outline-none transition-colors placeholder:text-muted/50 focus:border-border"
           />
         </div>
       )}
 
       {events && isConnected && eventValues && onToggleEvent && (
-        <div className="space-y-2 border-t border-stone-100 pt-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+        <div className="space-y-2 border-t border-border/40 pt-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted/70">
             Eventos que se rastrean
           </p>
           {events.map((ev) => (
@@ -1677,10 +1677,10 @@ function PixelCard({
               className="flex items-center justify-between rounded-lg px-1 py-1.5"
             >
               <div>
-                <p className="text-xs font-medium text-stone-700">
+                <p className="text-xs font-medium text-foreground/80">
                   {ev.label}
                 </p>
-                <p className="font-mono text-[10px] text-stone-400">
+                <p className="font-mono text-[10px] text-muted/70">
                   {ev.trigger}
                 </p>
               </div>
@@ -1761,16 +1761,16 @@ function PixelsTab() {
   return (
     <div className="space-y-5">
       {/* Explainer */}
-      <div className="rounded-2xl border border-stone-200 bg-card p-5">
+      <div className="rounded-2xl border border-border/60 bg-card p-5">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#3730B8]/10">
             <TrendingUp className="h-4.5 w-4.5 text-[#3730B8]" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-stone-900">
+            <h3 className="text-sm font-semibold text-foreground">
               Conecta tus plataformas de analítica
             </h3>
-            <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
+            <p className="mt-0.5 text-xs leading-relaxed text-muted">
               Los &quot;pixels&quot; son pequeños códigos que Google y Meta
               (Facebook/Instagram) usan para medir cuántas personas visitan tu
               página y cuántas terminan reservando. Al conectarlos, podrás ver
@@ -1872,7 +1872,7 @@ export default function MarketingPage() {
         <h1 className="font-display text-2xl font-bold sm:text-3xl">
           {t("marketing")}
         </h1>
-        <p className="mt-1 text-sm text-stone-500">
+        <p className="mt-1 text-sm text-muted">
           {t("marketingSubtitle")}
         </p>
       </motion.div>

@@ -164,7 +164,7 @@ const methodLabelKeys: Record<string, string> = {
 
 const conceptTypeStyles: Record<string, string> = {
   subscription: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200",
-  package: "bg-stone-100 text-stone-500",
+  package: "bg-muted/10 text-muted",
   product: "bg-emerald-50 text-emerald-700",
   penalty: "bg-red-50 text-red-700",
 };
@@ -347,7 +347,7 @@ export default function FinancePage() {
       >
         <div>
           <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("financeTitle")}</h1>
-          <p className="mt-1 text-sm text-stone-400">
+          <p className="mt-1 text-sm text-muted/70">
             {t("financeSummary")}
           </p>
         </div>
@@ -365,7 +365,7 @@ export default function FinancePage() {
               }
               setPage(1);
             }}
-            className="rounded-lg border border-stone-200 bg-card px-3 py-1.5 text-sm text-stone-700 outline-none focus:border-stone-400"
+            className="rounded-lg border border-border/60 bg-card px-3 py-1.5 text-sm text-foreground/80 outline-none focus:border-border"
           >
             {periods.map((p) => (
               <option key={p.value} value={p.value}>{t(p.labelKey)}</option>
@@ -378,7 +378,7 @@ export default function FinancePage() {
           </select>
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-card px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+            className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-sm font-medium text-foreground/80 hover:bg-surface"
           >
             <Download className="h-3.5 w-3.5" />
             {t("exportCsv")}
@@ -404,21 +404,21 @@ export default function FinancePage() {
           <>
             {/* Gross Revenue */}
             <motion.div variants={fadeUp}>
-              <div className="bg-card border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
-                <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
+              <div className="bg-card border border-border/40 rounded-2xl p-3 sm:p-4 min-w-0">
+                <p className="text-[11px] text-muted/70 mb-1 flex items-center gap-1">
                   <DollarSign className="h-3 w-3 shrink-0" /> <span className="truncate">{t("grossRevenue")}</span>
                 </p>
                 <p className="text-[18px] sm:text-[22px] font-medium leading-tight truncate">
                   {formatCurrency(summary?.grossRevenue ?? 0)}
                 </p>
                 {(summary?.wellhubRevenue ?? 0) > 0 ? (
-                  <p className="text-[11px] text-stone-400 mt-1 truncate">
+                  <p className="text-[11px] text-muted/70 mt-1 truncate">
                     {t("inclWellhub", {
                       amount: formatCurrency(summary?.wellhubRevenue ?? 0),
                     })}
                   </p>
                 ) : (
-                  <p className="text-[11px] text-stone-400 mt-1 truncate">
+                  <p className="text-[11px] text-muted/70 mt-1 truncate">
                     {t("stripeFeesDashboard")}
                   </p>
                 )}
@@ -428,14 +428,14 @@ export default function FinancePage() {
 
             {/* MRR */}
             <motion.div variants={fadeUp}>
-              <div className="bg-card border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
-                <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
+              <div className="bg-card border border-border/40 rounded-2xl p-3 sm:p-4 min-w-0">
+                <p className="text-[11px] text-muted/70 mb-1 flex items-center gap-1">
                   <RefreshCw className="h-3 w-3 shrink-0" /> <span className="truncate">{t("mrrActive")}</span>
                 </p>
                 <p className="text-[18px] sm:text-[22px] font-medium leading-tight text-[#3730B8] truncate">
                   {formatCurrency(summary?.mrr ?? 0)}
                 </p>
-                <p className="text-[11px] text-stone-400 mt-1 truncate">
+                <p className="text-[11px] text-muted/70 mt-1 truncate">
                   {summary?.activeMemberships ?? 0} {t("activeMembershipsCount")}
                 </p>
                 <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
@@ -447,8 +447,8 @@ export default function FinancePage() {
 
             {/* Failed Payments */}
             <motion.div variants={fadeUp}>
-              <div className="bg-card border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
-                <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
+              <div className="bg-card border border-border/40 rounded-2xl p-3 sm:p-4 min-w-0">
+                <p className="text-[11px] text-muted/70 mb-1 flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3 shrink-0" /> <span className="truncate">{t("failedPayments")}</span>
                 </p>
                 <p className={cn(
@@ -457,7 +457,7 @@ export default function FinancePage() {
                 )}>
                   {formatCurrency(summary?.failedPaymentsAmount ?? 0)}
                 </p>
-                <p className="text-[11px] text-stone-400 mt-1 truncate">
+                <p className="text-[11px] text-muted/70 mt-1 truncate">
                   {summary?.failedPaymentsCount ?? 0} {t("declinedCards")}
                 </p>
                 {(summary?.failedPaymentsCount ?? 0) > 0 ? (
@@ -474,17 +474,17 @@ export default function FinancePage() {
 
             {/* Upcoming Renewals */}
             <motion.div variants={fadeUp}>
-              <div className="bg-card border border-stone-100 rounded-2xl p-3 sm:p-4 min-w-0">
-                <p className="text-[11px] text-stone-400 mb-1 flex items-center gap-1">
+              <div className="bg-card border border-border/40 rounded-2xl p-3 sm:p-4 min-w-0">
+                <p className="text-[11px] text-muted/70 mb-1 flex items-center gap-1">
                   <Clock className="h-3 w-3 shrink-0" /> <span className="truncate">{t("upcomingCharges")}</span>
                 </p>
                 <p className="text-[18px] sm:text-[22px] font-medium leading-tight truncate">
                   {formatCurrency(summary?.upcomingRenewalsAmount ?? 0)}
                 </p>
-                <p className="text-[11px] text-stone-400 mt-1 truncate">
+                <p className="text-[11px] text-muted/70 mt-1 truncate">
                   {summary?.upcomingRenewalsCount ?? 0} {t("renewalsCount")}
                 </p>
-                <p className="text-[11px] text-stone-400 mt-1 truncate">
+                <p className="text-[11px] text-muted/70 mt-1 truncate">
                   {t("next7Days")}
                 </p>
               </div>
@@ -496,8 +496,8 @@ export default function FinancePage() {
       {/* Charts Row */}
       <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
         {/* Daily Revenue Bar Chart */}
-        <div className="lg:col-span-2 bg-card border border-stone-100 rounded-2xl p-3 sm:p-4">
-          <p className="text-xs font-medium text-stone-600 mb-3">{t("dailyRevenue")}</p>
+        <div className="lg:col-span-2 bg-card border border-border/40 rounded-2xl p-3 sm:p-4">
+          <p className="text-xs font-medium text-muted mb-3">{t("dailyRevenue")}</p>
           {financeLd ? (
             <Skeleton className="h-[100px]" />
           ) : (
@@ -506,8 +506,8 @@ export default function FinancePage() {
         </div>
 
         {/* Source Breakdown */}
-        <div className="bg-card border border-stone-100 rounded-2xl p-3 sm:p-4">
-          <p className="text-xs font-medium text-stone-600 mb-3">{t("sourceBreakdown")}</p>
+        <div className="bg-card border border-border/40 rounded-2xl p-3 sm:p-4">
+          <p className="text-xs font-medium text-muted mb-3">{t("sourceBreakdown")}</p>
           {financeLd ? (
             <Skeleton className="h-[100px]" />
           ) : (
@@ -565,17 +565,17 @@ export default function FinancePage() {
       )}
 
       {/* Transactions Table */}
-      <div className="bg-card border border-stone-100 rounded-2xl overflow-hidden">
+      <div className="bg-card border border-border/40 rounded-2xl overflow-hidden">
         {/* Search & Filters */}
-        <div className="px-3 py-3 sm:px-4 border-b border-stone-50 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="px-3 py-3 sm:px-4 border-b border-border/30 flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted/70" />
             <input
               type="text"
               placeholder={t("searchTransactions")}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-stone-200 text-sm outline-none focus:border-stone-400 placeholder:text-stone-300"
+              className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border/60 text-sm outline-none focus:border-border placeholder:text-muted/50"
             />
           </div>
           {/* Filter pills: horizontal scroll on mobile, wrap on larger screens */}
@@ -589,7 +589,7 @@ export default function FinancePage() {
                     "shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
                     method === f.value
                       ? "bg-stone-900 text-white"
-                      : "bg-stone-100 text-stone-500 hover:bg-stone-200",
+                      : "bg-muted/10 text-muted hover:bg-muted/20",
                   )}
                 >
                   {t(f.labelKey)}
@@ -599,8 +599,8 @@ export default function FinancePage() {
                 <SelectTrigger
                   aria-label={t("typeLabel")}
                   className={cn(
-                    "h-7 w-auto shrink-0 gap-1 rounded-lg border-stone-200 bg-white px-2.5 py-1 text-xs font-medium",
-                    typeFilter !== "all" ? "text-stone-900" : "text-stone-500",
+                    "h-7 w-auto shrink-0 gap-1 rounded-lg border-border/60 bg-card px-2.5 py-1 text-xs font-medium",
+                    typeFilter !== "all" ? "text-foreground" : "text-muted",
                   )}
                 >
                   <SelectValue />
@@ -618,8 +618,8 @@ export default function FinancePage() {
                   <SelectTrigger
                     aria-label={t("processedByColumn")}
                     className={cn(
-                      "h-7 w-auto max-w-[160px] shrink-0 gap-1 rounded-lg border-stone-200 bg-white px-2.5 py-1 text-xs font-medium",
-                      processedByFilter !== "all" ? "text-stone-900" : "text-stone-500",
+                      "h-7 w-auto max-w-[160px] shrink-0 gap-1 rounded-lg border-border/60 bg-card px-2.5 py-1 text-xs font-medium",
+                      processedByFilter !== "all" ? "text-foreground" : "text-muted",
                     )}
                   >
                     <SelectValue />
@@ -636,12 +636,12 @@ export default function FinancePage() {
                   </SelectContent>
                 </Select>
               )}
-              <label className="ml-1 sm:ml-2 flex shrink-0 items-center gap-1.5 text-xs text-stone-400 cursor-pointer select-none">
+              <label className="ml-1 sm:ml-2 flex shrink-0 items-center gap-1.5 text-xs text-muted/70 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={hideAbandoned}
                   onChange={(e) => setHideAbandoned(e.target.checked)}
-                  className="rounded border-stone-300 text-stone-600 focus:ring-stone-400 h-3 w-3"
+                  className="rounded border-border text-muted focus:ring-stone-400 h-3 w-3"
                 />
                 {t("hideAbandoned")}
               </label>
@@ -660,7 +660,7 @@ export default function FinancePage() {
               ))}
             </div>
           ) : tx.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-stone-400">
+            <div className="px-4 py-8 text-center text-sm text-muted/70">
               {t("noTransactionsInPeriod")}
             </div>
           ) : (
@@ -676,16 +676,16 @@ export default function FinancePage() {
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-stone-100">
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left">{t("clientColumn")}</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left">{t("conceptColumn")}</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left">{t("methodColumn")}</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-right">{t("amountColumn")}</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left hidden lg:table-cell">{t("feeNetColumn")}</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left hidden xl:table-cell">{t("arrivesBankColumn")}</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-center">{t("statusColumn")}</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-left hidden lg:table-cell">{t("processedByColumn")}</th>
-                <th className="text-[10px] uppercase tracking-wider text-stone-400 px-4 py-2.5 text-right">{t("dateColumn")}</th>
+              <tr className="border-b border-border/40">
+                <th className="text-[10px] uppercase tracking-wider text-muted/70 px-4 py-2.5 text-left">{t("clientColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-muted/70 px-4 py-2.5 text-left">{t("conceptColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-muted/70 px-4 py-2.5 text-left">{t("methodColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-muted/70 px-4 py-2.5 text-right">{t("amountColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-muted/70 px-4 py-2.5 text-left hidden lg:table-cell">{t("feeNetColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-muted/70 px-4 py-2.5 text-left hidden xl:table-cell">{t("arrivesBankColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-muted/70 px-4 py-2.5 text-center">{t("statusColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-muted/70 px-4 py-2.5 text-left hidden lg:table-cell">{t("processedByColumn")}</th>
+                <th className="text-[10px] uppercase tracking-wider text-muted/70 px-4 py-2.5 text-right">{t("dateColumn")}</th>
               </tr>
             </thead>
             <tbody>
@@ -697,50 +697,50 @@ export default function FinancePage() {
                 ))
               ) : tx.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-stone-400">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-muted/70">
                     {t("noTransactionsInPeriod")}
                   </td>
                 </tr>
               ) : (
                 tx.map((txn) => (
-                  <tr key={txn.id} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
+                  <tr key={txn.id} className="border-b border-border/30 hover:bg-surface transition-colors">
                     {/* Client */}
                     <td className="px-4 py-2.5">
                       {txn.memberId ? (
                         <Link href={`/admin/clients/${txn.memberId}`} className="group block">
-                          <p className="text-xs font-medium text-stone-700 truncate max-w-[140px] group-hover:text-stone-900 group-hover:underline">{txn.memberName}</p>
-                          <p className="text-[10px] text-stone-400 truncate max-w-[140px]">{txn.memberEmail}</p>
+                          <p className="text-xs font-medium text-foreground/80 truncate max-w-[140px] group-hover:text-foreground group-hover:underline">{txn.memberName}</p>
+                          <p className="text-[10px] text-muted/70 truncate max-w-[140px]">{txn.memberEmail}</p>
                         </Link>
                       ) : (
                         <div>
-                          <p className="text-xs font-medium text-stone-700 truncate max-w-[140px]">{txn.memberName}</p>
-                          <p className="text-[10px] text-stone-400 truncate max-w-[140px]">{txn.memberEmail}</p>
+                          <p className="text-xs font-medium text-foreground/80 truncate max-w-[140px]">{txn.memberName}</p>
+                          <p className="text-[10px] text-muted/70 truncate max-w-[140px]">{txn.memberEmail}</p>
                         </div>
                       )}
                     </td>
                     {/* Concept */}
                     <td className="px-4 py-2.5">
                       {txn.itemName && txn.itemHref ? (
-                        <Link href={txn.itemHref} className="text-xs font-medium text-stone-700 hover:text-stone-900 hover:underline truncate block max-w-[170px]">
+                        <Link href={txn.itemHref} className="text-xs font-medium text-foreground/80 hover:text-foreground hover:underline truncate block max-w-[170px]">
                           {txn.itemName}
                         </Link>
                       ) : (
-                        <p className="text-xs font-medium text-stone-600 truncate max-w-[170px]">{txn.concept ?? "—"}</p>
+                        <p className="text-xs font-medium text-muted truncate max-w-[170px]">{txn.concept ?? "—"}</p>
                       )}
-                      <p className="text-[10px] text-stone-400 truncate max-w-[170px]">{txn.conceptSub}</p>
-                      <span className={cn("inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium", conceptTypeStyles[txn.conceptType] ?? "bg-stone-100 text-stone-500")}>
+                      <p className="text-[10px] text-muted/70 truncate max-w-[170px]">{txn.conceptSub}</p>
+                      <span className={cn("inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium", conceptTypeStyles[txn.conceptType] ?? "bg-muted/10 text-muted")}>
                         {conceptTypeLabelKeys[txn.conceptType] ? t(conceptTypeLabelKeys[txn.conceptType]) : txn.conceptType}
                       </span>
                     </td>
                     {/* Method */}
                     <td className="px-4 py-2.5">
-                      <span className={cn("inline-block px-2 py-0.5 rounded-full text-[10px] font-medium", methodStyles[txn.source] ?? "bg-stone-100 text-stone-500")}>
+                      <span className={cn("inline-block px-2 py-0.5 rounded-full text-[10px] font-medium", methodStyles[txn.source] ?? "bg-muted/10 text-muted")}>
                         {methodLabelKeys[txn.source] ? t(methodLabelKeys[txn.source]) : txn.source}
                       </span>
                     </td>
                     {/* Amount */}
                     <td className="px-4 py-2.5 text-right">
-                      <p className="text-xs font-medium text-stone-700">{formatCurrency(txn.grossAmount)}</p>
+                      <p className="text-xs font-medium text-foreground/80">{formatCurrency(txn.grossAmount)}</p>
                       {txn.discountAmount != null && txn.discountAmount > 0 && (
                         <p className="text-[10px] text-emerald-600">
                           {txn.discountLabel ? `${txn.discountLabel} · ` : ""}−{formatCurrency(txn.discountAmount)}
@@ -753,7 +753,7 @@ export default function FinancePage() {
                     </td>
                     {/* Available On */}
                     <td className="px-4 py-2.5 hidden xl:table-cell">
-                      <p className="text-[10px] text-stone-400">
+                      <p className="text-[10px] text-muted/70">
                         {formatAvailableOn(txn.availableOn, txn.source, t)}
                       </p>
                     </td>
@@ -773,7 +773,7 @@ export default function FinancePage() {
                     </td>
                     {/* Date */}
                     <td className="px-4 py-2.5 text-right">
-                      <p className="text-[10px] text-stone-400">{formatTransactionDate(txn.createdAt, t)}</p>
+                      <p className="text-[10px] text-muted/70">{formatTransactionDate(txn.createdAt, t)}</p>
                     </td>
                   </tr>
                 ))
@@ -784,25 +784,25 @@ export default function FinancePage() {
 
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-stone-50 flex items-center justify-between">
-            <p className="text-[10px] text-stone-400">
+          <div className="px-4 py-3 border-t border-border/30 flex items-center justify-between">
+            <p className="text-[10px] text-muted/70">
               {t("showingPagination", { from: ((pagination.page - 1) * pagination.limit) + 1, to: Math.min(pagination.page * pagination.limit, pagination.total), total: pagination.total })}
             </p>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="p-1 rounded-lg text-stone-400 hover:bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-1 rounded-lg text-muted/70 hover:bg-muted/10 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-xs text-stone-500 px-2">
+              <span className="text-xs text-muted px-2">
                 {pagination.page} / {pagination.totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                 disabled={page >= pagination.totalPages}
-                className="p-1 rounded-lg text-stone-400 hover:bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-1 rounded-lg text-muted/70 hover:bg-muted/10 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -820,11 +820,11 @@ export default function FinancePage() {
               const dayLabel = formatRenewalDay(r.date, t);
               const grouped = groupMemberships(r.memberships);
               return (
-                <div key={r.date} className="bg-card border border-stone-100 rounded-xl p-3">
-                  <p className="text-[10px] text-stone-400">{dayLabel} · {r.count} {t("chargesCount")}</p>
-                  <p className="text-sm font-medium text-stone-900">{t("membershipRenewals")}</p>
+                <div key={r.date} className="bg-card border border-border/40 rounded-xl p-3">
+                  <p className="text-[10px] text-muted/70">{dayLabel} · {r.count} {t("chargesCount")}</p>
+                  <p className="text-sm font-medium text-foreground">{t("membershipRenewals")}</p>
                   <p className="text-[13px] font-medium text-[#3730B8] mt-1">{formatCurrency(r.totalAmount)}</p>
-                  <p className="text-[10px] text-stone-400">{grouped}</p>
+                  <p className="text-[10px] text-muted/70">{grouped}</p>
                 </div>
               );
             })}
@@ -850,7 +850,7 @@ function TrendBadge({ value, label }: { value: number; label: string }) {
 
 function DailyRevenueChart({ data, t }: { data: DailyRevenue[]; t: (key: string) => string }) {
   const formatCurrency = useFormatMoney();
-  if (data.length === 0) return <p className="text-xs text-stone-400">{t("noData")}</p>;
+  if (data.length === 0) return <p className="text-xs text-muted/70">{t("noData")}</p>;
 
   const maxAmount = Math.max(...data.map((d) => d.amount), 1);
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -871,7 +871,7 @@ function DailyRevenueChart({ data, t }: { data: DailyRevenue[]; t: (key: string)
             <div
               className={cn(
                 "w-full rounded-t-sm transition-colors",
-                isCurrentDay ? "bg-[#1C2340]" : "bg-stone-200 hover:bg-stone-300",
+                isCurrentDay ? "bg-[#1C2340]" : "bg-muted/20 hover:bg-muted/30",
               )}
               style={{ height: `${height}px` }}
             />
@@ -899,16 +899,16 @@ function DailyRevenueChart({ data, t }: { data: DailyRevenue[]; t: (key: string)
 function SourceBreakdown({ sources, t }: { sources: BySource[]; t: (key: string) => string }) {
   const formatCurrency = useFormatMoney();
   const filtered = sources.filter((s) => s.amount > 0);
-  if (filtered.length === 0) return <p className="text-xs text-stone-400">{t("noData")}</p>;
+  if (filtered.length === 0) return <p className="text-xs text-muted/70">{t("noData")}</p>;
 
   return (
     <div className="space-y-2.5">
       {filtered.map((s) => (
         <div key={s.source} className="flex items-center gap-2 min-w-0">
           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sourceColors[s.source] ?? "#999" }} />
-          <span className="text-xs text-stone-600 flex-1 truncate">{sourceLabelKeys[s.source] ? t(sourceLabelKeys[s.source]) : s.source}</span>
-          <span className="text-xs font-medium text-stone-700 shrink-0">{formatCurrency(s.amount)}</span>
-          <span className="text-[10px] text-stone-400 w-8 text-right shrink-0">{s.percent}%</span>
+          <span className="text-xs text-muted flex-1 truncate">{sourceLabelKeys[s.source] ? t(sourceLabelKeys[s.source]) : s.source}</span>
+          <span className="text-xs font-medium text-foreground/80 shrink-0">{formatCurrency(s.amount)}</span>
+          <span className="text-[10px] text-muted/70 w-8 text-right shrink-0">{s.percent}%</span>
         </div>
       ))}
     </div>
@@ -918,14 +918,14 @@ function SourceBreakdown({ sources, t }: { sources: BySource[]; t: (key: string)
 function FeeNetCell({ transaction: txn, t }: { transaction: Transaction; t: (key: string) => string }) {
   const formatCurrency = useFormatMoney();
   if (txn.source === "cash") {
-    return <span className="text-[10px] text-stone-400">{t("noFee")}</span>;
+    return <span className="text-[10px] text-muted/70">{t("noFee")}</span>;
   }
   if (txn.fee == null) {
-    return <span className="text-[10px] text-stone-400">—</span>;
+    return <span className="text-[10px] text-muted/70">—</span>;
   }
   const prefix = txn.isFeesEstimated ? "~" : "";
   return (
-    <div className="text-[10px] text-stone-400" title={txn.isFeesEstimated ? t("estimated") : undefined}>
+    <div className="text-[10px] text-muted/70" title={txn.isFeesEstimated ? t("estimated") : undefined}>
       <span>{prefix}{formatCurrency(txn.fee, null, { fractionDigits: 2 })} {t("fee")}</span>
       <span className="mx-0.5">·</span>
       <span>{prefix}{formatCurrency(txn.netAmount ?? 0, null, { fractionDigits: 2 })} {t("net")}</span>
@@ -941,12 +941,12 @@ function StatusBadge({ status, createdAt, t }: { status: string; createdAt: stri
     return <span className="inline-flex items-center gap-0.5 text-[10px] text-red-700 font-medium">✗ {t("statusFailed")}</span>;
   }
   if (status === "refunded") {
-    return <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-500 font-medium">↩ {t("statusRefunded")}</span>;
+    return <span className="inline-flex items-center gap-0.5 text-[10px] text-muted font-medium">↩ {t("statusRefunded")}</span>;
   }
   const ageMs = Date.now() - new Date(createdAt).getTime();
   const isAbandoned = ageMs > 60 * 60 * 1000;
   if (isAbandoned) {
-    return <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-400 font-medium">○ {t("statusAbandoned")}</span>;
+    return <span className="inline-flex items-center gap-0.5 text-[10px] text-muted/70 font-medium">○ {t("statusAbandoned")}</span>;
   }
   return <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 font-medium">● {t("statusPending")}</span>;
 }
@@ -957,10 +957,10 @@ function SellerDisplay({ transaction: txn, t }: { transaction: Transaction; t: (
   if (txn.processedByType === "system" || !txn.processedBy) {
     return (
       <div className="flex items-center gap-1.5 min-w-0">
-        <div className="w-5 h-5 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
-          <Zap className="w-3 h-3 text-stone-400" />
+        <div className="w-5 h-5 rounded-full bg-muted/10 flex items-center justify-center shrink-0">
+          <Zap className="w-3 h-3 text-muted/70" />
         </div>
-        <span className="text-xs text-stone-400 truncate">{t("systemLabel")}</span>
+        <span className="text-xs text-muted/70 truncate">{t("systemLabel")}</span>
       </div>
     );
   }
@@ -972,7 +972,7 @@ function SellerDisplay({ transaction: txn, t }: { transaction: Transaction; t: (
       >
         {txn.processedBy.initials}
       </div>
-      <span className="text-xs text-stone-600 truncate">{txn.processedBy.name}</span>
+      <span className="text-xs text-muted truncate">{txn.processedBy.name}</span>
     </div>
   );
 }
@@ -1015,7 +1015,7 @@ function SellerCell({
         title={t("reassignSeller")}
         className={cn(
           "h-auto w-auto max-w-[150px] gap-1 rounded border-0 bg-transparent px-1 py-0.5 shadow-none",
-          "hover:bg-stone-100 focus-visible:ring-1 focus-visible:ring-offset-0",
+          "hover:bg-muted/10 focus-visible:ring-1 focus-visible:ring-offset-0",
           pending && "opacity-60",
         )}
       >
@@ -1054,8 +1054,8 @@ function MobileTxCard({ txn, t }: { txn: Transaction; t: (key: string) => string
   const formatCurrency = useFormatMoney();
   const clientInner = (
     <div className="min-w-0 flex-1">
-      <p className="text-sm font-medium text-stone-800 truncate">{txn.memberName}</p>
-      <p className="text-[11px] text-stone-400 truncate">{txn.memberEmail}</p>
+      <p className="text-sm font-medium text-foreground truncate">{txn.memberName}</p>
+      <p className="text-[11px] text-muted/70 truncate">{txn.memberEmail}</p>
     </div>
   );
 
@@ -1070,36 +1070,36 @@ function MobileTxCard({ txn, t }: { txn: Transaction; t: (key: string) => string
           clientInner
         )}
         <div className="text-right shrink-0">
-          <p className="text-sm font-semibold text-stone-900">{formatCurrency(txn.grossAmount)}</p>
+          <p className="text-sm font-semibold text-foreground">{formatCurrency(txn.grossAmount)}</p>
           {txn.discountAmount != null && txn.discountAmount > 0 && (
             <p className="text-[10px] text-emerald-600">
               {txn.discountLabel ? `${txn.discountLabel} · ` : ""}−{formatCurrency(txn.discountAmount)}
             </p>
           )}
-          <p className="text-[10px] text-stone-400 mt-0.5">{formatTransactionDate(txn.createdAt, t)}</p>
+          <p className="text-[10px] text-muted/70 mt-0.5">{formatTransactionDate(txn.createdAt, t)}</p>
         </div>
       </div>
 
       {/* Concept */}
       <div className="mt-2">
         {txn.itemName && txn.itemHref ? (
-          <Link href={txn.itemHref} className="text-[12px] font-medium text-stone-700 hover:underline truncate block">
+          <Link href={txn.itemHref} className="text-[12px] font-medium text-foreground/80 hover:underline truncate block">
             {txn.itemName}
           </Link>
         ) : (
-          <p className="text-[12px] font-medium text-stone-600 truncate">{txn.concept ?? "—"}</p>
+          <p className="text-[12px] font-medium text-muted truncate">{txn.concept ?? "—"}</p>
         )}
         {txn.conceptSub ? (
-          <p className="text-[10px] text-stone-400 truncate">{txn.conceptSub}</p>
+          <p className="text-[10px] text-muted/70 truncate">{txn.conceptSub}</p>
         ) : null}
       </div>
 
       {/* Meta row: badges + status */}
       <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-        <span className={cn("inline-block px-1.5 py-0.5 rounded text-[9px] font-medium", conceptTypeStyles[txn.conceptType] ?? "bg-stone-100 text-stone-500")}>
+        <span className={cn("inline-block px-1.5 py-0.5 rounded text-[9px] font-medium", conceptTypeStyles[txn.conceptType] ?? "bg-muted/10 text-muted")}>
           {conceptTypeLabelKeys[txn.conceptType] ? t(conceptTypeLabelKeys[txn.conceptType]) : txn.conceptType}
         </span>
-        <span className={cn("inline-block px-2 py-0.5 rounded-full text-[10px] font-medium", methodStyles[txn.source] ?? "bg-stone-100 text-stone-500")}>
+        <span className={cn("inline-block px-2 py-0.5 rounded-full text-[10px] font-medium", methodStyles[txn.source] ?? "bg-muted/10 text-muted")}>
           {methodLabelKeys[txn.source] ? t(methodLabelKeys[txn.source]) : txn.source}
         </span>
         <span className="ml-auto">
