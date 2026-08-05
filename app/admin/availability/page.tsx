@@ -245,20 +245,20 @@ export default function AdminAvailabilityPage() {
   const pendingCount = pending.length;
 
   return (
-    <div className="min-h-full bg-stone-50">
+    <div className="min-h-full bg-surface">
       <div className="mx-auto max-w-5xl space-y-6 p-4 lg:p-6">
         <SectionTabs tabs={TEAM_TABS} ariaLabel="Team sections" />
         <div>
-          <h1 className="text-2xl font-bold text-stone-900">
+          <h1 className="text-2xl font-bold text-foreground">
             {t("availability")}
           </h1>
-          <p className="mt-1 text-sm text-stone-500">
+          <p className="mt-1 text-sm text-muted">
             {t("availabilitySubtitle")}
           </p>
         </div>
 
         <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <div className="inline-flex w-max max-w-none rounded-lg bg-stone-100 p-1 whitespace-nowrap">
+          <div className="inline-flex w-max max-w-none rounded-lg bg-muted/10 p-1 whitespace-nowrap">
             <TabButton
               active={tab === "requests"}
               onClick={() => setTab("requests")}
@@ -319,8 +319,8 @@ function TabButton({
       className={cn(
         "relative flex items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-medium transition-all",
         active
-          ? "border border-stone-200 bg-card text-stone-900"
-          : "text-stone-500 hover:text-stone-700",
+          ? "border border-border/60 bg-card text-foreground"
+          : "text-muted hover:text-foreground/80",
       )}
     >
       {children}
@@ -341,28 +341,28 @@ function RequestsTab({ pending }: { pending: PendingBlock[] }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-stone-200 bg-card p-3">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
+        <div className="rounded-2xl border border-border/60 bg-card p-3">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted/70">
             Solicitudes pendientes
           </p>
-          <p className="mt-1 text-2xl font-bold text-stone-900">
+          <p className="mt-1 text-2xl font-bold text-foreground">
             {pending.length}
           </p>
-          <p className="text-xs text-stone-500">Requieren tu atención</p>
+          <p className="text-xs text-muted">Requieren tu atención</p>
         </div>
-        <div className="rounded-2xl border border-stone-200 bg-card p-3">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
+        <div className="rounded-2xl border border-border/60 bg-card p-3">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted/70">
             Clases sin cobertura
           </p>
           <p
             className={cn(
               "mt-1 text-2xl font-bold",
-              totalUncovered > 0 ? "text-red-700" : "text-stone-900",
+              totalUncovered > 0 ? "text-red-700" : "text-foreground",
             )}
           >
             {totalUncovered}
           </p>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-muted">
             {pending.length > 0
               ? `Si se aprueban ${pending.length === 1 ? "la solicitud" : "ambas"}`
               : "Sin solicitudes"}
@@ -371,8 +371,8 @@ function RequestsTab({ pending }: { pending: PendingBlock[] }) {
       </div>
 
       {pending.length === 0 ? (
-        <div className="rounded-2xl border border-stone-200 bg-card p-8 text-center">
-          <p className="text-sm text-stone-500">
+        <div className="rounded-2xl border border-border/60 bg-card p-8 text-center">
+          <p className="text-sm text-muted">
             No hay solicitudes pendientes
           </p>
         </div>
@@ -419,7 +419,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
       : "";
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-card">
+    <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
       <div className="flex items-start gap-3 p-4">
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
@@ -429,7 +429,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-stone-900">
+            <span className="font-semibold text-foreground">
               {block.coach.name}
             </span>
             <span
@@ -443,7 +443,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
               Zona {block.zone === "yellow" ? "amarilla" : "roja"}
             </span>
           </div>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-muted">
             {dateRange} · {REASON_LABELS[block.reasonType] || block.reasonType}
             {block.reasonNote ? ` · ${block.reasonNote}` : ""}
           </p>
@@ -451,8 +451,8 @@ function RequestCard({ block }: { block: PendingBlock }) {
       </div>
 
       {block.affectedClasses.length > 0 && (
-        <div className="border-t border-stone-100 bg-stone-50 px-4 py-3">
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-stone-400">
+        <div className="border-t border-border/40 bg-surface px-4 py-3">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted/70">
             Impacto si se aprueba
           </p>
           <div className="space-y-1.5">
@@ -464,7 +464,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
                     c.substitute ? "bg-emerald-500" : "bg-red-500",
                   )}
                 />
-                <span className="text-stone-700">
+                <span className="text-foreground/80">
                   {c.date} · {c.time} {c.name} · {c.enrolled}/{c.capacity}{" "}
                   alumnos
                 </span>
@@ -486,13 +486,13 @@ function RequestCard({ block }: { block: PendingBlock }) {
 
           {block.affectedClasses.some((c) => c.substitute || !c.substitute) && (
             <div className="mt-3">
-              <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-400">
+              <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted/70">
                 Sustitutos sugeridos
               </p>
               <div className="space-y-1">
                 {block.affectedClasses.map((c) => (
                   <div key={c.id} className="flex gap-2 text-xs">
-                    <span className="min-w-[140px] text-stone-500">
+                    <span className="min-w-[140px] text-muted">
                       {c.name} {c.date}
                     </span>
                     <span className="font-medium">→</span>
@@ -517,7 +517,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
         </div>
       )}
 
-      <div className="border-t border-stone-100 px-4 py-3">
+      <div className="border-t border-border/40 px-4 py-3">
         {status === "approved" && (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             <Check className="h-4 w-4" />
@@ -536,7 +536,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
               value={rejectionNote}
               onChange={(e) => setRejectionNote(e.target.value)}
               placeholder="Motivo del rechazo (opcional)"
-              className="flex-1 rounded-xl border-stone-200 text-sm"
+              className="flex-1 rounded-xl border-border/60 text-sm"
             />
             <button
               onClick={() =>
@@ -552,7 +552,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
             </button>
             <button
               onClick={() => setStatus("pending")}
-              className="shrink-0 rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-500 transition-colors hover:bg-stone-50"
+              className="shrink-0 rounded-xl border border-border/60 px-3 py-2 text-sm text-muted transition-colors hover:bg-surface"
             >
               Cancelar
             </button>
@@ -562,7 +562,7 @@ function RequestCard({ block }: { block: PendingBlock }) {
           <div className="flex gap-3">
             <button
               onClick={() => setStatus("rejecting")}
-              className="flex-1 rounded-xl border border-stone-200 px-4 py-2 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-50"
+              className="flex-1 rounded-xl border border-border/60 px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface"
             >
               Rechazar
             </button>
@@ -676,27 +676,27 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrev}
-            className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-stone-100"
+            className="rounded-lg p-1.5 text-muted transition-colors hover:bg-muted/10"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <span className="min-w-[180px] text-center text-sm font-semibold capitalize text-stone-800">
+          <span className="min-w-[180px] text-center text-sm font-semibold capitalize text-foreground">
             {data?.weekLabel ?? "…"}
           </span>
           <button
             onClick={handleNext}
-            className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-stone-100"
+            className="rounded-lg p-1.5 text-muted transition-colors hover:bg-muted/10"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
-          <div className="ml-2 inline-flex rounded-lg bg-stone-100 p-0.5">
+          <div className="ml-2 inline-flex rounded-lg bg-muted/10 p-0.5">
             <button
               onClick={() => setView("week")}
               className={cn(
                 "rounded-md px-3 py-1 text-xs font-medium transition-colors",
                 view === "week"
-                  ? "bg-card text-stone-900 shadow-sm"
-                  : "text-stone-500 hover:text-stone-700",
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted hover:text-foreground/80",
               )}
             >
               Semana
@@ -706,8 +706,8 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
               className={cn(
                 "rounded-md px-3 py-1 text-xs font-medium transition-colors",
                 view === "month"
-                  ? "bg-card text-stone-900 shadow-sm"
-                  : "text-stone-500 hover:text-stone-700",
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted hover:text-foreground/80",
               )}
             >
               Mes
@@ -732,7 +732,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
                 "rounded-full px-3 py-1 text-xs font-medium transition-all",
                 !disciplineFilter
                   ? "bg-[#1C2340] text-white"
-                  : "border border-stone-200 text-stone-500 hover:border-stone-400",
+                  : "border border-border/60 text-muted hover:border-border",
               )}
             >
               Todos
@@ -747,7 +747,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
                   "rounded-full px-3 py-1 text-xs font-medium transition-all",
                   disciplineFilter === d
                     ? "bg-[#1C2340] text-white"
-                    : "border border-stone-200 text-stone-500 hover:border-stone-400",
+                    : "border border-border/60 text-muted hover:border-border",
                 )}
               >
                 {d}
@@ -758,7 +758,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
       </div>
 
       {data && view === "week" && (
-        <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-card p-4">
+        <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card p-4">
           <div
             className="grid gap-px"
             style={{ gridTemplateColumns: "minmax(72px, 96px) repeat(7, minmax(0, 1fr))" }}
@@ -766,7 +766,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
             <div />
             {data.dayHeaders.map((dh) => (
               <div key={dh.date} className="flex flex-col items-center py-1">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted/70">
                   {dh.label}
                 </span>
                 <span
@@ -774,7 +774,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
                     "mt-0.5 flex h-[26px] w-[26px] items-center justify-center rounded-full text-xs font-semibold",
                     dh.isToday
                       ? "bg-[#3730B8] text-white"
-                      : "text-stone-700",
+                      : "text-foreground/80",
                   )}
                 >
                   {dh.dayNum}
@@ -791,7 +791,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
                   >
                     {coach.initials}
                   </div>
-                  <span className="truncate text-xs font-medium text-stone-700">
+                  <span className="truncate text-xs font-medium text-foreground/80">
                     {coach.name.split(" ")[0]}
                   </span>
                 </div>
@@ -831,7 +831,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
       )}
 
       {data && view === "month" && (
-        <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-card p-4">
+        <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card p-4">
           <div className="space-y-3">
             {dayGroups.map((week, weekIdx) => {
               const firstOfMonth = data.dayHeaders.find(
@@ -856,7 +856,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
                           className="flex flex-col items-center py-1"
                         >
                           {weekIdx === 0 && (
-                            <span className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
+                            <span className="text-[10px] font-medium uppercase tracking-wider text-muted/70">
                               {dh.label}
                             </span>
                           )}
@@ -866,8 +866,8 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
                               dh.isToday
                                 ? "bg-[#3730B8] text-white"
                                 : outOfMonth
-                                  ? "text-stone-300"
-                                  : "text-stone-700",
+                                  ? "text-muted/50"
+                                  : "text-foreground/80",
                             )}
                           >
                             {dh.dayNum}
@@ -887,12 +887,12 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
                               >
                                 {coach.initials}
                               </div>
-                              <span className="truncate text-xs font-medium text-stone-700">
+                              <span className="truncate text-xs font-medium text-foreground/80">
                                 {coach.name.split(" ")[0]}
                               </span>
                             </>
                           ) : (
-                            <span className="truncate text-[10px] text-stone-400">
+                            <span className="truncate text-[10px] text-muted/70">
                               {coach.name.split(" ")[0]}
                             </span>
                           )}
@@ -903,7 +903,7 @@ function CoverageTab({ onGoToRequests }: { onGoToRequests: () => void }) {
                             return (
                               <div
                                 key={dh.date}
-                                className="h-[24px] rounded-sm bg-stone-50/40"
+                                className="h-[24px] rounded-sm bg-surface/40"
                               />
                             );
                           }
@@ -1008,10 +1008,10 @@ function CellDetailDialog({
               {cell.coachInitials}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-stone-900">
+              <p className="truncate text-sm font-semibold text-foreground">
                 {cell.coachName}
               </p>
-              <p className="truncate text-xs capitalize text-stone-500">
+              <p className="truncate text-xs capitalize text-muted">
                 {dateStr}
               </p>
             </div>
@@ -1019,12 +1019,12 @@ function CellDetailDialog({
 
           <div
             className={cn(
-              "flex items-start gap-3 rounded-xl border border-stone-100 p-3",
+              "flex items-start gap-3 rounded-xl border border-border/40 p-3",
             )}
           >
             <div
               className={cn(
-                "mt-0.5 h-4 w-4 shrink-0 rounded-sm border border-stone-200/60",
+                "mt-0.5 h-4 w-4 shrink-0 rounded-sm border border-border/60/60",
                 statusCellClass(cell.status),
               )}
               style={(() => {
@@ -1033,10 +1033,10 @@ function CellDetailDialog({
               })()}
             />
             <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium text-stone-800">
+              <p className="text-sm font-medium text-foreground">
                 {statusLabel(cell.status)}
               </p>
-              <p className="text-xs leading-relaxed text-stone-500">
+              <p className="text-xs leading-relaxed text-muted">
                 {description}
               </p>
             </div>
@@ -1282,13 +1282,13 @@ function CoachDetailTab() {
       </div>
 
       {!coachUserId ? (
-        <div className="rounded-2xl border border-dashed border-stone-200 bg-card p-10 text-center text-sm text-stone-500">
+        <div className="rounded-2xl border border-dashed border-border/60 bg-card p-10 text-center text-sm text-muted">
           Elige un instructor para ver y editar su disponibilidad — el mismo
           horario semanal y calendario de vacaciones que ellos ven en su portal.
         </div>
       ) : isLoading || !data ? (
         <div className="flex h-40 items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-stone-400" />
+          <Loader2 className="h-5 w-5 animate-spin text-muted/70" />
         </div>
       ) : (
         <>
@@ -1306,12 +1306,12 @@ function CoachDetailTab() {
             onSaved={invalidate}
           />
 
-          <div className="rounded-2xl border border-stone-200 bg-card p-4">
+          <div className="rounded-2xl border border-border/60 bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-stone-900">
+              <h3 className="text-sm font-semibold text-foreground">
                 Vacaciones y tiempo libre
               </h3>
-              <span className="text-xs text-stone-400">
+              <span className="text-xs text-muted/70">
                 Toca un día del calendario para añadir
               </span>
             </div>
@@ -1327,7 +1327,7 @@ function CoachDetailTab() {
                 {timeOff.map((b) => (
                   <li key={b.id} className="flex items-center gap-3 py-2 text-sm">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-stone-800">
+                      <p className="font-medium text-foreground">
                         {b.startDate ? fmtBlockDate(b.startDate) : "—"}
                         {b.endDate && b.endDate.slice(0, 10) !== b.startDate?.slice(0, 10)
                           ? ` – ${fmtBlockDate(b.endDate)}`
@@ -1336,7 +1336,7 @@ function CoachDetailTab() {
                           ? ` · ${b.startTime}–${b.endTime}`
                           : ""}
                       </p>
-                      <p className="text-xs text-stone-500">
+                      <p className="text-xs text-muted">
                         {b.reasonType ? reasonLabels[b.reasonType] : "Sin motivo"}
                         {b.reasonNote ? ` · ${b.reasonNote}` : ""}
                       </p>
@@ -1350,7 +1350,7 @@ function CoachDetailTab() {
                       onClick={() => {
                         if (window.confirm("¿Eliminar este bloqueo?")) deleteMut.mutate(b.id);
                       }}
-                      className="rounded-md p-1.5 text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                      className="rounded-md p-1.5 text-muted/70 transition-colors hover:bg-rose-50 hover:text-rose-600"
                       aria-label="Eliminar"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1452,10 +1452,10 @@ function CoachRecurringEditor({
   });
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-card p-4">
+    <div className="rounded-2xl border border-border/60 bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-stone-900">Horario semanal</h3>
-        <span className="text-xs tabular-nums text-stone-400">
+        <h3 className="text-sm font-semibold text-foreground">Horario semanal</h3>
+        <span className="text-xs tabular-nums text-muted/70">
           {studioOpenTime} – {studioCloseTime}
         </span>
       </div>
@@ -1469,7 +1469,7 @@ function CoachRecurringEditor({
       />
       {studios.length > 1 && (
         <div className="mt-4">
-          <p className="mb-2 text-xs font-medium text-stone-500">
+          <p className="mb-2 text-xs font-medium text-muted">
             Preferencia por estudio
           </p>
           <StudioPreferenceChips
@@ -1503,7 +1503,7 @@ function CreateBlockDialog({
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex max-h-[95vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
-        <DialogHeader className="border-b border-stone-100 px-5 pb-3 pt-5">
+        <DialogHeader className="border-b border-border/40 px-5 pb-3 pt-5">
           <DialogTitle className="text-lg">Añadir entrada</DialogTitle>
           <DialogDescription className="text-sm">
             Crea disponibilidad o tiempo libre en nombre de un coach. Queda
@@ -1665,18 +1665,18 @@ function CreateBlockForm({
       <div className="flex-1 overflow-y-auto px-5 py-4">
         <div className="space-y-4">
           <div>
-            <label className="mb-2 block text-sm font-medium text-stone-700">
+            <label className="mb-2 block text-sm font-medium text-foreground/80">
               ¿Qué quieres registrar?
             </label>
-            <div className="inline-flex w-full rounded-lg bg-stone-100 p-1">
+            <div className="inline-flex w-full rounded-lg bg-muted/10 p-1">
               <button
                 type="button"
                 onClick={() => setBlockKind("availability")}
                 className={cn(
                   "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
                   blockKind === "availability"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-500",
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted",
                 )}
               >
                 Disponibilidad
@@ -1687,14 +1687,14 @@ function CreateBlockForm({
                 className={cn(
                   "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
                   blockKind === "time_off"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-500",
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted",
                 )}
               >
                 Tiempo libre
               </button>
             </div>
-            <p className="mt-1.5 text-xs text-stone-500">
+            <p className="mt-1.5 text-xs text-muted">
               {blockKind === "availability"
                 ? "Cuándo SÍ puede dar clase."
                 : "Cuándo NO puede dar clase (vacaciones, citas, etc.)."}
@@ -1702,7 +1702,7 @@ function CreateBlockForm({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700">
+            <label className="mb-1 block text-sm font-medium text-foreground/80">
               Coach
             </label>
             <Select
@@ -1724,18 +1724,18 @@ function CreateBlockForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-stone-700">
+            <label className="mb-2 block text-sm font-medium text-foreground/80">
               Tipo
             </label>
-            <div className="inline-flex w-full rounded-lg bg-stone-100 p-1">
+            <div className="inline-flex w-full rounded-lg bg-muted/10 p-1">
               <button
                 type="button"
                 onClick={() => setType("one_time")}
                 className={cn(
                   "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
                   type === "one_time"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-500",
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted",
                 )}
               >
                 Fecha puntual
@@ -1746,8 +1746,8 @@ function CreateBlockForm({
                 className={cn(
                   "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
                   type === "recurring"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-500",
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted",
                 )}
               >
                 Recurrente
@@ -1759,7 +1759,7 @@ function CreateBlockForm({
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-stone-700">
+                  <label className="mb-1 block text-sm font-medium text-foreground/80">
                     Desde
                   </label>
                   <Input
@@ -1769,7 +1769,7 @@ function CreateBlockForm({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-stone-700">
+                  <label className="mb-1 block text-sm font-medium text-foreground/80">
                     Hasta
                   </label>
                   <Input
@@ -1780,7 +1780,7 @@ function CreateBlockForm({
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-stone-500">
+                <label className="mb-1 block text-xs text-muted">
                   Hora (opcional — vacío = todo el día)
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -1802,7 +1802,7 @@ function CreateBlockForm({
           ) : (
             <>
               <div>
-                <label className="mb-2 block text-sm font-medium text-stone-700">
+                <label className="mb-2 block text-sm font-medium text-foreground/80">
                   Días de la semana
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -1815,7 +1815,7 @@ function CreateBlockForm({
                         "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-all",
                         selectedDays.includes(i)
                           ? "bg-[#1C2340] text-white"
-                          : "border border-stone-200 text-stone-600 hover:border-stone-400 active:scale-95",
+                          : "border border-border/60 text-muted hover:border-border active:scale-95",
                       )}
                     >
                       {label}
@@ -1824,7 +1824,7 @@ function CreateBlockForm({
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-stone-700">
+                <label className="mb-1 block text-sm font-medium text-foreground/80">
                   No disponible de
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -1845,7 +1845,7 @@ function CreateBlockForm({
 
           {blockKind === "time_off" && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-stone-700">
+              <label className="mb-1 block text-sm font-medium text-foreground/80">
                 Razón
               </label>
               <Select value={reasonType} onValueChange={setReasonType}>
@@ -1863,7 +1863,7 @@ function CreateBlockForm({
 
           {blockKind === "availability" && studios.length > 1 && (
             <div>
-              <label className="mb-2 block text-sm font-medium text-stone-700">
+              <label className="mb-2 block text-sm font-medium text-foreground/80">
                 Estudios
               </label>
               <div className="space-y-2">
@@ -1887,7 +1887,7 @@ function CreateBlockForm({
                               "px-2.5 py-1 text-xs transition",
                               v === opt.key
                                 ? cn(opt.tone, "ring-2 ring-inset")
-                                : "bg-transparent text-stone-500 hover:bg-stone-50",
+                                : "bg-transparent text-muted hover:bg-surface",
                             )}
                           >
                             {opt.label}
@@ -1902,7 +1902,7 @@ function CreateBlockForm({
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700">
+            <label className="mb-1 block text-sm font-medium text-foreground/80">
               Nota
             </label>
             <Input
@@ -1920,11 +1920,11 @@ function CreateBlockForm({
         </div>
       </div>
 
-      <div className="flex gap-3 border-t border-stone-100 bg-stone-50/50 px-5 py-3">
+      <div className="flex gap-3 border-t border-border/40 bg-surface/50 px-5 py-3">
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
+          className="flex-1 rounded-xl border border-border/60 bg-card px-4 py-3 text-sm font-medium text-foreground/80 transition-colors hover:bg-surface"
         >
           Cancelar
         </button>
@@ -2004,23 +2004,23 @@ function HourlyTab() {
   return (
     <div className="space-y-4">
       {/* Quick search */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-stone-100 p-3">
-        <span className="text-sm text-stone-600">¿Quién puede cubrir</span>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-muted/10 p-3">
+        <span className="text-sm text-muted">¿Quién puede cubrir</span>
         <select
           value={filterDiscipline ?? ""}
           onChange={(e) => setFilterDiscipline(e.target.value || null)}
-          className="rounded-lg border border-stone-200 bg-card px-3 py-1.5 text-sm text-stone-800"
+          className="rounded-lg border border-border/60 bg-card px-3 py-1.5 text-sm text-foreground"
         >
           <option value="">Disciplina</option>
           {(data?.disciplines ?? []).map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
-        <span className="text-sm text-stone-600">a las</span>
+        <span className="text-sm text-muted">a las</span>
         <select
           value={filterHour ?? ""}
           onChange={(e) => setFilterHour(e.target.value ? Number(e.target.value) : null)}
-          className="rounded-lg border border-stone-200 bg-card px-3 py-1.5 text-sm text-stone-800"
+          className="rounded-lg border border-border/60 bg-card px-3 py-1.5 text-sm text-foreground"
         >
           <option value="">Hora</option>
           {hours.map((h) => (
@@ -2048,16 +2048,16 @@ function HourlyTab() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setDayOffset((v) => v - 1)}
-            className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-stone-100"
+            className="rounded-lg p-1.5 text-muted transition-colors hover:bg-muted/10"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <span className="min-w-[200px] text-center text-sm font-semibold capitalize text-stone-800">
+          <span className="min-w-[200px] text-center text-sm font-semibold capitalize text-foreground">
             {dayLabel}
           </span>
           <button
             onClick={() => setDayOffset((v) => v + 1)}
-            className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-stone-100"
+            className="rounded-lg p-1.5 text-muted transition-colors hover:bg-muted/10"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -2065,7 +2065,7 @@ function HourlyTab() {
         {dayOffset !== 0 && (
           <button
             onClick={() => setDayOffset(0)}
-            className="rounded-lg border border-stone-200 px-3 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100"
+            className="rounded-lg border border-border/60 px-3 py-1 text-xs font-medium text-muted hover:bg-muted/10"
           >
             Hoy
           </button>
@@ -2074,7 +2074,7 @@ function HourlyTab() {
 
       {/* Grid */}
       {data && (
-        <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-card p-4">
+        <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card p-4">
           <div
             className="relative grid"
             style={{
@@ -2103,7 +2103,7 @@ function HourlyTab() {
                   >
                     {c.initials}
                   </div>
-                  <span className="text-[10px] font-medium text-stone-600 truncate max-w-[60px]">
+                  <span className="text-[10px] font-medium text-muted truncate max-w-[60px]">
                     {c.coachName.split(" ")[0]}
                   </span>
                 </div>
@@ -2113,8 +2113,8 @@ function HourlyTab() {
             {/* Hour rows */}
             {hours.map((hour) => (
               <div key={hour} className="contents">
-                <div className="relative flex h-10 items-center justify-end border-b border-stone-100 pr-2">
-                  <span className="text-[10px] text-stone-400">
+                <div className="relative flex h-10 items-center justify-end border-b border-border/40 pr-2">
+                  <span className="text-[10px] text-muted/70">
                     {String(hour).padStart(2, "0")}:00
                   </span>
                 </div>
@@ -2125,11 +2125,11 @@ function HourlyTab() {
                     <div
                       key={c.coachId}
                       className={cn(
-                        "relative h-10 border-b border-stone-100",
+                        "relative h-10 border-b border-border/40",
                         st === "available" && "bg-emerald-50",
-                        st === "blocked" && "bg-stone-100",
+                        st === "blocked" && "bg-muted/10",
                         st === "class" && "bg-blue-50",
-                        st === "empty" && "bg-stone-50",
+                        st === "empty" && "bg-surface",
                       )}
                     >
                       {st === "class" && slot?.className && (
@@ -2163,14 +2163,14 @@ function HourlyTab() {
           </div>
 
           {/* Legend */}
-          <div className="mt-4 flex flex-wrap gap-4 border-t border-stone-100 pt-3">
+          <div className="mt-4 flex flex-wrap gap-4 border-t border-border/40 pt-3">
             <LegendItem className="bg-emerald-50" label="Disponible" />
             <LegendItem className="bg-blue-50" label="Clase programada" />
-            <LegendItem className="bg-stone-100" label="Bloqueado" />
-            <LegendItem className="bg-stone-50" label="Sin programar" />
+            <LegendItem className="bg-muted/10" label="Bloqueado" />
+            <LegendItem className="bg-surface" label="Sin programar" />
             <div className="flex items-center gap-1.5">
               <div className="h-[1.5px] w-3 bg-red-500" />
-              <span className="text-xs text-stone-500">Ahora</span>
+              <span className="text-xs text-muted">Ahora</span>
             </div>
           </div>
         </div>
@@ -2185,10 +2185,10 @@ function SettingsTab() {
   const [section, setSection] = useState<"zones" | "notifications" | "hours">("zones");
 
   return (
-    <div className="flex gap-0 overflow-hidden rounded-2xl border border-stone-200 bg-card">
+    <div className="flex gap-0 overflow-hidden rounded-2xl border border-border/60 bg-card">
       {/* Sidebar */}
-      <div className="w-[200px] shrink-0 border-r border-stone-200 bg-stone-50 p-2">
-        <p className="px-2 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-stone-400">
+      <div className="w-[200px] shrink-0 border-r border-border/60 bg-surface p-2">
+        <p className="px-2 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted/70">
           Sistema
         </p>
         <SettingsNavItem
@@ -2203,7 +2203,7 @@ function SettingsTab() {
         >
           Notificaciones
         </SettingsNavItem>
-        <p className="px-2 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-stone-400">
+        <p className="px-2 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted/70">
           Estudio
         </p>
         <SettingsNavItem
@@ -2214,7 +2214,7 @@ function SettingsTab() {
         </SettingsNavItem>
         <Link
           href="/admin/coaches"
-          className="flex items-center gap-1 rounded-xl px-3 py-2 text-sm text-stone-500 hover:bg-card"
+          className="flex items-center gap-1 rounded-xl px-3 py-2 text-sm text-muted hover:bg-card"
         >
           Coaches
           <ExternalLink className="h-3 w-3" />
@@ -2246,8 +2246,8 @@ function SettingsNavItem({
       className={cn(
         "w-full rounded-xl px-3 py-2 text-left text-sm",
         active
-          ? "border border-stone-200 bg-card font-medium text-stone-900"
-          : "text-stone-500 hover:bg-card",
+          ? "border border-border/60 bg-card font-medium text-foreground"
+          : "text-muted hover:bg-card",
       )}
     >
       {children}
@@ -2286,10 +2286,10 @@ function ZonesSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-stone-900">
+        <h3 className="text-sm font-semibold text-foreground">
           Zona roja — cambio bloqueado
         </h3>
-        <p className="mt-0.5 text-xs text-stone-500">
+        <p className="mt-0.5 text-xs text-muted">
           Menos de X días → solo el admin puede modificar
         </p>
         <div className="mt-2 flex items-center gap-2">
@@ -2302,49 +2302,49 @@ function ZonesSection() {
               const v = Number(e.target.value);
               setRedDays(v);
             }}
-            className="w-16 rounded-xl border border-stone-200 p-2 text-center text-sm font-medium"
+            className="w-16 rounded-xl border border-border/60 p-2 text-center text-sm font-medium"
           />
-          <span className="text-sm text-stone-500">días antes de la clase</span>
+          <span className="text-sm text-muted">días antes de la clase</span>
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-stone-900">
+        <h3 className="text-sm font-semibold text-foreground">
           Zona amarilla — requiere aprobación
         </h3>
-        <p className="mt-0.5 text-xs text-stone-500">
+        <p className="mt-0.5 text-xs text-muted">
           Entre {currentRed} y Y días → el coach solicita y el admin aprueba
         </p>
         <div className="mt-2 flex items-center gap-2">
-          <span className="w-16 rounded-xl border border-stone-100 bg-stone-50 p-2 text-center text-sm font-medium text-stone-400">
+          <span className="w-16 rounded-xl border border-border/40 bg-surface p-2 text-center text-sm font-medium text-muted/70">
             {currentRed}
           </span>
-          <span className="text-sm text-stone-500">a</span>
+          <span className="text-sm text-muted">a</span>
           <input
             type="number"
             min={currentRed + 1}
             max={180}
             value={currentYellow}
             onChange={(e) => setYellowDays(Number(e.target.value))}
-            className="w-16 rounded-xl border border-stone-200 p-2 text-center text-sm font-medium"
+            className="w-16 rounded-xl border border-border/60 p-2 text-center text-sm font-medium"
           />
-          <span className="text-sm text-stone-500">días antes</span>
+          <span className="text-sm text-muted">días antes</span>
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-stone-900">
+        <h3 className="text-sm font-semibold text-foreground">
           Zona verde — modificación libre
         </h3>
-        <p className="mt-0.5 text-xs text-stone-500">
+        <p className="mt-0.5 text-xs text-muted">
           Más de {currentYellow} días → el coach edita sin restricciones
         </p>
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-sm text-stone-500">Más de</span>
-          <span className="w-16 rounded-xl border border-stone-100 bg-stone-50 p-2 text-center text-sm font-medium text-stone-400">
+          <span className="text-sm text-muted">Más de</span>
+          <span className="w-16 rounded-xl border border-border/40 bg-surface p-2 text-center text-sm font-medium text-muted/70">
             {currentYellow}
           </span>
-          <span className="text-sm text-stone-500">días antes</span>
+          <span className="text-sm text-muted">días antes</span>
         </div>
       </div>
 
@@ -2355,7 +2355,7 @@ function ZonesSection() {
           <div className="bg-amber-400" style={{ flex: currentYellow - currentRed }} />
           <div className="bg-emerald-400" style={{ flex: 90 - currentYellow }} />
         </div>
-        <div className="mt-1 flex justify-between text-[10px] text-stone-400">
+        <div className="mt-1 flex justify-between text-[10px] text-muted/70">
           <span>0 días</span>
           <span>{currentRed}d</span>
           <span>{currentYellow}d</span>
@@ -2466,14 +2466,14 @@ function NotificationsSection() {
             className="flex items-center justify-between gap-4"
           >
             <div>
-              <p className="text-sm font-medium text-stone-900">{item.label}</p>
-              <p className="text-xs text-stone-500">{item.description}</p>
+              <p className="text-sm font-medium text-foreground">{item.label}</p>
+              <p className="text-xs text-muted">{item.description}</p>
             </div>
             <button
               onClick={() => toggle(item.key)}
               className={cn(
                 "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-                current[item.key] ? "bg-[#3730B8]" : "bg-stone-300",
+                current[item.key] ? "bg-[#3730B8]" : "bg-muted/30",
               )}
             >
               <div
@@ -2553,33 +2553,33 @@ function HoursSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-stone-900">
+        <h3 className="text-sm font-semibold text-foreground">
           Horario de apertura
         </h3>
         <div className="mt-2 flex items-center gap-3">
           <div>
-            <label className="text-xs text-stone-500">Desde</label>
+            <label className="text-xs text-muted">Desde</label>
             <input
               type="time"
               value={currentOpen}
               onChange={(e) => setOpenTime(e.target.value)}
-              className="mt-1 block rounded-xl border border-stone-200 px-3 py-2 text-sm"
+              className="mt-1 block rounded-xl border border-border/60 px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-xs text-stone-500">Hasta</label>
+            <label className="text-xs text-muted">Hasta</label>
             <input
               type="time"
               value={currentClose}
               onChange={(e) => setCloseTime(e.target.value)}
-              className="mt-1 block rounded-xl border border-stone-200 px-3 py-2 text-sm"
+              className="mt-1 block rounded-xl border border-border/60 px-3 py-2 text-sm"
             />
           </div>
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-stone-900">
+        <h3 className="text-sm font-semibold text-foreground">
           Días de operación
         </h3>
         <div className="mt-2 flex gap-2">
@@ -2591,7 +2591,7 @@ function HoursSection() {
                 "flex h-9 w-9 items-center justify-center rounded-full border text-xs font-medium transition-colors",
                 currentDays.includes(i)
                   ? "border-[#3730B8] bg-[#3730B8] text-white"
-                  : "border-stone-200 text-stone-500",
+                  : "border-border/60 text-muted",
               )}
             >
               {label}
@@ -2601,12 +2601,12 @@ function HoursSection() {
       </div>
 
       {/* Coach redirect */}
-      <div className="flex items-center justify-between rounded-2xl border border-stone-200 p-4">
+      <div className="flex items-center justify-between rounded-2xl border border-border/60 p-4">
         <div>
-          <p className="text-sm font-medium text-stone-900">
+          <p className="text-sm font-medium text-foreground">
             Disciplinas por coach
           </p>
-          <p className="mt-0.5 text-xs text-stone-500">
+          <p className="mt-0.5 text-xs text-muted">
             Configura qué puede impartir cada coach desde la sección de Coaches
           </p>
         </div>
@@ -2647,13 +2647,13 @@ function statusCellClass(
       // Recurring partial block — already confirmed by the coach, no admin
       // action needed. Gray-striped so it reads as "blocked part of the day",
       // never as "pending" (yellow is reserved for that).
-      return "bg-stone-100";
+      return "bg-muted/10";
     case "blocked":
-      return "bg-stone-200";
+      return "bg-muted/20";
     case "pending":
       return "bg-amber-50";
     case "empty":
-      return "bg-stone-50";
+      return "bg-surface";
   }
 }
 
@@ -2695,21 +2695,21 @@ function LegendItem({
   return (
     <div className="flex items-center gap-1.5">
       <div
-        className={cn("h-3 w-3 shrink-0 rounded-sm border border-stone-200/60", className)}
+        className={cn("h-3 w-3 shrink-0 rounded-sm border border-border/60/60", className)}
         style={patternImage ? { backgroundImage: patternImage } : undefined}
       />
-      <span className="text-[11px] text-stone-500 sm:text-xs">{label}</span>
+      <span className="text-[11px] text-muted sm:text-xs">{label}</span>
     </div>
   );
 }
 
 function CoverageLegend() {
   return (
-    <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-stone-100 pt-3 sm:flex sm:flex-wrap sm:gap-4">
+    <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-border/40 pt-3 sm:flex sm:flex-wrap sm:gap-4">
       <LegendItem className="bg-emerald-50" label="Disponible" />
-      <LegendItem className="bg-stone-200" label="Bloqueado" />
+      <LegendItem className="bg-muted/20" label="Bloqueado" />
       <LegendItem
-        className="bg-stone-100"
+        className="bg-muted/10"
         pattern="partial"
         label="Parcial (recurrente)"
       />
@@ -2719,7 +2719,7 @@ function CoverageLegend() {
         label="Pendiente aprobación"
       />
       <LegendItem className="bg-red-50" label="Sin cobertura" />
-      <LegendItem className="bg-stone-50" label="No programado" />
+      <LegendItem className="bg-surface" label="No programado" />
     </div>
   );
 }

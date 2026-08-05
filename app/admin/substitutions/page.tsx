@@ -134,13 +134,13 @@ export default function AdminSubstitutionsPage() {
   );
 
   return (
-    <div className="min-h-full bg-stone-50">
+    <div className="min-h-full bg-surface">
       <div className="mx-auto max-w-5xl space-y-6 p-4 lg:p-6">
         <SectionTabs tabs={TEAM_TABS} ariaLabel="Team sections" />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-stone-900">Cobertura de clases</h1>
-            <p className="mt-1 text-sm text-stone-500">
+            <h1 className="text-2xl font-bold text-foreground">Cobertura de clases</h1>
+            <p className="mt-1 text-sm text-muted">
               Solicitudes de suplencia e intercambio entre instructores. Aprueba, asigna o cancela según haga falta.
             </p>
           </div>
@@ -155,7 +155,7 @@ export default function AdminSubstitutionsPage() {
           </Button>
         </div>
 
-        <div className="inline-flex rounded-lg bg-stone-100 p-1">
+        <div className="inline-flex rounded-lg bg-muted/10 p-1">
           {(
             [
               { value: "requests", label: "Solicitudes" },
@@ -168,8 +168,8 @@ export default function AdminSubstitutionsPage() {
               className={cn(
                 "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
                 view === v.value
-                  ? "border border-stone-200 bg-card text-stone-900"
-                  : "text-stone-500 hover:text-stone-700",
+                  ? "border border-border/60 bg-card text-foreground"
+                  : "text-muted hover:text-foreground/80",
               )}
             >
               {v.label}
@@ -208,7 +208,7 @@ export default function AdminSubstitutionsPage() {
           />
         </div>
 
-        <div className="inline-flex flex-wrap rounded-lg bg-stone-100 p-1">
+        <div className="inline-flex flex-wrap rounded-lg bg-muted/10 p-1">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.value}
@@ -216,26 +216,26 @@ export default function AdminSubstitutionsPage() {
               className={cn(
                 "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
                 status === f.value
-                  ? "border border-stone-200 bg-card text-stone-900"
-                  : "text-stone-500 hover:text-stone-700",
+                  ? "border border-border/60 bg-card text-foreground"
+                  : "text-muted hover:text-foreground/80",
               )}
             >
               {f.label}
               {f.value !== "all" && counts[f.value as Status] !== undefined && (
-                <span className="ml-1.5 text-stone-400">{counts[f.value as Status]}</span>
+                <span className="ml-1.5 text-muted/70">{counts[f.value as Status]}</span>
               )}
             </button>
           ))}
         </div>
 
         {isLoading ? (
-          <div className="rounded-2xl border border-stone-200 bg-card p-8 text-center text-sm text-stone-500">
+          <div className="rounded-2xl border border-border/60 bg-card p-8 text-center text-sm text-muted">
             Cargando…
           </div>
         ) : !data || data.requests.length === 0 ? (
-          <div className="rounded-2xl border border-stone-200 bg-card p-12 text-center">
-            <Users className="mx-auto mb-3 h-8 w-8 text-stone-300" />
-            <p className="text-sm font-medium text-stone-700">
+          <div className="rounded-2xl border border-border/60 bg-card p-12 text-center">
+            <Users className="mx-auto mb-3 h-8 w-8 text-muted/50" />
+            <p className="text-sm font-medium text-foreground/80">
               Sin solicitudes en este filtro
             </p>
           </div>
@@ -302,7 +302,7 @@ function CoachSummaryView() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex flex-wrap rounded-lg bg-stone-100 p-1">
+        <div className="inline-flex flex-wrap rounded-lg bg-muted/10 p-1">
           {RANGE_FILTERS.map((f) => (
             <button
               key={f.value}
@@ -310,8 +310,8 @@ function CoachSummaryView() {
               className={cn(
                 "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
                 days === f.value
-                  ? "border border-stone-200 bg-card text-stone-900"
-                  : "text-stone-500 hover:text-stone-700",
+                  ? "border border-border/60 bg-card text-foreground"
+                  : "text-muted hover:text-foreground/80",
               )}
             >
               {f.label}
@@ -319,7 +319,7 @@ function CoachSummaryView() {
           ))}
         </div>
         {data && (
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-muted">
             {data.totals.requested} solicitud
             {data.totals.requested === 1 ? "" : "es"} · {data.totals.covered}{" "}
             cubierta{data.totals.covered === 1 ? "" : "s"}
@@ -328,22 +328,22 @@ function CoachSummaryView() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-2xl border border-stone-200 bg-card p-8 text-center text-sm text-stone-500">
+        <div className="rounded-2xl border border-border/60 bg-card p-8 text-center text-sm text-muted">
           Cargando…
         </div>
       ) : active.length === 0 ? (
-        <div className="rounded-2xl border border-stone-200 bg-card p-12 text-center">
-          <Users className="mx-auto mb-3 h-8 w-8 text-stone-300" />
-          <p className="text-sm font-medium text-stone-700">
+        <div className="rounded-2xl border border-border/60 bg-card p-12 text-center">
+          <Users className="mx-auto mb-3 h-8 w-8 text-muted/50" />
+          <p className="text-sm font-medium text-foreground/80">
             Sin actividad de suplencias en este periodo
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-stone-200 bg-card">
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-stone-100 text-left text-xs text-stone-500">
+                <tr className="border-b border-border/40 text-left text-xs text-muted">
                   <th className="px-4 py-3 font-medium">Instructor</th>
                   <th className="px-3 py-3 text-center font-medium">Pedidas</th>
                   <th className="px-3 py-3 text-center font-medium">Aceptadas</th>
@@ -357,7 +357,7 @@ function CoachSummaryView() {
                 {active.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-b border-stone-50 last:border-0"
+                    className="border-b border-border/30 last:border-0"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
@@ -376,12 +376,12 @@ function CoachSummaryView() {
                             {(r.name ?? "?").charAt(0).toUpperCase()}
                           </span>
                         )}
-                        <span className="font-medium text-stone-900">
+                        <span className="font-medium text-foreground">
                           {r.name ?? "Instructor"}
                         </span>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-center font-semibold text-stone-900">
+                    <td className="px-3 py-3 text-center font-semibold text-foreground">
                       {r.requested}
                     </td>
                     <td className="px-3 py-3 text-center text-emerald-700">
@@ -390,13 +390,13 @@ function CoachSummaryView() {
                     <td className="px-3 py-3 text-center text-sky-700">
                       {r.pending || "—"}
                     </td>
-                    <td className="px-3 py-3 text-center text-stone-500">
+                    <td className="px-3 py-3 text-center text-muted">
                       {r.rejected || "—"}
                     </td>
-                    <td className="px-3 py-3 text-center text-stone-500">
+                    <td className="px-3 py-3 text-center text-muted">
                       {r.cancelled || "—"}
                     </td>
-                    <td className="px-3 py-3 text-center font-semibold text-stone-900">
+                    <td className="px-3 py-3 text-center font-semibold text-foreground">
                       {r.covered || "—"}
                     </td>
                   </tr>
@@ -407,7 +407,7 @@ function CoachSummaryView() {
         </div>
       )}
 
-      <p className="text-xs text-stone-400">
+      <p className="text-xs text-muted/70">
         &quot;Pedidas&quot; = suplencias que el instructor solicitó. &quot;Cubiertas&quot; =
         clases que tomó de otros instructores.
       </p>
@@ -431,17 +431,17 @@ function SummaryCard({
     emerald: "text-emerald-700 bg-emerald-50",
     sky: "text-sky-700 bg-sky-50",
     red: "text-red-700 bg-red-50",
-    stone: "text-stone-700 bg-stone-100",
+    stone: "text-foreground/80 bg-muted/10",
   };
   return (
-    <div className="rounded-2xl border border-stone-200 bg-card p-3">
+    <div className="rounded-2xl border border-border/60 bg-card p-3">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
+        <p className="text-[10px] font-medium uppercase tracking-wider text-muted/70">
           {label}
         </p>
         <span className={cn("rounded-full p-1", tones[tone])}>{icon}</span>
       </div>
-      <p className="mt-1 text-2xl font-bold text-stone-900">{value}</p>
+      <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
     </div>
   );
 }
@@ -462,12 +462,12 @@ function SubstitutionCard({ req }: { req: SubstitutionRow }) {
     PENDING: { label: "Pendiente", className: "bg-sky-50 text-sky-800" },
     ACCEPTED: { label: "Aceptada", className: "bg-emerald-50 text-emerald-800" },
     REJECTED: { label: "Rechazada", className: "bg-red-50 text-red-800" },
-    CANCELLED: { label: "Cancelada", className: "bg-stone-100 text-stone-600" },
-    EXPIRED: { label: "Expirada", className: "bg-stone-100 text-stone-500" },
+    CANCELLED: { label: "Cancelada", className: "bg-muted/10 text-muted" },
+    EXPIRED: { label: "Expirada", className: "bg-muted/10 text-muted" },
   };
 
   const modeBadge: Record<Mode, { label: string; className: string; icon?: React.ReactNode }> = {
-    OPEN: { label: "Abierta", className: "bg-stone-100 text-stone-600" },
+    OPEN: { label: "Abierta", className: "bg-muted/10 text-muted" },
     DIRECT: { label: "Directa", className: "bg-blue-50 text-blue-700" },
     REQUEST: { label: "Suplencia", className: "bg-sky-50 text-sky-700" },
     MANUAL_ASSIGN: {
@@ -529,11 +529,11 @@ function SubstitutionCard({ req }: { req: SubstitutionRow }) {
     req.mode !== "SWAP";
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-card">
+    <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
       <div className="flex items-start gap-3 p-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-stone-900">
+            <span className="font-semibold text-foreground">
               {req.class.classType.name}
             </span>
             <span
@@ -554,12 +554,12 @@ function SubstitutionCard({ req }: { req: SubstitutionRow }) {
               {modeBadge[req.mode].label}
             </span>
             {req.reasonType && (
-              <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-600">
+              <span className="rounded-full bg-muted/10 px-2 py-0.5 text-[10px] font-medium text-muted">
                 {REASON_LABELS[req.reasonType]}
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-stone-500">
+          <p className="mt-0.5 text-xs text-muted">
             {format(startDate, "EEEE d MMM", { locale: es })} ·{" "}
             {formatTime(startDate)}
             {req.class.room
@@ -568,17 +568,17 @@ function SubstitutionCard({ req }: { req: SubstitutionRow }) {
           </p>
         </div>
         <span
-          className="ml-auto shrink-0 text-[10px] text-stone-400"
+          className="ml-auto shrink-0 text-[10px] text-muted/70"
           title={format(created, "d MMM yyyy HH:mm", { locale: es })}
         >
           {format(created, "d MMM", { locale: es })}
         </span>
       </div>
 
-      <div className="border-t border-stone-100 bg-stone-50 px-4 py-3">
+      <div className="border-t border-border/40 bg-surface px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
           <CoachChip coach={req.requestingCoach} sublabel="Pide" />
-          <ArrowRight className="h-4 w-4 text-stone-400" />
+          <ArrowRight className="h-4 w-4 text-muted/70" />
           {replacement ? (
             <CoachChip
               coach={replacement}
@@ -591,7 +591,7 @@ function SubstitutionCard({ req }: { req: SubstitutionRow }) {
               }
             />
           ) : (
-            <div className="flex items-center gap-2 rounded-lg border border-dashed border-stone-300 px-3 py-1.5 text-xs text-stone-500">
+            <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-1.5 text-xs text-muted">
               {req.notifiedCoachIds.length} instructor
               {req.notifiedCoachIds.length !== 1 ? "es" : ""} a notificar
             </div>
@@ -600,11 +600,11 @@ function SubstitutionCard({ req }: { req: SubstitutionRow }) {
 
         {/* SWAP: show the other class */}
         {req.mode === "SWAP" && req.swapWithClass && (
-          <div className="mt-3 rounded-lg border border-stone-200 bg-card p-3 text-xs">
-            <p className="mb-1 font-medium text-stone-700">
+          <div className="mt-3 rounded-lg border border-border/60 bg-card p-3 text-xs">
+            <p className="mb-1 font-medium text-foreground/80">
               {req.requestingCoach.name.split(" ")[0]} daría:
             </p>
-            <p className="text-stone-600">
+            <p className="text-muted">
               {req.swapWithClass.classType.name} ·{" "}
               {format(new Date(req.swapWithClass.startsAt), "EEE d MMM HH:mm", { locale: es })}
               {req.swapWithClass.room
@@ -616,7 +616,7 @@ function SubstitutionCard({ req }: { req: SubstitutionRow }) {
 
         {/* Reason note */}
         {(req.reasonNote || req.note) && (
-          <p className="mt-3 rounded-lg bg-card px-3 py-2 text-xs italic text-stone-600">
+          <p className="mt-3 rounded-lg bg-card px-3 py-2 text-xs italic text-muted">
             “{req.reasonNote || req.note}”
           </p>
         )}
@@ -628,7 +628,7 @@ function SubstitutionCard({ req }: { req: SubstitutionRow }) {
 
         {/* Actions */}
         {(canApprove || canCancel || canAssign) && (
-          <div className="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-stone-200 pt-3">
+          <div className="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-border/60 pt-3">
             {canApprove && (
               <Button
                 size="sm"
@@ -659,7 +659,7 @@ function SubstitutionCard({ req }: { req: SubstitutionRow }) {
                 variant="ghost"
                 onClick={() => cancelMut.mutate()}
                 disabled={cancelMut.isPending}
-                className="text-stone-500 hover:text-red-700"
+                className="text-muted hover:text-red-700"
               >
                 {cancelMut.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -715,11 +715,11 @@ function CoachChip({
         </div>
       )}
       <div className="flex flex-col leading-tight">
-        <span className="text-xs font-medium text-stone-800">
+        <span className="text-xs font-medium text-foreground">
           {coach.name.split(" ")[0]}
         </span>
         {sublabel && (
-          <span className="text-[9px] uppercase tracking-wide text-stone-400">
+          <span className="text-[9px] uppercase tracking-wide text-muted/70">
             {sublabel}
           </span>
         )}
@@ -883,7 +883,7 @@ function SettingsDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-stone-700">
+          <label className="block text-sm font-medium text-foreground/80">
             Horas antes de la clase para considerarla urgente
           </label>
           <div className="flex items-center gap-2">
@@ -895,9 +895,9 @@ function SettingsDialog({
               onChange={(e) => setHours(parseInt(e.target.value, 10) || 0)}
               className="w-24"
             />
-            <span className="text-sm text-stone-500">horas</span>
+            <span className="text-sm text-muted">horas</span>
           </div>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-muted">
             Solicitudes para clases dentro de este margen se mandan
             directamente a los instructores seleccionados. Si la clase es
             en más de {hours || 0} horas, la solicitud espera tu aprobación
