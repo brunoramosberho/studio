@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getWallClockInZone } from "@/lib/utils";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 import {
   startOfWeek,
   endOfWeek,
@@ -374,7 +375,7 @@ export async function getSubstituteSuggestions(
   if (!cls) return [];
 
   const allProfiles = await prisma.coachProfile.findMany({
-    where: { tenantId, userId: { not: cls.coach.userId } },
+    where: { tenantId, userId: { not: cls.coach.userId } , ...ACTIVE_COACH },
     include: { user: { select: { id: true, image: true } } },
   });
 

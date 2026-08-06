@@ -21,6 +21,9 @@ import {
   ChevronRight,
   Search,
   Link2,
+  Archive,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -95,6 +98,20 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
+interface RemovalPlan {
+  outcome: "delete" | "archive" | "blocked";
+  futureClasses: number;
+  pastClasses: number;
+}
+
+interface ArchivedCoach {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  archivedAt: string;
+  user: { email: string | null; image: string | null } | null;
+}
+
 const stagger = {
   hidden: {},
   show: { transition: { staggerChildren: 0.06 } },
@@ -117,6 +134,45 @@ export default function AdminCoachesPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+
+  // What removing this instructor would actually do. Asked before acting so the
+  // dialog can say "archived, she has 34 classes" instead of a bare "sure?".
+  const { data: plan } = useQuery<RemovalPlan>({
+    queryKey: ["coach-removal-plan", removingId],
+    enabled: !!removingId,
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/coaches?coachProfileId=${removingId}`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  const { data: archived } = useQuery<ArchivedCoach[]>({
+    queryKey: ["admin-coaches-archived"],
+    enabled: showArchived,
+    queryFn: async () => {
+      const res = await fetch("/api/admin/coaches?archived=1");
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (coachProfileId: string) => {
+      const res = await fetch("/api/admin/coaches", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coachProfileId, archived: false }),
+      });
+      if (!res.ok) throw new Error("Error al restaurar");
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-coaches"] });
+      qc.invalidateQueries({ queryKey: ["admin-coaches-archived"] });
+    },
+  });
 
   const { data: coaches, isLoading } = useQuery<CoachData[]>({
     queryKey: ["admin-coaches"],
@@ -164,9 +220,13 @@ export default function AdminCoachesPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-coaches"] });
+      qc.invalidateQueries({ queryKey: ["admin-coaches-archived"] });
       setRemovingId(null);
     },
-    onError: () => setRemovingId(null),
+    onError: (err: Error) => {
+      setError(err.message);
+      setRemovingId(null);
+    },
   });
 
   function handleCreate(e: React.FormEvent) {
@@ -459,26 +519,46 @@ export default function AdminCoachesPage() {
                       {/* Remove / navigate */}
                       <div className="flex items-center gap-1">
                         {isRemoving ? (
-                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => removeMutation.mutate(coach.id)}
-                              disabled={removeMutation.isPending}
-                              className="h-7 text-xs"
-                            >
-                              {removeMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : "Sí"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setRemovingId(null)}
-                              className="h-7 text-xs"
-                            >
-                              No
-                            </Button>
+                          <div
+                            className="flex flex-col items-end gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <p className="max-w-[15rem] text-right text-[11px] leading-snug text-muted">
+                              {!plan
+                                ? t("coachRemoveChecking")
+                                : plan.outcome === "blocked"
+                                  ? t("coachRemoveBlocked", { count: plan.futureClasses })
+                                  : plan.outcome === "archive"
+                                    ? t("coachRemoveWillArchive", { count: plan.pastClasses })
+                                    : t("coachRemoveWillDelete")}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              {plan?.outcome !== "blocked" && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => removeMutation.mutate(coach.id)}
+                                  disabled={removeMutation.isPending || !plan}
+                                  className="h-7 text-xs"
+                                >
+                                  {removeMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : plan?.outcome === "archive" ? (
+                                    t("coachArchive")
+                                  ) : (
+                                    tc("delete")
+                                  )}
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setRemovingId(null)}
+                                className="h-7 text-xs"
+                              >
+                                {tc("cancel")}
+                              </Button>
+                            </div>
                           </div>
                         ) : (
                           <Button
@@ -517,6 +597,70 @@ export default function AdminCoachesPage() {
           })}
         </motion.div>
       )}
+
+      {/* Archived instructors. Hidden by default, but findable — otherwise the
+          only way back is a duplicate profile, which is how the data got tangled
+          in the first place. */}
+      <div className="mt-10 border-t border-border/40 pt-6">
+        <button
+          type="button"
+          onClick={() => setShowArchived((v) => !v)}
+          className="flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-foreground"
+        >
+          <Archive className="h-4 w-4" />
+          {t("coachArchivedTitle")}
+          {showArchived ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </button>
+
+        {showArchived && (
+          <div className="mt-4 space-y-2">
+            {!archived ? (
+              <Skeleton className="h-16 w-full rounded-xl" />
+            ) : archived.length === 0 ? (
+              <p className="py-4 text-sm text-muted">{t("coachArchivedEmpty")}</p>
+            ) : (
+              archived.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-3 rounded-xl border border-border/50 bg-surface px-4 py-3"
+                >
+                  <Avatar className="h-9 w-9 opacity-60">
+                    {(a.photoUrl || a.user?.image) && (
+                      <AvatarImage src={a.photoUrl || a.user?.image || ""} alt={a.name} />
+                    )}
+                    <AvatarFallback className="text-xs">
+                      {a.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{a.name}</p>
+                    {a.user?.email && (
+                      <p className="truncate text-xs text-muted">{a.user.email}</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => restoreMutation.mutate(a.id)}
+                    disabled={restoreMutation.isPending}
+                    className="h-8 text-xs"
+                  >
+                    {restoreMutation.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      t("coachRestore")
+                    )}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

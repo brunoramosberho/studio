@@ -19,6 +19,7 @@ import {
 } from "@/lib/availability";
 import { getWallClockInZone, formatTime } from "@/lib/utils";
 import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 
 /**
  * A coach is "eligible" to substitute on a class when:
@@ -82,6 +83,7 @@ export async function getEligibleCoaches(
   const profiles = await prisma.coachProfile.findMany({
     where: {
       tenantId,
+      ...ACTIVE_COACH,
       id: { not: cls.coach.id },
       userId: { not: null },
     },

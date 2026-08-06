@@ -9,6 +9,7 @@ import {
 } from "@/lib/availability";
 import { getWallClockInZone } from "@/lib/utils";
 import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     const tz = await resolveScheduleTimezone(tenant);
 
     const coachProfiles = await prisma.coachProfile.findMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: tenant.id , ...ACTIVE_COACH },
       include: {
         user: { select: { id: true, name: true, image: true } },
       },

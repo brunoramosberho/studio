@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getTenant } from "@/lib/tenant";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
     const withStats = request.nextUrl.searchParams.get("stats") === "true";
 
     const coaches = await prisma.coachProfile.findMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: tenant.id , ...ACTIVE_COACH },
       include: {
         user: { select: { id: true, name: true, email: true, image: true } },
       },

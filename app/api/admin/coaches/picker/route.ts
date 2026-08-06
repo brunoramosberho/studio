@@ -8,6 +8,7 @@ import {
 } from "@/lib/availability";
 import { getWallClockInZone } from "@/lib/utils";
 import { startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 
 const FALLBACK_TZ = "Europe/Madrid";
 
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
     const slotDate = new Date(wall.year, wall.month - 1, wall.day);
 
     const coachProfiles = await prisma.coachProfile.findMany({
-      where: { tenantId: tenant.id, userId: { not: null } },
+      where: { tenantId: tenant.id, userId: { not: null } , ...ACTIVE_COACH },
       include: { user: { select: { id: true, image: true } } },
       orderBy: { name: "asc" },
     });

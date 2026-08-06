@@ -1956,7 +1956,15 @@
     "landingThemeAuto": "Follow the visitor",
     "landingThemeDark": "Always dark",
     "landingThemeDesc": "Affects your public page only. The member app keeps following their phone's theme.",
-    "promotedTo": "Role updated to {role}"
+    "promotedTo": "Role updated to {role}",
+    "coachRemoveChecking": "Checking their history…",
+    "coachRemoveBlocked": "They have {count} upcoming class(es). Reassign them first.",
+    "coachRemoveWillArchive": "They have taught {count} class(es): they'll be archived, not deleted. You can restore them.",
+    "coachRemoveWillDelete": "No history: they'll be deleted completely.",
+    "coachArchive": "Archive",
+    "coachRestore": "Restore",
+    "coachArchivedTitle": "Archived instructors",
+    "coachArchivedEmpty": "No archived instructors."
   },
   "coach": {
     "portal": "Instructor Portal",

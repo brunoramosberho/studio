@@ -18,6 +18,7 @@ import {
   isToday,
 } from "date-fns";
 import { es } from "date-fns/locale";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 
 const CONFIRMED_OR_ATTENDED: BookingStatus[] = ["CONFIRMED", "ATTENDED"];
 
@@ -1005,7 +1006,8 @@ async function proposeWeeklySchedule(
     }),
     prisma.classType.findMany({ where: { tenantId }, select: { id: true, name: true, duration: true } }),
     prisma.coachProfile.findMany({
-      where: { tenantId },
+      // Scheduling forward: don't propose someone who was archived.
+      where: { tenantId, ...ACTIVE_COACH },
       select: { id: true, name: true, user: { select: { name: true } } },
     }),
     prisma.room.findMany({

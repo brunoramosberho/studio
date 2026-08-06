@@ -697,6 +697,11 @@ model CoachProfile {
   specialties            String[]
   photoUrl               String?
   color                  String         @default("#C9A96E")
+  // Set when the instructor is removed but has history worth keeping — past
+  // classes, payroll, revenue. Archived instructors stay out of every surface
+  // that offers someone to pick (see lib/coach/archive.ts) and stay in every
+  // report about the past.
+  archivedAt             DateTime?
   classes                Class[]        @relation("ClassCurrentCoach")
   classesAsOriginalCoach Class[]        @relation("ClassOriginalCoach")
   payRates               CoachPayRate[]

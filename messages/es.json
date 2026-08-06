@@ -1956,7 +1956,15 @@
     "landingThemeAuto": "Según el visitante",
     "landingThemeDark": "Siempre oscuro",
     "landingThemeDesc": "Solo afecta a tu página pública. La app del miembro sigue respetando el tema de su teléfono.",
-    "promotedTo": "Rol actualizado a {role}"
+    "promotedTo": "Rol actualizado a {role}",
+    "coachRemoveChecking": "Revisando su historial…",
+    "coachRemoveBlocked": "Tiene {count} clase(s) próxima(s). Reasígnalas antes de quitarla.",
+    "coachRemoveWillArchive": "Tiene {count} clase(s) impartida(s): se archivará, no se borrará. Podrás restaurarla.",
+    "coachRemoveWillDelete": "No tiene historial: se eliminará por completo.",
+    "coachArchive": "Archivar",
+    "coachRestore": "Restaurar",
+    "coachArchivedTitle": "Instructoras archivadas",
+    "coachArchivedEmpty": "No hay instructoras archivadas."
   },
   "coach": {
     "portal": "Portal del Instructor",

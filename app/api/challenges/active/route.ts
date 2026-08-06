@@ -6,6 +6,7 @@ import { daysElapsed } from "@/lib/challenges/engine";
 import { pace, PACE_MIN_DAYS } from "@/lib/challenges/scoring";
 import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
 import { calendarDaysBetween, formatDateInZone } from "@/lib/utils";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 
 /**
  * Everything the member's challenge surfaces need, in one request: the live
@@ -90,6 +91,7 @@ export async function GET() {
         prisma.coachProfile.findMany({
           where: {
             tenantId: tenant.id,
+            ...ACTIVE_COACH,
             classes: { some: { startsAt: { gte: now }, status: "SCHEDULED" } },
           },
           select: { id: true, name: true, photoUrl: true },

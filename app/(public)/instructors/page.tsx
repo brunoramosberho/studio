@@ -8,6 +8,7 @@ import { getTenant } from "@/lib/tenant";
 import { getServerBranding } from "@/lib/branding.server";
 import { cn } from "@/lib/utils";
 import { getTranslations } from "next-intl/server";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 
 export async function generateMetadata(): Promise<Metadata> {
   const b = await getServerBranding();
@@ -23,7 +24,7 @@ export default async function CoachesPage() {
 
   const coaches = tenant
     ? await prisma.coachProfile.findMany({
-        where: { tenantId: tenant.id },
+        where: { tenantId: tenant.id, ...ACTIVE_COACH },
         include: {
           user: { select: { name: true, image: true } },
         },

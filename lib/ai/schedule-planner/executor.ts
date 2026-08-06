@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { getWallClockInZone } from "@/lib/utils";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 import type {
   PlannerConstraints,
   ProposedClass,
@@ -58,7 +59,7 @@ async function getPlannerResources(
       select: { id: true, name: true, duration: true, color: true },
     }),
     prisma.coachProfile.findMany({
-      where: { tenantId },
+      where: { tenantId, ...ACTIVE_COACH },
       include: {
         classes: {
           where: { startsAt: { gte: daysAgo(28) } },

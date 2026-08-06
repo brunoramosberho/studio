@@ -6,6 +6,7 @@ import {
   getCoachStatusForSlot,
 } from "@/lib/availability";
 import { zonedWallTimeToUtc } from "@/lib/utils";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 import {
   startOfWeek,
   endOfWeek,
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
         orderBy: { name: "asc" },
       }),
       prisma.coachProfile.findMany({
-        where: { tenantId: tenant.id, userId: { not: null } },
+        where: { tenantId: tenant.id, userId: { not: null } , ...ACTIVE_COACH },
         include: { user: { select: { id: true, image: true } } },
       }),
     ]);

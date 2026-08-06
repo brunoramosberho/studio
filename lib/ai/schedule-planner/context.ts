@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 
 export async function buildPlannerContext(tenantId: string) {
   const [studios, classTypes, coachProfiles, recentClasses, tenant] = await Promise.all([
@@ -13,7 +14,7 @@ export async function buildPlannerContext(tenantId: string) {
       select: { id: true, name: true, duration: true },
     }),
     prisma.coachProfile.findMany({
-      where: { tenantId },
+      where: { tenantId , ...ACTIVE_COACH },
       select: { id: true, name: true },
     }),
     prisma.class.findMany({

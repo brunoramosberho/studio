@@ -12,6 +12,7 @@ import {
   isToday,
 } from "date-fns";
 import { es } from "date-fns/locale";
+import { ACTIVE_COACH } from "@/lib/coach/archive";
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
     const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
 
     const coachProfiles = await prisma.coachProfile.findMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: tenant.id , ...ACTIVE_COACH },
       include: {
         user: { select: { id: true, name: true, image: true } },
       },
