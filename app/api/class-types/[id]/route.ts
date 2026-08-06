@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { purgeInertClasses } from "@/lib/classes/inert";
 import { requireRole } from "@/lib/tenant";
 
 export async function PUT(
@@ -63,7 +64,18 @@ export async function DELETE(
       return NextResponse.json({ error: "Class type not found" }, { status: 404 });
     }
 
-    const classCount = await prisma.class.count({ where: { classTypeId: id, tenantId: ctx.tenant.id } });
+    // Classes that were scheduled and emptied leave rows behind, and counting
+    // those refused the delete forever. Clear the shells, then judge what is
+    // genuinely left: anything with a booking or any other trace still blocks.
+    const classIds = (
+      await prisma.class.findMany({
+        where: { classTypeId: id, tenantId: ctx.tenant.id },
+        select: { id: true },
+      })
+    ).map((c) => c.id);
+
+    const purged = await purgeInertClasses(classIds);
+    const classCount = classIds.length - purged;
     if (classCount > 0) {
       return NextResponse.json(
         { error: `No se puede eliminar: hay ${classCount} clase(s) usando esta disciplina` },
@@ -72,7 +84,7 @@ export async function DELETE(
     }
 
     await prisma.classType.delete({ where: { id } });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, purgedClasses: purged });
   } catch (error) {
     if (error instanceof Error && ["Unauthorized", "Forbidden", "Not a member of this studio", "Tenant not found"].includes(error.message)) {
       return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized" ? 401 : 403 });

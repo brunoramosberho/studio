@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { purgeInertClasses } from "@/lib/classes/inert";
 import { requireRole } from "@/lib/tenant";
 
 // Turn a thrown error into a useful response: a clear 403/401 for permission
@@ -66,8 +67,18 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const classCount = await prisma.class.count({ where: { roomId: id, tenantId: tenant.id } });
-    if (classCount > 0) {
+    // Same shell problem as disciplines: classes scheduled here and then
+    // emptied left rows that made the room undeletable. Clear those, then see
+    // what is genuinely still assigned.
+    const classIds = (
+      await prisma.class.findMany({
+        where: { roomId: id, tenantId: tenant.id },
+        select: { id: true },
+      })
+    ).map((c) => c.id);
+
+    const purged = await purgeInertClasses(classIds);
+    if (classIds.length - purged > 0) {
       return NextResponse.json(
         { error: "No se puede eliminar una sala con clases asignadas." },
         { status: 400 },
@@ -75,7 +86,7 @@ export async function DELETE(
     }
 
     await prisma.room.delete({ where: { id, tenantId: tenant.id } });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, purgedClasses: purged });
   } catch (error) {
     return roomErrorResponse(error, "DELETE /api/rooms/[id]", "No se pudo eliminar la sala");
   }

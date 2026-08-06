@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { classIsInert } from "@/lib/classes/inert";
 import { requireTenant, requireRole, getAuthContext, roleAtLeast } from "@/lib/tenant";
 import { cancelClassWithRefunds } from "@/lib/class-cancel";
 import { BookingStatus } from "@prisma/client";
@@ -423,6 +424,22 @@ export async function DELETE(
     });
     if (!existing) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+
+    // Cancelling rather than deleting exists to protect history — refunds,
+    // notifications, recognised revenue. A class nobody ever touched has none,
+    // and leaving the row behind is what stopped FDV from removing a discipline
+    // after they emptied it: the delete guard counted the shells.
+    if (await classIsInert(id)) {
+      try {
+        // Must run first: the helper reads the class and writes back to it.
+        const { unsyncClassFromWellhub } = await import("@/lib/platforms/wellhub");
+        await unsyncClassFromWellhub(id);
+      } catch (syncError) {
+        console.error("[wellhub] unsync before class delete failed", syncError);
+      }
+      await prisma.class.delete({ where: { id } });
+      return NextResponse.json({ id, status: "DELETED", refundedBookings: 0 });
     }
 
     const refundedCount = await cancelClassWithRefunds(id, ctx.tenant.id, ctx.session.user.id);
