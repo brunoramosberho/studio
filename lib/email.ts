@@ -2116,6 +2116,60 @@ function escapeHtml(value: string): string {
 }
 
 /**
+ * One-time code for linking a Wellhub email from the member profile. Sent to
+ * the address being claimed (often a corporate inbox), not to the login email.
+ * Throws on failure so the API route can tell the member the send failed
+ * instead of leaving them waiting for a code that never comes.
+ */
+export async function sendWellhubLinkCode({
+  to,
+  name,
+  code,
+  locale,
+}: {
+  to: string;
+  name: string;
+  code: string;
+  locale?: string;
+}) {
+  const b = await getServerBranding();
+  const studioFull = `${b.studioName} Studio`;
+  const loc = locale || "es";
+  const t = await getTranslations({ locale: loc, namespace: "email" });
+
+  const content = `
+    <div style="text-align:center;">
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${b.colorFg};">
+        ${t("wellhubCodeTitle")}
+      </h1>
+      <p style="margin:0 0 24px;font-size:14px;color:${b.colorMuted};line-height:1.5;">
+        ${t("hello", { name: escapeHtml(name) })}, ${t("wellhubCodeIntro", { email: escapeHtml(to), studio: escapeHtml(b.studioName) })}
+      </p>
+
+      <div style="margin:0 auto 24px;max-width:280px;background:${b.colorBg};border-radius:14px;padding:20px 24px;">
+        <span style="font-size:34px;font-weight:800;letter-spacing:10px;color:${b.colorFg};font-variant-numeric:tabular-nums;">${code}</span>
+      </div>
+
+      <p style="margin:0 0 6px;font-size:12px;color:${b.colorMuted};">
+        ${t("wellhubCodeExpiry")}
+      </p>
+      <p style="margin:0;font-size:12px;color:${b.colorMuted};">
+        ${t("ignoreEmail")}
+      </p>
+    </div>`;
+
+  const result = await getResend().emails.send({
+    from: `${studioFull} <${FROM}>`,
+    to,
+    subject: t("wellhubCodeSubject", { code }),
+    html: emailShell(b, content),
+  });
+  if (result.error) {
+    throw new Error(`Resend rejected the Wellhub link code email: ${result.error.message}`);
+  }
+}
+
+/**
  * Lead from the public marketing landing (apex, no tenant). Delivered to the
  * Mgic Studio sales inbox with the prospect set as reply-to so we can reply
  * directly. Throws on failure so the API route can surface an error.

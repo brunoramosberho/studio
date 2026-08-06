@@ -9,6 +9,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import {
+  WellhubConnection,
+  WELLHUB_LINK_QUERY_KEY,
+  fetchWellhubLinkStatus,
+  type WellhubLinkStatus,
+} from "@/components/profile/wellhub-connection";
 
 interface WearableStatus {
   connected: boolean;
@@ -73,9 +79,17 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
     }
   }, [searchParams, queryClient]);
 
+  // Same query the Wellhub card runs — React Query dedupes by key, we only
+  // read it here for the badge count.
+  const { data: wellhub } = useQuery<WellhubLinkStatus>({
+    queryKey: WELLHUB_LINK_QUERY_KEY,
+    queryFn: fetchWellhubLinkStatus,
+  });
+
   const stravaStatus = wearables?.STRAVA;
   const isConnected = stravaStatus?.connected === true;
   const isFull = !isConnected && stravaStatus?.full === true;
+  const connectedCount = (isConnected ? 1 : 0) + (wellhub?.linked ? 1 : 0);
 
   return (
     <>
@@ -92,9 +106,9 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
         <span className="flex-1 text-[15px] font-medium text-foreground">
           {t("connectedApps")}
         </span>
-        {isConnected && (
+        {connectedCount > 0 && (
           <span className="mr-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-green-100 px-1.5 text-[11px] font-semibold text-green-700">
-            1
+            {connectedCount}
           </span>
         )}
         <ChevronRight
@@ -112,7 +126,7 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
           exit={{ opacity: 0, height: 0 }}
           className="overflow-hidden"
         >
-          <div className="px-4 pb-2 pt-1">
+          <div className="space-y-2 px-4 pb-2 pt-1">
             <div className="rounded-xl border border-border/50 bg-card p-3">
               <div className="flex items-center gap-3">
                 <div
@@ -187,6 +201,8 @@ export function WearableConnections({ grouped }: { grouped?: boolean } = {}) {
                 </p>
               )}
             </div>
+
+            <WellhubConnection />
           </div>
         </motion.div>
       )}

@@ -101,8 +101,20 @@ export type { WellhubSyncResult } from "./sync";
 export {
   tryLinkWellhubUserToMagic,
   tryLinkMagicUserToWellhub,
+  claimWellhubEmailForUser,
 } from "./matching";
-export type { LinkReason } from "./matching";
+export type { LinkReason, ClaimWellhubEmailResult } from "./matching";
+
+export {
+  generateLinkCode,
+  hashLinkCode,
+  linkCodeMatches,
+  normalizeClaimEmail,
+  WELLHUB_LINK_CODE_TTL_MS,
+  WELLHUB_LINK_CODE_MAX_ATTEMPTS,
+  WELLHUB_LINK_CODE_RESEND_COOLDOWN_MS,
+  WELLHUB_LINK_CODE_HOURLY_CAP,
+} from "./link-code";
 
 export {
   simulateBookingRequested,

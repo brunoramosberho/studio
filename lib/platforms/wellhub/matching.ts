@@ -11,10 +11,15 @@
 //
 // Matching is conservative: email match is "high signal", phone match is
 // fallback. We never overwrite an existing `userId` on the link.
+//
+// A third channel sits between the two: `WellhubEmailClaim` — an alternate
+// email (usually corporate) the member proved they own via a one-time code
+// from the profile's "Connected apps". Claim matches rank with email matches
+// but are stamped `email_claim` so the conversion funnel can tell them apart.
 
 import { prisma } from "@/lib/db";
 
-export type LinkReason = "email_match" | "phone_match" | "manual";
+export type LinkReason = "email_match" | "phone_match" | "manual" | "email_claim";
 
 interface LinkOutcome {
   linked: boolean;
@@ -70,6 +75,36 @@ export async function tryLinkWellhubUserToMagic(opts: {
         wellhubUniqueToken: opts.wellhubUniqueToken,
       });
       return { linked: true, via: "email_match", wellhubUserLinkId: link.id, userId: user.id };
+    }
+
+    // No login-email match — maybe a member claimed this address as their
+    // Wellhub email (corporate address flow). Same membership gate applies.
+    const claim = await prisma.wellhubEmailClaim.findUnique({
+      where: { email: link.email.toLowerCase() },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            memberships: {
+              where: { tenantId: opts.tenantId },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+    if (claim?.user?.memberships?.length) {
+      await prisma.wellhubUserLink.update({
+        where: { id: link.id },
+        data: { userId: claim.userId, userLinkedAt: new Date(), linkedVia: "email_claim" },
+      });
+      await attributeWellhubBookingsToUser({
+        tenantId: opts.tenantId,
+        userId: claim.userId,
+        wellhubUniqueToken: opts.wellhubUniqueToken,
+      });
+      return { linked: true, via: "email_claim", wellhubUserLinkId: link.id, userId: claim.userId };
     }
   }
 
@@ -144,6 +179,35 @@ export async function tryLinkMagicUserToWellhub(opts: {
     }
   }
 
+  // Claimed alternate emails (verified via one-time code) rank with the login
+  // email — bind any waiting Wellhub identity carrying one of them.
+  const claims = await prisma.wellhubEmailClaim.findMany({
+    where: { userId: opts.userId },
+    select: { email: true },
+  });
+  if (claims.length) {
+    const link = await prisma.wellhubUserLink.findFirst({
+      where: {
+        tenantId: opts.tenantId,
+        userId: null,
+        email: { in: claims.map((c) => c.email), mode: "insensitive" },
+      },
+      select: { id: true, wellhubUniqueToken: true },
+    });
+    if (link) {
+      await prisma.wellhubUserLink.update({
+        where: { id: link.id },
+        data: { userId: opts.userId, userLinkedAt: new Date(), linkedVia: "email_claim" },
+      });
+      await attributeWellhubBookingsToUser({
+        tenantId: opts.tenantId,
+        userId: opts.userId,
+        wellhubUniqueToken: link.wellhubUniqueToken,
+      });
+      return { linked: true, via: "email_claim", wellhubUserLinkId: link.id, userId: opts.userId };
+    }
+  }
+
   if (user?.phone) {
     const matches = await prisma.wellhubUserLink.findMany({
       where: {
@@ -187,6 +251,124 @@ export async function tryLinkMagicUserToWellhub(opts: {
  * them — Wellhub settles on its own rail. Cancelling also stays blocked: the
  * booking is owned by Wellhub, not by us.
  */
+export interface ClaimWellhubEmailResult {
+  ok: boolean;
+  /** Set when ok=false. */
+  reason?: "claimed_by_other";
+  /** WellhubUserLink rows bound by this call, across all the user's tenants. */
+  linkedIdentities: number;
+  /** Bookings attributed by this call in the tenant the flow ran on. */
+  attributedBookings: number;
+  /** True when, after this call, the current tenant has a bound identity. */
+  linkedInTenant: boolean;
+  /** Tenants where something changed — callers recompute progress for these. */
+  affectedTenantIds: string[];
+}
+
+/**
+ * Member-initiated door: the user proved (one-time code) that they own
+ * `email`, typically the corporate address their employer registered on
+ * Wellhub. Persists the claim so future webhook traffic auto-links, and
+ * immediately binds any waiting Wellhub identities with that address in every
+ * tenant the user belongs to.
+ *
+ * Progress/achievements recompute is the caller's job (see the verify route) —
+ * this module stays free of gamification imports, like the other doors.
+ */
+export async function claimWellhubEmailForUser(opts: {
+  userId: string;
+  /** Normalized (trimmed + lowercased) address. */
+  email: string;
+  /** Tenant the flow ran on — scopes the counts reported back to the member. */
+  tenantId: string;
+}): Promise<ClaimWellhubEmailResult> {
+  const none: Omit<ClaimWellhubEmailResult, "ok" | "reason"> = {
+    linkedIdentities: 0,
+    attributedBookings: 0,
+    linkedInTenant: false,
+    affectedTenantIds: [],
+  };
+
+  const existing = await prisma.wellhubEmailClaim.findUnique({
+    where: { email: opts.email },
+    select: { userId: true },
+  });
+  if (existing && existing.userId !== opts.userId) {
+    return { ok: false, reason: "claimed_by_other", ...none };
+  }
+  if (!existing) {
+    try {
+      await prisma.wellhubEmailClaim.create({
+        data: { userId: opts.userId, email: opts.email },
+      });
+    } catch (err) {
+      // Unique race: someone else claimed between the read and the write.
+      const isUniqueViolation =
+        typeof err === "object" && err !== null && "code" in err && err.code === "P2002";
+      if (!isUniqueViolation) throw err;
+      const winner = await prisma.wellhubEmailClaim.findUnique({
+        where: { email: opts.email },
+        select: { userId: true },
+      });
+      if (winner && winner.userId !== opts.userId) {
+        return { ok: false, reason: "claimed_by_other", ...none };
+      }
+    }
+  }
+
+  // Bind every waiting identity with this address in tenants the user belongs
+  // to. The Wellhub account is platform-wide, so a corporate email verified at
+  // one studio is just as valid at their other studios.
+  const memberships = await prisma.membership.findMany({
+    where: { userId: opts.userId },
+    select: { tenantId: true },
+  });
+  const tenantIds = memberships.map((m) => m.tenantId);
+
+  let linkedIdentities = 0;
+  let attributedBookings = 0;
+  const affected = new Set<string>();
+
+  if (tenantIds.length) {
+    const waiting = await prisma.wellhubUserLink.findMany({
+      where: {
+        userId: null,
+        tenantId: { in: tenantIds },
+        email: { equals: opts.email, mode: "insensitive" },
+      },
+      select: { id: true, tenantId: true, wellhubUniqueToken: true },
+    });
+
+    for (const link of waiting) {
+      await prisma.wellhubUserLink.update({
+        where: { id: link.id },
+        data: { userId: opts.userId, userLinkedAt: new Date(), linkedVia: "email_claim" },
+      });
+      const n = await attributeWellhubBookingsToUser({
+        tenantId: link.tenantId,
+        userId: opts.userId,
+        wellhubUniqueToken: link.wellhubUniqueToken,
+      });
+      linkedIdentities += 1;
+      affected.add(link.tenantId);
+      if (link.tenantId === opts.tenantId) attributedBookings += n;
+    }
+  }
+
+  const linkedInTenant =
+    (await prisma.wellhubUserLink.count({
+      where: { tenantId: opts.tenantId, userId: opts.userId },
+    })) > 0;
+
+  return {
+    ok: true,
+    linkedIdentities,
+    attributedBookings,
+    linkedInTenant,
+    affectedTenantIds: [...affected],
+  };
+}
+
 export async function attributeWellhubBookingsToUser(opts: {
   tenantId: string;
   userId: string;

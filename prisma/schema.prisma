@@ -647,6 +647,7 @@ model User {
   debtsResolved            Debt[]                   @relation("DebtResolver")
   onDemandStreamSessions   OnDemandStreamSession[]
   wellhubUserLinks         WellhubUserLink[]
+  wellhubEmailClaims       WellhubEmailClaim[]      @relation("UserWellhubEmailClaims")
 
   // ── Staff management ──
   staffShifts             StaffShift[]             @relation("UserStaffShifts")
@@ -2456,6 +2457,42 @@ model WellhubUserLink {
   @@index([userId])
   @@index([tenantId, email])
   @@index([tenantId, userLinkedAt])
+}
+
+// ── Wellhub self-serve email linking ──
+// A member proves — via a one-time code sent to the address — that they own
+// the email their employer registered on Wellhub, so we can bind their Wellhub
+// identity and past visits even when it differs from their Magic login email.
+// Claims are global on purpose: the Wellhub account is platform-wide, so every
+// tenant the user belongs to may match against it.
+
+model WellhubEmailClaim {
+  id         String   @id @default(cuid())
+  userId     String
+  /// Lowercased. One claimant per address across the platform.
+  email      String   @unique
+  verifiedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user User @relation("UserWellhubEmailClaims", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// One-time codes for the claim flow. Ephemeral throttling/audit state, not
+/// domain data — no FK relations on purpose (mirrors PendingLogin).
+model WellhubLinkCode {
+  id         String    @id @default(cuid())
+  tenantId   String
+  userId     String
+  email      String // lowercased target address
+  codeHash   String // sha256(id:code) — never the raw code
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, tenantId, createdAt])
 }
 
 // ── Waiver (digital liability waiver per tenant) ──
