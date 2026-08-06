@@ -20,7 +20,7 @@ export async function generateAndStoreWaiverPdf(
     where: { id: signatureId },
     include: {
       waiver: { select: { title: true, content: true, version: true, tenantId: true } },
-      tenant: { select: { name: true } },
+      tenant: { select: { name: true, defaultCountry: { select: { code: true } } } },
     },
   });
   if (!sig) return null;
@@ -50,6 +50,7 @@ export async function generateAndStoreWaiverPdf(
     ipAddress: sig.ipAddress ?? "",
     signedAt: sig.signedAt,
     waiverVersion: sig.waiverVersion,
+    countryCode: sig.tenant?.defaultCountry?.code ?? null,
   });
 
   const filename = `waivers/${sig.waiver.tenantId}/${signatureId}.pdf`;

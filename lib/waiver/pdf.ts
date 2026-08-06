@@ -1,4 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { getWaiverLegalFramework } from "@/lib/waiver/legal";
 
 interface GeneratePdfParams {
   waiverTitle: string;
@@ -12,6 +13,8 @@ interface GeneratePdfParams {
   ipAddress: string;
   signedAt: Date;
   waiverVersion: number;
+  /** Tenant's default-country ISO code — picks the legal framework cited in the footer. */
+  countryCode?: string | null;
 }
 
 const PAGE_WIDTH = 595;
@@ -252,7 +255,7 @@ export async function generateSignedPdf(
     { size: 8, color: rgb(0.4, 0.4, 0.4) },
   );
   drawText(
-    "Válido conforme al Reglamento eIDAS (UE) 910/2014",
+    getWaiverLegalFramework(params.countryCode).pdfValidityLine,
     { size: 8, color: rgb(0.4, 0.4, 0.4) },
   );
 

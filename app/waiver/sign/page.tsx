@@ -10,6 +10,7 @@ import { DateOfBirthPicker } from "@/components/shared/date-of-birth-picker";
 import { PhoneInput, isValidPhoneNumber } from "@/components/ui/phone-input";
 import type { CountryCode } from "libphonenumber-js";
 import { capitalizeName, composeName, splitName } from "@/lib/utils";
+import { getWaiverLegalFramework } from "@/lib/waiver/legal";
 import { Check, ChevronRight, Loader2, X } from "lucide-react";
 import { FileCheckIcon, type FileCheckIconHandle } from "lucide-animated";
 import Image from "next/image";
@@ -66,6 +67,10 @@ function WaiverSignContent() {
   const [lastName, setLastName] = useState(initialName.lastName ?? "");
   const [phone, setPhone] = useState("");
   const [defaultCountry, setDefaultCountry] = useState<CountryCode>("MX");
+  // Studio country for the legal-framework wording. Kept apart from
+  // `defaultCountry` (a phone-input UI default) so an unset tenant country
+  // doesn't masquerade as Mexico.
+  const [tenantCountry, setTenantCountry] = useState<string | null>(null);
   const [birthDate, setBirthDate] = useState<string | null>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
@@ -110,7 +115,10 @@ function WaiverSignContent() {
         .then((data) => {
           if (!data) return;
           setTokenBranding({ studioName: data.studioName, logoUrl: data.logoUrl });
-          if (data.defaultCountry) setDefaultCountry(data.defaultCountry as CountryCode);
+          if (data.defaultCountry) {
+            setDefaultCountry(data.defaultCountry as CountryCode);
+            setTenantCountry(data.defaultCountry);
+          }
           if (data.userName) {
             const split = splitName(data.userName);
             setFirstName((v) => v || split.firstName || "");
@@ -130,7 +138,10 @@ function WaiverSignContent() {
         if (data.waiver) {
           setWaiver(data.waiver);
         }
-        if (data.defaultCountry) setDefaultCountry(data.defaultCountry as CountryCode);
+        if (data.defaultCountry) {
+          setDefaultCountry(data.defaultCountry as CountryCode);
+          setTenantCountry(data.defaultCountry);
+        }
       })
       .catch(() => setError("No se pudo cargar el waiver"))
       .finally(() => setLoading(false));
@@ -450,9 +461,7 @@ function WaiverSignContent() {
               className="mt-0.5 h-5 w-5 rounded border-stone-300 text-[#1C2340] accent-[#1C2340]"
             />
             <span className="text-xs leading-relaxed text-stone-500">
-              Al marcar esta casilla acepto que mi firma electrónica tenga la
-              misma validez que una firma manuscrita, conforme al Reglamento
-              eIDAS (UE) 910/2014.
+              {getWaiverLegalFramework(tenantCountry).consentLabel}
             </span>
           </label>
 
