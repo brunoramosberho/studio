@@ -821,6 +821,7 @@ export async function POST(request: NextRequest) {
         location: classData.room.studio.name ?? undefined,
         timezone: classData.room.studio.city?.timezone,
         classUrl: `${baseUrl}/class/${classId}`,
+        policy: { tenantId: tenant.id, userId: effectiveUserId, packageUsed: packageUsedId },
       });
     }
 
@@ -836,6 +837,7 @@ export async function POST(request: NextRequest) {
         location: classData.room.studio.name ?? undefined,
         timezone: classData.room.studio.city?.timezone,
         classUrl: `${baseUrl}/class/${classId}`,
+        policy: { tenantId: tenant.id, userId: effectiveUserId, packageUsed: packageUsedId },
       });
     }
 

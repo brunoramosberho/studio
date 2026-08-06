@@ -20,6 +20,10 @@ export interface TenantPolicies {
   scheduleReleaseTimezone: string | null;
   scheduleEffectiveTimezone: string;
   visibleUntilIso: string | null;
+  /** Free text the studio appends to the generated policy notice. */
+  bookingNotice: string | null;
+  /** Ceiling late-cancel fee across active packages, in currency units. */
+  maxLateCancelFee: number | null;
 }
 
 const DEFAULTS: TenantPolicies = {
@@ -38,6 +42,8 @@ const DEFAULTS: TenantPolicies = {
   scheduleReleaseTimezone: null,
   scheduleEffectiveTimezone: "Europe/Madrid",
   visibleUntilIso: null,
+  bookingNotice: null,
+  maxLateCancelFee: null,
 };
 
 export function usePolicies() {

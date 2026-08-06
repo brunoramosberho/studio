@@ -8,6 +8,9 @@ import {
   resolveScheduleTimezone,
 } from "@/lib/schedule/visibility";
 
+/** Long enough for a couple of sentences, short enough to stay readable. */
+const MAX_BOOKING_NOTICE = 500;
+
 /**
  * GET /api/admin/policies
  * Returns cancellation & no-show policy config for the current tenant.
@@ -21,6 +24,17 @@ export async function GET() {
     // (with remaining credits) can extend it past the tenant default. Anonymous
     // visitors and the embed get the plain default (which is also what Wellhub
     // sees). Any auth hiccup falls back to the default.
+    // Late-cancel fees live on the package and only apply to unlimited plans,
+    // so before a plan is chosen the highest one is a ceiling, not a price.
+    // Cents on the package, currency units in the notice.
+    const dearest = await prisma.package.aggregate({
+      where: { tenantId: tenant.id, isActive: true, lateCancelFeeCents: { gt: 0 } },
+      _max: { lateCancelFeeCents: true },
+    });
+    const maxLateCancelFee = dearest._max.lateCancelFeeCents
+      ? dearest._max.lateCancelFeeCents / 100
+      : null;
+
     const session = await auth().catch(() => null);
     const visibleUntilIso = (
       await getVisibleUntilForUser(new Date(), tenant, timezone, session?.user?.id ?? null)
@@ -43,6 +57,8 @@ export async function GET() {
       scheduleEffectiveTimezone: timezone,
       visibleUntilIso,
       hideCoachUntilClassEnds: tenant.hideCoachUntilClassEnds,
+      bookingNotice: tenant.bookingNotice,
+      maxLateCancelFee,
     });
   } catch {
     return NextResponse.json({
@@ -62,6 +78,8 @@ export async function GET() {
       scheduleEffectiveTimezone: "Europe/Madrid",
       visibleUntilIso: null,
       hideCoachUntilClassEnds: false,
+      bookingNotice: null,
+      maxLateCancelFee: null,
     });
   }
 }
@@ -90,6 +108,7 @@ export async function POST(request: NextRequest) {
       scheduleReleaseWeeksAhead,
       scheduleReleaseTimezone,
       hideCoachUntilClassEnds,
+      bookingNotice,
     } = body;
 
     const data: Record<string, unknown> = {};
@@ -192,6 +211,19 @@ export async function POST(request: NextRequest) {
       data.hideCoachUntilClassEnds = Boolean(hideCoachUntilClassEnds);
     }
 
+    if (bookingNotice !== undefined) {
+      // Blank clears it. Capped so the notice stays a note under the policy
+      // rather than a terms-and-conditions page nobody reads.
+      const text = String(bookingNotice ?? "").trim();
+      if (text.length > MAX_BOOKING_NOTICE) {
+        return NextResponse.json(
+          { error: `bookingNotice must be ${MAX_BOOKING_NOTICE} characters or fewer` },
+          { status: 400 },
+        );
+      }
+      data.bookingNotice = text === "" ? null : text;
+    }
+
     const updated = await prisma.tenant.update({
       where: { id: ctx.tenant.id },
       data,
@@ -210,6 +242,7 @@ export async function POST(request: NextRequest) {
         scheduleReleaseWeeksAhead: true,
         scheduleReleaseTimezone: true,
         hideCoachUntilClassEnds: true,
+        bookingNotice: true,
       },
     });
 

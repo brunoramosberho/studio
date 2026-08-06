@@ -342,6 +342,13 @@ export async function POST(
         classUrl: `${baseUrl}/class/${targetClassId}`,
         fromLabel,
         locale: loc,
+        // The move may have swapped the funding package, so state the terms of
+        // the seat they hold now, not the one they came from.
+        policy: {
+          tenantId: tenant.id,
+          userId: booking.userId,
+          packageUsed: newPackageUsed,
+        },
       }).catch((err) => console.error("Move email failed:", err));
 
       const dateLabel = format(target.startsAt, "EEE d MMM, HH:mm", {

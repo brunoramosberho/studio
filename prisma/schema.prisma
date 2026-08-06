@@ -258,6 +258,12 @@ model Tenant {
   // require manual confirmation.
   noShowPenaltyGraceHours Int @default(24)
 
+  // Free text the studio appends to the booking notice on the class page —
+  // things the policy fields can't express ("bring your mat, rentals at the
+  // front desk"). It is added to the generated policy text, never replaces it,
+  // so a studio can't accidentally hide the cancellation terms.
+  bookingNotice String?
+
   taxRate           Float  @default(0.21)
   tpvFeePercent     Float?
   tpvFeeFixed       Float?

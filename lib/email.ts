@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { getTranslations } from "next-intl/server";
 import { formatDate, formatTime, formatCurrency } from "./utils";
 import { getServerBranding, getBrandingForTenantId } from "./branding.server";
+import { bookingPolicyNotice } from "./policies/notice.server";
 import { type StudioBranding } from "./branding";
 import { createRatingToken } from "./ratings/token";
 
@@ -43,6 +44,46 @@ function emailShell(b: Awaited<ReturnType<typeof getServerBranding>>, content: s
 </html>`;
 }
 
+/** Identifies the booking whose exact policy the email should state. */
+export interface EmailPolicyRef {
+  tenantId: string;
+  userId: string | null;
+  packageUsed: string | null;
+}
+
+/**
+ * The policy footer: the terms that actually apply to this booking, followed by
+ * the studio's own notice.
+ *
+ * It used to be one fixed sentence that told every studio "12 hours" and never
+ * mentioned money, while real fees were being charged. Rendering it per booking
+ * means an unlimited member reads their late-cancel fee and a pack member reads
+ * about their credit, rather than an average of the two.
+ *
+ * Never throws: a policy lookup failing is not a reason to withhold someone's
+ * booking confirmation.
+ */
+async function policyFooter(
+  ref: EmailPolicyRef,
+  locale: string,
+  mutedColor: string,
+): Promise<string> {
+  try {
+    const { sentences, studioNotice } = await bookingPolicyNotice({ ...ref, locale });
+    if (sentences.length === 0 && !studioNotice) return "";
+
+    const style = `margin:0;font-size:12px;color:${mutedColor};text-align:center;line-height:1.5;`;
+    // The studio writes this text by hand, so it is escaped on the way in.
+    const notice = studioNotice
+      ? `<p style="${style}margin-top:8px;font-weight:600;">${escapeHtml(studioNotice).replace(/\n/g, "<br>")}</p>`
+      : "";
+    return `<p style="${style}">${sentences.map(escapeHtml).join(" ")}</p>${notice}`;
+  } catch (error) {
+    console.error("policyFooter error:", error);
+    return "";
+  }
+}
+
 export async function sendBookingConfirmation({
   to,
   name,
@@ -54,6 +95,7 @@ export async function sendBookingConfirmation({
   timezone,
   classUrl,
   locale,
+  policy,
 }: {
   to: string;
   name: string;
@@ -65,6 +107,8 @@ export async function sendBookingConfirmation({
   timezone?: string;
   classUrl?: string;
   locale?: string;
+  /** Whose booking this is, so the email states their real terms. */
+  policy: EmailPolicyRef;
 }) {
   try {
     const b = await getServerBranding();
@@ -116,9 +160,7 @@ export async function sendBookingConfirmation({
       </div>
       ` : ""}
 
-      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
-        ${t("cancellationPolicy")}
-      </p>`;
+      ${await policyFooter(policy, loc, b.colorMuted)}`;
 
     await getResend().emails.send({
       from: `${studioFull} <${FROM}>`,
@@ -143,6 +185,7 @@ export async function sendBookingMoved({
   classUrl,
   fromLabel,
   locale,
+  policy,
 }: {
   to: string;
   name: string;
@@ -156,6 +199,8 @@ export async function sendBookingMoved({
   /** Human label of the class the member was moved from, e.g. "Sculpt+ · lun 16 jun". */
   fromLabel?: string;
   locale?: string;
+  /** Whose booking this is, so the email states their real terms. */
+  policy: EmailPolicyRef;
 }) {
   try {
     const b = await getServerBranding();
@@ -212,9 +257,7 @@ export async function sendBookingMoved({
       </div>
       ` : ""}
 
-      <p style="margin:0;font-size:12px;color:${b.colorMuted};text-align:center;line-height:1.5;">
-        ${t("cancellationPolicy")}
-      </p>`;
+      ${await policyFooter(policy, loc, b.colorMuted)}`;
 
     await getResend().emails.send({
       from: `${studioFull} <${FROM}>`,

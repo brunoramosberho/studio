@@ -356,6 +356,7 @@ export async function POST(
         location: classData.room.studio.name ?? undefined,
         timezone: classData.room.studio.city?.timezone,
         classUrl: `${baseUrl}/class/${classId}`,
+        policy: { tenantId: tenant.id, userId: session.user.id, packageUsed: userPackage.id },
       });
     }
 

@@ -11,7 +11,6 @@ import {
   Loader2,
   AlertCircle,
   AlertTriangle,
-  Info,
   Check,
   CheckCircle2,
   Eye,
@@ -57,6 +56,7 @@ import { BiometricsCard } from "@/components/booking/biometrics-card";
 import { FriendBiometrics } from "@/components/booking/friend-biometrics";
 import { MembershipNudge } from "@/components/booking/MembershipNudge";
 import { RatingSection } from "@/components/rating/RatingSection";
+import { BookingNotice } from "@/components/booking/booking-notice";
 import type { NudgeDecision } from "@/lib/conversion/nudge-engine";
 import { useTranslations } from "next-intl";
 
@@ -1770,12 +1770,7 @@ export default function ClassDetailPage() {
               )}
 
             {/* Policy */}
-            <div className="mt-10 flex items-start gap-2.5">
-              <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted/40" />
-              <p className="text-[11px] leading-relaxed text-muted/60">
-                {t("cancellationPolicy")}
-              </p>
-            </div>
+            <BookingNotice />
           </>
         )}
 

@@ -10,17 +10,20 @@ import {
   DollarSign,
   Hourglass,
   EyeOff,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useCurrency } from "@/components/tenant-provider";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { STUDIO_CONFIG_TABS } from "@/components/admin/section-tab-configs";
 import { ScheduleVisibilityConfig } from "@/components/admin/schedule-visibility-config";
 import type { ScheduleVisibilityMode } from "@/hooks/usePolicies";
+import { useBookingPolicyText } from "@/components/booking/booking-notice";
 
 interface PoliciesConfig {
   cancellationWindowHours: number;
@@ -39,6 +42,8 @@ interface PoliciesConfig {
   scheduleEffectiveTimezone?: string;
   visibleUntilIso?: string | null;
   hideCoachUntilClassEnds: boolean;
+  bookingNotice: string | null;
+  maxLateCancelFee?: number | null;
 }
 
 const DEFAULT_CONFIG: PoliciesConfig = {
@@ -58,7 +63,12 @@ const DEFAULT_CONFIG: PoliciesConfig = {
   scheduleEffectiveTimezone: undefined,
   visibleUntilIso: null,
   hideCoachUntilClassEnds: false,
+  bookingNotice: null,
+  maxLateCancelFee: null,
 };
+
+/** Mirrors MAX_BOOKING_NOTICE in the API, which rejects anything longer. */
+const MAX_NOTICE = 500;
 
 export default function PoliciesSettingsPage() {
   const t = useTranslations("admin.policiesPage");
@@ -414,6 +424,45 @@ export default function PoliciesSettingsPage() {
         </div>
       </div>
 
+      {/* Studio's own notice */}
+      <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-admin/10">
+            <Info className="h-5 w-5 text-admin" />
+          </div>
+          <div>
+            <h2 className="font-display text-lg font-bold">{t("noticeTitle")}</h2>
+            <p className="text-sm text-muted">{t("noticeDesc")}</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">{t("noticeLabel")}</Label>
+          <Textarea
+            value={config.bookingNotice ?? ""}
+            onChange={(e) =>
+              setConfig({ ...config, bookingNotice: e.target.value.slice(0, MAX_NOTICE) })
+            }
+            placeholder={t("noticePlaceholder")}
+            rows={3}
+            maxLength={MAX_NOTICE}
+          />
+          <p className="text-right text-xs text-muted">
+            {(config.bookingNotice ?? "").length}/{MAX_NOTICE}
+          </p>
+        </div>
+
+        {/* Shows that the notice is added to the cancellation terms rather than
+            replacing them — otherwise a studio writes its note here and assumes
+            the policy above stopped being shown. */}
+        <div className="space-y-2 rounded-lg bg-surface p-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+            {t("noticePreview")}
+          </p>
+          <NoticePreview config={config} />
+        </div>
+      </div>
+
       {/* Save */}
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving} className="gap-2 bg-admin hover:bg-admin/90">
@@ -421,6 +470,22 @@ export default function PoliciesSettingsPage() {
           {t("save")}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Renders the member's view through the same composer the class page uses, so
+ * what the admin previews is exactly what gets published.
+ */
+function NoticePreview({ config }: { config: PoliciesConfig }) {
+  const policyText = useBookingPolicyText(config);
+  const custom = (config.bookingNotice ?? "").trim();
+
+  return (
+    <div className="space-y-1.5 text-xs leading-relaxed text-muted">
+      <p>{policyText}</p>
+      {custom && <p className="whitespace-pre-line text-foreground/80">{custom}</p>}
     </div>
   );
 }
