@@ -2311,7 +2311,7 @@
       "ruleBase": "{points} puntos por cada clase que tomes.",
       "ruleDiscipline": "+{points} la primera vez que pruebas cada disciplina.",
       "ruleCoach": "+{points} la primera vez con cada instructor.",
-      "rulePhoto": "+{points} por publicar una foto en el post de tu clase. Cuenta una vez por clase — borrarla y volver a subirla no suma doble.",
+      "rulePhoto": "+{points} por publicar una foto en el post de tu clase (una vez por clase).",
       "ruleWindow": "Tienes {days} días, y empiezan a correr con tu primera clase — no por inscribirte.",
       "prizeLine": "Primer lugar: {prize}",
       "join": "Entrar al reto",
