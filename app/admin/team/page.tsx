@@ -48,7 +48,13 @@ export default function AdminTeamPage() {
   const [inviteRole, setInviteRole] = useState<"ADMIN" | "FRONT_DESK">("ADMIN");
   const [error, setError] = useState("");
   const tr = useTranslations("roles");
-  const [confirmUser, setConfirmUser] = useState<{ id: string; name: string | null; email: string } | null>(null);
+  const [confirmUser, setConfirmUser] = useState<{
+    id: string;
+    name: string | null;
+    email: string;
+    /** The role the prompt asked about — the dropdown may move before they answer. */
+    role: "ADMIN" | "FRONT_DESK";
+  } | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
 
@@ -71,7 +77,7 @@ export default function AdminTeamPage() {
       const data = await res.json();
       if (!res.ok) {
         if (data.requireConfirm) {
-          setConfirmUser(data.existingUser);
+          setConfirmUser({ ...data.existingUser, role: roleToSet as "ADMIN" | "FRONT_DESK" });
           throw new Error(data.error);
         }
         throw new Error(data.error || t("inviteError"));
@@ -91,23 +97,28 @@ export default function AdminTeamPage() {
   });
 
   const promoteMutation = useMutation({
-    mutationFn: async (userId: string) => {
+    mutationFn: async ({ userId, role }: { userId: string; role: "ADMIN" | "FRONT_DESK" }) => {
       const res = await fetch("/api/admin/team", {
-        // Send the role that was picked. Without it the server used to default
-        // to ADMIN, so confirming "convert this client" handed out full access.
+        // The role travels with the request. Without it the server defaulted to
+        // ADMIN, so confirming "convert this client" handed out full access
+        // whatever had been chosen.
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, role: inviteRole }),
+        body: JSON.stringify({ userId, role }),
       });
       if (!res.ok) throw new Error(t("inviteError"));
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["admin-team"] });
       setEmail("");
       setError("");
       setConfirmUser(null);
-      setSuccessMsg(t("promotedTo", { role: inviteRole === "FRONT_DESK" ? tr("frontDesk") : tr("admin") }));
+      setSuccessMsg(
+        t("promotedTo", {
+          role: variables.role === "FRONT_DESK" ? tr("frontDesk") : tr("admin"),
+        }),
+      );
       setTimeout(() => setSuccessMsg(""), 4000);
     },
   });
@@ -222,7 +233,7 @@ export default function AdminTeamPage() {
                       <div className="mt-2 flex gap-2">
                         <Button
                           size="sm"
-                          onClick={() => promoteMutation.mutate(confirmUser.id)}
+                          onClick={() => promoteMutation.mutate({ userId: confirmUser.id, role: confirmUser.role })}
                           disabled={promoteMutation.isPending}
                           className="bg-admin text-white hover:bg-admin/90"
                         >
