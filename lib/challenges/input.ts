@@ -23,6 +23,7 @@ export interface ChallengeInput {
   basePoints: number;
   firstDisciplineBonus: number;
   firstCoachBonus: number;
+  photoBonus: number;
   dailyPointsCap: number | null;
   bonusSlots: BonusSlot[];
   prizes: Prize[];
@@ -105,6 +106,7 @@ export function parseChallengeInput(
       min: 0,
       max: MAX_POINTS,
     }),
+    photoBonus: int(body.photoBonus ?? 0, "photoBonus", { min: 0, max: MAX_POINTS }),
     dailyPointsCap,
     bonusSlots: parseBonusSlots(body.bonusSlots),
     prizes: parsePrizes(body.prizes),

@@ -35,6 +35,7 @@ export interface ChallengeDraft {
   basePoints: number;
   firstDisciplineBonus: number;
   firstCoachBonus: number;
+  photoBonus: number;
   dailyPointsCap: number | null;
   bonusSlots: { dayOfWeek: number; hour: number; points: number }[];
   prizes: { fromRank: number; toRank: number; title: string }[];
@@ -52,6 +53,7 @@ export function emptyDraft(today: string, inTwoWeeks: string): ChallengeDraft {
     basePoints: 10,
     firstDisciplineBonus: 15,
     firstCoachBonus: 10,
+    photoBonus: 5,
     dailyPointsCap: 25,
     bonusSlots: [],
     prizes: [],
@@ -111,7 +113,7 @@ export function ChallengeEditor({
   }, [draft.enrollClosesAt, draft.durationDays]);
 
   const maxPerClass =
-    draft.basePoints + draft.firstDisciplineBonus + draft.firstCoachBonus;
+    draft.basePoints + draft.firstDisciplineBonus + draft.firstCoachBonus + draft.photoBonus;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -252,6 +254,13 @@ export function ChallengeEditor({
                     onChange={(v) => set("firstCoachBonus", v)}
                   />
                   <NumberField
+                    label={t("photoBonus")}
+                    hint={t("photoBonusHint")}
+                    value={draft.photoBonus}
+                    onChange={(v) => set("photoBonus", v)}
+                    zeroLabel={t("noPhotoBonus")}
+                  />
+                  <NumberField
                     label={t("dailyCap")}
                     hint={t("dailyCapHint")}
                     value={draft.dailyPointsCap ?? 0}
@@ -260,7 +269,9 @@ export function ChallengeEditor({
                   />
                 </div>
                 <p className="text-[11px] text-muted">
-                  {t("maxPerClass", { points: maxPerClass })}
+                  {t(draft.photoBonus > 0 ? "maxPerClassWithPhoto" : "maxPerClass", {
+                    points: maxPerClass,
+                  })}
                 </p>
               </div>
 

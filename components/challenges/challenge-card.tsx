@@ -118,6 +118,9 @@ export function ChallengeCard() {
                 {challenge.firstCoachBonus > 0 && (
                   <Rule>{t("ruleCoach", { points: challenge.firstCoachBonus })}</Rule>
                 )}
+                {challenge.photoBonus > 0 && (
+                  <Rule>{t("rulePhoto", { points: challenge.photoBonus })}</Rule>
+                )}
                 <Rule>{t("ruleWindow", { days: challenge.durationDays })}</Rule>
               </ul>
               {topPrize && (

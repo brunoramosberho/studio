@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowRight, Dumbbell, Instagram, ListMusic, Lock, Music, ChevronUp } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, Dumbbell, Instagram, ListMusic, Lock, Music, ChevronUp, Trophy } from "lucide-react";
 import { useBranding } from "@/components/branding-provider";
 import { getIconComponent } from "@/components/admin/icon-picker";
 import { UserAvatar, type UserAvatarUser } from "@/components/ui/user-avatar";
@@ -17,6 +18,7 @@ import { InstructorPostTools } from "./instructor-post-tools";
 import { PollCard, type PollData } from "./poll-card";
 import { PeopleListSheet, type PersonItem } from "./people-list-sheet";
 import { DisciplineSheet, type DisciplineData } from "./discipline-sheet";
+import type { ActiveChallengeResponse } from "@/components/challenges/types";
 import { cn, maskLastName } from "@/lib/utils";
 import { feedAchievementTypeFromKey } from "@/lib/gamification/catalog";
 import { getLoyaltyTierVisual } from "@/lib/loyalty-tier";
@@ -213,6 +215,29 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
   const avgRating = typeof p.avgRating === "number" ? (p.avgRating as number) : null;
   const canSeePlaylist = hasPlaylist && userAttended;
 
+  // Same query the challenge card at the top of the feed runs — the cache is
+  // shared, so all the post cards together cost one request.
+  const qc = useQueryClient();
+  const { data: challengeData } = useQuery<ActiveChallengeResponse>({
+    queryKey: ["challenge-active"],
+    queryFn: async () => {
+      const res = await fetch("/api/challenges/active");
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: userAttended,
+  });
+  const classId = p.classId as string | undefined;
+  const photoBonus = challengeData?.challenge?.photoBonus ?? 0;
+  // Promise the bonus only while a new upload would actually pay it: joined,
+  // window still open, and this class's photo bonus not banked yet.
+  const photoBonusAvailable =
+    photoBonus > 0 &&
+    !!challengeData?.me &&
+    !challengeData.me.finished &&
+    !!classId &&
+    !(challengeData.progress?.photoClassIds ?? []).includes(classId);
+
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [playlistTracks, setPlaylistTracks] = useState<PlaylistTrackItem[]>([]);
   const [playlistLoading, setPlaylistLoading] = useState(false);
@@ -320,13 +345,29 @@ function ClassCompletedCard({ event, onOpenDiscipline }: FeedEventCardProps & { 
         />
         <CommentsSheet eventId={event.id} commentCount={event.commentCount} />
         {userAttended && (
-          <PhotoUpload
-            eventId={event.id}
-            label={t("addPhoto")}
-            onUploaded={(photo) =>
-              setMedia((prev) => [...prev, { ...photo, thumbnailUrl: null }])
-            }
-          />
+          <>
+            <PhotoUpload
+              eventId={event.id}
+              label={t("addPhoto")}
+              onUploaded={(photo) => {
+                setMedia((prev) => [...prev, { ...photo, thumbnailUrl: null }]);
+                // The upload may have just banked the challenge photo bonus —
+                // refetch so the chip retires and the scoreboard total moves.
+                if (photoBonusAvailable) {
+                  qc.invalidateQueries({ queryKey: ["challenge-active"] });
+                }
+              }}
+            />
+            {photoBonusAvailable && (
+              <span
+                className="flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent"
+                title={t("photoChallengeHint", { points: photoBonus })}
+              >
+                <Trophy className="h-3 w-3" />
+                {t("photoChallengeChip", { points: photoBonus })}
+              </span>
+            )}
+          </>
         )}
       </div>
 

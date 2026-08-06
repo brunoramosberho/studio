@@ -6,7 +6,12 @@
  * points is this class worth" decision here.
  */
 
-export type PointKind = "BASE" | "FIRST_DISCIPLINE" | "FIRST_COACH" | "OFF_PEAK";
+export type PointKind =
+  | "BASE"
+  | "FIRST_DISCIPLINE"
+  | "FIRST_COACH"
+  | "OFF_PEAK"
+  | "PHOTO";
 
 export interface BonusSlot {
   dayOfWeek: number; // 0 = Sunday, studio-local
@@ -101,6 +106,10 @@ export function scoreClass(
  * capping them would cancel the exact behaviour the challenge is buying.
  * The cap exists to stop someone taking four classes on Saturday from
  * outrunning someone who showed up four separate days.
+ *
+ * PHOTO is exempt for the same shape of reason: it's once per class, usually
+ * uploaded hours or days after the fact, and capping it retroactively against
+ * the class day's total would be impossible to explain on the scoreboard.
  */
 const CAPPABLE: PointKind[] = ["BASE", "OFF_PEAK"];
 

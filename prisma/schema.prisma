@@ -2934,6 +2934,7 @@ enum ChallengePointKind {
   FIRST_DISCIPLINE
   FIRST_COACH
   OFF_PEAK
+  PHOTO
 }
 
 model Challenge {
@@ -2955,6 +2956,9 @@ model Challenge {
   basePoints           Int  @default(10)
   firstDisciplineBonus Int  @default(15)
   firstCoachBonus      Int  @default(10)
+  // Publishing a photo/video on the class post. Once per class — the ledger
+  // unique keeps delete-and-reupload from ever paying twice. 0 = off.
+  photoBonus           Int  @default(0)
   // null = unlimited. Caps a single big day from outrunning consistency.
   dailyPointsCap       Int?
   // Slots the studio wants to fill, picked from the Insights matrix:

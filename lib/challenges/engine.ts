@@ -15,6 +15,7 @@ import {
   computeStreaks,
   emptyLedger,
   scoreClass,
+  type AwardedEntry,
   type BonusSlot,
   type ChallengeRules,
   type ParticipantLedger,
@@ -133,11 +134,6 @@ export async function awardForBooking(bookingId: string): Promise<AwardResult> {
   });
   if (!participant) return nothing("not_enrolled");
 
-  const existing = await prisma.challengePointEntry.count({
-    where: { challengeId: challenge.id, bookingId: booking.id },
-  });
-  if (existing > 0) return nothing("already_awarded");
-
   if (challenge.studioIds.length > 0 && !challenge.studioIds.includes(klass.room.studioId)) {
     return nothing("other_studio");
   }
@@ -145,6 +141,22 @@ export async function awardForBooking(bookingId: string): Promise<AwardResult> {
   const classStart = klass.startsAt;
   const window = resolveWindow(participant, challenge, classStart);
   if (!window) return nothing("outside_window");
+
+  // The class itself scores once, but the photo bonus can arrive days later —
+  // so an already-scored booking is not a terminal state, only a filter on
+  // which kinds are still missing.
+  const existing = await prisma.challengePointEntry.findMany({
+    where: { challengeId: challenge.id, bookingId: booking.id },
+    select: { kind: true },
+  });
+  const classScored = existing.some((e) => e.kind !== "PHOTO");
+  const photoScored = existing.some((e) => e.kind === "PHOTO");
+
+  const photoAward = photoScored
+    ? null
+    : await resolvePhotoAward(challenge, booking.userId, klass.id, booking.tenantId, window);
+
+  if (classScored && !photoAward) return nothing("already_awarded");
 
   const timezone = klass.room.studio?.city?.timezone ?? FALLBACK_TIMEZONE;
   const wall = getWallClockInZone(classStart, timezone);
@@ -156,8 +168,13 @@ export async function awardForBooking(bookingId: string): Promise<AwardResult> {
     hour: wall.hour,
   };
 
-  const ledger = await loadLedger(challenge.id, participant.id);
-  const awards = scoreClass(cls, rulesOf(challenge), ledger);
+  const awards: AwardedEntry[] = [];
+  if (!classScored) {
+    const ledger = await loadLedger(challenge.id, participant.id);
+    awards.push(...scoreClass(cls, rulesOf(challenge), ledger));
+  }
+  if (photoAward) awards.push(photoAward);
+
   if (awards.length === 0) {
     // Daily cap already spent: still activate the window and count the class.
     await persist(participant.id, booking.tenantId, window);
@@ -190,6 +207,40 @@ export async function awardForBooking(bookingId: string): Promise<AwardResult> {
 }
 
 /**
+ * The photo bonus, if this booking has one coming. Pays when the member has
+ * published media on the class's completed post — once per class, and the
+ * entry survives the photo being deleted afterwards, so delete-and-reupload
+ * can never pay twice (the ledger unique would refuse the duplicate anyway).
+ *
+ * The upload must have happened while the member's window was open: judged on
+ * the photo's own createdAt, not on when this reconcile runs, so a front-desk
+ * attendance correction months later still restores exactly what was earned.
+ */
+async function resolvePhotoAward(
+  challenge: { id: string; photoBonus: number },
+  userId: string,
+  classId: string,
+  tenantId: string,
+  window: ResolvedWindow,
+): Promise<AwardedEntry | null> {
+  if (challenge.photoBonus <= 0) return null;
+  const photo = await prisma.photo.findFirst({
+    where: {
+      userId,
+      feedEvent: {
+        tenantId,
+        eventType: "CLASS_COMPLETED",
+        payload: { path: ["classId"], equals: classId },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+    select: { createdAt: true },
+  });
+  if (!photo || photo.createdAt > window.endsAt) return null;
+  return { kind: "PHOTO", points: challenge.photoBonus };
+}
+
+/**
  * Reconcile a booking's points with its CURRENT status. Call this from every
  * path that touches attendance — check-in, undo, walk-in, no-show, completion,
  * cron — and it works out the direction itself, so no call site can wire the
@@ -215,6 +266,31 @@ export async function syncPointsForBooking(bookingId: string): Promise<AwardResu
   } catch (err) {
     console.error("Challenge points sync failed:", err);
     return { outcome: "not_enrolled", points: 0, activated: false };
+  }
+}
+
+/**
+ * A member published media on a class post — route it to their booking and
+ * through the same gate as everything else, so a photo can never pay without
+ * a completed, attended class behind it. Never throws: points must not be
+ * able to break an upload.
+ */
+export async function syncPhotoPointsForClassPost(
+  tenantId: string,
+  classId: string,
+  userId: string,
+): Promise<void> {
+  try {
+    const challenge = await getActiveChallenge(tenantId);
+    if (!challenge || challenge.photoBonus <= 0) return;
+    const booking = await prisma.booking.findFirst({
+      where: { tenantId, classId, userId, status: "ATTENDED" },
+      select: { id: true },
+    });
+    if (!booking) return;
+    await syncPointsForBooking(booking.id);
+  } catch (err) {
+    console.error("Challenge photo points sync failed:", err);
   }
 }
 

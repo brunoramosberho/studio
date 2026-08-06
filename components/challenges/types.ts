@@ -33,6 +33,7 @@ export interface ActiveChallengeResponse {
     basePoints: number;
     firstDisciplineBonus: number;
     firstCoachBonus: number;
+    photoBonus: number;
     dailyPointsCap: number | null;
     bonusSlots: { dayOfWeek: number; hour: number; points: number }[];
     prizes: ChallengePrize[];
@@ -58,6 +59,8 @@ export interface ActiveChallengeResponse {
   progress: {
     disciplines: { id: string; name: string; color: string; tried: boolean }[];
     coaches: { id: string; name: string; photoUrl: string | null; tried: boolean }[];
+    /** Classes whose photo bonus is already banked. */
+    photoClassIds: string[];
   } | null;
   scoreboard: ScoreboardRow[];
 }

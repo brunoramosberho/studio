@@ -75,7 +75,7 @@ export async function GET() {
       const [entries, classTypes, coaches] = await Promise.all([
         prisma.challengePointEntry.findMany({
           where: { participantId: mine.id },
-          select: { classTypeId: true, coachId: true },
+          select: { classTypeId: true, coachId: true, kind: true, classId: true },
         }),
         // Only what's still bookable: a checklist that lists a discipline
         // nobody teaches any more is a bonus the member can never collect.
@@ -101,6 +101,11 @@ export async function GET() {
       progress = {
         disciplines: classTypes.map((c) => ({ ...c, tried: triedTypes.has(c.id) })),
         coaches: coaches.map((c) => ({ ...c, tried: triedCoaches.has(c.id) })),
+        // Classes whose photo bonus is already banked — the feed uses this to
+        // stop promising points a second upload wouldn't pay.
+        photoClassIds: [
+          ...new Set(entries.filter((e) => e.kind === "PHOTO").map((e) => e.classId)),
+        ],
       };
     }
 
@@ -133,6 +138,7 @@ export async function GET() {
         basePoints: challenge.basePoints,
         firstDisciplineBonus: challenge.firstDisciplineBonus,
         firstCoachBonus: challenge.firstCoachBonus,
+        photoBonus: challenge.photoBonus,
         dailyPointsCap: challenge.dailyPointsCap,
         bonusSlots: challenge.bonusSlots,
         prizes: challenge.prizes,

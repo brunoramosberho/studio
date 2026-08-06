@@ -23,6 +23,7 @@ const CHALLENGE: ActiveChallengeResponse["challenge"] = {
   basePoints: 10,
   firstDisciplineBonus: 15,
   firstCoachBonus: 10,
+  photoBonus: 5,
   dailyPointsCap: 25,
   bonusSlots: [{ dayOfWeek: 1, hour: 10, points: 5 }],
   prizes: [
@@ -52,6 +53,7 @@ const PROGRESS: ActiveChallengeResponse["progress"] = {
     { id: "c3", name: "Sofía", photoUrl: null, tried: false },
     { id: "c4", name: "Mariana", photoUrl: null, tried: false },
   ],
+  photoClassIds: [],
 };
 
 const BASE: Omit<ActiveChallengeResponse, "me"> = {

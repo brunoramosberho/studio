@@ -84,6 +84,19 @@ describe("scoreClass", () => {
     const rules = { ...RULES, dailyPointsCap: null };
     expect(take(rules, [cls(), cls(), cls(), cls()])).toEqual([35, 10, 10, 10]);
   });
+
+  it("keeps the photo bonus outside the daily cap", () => {
+    // A PHOTO entry folded into the ledger must not eat the day's cap room —
+    // the class after it still pays its full base.
+    const ledger = emptyLedger();
+    const first = cls();
+    applyToLedger(ledger, first, [
+      ...scoreClass(first, RULES, ledger),
+      { kind: "PHOTO", points: 5 },
+    ]);
+    const second = scoreClass(cls(), RULES, ledger);
+    expect(second.reduce((sum, a) => sum + a.points, 0)).toBe(10);
+  });
 });
 
 describe("computeStreaks", () => {

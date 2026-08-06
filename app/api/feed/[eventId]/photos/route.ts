@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireTenant, requireAuth } from "@/lib/tenant";
 import { uploadMedia, deleteMedia } from "@/lib/supabase-storage";
 import { sendPushToMany, getClassPostRecipients } from "@/lib/push";
+import { syncPhotoPointsForClassPost } from "@/lib/challenges/engine";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -120,6 +121,13 @@ export async function POST(
 
     if (feedEvent.eventType === "CLASS_COMPLETED") {
       const payload = feedEvent.payload as Record<string, unknown>;
+
+      // Challenge photo bonus — awaited so the member's points are already
+      // up to date when the UI refetches right after publishing.
+      if (typeof payload.classId === "string") {
+        await syncPhotoPointsForClassPost(tenant.id, payload.classId, session.user.id);
+      }
+
       const uploaderName = session.user.name?.split(" ")[0] ?? "Alguien";
       const className = (payload.className as string) ?? "la clase";
       const recipients = getClassPostRecipients(payload, session.user.id);
@@ -183,6 +191,10 @@ export async function DELETE(
 
     await deleteMedia(photo.url);
     await prisma.photo.delete({ where: { id: photoId } });
+
+    // Challenge photo points are deliberately NOT revoked here: the PHOTO
+    // ledger entry outliving the photo is what makes delete-and-reupload pay
+    // nothing extra. Points only leave with the attendance itself.
 
     return NextResponse.json({ ok: true });
   } catch (error) {

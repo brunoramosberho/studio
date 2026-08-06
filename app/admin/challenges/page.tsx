@@ -31,6 +31,7 @@ interface ChallengeRow {
   basePoints: number;
   firstDisciplineBonus: number;
   firstCoachBonus: number;
+  photoBonus: number;
   dailyPointsCap: number | null;
   bonusSlots: { dayOfWeek: number; hour: number; points: number }[];
   prizes: { fromRank: number; toRank: number; title: string }[];
@@ -148,6 +149,7 @@ export default function ChallengesPage() {
     basePoints: c.basePoints,
     firstDisciplineBonus: c.firstDisciplineBonus,
     firstCoachBonus: c.firstCoachBonus,
+    photoBonus: c.photoBonus,
     dailyPointsCap: c.dailyPointsCap,
     bonusSlots: c.bonusSlots ?? [],
     prizes: c.prizes ?? [],
@@ -321,6 +323,9 @@ function ChallengeCard({
             discipline: challenge.firstDisciplineBonus,
             coach: challenge.firstCoachBonus,
           })}</span>
+          {challenge.photoBonus > 0 && (
+            <span>{t("photoSummary", { points: challenge.photoBonus })}</span>
+          )}
           {challenge.dailyPointsCap != null && (
             <span>{t("capSummary", { cap: challenge.dailyPointsCap })}</span>
           )}
