@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Trophy, Plus, Play, Square, Trash2, Flame, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -265,8 +265,12 @@ function ChallengeCard({
   onDelete?: () => void;
 }) {
   const t = useTranslations("admin.challengesPage");
+  const locale = useLocale();
   const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    new Date(iso).toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
+      day: "numeric",
+      month: "short",
+    });
 
   return (
     <Card className={cn(highlight && "border-admin/40 bg-admin/[0.03]")}>

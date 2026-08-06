@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Plus, Trash2, Loader2, Info, ImagePlus, Trophy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +86,7 @@ export function ChallengeEditor({
   onSave,
 }: Props) {
   const t = useTranslations("admin.challengesPage");
+  const locale = useLocale();
   const [draft, setDraft] = useState<ChallengeDraft>(initial);
 
   // Remount on a different challenge so the form doesn't keep stale values.
@@ -101,9 +102,14 @@ export function ChallengeEditor({
 
   const dayLabels = useMemo(() => {
     // 2026-06-07 was a Sunday; +i walks Sun..Sat in UTC.
-    const fmt = new Intl.DateTimeFormat(undefined, { weekday: "long", timeZone: "UTC" });
+    // The app's language, not the browser's — an admin on an English laptop
+    // running the panel in Spanish must read Spanish day names.
+    const fmt = new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-ES", {
+      weekday: "long",
+      timeZone: "UTC",
+    });
     return Array.from({ length: 7 }, (_, dow) => fmt.format(new Date(Date.UTC(2026, 5, 7 + dow))));
-  }, []);
+  }, [locale]);
 
   const endsAt = useMemo(() => {
     if (!draft.enrollClosesAt) return null;

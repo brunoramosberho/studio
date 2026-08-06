@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Camera, Loader2, X, Send } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { captureVideoPoster, uploadVideoPosterToStorage, compressImage } from "@/lib/media-utils";
 
@@ -84,6 +85,8 @@ interface PhotoUploadProps {
 }
 
 export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
+  const t = useTranslations("feed.photoUpload");
+  const tc = useTranslations("common");
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
@@ -122,13 +125,16 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
       const isVid = file.type.startsWith("video/");
 
       if (isVid && !ACCEPTED_VIDEO_TYPES.includes(file.type)) {
-        rejectFile("Formato de video no soportado. Usa MP4 o WebM.");
+        rejectFile(t("videoFormat"));
         return;
       }
 
       if (isVid && file.size > MAX_VIDEO_SIZE) {
         rejectFile(
-          `Video demasiado pesado (${(file.size / 1024 / 1024).toFixed(0)} MB). Máximo: ${MAX_VIDEO_SIZE_LABEL} MB.`,
+          t("videoTooBig", {
+            size: (file.size / 1024 / 1024).toFixed(0),
+            max: MAX_VIDEO_SIZE_LABEL,
+          }),
         );
         return;
       }
@@ -151,7 +157,10 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
           );
           if (tooLong !== undefined) {
             rejectFile(
-              `El video dura ${Math.ceil(tooLong)}s. Máximo: ${MAX_VIDEO_DURATION}s.`,
+              t("videoTooLong", {
+                seconds: Math.ceil(tooLong),
+                max: MAX_VIDEO_DURATION,
+              }),
             );
           }
         })
@@ -199,7 +208,7 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
 
             if (!urlRes.ok) {
               const data = await urlRes.json().catch(() => ({}));
-              fail(data.error || "Error al preparar la subida");
+              fail(data.error || t("prepFailed"));
               permanent = true;
               break;
             }
@@ -217,9 +226,7 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             // Storage backend rejected the file as too big (413) — permanent
             // and actionable; don't retry.
             if (err instanceof UploadError && err.status === 413) {
-              fail(
-                "El video pesa demasiado para subirse. Intenta con uno más corto o de menor calidad.",
-              );
+              fail(t("videoTooBigStorage"));
               permanent = true;
               break;
             }
@@ -228,7 +235,7 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
               setProgress(null);
               await new Promise((r) => setTimeout(r, tryN * 1000));
             } else {
-              fail("No se pudo subir el video (conexión inestable). Vuelve a intentar.");
+              fail(t("videoUnstable"));
             }
           }
         }
@@ -264,10 +271,10 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             succeeded++;
           } else {
             const data = await regRes.json().catch(() => ({}));
-            fail(data.error || "Error al registrar el video");
+            fail(data.error || t("videoRegisterFailed"));
           }
         } catch {
-          fail("Se subió el video pero no se pudo publicar. Intenta de nuevo.");
+          fail(t("videoPublishFailed"));
         }
       } else {
         // Image: existing multipart flow (small after compression)
@@ -287,10 +294,10 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
             succeeded++;
           } else {
             const data = await res.json().catch(() => ({}));
-            fail(data.error || `No se pudo subir la foto (Error ${res.status})`);
+            fail(data.error || t("photoFailed", { status: res.status }));
           }
         } catch {
-          fail("No se pudo conectar al servidor. Revisa tu conexión.");
+          fail(t("noConnection"));
         }
       }
     }
@@ -320,7 +327,7 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
       <button
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        aria-label={label ?? "Agregar foto"}
+        aria-label={label ?? t("trigger")}
         className={cn(
           "flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] transition-colors",
           label
@@ -413,7 +420,7 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
                 className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-100 text-[14px] font-medium text-foreground/70 transition-colors active:bg-neutral-200"
               >
                 <X className="h-4 w-4" />
-                Cancelar
+                {tc("cancel")}
               </button>
               <button
                 onClick={confirm}
@@ -427,9 +434,9 @@ export function PhotoUpload({ eventId, onUploaded, label }: PhotoUploadProps) {
                 )}
                 {uploading
                   ? progress !== null
-                    ? `Subiendo… ${Math.round(progress * 100)}%`
-                    : "Subiendo…"
-                  : "Publicar"}
+                    ? t("uploadingPct", { pct: Math.round(progress * 100) })
+                    : t("uploading")
+                  : t("publish")}
               </button>
             </div>
           </div>
