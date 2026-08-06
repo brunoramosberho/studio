@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { purgeInertClasses } from "@/lib/classes/inert";
 import { requireRole } from "@/lib/tenant";
 import { sendRoleInvitation } from "@/lib/email";
 
@@ -114,27 +116,96 @@ export async function DELETE(request: NextRequest) {
 
   const profile = await prisma.coachProfile.findFirst({
     where: { id: coachProfileId, tenantId: ctx.tenant.id },
-    include: { _count: { select: { classes: true } } },
+    select: { id: true, userId: true },
   });
 
   if (!profile) {
     return NextResponse.json({ error: "Coach no encontrado" }, { status: 404 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.coachProfile.delete({ where: { id: coachProfileId } });
-    if (profile.userId) {
-      const membership = await tx.membership.findUnique({
-        where: { userId_tenantId: { userId: profile.userId, tenantId: ctx.tenant.id } },
-      });
-      if (membership) {
-        await tx.membership.update({
-          where: { id: membership.id },
-          data: { role: "CLIENT" },
+  // Classes hold the coach with a restricting key, so a single leftover row
+  // blocks the delete — including a class that was scheduled and emptied and
+  // now exists only as a cancelled shell. Clear those first, same as removing
+  // a discipline or a room does.
+  const classIds = (
+    await prisma.class.findMany({
+      where: {
+        tenantId: ctx.tenant.id,
+        OR: [{ coachId: coachProfileId }, { originalCoachId: coachProfileId }],
+      },
+      select: { id: true },
+    })
+  ).map((c) => c.id);
+  await purgeInertClasses(classIds);
+
+  // Whatever still points here is real. Say which it is: this used to be an
+  // unhandled foreign-key error, so the studio saw a 500 and no reason.
+  const [classes, availability, substitutions] = await Promise.all([
+    prisma.class.count({
+      where: {
+        tenantId: ctx.tenant.id,
+        OR: [{ coachId: coachProfileId }, { originalCoachId: coachProfileId }],
+      },
+    }),
+    prisma.coachAvailabilityBlock.count({ where: { coachId: coachProfileId } }),
+    prisma.substitutionRequest.count({
+      where: {
+        OR: [
+          { requestingCoachId: coachProfileId },
+          { originalCoachId: coachProfileId },
+          { targetCoachId: coachProfileId },
+          { acceptedByCoachId: coachProfileId },
+        ],
+      },
+    }),
+  ]);
+
+  if (classes > 0) {
+    return NextResponse.json(
+      { error: `No se puede eliminar: tiene ${classes} clase(s) asignada(s)` },
+      { status: 409 },
+    );
+  }
+  if (substitutions > 0) {
+    return NextResponse.json(
+      { error: `No se puede eliminar: aparece en ${substitutions} solicitud(es) de sustitución` },
+      { status: 409 },
+    );
+  }
+  if (availability > 0) {
+    return NextResponse.json(
+      { error: `No se puede eliminar: tiene ${availability} bloque(s) de disponibilidad` },
+      { status: 409 },
+    );
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.coachProfile.delete({ where: { id: coachProfileId } });
+      if (profile.userId) {
+        const membership = await tx.membership.findUnique({
+          where: { userId_tenantId: { userId: profile.userId, tenantId: ctx.tenant.id } },
         });
+        if (membership) {
+          await tx.membership.update({
+            where: { id: membership.id },
+            data: { role: "CLIENT" },
+          });
+        }
       }
+    });
+  } catch (error) {
+    // The checks above cover what points at a coach today. A relation added
+    // later would land here instead of as a bare 500 with nothing to act on.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return NextResponse.json(
+        { error: "No se puede eliminar: el coach todavía está en uso en otra parte del sistema" },
+        { status: 409 },
+      );
     }
-  });
+    console.error("DELETE /api/admin/coaches error:", error);
+    return NextResponse.json({ error: "No se pudo eliminar el coach" }, { status: 500 });
+  }
 
   return NextResponse.json({ success: true });
 }
