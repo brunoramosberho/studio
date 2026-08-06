@@ -94,10 +94,12 @@ async function matchesRule(rule: SongRequestRule, ctx: EvalCtx): Promise<boolean
       if (!ctx.user?.birthday) return false;
       const bday = new Date(ctx.user.birthday);
       const classDate = new Date(ctx.classStartsAt);
+      // UTC getters: birthdays are stored at UTC midnight, so local getters
+      // read the previous day on any server west of UTC.
       const birthdayThisYear = new Date(
         classDate.getFullYear(),
-        bday.getMonth(),
-        bday.getDate(),
+        bday.getUTCMonth(),
+        bday.getUTCDate(),
       );
       return isSameWeek(birthdayThisYear, classDate, { weekStartsOn: 1 });
     }

@@ -118,6 +118,21 @@ export function formatDate(date: Date | string, locale?: string, timeZone?: stri
 }
 
 /**
+ * Format a date-only value (birthdays and other columns anchored at UTC
+ * midnight) from its UTC calendar parts. `formatDate` renders in the viewer's
+ * timezone, which shifts "1990-08-24T00:00:00Z" to Aug 23 anywhere west of
+ * UTC — a birthday has no timezone, so the stored UTC date IS the date.
+ * Accepts a Date, a "YYYY-MM-DD" string, or a full ISO string.
+ */
+export function formatDateOnly(value: Date | string, locale?: string): string {
+  const d = new Date(value);
+  const anchored = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const loc = getDateLocale(locale);
+  if (locale === "en") return format(anchored, "MMMM d, yyyy", { locale: loc });
+  return format(anchored, "d 'de' MMMM, yyyy", { locale: loc });
+}
+
+/**
  * Convert a wall-clock time in a given IANA timezone to the equivalent UTC Date.
  * Example: zonedWallTimeToUtc(2026, 3, 23, 7, 0, "America/Mexico_City")
  *   → Date representing 07:00 in CDMX (i.e. 13:00 UTC during CST, 12:00 UTC during CDT).

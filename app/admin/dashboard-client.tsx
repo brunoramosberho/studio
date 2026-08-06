@@ -370,6 +370,9 @@ export function AdminDashboard() {
                         {new Date(u.birthday).toLocaleDateString("es", {
                           day: "numeric",
                           month: "long",
+                          // Birthdays are stored at UTC midnight — rendering
+                          // in the viewer's timezone shows the previous day.
+                          timeZone: "UTC",
                         })}
                       </p>
                     </div>

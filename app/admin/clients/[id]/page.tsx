@@ -52,7 +52,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn, formatDate, timeAgo, getDateLocale } from "@/lib/utils";
+import { cn, formatDate, formatDateOnly, timeAgo, getDateLocale } from "@/lib/utils";
 import { useFormatMoney } from "@/components/tenant-provider";
 import { format } from "date-fns";
 import { usePosStore } from "@/store/pos-store";
@@ -810,7 +810,7 @@ export default function ClientDetailPage() {
                   <div className="flex items-center gap-3 text-sm">
                     <Cake className="h-4 w-4 shrink-0 text-muted" />
                     <span className="text-foreground">
-                      {formatDate(client.birthday, locale)}
+                      {formatDateOnly(client.birthday, locale)}
                     </span>
                   </div>
                 )}

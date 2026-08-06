@@ -248,7 +248,9 @@ export async function GET(
           const bday = new Date(b.user.birthday);
           const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           const yesterdayDate = new Date(todayDate.getTime() - 24 * 60 * 60 * 1000);
-          const thisYearBday = new Date(now.getFullYear(), bday.getMonth(), bday.getDate());
+          // UTC getters: birthdays are stored at UTC midnight, so local
+          // getters read the previous day on any server west of UTC.
+          const thisYearBday = new Date(now.getFullYear(), bday.getUTCMonth(), bday.getUTCDate());
 
           if (thisYearBday.getTime() === todayDate.getTime()) {
             birthdayLabel = "today";

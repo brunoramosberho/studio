@@ -4,6 +4,7 @@ import {
   capitalizeName,
   composeName,
   formatDateInZone,
+  formatDateOnly,
   splitName,
 } from "./utils";
 
@@ -119,5 +120,29 @@ describe("calendarDaysBetween with formatDateInZone", () => {
         calendarDaysBetween(formatDateInZone(duringDay, tz), formatDateInZone(close, tz)),
       ).toBe(0);
     }
+  });
+});
+
+describe("formatDateOnly", () => {
+  // Birthdays are stored at UTC midnight. A viewer-timezone formatter shows
+  // Aug 24 as Aug 23 anywhere west of UTC — this one must not, no matter the
+  // timezone this test machine runs in.
+  it("keeps the stored calendar date from a full ISO timestamp", () => {
+    expect(formatDateOnly("1990-08-24T00:00:00.000Z", "en")).toBe("August 24, 1990");
+    expect(formatDateOnly("1990-08-24T00:00:00.000Z", "es")).toBe("24 de agosto, 1990");
+  });
+
+  it("accepts a date-only string", () => {
+    expect(formatDateOnly("1990-08-24", "en")).toBe("August 24, 1990");
+  });
+
+  it("accepts a Date object", () => {
+    expect(formatDateOnly(new Date("1990-08-24T00:00:00.000Z"), "es")).toBe(
+      "24 de agosto, 1990",
+    );
+  });
+
+  it("defaults to Spanish, matching formatDate", () => {
+    expect(formatDateOnly("2000-01-01")).toBe("1 de enero, 2000");
   });
 });

@@ -495,7 +495,9 @@ export async function GET(
       email: user.email,
       image: user.image,
       phone: user.phone,
-      birthday: user.birthday?.toISOString() ?? null,
+      // Date-only — slice off the time so clients can't re-render it in a
+      // local timezone and shift the day (same convention as /api/profile).
+      birthday: user.birthday?.toISOString().slice(0, 10) ?? null,
       instagramUser: user.instagramUser,
       stravaUser: user.stravaUser,
       memberSince: membership.createdAt.toISOString(),
