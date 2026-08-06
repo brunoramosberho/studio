@@ -4,6 +4,8 @@ import { requireAuth } from "@/lib/tenant";
 import { challengeEndsAt } from "@/lib/challenges/input";
 import { daysElapsed } from "@/lib/challenges/engine";
 import { pace, PACE_MIN_DAYS } from "@/lib/challenges/scoring";
+import { resolveScheduleTimezone } from "@/lib/schedule/visibility";
+import { calendarDaysBetween, formatDateInZone } from "@/lib/utils";
 
 /**
  * Everything the member's challenge surfaces need, in one request: the live
@@ -105,7 +107,20 @@ export async function GET() {
     const enrollmentOpen =
       now >= challenge.enrollOpensAt && now <= challenge.enrollClosesAt;
 
+    // The deadline was stored as end-of-day in the studio's timezone, so it has
+    // to be read back the same way. Counting raw milliseconds would tell a
+    // member in Mexico the wrong day for a Madrid studio, and vice versa —
+    // and this is the one date they cannot afford to get wrong.
+    const timezone = await resolveScheduleTimezone(tenant);
+    const enrollDaysLeft = calendarDaysBetween(
+      formatDateInZone(now, timezone),
+      formatDateInZone(challenge.enrollClosesAt, timezone),
+    );
+
     return NextResponse.json({
+      timezone,
+      // 0 means today is the last day; negative means it has passed.
+      enrollDaysLeft,
       challenge: {
         id: challenge.id,
         name: challenge.name,

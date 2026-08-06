@@ -3,9 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { Trophy, Flame, ChevronRight, Loader2, Sparkles, Clock } from "lucide-react";
+import {
+  Trophy,
+  Flame,
+  ChevronRight,
+  Loader2,
+  Sparkles,
+  Clock,
+  CalendarClock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -22,6 +30,7 @@ import type { ActiveChallengeResponse } from "./types";
  */
 export function ChallengeCard() {
   const t = useTranslations("member.challenge");
+  const locale = useLocale();
   const qc = useQueryClient();
   const [boardOpen, setBoardOpen] = useState(false);
 
@@ -48,6 +57,15 @@ export function ChallengeCard() {
   const { challenge, me, enrollmentOpen, participantCount, progress } = data;
   // Someone who never joined and can no longer join has nothing to act on.
   if (!me && !enrollmentOpen) return null;
+
+  // Read in the studio's zone, so the day shown is the day the studio means.
+  const deadline = new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-ES", {
+    day: "numeric",
+    month: "short",
+    timeZone: data.timezone,
+  }).format(new Date(challenge.enrollClosesAt));
+  const daysToDeadline = data.enrollDaysLeft;
+  const deadlinePassed = daysToDeadline < 0;
 
   const topPrize = [...(challenge.prizes ?? [])].sort((a, b) => a.fromRank - b.fromRank)[0];
   const myRank = me?.startsAt
@@ -108,6 +126,9 @@ export function ChallengeCard() {
                   {t("prizeLine", { prize: topPrize.title })}
                 </p>
               )}
+              <Deadline days={daysToDeadline}>
+                {t("deadlineJoin", { date: deadline })}
+              </Deadline>
               <div className="flex items-center gap-3">
                 <Button
                   onClick={() => join.mutate(challenge.id)}
@@ -133,12 +154,24 @@ export function ChallengeCard() {
           {/* ── Joined, first class still pending ──────────────────────── */}
           {me && !me.startsAt && (
             <div className="mt-3 space-y-3">
-              <p className="text-sm text-muted">
-                {t("notStartedBody", { days: challenge.durationDays })}
-              </p>
-              <Button asChild className="w-full">
-                <Link href="/schedule">{t("bookFirst")}</Link>
-              </Button>
+              {/* The deadline to take that first class is the same date as the
+                  one to join, and missing it forfeits the challenge silently.
+                  It is the single most important thing on this card. */}
+              {deadlinePassed ? (
+                <p className="text-sm text-muted">{t("deadlineMissed")}</p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted">
+                    {t("notStartedBody", { days: challenge.durationDays })}
+                  </p>
+                  <Deadline days={daysToDeadline}>
+                    {t("deadlineActivate", { date: deadline })}
+                  </Deadline>
+                  <Button asChild className="w-full">
+                    <Link href="/schedule">{t("bookFirst")}</Link>
+                  </Button>
+                </>
+              )}
             </div>
           )}
 
@@ -227,6 +260,40 @@ export function ChallengeCard() {
 
       <ChallengeScoreboard open={boardOpen} onOpenChange={setBoardOpen} data={data} />
     </>
+  );
+}
+
+/** Days out at which the deadline stops being a detail and becomes the point. */
+const DEADLINE_URGENT_DAYS = 3;
+
+/**
+ * The date is always shown; the countdown and the warning tone only appear once
+ * it's close, when "15 ago" starts needing mental arithmetic the member
+ * shouldn't have to do.
+ *
+ * Proximity alone sets the tone, for both the member who hasn't joined and the
+ * one who has. They stand to lose different things — a place in the challenge
+ * versus one they already claimed — but on the last day both need to act today.
+ */
+function Deadline({ days, children }: { days: number; children: React.ReactNode }) {
+  const t = useTranslations("member.challenge");
+  const close = days <= DEADLINE_URGENT_DAYS;
+
+  return (
+    <p
+      className={cn(
+        "flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs",
+        close
+          ? "border border-amber-300/70 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+          : "bg-muted/10 text-muted",
+      )}
+    >
+      <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span>
+        {children}
+        {close && <strong className="ml-1 font-semibold">{t("deadlineSoon", { days })}</strong>}
+      </span>
+    </p>
   );
 }
 

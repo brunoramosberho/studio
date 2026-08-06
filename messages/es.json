@@ -2305,7 +2305,7 @@
       "prizeLine": "Primer lugar: {prize}",
       "join": "Entrar al reto",
       "whoIsIn": "{count, plural, one {Ya hay 1 persona} other {Ya hay # personas}}",
-      "notStartedBody": "Ya estás dentro. Tus {days} días arrancan con tu primera clase, así que entra cuando te acomode.",
+      "notStartedBody": "Ya estás dentro. Tus {days} días arrancan con tu primera clase — no por inscribirte.",
       "bookFirst": "Reservar mi primera clase",
       "points": "puntos",
       "rank": "lugar",
@@ -2333,7 +2333,11 @@
       "requestSent": "Solicitud enviada",
       "prizes": "Premios",
       "disciplinesDone": "Disciplinas · {done} de {total}",
-      "coachesDone": "Instructores · {done} de {total}"
+      "coachesDone": "Instructores · {done} de {total}",
+      "deadlineJoin": "Puedes entrar y tomar tu primera clase hasta el {date}.",
+      "deadlineActivate": "Tu primera clase tiene que ser antes del {date}, o te quedas fuera del reto.",
+      "deadlineSoon": "{days, plural, =0 {¡Hoy es el último día!} one {Queda 1 día.} other {Quedan # días.}}",
+      "deadlineMissed": "Se pasó la fecha para tomar tu primera clase, así que este reto ya no cuenta para ti."
     },
     "blocked": {
       "title": "Tu acceso está suspendido",

@@ -197,6 +197,21 @@ export function formatDateInZone(date: Date | string, timeZone: string): string 
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+/**
+ * Whole calendar days from one "yyyy-MM-dd" to another — the pair to
+ * `formatDateInZone`, which is how you get both sides into the same timezone
+ * first.
+ *
+ * Subtracting the raw instants instead would answer a different question: a
+ * deadline eight hours away is zero days by the clock but "tomorrow" on the
+ * calendar, and a member reading "0 days left" the evening before still has
+ * all of the next day.
+ */
+export function calendarDaysBetween(fromDay: string, toDay: string): number {
+  const ms = Date.parse(`${toDay}T00:00:00Z`) - Date.parse(`${fromDay}T00:00:00Z`);
+  return Math.round(ms / 86_400_000);
+}
+
 /** Returns "HH:mm" (24h) for a UTC instant observed in the given timezone. */
 export function formatTime24InZone(date: Date | string, timeZone: string): string {
   const { hour, minute } = getWallClockInZone(date, timeZone);

@@ -2305,7 +2305,7 @@
       "prizeLine": "First place: {prize}",
       "join": "Join the challenge",
       "whoIsIn": "{count, plural, one {1 person is in} other {# people are in}}",
-      "notStartedBody": "You're in. Your {days} days start with your first class, so come whenever suits you.",
+      "notStartedBody": "You're in. Your {days} days start with your first class — not when you signed up.",
       "bookFirst": "Book my first class",
       "points": "points",
       "rank": "rank",
@@ -2333,7 +2333,11 @@
       "requestSent": "Request sent",
       "prizes": "Prizes",
       "disciplinesDone": "Disciplines · {done} of {total}",
-      "coachesDone": "Instructors · {done} of {total}"
+      "coachesDone": "Instructors · {done} of {total}",
+      "deadlineJoin": "You can join and take your first class until {date}.",
+      "deadlineActivate": "Your first class has to be before {date}, or you're out of the challenge.",
+      "deadlineSoon": "{days, plural, =0 {Today is the last day!} one {1 day left.} other {# days left.}}",
+      "deadlineMissed": "The deadline for your first class has passed, so this challenge no longer counts for you."
     },
     "blocked": {
       "title": "Your access is suspended",

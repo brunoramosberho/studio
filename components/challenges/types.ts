@@ -38,6 +38,10 @@ export interface ActiveChallengeResponse {
     prizes: ChallengePrize[];
   };
   enrollmentOpen: boolean;
+  /** IANA zone of the studio — the deadline must be read in it, not the browser's. */
+  timezone: string;
+  /** Calendar days until enrolment closes: 0 = last day, negative = passed. */
+  enrollDaysLeft: number;
   paceMinDays: number;
   participantCount: number;
   me: {
