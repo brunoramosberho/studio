@@ -49,6 +49,9 @@ export async function POST(request: NextRequest) {
   const normalizedEmail = email.toLowerCase().trim();
   const trimmedName = typeof name === "string" ? name.trim() : null;
   const targetRole = requestedRole === "FRONT_DESK" ? "FRONT_DESK" as const : "ADMIN" as const;
+  // Named in the confirmation prompt so the studio reads back the role it
+  // actually chose, not a generic "admin".
+  const roleLabel = targetRole === "FRONT_DESK" ? "recepción" : "administrador";
 
   const existing = await prisma.user.findUnique({
     where: { email: normalizedEmail },
@@ -58,9 +61,22 @@ export async function POST(request: NextRequest) {
   if (existing) {
     const membership = existing.memberships[0];
 
-    if (membership?.role === "ADMIN") {
+    if (membership?.role === targetRole) {
       return NextResponse.json(
-        { error: "Este usuario ya es administrador" },
+        { error: `Este usuario ya tiene el rol de ${roleLabel}` },
+        { status: 409 },
+      );
+    }
+
+    // Already staff, but in the other role — a plain role change, not a new
+    // invitation. Confirm it like any other conversion.
+    if (membership?.role === "ADMIN" || membership?.role === "FRONT_DESK") {
+      return NextResponse.json(
+        {
+          error: `${existing.name || normalizedEmail} ya es parte del equipo. ¿Cambiar su rol a ${roleLabel}?`,
+          existingUser: { id: existing.id, name: existing.name, email: existing.email },
+          requireConfirm: true,
+        },
         { status: 409 },
       );
     }
@@ -68,7 +84,7 @@ export async function POST(request: NextRequest) {
     if (membership?.role === "CLIENT") {
       return NextResponse.json(
         {
-          error: `Ya existe un cliente con este correo (${existing.name || normalizedEmail}). ¿Deseas convertirlo en admin?`,
+          error: `Ya existe un cliente con este correo (${existing.name || normalizedEmail}). ¿Deseas convertirlo en ${roleLabel}?`,
           existingUser: { id: existing.id, name: existing.name, email: existing.email },
           requireConfirm: true,
         },
@@ -79,7 +95,7 @@ export async function POST(request: NextRequest) {
     if (membership?.role === "COACH") {
       return NextResponse.json(
         {
-          error: `Este correo pertenece a un coach (${existing.name || normalizedEmail}). ¿Deseas convertirlo en admin?`,
+          error: `Este correo pertenece a un coach (${existing.name || normalizedEmail}). ¿Deseas convertirlo en ${roleLabel}?`,
           existingUser: { id: existing.id, name: existing.name, email: existing.email },
           requireConfirm: true,
         },
@@ -137,15 +153,27 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const ctx = await requirePermission("team");
 
-  const { userId } = await request.json();
+  const { userId, role: requestedRole } = await request.json();
   if (!userId) {
     return NextResponse.json({ error: "userId requerido" }, { status: 400 });
   }
 
+  // This is the "yes, convert the existing client" path. It used to hard-code
+  // ADMIN and ignore the role that was actually chosen, so anyone who already
+  // had a client account — which is most staff, they train there — silently
+  // became a full admin instead of front desk.
+  if (requestedRole !== "ADMIN" && requestedRole !== "FRONT_DESK") {
+    return NextResponse.json(
+      { error: "role debe ser ADMIN o FRONT_DESK" },
+      { status: 400 },
+    );
+  }
+  const targetRole = requestedRole;
+
   await prisma.membership.upsert({
     where: { userId_tenantId: { userId, tenantId: ctx.tenant.id } },
-    create: { userId, tenantId: ctx.tenant.id, role: "ADMIN" },
-    update: { role: "ADMIN" },
+    create: { userId, tenantId: ctx.tenant.id, role: targetRole },
+    update: { role: targetRole },
   });
 
   const user = await prisma.user.findUnique({
@@ -156,7 +184,7 @@ export async function PUT(request: NextRequest) {
   const origin = request.nextUrl.origin;
   await sendRoleInvitation({
     to: user!.email,
-    role: "ADMIN",
+    role: targetRole,
     invitedBy: ctx.session.user.name || "Un administrador",
     origin,
   });

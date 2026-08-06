@@ -765,7 +765,6 @@
     "invite": "Invite",
     "inviteSent": "Invitation sent successfully",
     "inviteError": "Error inviting",
-    "promotedToAdmin": "User promoted to administrator",
     "waitlistTitle": "Waitlist",
     "waitlistSubtitle": "Classes with active waitlists",
     "noActiveWaitlist": "No active waitlists",
@@ -1956,7 +1955,8 @@
     "landingThemeLabel": "Landing theme",
     "landingThemeAuto": "Follow the visitor",
     "landingThemeDark": "Always dark",
-    "landingThemeDesc": "Affects your public page only. The member app keeps following their phone's theme."
+    "landingThemeDesc": "Affects your public page only. The member app keeps following their phone's theme.",
+    "promotedTo": "Role updated to {role}"
   },
   "coach": {
     "portal": "Instructor Portal",

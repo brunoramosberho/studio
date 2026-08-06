@@ -93,9 +93,11 @@ export default function AdminTeamPage() {
   const promoteMutation = useMutation({
     mutationFn: async (userId: string) => {
       const res = await fetch("/api/admin/team", {
+        // Send the role that was picked. Without it the server used to default
+        // to ADMIN, so confirming "convert this client" handed out full access.
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, role: inviteRole }),
       });
       if (!res.ok) throw new Error(t("inviteError"));
       return res.json();
@@ -105,7 +107,7 @@ export default function AdminTeamPage() {
       setEmail("");
       setError("");
       setConfirmUser(null);
-      setSuccessMsg(t("promotedToAdmin"));
+      setSuccessMsg(t("promotedTo", { role: inviteRole === "FRONT_DESK" ? tr("frontDesk") : tr("admin") }));
       setTimeout(() => setSuccessMsg(""), 4000);
     },
   });

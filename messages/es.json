@@ -765,7 +765,6 @@
     "invite": "Invitar",
     "inviteSent": "Invitacion enviada correctamente",
     "inviteError": "Error al invitar",
-    "promotedToAdmin": "Usuario promovido a administrador",
     "waitlistTitle": "Lista de espera",
     "waitlistSubtitle": "Clases con lista de espera activa",
     "noActiveWaitlist": "No hay listas de espera activas",
@@ -1956,7 +1955,8 @@
     "landingThemeLabel": "Tema de la landing",
     "landingThemeAuto": "Según el visitante",
     "landingThemeDark": "Siempre oscuro",
-    "landingThemeDesc": "Solo afecta a tu página pública. La app del miembro sigue respetando el tema de su teléfono."
+    "landingThemeDesc": "Solo afecta a tu página pública. La app del miembro sigue respetando el tema de su teléfono.",
+    "promotedTo": "Rol actualizado a {role}"
   },
   "coach": {
     "portal": "Portal del Instructor",
