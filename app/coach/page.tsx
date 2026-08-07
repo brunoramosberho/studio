@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   CalendarDays,
+  MapPin,
   Users,
   Clock,
   ChevronRight,
@@ -340,6 +341,15 @@ export default function CoachDashboard() {
                             <span className="text-sm text-muted">
                               {enrolled}/{capacity}
                             </span>
+                            {cls.room?.studio?.name && (
+                              <>
+                                <span className="text-muted/40">·</span>
+                                <MapPin className="h-3.5 w-3.5 shrink-0 text-muted" />
+                                <span className="truncate text-sm text-muted">
+                                  {cls.room.studio.name}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <Badge
@@ -393,6 +403,15 @@ export default function CoachDashboard() {
                             <span className="text-sm text-muted">
                               {enrolled}/{capacity}
                             </span>
+                            {cls.room?.studio?.name && (
+                              <>
+                                <span className="text-muted/40">·</span>
+                                <MapPin className="h-3.5 w-3.5 shrink-0 text-muted" />
+                                <span className="truncate text-sm text-muted">
+                                  {cls.room.studio.name}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <Badge

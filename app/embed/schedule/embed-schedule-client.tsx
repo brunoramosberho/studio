@@ -61,6 +61,31 @@ interface EmbedScheduleClientProps {
   visibleDays?: number;
 }
 
+/**
+ * Pinned instructors first in the order the studio set, then everyone else
+ * alphabetically.
+ *
+ * The list used to come out of deduplicating the classes, which arrive sorted
+ * by start time — so the order was "whoever teaches earliest", and it
+ * reshuffled whenever the member changed day or filter. Alphabetical is the
+ * only order that stays put between visits, which is what a strip you use to
+ * find one person needs.
+ */
+function orderCoaches<T extends { name: string | null; displayOrder?: number | null }>(
+  coaches: T[],
+): T[] {
+  return [...coaches].sort((a, b) => {
+    const ao = a.displayOrder ?? null;
+    const bo = b.displayOrder ?? null;
+    // Two pins at the same position still need a stable answer, so they fall
+    // through to the same alphabetical rule as everyone else.
+    if (ao !== null && bo !== null && ao !== bo) return ao - bo;
+    if (ao !== null) return -1;
+    if (bo !== null) return 1;
+    return (a.name ?? "").localeCompare(b.name ?? "");
+  });
+}
+
 export function EmbedScheduleClient({
   tenantOrigin,
   visibleDays = 7,
@@ -122,7 +147,7 @@ export function EmbedScheduleClient({
 
   const coaches = useMemo(
     () =>
-      Array.from(new Map(classes.map((c) => [c.coach.id, c.coach])).values()),
+      orderCoaches(Array.from(new Map(classes.map((c) => [c.coach.id, c.coach])).values())),
     [classes],
   );
 

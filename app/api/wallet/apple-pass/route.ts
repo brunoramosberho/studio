@@ -40,6 +40,13 @@ export async function GET() {
   }
   const { session, tenant } = auth;
 
+  // The platform credentials are shared, so being configured is not the same
+  // as being offered. Without this a member of any studio could fetch a pass
+  // by going to the URL directly.
+  if (!tenant.appleWalletEnabled) {
+    return NextResponse.json({ error: "wallet_not_enabled" }, { status: 404 });
+  }
+
   try {
     const result = await buildMembershipPass({
       tenantId: tenant.id,

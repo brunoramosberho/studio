@@ -6,8 +6,11 @@ import { tenantToBranding, DEFAULTS } from "@/lib/branding";
 export async function GET() {
   try {
     const tenant = await getTenant();
-    if (!tenant) return NextResponse.json(DEFAULTS);
-    return NextResponse.json(tenantToBranding(tenant));
+    if (!tenant) return NextResponse.json({ ...DEFAULTS, appleWalletEnabled: false });
+    return NextResponse.json({
+      ...tenantToBranding(tenant),
+      appleWalletEnabled: tenant.appleWalletEnabled,
+    });
   } catch {
     return NextResponse.json(DEFAULTS);
   }
@@ -52,12 +55,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Booleans can't ride the allow-list above, which coerces to string|null.
+    const flags: Record<string, boolean> = {};
+    if (typeof body.appleWalletEnabled === "boolean") {
+      flags.appleWalletEnabled = body.appleWalletEnabled;
+    }
+
     const tenant = await prisma.tenant.update({
       where: { id: ctx.tenant.id },
-      data: { ...data, ...(landingCopy ? { landingCopy } : {}) },
+      data: { ...data, ...flags, ...(landingCopy ? { landingCopy } : {}) },
     });
 
-    return NextResponse.json(tenantToBranding(tenant));
+    return NextResponse.json({
+      ...tenantToBranding(tenant),
+      appleWalletEnabled: tenant.appleWalletEnabled,
+    });
   } catch (error) {
     console.error("Failed to update settings:", error);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });

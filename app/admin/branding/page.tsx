@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { type StudioBranding, DEFAULTS, FONT_PAIRINGS, deriveAccentSoft, withDerivedColors } from "@/lib/branding";
+import { Switch } from "@/components/ui/switch";
 import { useBranding } from "@/components/branding-provider";
 import { SectionTabs } from "@/components/admin/section-tabs";
 import { LANDING_COPY_KEYS, type LandingCopyKey } from "@/lib/landing-copy";
@@ -139,6 +140,9 @@ export default function BrandingPage() {
       else delete next[key];
       return { ...prev, landingCopy: next };
     });
+  // A boolean, so it stays out of StudioBranding (colours and copy, all
+  // string | null) and rides along on the same save.
+  const [walletEnabled, setWalletEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -148,7 +152,10 @@ export default function BrandingPage() {
   useEffect(() => {
     fetch("/api/admin/settings")
       .then((r) => r.json())
-      .then((data) => setSettings(withDerivedColors({ ...DEFAULTS, ...data })))
+      .then((data) => {
+        setSettings(withDerivedColors({ ...DEFAULTS, ...data }));
+        setWalletEnabled(Boolean(data.appleWalletEnabled));
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -159,7 +166,7 @@ export default function BrandingPage() {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(derived),
+        body: JSON.stringify({ ...derived, appleWalletEnabled: walletEnabled }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -169,6 +176,7 @@ export default function BrandingPage() {
     },
     onSuccess: (data) => {
       setSettings(data);
+      setWalletEnabled(Boolean(data.appleWalletEnabled));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       brandingCtx.update(data);
@@ -403,6 +411,22 @@ export default function BrandingPage() {
                   />
                 </div>
                 <p className="mt-1.5 text-[11px] text-muted">{t("instagramDesc")}</p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <div className="mt-2 flex items-start justify-between gap-4 border-t border-border/60 pt-5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{t("walletTitle")}</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                      {t("walletDesc")}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={walletEnabled}
+                    onCheckedChange={setWalletEnabled}
+                    aria-label={t("walletTitle")}
+                  />
+                </div>
               </div>
 
               <div className="sm:col-span-2">

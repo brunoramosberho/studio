@@ -156,10 +156,24 @@ export async function GET(request: NextRequest) {
 /** Restore an archived instructor. */
 export async function PATCH(request: NextRequest) {
   const ctx = await requireRole("ADMIN");
-  const { coachProfileId, archived } = await request.json();
-  if (!coachProfileId || typeof archived !== "boolean") {
+  const { coachProfileId, archived, pinned } = await request.json();
+  if (!coachProfileId) {
+    return NextResponse.json({ error: "coachProfileId requerido" }, { status: 400 });
+  }
+
+  // Pinning is a separate, smaller edit: it moves the instructor to the front
+  // of the schedule strip without touching whether they are archived.
+  if (typeof pinned === "boolean") {
+    await prisma.coachProfile.updateMany({
+      where: { id: coachProfileId, tenantId: ctx.tenant.id },
+      data: { displayOrder: pinned ? 0 : null },
+    });
+    return NextResponse.json({ success: true, pinned });
+  }
+
+  if (typeof archived !== "boolean") {
     return NextResponse.json(
-      { error: "coachProfileId y archived son requeridos" },
+      { error: "archived o pinned son requeridos" },
       { status: 400 },
     );
   }

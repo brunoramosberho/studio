@@ -462,15 +462,16 @@ export async function DELETE(
       data: { status: "CANCELLED", spotNumber: null, creditLost: !restored, cancelledAt: new Date(), cancelledBy: session.user.id },
     });
 
-    // Unlimited members forfeit nothing on a late cancel — packs lose the
-    // credit above, but an unlimited seat walks away free. When their package
-    // prices a late-cancel fee, queue it through the same pending flow as
-    // no-shows (grace window, admin review, waivable). Member self-cancels
-    // only: a desk-initiated cancel is a business decision, not a penalty.
+    // A late-cancel fee is charged whenever the member's package prices one.
+    // It began as an unlimited-only rule, because an unlimited seat forfeits
+    // nothing while a pack at least loses its credit — but a studio that wants
+    // to price a pack's late cancel should be able to, and a fee of zero (the
+    // default) still charges nobody. For a pack this is on top of the credit
+    // lost above. Member self-cancels only: a desk-initiated cancel is a
+    // business decision, not a penalty.
     if (
       isLate &&
       isOwner &&
-      cancelPolicy.isUnlimited &&
       cancelPolicy.lateCancelFeeCents > 0 &&
       booking.userId &&
       !booking.platformBookingId
@@ -485,10 +486,12 @@ export async function DELETE(
         classId: booking.classId,
         userId: booking.userId,
         decision: {
+          // The credit, when there was one, was already settled above — this
+          // row records the money side only.
           loseCredit: false,
           chargeFee: true,
           feeAmountCents: cancelPolicy.lateCancelFeeCents,
-          isUnlimited: true,
+          isUnlimited: cancelPolicy.isUnlimited,
         },
         graceHours: graceCfg?.noShowPenaltyGraceHours ?? 24,
         reason: "late_cancel",

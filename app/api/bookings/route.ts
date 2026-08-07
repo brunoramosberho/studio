@@ -110,7 +110,10 @@ export async function GET(request: NextRequest) {
       const isUnlimited = up ? up.creditsTotal === null : !!activeSub;
       return {
         windowHours: pkg?.cancellationWindowHours ?? tenantWindow,
-        lateCancelFeeCents: isUnlimited ? (pkg?.lateCancelFeeCents ?? 0) : 0,
+        // Any package can price a late cancel now, not just unlimited. For a
+        // pack the fee is on top of the forfeited credit, so it only applies
+        // when the studio deliberately set one — blank stays blank.
+        lateCancelFeeCents: pkg?.lateCancelFeeCents ?? 0,
         isUnlimited,
       };
     };

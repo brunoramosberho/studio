@@ -321,18 +321,19 @@ function buildPayload(form: FormState) {
       form.scheduleVisibilityDaysAhead.trim() !== ""
         ? parseInt(form.scheduleVisibilityDaysAhead, 10)
         : null,
-    // Cancellation policy overrides — unlimited subscriptions have no credit to
-    // forfeit, so late-cancel/no-show discipline needs a fee. Blank = tenant.
+    // Cancellation policy overrides, for any package that grants classes.
+    // Unlimited plans have no credit to forfeit so a fee is the only lever,
+    // but a pack can price one too. Blank = tenant policy.
     cancellationWindowHours:
-      form.type === "SUBSCRIPTION" && form.cancellationWindowHours.trim() !== ""
+      form.type !== "ON_DEMAND_SUBSCRIPTION" && form.cancellationWindowHours.trim() !== ""
         ? parseInt(form.cancellationWindowHours, 10)
         : null,
     lateCancelFeeCents:
-      form.type === "SUBSCRIPTION" && form.lateCancelFee.trim() !== ""
+      form.type !== "ON_DEMAND_SUBSCRIPTION" && form.lateCancelFee.trim() !== ""
         ? Math.round(parseFloat(form.lateCancelFee) * 100)
         : null,
     noShowFeeCents:
-      form.type === "SUBSCRIPTION" && form.noShowFee.trim() !== ""
+      form.type !== "ON_DEMAND_SUBSCRIPTION" && form.noShowFee.trim() !== ""
         ? Math.round(parseFloat(form.noShowFee) * 100)
         : null,
   };
@@ -1112,14 +1113,15 @@ export default function AdminPackagesPage() {
               </div>
             ) : null}
 
-            {form.type === "SUBSCRIPTION" ? (
+            {form.type !== "ON_DEMAND_SUBSCRIPTION" ? (
               <div className="space-y-3 rounded-xl border border-input-border/60 bg-surface/50 p-3">
                 <p className="text-sm font-medium">Cancelación y penalizaciones</p>
                 <p className="text-xs text-muted">
-                  Opcional. Los ilimitados no pierden crédito al cancelar tarde o no
-                  presentarse — aquí defines la penalización de este plan. La
-                  penalización entra a la cola de no-shows (con periodo de gracia) y
-                  se puede condonar. Vacío = política del estudio.
+                  Opcional. Vacío = política del estudio. La penalización entra a la
+                  cola de no-shows (con periodo de gracia) y se puede condonar.
+                  {form.type === "SUBSCRIPTION"
+                    ? " Los ilimitados no pierden crédito al cancelar tarde o no presentarse, así que el cargo es la única penalización."
+                    : " Quien usa este paquete ya pierde su crédito al cancelar tarde; el cargo, si lo pones, es adicional."}
                 </p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div>

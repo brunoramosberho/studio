@@ -276,6 +276,11 @@ model Tenant {
   classRatings        ClassRating[]
   ratingReasons       RatingReason[]
 
+  // The Apple Wallet membership pass is off until a studio asks for it. The
+  // platform credentials are shared, so `isApplePassConfigured()` is true for
+  // everyone — without this flag every tenant would offer the pass.
+  appleWalletEnabled Boolean @default(false)
+
   highlightsEnabled Boolean     @default(false)
   highlights        Highlight[]
 
@@ -702,6 +707,11 @@ model CoachProfile {
   // that offers someone to pick (see lib/coach/archive.ts) and stay in every
   // report about the past.
   archivedAt             DateTime?
+  // Pins an instructor to the front of the schedule's instructor strip. Null
+  // means unpinned, and unpinned instructors sort alphabetically — the order
+  // used to fall out of whoever happened to teach the earliest class, so it
+  // reshuffled every time a member changed the day.
+  displayOrder           Int?
   classes                Class[]        @relation("ClassCurrentCoach")
   classesAsOriginalCoach Class[]        @relation("ClassOriginalCoach")
   payRates               CoachPayRate[]

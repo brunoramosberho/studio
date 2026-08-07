@@ -1964,7 +1964,11 @@
     "coachArchive": "Archive",
     "coachRestore": "Restore",
     "coachArchivedTitle": "Archived instructors",
-    "coachArchivedEmpty": "No archived instructors."
+    "coachArchivedEmpty": "No archived instructors.",
+    "walletTitle": "Apple Wallet pass",
+    "walletDesc": "Gives your members a membership card in Apple Wallet, with your logo and colours. It updates itself as their classes and level change.",
+    "coachPin": "Pin first on the schedule",
+    "coachUnpin": "Unpin"
   },
   "coach": {
     "portal": "Instructor Portal",

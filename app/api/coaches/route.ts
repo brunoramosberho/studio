@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
       include: {
         user: { select: { id: true, name: true, email: true, image: true } },
       },
-      orderBy: { name: "asc" },
+      // Same rule the schedule strip uses: pinned first, then alphabetical.
+      orderBy: [{ displayOrder: { sort: "asc", nulls: "last" } }, { name: "asc" }],
     });
 
     if (!withStats) {

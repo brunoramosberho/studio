@@ -109,6 +109,7 @@ export async function GET(request: NextRequest) {
             bio: true,
             specialties: true,
             tenantId: true,
+            displayOrder: true,
             user: { select: { name: true, image: true } },
           },
         },

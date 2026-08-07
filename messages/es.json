@@ -1964,7 +1964,11 @@
     "coachArchive": "Archivar",
     "coachRestore": "Restaurar",
     "coachArchivedTitle": "Instructoras archivadas",
-    "coachArchivedEmpty": "No hay instructoras archivadas."
+    "coachArchivedEmpty": "No hay instructoras archivadas.",
+    "walletTitle": "Pase de Apple Wallet",
+    "walletDesc": "Da a tus miembros una tarjeta de socio en Apple Wallet, con tu logo y tus colores. Se actualiza sola cuando cambian sus clases o su nivel.",
+    "coachPin": "Fijar primero en el horario",
+    "coachUnpin": "Quitar de fijadas"
   },
   "coach": {
     "portal": "Portal del Instructor",

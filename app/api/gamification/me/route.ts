@@ -106,7 +106,7 @@ export async function GET() {
 
     return NextResponse.json({
       hasActiveMembership: !!activeSub,
-      walletPassAvailable: isApplePassConfigured(),
+      walletPassAvailable: isApplePassConfigured() && tenant.appleWalletEnabled,
       levelsEnabled,
       achievementsEnabled,
       level: currentLevel && levelsEnabled ? { ...currentLevel } : null,

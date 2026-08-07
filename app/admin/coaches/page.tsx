@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Search,
   Link2,
+  Pin,
   Archive,
   ChevronDown,
   ChevronUp,
@@ -61,6 +62,8 @@ interface CoachData {
   specialties: string[];
   photoUrl: string | null;
   color: string;
+  /** Non-null pins them to the front of the schedule's instructor strip. */
+  displayOrder: number | null;
   user: { id: string; name: string | null; email: string; image: string | null } | null;
   stats: CoachStats;
 }
@@ -156,6 +159,19 @@ export default function AdminCoachesPage() {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
+  });
+
+  const pinMutation = useMutation({
+    mutationFn: async ({ id, pinned }: { id: string; pinned: boolean }) => {
+      const res = await fetch("/api/admin/coaches", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coachProfileId: id, pinned }),
+      });
+      if (!res.ok) throw new Error("Error al fijar");
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-coaches"] }),
   });
 
   const restoreMutation = useMutation({
@@ -480,6 +496,28 @@ export default function AdminCoachesPage() {
                           {hasAccount && (
                             <Link2 className="h-3 w-3 text-green-500" />
                           )}
+                          {/* Pinned instructors lead the schedule strip; the
+                              rest are alphabetical. */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              pinMutation.mutate({
+                                id: coach.id,
+                                pinned: coach.displayOrder == null,
+                              });
+                            }}
+                            title={coach.displayOrder != null ? t("coachUnpin") : t("coachPin")}
+                            aria-label={coach.displayOrder != null ? t("coachUnpin") : t("coachPin")}
+                            className="shrink-0 text-muted/50 transition hover:text-admin"
+                          >
+                            <Pin
+                              className={cn(
+                                "h-3.5 w-3.5",
+                                coach.displayOrder != null && "fill-admin text-admin",
+                              )}
+                            />
+                          </button>
                         </div>
                         {coach.user?.email && (
                           <p className="truncate text-xs text-muted">{coach.user.email}</p>
