@@ -1,8 +1,10 @@
 "use client";
 
 // Renders the real ChallengeCard against mock data, so every state can be
-// reviewed without a member session and without waiting for a real challenge to
-// reach that state. Reachable in development only — see page.tsx.
+// reviewed without a member session and without waiting for a real challenge
+// to reach it. The disciplines and instructors come from the tenant when there
+// are any — see page.tsx for why those are safe to use and the participant
+// names are not.
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
@@ -40,36 +42,57 @@ const SCOREBOARD: ActiveChallengeResponse["scoreboard"] = [
   { userId: "u5", name: "Regina Cervantes", image: null, startsAt: "2026-08-26T00:00:00.000Z", totalPoints: 35, classesCount: 1, currentStreak: 1, longestStreak: 1, daysElapsed: 2, pace: null, isMe: false, friendStatus: null },
 ];
 
-const PROGRESS: ActiveChallengeResponse["progress"] = {
+/** The studio's own disciplines and instructors, when it has any. */
+export interface PreviewRoster {
+  disciplines: { id: string; name: string; color: string }[];
+  coaches: { id: string; name: string; photoUrl: string | null }[];
+}
+
+const SAMPLE_ROSTER: PreviewRoster = {
   disciplines: [
-    { id: "d1", name: "Sculpt", color: "#C9A96E", tried: true },
-    { id: "d2", name: "Ride", color: "#1F2937", tried: true },
-    { id: "d3", name: "Barre", color: "#E8D5C4", tried: false },
-    { id: "d4", name: "Reformer", color: "#7C3AED", tried: false },
+    { id: "d1", name: "Sculpt", color: "#C9A96E" },
+    { id: "d2", name: "Ride", color: "#1F2937" },
+    { id: "d3", name: "Barre", color: "#E8D5C4" },
+    { id: "d4", name: "Reformer", color: "#7C3AED" },
   ],
   coaches: [
-    { id: "c1", name: "Ana", photoUrl: null, tried: true },
-    { id: "c2", name: "Lucía", photoUrl: null, tried: true },
-    { id: "c3", name: "Sofía", photoUrl: null, tried: false },
-    { id: "c4", name: "Mariana", photoUrl: null, tried: false },
+    { id: "c1", name: "Ana", photoUrl: null },
+    { id: "c2", name: "Lucía", photoUrl: null },
+    { id: "c3", name: "Sofía", photoUrl: null },
+    { id: "c4", name: "Mariana", photoUrl: null },
   ],
-  photoClassIds: [],
 };
 
-const BASE: Omit<ActiveChallengeResponse, "me"> = {
+/**
+ * Marks the first half of each list as already tried, so the checklist shows
+ * both sides of its own state — all-done reads as finished, none-done reads as
+ * broken, and the "next up" hint needs something still untried to point at.
+ */
+function buildProgress(roster: PreviewRoster): ActiveChallengeResponse["progress"] {
+  const half = (n: number) => Math.max(1, Math.floor(n / 2));
+  const dTried = half(roster.disciplines.length);
+  const cTried = half(roster.coaches.length);
+  return {
+    disciplines: roster.disciplines.map((d, i) => ({ ...d, tried: i < dTried })),
+    coaches: roster.coaches.map((c, i) => ({ ...c, tried: i < cTried })),
+    photoClassIds: [],
+  };
+}
+
+const makeBase = (progress: ActiveChallengeResponse["progress"]): Omit<ActiveChallengeResponse, "me"> => ({
   challenge: CHALLENGE,
   enrollmentOpen: true,
   timezone: "Europe/Madrid",
   enrollDaysLeft: 9,
   paceMinDays: 3,
   participantCount: 34,
-  progress: PROGRESS,
+  progress,
   scoreboard: SCOREBOARD,
-};
+});
 
 const NOT_STARTED: ActiveChallengeResponse["me"] = { joinedAt: "2026-08-01T00:00:00.000Z", startsAt: null, endsAt: null, totalPoints: 0, classesCount: 0, currentStreak: 0, longestStreak: 0, daysLeft: null, finished: false };
 
-const STATES: { label: string; data: ActiveChallengeResponse }[] = [
+const makeStates = (BASE: Omit<ActiveChallengeResponse, "me">): { label: string; data: ActiveChallengeResponse }[] => [
   { label: "1 · Not joined yet", data: { ...BASE, me: null, progress: null } },
   {
     label: "1b · Not joined — last day",
@@ -118,10 +141,12 @@ function Seeded({ data }: { data: ActiveChallengeResponse }) {
   );
 }
 
-export default function PreviewClient() {
+export default function PreviewClient({ roster }: { roster: PreviewRoster | null }) {
+  const states = makeStates(makeBase(buildProgress(roster ?? SAMPLE_ROSTER)));
+
   return (
     <div className="mx-auto max-w-md space-y-6 p-4">
-      {STATES.map((s) => (
+      {states.map((s) => (
         <div key={s.label}>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
             {s.label}
