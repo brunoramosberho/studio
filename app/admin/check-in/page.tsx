@@ -3,10 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Loader2, MapPin, ShieldAlert } from "lucide-react";
-import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, formatDateInZone, formatTime24InZone, parseDateOnly } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { ClassRoster } from "@/components/check-in/ClassRoster";
 
@@ -17,6 +17,8 @@ interface ClassItem {
   classIcon: string | null;
   startTime: string;
   endTime: string;
+  /** IANA zone of the studio running the class — every time here is read in it. */
+  timezone: string;
   coachName: string | null;
   coachImage: string | null;
   room: string;
@@ -32,17 +34,42 @@ interface ClassItem {
   recentlyFinished: boolean;
 }
 
-function formatDateLabel(date: Date, td: (key: string) => string): string {
-  if (isToday(date)) return td("today");
-  if (isTomorrow(date)) return td("tomorrow");
-  if (isYesterday(date)) return td("yesterday");
-  return format(date, "EEE d MMM", { locale: es });
+interface StudioItem {
+  id: string;
+  name: string;
+  timezone: string;
 }
 
-function formatHeaderDate(date: Date, td: (key: string) => string): string {
-  const label = formatDateLabel(date, td);
+// The selected day is a plain calendar date ("yyyy-MM-dd") in the studio's
+// timezone, never a Date. The front desk's day is the studio's wall clock: an
+// instant-based "today" reads the browser's clock (and, server-side, UTC),
+// which is how the evening classes of a Mexico City studio fell off the list.
+
+/** The same calendar day shifted by whole days — no timezone involved. */
+function shiftDay(day: string, delta: number): string {
+  const [y, m, d] = day.split("-").map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, d + delta));
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-${String(shifted.getUTCDate()).padStart(2, "0")}`;
+}
+
+function formatShortDay(day: string): string {
+  return format(parseDateOnly(day) ?? new Date(), "EEE d MMM", { locale: es });
+}
+
+function formatDateLabel(day: string, todayStr: string, td: (key: string) => string): string {
+  if (day === todayStr) return td("today");
+  if (day === shiftDay(todayStr, 1)) return td("tomorrow");
+  if (day === shiftDay(todayStr, -1)) return td("yesterday");
+  return formatShortDay(day);
+}
+
+function formatHeaderDate(day: string, todayStr: string, td: (key: string) => string): string {
+  const date = parseDateOnly(day) ?? new Date();
+  const label = formatDateLabel(day, todayStr, td);
   const full = format(date, "EEEE, d 'de' MMMM", { locale: es });
-  if (isToday(date) || isTomorrow(date) || isYesterday(date)) {
+  const isRelative =
+    day === todayStr || day === shiftDay(todayStr, 1) || day === shiftDay(todayStr, -1);
+  if (isRelative) {
     return `${label} · ${full.charAt(0).toUpperCase() + full.slice(1)}`;
   }
   return full.charAt(0).toUpperCase() + full.slice(1);
@@ -54,24 +81,12 @@ const CLASS_STORAGE_KEY = "check-in-class-id";
 export default function CheckInPage() {
   const t = useTranslations("admin");
   const td = useTranslations("dates");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [filterStudioId, setFilterStudioId] = useState<string | null>(null);
   const [showMobileRoster, setShowMobileRoster] = useState(false);
 
-  const dateStr = format(selectedDate, "yyyy-MM-dd");
-  const isPastDate = !isToday(selectedDate) && selectedDate < new Date();
-
-  const { data: allClasses = [], isLoading } = useQuery<ClassItem[]>({
-    queryKey: ["check-in-classes", dateStr],
-    queryFn: () => fetch(`/api/check-in/classes?date=${dateStr}`).then((r) => r.json()),
-    // Front desk keeps this open all day — poll so the schedule (live class,
-    // counts) stays current without a manual refresh, like the roster does.
-    // Only today needs polling; past/future days are static.
-    refetchInterval: isToday(selectedDate) ? 30_000 : false,
-  });
-
-  const { data: studios = [], isLoading: isLoadingStudios } = useQuery<{ id: string; name: string }[]>({
+  const { data: studios = [], isLoading: isLoadingStudios } = useQuery<StudioItem[]>({
     queryKey: ["check-in-studios"],
     queryFn: async () => {
       const res = await fetch("/api/admin/studios");
@@ -81,6 +96,39 @@ export default function CheckInPage() {
   });
 
   const hasMultipleStudios = studios.length > 1;
+
+  const studioTz = useMemo(() => {
+    const selected = studios.find((s) => s.id === filterStudioId);
+    if (selected) return selected.timezone;
+    // A tenant with no active studio still needs a clock to render an empty
+    // day with — otherwise the list would wait forever for a zone.
+    if (!isLoadingStudios && studios.length === 0) {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    }
+    return null;
+  }, [studios, filterStudioId, isLoadingStudios]);
+
+  // Recomputed every render (not memoised) so a front desk that leaves the page
+  // open past midnight rolls over to the new day on the next poll.
+  const todayStr = studioTz ? formatDateInZone(new Date(), studioTz) : null;
+
+  // No explicit pick = follow the studio's today. Until the studio (and so its
+  // clock) is known there is no day to ask for — which is what keeps the default
+  // on the studio's calendar rather than the browser's.
+  const dateStr = pickedDay ?? todayStr;
+
+  const isTodaySelected = dateStr != null && dateStr === todayStr;
+  const isPastDate = dateStr != null && todayStr != null && dateStr < todayStr;
+
+  const { data: allClasses = [], isLoading } = useQuery<ClassItem[]>({
+    queryKey: ["check-in-classes", dateStr],
+    queryFn: () => fetch(`/api/check-in/classes?date=${dateStr}`).then((r) => r.json()),
+    enabled: dateStr != null,
+    // Front desk keeps this open all day — poll so the schedule (live class,
+    // counts) stays current without a manual refresh, like the roster does.
+    // Only today needs polling; past/future days are static.
+    refetchInterval: isTodaySelected ? 30_000 : false,
+  });
 
   useEffect(() => {
     if (studios.length === 0) return;
@@ -191,16 +239,16 @@ export default function CheckInPage() {
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button
-              onClick={() => setSelectedDate((d) => subDays(d, 1))}
+              onClick={() => dateStr && setPickedDay(shiftDay(dateStr, -1))}
               className="p-1.5 rounded-lg border border-stone-200 dark:border-border hover:bg-stone-50 dark:hover:bg-surface/60 text-stone-500 dark:text-muted"
             >
               <ChevronLeft size={16} />
             </button>
             <button
-              onClick={() => setSelectedDate(new Date())}
+              onClick={() => setPickedDay(null)}
               className={cn(
                 "px-3 py-1 text-xs font-medium rounded-lg border transition-colors",
-                isToday(selectedDate)
+                isTodaySelected
                   ? "bg-admin text-white border-admin"
                   : "border-stone-200 dark:border-border text-stone-600 dark:text-muted hover:bg-stone-50 dark:hover:bg-surface/60 dark:border-border dark:text-muted dark:hover:bg-surface",
               )}
@@ -208,10 +256,10 @@ export default function CheckInPage() {
               {td("today")}
             </button>
             <span className="text-xs sm:text-sm font-medium text-stone-700 dark:text-foreground truncate max-w-[160px] sm:max-w-none">
-              {formatHeaderDate(selectedDate, td)}
+              {dateStr && todayStr ? formatHeaderDate(dateStr, todayStr, td) : ""}
             </span>
             <button
-              onClick={() => setSelectedDate((d) => addDays(d, 1))}
+              onClick={() => dateStr && setPickedDay(shiftDay(dateStr, 1))}
               className="p-1.5 rounded-lg border border-stone-200 dark:border-border hover:bg-stone-50 dark:hover:bg-surface/60 text-stone-500 dark:text-muted dark:border-border dark:hover:bg-surface dark:text-muted"
             >
               <ChevronRight size={16} />
@@ -256,11 +304,11 @@ export default function CheckInPage() {
               {isPastDate ? t("dayClasses") : t("todayClasses")}
             </span>
             <span className="text-xs text-stone-400 dark:text-muted">
-              {format(selectedDate, "EEE d MMM", { locale: es })}
+              {dateStr ? formatShortDay(dateStr) : ""}
             </span>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {isLoading || isLoadingStudios ? (
+            {isLoading || isLoadingStudios || !dateStr ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="animate-spin text-stone-300 dark:text-muted/70" size={20} />
               </div>
@@ -331,7 +379,7 @@ export default function CheckInPage() {
           >
             <ChevronLeft size={14} />
             {selectedClass
-              ? `${format(new Date(selectedClass.startTime), "HH:mm")} · ${selectedClass.className}`
+              ? `${formatTime24InZone(selectedClass.startTime, selectedClass.timezone)} · ${selectedClass.className}`
               : t("backToClasses")}
           </button>
 
@@ -343,6 +391,7 @@ export default function CheckInPage() {
                   className: selectedClass.className,
                   startTime: selectedClass.startTime,
                   endTime: selectedClass.endTime,
+                  timezone: selectedClass.timezone,
                   coachName: selectedClass.coachName,
                   room: selectedClass.room,
                   capacity: selectedClass.capacity,
@@ -393,7 +442,7 @@ function ClassListItem({
     >
       <div className="flex items-center gap-1.5 mb-0.5">
         <span className="text-[11px] text-stone-500 dark:text-muted">
-          {format(new Date(c.startTime), "HH:mm")} – {format(new Date(c.endTime), "HH:mm")}
+          {formatTime24InZone(c.startTime, c.timezone)} – {formatTime24InZone(c.endTime, c.timezone)}
         </span>
         {c.isLive && (
           <span className="flex items-center gap-1 text-[10px] font-medium text-red-500 dark:text-red-400">

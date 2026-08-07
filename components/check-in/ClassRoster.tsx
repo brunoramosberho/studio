@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useOptimistic, useCallback, useEffect, useMemo, useRef, startTransition, type ReactNode } from "react";
+import { useState, useOptimistic, useCallback, useContext, useEffect, useMemo, useRef, startTransition, createContext, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import {
@@ -24,10 +24,8 @@ import {
   CupSoda,
 } from "lucide-react";
 import { CircleCheckIcon, type CircleCheckIconHandle } from "lucide-animated";
-import { cn } from "@/lib/utils";
+import { cn, formatTime24InZone } from "@/lib/utils";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { usePosStore } from "@/store/pos-store";
 import { SpotPicker } from "@/components/admin/pos/spot-picker";
 import { StudioMap, type SpotInfo, type RoomLayoutData } from "@/components/shared/studio-map";
@@ -137,6 +135,8 @@ interface ClassInfo {
   className: string;
   startTime: string;
   endTime: string;
+  /** IANA zone of the studio hosting the class. */
+  timezone: string;
   coachName: string | null;
   room: string;
   capacity: number;
@@ -144,6 +144,52 @@ interface ClassInfo {
   isFinished: boolean;
   /** Finished, but recently enough that late attendance registration is allowed. */
   recentlyFinished?: boolean;
+}
+
+// ── Studio clock ──
+//
+// Every time on this screen belongs to the studio, not to whoever is looking:
+// the front desk in Mexico City and the owner checking in from Madrid must both
+// read "19:00" for a 19:00 class. The zone comes from the class and is shared
+// through context so the nested sections don't each need it drilled in.
+
+const StudioTimezoneContext = createContext<string | null>(null);
+
+function useStudioTimezone(): string | null {
+  return useContext(StudioTimezoneContext);
+}
+
+// Module-level so the option objects keep a stable identity across renders.
+const TIME_FMT: Intl.DateTimeFormatOptions = {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+};
+const DAY_FMT: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+const DAY_TIME_FMT: Intl.DateTimeFormatOptions = { ...DAY_FMT, ...TIME_FMT };
+const WEEKDAY_TIME_FMT: Intl.DateTimeFormatOptions = {
+  weekday: "short",
+  ...DAY_TIME_FMT,
+};
+
+/** Localized date/time on the studio's clock, e.g. "5 ago, 14:30". */
+function useZonedFormat(
+  options: Intl.DateTimeFormatOptions,
+): (date: string | Date) => string {
+  const tz = useStudioTimezone();
+  return useCallback(
+    (date: string | Date) =>
+      new Intl.DateTimeFormat("es-ES", {
+        ...options,
+        ...(tz ? { timeZone: tz } : {}),
+      }).format(new Date(date)),
+    [tz, options],
+  );
+}
+
+/** "HH:mm" on the studio's clock. */
+function useZonedTime(): (date: string | Date) => string {
+  return useZonedFormat(TIME_FMT);
 }
 
 interface ClassRosterProps {
@@ -514,7 +560,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   const enrolledCount = optimisticRoster.length + wellhubBookings.length;
   const pendingCount = enrolledCount - presentCount;
 
-  const startFormatted = format(new Date(classInfo.startTime), "HH:mm");
+  const startFormatted = formatTime24InZone(classInfo.startTime, classInfo.timezone);
 
   // Occupancy map for the room view: spotNumber → member identity. Includes
   // Wellhub bookings (which hold a seat via their companion booking) so the
@@ -646,6 +692,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
   );
 
   return (
+    <StudioTimezoneContext.Provider value={classInfo.timezone}>
     <div className="flex flex-col h-full">
       {/* Header: class info, live stats, and member search.
           Desktop puts search inline (right of the class info) to save a row;
@@ -1042,6 +1089,7 @@ export function ClassRoster({ classId, classInfo }: ClassRosterProps) {
         />
       )}
     </div>
+    </StudioTimezoneContext.Provider>
   );
 }
 
@@ -1265,6 +1313,7 @@ function RosterRow({
   }, [isCheckedIn]);
 
   const tc = useTranslations("checkin");
+  const zonedDay = useZonedFormat(DAY_FMT);
   // Sales / retention signals for front desk.
   const lowCredits =
     !member.isUnlimited &&
@@ -1413,9 +1462,7 @@ function RosterRow({
             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
               <AlertTriangle size={9} />
               {member.membershipCancelAt
-                ? tc("membershipCancelsOn", {
-                    date: format(new Date(member.membershipCancelAt), "d MMM", { locale: es }),
-                  })
+                ? tc("membershipCancelsOn", { date: zonedDay(member.membershipCancelAt) })
                 : tc("membershipCancelling")}
             </span>
           )}
@@ -1558,6 +1605,7 @@ function WellhubBookingsSection({
 }) {
   const queryClient = useQueryClient();
   const [moveTarget, setMoveTarget] = useState<WellhubBooking | null>(null);
+  const zonedTime = useZonedTime();
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["check-in-roster", classId] });
@@ -1676,7 +1724,7 @@ function WellhubBookingsSection({
               </span>
             ) : isCheckedIn ? (
               <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                ✓ {b.checkedInAt ? format(new Date(b.checkedInAt), "HH:mm") : "Asistió"}
+                ✓ {b.checkedInAt ? zonedTime(b.checkedInAt) : "Asistió"}
               </span>
             ) : !isFinished ? (
               <button
@@ -1722,6 +1770,7 @@ function OccupancyAuditSection({
 }: {
   audit: { noShows: AuditEntry[]; lateCancels: AuditEntry[] };
 }) {
+  const zonedDayTime = useZonedFormat(DAY_TIME_FMT);
   const Row = ({ e }: { e: AuditEntry }) => (
     <div className="flex items-center gap-2 py-1">
       <span
@@ -1734,7 +1783,7 @@ function OccupancyAuditSection({
         <p className="truncate text-xs text-stone-700 dark:text-foreground">{e.name}</p>
         {(e.at || e.by) && (
           <p className="text-[10px] text-stone-400 dark:text-muted">
-            {e.at && format(new Date(e.at), "d MMM, HH:mm", { locale: es })}
+            {e.at && zonedDayTime(e.at)}
             {e.by && ` · ${e.by}`}
           </p>
         )}
@@ -1767,6 +1816,7 @@ function OccupancyAuditSection({
 
 function NotifyMeSection({ notifyMe }: { notifyMe: NotifyMeMember[] }) {
   const t = useTranslations("checkin");
+  const zonedDayTime = useZonedFormat(DAY_TIME_FMT);
   return (
     <div className="bg-stone-50 border-t border-stone-100 px-4 py-3 dark:bg-surface/40 dark:border-border/60">
       <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wider mb-2 dark:text-muted">
@@ -1787,7 +1837,7 @@ function NotifyMeSection({ notifyMe }: { notifyMe: NotifyMeMember[] }) {
               {n.memberName}
             </p>
             <p className="text-[10px] text-stone-400 dark:text-muted">
-              {t("notifyMeSince")} {format(new Date(n.since), "d MMM, HH:mm", { locale: es })}
+              {t("notifyMeSince")} {zonedDayTime(n.since)}
             </p>
           </div>
         </div>
@@ -1814,6 +1864,7 @@ function WaitlistSection({
   const [confirmFull, setConfirmFull] = useState<WaitlistMember | null>(null);
 
   const t = useTranslations("checkin");
+  const zonedTime = useZonedTime();
   const promoteMutation = useMutation({
     mutationFn: async ({ memberId, force }: { memberId: string; force: boolean }) => {
       // Proper waitlist promotion: reuses the credit the entry already holds (no
@@ -1866,7 +1917,7 @@ function WaitlistSection({
             <p className="text-[10px] text-stone-400 dark:text-muted">
               {w.released
                 ? t("wasOnWaitlist")
-                : `${t("waitingSince")} ${format(new Date(w.since), "HH:mm", { locale: es })}`}
+                : `${t("waitingSince")} ${zonedTime(w.since)}`}
             </p>
           </div>
           {!isFinished && !w.released && (
@@ -2070,6 +2121,7 @@ function WalkInModal({
   setQuery: (q: string) => void;
 }) {
   const t = useTranslations("checkin");
+  const zonedClassTime = useZonedFormat(WEEKDAY_TIME_FMT);
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [noCreditInfo, setNoCreditInfo] = useState<NoCreditInfo | null>(null);
   const [waiverBlock, setWaiverBlock] = useState<string | null>(null);
@@ -2198,7 +2250,7 @@ function WalkInModal({
   function handleOpenPOS() {
     if (!noCreditInfo) return;
     const { member, classInfo } = noCreditInfo;
-    const classLabel = `${classInfo.classTypeName} — ${format(new Date(classInfo.startsAt), "EEE d MMM HH:mm", { locale: es })}`;
+    const classLabel = `${classInfo.classTypeName} — ${zonedClassTime(classInfo.startsAt)}`;
 
     openPOS({
       customer: {
