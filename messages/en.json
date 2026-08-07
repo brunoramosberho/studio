@@ -2356,7 +2356,11 @@
       "deadlineJoin": "You can join and take your first class until {date}.",
       "deadlineActivate": "Your first class has to be before {date}, or you're out of the challenge.",
       "deadlineSoon": "{days, plural, =0 {Today is the last day!} one {1 day left.} other {# days left.}}",
-      "deadlineMissed": "The deadline for your first class has passed, so this challenge no longer counts for you."
+      "deadlineMissed": "The deadline for your first class has passed, so this challenge no longer counts for you.",
+      "morePrizes": "{count, plural, one {+1 prize} other {+# prizes}}",
+      "unitPace": "pts/day",
+      "unitPoints": "points",
+      "rowDay": "day {day} of {total}"
     },
     "blocked": {
       "title": "Your access is suspended",

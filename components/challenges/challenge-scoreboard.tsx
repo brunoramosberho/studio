@@ -142,6 +142,7 @@ export function ChallengeScoreboard({
                 row={row}
                 rank={i + 1}
                 sort={sort}
+                durationDays={data.challenge.durationDays}
                 onAddFriend={() => addFriend.mutate(row.userId)}
                 adding={addFriend.isPending && addFriend.variables === row.userId}
               />
@@ -160,6 +161,7 @@ export function ChallengeScoreboard({
                     key={row.userId}
                     row={row}
                     sort={sort}
+                    durationDays={data.challenge.durationDays}
                     onAddFriend={() => addFriend.mutate(row.userId)}
                     adding={addFriend.isPending && addFriend.variables === row.userId}
                   />
@@ -205,12 +207,15 @@ function Row({
   row,
   rank,
   sort,
+  durationDays,
   onAddFriend,
   adding,
 }: {
   row: ScoreboardRow;
   rank?: number;
   sort: SortKey;
+  /** The challenge length, so a row can say where this member is inside it. */
+  durationDays: number;
   onAddFriend: () => void;
   adding: boolean;
 }) {
@@ -240,7 +245,13 @@ function Row({
         </p>
         <p className="text-[11px] text-muted">
           {row.startsAt
-            ? t("rowMeta", { classes: row.classesCount, points: row.totalPoints })
+            ? `${t("rowMeta", { classes: row.classesCount, points: row.totalPoints })} · ${t(
+                "rowDay",
+                {
+                  day: Math.min(row.daysElapsed, durationDays),
+                  total: durationDays,
+                },
+              )}`
             : t("rowNotStarted")}
         </p>
       </div>
@@ -250,8 +261,15 @@ function Row({
           {row.longestStreak}
         </span>
       )}
-      <span className="w-14 shrink-0 text-right text-sm font-semibold tabular-nums">
-        {sort === "pace" && row.pace != null ? row.pace : row.totalPoints}
+      <span className="w-16 shrink-0 text-right">
+        <span className="block text-sm font-semibold tabular-nums">
+          {sort === "pace" && row.pace != null ? row.pace : row.totalPoints}
+        </span>
+        {/* A bare "11.3" told nobody anything. The unit is what makes the
+            column readable without going back up to the explainer. */}
+        <span className="block text-[9px] uppercase tracking-wide text-muted/70">
+          {sort === "pace" && row.pace != null ? t("unitPace") : t("unitPoints")}
+        </span>
       </span>
       {canAdd && (
         <Button

@@ -2356,7 +2356,11 @@
       "deadlineJoin": "Puedes entrar y tomar tu primera clase hasta el {date}.",
       "deadlineActivate": "Tu primera clase tiene que ser antes del {date}, o te quedas fuera del reto.",
       "deadlineSoon": "{days, plural, =0 {¡Hoy es el último día!} one {Queda 1 día.} other {Quedan # días.}}",
-      "deadlineMissed": "Se pasó la fecha para tomar tu primera clase, así que este reto ya no cuenta para ti."
+      "deadlineMissed": "Se pasó la fecha para tomar tu primera clase, así que este reto ya no cuenta para ti.",
+      "morePrizes": "{count, plural, one {+1 premio} other {+# premios}}",
+      "unitPace": "pts/día",
+      "unitPoints": "puntos",
+      "rowDay": "día {day} de {total}"
     },
     "blocked": {
       "title": "Tu acceso está suspendido",

@@ -11,8 +11,8 @@ import type { ActiveChallengeResponse } from "@/components/challenges/types";
 
 const CHALLENGE: ActiveChallengeResponse["challenge"] = {
   id: "c1",
-  name: "Reto de Verano",
-  description: "30 días para moverte más y probar algo nuevo.",
+  name: "Summer Challenge",
+  description: "30 days to move more and try something new.",
   imageUrl: null,
   durationDays: 30,
   // Stored the way the admin route writes it: 23:59 studio-local, as UTC.
@@ -27,8 +27,8 @@ const CHALLENGE: ActiveChallengeResponse["challenge"] = {
   dailyPointsCap: 25,
   bonusSlots: [{ dayOfWeek: 1, hour: 10, points: 5 }],
   prizes: [
-    { fromRank: 1, toRank: 1, title: "Mes ilimitado gratis" },
-    { fromRank: 2, toRank: 3, title: "Paquete de 5 clases" },
+    { fromRank: 1, toRank: 1, title: "A free unlimited month" },
+    { fromRank: 2, toRank: 3, title: "A 5-class pack" },
   ],
 };
 
@@ -70,32 +70,32 @@ const BASE: Omit<ActiveChallengeResponse, "me"> = {
 const NOT_STARTED: ActiveChallengeResponse["me"] = { joinedAt: "2026-08-01T00:00:00.000Z", startsAt: null, endsAt: null, totalPoints: 0, classesCount: 0, currentStreak: 0, longestStreak: 0, daysLeft: null, finished: false };
 
 const STATES: { label: string; data: ActiveChallengeResponse }[] = [
-  { label: "1 · Sin inscribirse", data: { ...BASE, me: null, progress: null } },
+  { label: "1 · Not joined yet", data: { ...BASE, me: null, progress: null } },
   {
-    label: "1b · Sin inscribirse, último día",
+    label: "1b · Not joined — last day",
     data: { ...BASE, enrollDaysLeft: 0, me: null, progress: null },
   },
   {
-    label: "2 · Inscrito, sin arrancar",
+    label: "2 · Joined, first class pending",
     data: { ...BASE, progress: null, me: NOT_STARTED },
   },
   {
-    label: "2b · Inscrito, quedan 2 días para la primera clase",
+    label: "2b · Joined — 2 days to book that first class",
     data: { ...BASE, enrollDaysLeft: 2, progress: null, me: NOT_STARTED },
   },
   {
-    label: "2c · Inscrito, se le pasó la fecha",
+    label: "2c · Joined — deadline passed",
     data: { ...BASE, enrollDaysLeft: -1, progress: null, me: NOT_STARTED },
   },
   {
-    label: "3 · Corriendo",
+    label: "3 · Running",
     data: {
       ...BASE,
       me: { joinedAt: "2026-08-01T00:00:00.000Z", startsAt: "2026-08-03T00:00:00.000Z", endsAt: "2026-09-02T00:00:00.000Z", totalPoints: 195, classesCount: 13, currentStreak: 3, longestStreak: 4, daysLeft: 5, finished: false },
     },
   },
   {
-    label: "4 · Terminado",
+    label: "4 · Finished",
     data: {
       ...BASE,
       me: { joinedAt: "2026-08-01T00:00:00.000Z", startsAt: "2026-07-01T00:00:00.000Z", endsAt: "2026-07-31T00:00:00.000Z", totalPoints: 240, classesCount: 16, currentStreak: 0, longestStreak: 5, daysLeft: 0, finished: true },

@@ -68,6 +68,7 @@ export function ChallengeCard() {
   const deadlinePassed = daysToDeadline < 0;
 
   const topPrize = [...(challenge.prizes ?? [])].sort((a, b) => a.fromRank - b.fromRank)[0];
+  const otherPrizes = Math.max(0, (challenge.prizes?.length ?? 0) - 1);
   const myRank = me?.startsAt
     ? data.scoreboard
         .filter((r) => r.pace != null)
@@ -124,10 +125,21 @@ export function ChallengeCard() {
                 <Rule>{t("ruleWindow", { days: challenge.durationDays })}</Rule>
               </ul>
               {topPrize && (
-                <p className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  {t("prizeLine", { prize: topPrize.title })}
-                </p>
+                <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 font-medium">
+                    {t("prizeLine", { prize: topPrize.title })}
+                  </span>
+                  {otherPrizes > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setBoardOpen(true)}
+                      className="shrink-0 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      {t("morePrizes", { count: otherPrizes })}
+                    </button>
+                  )}
+                </div>
               )}
               <Deadline days={daysToDeadline}>
                 {t("deadlineJoin", { date: deadline })}
